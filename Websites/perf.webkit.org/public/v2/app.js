@@ -303,7 +303,7 @@ App.Pane = Ember.Object.extend({
     searchCommit: function (repository, keyword) {
         var self = this;
         var repositoryId = repository.get('id');
-        CommitLogs.fetchForTimeRange(repositoryId, null, null, keyword).then(function (commits) {
+        CommitLogs.fetchCommits(repositoryId, null, null, keyword).then(function (commits) {
             if (self.isDestroyed || !self.get('chartData') || !commits.length)
                 return;
             var currentRuns = self.get('chartData').current.series();
@@ -586,8 +586,10 @@ App.Pane = Ember.Object.extend({
 
         var rawValues = chartData.current.rawValues();
         var movingAverageIsSetByUser = movingAverageStrategy && movingAverageStrategy.execute;
-        var movingAverageValues = Statistics.executeStrategy(
-            movingAverageIsSetByUser ? movingAverageStrategy : Statistics.MovingAverageStrategies[0], rawValues);
+        if (!movingAverageIsSetByUser)
+            return null;
+
+        var movingAverageValues = Statistics.executeStrategy(movingAverageStrategy, rawValues);
         if (!movingAverageValues)
             return null;
 
@@ -595,33 +597,23 @@ App.Pane = Ember.Object.extend({
         if (movingAverageStrategy && movingAverageStrategy.isSegmentation && testRangeSelectionStrategy && testRangeSelectionStrategy.execute)
             testRangeCandidates = Statistics.executeStrategy(testRangeSelectionStrategy, rawValues, [movingAverageValues]);
 
-        var envelopeIsSetByUser = envelopingStrategy && envelopingStrategy.execute;
-        var envelopeDelta = Statistics.executeStrategy(envelopeIsSetByUser ? envelopingStrategy : Statistics.EnvelopingStrategies[0],
-            rawValues, [movingAverageValues]);
-
-        for (var i = 0; i < currentTimeSeriesData.length; i++) {
-            var currentValue = currentTimeSeriesData[i].value;
-            var movingAverageValue = movingAverageValues[i];
-            if (currentValue < movingAverageValue - envelopeDelta || movingAverageValue + envelopeDelta < currentValue)
-                currentTimeSeriesData[i].isOutlier = true;
-        }
-        if (!envelopeIsSetByUser)
-            envelopeDelta = null;
-
-        var anomalies = {};
-        if (anomalyDetectionStrategies.length) {
-            var isAnomalyArray = new Array(currentTimeSeriesData.length);
-            for (var strategy of anomalyDetectionStrategies) {
-                var anomalyLengths = Statistics.executeStrategy(strategy, rawValues, [movingAverageValues, envelopeDelta]);
-                for (var i = 0; i < currentTimeSeriesData.length; i++)
-                    isAnomalyArray[i] = isAnomalyArray[i] || anomalyLengths[i];
-            }
-            for (var i = 0; i < isAnomalyArray.length; i++) {
-                if (!isAnomalyArray[i])
-                    continue;
-                anomalies[currentTimeSeriesData[i].measurement.id()] = true;
-                while (isAnomalyArray[i] && i < isAnomalyArray.length)
-                    ++i;
+        if (envelopingStrategy && envelopingStrategy.execute) {
+            var envelopeDelta = Statistics.executeStrategy(envelopingStrategy, rawValues, [movingAverageValues]);
+            var anomalies = {};
+            if (anomalyDetectionStrategies.length) {
+                var isAnomalyArray = new Array(currentTimeSeriesData.length);
+                for (var strategy of anomalyDetectionStrategies) {
+                    var anomalyLengths = Statistics.executeStrategy(strategy, rawValues, [movingAverageValues, envelopeDelta]);
+                    for (var i = 0; i < currentTimeSeriesData.length; i++)
+                        isAnomalyArray[i] = isAnomalyArray[i] || anomalyLengths[i];
+                }
+                for (var i = 0; i < isAnomalyArray.length; i++) {
+                    if (!isAnomalyArray[i])
+                        continue;
+                    anomalies[currentTimeSeriesData[i].measurement.id()] = true;
+                    while (isAnomalyArray[i] && i < isAnomalyArray.length)
+                        ++i;
+                }
             }
         }
 
@@ -889,6 +881,20 @@ App.ChartsController = Ember.Controller.extend({
                 showingDetails: false
             }));
         },
+        addAlternativePanes: function (pane, platform, metrics)
+        {
+            var panes = this.panes;
+            var store = this.store;
+            var startingIndex = panes.indexOf(pane) + 1;
+            metrics.forEach(function (metric, index) {
+                panes.insertAt(startingIndex + index, App.Pane.create({
+                    store: store,
+                    platformId: platform.get('id'),
+                    metricId: metric.get('id'),
+                    showingDetails: false
+                }));
+            })
+        }
     },
 
     init: function ()
@@ -930,6 +936,21 @@ App.TestProxyForPopup = Ember.ObjectProxy.extend({
     platform: null,
     children: function ()
     {
+        this._updateChildren();
+        return this._children;
+    }.property('childTests', 'metrics'),
+    actionName: function ()
+    {
+        this._updateChildren();
+        return this._actionName;
+    }.property('childTests', 'metrics'),
+    actionArgument: function ()
+    {
+        this._updateChildren();
+        return this._actionArgument;
+    }.property('childTests', 'metrics'),
+    _updateChildren: function ()
+    {
         var platform = this.get('platform');
         var action = this.get('action');
         var position = this.get('position');
@@ -953,9 +974,16 @@ App.TestProxyForPopup = Ember.ObjectProxy.extend({
 
         if (childTests.length && metrics.length)
             metrics.push({isSeparator: true});
+        else if (metrics.length == 1) {
+            this._actionName = action;
+            this._actionArgument = metrics[0].actionArgument;
+            return;
+        }
 
-        return metrics.concat(childTests);
-    }.property('childTests', 'metrics'),
+        this._actionName = null;
+        this._actionArgument = null;
+        this._children = metrics.concat(childTests);
+    },
 });
 
 App.domainsAreEqual = function (domain1, domain2) {
@@ -1114,6 +1142,45 @@ App.PaneController = Ember.ObjectController.extend({
             alert('Failed to update the status:' + error);
         });
     }.observes('selectedItemIsMarkedOutlier'),
+    alternativePanes: function ()
+    {
+        var pane = this.get('model');
+        var metric = pane.get('metric');
+        var currentPlatform = pane.get('platform');
+        var platforms = App.Manifest.get('platforms');
+        if (!platforms || !metric)
+            return;
+
+        var exitingPlatforms = {};
+        this.get('parentController').get('panes').forEach(function (pane) {
+            if (pane.get('metricId') == metric.get('id'))
+                exitingPlatforms[pane.get('platformId')] = true;
+        });
+
+        var alternativePanes = platforms.filter(function (platform) {
+            return !exitingPlatforms[platform.get('id')] && platform.containsMetric(metric);
+        }).map(function (platform) {
+            return {
+                pane: pane,
+                platform: platform,
+                metrics: [metric],
+                label: platform.get('label')
+            };
+        });
+
+        var childMetrics = metric.get('childMetrics');
+        if (childMetrics && childMetrics.length) {
+            alternativePanes.push({
+                pane: pane,
+                platform: currentPlatform,
+                metrics: childMetrics,
+                label: 'Breakdown',
+            });
+        }
+
+        return alternativePanes;
+    }.property('model.metric', 'model.platform', 'App.Manifest.platforms',
+        'parentController.panes.@each.platformId', 'parentController.panes.@each.metricId'),
 });
 
 App.AnalysisRoute = Ember.Route.extend({
@@ -1258,43 +1325,91 @@ App.AnalysisTaskController = Ember.Controller.extend({
             var revisions = point.measurement.formattedRevisions();
             for (var repositoryId in revisions) {
                 if (!repositoryToRevisions[repositoryId])
-                    repositoryToRevisions[repositoryId] = new Array(analysisPoints.length);
+                    repositoryToRevisions[repositoryId] = {commits: null, revisions: []};
                 var revision = revisions[repositoryId];
-                repositoryToRevisions[repositoryId][pointIndex] = {
+                repositoryToRevisions[repositoryId].revisions[pointIndex] = {
                     label: point.label + ': ' + revision.label,
                     value: revision.currentRevision,
                 };
             }
         });
 
+        var commitsPromises = [];
+        var repositoryToIndex = {};
+        for (var repositoryId in repositoryToRevisions) {
+            var revisions = repositoryToRevisions[repositoryId].revisions;
+            repositoryToIndex[repositoryId] = commitsPromises.length;
+            commitsPromises.push(CommitLogs.fetchCommits(repositoryId, revisions[0].value, revisions[revisions.length - 1].value));
+        }
+
         var self = this;
         this.get('model').get('triggerable').then(function (triggerable) {
             if (!triggerable)
                 return;
-
-            self.set('configurations', ['A', 'B']);
-            self.set('rootConfigurations', triggerable.get('acceptedRepositories').map(function (repository) {
-                var repositoryId = repository.get('id');
-                var options = [{label: 'None'}].concat((repositoryToRevisions[repositoryId] || []).map(function (option, index) {
-                    if (!option || !option['value'])
-                        return {value: '', label: analysisPoints[index].label + ': None'}; 
-                    return option;
+            Ember.RSVP.Promise.all(commitsPromises).then(function (commitsList) {
+                self.set('configurations', ['A', 'B']);
+                self.set('rootConfigurations', triggerable.get('acceptedRepositories').map(function (repository) {
+                    return self._createConfiguration(repository, commitsList[repositoryToIndex[repository.get('id')]], analysisPoints);
                 }));
-                return Ember.Object.create({
-                    repository: repository,
-                    name: repository.get('name'),
-                    sets: [
-                        Ember.Object.create({name: 'A[' + repositoryId + ']',
-                            options: options,
-                            selection: options[1]}),
-                        Ember.Object.create({name: 'B[' + repositoryId + ']',
-                            options: options,
-                            selection: options[options.length - 1]}),
-                    ],
-                });
-            }));
+            });
         });
     }.observes('analysisPoints'),
+    _createConfiguration: function(repository, commits, analysisPoints) {
+        var repositoryId = repository.get('id');
+
+        var options = [{label: 'None'}];
+        var revisionToPoints = {};
+        analysisPoints.forEach(function (point, pointIndex) {
+            var revision = point.measurement.revisionForRepository(repositoryId);
+            if (!revision)
+                return;
+            if (!revisionToPoints[revision])
+                revisionToPoints[revision] = [];
+            revisionToPoints[revision].push(pointIndex);
+        });
+
+        if (!commits || !commits.length) {
+            commits = [];
+            for (var revision in revisionToPoints)
+                commits.push({revision: revision});
+        }
+
+        for (var commit of commits) {
+            var revision = commit.revision;
+            var label = Measurement.formatRevisionRange(revision).label;
+            var points = revisionToPoints[revision];
+            if (points) {
+                var serializedPoints = this._serializeNumbersSkippingConsecutiveEntries(revisionToPoints[revision]);
+                label += ' ' + ['(', points.length > 1 ? 'points' : 'point', serializedPoints, ')'].join(' ');
+            }
+            options.push({value: revision, label: label});
+        }
+
+        return Ember.Object.create({
+            repository: repository,
+            name: repository.get('name'),
+            sets: [
+                Ember.Object.create({name: 'A[' + repositoryId + ']',
+                    options: options,
+                    selection: options[1]}),
+                Ember.Object.create({name: 'B[' + repositoryId + ']',
+                    options: options,
+                    selection: options[options.length - 1]}),
+            ]});
+    },
+    _serializeNumbersSkippingConsecutiveEntries: function (numbers) {
+        var result = numbers[0];
+        for (var i = 1; i < numbers.length; i++) {
+            if (numbers[i - 1] + 1 == numbers[i]) {
+                while (numbers[i] + 1 == numbers[i + 1])
+                    i++;
+                result += '-' + numbers[i];
+                continue;
+            }
+            result += ', ' + numbers[i]
+        }
+        return result;
+    },
     actions: {
         addBug: function (bugTracker, bugNumber)
         {

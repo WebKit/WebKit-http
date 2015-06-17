@@ -35,7 +35,6 @@
 #include "UserData.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
-#include "WebApplicationCacheManager.h"
 #include "WebConnectionToUIProcess.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
@@ -353,7 +352,7 @@ void InjectedBundle::setDatabaseQuota(uint64_t quota)
 
 void InjectedBundle::clearApplicationCache()
 {
-    WebProcess::singleton().supplement<WebApplicationCacheManager>()->deleteAllEntries();
+    ApplicationCacheStorage::singleton().deleteAllEntries();
 }
 
 void InjectedBundle::clearApplicationCacheForOrigin(const String& originString)
@@ -363,7 +362,7 @@ void InjectedBundle::clearApplicationCacheForOrigin(const String& originString)
 
 void InjectedBundle::setAppCacheMaximumSize(uint64_t size)
 {
-    WebProcess::singleton().supplement<WebApplicationCacheManager>()->setAppCacheMaximumSize(size);
+    ApplicationCacheStorage::singleton().setMaximumSize(size);
 }
 
 uint64_t InjectedBundle::appCacheUsageForOrigin(const String& originString)
@@ -523,7 +522,7 @@ void InjectedBundle::reportException(JSContextRef context, JSValueRef exception)
     if (!toJSDOMWindow(execState->lexicalGlobalObject()))
         return;
 
-    WebCore::reportException(execState, Exception::cast(toJS(execState, exception)));
+    WebCore::reportException(execState, toJS(execState, exception));
 }
 
 void InjectedBundle::didCreatePage(WebPage* page)

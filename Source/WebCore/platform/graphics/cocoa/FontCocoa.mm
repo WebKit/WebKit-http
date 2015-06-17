@@ -84,12 +84,10 @@ static bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
     if (!fontFamilyName)
         return false;
 
-    // Times New Roman contains Arabic glyphs, but Core Text doesn't know how to shape them. <rdar://problem/9823975>
+    // Times New Roman and Arial are not performant enough to use. <rdar://problem/21333326>
     // FIXME <rdar://problem/12096835> remove this function once the above bug is fixed.
-    // Arial and Tahoma are have performance issues so don't use them as well.
     return (CFStringCompare(CFSTR("Times New Roman"), fontFamilyName, 0) == kCFCompareEqualTo)
-        || (CFStringCompare(CFSTR("Arial"), fontFamilyName, 0) == kCFCompareEqualTo)
-        || (CFStringCompare(CFSTR("Tahoma"), fontFamilyName, 0) == kCFCompareEqualTo);
+        || (CFStringCompare(CFSTR("Arial"), fontFamilyName, 0) == kCFCompareEqualTo);
 }
 #endif
 
@@ -313,11 +311,13 @@ void Font::platformDestroy()
 
 PassRefPtr<Font> Font::platformCreateScaledFont(const FontDescription&, float scaleFactor) const
 {
+#if !CORETEXT_WEB_FONTS
     if (isCustomFont()) {
         FontPlatformData scaledFontData(m_platformData);
         scaledFontData.m_size = scaledFontData.m_size * scaleFactor;
         return Font::create(scaledFontData, true, false);
     }
+#endif
 
     float size = m_platformData.size() * scaleFactor;
 

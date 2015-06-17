@@ -28,75 +28,71 @@
 
 #include "APIObject.h"
 #include "WKAPICast.h"
-#include "WebPluginSiteDataManager.h"
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-#include <WebCore/npapi.h>
-#if defined(MOZ_X11)
-#undef None
-#endif
-#endif
+#include "WebProcessPool.h"
+#include "WebsiteDataRecord.h"
 
 using namespace WebKit;
 
 WKTypeID WKPluginSiteDataManagerGetTypeID()
 {
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    return toAPI(WebPluginSiteDataManager::APIType);
-#else
-    return toAPI(API::Object::Type::Null);
-#endif
+    return toAPI(API::WebsiteDataStore::APIType);
 }
 
-void WKPluginSiteDataManagerGetSitesWithData(WKPluginSiteDataManagerRef managerRef, void* context, WKPluginSiteDataManagerGetSitesWithDataFunction callback)
+void WKPluginSiteDataManagerGetSitesWithData(WKPluginSiteDataManagerRef manager, void* context, WKPluginSiteDataManagerGetSitesWithDataFunction callback)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    toImpl(managerRef)->getSitesWithData(toGenericCallbackFunction(context, callback));
+    auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(manager))->websiteDataStore();
+    websiteDataStore.fetchData(WebsiteDataTypes::WebsiteDataTypePlugInData, [context, callback](Vector<WebsiteDataRecord> dataRecords) {
+        Vector<String> hostNames;
+        for (const auto& dataRecord : dataRecords) {
+            for (const auto& hostName : dataRecord.pluginDataHostNames)
+                hostNames.append(hostName);
+        }
+
+        callback(toAPI(API::Array::createStringArray(hostNames).ptr()), nullptr, context);
+    });
 #else
-    UNUSED_PARAM(managerRef);
+    UNUSED_PARAM(manager);
     UNUSED_PARAM(context);
     UNUSED_PARAM(callback);
 #endif
 }
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
-static uint64_t toNPClearSiteDataFlags(WKClearSiteDataFlags flags)
+void WKPluginSiteDataManagerClearSiteData(WKPluginSiteDataManagerRef manager, WKArrayRef sites, WKClearSiteDataFlags flags, uint64_t maxAgeInSeconds, void* context, WKPluginSiteDataManagerClearSiteDataFunction callback)
 {
-    if (flags == kWKClearSiteDataFlagsClearAll)
-        return NP_CLEAR_ALL;
+    // These are the only parameters supported.
+    ASSERT_UNUSED(flags, flags == kWKClearSiteDataFlagsClearAll);
+    ASSERT_UNUSED(maxAgeInSeconds, maxAgeInSeconds == std::numeric_limits<uint64_t>::max());
 
-    uint64_t result = 0;
-    if (flags & kWKClearSiteDataFlagsClearCache)
-        result |= NP_CLEAR_CACHE;
-    return result;
-}
-#endif
-
-void WKPluginSiteDataManagerClearSiteData(WKPluginSiteDataManagerRef managerRef, WKArrayRef sitesRef, WKClearSiteDataFlags flags, uint64_t maxAgeInSeconds, void* context, WKPluginSiteDataManagerClearSiteDataFunction function)
-{
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    toImpl(managerRef)->clearSiteData(toImpl(sitesRef), toNPClearSiteDataFlags(flags), maxAgeInSeconds, [context, function](CallbackBase::Error error) {
-        function(error == CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().ptr()), context);
+    WebsiteDataRecord dataRecord;
+    for (const auto& string : toImpl(sites)->elementsOfType<API::String>())
+        dataRecord.pluginDataHostNames.add(string->string());
+
+    auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(manager))->websiteDataStore();
+    websiteDataStore.removeData(WebsiteDataTypes::WebsiteDataTypePlugInData, { dataRecord }, [context, callback] {
+        callback(nullptr, context);
     });
 #else
-    UNUSED_PARAM(managerRef);
-    UNUSED_PARAM(sitesRef);
+    UNUSED_PARAM(manager);
+    UNUSED_PARAM(sites);
     UNUSED_PARAM(flags);
     UNUSED_PARAM(maxAgeInSeconds);
     UNUSED_PARAM(context);
-    UNUSED_PARAM(function);
+    UNUSED_PARAM(callback);
 #endif
 }
 
-void WKPluginSiteDataManagerClearAllSiteData(WKPluginSiteDataManagerRef managerRef, void* context, WKPluginSiteDataManagerClearSiteDataFunction function)
+void WKPluginSiteDataManagerClearAllSiteData(WKPluginSiteDataManagerRef manager, void* context, WKPluginSiteDataManagerClearSiteDataFunction callback)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    toImpl(managerRef)->clearSiteData(0, NP_CLEAR_ALL, std::numeric_limits<uint64_t>::max(), [context, function](CallbackBase::Error error) {
-        function(error == CallbackBase::Error::None ? nullptr : toAPI(API::Error::create().ptr()), context);
+    auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(manager))->websiteDataStore();
+    websiteDataStore.removeData(WebsiteDataTypes::WebsiteDataTypePlugInData, std::chrono::system_clock::time_point::min(), [context, callback] {
+        callback(nullptr, context);
     });
 #else
-    UNUSED_PARAM(managerRef);
+    UNUSED_PARAM(manager);
     UNUSED_PARAM(context);
-    UNUSED_PARAM(function);
+    UNUSED_PARAM(callback);
 #endif
 }

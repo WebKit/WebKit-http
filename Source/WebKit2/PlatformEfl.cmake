@@ -210,7 +210,6 @@ list(APPEND WebKit2_SOURCES
     WebProcess/efl/SeccompFiltersWebProcessEfl.cpp
     WebProcess/efl/WebProcessMainEfl.cpp
 
-    WebProcess/soup/WebKitSoupRequestGeneric.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
 )
@@ -256,8 +255,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/efl"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
-    "${WTF_DIR}/wtf/efl/"
-    "${WTF_DIR}/wtf/gobject"
+    "${WTF_DIR}/wtf/efl"
+    "${WTF_DIR}/wtf/glib"
 )
 
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
@@ -513,6 +512,7 @@ set(EWK2UnitTests_BINARIES
     test_ewk2_file_chooser_request
     test_ewk2_javascript_binding
     test_ewk2_object
+    test_ewk2_page
     test_ewk2_page_group
     test_ewk2_popup_menu
     test_ewk2_settings

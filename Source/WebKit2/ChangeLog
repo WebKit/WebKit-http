@@ -1,3 +1,1415 @@
+2015-06-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose UIDelegate::UIClient::close via WKUIDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=145957
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/Cocoa/WKUIDelegate.h: Added -webViewDidClose: to the protocol.
+        * UIProcess/Cocoa/UIDelegate.h: Added a webViewDidClose boolean to the delegate methods struct.
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize the webViewDidClose boolean.
+        (WebKit::UIDelegate::UIClient::close): Changed to call the new delegate method. Left behind
+        code that calls the old private method if it’s implemented.
+
+2015-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER doesn't disable memory cache when set before the web process is launched
+        https://bugs.webkit.org/show_bug.cgi?id=146053
+
+        Reviewed by Martin Robinson.
+
+        The cache is disabled in WebProcess::platformSetCacheModel() when
+        the cache model is CacheModelDocumentViewer, but it's enabled
+        again by WebProcess::setMemoryCacheDisabled() when
+        memoryCacheDisabled creation parameter is processed. We need to
+        make sure the cache model and memoryCacheDisabled parameters are consistent.
+
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Initialize
+        memoryCacheDisabled parameter to true if memory cache was
+        explicitly disabled or cache model is CacheModelDocumentViewer.
+
+2015-06-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WK2] valueForKey() shouldn't copy the defaults map
+        https://bugs.webkit.org/show_bug.cgi?id=146050
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebPreferencesStore.cpp:
+        (WebKit::valueForKey): Avoid copying the defaults HashMap by binding the return value to a reference.
+
+2015-06-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Inhibit screen saver when playing full screen video
+        https://bugs.webkit.org/show_bug.cgi?id=145795
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use Freedesktop.org DBus API to inhibit/unhinibit the screen saver
+        when entering/leaving fullscreen.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (screenSaverInhibitedCallback):
+        (webkitWebViewBaseSendInhibitMessageToScreenSaver):
+        (screenSaverProxyCreatedCallback):
+        (webkitWebViewBaseInhibitScreenSaver):
+        (webkitWebViewBaseUninhibitScreenSaver):
+        (webkitWebViewBaseEnterFullScreen):
+        (webkitWebViewBaseExitFullScreen):
+
+2015-06-16  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Purge PassRefPtr with Ref or RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=146001
+
+        Reviewed by Darin Adler.
+
+        As step to remove PassRefPtr, this patch reduces use of PassRefPtr in WebKit2.
+        If function can't return nullptr, PassRefPtr is changed with Ref. If not, the function
+        returns RefPtr.
+
+        * DatabaseProcess/DatabaseToWebProcessConnection.cpp:
+        (WebKit::DatabaseToWebProcessConnection::create):
+        * DatabaseProcess/DatabaseToWebProcessConnection.h:
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.h:
+        (WebKit::DatabaseProcessIDBConnection::create):
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+        (WebKit::UniqueIDBDatabase::create):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::create):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/RemoteNetworkingContext.h:
+        * PluginProcess/WebProcessConnection.cpp:
+        (WebKit::WebProcessConnection::create):
+        * PluginProcess/WebProcessConnection.h:
+        * Shared/API/APINumber.h:
+        (API::Number::create):
+        * Shared/API/APISecurityOrigin.h:
+        (API::SecurityOrigin::createFromString):
+        (API::SecurityOrigin::create):
+        * Shared/API/APISerializedScriptValue.h:
+        (API::SerializedScriptValue::create):
+        (API::SerializedScriptValue::adopt):
+        * Shared/APIWebArchive.h:
+        * Shared/APIWebArchive.mm:
+        (API::WebArchive::create):
+        * Shared/APIWebArchiveResource.h:
+        * Shared/APIWebArchiveResource.mm:
+        (API::WebArchiveResource::create):
+        * Shared/AsyncRequest.h:
+        * UIProcess/API/efl/ewk_url_request_private.h:
+        (EwkUrlRequest::create):
+        * UIProcess/API/efl/ewk_url_response_private.h:
+        (EwkUrlResponse::create):
+        * UIProcess/API/efl/ewk_url_scheme_request_private.h:
+        (EwkUrlSchemeRequest::create):
+        * UIProcess/API/efl/ewk_window_features_private.h:
+        (EwkWindowFeatures::create):
+        * UIProcess/API/efl/tests/test_ewk2_object.cpp:
+        (TestEwkObject1::create):
+        (TestEwkObject2::create):
+        * UIProcess/API/gtk/WebKitBatteryProvider.cpp:
+        (WebKitBatteryProvider::create):
+        * UIProcess/API/gtk/WebKitBatteryProvider.h:
+        * UIProcess/API/gtk/WebKitColorChooser.cpp:
+        (WebKit::WebKitColorChooser::create):
+        * UIProcess/API/gtk/WebKitGeolocationProvider.cpp:
+        (WebKitGeolocationProvider::create):
+        * UIProcess/API/gtk/WebKitNotificationProvider.cpp:
+        (WebKitNotificationProvider::create):
+        * UIProcess/API/gtk/WebKitNotificationProvider.h:
+        * UIProcess/GeolocationPermissionRequestProxy.h:
+        (WebKit::GeolocationPermissionRequestProxy::create):
+        * UIProcess/InspectorServer/HTTPRequest.h:
+        (WebKit::HTTPRequest::create):
+        * UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp:
+        (WebKit::WebSoupCustomProtocolRequestManager::create):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::create):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Notifications/NotificationPermissionRequest.cpp:
+        (WebKit::NotificationPermissionRequest::create):
+        * UIProcess/Notifications/NotificationPermissionRequest.h:
+        * UIProcess/Notifications/WebNotification.h:
+        (WebKit::WebNotification::create):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::scriptValueCallback):
+        * UIProcess/WebVibrationProxy.cpp:
+        (WebKit::WebVibrationProxy::create):
+        * UIProcess/WebVibrationProxy.h:
+        * UIProcess/WebViewportAttributes.h:
+        (WebKit::WebViewportAttributes::create):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::createNonPersistent):
+        (WebKit::WebsiteDataStore::create):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * UIProcess/gtk/WebColorPickerGtk.cpp:
+        (WebKit::WebColorPickerGtk::create):
+        * UIProcess/gtk/WebColorPickerGtk.h:
+        * UIProcess/gtk/WebContextMenuProxyGtk.h:
+        (WebKit::WebContextMenuProxyGtk::create):
+        * UIProcess/gtk/WebPopupMenuProxyGtk.h:
+        (WebKit::WebPopupMenuProxyGtk::create):
+        * UIProcess/mac/ViewSnapshotStore.h:
+        * UIProcess/mac/ViewSnapshotStore.mm:
+        (WebKit::ViewSnapshot::create):
+        * UIProcess/mac/WebColorPickerMac.h:
+        * UIProcess/mac/WebColorPickerMac.mm:
+        (WebKit::WebColorPickerMac::create):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        (WebKit::WebContextMenuProxyMac::create):
+        * UIProcess/mac/WebPopupMenuProxyMac.h:
+        (WebKit::WebPopupMenuProxyMac::create):
+        * WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.h:
+        * WebProcess/Databases/WebToDatabaseProcessConnection.h:
+        (WebKit::WebToDatabaseProcessConnection::create):
+        * WebProcess/FullScreen/WebFullScreenManager.cpp:
+        (WebKit::WebFullScreenManager::create):
+        * WebProcess/FullScreen/WebFullScreenManager.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::create):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.h:
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardList.h:
+        (WebKit::InjectedBundleBackForwardList::create):
+
+2015-06-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Unreviewed build fix after r185615.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkit_web_context_clear_cache): Comment the call to the code
+        removed and write down the bugzilla link for reimplementation.
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of performAPICallbackWithSecurityOriginDataVector
+        https://bugs.webkit.org/show_bug.cgi?id=146039
+
+        Reviewed by Andreas Kling.
+
+        Get rid of performAPICallbackWithSecurityOriginDataVector since it's now no longer used
+        and add a bunch of includes to make up for SecurityOriginData.h no longer including GenericCallback.h.
+        * DatabaseProcess/DatabaseProcess.cpp:
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.cpp:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+        * Shared/SecurityOriginData.cpp:
+        (WebKit::performAPICallbackWithSecurityOriginDataVector): Deleted.
+        * Shared/SecurityOriginData.h:
+        * Shared/WebsiteData/WebsiteData.cpp:
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp:
+
+2015-06-16  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        Unreviewed build fix attempt on CMake based port after r185623.
+
+        * CMakeLists.txt:
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        Move LocalStorageDetails into the local storage database tracker
+        https://bugs.webkit.org/show_bug.cgi?id=146034
+
+        Reviewed by Andreas Kling.
+
+        * UIProcess/API/C/WKKeyValueStorageManager.cpp:
+        (WKKeyValueStorageManagerGetStorageDetailsByOrigin):
+        (WKKeyValueStorageManagerDeleteAllEntries):
+        * UIProcess/LocalStorageDetails.h: Removed.
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        (WebKit::LocalStorageDatabaseTracker::originDetails):
+        (WebKit::LocalStorageDatabaseTracker::details): Deleted.
+        * UIProcess/Storage/LocalStorageDatabaseTracker.h:
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::getLocalStorageDetailsByOrigin): Deleted.
+        (WebKit::StorageManager::deleteAllLocalStorageEntries): Deleted.
+        * UIProcess/Storage/StorageManager.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-06-16  Dan Bernstein  <mitz@apple.com>
+
+        Removed the WebKit2SandboxProfiles target.
+
+        Rubber-stamped by Anders Carlsson.
+
+        WebKit2SandboxProfiles was just an alias for the Sandbox Profiles target, and it’s not
+        needed anymore.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        Fold WebKeyValueStorageManager into WKKeyValueStorageManager
+        https://bugs.webkit.org/show_bug.cgi?id=146030
+
+        Reviewed by Andreas Kling.
+
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetKeyValueStorageManager):
+        * UIProcess/API/C/WKKeyValueStorageManager.cpp:
+        (WKKeyValueStorageManagerGetTypeID):
+        (WKKeyValueStorageManagerGetOriginKey):
+        (WKKeyValueStorageManagerGetCreationTimeKey):
+        (WKKeyValueStorageManagerGetModificationTimeKey):
+        (WKKeyValueStorageManagerGetKeyValueStorageOrigins):
+        (WKKeyValueStorageManagerGetStorageDetailsByOrigin):
+        (WKKeyValueStorageManagerDeleteEntriesForOrigin):
+        (WKKeyValueStorageManagerDeleteAllEntries):
+        * UIProcess/WebKeyValueStorageManager.cpp: Removed.
+        (WebKit::WebKeyValueStorageManager::supplementName): Deleted.
+        (WebKit::WebKeyValueStorageManager::originKey): Deleted.
+        (WebKit::WebKeyValueStorageManager::creationTimeKey): Deleted.
+        (WebKit::WebKeyValueStorageManager::modificationTimeKey): Deleted.
+        (WebKit::WebKeyValueStorageManager::create): Deleted.
+        (WebKit::WebKeyValueStorageManager::WebKeyValueStorageManager): Deleted.
+        (WebKit::WebKeyValueStorageManager::~WebKeyValueStorageManager): Deleted.
+        (WebKit::WebKeyValueStorageManager::refWebContextSupplement): Deleted.
+        (WebKit::WebKeyValueStorageManager::derefWebContextSupplement): Deleted.
+        (WebKit::WebKeyValueStorageManager::getKeyValueStorageOrigins): Deleted.
+        (WebKit::WebKeyValueStorageManager::getStorageDetailsByOrigin): Deleted.
+        (WebKit::WebKeyValueStorageManager::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebKeyValueStorageManager::deleteAllEntries): Deleted.
+        * UIProcess/WebKeyValueStorageManager.h: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix after r185615.
+
+        * CMakeLists.txt:
+        Remove WebResourceCacheManager from CMake build system.
+
+2015-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Implement branch compaction for DFA bytecode.
+        https://bugs.webkit.org/show_bug.cgi?id=145619
+
+        Reviewed by Benjamin Poulain.
+
+        * UIProcess/API/APIUserContentExtensionStore.h:
+        Increment version number to reflect changes to bytecode.
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        WebResourceCacheManager is unused, get rid of it
+        https://bugs.webkit.org/show_bug.cgi?id=146027
+
+        Reviewed by Sam Weinig.
+
+        * DerivedSources.make:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        * UIProcess/WebProcessPool.cpp:
+        * UIProcess/WebResourceCacheManagerProxy.cpp: Removed.
+        (WebKit::WebResourceCacheManagerProxy::supplementName): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::create): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::WebResourceCacheManagerProxy): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::~WebResourceCacheManagerProxy): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::processPoolDestroyed): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::processDidClose): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::shouldTerminate): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::refWebContextSupplement): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::derefWebContextSupplement): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::getCacheOrigins): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::didGetCacheOrigins): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::clearCacheForOrigin): Deleted.
+        (WebKit::WebResourceCacheManagerProxy::clearCacheForAllOrigins): Deleted.
+        * UIProcess/WebResourceCacheManagerProxy.h: Removed.
+        * UIProcess/WebResourceCacheManagerProxy.messages.in: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/ResourceCache/WebResourceCacheManager.cpp: Removed.
+        (WebKit::WebResourceCacheManager::supplementName): Deleted.
+        (WebKit::WebResourceCacheManager::WebResourceCacheManager): Deleted.
+        (WebKit::WebResourceCacheManager::getCacheOrigins): Deleted.
+        (WebKit::WebResourceCacheManager::returnCacheOrigins): Deleted.
+        (WebKit::WebResourceCacheManager::clearCacheForOrigin): Deleted.
+        (WebKit::WebResourceCacheManager::clearCacheForAllOrigins): Deleted.
+        * WebProcess/ResourceCache/WebResourceCacheManager.h: Removed.
+        * WebProcess/ResourceCache/WebResourceCacheManager.messages.in: Removed.
+        * WebProcess/ResourceCache/cf/WebResourceCacheManagerCFNet.mm: Removed.
+        (WebKit::partitionName): Deleted.
+        (WebKit::WebResourceCacheManager::cfURLCacheHostNamesWithCallback): Deleted.
+        (WebKit::WebResourceCacheManager::clearCFURLCacheForHostNames): Deleted.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess): Deleted.
+
+2015-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix after r185601.
+
+        * CMakeLists.txt:
+        Remove application cache manager classes.
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        Stop calling into WebResourceCacheManager
+        https://bugs.webkit.org/show_bug.cgi?id=146026
+
+        Reviewed by Andreas Kling.
+
+        Copy the cache clearing code into NetworkProcessCocoa in preparation of getting rid of
+        the WebResourceCacheManager code.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::fetchDiskCacheEntries):
+        (WebKit::clearDiskCacheEntries):
+        (WebKit::cfURLCacheOrigins): Deleted.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::partitionName):
+        (WebKit::NetworkProcess::cfURLCacheOrigins):
+        (WebKit::NetworkProcess::clearCFURLCacheForOrigins):
+
+2015-06-16  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the application cache manager classes, they are no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=146024
+
+        Reviewed by Sam Weinig.
+
+        * DerivedSources.make:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        * UIProcess/WebApplicationCacheManagerProxy.cpp: Removed.
+        (WebKit::WebApplicationCacheManagerProxy::supplementName): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::create): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::WebApplicationCacheManagerProxy): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::~WebApplicationCacheManagerProxy): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::processPoolDestroyed): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::processDidClose): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::shouldTerminate): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::refWebContextSupplement): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::derefWebContextSupplement): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::getApplicationCacheOrigins): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::didGetApplicationCacheOrigins): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebApplicationCacheManagerProxy::deleteAllEntries): Deleted.
+        * UIProcess/WebApplicationCacheManagerProxy.h: Removed.
+        * UIProcess/WebApplicationCacheManagerProxy.messages.in: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/ApplicationCache/WebApplicationCacheManager.cpp: Removed.
+        (WebKit::WebApplicationCacheManager::supplementName): Deleted.
+        (WebKit::WebApplicationCacheManager::WebApplicationCacheManager): Deleted.
+        (WebKit::WebApplicationCacheManager::getApplicationCacheOrigins): Deleted.
+        (WebKit::WebApplicationCacheManager::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebApplicationCacheManager::deleteAllEntries): Deleted.
+        (WebKit::WebApplicationCacheManager::setAppCacheMaximumSize): Deleted.
+        * WebProcess/ApplicationCache/WebApplicationCacheManager.h: Removed.
+        * WebProcess/ApplicationCache/WebApplicationCacheManager.messages.in: Removed.
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::clearApplicationCache):
+        (WebKit::InjectedBundle::setAppCacheMaximumSize):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess): Deleted.
+
+2015-06-16  Brady Eidson  <beidson@apple.com>
+
+        IDB: Records table migration doesn't work with all versions of SQLite.
+        https://bugs.webkit.org/show_bug.cgi?id=145993
+
+        Reviewed by Darin Adler, provisionally reviewed by Jon Lee.
+
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::v1RecordsTableSchema):
+        (WebKit::v1RecordsTableSchemaAlternate):
+        (WebKit::v2RecordsTableSchema):
+        (WebKit::v2RecordsTableSchemaAlternate):
+        (WebKit::createOrMigrateRecordsTableIfNecessary): Check both v1 and v1 Alternate whenever we check for the v1 schema.
+          Ditto for the v2 schema. Crash all builds if the current schema is none of these.
+
+2015-06-16  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * mac/postprocess-framework-headers.sh:
+
+2015-06-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185552.
+        https://bugs.webkit.org/show_bug.cgi?id=146015
+
+         It broke some WK2 API tests on EFL bots (Requested by
+        gyuyoung on #webkit).
+
+        Reverted changeset:
+
+        "[EFL] Make send/receive messages to communicate the Web and
+        UI Processes using Injected Bundle."
+        https://bugs.webkit.org/show_bug.cgi?id=145685
+        http://trac.webkit.org/changeset/185552
+
+2015-06-16  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Add API tests for ewk_page
+        https://bugs.webkit.org/show_bug.cgi?id=146004
+
+        Reviewed by Gyuyoung Kim.
+
+        Add unit test for load_started/load_finished callbacks of ewk_page.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp:
+        * UIProcess/API/efl/tests/test_ewk2_page.cpp: Added.
+        (EWK2PageTest::messageReceivedCallback):
+        (EWK2PageTest::EWK2PageTest):
+        (TEST_F):
+
+2015-06-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] position:fixed elements sometimes truncated on scroll view bouncing
+        https://bugs.webkit.org/show_bug.cgi?id=146000
+        rdar://problem/19448439
+
+        Reviewed by Benjamin Poulain.
+        
+        When in the middle of a rubber-band (UIScrollView bounce), we could send a bad 
+        fixed position rect down to WebCore, causing 100% height elements to get laid out
+        at the wrong height, possible too short. This occurred when -_updateVisibleContentRects
+        said we were in a stable state, but the rubber-band offset caused WebPageProxy::computeCustomFixedPositionRect()
+        to compute a bad rect via constrainedUnobscuredRect.intersect(documentRect).
+        
+        Fix by not claiming to be in a stable state during rubber-banding. Added _scrollViewIsRubberBanding
+        to compute that, taking care with floating point comparisons for 3x devices.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (isGreaterInDevicePixels):
+        (-[WKWebView _scrollViewIsRubberBanding]):
+        (-[WKWebView _updateVisibleContentRects]):
+
+2015-06-15  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        Fix build break when ENABLE_SECCOMP_FILTERS is ON
+        https://bugs.webkit.org/show_bug.cgi?id=145967
+
+        Reviewed by Carlos Garcia Campos.
+
+        Since r183189, ArgumentEncoder::addAttachment requires rvalue reference.
+
+        * Shared/linux/SeccompFilters/OpenSyscall.cpp:
+        (WebKit::OpenSyscallResult::encode): Use WTF::move().
+
+2015-06-15  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] BrowsingContextController.loadData API is leaking Navigation objects
+        https://bugs.webkit.org/show_bug.cgi?id=145977
+        <rdar://problem/21305706>
+
+        Reviewed by Darin Adler.
+
+        BrowsingContextController.loadData API was leaking Navigation objects.
+        The issue was due to WebPageProxy::loadData() creating a Navigation
+        object but not passing along the navigationID to the WebProcess when
+        sending the Messages::WebPage::LoadData IPC. As a result, the
+        WebProcess would use 0 as navigationID and we would end up creating a
+        new Navigation object later on for the same navigation.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadData):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadData):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2015-06-15  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r185298): Databases service has Web Content service’s entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=145980
+
+        Reviewed by Darin Adler.
+
+        * Configurations/DatabaseService.xcconfig: Set WK_XPC_SERVICE_IOS_ENTITLEMENTS_BASE to
+        Databases-iOS.
+
+2015-06-11  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Add allowsPictureInPictureMediaPlayback
+        https://bugs.webkit.org/show_bug.cgi?id=145901
+        rdar://problem/21349851
+
+        Reviewed by Anders Carlsson.
+
+        Replace _allowsAlternateFullscreen with allowsPictureInPictureMediaPlayback.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h: Add allowsPictureInPictureMediaPlayback.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Remove _allowsAlternateFullscreen.
+        (-[WKWebViewConfiguration copyWithZone:]): Replace the variable.
+        (-[WKWebViewConfiguration _allowsAlternateFullscreen]): Deleted.
+        (-[WKWebViewConfiguration _setAllowsAlternateFullscreen:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h: Remove the SPI.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]): Update to use the new API.
+
+2015-06-12  Alexey Proskuryakov  <ap@apple.com>
+
+        -[WKWebView evaluateJavaScript] provides a misleading error when the return cannot be serialized
+        https://bugs.webkit.org/show_bug.cgi?id=145900
+
+        Reviewed by Sam Weinig.
+
+        We used to conflate to cases: (1) when there was a JavaScript exception, and
+        (2) when the result could not be serialized for IPC. Turns out that it was quite
+        misleading!
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageRunJavaScriptInMainFrame):
+        * UIProcess/API/Cocoa/WKError.h:
+        * UIProcess/API/Cocoa/WKError.mm:
+        (localizedDescriptionForErrorCode):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView evaluateJavaScript:completionHandler:]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::runJavaScriptInMainFrame):
+        (WebKit::WebPageProxy::scriptValueCallback):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::runJavaScriptInMainFrame):
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkit_web_view_run_javascript):
+        (resourcesStreamReadCallback):
+
+2015-06-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Custom URI schemes don't work for requests containing a fragment identifier
+        https://bugs.webkit.org/show_bug.cgi?id=145969
+
+        Reviewed by Sergio Villar Senin.
+
+        Use the WebKitSoupRequestGeneric request instead of creating a new one
+        from the SoupRequest URI, since that is the network one and doesn't
+        contain the fragment identifier part.
+
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp:
+        (WebKit::CustomProtocolManagerImpl::start):
+
+2015-06-15  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [EFL] Make send/receive messages to communicate the Web and UI Processes using Injected Bundle.
+        https://bugs.webkit.org/show_bug.cgi?id=145685
+
+        Reviewed by Gyuyoung Kim.
+
+        To have extensible port specific API facility using Injected Bundle,
+        we need to load libewebkit_extension_manager.so in default that is same as what gtk port does.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        (EwkContext::~EwkContext):
+        (EwkContext::findOrCreateWrapper):
+        (bundlePathForExtension):
+        (EwkContext::create): Deleted.
+        * UIProcess/API/efl/ewk_context_private.h:
+        * WebProcess/efl/ExtensionManagerEfl.cpp:
+        (WebKit::ExtensionManagerEfl::initialize):
+
+2015-06-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Move WebKitSoupRequestGeneric to platform layer
+        https://bugs.webkit.org/show_bug.cgi?id=145968
+
+        Reviewed by Sergio Villar Senin.
+
+        * PlatformEfl.cmake: Remove WebKitSoupRequestGeneric.
+        * PlatformGTK.cmake: Ditto.
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp:
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.h:
+
+2015-06-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix unused private field warning in PageBanner.h
+        https://bugs.webkit.org/show_bug.cgi?id=145925
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebPage/PageBanner.cpp:
+        (WebKit::PageBanner::~PageBanner):
+        * WebProcess/WebPage/PageBanner.h: Initialize m_type, m_webPage, m_mouseDownInBanner, and m_isHidden here instead of in the constructor.
+        * WebProcess/WebPage/mac/PageBannerMac.mm: Use PLATFORM(MAC) instead of !PLATFORM(IOS), they are same in objc files.
+
+2015-06-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Make WebKitSoupRequestGeneric independent from CustomProtocolManagerImpl
+        https://bugs.webkit.org/show_bug.cgi?id=145966
+
+        Reviewed by Sergio Villar Senin.
+
+        Add WebKitSoupRequestGenericClient with start and finish methods,
+        that are implemented by WebKitSoupRequestGeneric.
+        This allows us to move WebKitSoupRequestGeneric to platform layer.
+
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp:
+        (WebKit::CustomProtocolManagerImpl::registerScheme):
+        (WebKit::CustomProtocolManagerImpl::start):
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.h:
+        * WebProcess/soup/WebKitSoupRequestGeneric.cpp:
+        (webkitSoupRequestGenericSendAsync):
+        (webkitSoupRequestGenericSendFinish):
+        * WebProcess/soup/WebKitSoupRequestGeneric.h:
+        * WebProcess/soup/WebKitSoupRequestGenericClient.h: Added.
+
+2015-06-14  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the build.
+
+        * mac/postprocess-framework-headers.sh:
+
+2015-06-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Format string misuse in DatabaseProcessIDBConnection.cpp and UniqueIDBDatabaseBackingStoreSQLite.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145960
+
+        Reviewed by Darin Adler.
+
+        Use PRIu64 and PRIi64 to print uint64_t and int64_t, respectively. These things are
+        different types on x86_64 Linux (unsigned long) and on Mac (unsigned long long).
+
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp:
+        (WebKit::DatabaseProcessIDBConnection::getOrEstablishIDBDatabaseMetadata):
+        (WebKit::DatabaseProcessIDBConnection::deleteDatabase):
+        (WebKit::DatabaseProcessIDBConnection::openTransaction):
+        (WebKit::DatabaseProcessIDBConnection::beginTransaction):
+        (WebKit::DatabaseProcessIDBConnection::commitTransaction):
+        (WebKit::DatabaseProcessIDBConnection::resetTransaction):
+        (WebKit::DatabaseProcessIDBConnection::rollbackTransaction):
+        (WebKit::DatabaseProcessIDBConnection::changeDatabaseVersion):
+        (WebKit::DatabaseProcessIDBConnection::createObjectStore):
+        (WebKit::DatabaseProcessIDBConnection::deleteObjectStore):
+        (WebKit::DatabaseProcessIDBConnection::clearObjectStore):
+        (WebKit::DatabaseProcessIDBConnection::createIndex):
+        (WebKit::DatabaseProcessIDBConnection::deleteIndex):
+        (WebKit::DatabaseProcessIDBConnection::putRecord):
+        (WebKit::DatabaseProcessIDBConnection::getRecord):
+        (WebKit::DatabaseProcessIDBConnection::count):
+        (WebKit::DatabaseProcessIDBConnection::deleteRange):
+        (WebKit::DatabaseProcessIDBConnection::openCursor):
+        (WebKit::DatabaseProcessIDBConnection::cursorAdvance):
+        (WebKit::DatabaseProcessIDBConnection::cursorIterate):
+        * DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp:
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::clearObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteIndex):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::generateKeyNumber):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::keyExistsInObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::putRecord):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::uncheckedPutIndexRecord):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::deleteRecord):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getKeyRecordFromObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::getKeyRangeRecordFromObjectStore):
+        (WebKit::UniqueIDBDatabaseBackingStoreSQLite::advanceCursor):
+
+2015-06-14  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Clean up postprocess-framework-headers.sh
+        https://bugs.webkit.org/show_bug.cgi?id=145962
+
+        Reviewed by Darin Adler.
+
+        * mac/postprocess-framework-headers.sh: Gather all the sed options in a variable, and then
+        run sed only once on each header. Also, correctly exit with the sed return value if it
+        fails.
+
+2015-06-13  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] API::Navigation objects are leaked on history navigation to HistoryItems in PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=145948
+
+        Reviewed by Darin Adler.
+
+        API::Navigation objects were leaked on history navigation to
+        HistoryItems in PageCache. In such case, we would create 2 Navigation
+        objects instead of 1 and the first one would be leaked. The reason
+        we create the second one is because we fail to pass along the
+        navigationID from the UIProcess to the WebProcess and then back to the
+        UIProcess. On the IPC back to the UIProcess, the navigationID ends up
+        being 0 so the UIProcess creates a new Navigation object, thinking that
+        the load was triggered by the WebContent process.
+
+        We now pass along the navigationID, even if the HistoryItem is in the
+        PageCache and we end up reusing the cached DocumentLoader, instead of
+        creating a new one. A new updateCachedDocumentLoader() delegate is
+        added to the FrameLoaderClient, similarly to the pre-existing
+        createDocumentLoader() but for the case where the DocumentLoader gets
+        reused.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::updateCachedDocumentLoader):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::goForward):
+        (WebKit::WebPage::goBack):
+        (WebKit::WebPage::goToBackForwardItem):
+        (WebKit::WebPage::updateCachedDocumentLoader):
+        * WebProcess/WebPage/WebPage.h:
+
+2015-06-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Add private API to force page to always run at foreground priority
+        https://bugs.webkit.org/show_bug.cgi?id=145946
+        <rdar://problem/21267221>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+            - copy _alwaysRunsAtForegroundPriority to WebPageConfiguration.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _alwaysRunsAtForegroundPriority]):
+        (-[WKWebViewConfiguration _setAlwaysRunsAtForegroundPriority:]):
+            - added _alwaysRunsAtForegroundPriority.
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+            - added _alwaysRunsAtForegroundPriority.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+            - initialize m_alwaysRunsAtForegroundPriority.
+        (WebKit::WebPageProxy::updateActivityToken):
+            - if m_alwaysRunsAtForegroundPriority is set always take the foreground activity token.
+        * UIProcess/WebPageProxy.h:
+            - added m_alwaysRunsAtForegroundPriority, alwaysRunsAtForegroundPriority.
+
+2015-06-12  Anders Carlsson  <andersca@apple.com>
+
+        Reimplement WKResourceCacheManagerRef on top of WKWebsiteDataStoreRef
+        https://bugs.webkit.org/show_bug.cgi?id=145951
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetResourceCacheManager):
+        * UIProcess/API/C/WKResourceCacheManager.cpp:
+        (WKResourceCacheManagerGetTypeID):
+        (toWebsiteDataTypes):
+        (WKResourceCacheManagerGetCacheOrigins):
+        (WKResourceCacheManagerClearCacheForOrigin):
+        (WKResourceCacheManagerClearCacheForAllOrigins):
+
+2015-06-12  Anders Carlsson  <andersca@apple.com>
+
+        Reimplement WKApplicationCacheManagerRef as WKWebsiteDataStoreRef
+        https://bugs.webkit.org/show_bug.cgi?id=145950
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKApplicationCacheManager.cpp:
+        (WKApplicationCacheManagerGetTypeID):
+        (WKApplicationCacheManagerGetApplicationCacheOrigins):
+        (WKApplicationCacheManagerDeleteEntriesForOrigin):
+        (WKApplicationCacheManagerDeleteAllEntries):
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetApplicationCacheManager):
+        (WKContextGetPluginSiteDataManager):
+
+2015-06-12  Anders Carlsson  <andersca@apple.com>
+
+        Clean up IndexedDB website data retrieval and removal
+        https://bugs.webkit.org/show_bug.cgi?id=145941
+
+        Reviewed by Andreas Kling.
+
+        - Use SecurityOrigin instead of SecurityOriginData; It's not possible to pass SecurityOriginData
+        safely between threads.
+        
+        - Use std::chrono instead of double for modification times.
+        
+        - Get rid of endTime since it's not used.
+        
+        - Change deleteIndexedDatabaseEntriesForOrigin to deleteIndexedDatabaseEntriesForOrigins and make it take
+        a vector of origins instead of a single one.
+
+        - Get rid of deleteAllIndexedDatabaseEntries.
+
+        - Change SecurityOriginData::securityOrigin to call isolatedCopy on the origin components, since it's common
+        to pass origins to other threads and we want that to be safe.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::fetchWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteData):
+        (WebKit::DatabaseProcess::deleteWebsiteDataForOrigins):
+        (WebKit::DatabaseProcess::indexedDatabaseOrigins):
+        (WebKit::removeAllDatabasesForOriginPath):
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesForOrigins):
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesModifiedSince):
+        (WebKit::DatabaseProcess::getIndexedDatabaseOrigins): Deleted.
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesForOrigin): Deleted.
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesModifiedBetweenDates): Deleted.
+        (WebKit::DatabaseProcess::deleteAllIndexedDatabaseEntries): Deleted.
+        * DatabaseProcess/DatabaseProcess.h:
+        * Shared/SecurityOriginData.cpp:
+        (WebKit::SecurityOriginData::securityOrigin):
+
+2015-06-12  Antti Koivisto  <antti@apple.com>
+
+        Network Cache: Use SHA1 for header checksum
+        https://bugs.webkit.org/show_bug.cgi?id=145928
+
+        Reviewed by Chris Dumez.
+
+        Use SHA1 everywhere for consistency and robustness.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::bodyPathForKey):
+        (WebKit::NetworkCache::RecordMetaData::RecordMetaData):
+        (WebKit::NetworkCache::decodeRecordMetaData):
+        (WebKit::NetworkCache::decodeRecordHeader):
+        (WebKit::NetworkCache::encodeRecordMetaData):
+        (WebKit::NetworkCache::Storage::encodeRecord):
+        (WebKit::NetworkCache::hashData): Deleted.
+
+            This was the last user of 32 bit hashes in cache code.
+
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+            Also bump the cache version number as recent changes have changed the format.
+            Old caches would transition fine but this makes it easier to identify which version user has.
+
+2015-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Video with reflection crashes WebKit and Safari
+        https://bugs.webkit.org/show_bug.cgi?id=145905
+        rdar://problem/18364939
+
+        Reviewed by Anders Carlsson.
+        
+        On iOS, AVPlayerLayers are contained inside a WebVideoContainerLayer, but
+        the layer type is still LayerTypeAVPlayerLayer.
+        
+        Avoid throwing exceptions when cloning such layers by checking the layer class.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        (WebKit::PlatformCALayerRemoteCustom::clone):
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix unused private field warning in WebContextMenuProxyEfl.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145911
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/efl/WebContextMenuProxyEfl.cpp:
+        (WebKit::WebContextMenuProxyEfl::WebContextMenuProxyEfl): Deleted.
+        * UIProcess/efl/WebContextMenuProxyEfl.h:
+
+2015-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix after r185502.
+
+        * NetworkProcess/cache/NetworkCacheFileSystem.cpp:
+        GRefPtr.h header has been moved to a different place.
+
+2015-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Move files under Source/WTF/wtf/gobject to Source/WTF/wtf/glib
+        https://bugs.webkit.org/show_bug.cgi?id=145799
+
+        Reviewed by Carlos Garcia Campos.
+
+        Update header inclusions for headers that have been moved
+        to Source/WTF/wtf/glib/.
+
+        * NetworkProcess/cache/NetworkCacheFileSystemPosix.h:
+        * NetworkProcess/cache/NetworkCacheIOChannel.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * Shared/Downloads/soup/DownloadSoup.cpp:
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.h:
+        * Shared/PrintInfo.h:
+        * Shared/gtk/ArgumentCodersGtk.cpp:
+        * Shared/gtk/ArgumentCodersGtk.h:
+        * Shared/gtk/KeyedDecoder.h:
+        * Shared/gtk/KeyedEncoder.h:
+        * Shared/gtk/ProcessExecutablePathGtk.cpp:
+        * UIProcess/API/gtk/WebKitBackForwardList.cpp:
+        * UIProcess/API/gtk/WebKitBackForwardListItem.cpp:
+        * UIProcess/API/gtk/WebKitColorChooser.h:
+        * UIProcess/API/gtk/WebKitContextMenu.cpp:
+        * UIProcess/API/gtk/WebKitContextMenuItem.cpp:
+        * UIProcess/API/gtk/WebKitCookieManager.cpp:
+        * UIProcess/API/gtk/WebKitDownload.cpp:
+        * UIProcess/API/gtk/WebKitDownloadClient.cpp:
+        * UIProcess/API/gtk/WebKitFaviconDatabase.cpp:
+        * UIProcess/API/gtk/WebKitFileChooserRequest.cpp:
+        * UIProcess/API/gtk/WebKitFindController.cpp:
+        * UIProcess/API/gtk/WebKitFormClient.cpp:
+        * UIProcess/API/gtk/WebKitFormSubmissionRequest.cpp:
+        * UIProcess/API/gtk/WebKitInjectedBundleClient.cpp:
+        * UIProcess/API/gtk/WebKitJavascriptResult.cpp:
+        * UIProcess/API/gtk/WebKitLoaderClient.cpp:
+        * UIProcess/API/gtk/WebKitMimeInfo.cpp:
+        * UIProcess/API/gtk/WebKitNavigationAction.cpp:
+        * UIProcess/API/gtk/WebKitNavigationPolicyDecision.cpp:
+        * UIProcess/API/gtk/WebKitPolicyClient.cpp:
+        * UIProcess/API/gtk/WebKitPrintOperation.cpp:
+        * UIProcess/API/gtk/WebKitResponsePolicyDecision.cpp:
+        * UIProcess/API/gtk/WebKitUIClient.cpp:
+        * UIProcess/API/gtk/WebKitURISchemeRequest.cpp:
+        * UIProcess/API/gtk/WebKitUserContentManager.cpp:
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        * UIProcess/API/gtk/WebKitWebInspector.cpp:
+        * UIProcess/API/gtk/WebKitWebResource.cpp:
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        * UIProcess/InspectorServer/WebSocketServer.h:
+        * UIProcess/InspectorServer/gtk/WebInspectorServerGtk.cpp:
+        * UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp:
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        * UIProcess/Plugins/gtk/PluginInfoCache.h:
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        * UIProcess/gtk/DragAndDropHandler.cpp:
+        * UIProcess/gtk/GestureController.h:
+        * UIProcess/gtk/InputMethodFilter.cpp:
+        * UIProcess/gtk/InputMethodFilter.h:
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        * UIProcess/gtk/WebPopupMenuProxyGtk.h:
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        * WebProcess/Cookies/soup/WebCookieManagerSoup.cpp:
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp:
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebHitTestResult.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+        * WebProcess/WebPage/gtk/PrinterListGtk.h:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp:
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.h:
+        * WebProcess/gtk/WebGtkExtensionManager.h:
+        * WebProcess/soup/WebKitSoupRequestInputStream.cpp:
+        * WebProcess/soup/WebProcessSoup.cpp:
+        * WebProcess/soup/WebSoupRequestManager.h:
+
+2015-06-12  Antti Koivisto  <antti@apple.com>
+
+        Network Cache: Use SHA1 for key hash
+        https://bugs.webkit.org/show_bug.cgi?id=143829
+
+        Reviewed by Anders Carlsson.
+
+        For consistency with blobs, use SHA1 instead of MD5.
+
+        * NetworkProcess/cache/NetworkCacheCoders.cpp:
+        (WebKit::NetworkCache::Coder<MD5::Digest>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<MD5::Digest>::decode): Deleted.
+
+            No longer needed.
+
+        * NetworkProcess/cache/NetworkCacheCoders.h:
+        * NetworkProcess/cache/NetworkCacheKey.cpp:
+        (WebKit::NetworkCache::hashString):
+        (WebKit::NetworkCache::Key::computeHash):
+        * NetworkProcess/cache/NetworkCacheKey.h:
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix mismatched-tags warning in Source/WebKit2/UIProcess/gtk/InputMethodFilter.h
+        https://bugs.webkit.org/show_bug.cgi?id=145923
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/gtk/InputMethodFilter.h:
+
+2015-06-12  Antti Koivisto  <antti@apple.com>
+
+        Use SHA1 for cache coder checksums
+        https://bugs.webkit.org/show_bug.cgi?id=145880
+
+        Reviewed by Anders Carlsson.
+
+        Make cache data error detection more robust by using SHA1 for checksums.
+
+        * NetworkProcess/cache/NetworkCacheDecoder.cpp:
+        (WebKit::NetworkCache::Decoder::Decoder):
+        (WebKit::NetworkCache::Decoder::decodeFixedLengthData):
+        (WebKit::NetworkCache::Decoder::decodeNumber):
+        (WebKit::NetworkCache::Decoder::verifyChecksum):
+        * NetworkProcess/cache/NetworkCacheDecoder.h:
+        * NetworkProcess/cache/NetworkCacheEncoder.cpp:
+        (WebKit::NetworkCache::Encoder::Encoder):
+        (WebKit::NetworkCache::Encoder::grow):
+        (WebKit::NetworkCache::Encoder::updateChecksumForData):
+        (WebKit::NetworkCache::Encoder::encodeFixedLengthData):
+        (WebKit::NetworkCache::Encoder::encodeNumber):
+        (WebKit::NetworkCache::Encoder::encodeChecksum):
+        * NetworkProcess/cache/NetworkCacheEncoder.h:
+        (WebKit::NetworkCache::Encoder::buffer):
+        (WebKit::NetworkCache::Encoder::bufferSize):
+        (WebKit::NetworkCache::Encoder::updateChecksumForNumber):
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix deprecated declarations warnings related to WK2 versioned structs
+        https://bugs.webkit.org/show_bug.cgi?id=145913
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/ewk_favicon_database.cpp:
+        (EwkFaviconDatabase::EwkFaviconDatabase):
+        * UIProcess/efl/ContextHistoryClientEfl.cpp:
+        (WebKit::ContextHistoryClientEfl::ContextHistoryClientEfl):
+        * UIProcess/efl/ContextMenuClientEfl.cpp:
+        (ContextMenuClientEfl::ContextMenuClientEfl):
+        * UIProcess/efl/DownloadManagerEfl.cpp:
+        (WebKit::DownloadManagerEfl::DownloadManagerEfl):
+        * UIProcess/efl/FindClientEfl.cpp:
+        (WebKit::FindClientEfl::FindClientEfl):
+        * UIProcess/efl/FormClientEfl.cpp:
+        (WebKit::FormClientEfl::FormClientEfl):
+        * UIProcess/efl/PageUIClientEfl.cpp:
+        (WebKit::PageUIClientEfl::PageUIClientEfl):
+
+2015-06-11  Mark Lam  <mark.lam@apple.com>
+
+        WebCore::reportException() needs to be able to accept a raw thrown value in addition to Exception objects.
+        https://bugs.webkit.org/show_bug.cgi?id=145872
+
+        Reviewed by Michael Saboff.
+
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::reportException):
+        - Don't assume we have an Exception object.  Let WebCore::reportException() take
+          care of it.
+
+2015-06-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Unreviewed build fix after r185479.
+
+        * CMakeLists.txt: Unlist the files that r185479 deleted.
+
+2015-06-11  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WebOriginDataManager
+        https://bugs.webkit.org/show_bug.cgi?id=145896
+
+        Reviewed by Andreas Kling.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::DatabaseProcess): Deleted.
+        (WebKit::DatabaseProcess::getOrigins): Deleted.
+        (WebKit::DatabaseProcess::deleteEntriesForOrigin): Deleted.
+        (WebKit::DatabaseProcess::deleteEntriesModifiedBetweenDates): Deleted.
+        (WebKit::DatabaseProcess::deleteAllEntries): Deleted.
+        * DatabaseProcess/DatabaseProcess.h:
+        * DerivedSources.make:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        * UIProcess/Databases/DatabaseProcessProxy.cpp:
+        (WebKit::DatabaseProcessProxy::didReceiveMessage): Deleted.
+        * UIProcess/WebOriginDataManagerProxy.cpp: Removed.
+        (WebKit::WebOriginDataManagerProxy::supplementName): Deleted.
+        (WebKit::WebOriginDataManagerProxy::create): Deleted.
+        (WebKit::WebOriginDataManagerProxy::WebOriginDataManagerProxy): Deleted.
+        (WebKit::WebOriginDataManagerProxy::~WebOriginDataManagerProxy): Deleted.
+        (WebKit::WebOriginDataManagerProxy::processPoolDestroyed): Deleted.
+        (WebKit::WebOriginDataManagerProxy::processDidClose): Deleted.
+        (WebKit::WebOriginDataManagerProxy::shouldTerminate): Deleted.
+        (WebKit::WebOriginDataManagerProxy::refWebContextSupplement): Deleted.
+        (WebKit::WebOriginDataManagerProxy::derefWebContextSupplement): Deleted.
+        (WebKit::CallbackSynchronizer::create): Deleted.
+        (WebKit::CallbackSynchronizer::~CallbackSynchronizer): Deleted.
+        (WebKit::CallbackSynchronizer::taskStarted): Deleted.
+        (WebKit::CallbackSynchronizer::taskCompleted): Deleted.
+        (WebKit::CallbackSynchronizer::CallbackSynchronizer): Deleted.
+        (WebKit::createSynchronizedCallback): Deleted.
+        (WebKit::sendMessageToAllProcessesInProcessPool): Deleted.
+        (WebKit::WebOriginDataManagerProxy::getOrigins): Deleted.
+        (WebKit::WebOriginDataManagerProxy::didGetOrigins): Deleted.
+        (WebKit::WebOriginDataManagerProxy::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebOriginDataManagerProxy::deleteEntriesModifiedBetweenDates): Deleted.
+        (WebKit::WebOriginDataManagerProxy::didDeleteEntries): Deleted.
+        (WebKit::WebOriginDataManagerProxy::deleteAllEntries): Deleted.
+        (WebKit::WebOriginDataManagerProxy::didDeleteAllEntries): Deleted.
+        * UIProcess/WebOriginDataManagerProxy.h: Removed.
+        * UIProcess/WebOriginDataManagerProxy.messages.in: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/OriginData/WebOriginDataManager.cpp: Removed.
+        (WebKit::WebOriginDataManager::WebOriginDataManager): Deleted.
+        (WebKit::WebOriginDataManager::getOrigins): Deleted.
+        (WebKit::WebOriginDataManager::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebOriginDataManager::deleteEntriesModifiedBetweenDates): Deleted.
+        (WebKit::WebOriginDataManager::deleteAllEntries): Deleted.
+        * WebProcess/OriginData/WebOriginDataManager.h: Removed.
+        * WebProcess/OriginData/WebOriginDataManager.messages.in: Removed.
+        * WebProcess/OriginData/WebOriginDataManagerSupplement.h: Removed.
+        (WebKit::WebOriginDataManagerSupplement::WebOriginDataManagerSupplement): Deleted.
+        (WebKit::WebOriginDataManagerSupplement::~WebOriginDataManagerSupplement): Deleted.
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::~WebProcess):
+        (WebKit::WebProcess::WebProcess): Deleted.
+        (WebKit::WebProcess::getOrigins): Deleted.
+        (WebKit::WebProcess::deleteEntriesForOrigin): Deleted.
+        (WebKit::WebProcess::deleteEntriesModifiedBetweenDates): Deleted.
+        (WebKit::WebProcess::deleteAllEntries): Deleted.
+        * WebProcess/WebProcess.h:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+
+2015-06-11  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: Add plumbing for media control event delivery.
+        https://bugs.webkit.org/show_bug.cgi?id=145859
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageHandleMediaEvent):
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleMediaEvent):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::handleMediaEvent):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2015-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Decoding fonts may return nil when using force click
+        https://bugs.webkit.org/show_bug.cgi?id=145890
+
+        Reviewed by Beth Dakin.
+
+        [NSFontDescriptor fontDescriptorWithFontAttributes] might return nil, which
+        causes the encoding of an NSFont to erroneously return true.
+
+        * Shared/mac/ArgumentCodersMac.mm:
+        (IPC::decode):
+
+2015-06-11  Anders Carlsson  <andersca@apple.com>
+
+        Reimplement WKOriginDataManager in terms of API::WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=145889
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetOriginDataManager):
+        * UIProcess/API/C/WKOriginDataManager.cpp:
+        (WKOriginDataManagerGetTypeID):
+        (WKOriginDataManagerGetOrigins):
+        (WKOriginDataManagerDeleteEntriesForOrigin):
+        (WKOriginDataManagerDeleteEntriesModifiedBetweenDates):
+        (WKOriginDataManagerDeleteAllEntries):
+
+2015-06-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Full screen video space can be resized to 1pt wide
+        https://bugs.webkit.org/show_bug.cgi?id=145895
+        <rdar://problem/20907914>
+
+        Reviewed by Simon Fraser.
+
+        Prior to the upcoming OS X, full screen mode was not resizable. Now that it is,
+        we need to set a minimum window width that is large enough to hold the media
+        controls. This makes our full-screen video behave the same as the QuickTimeX player.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (-[WKFullScreenWindowController finishedEnterFullScreenAnimation:]): Active that new
+        kWKLayoutModeDynamicSizeWithMinimumViewSize style, and set the minimum view size to
+        be the width of our media controls, with 20 pixels of padding on either side.
+        (-[WKFullScreenWindowController finishedExitFullScreenAnimation:]): Set the layout
+        mode back to the default style.
+
+2015-06-11  Jon Lee  <jonlee@apple.com>
+
+        Update media controls JS and CSS to use picture-in-picture
+        https://bugs.webkit.org/show_bug.cgi?id=145827
+        <rdar://problem/21311576>
+
+        Reviewed by Dean Jackson.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted GetMediaUIImageData.
+
+2015-06-11  Alex Christensen  <achristensen@webkit.org>
+
+        Speculative build fix for GTK after r185463.
+
+        * CMakeLists.txt:
+        Remove WebPluginSiteDataManager.cpp from CMake build.
+
+2015-06-11  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebPluginSiteDataManager
+        https://bugs.webkit.org/show_bug.cgi?id=145884
+
+        Reviewed by Andreas Kling.
+
+        * PluginProcess/PluginProcess.cpp:
+        (WebKit::PluginProcess::clearSiteData): Deleted.
+        * PluginProcess/PluginProcess.h:
+        * PluginProcess/PluginProcess.messages.in:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        * UIProcess/API/C/WKPluginSiteDataManager.cpp:
+        * UIProcess/Plugins/PluginProcessManager.cpp:
+        (WebKit::PluginProcessManager::clearSiteData): Deleted.
+        * UIProcess/Plugins/PluginProcessManager.h:
+        * UIProcess/Plugins/PluginProcessProxy.cpp:
+        (WebKit::PluginProcessProxy::clearSiteData): Deleted.
+        (WebKit::PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch): Deleted.
+        (WebKit::PluginProcessProxy::didFinishLaunching): Deleted.
+        (WebKit::PluginProcessProxy::didClearSiteData): Deleted.
+        * UIProcess/Plugins/PluginProcessProxy.h:
+        * UIProcess/Plugins/PluginProcessProxy.messages.in:
+        * UIProcess/Plugins/WebPluginSiteDataManager.cpp: Removed.
+        (WebKit::WebPluginSiteDataManager::GetSitesWithDataState::GetSitesWithDataState): Deleted.
+        (WebKit::WebPluginSiteDataManager::GetSitesWithDataState::getSitesWithDataForNextPlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::GetSitesWithDataState::didGetSitesWithDataForSinglePlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::ClearSiteDataState::ClearSiteDataState): Deleted.
+        (WebKit::WebPluginSiteDataManager::ClearSiteDataState::clearSiteDataForNextPlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::ClearSiteDataState::didClearSiteDataForSinglePlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::create): Deleted.
+        (WebKit::WebPluginSiteDataManager::WebPluginSiteDataManager): Deleted.
+        (WebKit::WebPluginSiteDataManager::~WebPluginSiteDataManager): Deleted.
+        (WebKit::WebPluginSiteDataManager::invalidate): Deleted.
+        (WebKit::WebPluginSiteDataManager::getSitesWithData): Deleted.
+        (WebKit::WebPluginSiteDataManager::didGetSitesWithData): Deleted.
+        (WebKit::WebPluginSiteDataManager::clearSiteData): Deleted.
+        (WebKit::WebPluginSiteDataManager::didClearSiteData): Deleted.
+        (WebKit::WebPluginSiteDataManager::didGetSitesWithDataForSinglePlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::didGetSitesWithDataForAllPlugins): Deleted.
+        (WebKit::WebPluginSiteDataManager::didClearSiteDataForSinglePlugin): Deleted.
+        (WebKit::WebPluginSiteDataManager::didClearSiteDataForAllPlugins): Deleted.
+        * UIProcess/Plugins/WebPluginSiteDataManager.h: Removed.
+        (WebKit::WebPluginSiteDataManager::processPool): Deleted.
+        (WebKit::WebPluginSiteDataManager::clearProcessPool): Deleted.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::~WebProcessPool): Deleted.
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-06-11  Anders Carlsson  <andersca@apple.com>
+
+        Make WKWebsiteDataStoreRef backed by an API::WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=145882
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetPluginSiteDataManager):
+        * UIProcess/API/C/WKPluginSiteDataManager.cpp:
+        (WKPluginSiteDataManagerGetTypeID):
+        (WKPluginSiteDataManagerGetSitesWithData):
+        (WKPluginSiteDataManagerClearSiteData):
+        (WKPluginSiteDataManagerClearAllSiteData):
+
+2015-06-11  Antti Koivisto  <antti@apple.com>
+
+        Network process crashes decoding invalid cache entry on 32bit system
+        https://bugs.webkit.org/show_bug.cgi?id=145842
+        rdar://problem/21228334
+
+        Reviewed by Anders Carlsson.
+
+        After cache scheme changes we may end up decoding invalid cache entries. This is by design,
+        we should just fail decoding and delete these entries.
+
+        However Decoder::bufferIsLargeEnoughToContain test in some cases would allow corrupted large
+        sizes due to overflow in 32bit pointer math and we would crash when allocating a string.
+
+        * NetworkProcess/cache/NetworkCacheCoders.cpp:
+        (WebKit::NetworkCache::Coder<CString>::decode):
+        (WebKit::NetworkCache::decodeStringText):
+        (WebKit::NetworkCache::Coder<WebCore::CertificateInfo>::decode):
+        (WebKit::NetworkCache::Coder<MD5::Digest>::encode):
+        * NetworkProcess/cache/NetworkCacheCoders.h:
+        * NetworkProcess/cache/NetworkCacheDecoder.cpp:
+        (WebKit::NetworkCache::Decoder::Decoder):
+        (WebKit::NetworkCache::Decoder::bufferIsLargeEnoughToContain):
+
+            Reshuffle to avoid sum.
+
+        (WebKit::NetworkCache::Decoder::decodeFixedLengthData):
+        * NetworkProcess/cache/NetworkCacheDecoder.h:
+        (WebKit::NetworkCache::Decoder::bufferSize):
+        (WebKit::NetworkCache::Decoder::currentOffset):
+        (WebKit::NetworkCache::Decoder::length): Deleted.
+        (WebKit::NetworkCache::Decoder::isInvalid): Deleted.
+        (WebKit::NetworkCache::Decoder::markInvalid): Deleted.
+
+            Remove these, they are not really used or needed.
+
+2015-06-10  Anders Carlsson  <andersca@apple.com>
+
+        Rewrite WKPluginSiteDataManager using WebsiteDataStore functions
+        https://bugs.webkit.org/show_bug.cgi?id=145868
+
+        Reviewed by Antti Koivisto.
+
+        * UIProcess/API/C/WKPluginSiteDataManager.cpp:
+        (WKPluginSiteDataManagerGetSitesWithData):
+        (WKPluginSiteDataManagerClearSiteData):
+        (WKPluginSiteDataManagerClearAllSiteData):
+        (toNPClearSiteDataFlags): Deleted.
+        * UIProcess/Plugins/WebPluginSiteDataManager.h:
+        (WebKit::WebPluginSiteDataManager::processPool):
+
+2015-06-11  Antti Koivisto  <antti@apple.com>
+
+        3% cold PLT regression from network cache on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=145694
+        rdar://problem/21158245
+
+        Reviewed by Chris Dumez.
+
+        Cache does not help in cold page loads but it shouldn't' be hurting either. Write I/O needs to be toned down a bit.
+
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::IOChannel):
+        (WebKit::NetworkCache::IOChannel::open):
+
+            Dispatch channels inherit their I/O priority from the target queue. Use background queue for write I/O.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::Storage):
+        (WebKit::NetworkCache::Storage::dispatchPendingReadOperations):
+        (WebKit::NetworkCache::Storage::dispatchPendingWriteOperations):
+
+            Only write one file at a time instead of maximum of three.
+
+        (WebKit::NetworkCache::Storage::retrieve):
+
+            For consistency with store prepend new entries here too.
+
+        (WebKit::NetworkCache::Storage::store):
+
+            Delay start of the first write operation by 1s.
+            Prepend instead of append to the pending write deque so retrieveFromMemory lookup finds newest entries first in case of duplicates
+
+        (WebKit::NetworkCache::Storage::traverse):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2015-06-10  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Don't send touch events on link preview.
+        https://bugs.webkit.org/show_bug.cgi?id=145863
+
+        Disable web touch event recognizer on link preview. We do the same when finding nodes in inspector or when long press gesture
+        is recognized (by _cancelAllTouches). 
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView willPresentPreviewViewController:forPosition:inSourceView:]): Remove touch event gesture recognizer on preview start.
+        (-[WKContentView didDismissPreviewViewController:committing:]): Add the gesture recognizer back on dismiss.
+
 2015-06-10  Anders Carlsson  <andersca@apple.com>
 
         WKWebsiteDataStore should handle removing plug-in data for individual records

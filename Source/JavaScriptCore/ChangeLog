@@ -1,3 +1,556 @@
+2015-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        32-bit build fix after r185640.
+
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        Explicitly cast clamped int64_t to an int.
+
+2015-06-09  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should eliminate array bounds checks in loops
+        https://bugs.webkit.org/show_bug.cgi?id=145768
+
+        Reviewed by Benjamin Poulain.
+        
+        This adds a phase that does forward propagation of integer inequalities. This allows us
+        to do the algebraic reasoning we need to eliminate array bounds checks in loops. It
+        also eliminates overflow checks on ArithAdd with a constant.
+        
+        The phase's analysis produces results that are powerful enough to do speculative bounds
+        check hoisting, but this phase currently only does elimination. We can implement
+        hoisting later.
+        
+        On programs that just loop over an array like:
+        
+            for (var i = 0; i < array.length; ++i)
+                thingy += array[i]
+        
+        This change is a 60% speed-up.
+        
+        This is also a ~3% speed-up on Kraken, and it shows various speed-ups on individual
+        tests in Octane.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp: Added.
+        (JSC::DFG::performIntegerRangeOptimization):
+        * dfg/DFGIntegerRangeOptimizationPhase.h: Added.
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * tests/stress/add-overflows-after-not-equal.js: Added.
+        * tests/stress/no-abc-skippy-loop.js: Added.
+        * tests/stress/no-abc-skippy-paired-loop.js: Added.
+        * tests/stress/sub-overflows-after-not-equal.js: Added.
+
+2015-06-16  Andreas Kling  <akling@apple.com>
+
+        Remove unused template parameter InlineCapacity from SegmentedVector.
+        <https://webkit.org/b/146044>
+
+        Reviewed by Anders Carlsson.
+
+        * bytecode/ArrayProfile.h:
+        * dfg/DFGCommonData.h:
+
+2015-06-16  Michael Saboff  <msaboff@apple.com>
+
+        Inlining in the DFG trashes ByteCodeParser::m_currentInstruction for the calling function
+        https://bugs.webkit.org/show_bug.cgi?id=146029
+
+        Reviewed by Benjamin Poulain.
+
+        Save and restore m_currentInstruction around call to ByteCodeParser::inlineCall() as it will
+        use m_currentInstruction during its own parsing.  This happens because inlineCall() parses the
+        inlined callee's bytecodes by calling parseCodeBlock() which calls parseBlock() on each block.
+        It is in parseBlock() that we set m_currentInstruction to an instruction before we parse it.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::parseBlock): Added an ASSERT to catch this issue.
+
+2015-06-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out unintended JSC change from https://trac.webkit.org/changeset/185425.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::hasExitSite):
+        (JSC::CodeBlock::exitProfile):
+        (JSC::CodeBlock::numberOfExitSites): Deleted.
+        * bytecode/DFGExitProfile.cpp:
+        (JSC::DFG::ExitProfile::add):
+        * bytecode/DFGExitProfile.h:
+        (JSC::DFG::ExitProfile::hasExitSite):
+        (JSC::DFG::ExitProfile::size): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        * runtime/Options.h:
+
+2015-06-16  Mark Lam  <mark.lam@apple.com>
+
+        Use NakedPtr<Exception>& to return exception results.
+        https://bugs.webkit.org/show_bug.cgi?id=145870
+
+        Reviewed by Anders Carlsson and Filip Pizlo.
+
+        Before r185259, calls into the VM takes a JSValue* exception result argument for
+        returning any uncaught exception that may have been thrown while executing JS code.
+        As a result, clients of the VM functions will declare a local JSValue exception
+        result which is automatically initialized to a null value (i.e. the empty value,
+        not the JS null value).
+
+        With r185259, the VM functions were changed to take an Exception*& exception result
+        instead, and the VM functions are responsible for initializing the exception result
+        to null if no exception is thrown.
+
+        This introduces 2 issues:
+
+        1. the VM functions are vulnerable to modifications that may add early returns
+           before the exception result is nullified.  This can result in the exception
+           result being used without initialization.
+
+        2. Previously, a client could technically use the same exception result for more
+           than one calls into the VM functions.  If an earlier call sets it to a thrown
+           value, the thrown value will stick unless a subsequent call throws a different
+           exception.
+
+           With the new Exception*& exception result, the VM functions will always clear
+           the exception result before proceeding.  As a result, the client's exception
+           result will be null after the second call even though the first call saw an
+           exception thrown.  This is a change in the expected behavior.
+
+        To fix these issues, we'll introduce a NakedPtr smart pointer whose sole purpose
+        is to guarantee that the pointer is initialized.  The VM functions will now take
+        a NakedPtr<Exception>& instead of the Exception*&.  This ensures that the
+        exception result is initialized.
+
+        The VM functions be also reverted to only set the exception result if a new
+        exception is thrown.
+
+        * API/JSBase.cpp:
+        (JSEvaluateScript):
+        * API/JSScriptRef.cpp:
+        * bindings/ScriptFunctionCall.cpp:
+        (Deprecated::ScriptFunctionCall::call):
+        * bindings/ScriptFunctionCall.h:
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::hasBreakpoint):
+        * debugger/Debugger.h:
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::thisValue):
+        (JSC::DebuggerCallFrame::evaluate):
+        * debugger/DebuggerCallFrame.h:
+        (JSC::DebuggerCallFrame::isValid):
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::createInjectedScript):
+        * inspector/InspectorEnvironment.h:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::evaluate):
+        * inspector/JavaScriptCallFrame.h:
+        (Inspector::JavaScriptCallFrame::vmEntryGlobalObject):
+        (Inspector::JavaScriptCallFrame::thisValue):
+        (Inspector::JavaScriptCallFrame::evaluate):
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::evaluateBreakpointAction):
+        * jsc.cpp:
+        (functionRun):
+        (functionLoad):
+        (runWithScripts):
+        (runInteractive):
+        * runtime/CallData.cpp:
+        (JSC::call):
+        * runtime/CallData.h:
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        (JSC::evaluate):
+        * runtime/Completion.h:
+        (JSC::evaluate):
+
+2015-06-15  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL boolify() UntypedUse is wrong in the masquerades-as-undefined case
+        https://bugs.webkit.org/show_bug.cgi?id=146002
+
+        Reviewed by Darin Adler.
+
+        * ftl/FTLLowerDFGToLLVM.cpp: Put this in an anonymous namespace. We should have done that all along. It makes it easier to add debug code.
+        (JSC::FTL::DFG::LowerDFGToLLVM::boolify): Fix the bug.
+        * tests/stress/logical-not-masquerades.js: Added. This test creates a masquerader so that the watchpoint is invalid. Previously this would fail for the normal object cases.
+        (foo):
+
+2015-06-16  Andreas Kling  <akling@apple.com>
+
+        [JSC] Pre-bake final Structure for RegExp matches arrays.
+        <https://webkit.org/b/146006>
+
+        Reviewed by Darin Adler.
+
+        Since we always add the "index" and "input" fields to RegExp matches arrays,
+        cache a finished structure on the global object so we can create these arrays without
+        starting from scratch with a bare array every time.
+
+        10% progression on Octane/regexp (on my MBP.)
+
+        * runtime/JSArray.h:
+        (JSC::JSArray::create):
+        (JSC::JSArray::tryCreateUninitialized):
+        (JSC::JSArray::createWithButterfly): Factored out JSArray construction into a helper
+        so we can call this from RegExpMatchesArray.cpp.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::regExpMatchesArrayStructure): Add a cached Structure for RegExp
+        subpattern matches arrays.
+
+        * runtime/JSObject.h:
+        (JSC::JSNonFinalObject::finishCreation): Tweak assertion that used to check that
+        JSNonFinalObjects always start out with zero capacity. Since RegExp matches arrays now
+        start out with capacity for 2 properties, that won't work. Change it to check that we
+        don't have inline storage instead, since that should only be used by final objects.
+
+        * runtime/RegExpMatchesArray.h:
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::tryCreateUninitializedRegExpMatchesArray): Helper to construct a JSArray with
+        the cached Structure and a Butterfly with 2 slots of property storage.
+
+        (JSC::createRegExpMatchesArray):
+        (JSC::createRegExpMatchesArrayStructure): Creates the array Structure that gets cached
+        by the JSGlobalObject.
+
+2015-06-16  Saam Barati  <saambarati1@gmail.com>
+
+        LLInt's code path for get_from_scope with case GlobalVarWithVarInjectionChecks has dead code
+        https://bugs.webkit.org/show_bug.cgi?id=144268
+
+        Reviewed by Darin Adler.
+
+        The call to loadVariable(.) both for 32bit and 64bit is unnecessary. 
+        It grabs a value that is immediately overwritten by a call to getGlobalVar(). 
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2015-06-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Introduce %IteratorPrototype% and drop all XXXIteratorConstructor
+        https://bugs.webkit.org/show_bug.cgi?id=145963
+
+        Reviewed by Darin Adler.
+
+        ES6 iterators inherit %IteratorPrototype%.
+        And these prototype objects of derived iterators don't have @@iterator methods.
+        Instead they use the %IteratorPrototype%[@@iterator] method.
+
+        To encourage inlining in for-of statement, we define this method in JS builtins.
+
+        And these iterator prototype objects don't have any constructor function.
+        This patch drops them (like StringIteratorConstructor).
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/Iterator.prototype.js: Renamed from Source/JavaScriptCore/runtime/StringIteratorConstructor.cpp.
+        (SymbolIterator):
+        * runtime/ArrayIteratorConstructor.cpp:
+        (JSC::ArrayIteratorConstructor::finishCreation): Deleted.
+        * runtime/ArrayIteratorConstructor.h: Removed.
+        (JSC::ArrayIteratorConstructor::create): Deleted.
+        (JSC::ArrayIteratorConstructor::createStructure): Deleted.
+        (JSC::ArrayIteratorConstructor::ArrayIteratorConstructor): Deleted.
+        * runtime/ArrayIteratorPrototype.cpp:
+        (JSC::ArrayIteratorPrototype::finishCreation):
+        (JSC::arrayIteratorProtoFuncIterator): Deleted.
+        * runtime/IteratorPrototype.cpp: Renamed from Source/JavaScriptCore/runtime/ArrayIteratorConstructor.cpp.
+        (JSC::IteratorPrototype::finishCreation):
+        * runtime/IteratorPrototype.h: Renamed from Source/JavaScriptCore/runtime/SetIteratorConstructor.h.
+        (JSC::IteratorPrototype::create):
+        (JSC::IteratorPrototype::createStructure):
+        (JSC::IteratorPrototype::IteratorPrototype):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::createBuiltinFunction):
+        * runtime/JSFunction.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::iteratorPrototype):
+        * runtime/MapIteratorConstructor.cpp: Removed.
+        (JSC::MapIteratorConstructor::finishCreation): Deleted.
+        * runtime/MapIteratorConstructor.h: Removed.
+        (JSC::MapIteratorConstructor::create): Deleted.
+        (JSC::MapIteratorConstructor::createStructure): Deleted.
+        (JSC::MapIteratorConstructor::MapIteratorConstructor): Deleted.
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototype::finishCreation): Deleted.
+        (JSC::MapIteratorPrototypeFuncIterator): Deleted.
+        * runtime/SetIteratorConstructor.cpp: Removed.
+        (JSC::SetIteratorConstructor::finishCreation): Deleted.
+        * runtime/SetIteratorConstructor.h:
+        (JSC::SetIteratorConstructor::create): Deleted.
+        (JSC::SetIteratorConstructor::createStructure): Deleted.
+        (JSC::SetIteratorConstructor::SetIteratorConstructor): Deleted.
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototype::finishCreation): Deleted.
+        (JSC::SetIteratorPrototypeFuncIterator): Deleted.
+        * runtime/StringIteratorConstructor.cpp:
+        (JSC::StringIteratorConstructor::finishCreation): Deleted.
+        * runtime/StringIteratorConstructor.h: Removed.
+        (JSC::StringIteratorConstructor::create): Deleted.
+        (JSC::StringIteratorConstructor::createStructure): Deleted.
+        (JSC::StringIteratorConstructor::StringIteratorConstructor): Deleted.
+        * runtime/StringIteratorPrototype.cpp:
+        (JSC::StringIteratorPrototype::finishCreation):
+        (JSC::stringIteratorPrototypeIterator): Deleted.
+        * tests/stress/iterator-prototype.js: Added.
+        (shouldBe):
+        (inheritIteratorPrototype):
+        (testChain):
+
+2015-06-15  Michael Saboff  <msaboff@apple.com>
+
+        JIT bug - fails when inspector closed, works when open
+        https://bugs.webkit.org/show_bug.cgi?id=145243
+
+        Reviewed by Oliver Hunt.
+
+        We need to provide the Arguments object as the base when creating the HeapLocation for
+        GetFromArguments and PutToArguments.  Otherwise we endup creating a HeapLocation for
+        any arguments object, not the one we need.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2015-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table() with a list of objects no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=145952
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._generatePreview):
+        Calling generatePreview again was actually starting with a preview
+        of the current object instead of the sub-value. Go down the other
+        path that correctly generates sub-previews. Leave filtering on the
+        backend unimplemented, which we were already ignoring.
+
+2015-06-13  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableJSStream should handle promises returned by JS source start callback
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+
+        Reviewed by Darin Adler.
+
+        Added support for JSFunction implemented by std::function.
+
+        * runtime/JSFunction.cpp:
+        (JSC::getNativeExecutable): Refactored code to share it with the two JSFunction::create
+        (JSC::JSFunction::create):
+        (JSC::runStdFunction):
+        * runtime/JSFunction.h: Added std::function based JSFunction::create prototype.
+        * runtime.JSPromise.h:
+
+2015-06-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Purge PassRefPtr in JavaScriptCore - 2
+        https://bugs.webkit.org/show_bug.cgi?id=145834
+
+        Reviewed by Darin Adler.
+
+        As a step to remove PassRefPtr, this patch cleans up PassRefPtr as much as possible
+        in JavaScriptCore.
+
+        * API/JSClassRef.cpp:
+        (OpaqueJSClass::create):
+        * API/JSClassRef.h:
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::callerFrame):
+        * debugger/DebuggerCallFrame.h:
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::jitCode):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStack):
+        (Inspector::createScriptCallStackForConsole):
+        (Inspector::createScriptCallStackFromException):
+        (Inspector::createScriptArguments):
+        * inspector/ScriptCallStackFactory.h:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::ExecutableAllocator::allocate):
+        * jit/ExecutableAllocator.h:
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::ExecutableAllocator::allocate):
+        * profiler/LegacyProfiler.cpp:
+        (JSC::LegacyProfiler::stopProfiling):
+        * profiler/LegacyProfiler.h:
+        * runtime/DateInstanceCache.h:
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/Executable.h:
+        * runtime/GenericTypedArrayView.h:
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::create):
+        (JSC::GenericTypedArrayView<Adaptor>::createUninitialized):
+
+2015-06-12  Darin Adler  <darin@apple.com>
+
+        Fix minor ES6 compliance issue in RegExp.prototype.toString and optimize performance a little
+        https://bugs.webkit.org/show_bug.cgi?id=145935
+
+        Reviewed by Anders Carlsson.
+
+        Test: js/regexp-toString.html
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::getFlags): Avoid memory allocation for the flags string by returning it in a character
+        buffer instead of constructing a WTF::String for it.
+        (JSC::regExpProtoFuncToString): Require only that the this value be an object; don't require
+        that it is actually a regular expression object. This is covered in the ES6 specification.
+        Also removed comment about the "/(?:)/" trick since that is now the repsonsibility of the
+        getter for the "source" property. Updated to use getFlags so we do one less memory allocation.
+        (JSC::regExpProtoGetterFlags): Chagned to use getFlags instead of the old flagsString.
+
+2015-06-12  Basile Clement  <basile_clement@apple.com>
+
+        DFG Object Allocation Sinking should not consider GetClosureVar as escapes
+        https://bugs.webkit.org/show_bug.cgi?id=145904
+
+        Reviewed by Filip Pizlo.
+
+        The object allocation sinking phase is currently able to sink
+        CreateActivation nodes, but will consider any GetClosureVar node as
+        escaping.
+
+        This is not problematic in general as most of the GetClosureVar nodes
+        we would have been able to sink over will have been eliminated by CSE
+        anyway. Still, this is an oversight that we should fix since the
+        machinery is already in place.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPromoteHeapAccess.h:
+        (JSC::DFG::promoteHeapAccess):
+
+2015-06-11  Mark Lam  <mark.lam@apple.com>
+
+        WebCore::reportException() needs to be able to accept a raw thrown value in addition to Exception objects.
+        https://bugs.webkit.org/show_bug.cgi?id=145872
+
+        Reviewed by Michael Saboff.
+
+        In r185259, we changed exception handling code inside the VM to work with
+        Exception objects instead of the thrown JSValue.  The handling code will get the
+        exception stack trace from the Exception object.
+
+        However, there is some code that cannot be updated to pass the Exception object.
+        An example of this are the ObjC API functions.  Those functions are specified to
+        return any thrown exception JSValue in a JSValueRef.  Since these APIs are
+        public, we cannot arbitrarily change them to use the Exception object.
+
+        There are client code that calls these APIs and then passes the returned exception
+        JSValue to WebCore::reportException() to be reported.  WebCore::reportException()
+        previously relied on the VM::exceptionStackTrace() to provide a cache of the
+        stack trace of the last thrown exception.  VM::exceptionStackTrace() no longer
+        exists in the current code.
+
+        To restore this functionality, we will introduce VM::lastException() which
+        caches the last thrown Exception object.  With this, if the exception passed to
+        WebCore::reportException() to be reported isn't an Exception object (which has its
+        own stack trace), reportException() can again use the cached exception stack trace
+        which is available from VM::lastException().
+
+        * heap/Heap.cpp:
+        (JSC::Heap::visitException):
+        - visit VM::m_lastException on GCs.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::lastException):
+        (JSC::ExecState::clearLastException):
+        - convenience functions to get and clear the last exception.
+
+        * runtime/Exception.cpp:
+        (JSC::Exception::create):
+        (JSC::Exception::finishCreation):
+        - add support to create an Exception object without capturing the JS stack trace.
+          This is needed for making an Exception object to wrap a thrown value that does
+          not have a stack trace.
+          Currently, this is only used by WebCore::reportException() when there is no
+          Exception object and no last exception available to provide a stack trace.
+
+        * runtime/Exception.h:
+        (JSC::Exception::cast): Deleted.  No longer needed.
+
+        * runtime/VM.h:
+        (JSC::VM::clearLastException):
+        (JSC::VM::setException):
+        (JSC::VM::lastException):
+        (JSC::VM::addressOfLastException):
+        - Added support for VM::m_lastException.
+          VM::m_lastException serves to cache the exception stack of the most recently
+          thrown exception like VM::exceptionStackTrace() used to before r185259.
+
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        - Clear VM::m_lastException when we re-enter the VM.  Exceptions should have been
+          handled before we re-enter the VM anyway.  So, this is a good place to release
+          the cached last exception.
+
+          NOTE: this is also where the old code before r185259 clears the last exception
+          stack trace.  So, we're just restoring the previous behavior here in terms of
+          the lifecycle of the last exception stack.
+
+2015-06-11  Andreas Kling  <akling@apple.com>
+
+        jsSubstring() should support creating substrings from substrings.
+        <https://webkit.org/b/145427>
+
+        Reviewed by Geoffrey Garen
+
+        Tweak jsSubstring() to support base strings that are themselves substrings.
+        They will now share the same grandparent base. This avoids creating a new StringImpl.
+
+        * runtime/JSString.h:
+        (JSC::jsSubstring): Don't force rope resolution here. Instead do that in finishCreation()
+        if the base string is a non-substring rope. Note that resolveRope() is the very last thing
+        called, since it may allocate and the JSRopeString needs to be ready for marking.
+
+        (JSC::JSString::isSubstring): Added a helper to find out if a JSString is
+        a substring. This is just for internal use, so you don't have to cast to
+        JSRopeString for the real substringness flag.
+
+2015-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185465.
+        https://bugs.webkit.org/show_bug.cgi?id=145893
+
+        "This patch is breaking 32bit mac build" (Requested by youenn
+        on #webkit).
+
+        Reverted changeset:
+
+        "[Streams API] ReadableJSStream should handle promises
+        returned by JS source start callback"
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+        http://trac.webkit.org/changeset/185465
+
+2015-06-11  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableJSStream should handle promises returned by JS source start callback
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+
+        Reviewed by Darin Adler.
+
+        Added support for JSFunction implemented by std::function.
+
+        * runtime/JSFunction.cpp:
+        (JSC::getNativeExecutable): Refactored code to share it with the two JSFunction::create
+        (JSC::JSFunction::create):
+        (JSC::runStdFunction):
+        * runtime/JSFunction.h: Added std::function based JSFunction::create prototype.
+        * runtime.JSPromise.h:
+
 2015-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         ASSERTION FAILED: s.length() > 1 on LayoutTests/js/regexp-flags.html

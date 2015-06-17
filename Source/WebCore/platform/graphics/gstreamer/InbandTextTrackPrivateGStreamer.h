@@ -31,7 +31,7 @@
 #include "GRefPtrGStreamer.h"
 #include "InbandTextTrackPrivate.h"
 #include "TrackPrivateBaseGStreamer.h"
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 

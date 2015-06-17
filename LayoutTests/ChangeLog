@@ -1,3 +1,693 @@
+2015-06-17  Alexey Proskuryakov  <ap@apple.com>
+
+        New test inspector/console/console-table.html frequently times out in debug.
+
+        * TestExpectations: Added an expectation.
+
+2015-06-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Update test results after https://bugs.webkit.org/show_bug.cgi?id=145873
+
+        The changes appear expected, however looking at previous pixel results, we seem
+        to have a (much much earlier) regression, as small caps are rotated incorrectly.
+
+        * platform/mac-mavericks/fast/writing-mode/broken-ideograph-small-caps-expected.png: Copied from LayoutTests/platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.png.
+        * platform/mac-mavericks/fast/writing-mode/broken-ideograph-small-caps-expected.txt: Copied from LayoutTests/platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.txt.
+        * platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.png:
+        * platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.txt:
+
+2015-06-17  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableJSStream should handle promises returned by JS source pull callback
+        https://bugs.webkit.org/show_bug.cgi?id=145965
+
+        Reviewed by Darin Adler.
+
+        Rebasing tests and removing timeout: 50 for test that is passing..
+
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream.html:
+
+2015-06-16  Youenn Fablet <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Implement ReadableStream locked property
+        https://bugs.webkit.org/show_bug.cgi?id=146023
+
+        Reviewed by Darin Adler.
+
+        Rebasing tests.
+
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+
+2015-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should eliminate array bounds checks in loops
+        https://bugs.webkit.org/show_bug.cgi?id=145768
+
+        Reviewed by Benjamin Poulain.
+
+        * js/regress/abc-forward-loop-equal-expected.txt: Added.
+        * js/regress/abc-forward-loop-equal.html: Added.
+        * js/regress/abc-postfix-backward-loop-expected.txt: Added.
+        * js/regress/abc-postfix-backward-loop.html: Added.
+        * js/regress/abc-skippy-loop-expected.txt: Added.
+        * js/regress/abc-skippy-loop.html: Added.
+        * js/regress/abc-simple-backward-loop-expected.txt: Added.
+        * js/regress/abc-simple-backward-loop.html: Added.
+        * js/regress/abc-simple-forward-loop-expected.txt: Added.
+        * js/regress/abc-simple-forward-loop.html: Added.
+        * js/regress/script-tests/abc-forward-loop-equal.js: Added.
+        * js/regress/script-tests/abc-postfix-backward-loop.js: Added.
+        * js/regress/script-tests/abc-skippy-loop.js: Added.
+        * js/regress/script-tests/abc-simple-backward-loop.js: Added.
+        * js/regress/script-tests/abc-simple-forward-loop.js: Added.
+
+2015-06-16  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed, EFL gardening on 17th June.
+
+        Follow up gardening since using xvfb on EFL WTR. Unskip passing tests,
+        mark new crash and failure tests.
+
+        * platform/efl/TestExpectations:
+
+2015-06-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-variant: small-caps is not honored with web fonts
+        https://bugs.webkit.org/show_bug.cgi?id=145873
+        <rdar://problem/21314282>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/small-caps-web-font-expected.html: Added.
+        * fast/text/small-caps-web-font.html: Added.
+
+2015-06-16  Michael Saboff  <msaboff@apple.com>
+
+        Inlining in the DFG trashes ByteCodeParser::m_currentInstruction for the calling function
+        https://bugs.webkit.org/show_bug.cgi?id=146029
+
+        Reviewed by Benjamin Poulain.
+
+        New regression test.
+
+        * js/regress-146029-expected.txt: Added.
+        * js/regress-146029.html: Added.
+        * js/script-tests/regress-146029.js: Added.
+        (myPush):
+        (myPop):
+        (foo):
+        (test):
+
+2015-06-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test update: Add multiple scroll-snap-coordinate test.
+        https://bugs.webkit.org/show_bug.cgi?id=145843
+
+        Add a test that confirms that we properly understand scroll-snap-coordinate
+        declarations with sets of points on a single element.
+
+        * css3/scroll-snap/scroll-snap-coordinate.html: Added.
+        * css3/scroll-snap/scroll-snap-coordinate-expected.txt: Added.
+
+2015-06-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Tweak results for fast/canvas/canvas-too-large-to-draw.html
+
+        * platform/mac/TestExpectations:
+
+2015-06-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip the new test, fast/canvas/canvas-too-large-to-draw.html
+
+        * platform/mac/TestExpectations:
+
+2015-06-15  Chris Fleizach  <cfleizach@apple.com>
+
+        AX:  iOS accessibility tests are not running because we need WKTR support
+        https://bugs.webkit.org/show_bug.cgi?id=145991
+
+        Reviewed by Daniel Bates.
+
+        Alter tests so that it addresses:
+           1) Utilize the new AX methods which created new expectations.
+           2) There were some expectations checked in with failures that are now fixed.
+           3) Remove failing test expectations from TestExpectations.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/accessibility: Replaced with LayoutTests/platform/ios-simulator/accessibility.
+        * platform/ios-simulator/accessibility/accessibility-crash-in-axcontainer-expected.txt:
+        * platform/ios-simulator/accessibility/accessibility-crash-in-axcontainer.html:
+        * platform/ios-simulator/accessibility/accessibility-hint-expected.txt:
+        * platform/ios-simulator/accessibility/accessibility-hint.html:
+        * platform/ios-simulator/accessibility/aria-label-with-internal-text-expected.txt:
+        * platform/ios-simulator/accessibility/aria-label-with-internal-text.html:
+        * platform/ios-simulator/accessibility/disabled-states-expected.txt:
+        * platform/ios-simulator/accessibility/disabled-states.html:
+        * platform/ios-simulator/accessibility/dom-focus-fires-on-correct-element-expected.txt:
+        * platform/ios-simulator/accessibility/dom-focus-fires-on-correct-element.html:
+        * platform/ios-simulator/accessibility/file-upload-button-expected.txt:
+        * platform/ios-simulator/accessibility/file-upload-button.html:
+        * platform/ios-simulator/accessibility/focus-change-notifications.html:
+        * platform/ios-simulator/accessibility/identifier-expected.txt:
+        * platform/ios-simulator/accessibility/identifier.html:
+        * platform/ios-simulator/accessibility/internal-link-expected.txt:
+        * platform/ios-simulator/accessibility/internal-link.html:
+        * platform/ios-simulator/accessibility/landmark-type-expected.txt:
+        * platform/ios-simulator/accessibility/landmark-type.html:
+        * platform/ios-simulator/accessibility/link-with-images-text-expected.txt:
+        * platform/ios-simulator/accessibility/link-with-images-text.html:
+        * platform/ios-simulator/accessibility/link-with-only-image-expected.txt:
+        * platform/ios-simulator/accessibility/link-with-only-image.html:
+        * platform/ios-simulator/accessibility/math-expected.txt:
+        * platform/ios-simulator/accessibility/math.html:
+        * platform/ios-simulator/accessibility/mixed-checkboxes-expected.txt:
+        * platform/ios-simulator/accessibility/mixed-checkboxes.html:
+        * platform/ios-simulator/accessibility/no-child-link-header.html:
+        * platform/ios-simulator/accessibility/non-contiguous-link-expected.txt:
+        * platform/ios-simulator/accessibility/non-contiguous-link.html:
+        * platform/ios-simulator/accessibility/password-value-expected.txt:
+        * platform/ios-simulator/accessibility/password-value.html:
+        * platform/ios-simulator/accessibility/placeholder-value-expected.txt:
+        * platform/ios-simulator/accessibility/placeholder-value.html:
+        * platform/ios-simulator/accessibility/popup-button-value-label-expected.txt:
+        * platform/ios-simulator/accessibility/popup-button-value-label.html:
+        * platform/ios-simulator/accessibility/progressbar-expected.txt:
+        * platform/ios-simulator/accessibility/progressbar.html:
+        * platform/ios-simulator/accessibility/radio-button-expected.txt:
+        * platform/ios-simulator/accessibility/radio-button.html:
+        * platform/ios-simulator/accessibility/secure-text-field.html:
+        * platform/ios-simulator/accessibility/selected-buttons-expected.txt:
+        * platform/ios-simulator/accessibility/svg-group-element-with-title-expected.txt:
+        * platform/ios-simulator/accessibility/svg-group-element-with-title.html:
+        * platform/ios-simulator/accessibility/tab-role-expected.txt:
+        * platform/ios-simulator/accessibility/tab-role.html:
+        * platform/ios-simulator/accessibility/tables-lists-expected.txt:
+        * platform/ios-simulator/accessibility/tables-lists.html:
+        * platform/ios-simulator/accessibility/text-marker-list-item-expected.txt:
+        * platform/ios-simulator/accessibility/text-marker-list-item.html:
+        * platform/ios-simulator/accessibility/text-marker-validation.html:
+        * platform/ios-simulator/accessibility/text-role-expected.txt:
+        * platform/ios-simulator/accessibility/text-role.html:
+        * platform/ios-simulator/accessibility/textfield-in-axvalue-expected.txt:
+        * platform/ios-simulator/accessibility/textfield-in-axvalue.html:
+        * platform/ios-simulator/accessibility/toggle-button.html:
+        * platform/ios-simulator/accessibility/url-test.html:
+
+2015-06-16  Brent Fulgham  <bfulgham@apple.com>
+
+        CSS Scroll Snap - support snapping to nested elements
+        https://bugs.webkit.org/show_bug.cgi?id=145843
+        <rdar://problem/21339581>
+
+        Reviewed by Darin Adler.
+
+        * css3/scroll-snap/nested-elements-expected.txt: Added.
+        * css3/scroll-snap/nested-elements.html: Added.
+        * css3/scroll-snap/scroll-snap-offsets-expected.txt: Updated to
+          account for 50%/50% scroll-snap-coordinates.
+
+2015-06-16  Brady Eidson  <beidson@apple.com>
+
+        [IndexedDB] array index keys are concatenated across cursor lifetime
+        <rdar://problem/19684902> and https://bugs.webkit.org/show_bug.cgi?id=138504
+
+        Reviewed by Brady Eidson, patch by Mark Dixon <mark@lowla.io>
+
+        * storage/indexeddb/keypath-arrays-expected.txt:
+        * storage/indexeddb/resources/keypath-arrays.js:
+        Verify that iterating cursors with array keypaths returns correct keys for all
+        records, not just the first.
+
+2015-06-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Canvas dimensions should be limited to 4096x4096 pixels on iOS devices.
+        https://bugs.webkit.org/show_bug.cgi?id=145998
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/canvas-toDataURL-crash-expected.txt:
+        * fast/canvas/pattern-too-large-to-create-expected.txt: Change the expected
+        results due to changing the type of MaxCanvasArea from float to unsigned.
+        
+        * fast/canvas/canvas-too-large-to-draw-expected.txt: Added.
+        * fast/canvas/canvas-too-large-to-draw.html: Added.
+
+2015-06-16  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: js/dom/navigator-plugins-crash.html asserts a lot
+        https://bugs.webkit.org/show_bug.cgi?id=144399
+
+        * TestExpectations: Marked it as flakily crashing.
+
+2015-06-16  sylvain-galineau  <galineau@adobe.com>
+
+        Incorrect order of arguments in initial-letter property
+        https://bugs.webkit.org/show_bug.cgi?id=139667
+
+        Reviewed by Sam Weinig.
+
+        Update initial-letter tests to reflect the value's new ordering, per CSS Inline Layout module.
+
+        * fast/css-generated-content/initial-letter-border-padding.html:
+        * fast/css-generated-content/initial-letter-clearance.html:
+        * fast/css-generated-content/initial-letter-descender.html:
+        * fast/css-generated-content/initial-letter-raised.html:
+        * fast/css-generated-content/initial-letter-sunken.html:
+
+2015-06-16  Youenn Fablet <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Calling controller.error() should trigger storing an undefined error
+        https://bugs.webkit.org/show_bug.cgi?id=145976
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-controller-error-expected.txt: Rebasing expectation as test is passing now.
+        * streams/readable-stream-reader-read-expected.txt:
+        * streams/readable-stream-reader-read.html: Adding test for promise rejection without any parameter.
+
+2015-06-16  Youenn Fablet <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Sync tests with spec
+        https://bugs.webkit.org/show_bug.cgi?id=145839
+
+        Reviewed by Darin Adler.
+
+        Considered all changes in the spec tests and brought them to WebKit.
+
+        Some of those changes were related to spec changes, like the strategy or some of the algorithms. Some like the
+        tee ones were newly added as they will be implemented soon. There are also some tests that shuffled around
+        because they were just moved at the spec or integrated from the changes we submitted, which was substantially
+        important as it allowed us to remove some of our custom tests that are now covered by the spec ones.
+
+        * resources/gc.js: Added warning about using gcRec, results might not be reliable.
+        * streams/readable-stream-controller-error-expected.txt:
+        * streams/readable-stream-controller-error.html: New failing test due to discrepancies with the reference
+        implementation. Something we will address.
+        * streams/readable-stream-expected.txt: Removed.
+        * streams/readable-stream-gc.html: Renumbered.
+        * streams/readable-stream-reader-expected.txt: Removed.
+        * streams/readable-stream-reader-read.html: Renumbered.
+        * streams/readable-stream-reader.html: Removed.
+        * streams/readable-stream.html: Removed.
+        * streams/reference-implementation/bad-strategies-expected.txt: Added.
+        * streams/reference-implementation/bad-strategies.html: Added.
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/bad-underlying-sources.html: Updated from spec and expectations.
+        * streams/reference-implementation/brand-checks-expected.txt:
+        * streams/reference-implementation/brand-checks.html: Updated from spec and expectations.
+        * streams/reference-implementation/byte-length-queuing-strategy-expected.txt: Added.
+        * streams/reference-implementation/byte-length-queuing-strategy.html: Added.
+        * streams/reference-implementation/count-queuing-strategy-expected.txt:
+        * streams/reference-implementation/count-queuing-strategy.html: Updated from spec and expectations.
+        * streams/reference-implementation/readable-stream-cancel-expected.txt:
+        * streams/reference-implementation/readable-stream-cancel.html: Updated from spec and expectations and corrected
+        timeouts to try to overcome problems in slower bots.
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt:
+        * streams/reference-implementation/readable-stream-reader.html: Updated from spec and expectations.
+        * streams/reference-implementation/readable-stream-tee-expected.txt: Added.
+        * streams/reference-implementation/readable-stream-tee.html: Added.
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/readable-stream-templated.html: Updated from spec and expectations.
+        * streams/reference-implementation/readable-stream.html: Updated from spec and expectations.
+        * streams/reference-implementation/resources/byte-length-queuing-strategy.js:
+        (ByteLengthQueuingStrategy): Updated from spec.
+        (typeIsObject): Deleted.
+        (ByteLengthQueuingStrategy.prototype.shouldApplyBackpressure): Deleted.
+        * streams/reference-implementation/resources/count-queuing-strategy.js:
+        (CountQueuingStrategy): Updated from spec.
+        (typeIsObject): Deleted.
+        (CountQueuingStrategy.prototype.shouldApplyBackpressure): Deleted.
+        * streams/reference-implementation/resources/streams-utils.js:
+        (RandomPushSource.prototype.readStart.writeChunk):
+        (RandomPushSource.prototype.readStart): Renamed stream as source
+        (.stream.new.ReadableStream):
+        (sequentialReadableStream): Updated from spec.
+        (typeIsObject): Added.
+        (createDataProperty): Added.
+
+2015-06-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix a lint error by removing an obsolete expectation - this test doesn't fail
+        on Yosemite and below.
+
+        * platform/mac/TestExpectations:
+
+2015-06-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed, following gardening of r185583.
+
+        * platform/efl/TestExpectations: Unskip passing tests, mark new failure tests since disabling USE_NATIVE_XDISPLAY.
+
+2015-06-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed, gardening on Jun 16th.
+
+        Too many flaky tests happens on efl bot when enabling USE_NATIVE_XDISPLAY and DISPLAY.
+        Those options were enabled for removing TextureMapperImageBuffer. However now EFL Layout Test
+        can be run without enabling the options. To remove many flaky tests, EFL buildbot disables
+        the env variables.
+
+        Thanks to disable it, many tests can be unskipped which were marked to failure, imageonlyfailure
+        and so on since r183540.
+
+        * platform/efl/TestExpectations: Unskip passing tests, mark failure tests after disabling USE_NATIVE_XDISPLAY.
+
+2015-06-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Add test expectations for El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=146005
+
+        Rubber-stamped by Dan Bernstein.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-yosemite: Added.
+        * platform/mac-yosemite/fast: Added.
+        * platform/mac-yosemite/fast/dom: Added.
+        * platform/mac-yosemite/fast/dom/52776-expected.txt: Copied from LayoutTests/platform/mac/fast/dom/52776-expected.txt.
+        * platform/mac-yosemite/fast/text: Added.
+        * platform/mac-yosemite/fast/text/complex-text-opacity-expected.txt: Copied from LayoutTests/platform/mac/fast/text/complex-text-opacity-expected.txt.
+        * platform/mac-yosemite/fast/text/hyphenate-locale-expected.txt: Copied from LayoutTests/platform/mac/fast/text/hyphenate-locale-expected.txt.
+        * platform/mac-yosemite/fast/text/international: Added.
+        * platform/mac-yosemite/fast/text/international/arabic-justify-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/arabic-justify-expected.txt.
+        * platform/mac-yosemite/fast/text/international/bidi-AN-after-L-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/bidi-AN-after-L-expected.txt.
+        * platform/mac-yosemite/fast/text/international/bidi-mirror-he-ar-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/bidi-mirror-he-ar-expected.txt.
+        * platform/mac-yosemite/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.txt.
+        * platform/mac-yosemite/fast/text/international/bidi-neutral-run-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/bidi-neutral-run-expected.txt.
+        * platform/mac-yosemite/fast/text/line-initial-and-final-swashes-expected.txt: Copied from LayoutTests/platform/mac/fast/text/line-initial-and-final-swashes-expected.txt.
+        * platform/mac-yosemite/js: Added.
+        * platform/mac-yosemite/js/dom: Added.
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt: Copied from LayoutTests/platform/mac/js/dom/global-constructors-attributes-expected.txt.
+        * platform/mac-yosemite/platform: Added.
+        * platform/mac-yosemite/platform/mac: Added.
+        * platform/mac-yosemite/platform/mac/editing: Added.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string: Added.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/anchor-element-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/anchor-element-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/basic-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/basic-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/font-size-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-size-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/font-weight-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/font-weight-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/letter-spacing-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/letter-spacing-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/text-decorations-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/text-decorations-expected.txt.
+        * platform/mac-yosemite/platform/mac/editing/attributed-string/vertical-align-expected.txt: Copied from LayoutTests/platform/mac/editing/attributed-string/vertical-align-expected.txt.
+        * platform/mac-yosemite/platform/mac/fast: Added.
+        * platform/mac-yosemite/platform/mac/fast/text: Added.
+        * platform/mac-yosemite/platform/mac/fast/text/ligature-subdivision-expected.txt: Copied from LayoutTests/platform/mac/fast/text/ligature-subdivision-expected.txt.
+        * platform/mac-yosemite/svg: Added.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1: Added.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1-SE: Added.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.png: Copied from LayoutTests/platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.png.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.txt: Copied from LayoutTests/platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.txt.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1/text-intro-05-t-expected.txt: Copied from LayoutTests/platform/mac/svg/W3C-SVG-1.1/text-intro-05-t-expected.txt.
+        * platform/mac-yosemite/svg/text: Added.
+        * platform/mac-yosemite/svg/text-intro-05-t-expected.txt: Copied from LayoutTests/platform/mac/svg/text/text-intro-05-t-expected.txt.
+        * platform/mac-yosemite/svg/text/text-intro-05-t-expected.txt: Added.
+        * platform/mac/TestExpectations:
+        * platform/mac/editing/attributed-string/anchor-element-expected.txt:
+        * platform/mac/editing/attributed-string/basic-expected.txt:
+        * platform/mac/editing/attributed-string/font-size-expected.txt:
+        * platform/mac/editing/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac/editing/attributed-string/font-weight-expected.txt:
+        * platform/mac/editing/attributed-string/letter-spacing-expected.txt:
+        * platform/mac/editing/attributed-string/text-decorations-expected.txt:
+        * platform/mac/editing/attributed-string/vertical-align-expected.txt:
+        * platform/mac/fast/dom/52776-expected.txt:
+        * platform/mac/fast/text/complex-text-opacity-expected.txt:
+        * platform/mac/fast/text/hyphenate-locale-expected.txt:
+        * platform/mac/fast/text/international/arabic-justify-expected.txt:
+        * platform/mac/fast/text/international/bidi-AN-after-L-expected.txt:
+        * platform/mac/fast/text/international/bidi-mirror-he-ar-expected.txt:
+        * platform/mac/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.txt:
+        * platform/mac/fast/text/international/bidi-neutral-run-expected.txt:
+        * platform/mac/fast/text/ligature-subdivision-expected.txt:
+        * platform/mac/fast/text/line-initial-and-final-swashes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.png:
+        * platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-05-t-expected.txt:
+        * platform/mac/svg/text/text-intro-05-t-expected.txt:
+
+2015-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        RootInlineBox::m_lineBreakObj becomes invalid when a child renderer is removed and the line does not get marked dirty.
+        https://bugs.webkit.org/show_bug.cgi?id=145988
+        rdar://problem/20959137
+
+        Reviewed by David Hyatt.
+
+        This patch ensures that we find the right first inline box so that we can dirty the
+        the appropriate line boxes.
+        With marking the right line boxes dirty, now we can update RootInlineBox::m_lineBreakObj at the next layout.
+
+        * fast/inline/crash-when-child-renderer-is-removed-and-line-stays-clean-expected.txt: Added.
+        * fast/inline/crash-when-child-renderer-is-removed-and-line-stays-clean.html: Added.
+
+2015-06-15  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r182215): Reproducible crash at drawsvg.org due to reentrant layout
+        https://bugs.webkit.org/show_bug.cgi?id=145964
+
+        Reviewed by Simon Fraser.
+
+        * svg/as-object/mutate-on-load-expected.html: Added.
+        * svg/as-object/mutate-on-load.html: Added.
+        * svg/as-object/resources/embedded-mutates-on-load.svg: Added.
+
+2015-06-15  Michael Saboff  <msaboff@apple.com>
+
+        JIT bug - fails when inspector closed, works when open
+        https://bugs.webkit.org/show_bug.cgi?id=145243
+
+        Reviewed by Oliver Hunt.
+
+        New regression test.
+
+        * js/regress-145243-expected.txt: Added.
+        * js/regress-145243.html: Added.
+        * js/script-tests/regress-145243.js: Added.
+        (bar):
+        (foo):
+        (test):
+
+2015-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, gardening for Windows.
+
+        * platform/win/TestExpectations:
+
+2015-06-15  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: no accessibility support for details element
+        https://bugs.webkit.org/show_bug.cgi?id=131111
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/accessibility/details-summary-expected.txt: Added.
+        * platform/mac/accessibility/details-summary.html: Added.
+
+2015-06-13  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WebKit exposes all Ruby Text as Unknown (Japanese EPUB accessibility blocker)
+        https://bugs.webkit.org/show_bug.cgi?id=141303
+
+        Unreviewed. Move ruby tests to Mac platform only, since they don't apply to other platforms.
+
+        * accessibility/ruby-hierarchy-roles-expected.txt: Removed.
+        * accessibility/ruby-hierarchy-roles.html: Removed.
+        * platform/mac/accessibility/ruby-hierarchy-roles.html: Copied from LayoutTests/accessibility/ruby-hierarchy-roles.html.
+
+2015-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table() with a list of objects no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=145952
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/console-api.html:
+        * inspector/console/console-table-expected.txt: Added.
+        * inspector/console/console-table.html:
+        Add a similiar console API test all about console.table().
+
+2015-06-13  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Mark fast/forms/select-element-focus-ring.html to Missing
+
+        Unreviwed, gardening for EFL port.
+
+        * platform/efl/TestExpectations: The test was added only for Mac port.
+
+2015-06-13  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableJSStream should handle promises returned by JS source start callback
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+
+        Reviewed by Darin Adler.
+
+        Rebasing expectations, and removing timeouts for tests that no longer timeout.
+
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream.html:
+
+2015-06-13  Andres Gonzalez  <agonzalez334@nc.rr.com>
+
+        AX: WebKit exposes all Ruby Text as Unknown (Japanese EPUB accessibility blocker)
+        https://bugs.webkit.org/show_bug.cgi?id=141303
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ruby-hierarchy-roles-expected.txt: Added.
+        * accessibility/ruby-hierarchy-roles.html: Added.
+        * platform/mac-mavericks/accessibility/ruby-hierarchy-roles-expected.txt: Added.
+        * platform/mac/accessibility/ruby-hierarchy-roles-expected.txt: Added.
+
+2015-06-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX:ARIA Toggle buttons aren't properly conveyed on iOS using VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=145949
+
+        Reviewed by Darin Adler.
+
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+
+2015-06-12  Darin Adler  <darin@apple.com>
+
+        Fix minor ES6 compliance issue in RegExp.prototype.toString and optimize performance a little
+        https://bugs.webkit.org/show_bug.cgi?id=145935
+
+        Reviewed by Anders Carlsson.
+
+        * js/regexp-toString-expected.txt: Added.
+        * js/regexp-toString.html: Added.
+        * js/script-tests/regexp-toString.js: Added.
+
+2015-06-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Fix grid-template-areas parsing to avoid spaces
+        https://bugs.webkit.org/show_bug.cgi?id=145860
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/grid-template-areas-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-areas-get-set.html: Add new test
+        cases.
+
+2015-06-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185492.
+        https://bugs.webkit.org/show_bug.cgi?id=145927
+
+        Causes crashes on debug (Requested by rego on #webkit).
+
+        Reverted changeset:
+
+        "[CSS Grid Layout] Fix grid-template-areas parsing to avoid
+        spaces"
+        https://bugs.webkit.org/show_bug.cgi?id=145860
+        http://trac.webkit.org/changeset/185492
+
+2015-06-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Fix grid-template-areas parsing to avoid spaces
+        https://bugs.webkit.org/show_bug.cgi?id=145860
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/grid-template-areas-get-set-expected.txt:
+        * fast/css-grid-layout/grid-template-areas-get-set.html: Add new test
+        cases.
+
+2015-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        Do not crash when the descendant frame tree is destroyed during layout.
+        https://bugs.webkit.org/show_bug.cgi?id=144540
+        rdar://problem/20793184
+
+        Reviewed by Andreas Kling.
+
+        Unskip fast/frames/flattening/crash-remove-iframe-during-object-beforeload.html.
+
+        * TestExpectations:
+
+2015-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185470.
+        https://bugs.webkit.org/show_bug.cgi?id=145902
+
+        Caused ASan violations (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Add an appearance keyword for wireless playback / airplay
+        icon"
+        https://bugs.webkit.org/show_bug.cgi?id=145892
+        http://trac.webkit.org/changeset/185470
+
+2015-06-11  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB onupgradeneeded event has incorrect value for oldVersion.
+        <rdar://problem/18309792> and https://bugs.webkit.org/show_bug.cgi?id=136888
+
+        Reviewed by Sam Weinig.
+
+        * storage/indexeddb/version-change-event-basic-expected.txt: Added.
+        * storage/indexeddb/version-change-event-basic.html: Added.
+
+2015-06-11  Dean Jackson  <dino@apple.com>
+
+        Add an appearance keyword for wireless playback / airplay icon
+        https://bugs.webkit.org/show_bug.cgi?id=145892
+        <rdar://problem/21344872>
+
+        Reviewed by Simon Fraser.
+
+        Simple test that makes sure we parse and evaluate
+        the new appearance value.
+
+        * fast/css/appearance-airplay-expected.txt: Added.
+        * fast/css/appearance-airplay.html: Added.
+
+2015-06-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Update plugins/embed-attributes-style.html to not use the QuickTime plug-in
+        https://bugs.webkit.org/show_bug.cgi?id=145891
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac/plugins/embed-attributes-style-expected.png:
+        * plugins/embed-attributes-style.html:
+
+2015-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185465.
+        https://bugs.webkit.org/show_bug.cgi?id=145893
+
+        "This patch is breaking 32bit mac build" (Requested by youenn
+        on #webkit).
+
+        Reverted changeset:
+
+        "[Streams API] ReadableJSStream should handle promises
+        returned by JS source start callback"
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+        http://trac.webkit.org/changeset/185465
+
+2015-06-11  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableJSStream should handle promises returned by JS source start callback
+        https://bugs.webkit.org/show_bug.cgi?id=145792
+
+        Reviewed by Darin Adler.
+
+        Rebasing expectations, and removing timeouts for tests that no longer timeout.
+
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream.html:
+
 2015-06-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         REGRESSION (r184895): Vertical border elements ([-webkit]-border-image set to 'repeat') that used to render perfectly are now rendering incorrectly.

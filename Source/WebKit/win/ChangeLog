@@ -1,3 +1,66 @@
+2015-06-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185636.
+        https://bugs.webkit.org/show_bug.cgi?id=146068
+
+        Caused many crashes on Windows (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Implement WebViewGroup to support
+        WebView::addxxxToGroup()."
+        https://bugs.webkit.org/show_bug.cgi?id=145908
+        http://trac.webkit.org/changeset/185636
+
+2015-06-16  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Implement WebViewGroup to support WebView::addxxxToGroup().
+        https://bugs.webkit.org/show_bug.cgi?id=145908
+
+        Reviewed by Brent Fulgham.
+
+        Make WebViewGroup class sharing on Mac and Win port.
+
+        * WebCoreSupport/WebVisitedLinkStore.cpp:
+        (visitedLinkStores):
+        (WebVisitedLinkStore::create):
+        (WebVisitedLinkStore::WebVisitedLinkStore):
+        (WebVisitedLinkStore::~WebVisitedLinkStore):
+        (WebVisitedLinkStore::setShouldTrackVisitedLinks):
+        (WebVisitedLinkStore::removeAllVisitedLinks):
+        (WebVisitedLinkStore::singleton): Deleted.
+        * WebCoreSupport/WebVisitedLinkStore.h:
+        * WebView.cpp:
+        (WebView::~WebView):
+        (WebView::initWithFrame):
+        (WebView::setGroupName):
+        (WebView::addVisitedLinks):
+        * WebView.h:
+
+2015-06-13  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] API::Navigation objects are leaked on history navigation to HistoryItems in PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=145948
+
+        Reviewed by Darin Adler.
+
+        Add empty implementation for new
+        FrameLoaderClient::updatedCachedDocumentLoader().
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2015-06-11  Mark Lam  <mark.lam@apple.com>
+
+        WebCore::reportException() needs to be able to accept a raw thrown value in addition to Exception objects.
+        https://bugs.webkit.org/show_bug.cgi?id=145872
+
+        Reviewed by Michael Saboff.
+
+        * WebView.cpp:
+        (WebView::reportException):
+        - Don't assume we have an Exception object.  Let WebCore::reportException() take
+          care of it.
+
 2015-06-09  Hyungwook Lee  <hyungwook.lee@navercorp.com>
 
         Implement dumpProgressFinishedCallback() for Win layoutTestController.

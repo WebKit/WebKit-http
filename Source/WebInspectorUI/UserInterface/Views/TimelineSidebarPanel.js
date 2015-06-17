@@ -79,11 +79,11 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             container.appendChild(this._viewModeNavigationBar.element);
             this.element.insertBefore(container, this.element.firstChild);
 
-            this._chartColors = {
-                layout: "rgb(212, 108, 108)",
-                script: "rgb(153, 113, 185)",
-                other: "rgb(221, 221, 221)"
-            };
+            this._chartColors = new Map;
+            this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Script, "rgb(153, 113, 185)");
+            this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Layout, "rgb(212, 108, 108)");
+            this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Paint, "rgb(152, 188, 77)");
+            this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Other, "rgb(221, 221, 221)");
 
             this._frameSelectionChartRow = new WebInspector.ChartDetailsSectionRow(this);
             this._frameSelectionChartRow.innerRadius = 0.5;
@@ -490,6 +490,8 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         console.assert(timeline instanceof WebInspector.Timeline, timeline);
         console.assert(this._displayedRecording.timelines.get(timeline.type) === timeline, timeline);
 
+        this._previousSelectedTimelineType = timeline.type;
+
         this._displayedContentView.showTimelineViewForTimeline(timeline);
         this.contentBrowser.showContentView(this._displayedContentView);
     }
@@ -741,15 +743,16 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         }
 
         if (selectedByUser) {
+            var timelineType = this._previousSelectedTimelineType;
             if (this._viewMode === WebInspector.TimelineSidebarPanel.ViewMode.RenderingFrames) {
                 if (this._timelinesTreeOutline.selectedTreeElement)
-                    this._previousTimelineSelection = this._timelinesTreeOutline.selectedTreeElement.representedObject;
+                    this._previousSelectedTimelineType = this._timelinesTreeOutline.selectedTreeElement.representedObject.type;
+                timelineType = WebInspector.TimelineRecord.Type.RenderingFrame;
+            }
 
-                console.assert(this._displayedRecording);
-                this.showTimelineViewForTimeline(this._displayedRecording.timelines.get(WebInspector.TimelineRecord.Type.RenderingFrame));
-            } else if (this._previousTimelineSelection) {
-                this.showTimelineViewForTimeline(this._previousTimelineSelection);
-                this._previousTimelineSelection = null;
+            if (timelineType) {
+                console.assert(this._displayedRecording.timelines.has(timelineType), timelineType);
+                this.showTimelineViewForTimeline(this._displayedRecording.timelines.get(timelineType));
             } else
                 this.showTimelineOverview();
         }
@@ -788,13 +791,18 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         var chart = this._frameSelectionChartRow;
         var records = getSelectedRecords.call(this);
+        var chartData = Object.keys(WebInspector.RenderingFrameTimelineRecord.TaskType).map(function(taskTypeKey) {
+            var taskType = WebInspector.RenderingFrameTimelineRecord.TaskType[taskTypeKey];
+            var label = WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType(taskType);
+            var value = records.reduce(function(previousValue, currentValue) { return previousValue + currentValue.durationForTask(taskType); }, 0);
+            var color = this._chartColors.get(taskType);
+            return {label, value, color};
+        }, this);
+
+        this._frameSelectionChartRow.data = chartData;
+
         if (!records.length) {
             this._frameSelectionChartRow.title = WebInspector.UIString("Frames: None Selected");
-            this._frameSelectionChartRow.data = [
-                {label: WebInspector.UIString("Layout"), value: 0, color: this._chartColors.layout},
-                {label: WebInspector.UIString("Script"), value: 0, color: this._chartColors.script},
-                {label: WebInspector.UIString("Other"), value: 0, color: this._chartColors.other}
-            ];
             return;
         }
 
@@ -808,24 +816,6 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             this._frameSelectionChartRow.title = WebInspector.UIString("Frame: %d (%s – %s)").format(firstRecord.frameNumber,
                 Number.secondsToString(firstRecord.startTime), Number.secondsToString(lastRecord.endTime));
         }
-
-        function durationForRecordType(type)
-        {
-            return records.reduce(function(previousValue, currentValue) {
-                return previousValue + (type ? currentValue.durationForRecords(type) : currentValue.durationRemainder);
-            }, 0);
-        }
-
-        var totalTime = lastRecord.endTime - firstRecord.startTime;
-        var layoutTime = durationForRecordType(WebInspector.TimelineRecord.Type.Layout);
-        var scriptTime = durationForRecordType(WebInspector.TimelineRecord.Type.Script);
-        var otherTime = durationForRecordType();
-
-        this._frameSelectionChartRow.data = [
-            {label: WebInspector.UIString("Layout"), value: layoutTime, color: this._chartColors.layout},
-            {label: WebInspector.UIString("Script"), value: scriptTime, color: this._chartColors.script},
-            {label: WebInspector.UIString("Other"), value: otherTime, color: this._chartColors.other}
-        ];
     }
 
     // These methods are only used when ReplayAgent is available.

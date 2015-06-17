@@ -1,3 +1,475 @@
+2015-06-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose UIDelegate::UIClient::close via WKUIDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=145957
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/OpenAndCloseWindow.mm:
+        (-[OpenAndCloseWindowUIDelegate webViewDidClose:]): Renamed from -_webViewClose:.
+
+2015-06-15  Chris Fleizach  <cfleizach@apple.com>
+
+        AX:  iOS accessibility tests are not running because we need WKTR support
+        https://bugs.webkit.org/show_bug.cgi?id=145991
+
+        Reviewed by Daniel Bates.
+
+        Add support for WKTR iOS accessibility.
+        Utilize the notification handling mechanisms that Mac already uses.
+        Rename iphone* DRT methods to either use existing methods that are similar, or rename to more generic names.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (stringForSelectionCallback):
+        (getIdentifierCallback):
+        (getTraitsCallback):
+        (getElementTextPositionCallback):
+        (getElementTextLengthCallback):
+        (AccessibilityUIElement::getJSClass):
+        (getIPhoneLabelCallback): Deleted.
+        (getIPhoneHintCallback): Deleted.
+        (getIPhoneValueCallback): Deleted.
+        (getIPhoneIdentifierCallback): Deleted.
+        (getIPhoneTraitsCallback): Deleted.
+        (getIPhoneIsElementCallback): Deleted.
+        (getIPhoneElementTextPositionCallback): Deleted.
+        (getIPhoneElementTextLengthCallback): Deleted.
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::identifier):
+        (AccessibilityUIElement::traits):
+        (AccessibilityUIElement::elementTextPosition):
+        (AccessibilityUIElement::elementTextLength):
+        (AccessibilityUIElement::description):
+        (AccessibilityUIElement::orientation):
+        (AccessibilityUIElement::stringValue):
+        (AccessibilityUIElement::language):
+        (AccessibilityUIElement::helpText):
+        (AccessibilityUIElement::intValue):
+        (AccessibilityUIElement::isSelected):
+        (AccessibilityUIElement::isExpanded):
+        (AccessibilityUIElement::documentURI):
+        (AccessibilityUIElement::addNotificationListener):
+        (AccessibilityUIElement::removeNotificationListener):
+        (AccessibilityUIElement::isFocusable):
+        (AccessibilityUIElement::isIgnored):
+        (AccessibilityUIElement::hasPopup):
+        (AccessibilityUIElement::iphoneLabel): Deleted.
+        (AccessibilityUIElement::iphoneHint): Deleted.
+        (AccessibilityUIElement::iphoneValue): Deleted.
+        (AccessibilityUIElement::iphoneIdentifier): Deleted.
+        (AccessibilityUIElement::iphoneTraits): Deleted.
+        (AccessibilityUIElement::iphoneIsElement): Deleted.
+        (AccessibilityUIElement::iphoneElementTextPosition): Deleted.
+        (AccessibilityUIElement::iphoneElementTextLength): Deleted.
+        (_accessibilityNotificationCallback): Deleted.
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::isValid):
+        (WTR::AccessibilityUIElement::identifier):
+        (WTR::AccessibilityUIElement::traits):
+        (WTR::AccessibilityUIElement::elementTextPosition):
+        (WTR::AccessibilityUIElement::elementTextLength):
+        (WTR::AccessibilityUIElement::stringForSelection):
+        (WTR::AccessibilityUIElement::elementsForRange):
+        (WTR::AccessibilityUIElement::increaseTextSelection):
+        (WTR::AccessibilityUIElement::decreaseTextSelection):
+        (WTR::AccessibilityUIElement::linkedElement):
+        (WTR::AccessibilityUIElement::headerElementAtIndex):
+        (WTR::AccessibilityUIElement::assistiveTechnologySimulatedFocus):
+        (WTR::AccessibilityUIElement::characterAtOffset):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityControllerIOS.mm:
+        (WTR::findAccessibleObjectById):
+        (WTR::AccessibilityController::accessibleElementById):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (+[NSString stringWithJSStringRef:]):
+        (-[NSString createJSStringRef]):
+        (WTR::convertNSArrayToVector):
+        (WTR::concatenateAttributeAndValue):
+        (WTR::AccessibilityUIElement::AccessibilityUIElement):
+        (WTR::AccessibilityUIElement::isEqual):
+        (WTR::AccessibilityUIElement::headerElementAtIndex):
+        (WTR::AccessibilityUIElement::linkedElement):
+        (WTR::AccessibilityUIElement::getLinkedUIElements):
+        (WTR::AccessibilityUIElement::elementAtPoint):
+        (WTR::convertElementsToObjectArray):
+        (WTR::AccessibilityUIElement::elementsForRange):
+        (WTR::AccessibilityUIElement::indexOfChild):
+        (WTR::AccessibilityUIElement::stringAttributeValue):
+        (WTR::AccessibilityUIElement::description):
+        (WTR::AccessibilityUIElement::orientation):
+        (WTR::AccessibilityUIElement::stringValue):
+        (WTR::AccessibilityUIElement::language):
+        (WTR::AccessibilityUIElement::helpText):
+        (WTR::AccessibilityUIElement::x):
+        (WTR::AccessibilityUIElement::clickPointX):
+        (WTR::AccessibilityUIElement::clickPointY):
+        (WTR::AccessibilityUIElement::intValue):
+        (WTR::AccessibilityUIElement::minValue):
+        (WTR::AccessibilityUIElement::maxValue):
+        (WTR::AccessibilityUIElement::valueDescription):
+        (WTR::AccessibilityUIElement::isSelected):
+        (WTR::AccessibilityUIElement::isSelectedOptionActive):
+        (WTR::AccessibilityUIElement::stringForRange):
+        (WTR::AccessibilityUIElement::attributedStringForRange):
+        (WTR::AccessibilityUIElement::attributesOfHeader):
+        (WTR::AccessibilityUIElement::traits):
+        (WTR::AccessibilityUIElement::identifier):
+        (WTR::AccessibilityUIElement::rowCount):
+        (WTR::AccessibilityUIElement::rowIndexRange):
+        (WTR::AccessibilityUIElement::columnIndexRange):
+        (WTR::AccessibilityUIElement::cellForColumnAndRow):
+        (WTR::AccessibilityUIElement::horizontalScrollbar):
+        (WTR::AccessibilityUIElement::documentURI):
+        (WTR::AccessibilityUIElement::assistiveTechnologySimulatedFocus):
+        (WTR::AccessibilityUIElement::increaseTextSelection):
+        (WTR::AccessibilityUIElement::decreaseTextSelection):
+        (WTR::AccessibilityUIElement::stringForSelection):
+        (WTR::AccessibilityUIElement::elementTextPosition):
+        (WTR::AccessibilityUIElement::elementTextLength):
+        (WTR::AccessibilityUIElement::url):
+        (WTR::AccessibilityUIElement::addNotificationListener):
+        (WTR::AccessibilityUIElement::removeNotificationListener):
+        (WTR::AccessibilityUIElement::isFocusable):
+        (WTR::AccessibilityUIElement::isIgnored):
+        (WTR::AccessibilityUIElement::hasPopup):
+        (WTR::AccessibilityUIElement::mathPrescriptsDescription):
+        (WTR::_CGPathEnumerationIteration):
+        (WTR::AccessibilityUIElement::pathDescription):
+        (WTR::AccessibilityUIElement::supportedActions):
+
+2015-06-16  Mark Lam  <mark.lam@apple.com>
+
+        Use NakedPtr<Exception>& to return exception results.
+        https://bugs.webkit.org/show_bug.cgi?id=145870
+
+        Reviewed by Anders Carlsson and Filip Pizlo.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/NakedPtr.cpp: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::nakedPtrFoo):
+
+2015-06-16  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Unreviewed. Adding myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Add test expectations for El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=146005
+
+        Rubber-stamped by Dan Bernstein.
+
+        Add appropriate tools code.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/ElCapitan.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/ElCapitan@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        Added dashboard support.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        Trigger the right build queues on check-in.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        * Scripts/webkitpy/common/system/platforminfo_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        * Scripts/webkitpy/port/mac.py:
+        * Scripts/webkitpy/port/mac_unittest.py:
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        Added cases for El Capitan, and updated tests for new baseline search paths.
+
+2015-06-15  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Make max NFA size and max rule count user defaults.
+        https://bugs.webkit.org/show_bug.cgi?id=145663
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-06-12  Alexey Proskuryakov  <ap@apple.com>
+
+        -[WKWebView evaluateJavaScript] provides a misleading error when the return cannot be serialized
+        https://bugs.webkit.org/show_bug.cgi?id=145900
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewEvaluateJavaScript.mm:
+        (TEST): Added tests.
+
+2015-06-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Custom URI schemes don't work for requests containing a fragment identifier
+        https://bugs.webkit.org/show_bug.cgi?id=145969
+
+        Reviewed by Sergio Villar Senin.
+
+        Add a test case to the custom URI schemes unit test.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextURIScheme):
+
+2015-06-15  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix deprecated-register warning in the generated WebKitMarshal.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145922
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/glib-warning-fix.patch: Added.
+
+2015-06-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Update springLoadingHighlight type
+        https://bugs.webkit.org/show_bug.cgi?id=145939
+        rdar://problem/20880213
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm:
+
+2015-06-12  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Move cursor to (10, 0) instead of (0, 0) and polish the mouse move code
+        https://bugs.webkit.org/show_bug.cgi?id=145945
+
+        Reviewed by Stephanie Lewis.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.prepareEnv):
+        (OSXBrowserDriver.moveCursor): Deleted.
+        (OSXBrowserDriver): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.prepareEnv):
+
+2015-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        Revise update-webkit-dependency to use LWP::UserAgent instead of LWP::Simple for better handling of https
+        https://bugs.webkit.org/show_bug.cgi?id=145938
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/update-webkit-dependency: Switch from LWP::Simple to
+        LWP::UserAgent to get access to more robust HTTPS support.
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [GTK] Fix return type warning in WebViewTest.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145914
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::isEditable):
+
+2015-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Move files under Source/WTF/wtf/gobject to Source/WTF/wtf/glib
+        https://bugs.webkit.org/show_bug.cgi?id=145799
+
+        Reviewed by Carlos Garcia Campos.
+
+        Update header inclusions for headers that have been moved
+        to Source/WTF/wtf/glib/.
+
+        Also move the unit tests under TestWebKitAPI/Tests/WTF/gobject/
+        to TestWebKitAPI/Tests/WTF/glib/ and update the build rules.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WTF/glib/GMainLoopSource.cpp: Renamed from Tools/TestWebKitAPI/Tests/WTF/gobject/GMainLoopSource.cpp.
+        (TestWebKitAPI::GMainLoopSourceTest::GMainLoopSourceTest):
+        (TestWebKitAPI::GMainLoopSourceTest::~GMainLoopSourceTest):
+        (TestWebKitAPI::GMainLoopSourceTest::runLoop):
+        (TestWebKitAPI::GMainLoopSourceTest::delayedFinish):
+        (TestWebKitAPI::GMainLoopSourceTest::finish):
+        (TestWebKitAPI::GMainLoopSourceTest::source):
+        (TestWebKitAPI::basicRescheduling):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::reentrantRescheduling):
+        (TestWebKitAPI::cancelRepeatingSourceDuringDispatch):
+        (TestWebKitAPI::basicDestroyCallbacks):
+        (TestWebKitAPI::destroyCallbacksAfterCancellingDuringDispatch):
+        (TestWebKitAPI::destroyCallbacksAfterReschedulingDuringDispatch):
+        * TestWebKitAPI/Tests/WTF/glib/GUniquePtr.cpp: Renamed from Tools/TestWebKitAPI/Tests/WTF/gobject/GUniquePtr.cpp.
+        (log):
+        (takeLogStr):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::returnOutChar):
+        * TestWebKitAPI/Tests/WTF/glib/WorkQueueGLib.cpp:
+        * TestWebKitAPI/Tests/WTF/gobject/GMainLoopSource.cpp:
+        (TestWebKitAPI::GMainLoopSourceTest::GMainLoopSourceTest): Deleted.
+        (TestWebKitAPI::GMainLoopSourceTest::~GMainLoopSourceTest): Deleted.
+        (TestWebKitAPI::GMainLoopSourceTest::runLoop): Deleted.
+        (TestWebKitAPI::GMainLoopSourceTest::delayedFinish): Deleted.
+        (TestWebKitAPI::GMainLoopSourceTest::finish): Deleted.
+        (TestWebKitAPI::GMainLoopSourceTest::source): Deleted.
+        (TestWebKitAPI::basicRescheduling): Deleted.
+        (TestWebKitAPI::TEST): Deleted.
+        (TestWebKitAPI::reentrantRescheduling): Deleted.
+        (TestWebKitAPI::cancelRepeatingSourceDuringDispatch): Deleted.
+        (TestWebKitAPI::basicDestroyCallbacks): Deleted.
+        (TestWebKitAPI::destroyCallbacksAfterCancellingDuringDispatch): Deleted.
+        (TestWebKitAPI::destroyCallbacksAfterReschedulingDuringDispatch): Deleted.
+        * TestWebKitAPI/Tests/WTF/gobject/GUniquePtr.cpp:
+        (log): Deleted.
+        (takeLogStr): Deleted.
+        (TestWebKitAPI::TEST): Deleted.
+        (TestWebKitAPI::returnOutChar): Deleted.
+        * TestWebKitAPI/Tests/WebKit2/gtk/InputMethodFilter.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeFilterTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMNodeTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/DOMXPathNSResolverTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAuthentication.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspector.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspectorServer.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestPrinting.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestUIClient.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebExtensions.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitAccessibility.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitFaviconDatabase.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitFindController.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitPolicyClient.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSettings.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebViewEditor.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.cpp:
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.h:
+        * TestWebKitAPI/gtk/PlatformUtilitiesGtk.cpp:
+        * TestWebKitAPI/gtk/PlatformWebViewGtk.cpp:
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebKitTestBus.cpp:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebKitTestBus.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebKitTestServer.cpp:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebKitTestServer.h:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityControllerAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.h:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        * WebKitTestRunner/InjectedBundle/gtk/ActivateFontsGtk.cpp:
+        * WebKitTestRunner/InjectedBundle/gtk/InjectedBundleUtilities.cpp:
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        * WebKitTestRunner/PlatformGTK.cmake:
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Fix deprecated declarations warnings related to WK2 versioned structs
+        https://bugs.webkit.org/show_bug.cgi?id=145913
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/Tests/WebKit2/Geolocation.cpp:
+        (TestWebKitAPI::setupGeolocationProvider):
+        * TestWebKitAPI/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames.cpp:
+        (TestWebKitAPI::setPageLoaderClient):
+        * TestWebKitAPI/Tests/WebKit2/UserMessage.cpp:
+        (TestWebKitAPI::WebKit2UserMessageRoundTripTest::setPageLoaderClient):
+        * WebKitTestRunner/GeolocationProviderMock.cpp:
+        (WTR::GeolocationProviderMock::GeolocationProviderMock):
+        * WebKitTestRunner/WebNotificationProvider.cpp:
+        (WTR::WebNotificationProvider::provider):
+
+2015-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the libusrsctp build with clang
+        https://bugs.webkit.org/show_bug.cgi?id=145128
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+        * gtk/jhbuild.modules:
+
+2015-06-11  Mark Lam  <mark.lam@apple.com>
+
+        WebCore::reportException() needs to be able to accept a raw thrown value in addition to Exception objects.
+        https://bugs.webkit.org/show_bug.cgi?id=145872
+
+        Reviewed by Michael Saboff.
+
+        * TestWebKitAPI/Tests/mac/WebViewDidCreateJavaScriptContext.mm:
+        (-[DidCreateJavaScriptContextFrameLoadDelegate webView:didCreateJavaScriptContext:forFrame:]):
+        - Exercises the JSC ObjC API to call a function which throws an exception.  That
+          exception will be returned as a JSValue instead of an Exception object.  We
+          will use this JSValue to test WebCore::reportException() to confirm that it is
+          able to handle an exception value which is not an Exception object.
+
+2015-06-11  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Move cursor to corner and fix safari window size before running benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=145858
+
+        Reviewed by Ryosuke Niwa
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.prepareEnv):
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.moveCursor):
+        (OSXBrowserDriver.getScreenSize):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver.launchUrl):
+        (OSXChromeCanaryDriver.launchUrl):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver.launchUrl):
+        (OSXFirefoxNightlyDriver.launchUrl):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.prepareEnv):
+        (OSXSafariDriver):
+        (OSXSafariDriver.maximizeWindow):
+
+2015-06-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Cannot run run-webkit-tests with public SDK; LayoutTestRelay fails to build
+        https://bugs.webkit.org/show_bug.cgi?id=145319
+
+        Reviewed by David Kilzer.
+
+        Add SPI wrapper header for CoreSimulator and update the source files to reference
+        it instead of directly referencing the CoreSimulator header.
+
+        * LayoutTestRelay/LayoutTestRelay.xcodeproj/project.pbxproj:
+        * LayoutTestRelay/LayoutTestRelay/CoreSimulatorSPI.h: Added.
+        * LayoutTestRelay/LayoutTestRelay/LTRelayController.m:
+        * LayoutTestRelay/LayoutTestRelay/main.m:
+
+2015-06-10  KwangHyuk Kim  <hyuki.kim@samsung.com>
+
+        [EFL] dimmed area for popup does not cover the fullscreen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=145133
+
+        Reviewed by Gyuyoung Kim.
+
+        By calling elm_win_resize_object_add(), popup was added as a resize object of elm_win.
+        as a result, popup can cover the fullscreen area when it enters a fullscreen mode.
+
+        * MiniBrowser/efl/main.c:
+        (on_fullscreen_accept):
+        (on_fullscreen_deny):
+        (on_fullscreen_enter):
+
 2015-06-10  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r185442.

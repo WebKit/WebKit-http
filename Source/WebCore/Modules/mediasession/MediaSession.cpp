@@ -75,14 +75,40 @@ void MediaSession::releaseSession()
 {
 }
 
+bool MediaSession::invoke()
+{
+    // 4.4 Activating a media session
+    // 1. If we're already ACTIVE then return success.
+    if (m_currentState == State::Active)
+        return true;
+
+    // 2. Optionally, based on platform conventions, request the most appropriate platform-level media focus for media
+    //    session based on its current media session type.
+
+    // 3. Run these substeps...
+
+    // 4. Set our current state to ACTIVE and return success.
+    m_currentState = State::Active;
+    return true;
+}
+
 void MediaSession::togglePlayback()
 {
-    for (auto* element : m_activeParticipatingElements) {
+    ASSERT(!m_iteratedActiveParticipatingElements);
+
+    HashSet<HTMLMediaElement*> activeParticipatingElementsCopy = m_activeParticipatingElements;
+    m_iteratedActiveParticipatingElements = &activeParticipatingElementsCopy;
+
+    while (!activeParticipatingElementsCopy.isEmpty()) {
+        HTMLMediaElement* element = activeParticipatingElementsCopy.takeAny();
+
         if (element->paused())
             element->play();
         else
             element->pause();
     }
+
+    m_iteratedActiveParticipatingElements = nullptr;
 }
 
 }

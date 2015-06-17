@@ -452,6 +452,7 @@ void FrameView::invalidateRect(const IntRect& rect)
 
 void FrameView::setFrameRect(const IntRect& newRect)
 {
+    Ref<FrameView> protect(*this);
     IntRect oldRect = frameRect();
     if (newRect == oldRect)
         return;
@@ -1130,13 +1131,9 @@ inline void FrameView::forceLayoutParentViewIfNeeded()
     // FrameView for a layout. After that the RenderEmbeddedObject (ownerRenderer) carries the
     // correct size, which RenderSVGRoot::computeReplacedLogicalWidth/Height rely on, when laying
     // out for the first time, or when the RenderSVGRoot size has changed dynamically (eg. via <script>).
-    Ref<FrameView> frameView(ownerRenderer->view().frameView());
 
-    // Mark the owner renderer as needing layout.
     ownerRenderer->setNeedsLayoutAndPrefWidthsRecalc();
-
-    // Synchronously enter layout, to layout the view containing the host object/embed/iframe.
-    frameView->layout();
+    ownerRenderer->view().frameView().scheduleRelayout();
 }
 
 void FrameView::layout(bool allowSubtree)
@@ -2935,7 +2932,8 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
     if (!weakRenderer)
         return;
 
-    embeddedObject.updateWidgetPosition();
+    auto ignoreWidgetState = embeddedObject.updateWidgetPosition();
+    UNUSED_PARAM(ignoreWidgetState);
 }
 
 bool FrameView::updateEmbeddedObjects()
@@ -4714,8 +4712,10 @@ void FrameView::updateWidgetPositions()
     // scripts in response to NPP_SetWindow, for example), so we need to keep the Widgets
     // alive during enumeration.
     for (auto& widget : collectAndProtectWidgets(m_widgetsInRenderTree)) {
-        if (RenderWidget* renderWidget = RenderWidget::find(widget.get()))
-            renderWidget->updateWidgetPosition();
+        if (RenderWidget* renderWidget = RenderWidget::find(widget.get())) {
+            auto ignoreWidgetState = renderWidget->updateWidgetPosition();
+            UNUSED_PARAM(ignoreWidgetState);
+        }
     }
 }
 
