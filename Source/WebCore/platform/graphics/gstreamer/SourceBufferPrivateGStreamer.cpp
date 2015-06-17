@@ -83,11 +83,10 @@ void SourceBufferPrivateGStreamer::abort()
 
 void SourceBufferPrivateGStreamer::removedFromMediaSource()
 {
-    if (!m_mediaSource || !m_client)
-        return;
-
-    m_mediaSource->removeSourceBuffer(this);
-    m_client->removedFromMediaSource(this);
+    if (m_mediaSource)
+        m_mediaSource->removeSourceBuffer(this);
+    if (m_client)
+        m_client->removedFromMediaSource(this);
 }
 
 MediaPlayer::ReadyState SourceBufferPrivateGStreamer::readyState() const
