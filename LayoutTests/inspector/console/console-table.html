@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script src="../../http/tests/inspector/inspector-test.js"></script>
+<script>
+function Person(firstName, lastName) {
+    this.firstName = firstName;
+    this.lastName = lastName;
+}
+
+var john = new Person("John", "Smith");
+var jane = new Person("Jane", "Doe");
+var emily = new Person("Emily", "Jones");
+
+function test()
+{
+    var currentStepIndex = 0;
+    var steps = [
+        "console.table([])", // Empty.
+        "console.table(['apple', 'orange', 'banana'])", // Index (array index), Value
+        "console.table({firstName: 'John', lastName: 'Smith'})", // Index (property name), Value (property value)
+        "console.table([['John', 'Smith'], ['Jane', 'Doe'], ['Emily', 'Jones']])", // Index, 0, 1
+        "console.table([john, jane, emily])", // Index, firstName, lastName
+        "console.table([john, jane, emily], ['firstName'])", // Index, firstName (at least).
+    ];
+
+    function remoteObjectJSONFilter(key, value)
+    {
+        if (key === "_objectId" || key === "_stackTrace")
+            return "<filtered>";
+        return value;
+    }
+
+    WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.MessageAdded, function(event) {
+        var message = event.data.message;
+        InspectorTest.assert(message instanceof WebInspector.ConsoleMessage);
+        InspectorTest.log("\nSTEP: " + steps[currentStepIndex]);
+        InspectorTest.log(JSON.stringify(message, remoteObjectJSONFilter, "  "));
+
+        if (++currentStepIndex >= steps.length)
+            InspectorTest.completeTest();
+    });
+
+    for (var step of steps)
+        WebInspector.runtimeManager.evaluateInInspectedWindow(step, "test", false, true, false, true, false, function(){});
+}
+</script>
+</head>
+<body onload="runTest();">
+</body>
+</html>

@@ -1,3 +1,71 @@
+2015-06-16  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Remove duplicated PUBLIC argument in OptionsEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=146035
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-06-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [Wayland] Should be possible to build with support for both X11 and Wayland.
+        https://bugs.webkit.org/show_bug.cgi?id=145701
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsGTK.cmake: Remove conflicting options.
+
+2015-06-15  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        [iOS] Crash long pressing on <input type=file>
+        https://bugs.webkit.org/show_bug.cgi?id=146009
+        <rdar://problem/21234453>
+
+        Reviewed by Ryosuke Niwa.
+
+        * ManualTests/ios/long-press-input-type-file-crash.html: Added.
+
+2015-06-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Rollout accidental Xcode project change.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme:
+
+2015-06-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Bump EWebKit version from 1.11.0 to 1.14.0
+        https://bugs.webkit.org/show_bug.cgi?id=145909
+
+        Reviewed by Csaba Osztrogonác.
+
+        Bump EWebKit version based on efl library version used by the EWebKit.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185453.
+        https://bugs.webkit.org/show_bug.cgi?id=145881
+
+        it broke the 32-bit build (Requested by clopez on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] [Wayland] Should be possible to build with support for
+        both X11 and Wayland."
+        https://bugs.webkit.org/show_bug.cgi?id=145701
+        http://trac.webkit.org/changeset/185453
+
+2015-06-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [Wayland] Should be possible to build with support for both X11 and Wayland.
+        https://bugs.webkit.org/show_bug.cgi?id=145701
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake: Remove conflicting options.
+
 2015-06-03  Daniel Bates  <dabates@apple.com>
 
         Caps lock indicator should not be shown in read-only or disabled field

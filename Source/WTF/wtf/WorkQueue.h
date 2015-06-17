@@ -39,8 +39,8 @@
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-#include <wtf/gobject/GRefPtr.h>
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GRefPtr.h>
+#include <wtf/glib/GSourceWrap.h>
 #elif PLATFORM(EFL)
 #include <DispatchQueueEfl.h>
 #elif OS(WINDOWS)

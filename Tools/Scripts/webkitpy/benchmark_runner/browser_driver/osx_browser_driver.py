@@ -4,6 +4,8 @@ import os
 import subprocess
 
 from AppKit import NSRunningApplication
+from AppKit import NSScreen
+from Quartz import CGWarpMouseCursorPosition
 from browser_driver import BrowserDriver
 
 
@@ -15,6 +17,7 @@ class OSXBrowserDriver(BrowserDriver):
 
     def prepareEnv(self):
         self.closeBrowsers()
+        CGWarpMouseCursorPosition((10, 0))
 
     def closeBrowsers(self):
         self.terminateProcesses(self.bundleIdentifier)
@@ -43,3 +46,7 @@ class OSXBrowserDriver(BrowserDriver):
         process = subprocess.Popen(args, env=env)
         subprocess.Popen(["/usr/bin/caffeinate", "-disw", str(process.pid)])
         return process
+
+    @classmethod
+    def screenSize(cls):
+        return NSScreen.mainScreen().frame().size

@@ -32,7 +32,6 @@
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheFileSystem.h"
 #include "NetworkCacheIOChannel.h"
-#include <wtf/PageBlock.h>
 #include <wtf/RandomNumber.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -126,6 +125,7 @@ static void deleteEmptyRecordsDirectories(const String& recordsPath)
 Storage::Storage(const String& baseDirectoryPath)
     : m_basePath(baseDirectoryPath)
     , m_recordsPath(makeRecordsDirectoryPath(baseDirectoryPath))
+    , m_writeOperationDispatchTimer(*this, &Storage::dispatchPendingWriteOperations)
     , m_ioQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent))
     , m_backgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.background", WorkQueue::Type::Concurrent, WorkQueue::QOS::Background))
     , m_serialBackgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage.serialBackground", WorkQueue::Type::Serial, WorkQueue::QOS::Background))
@@ -221,6 +221,8 @@ void Storage::synchronize()
 
         m_blobStorage.synchronize();
 
+        deleteEmptyRecordsDirectories(recordsPath());
+
         LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed size=%zu count=%d", recordsSize, count);
     });
 }
@@ -269,16 +271,6 @@ String Storage::bodyPathForKey(const Key& key) const
     return bodyPathForRecordPath(recordPathForKey(key));
 }
 
-static unsigned hashData(const Data& data)
-{
-    StringHasher hasher;
-    data.apply([&hasher](const uint8_t* data, size_t size) {
-        hasher.addCharacters(data, size);
-        return true;
-    });
-    return hasher.hash();
-}
-
 struct RecordMetaData {
     RecordMetaData() { }
     explicit RecordMetaData(const Key& key)
@@ -290,12 +282,14 @@ struct RecordMetaData {
     Key key;
     // FIXME: Add encoder/decoder for time_point.
     std::chrono::milliseconds epochRelativeTimeStamp;
-    unsigned headerChecksum;
-    uint64_t headerOffset;
+    SHA1::Digest headerHash;
     uint64_t headerSize;
     SHA1::Digest bodyHash;
     uint64_t bodySize;
     bool isBodyInline;
+
+    // Not encoded as a field. Header starts immediately after meta data.
+    uint64_t headerOffset;
 };
 
 static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
@@ -309,7 +303,7 @@ static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
             return false;
         if (!decoder.decode(metaData.epochRelativeTimeStamp))
             return false;
-        if (!decoder.decode(metaData.headerChecksum))
+        if (!decoder.decode(metaData.headerHash))
             return false;
         if (!decoder.decode(metaData.headerSize))
             return false;
@@ -341,7 +335,7 @@ static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, D
     }
 
     headerData = fileData.subrange(metaData.headerOffset, metaData.headerSize);
-    if (metaData.headerChecksum != hashData(headerData)) {
+    if (metaData.headerHash != computeSHA1(headerData)) {
         LOG(NetworkCacheStorage, "(NetworkProcess) header checksum mismatch");
         return false;
     }
@@ -391,7 +385,7 @@ static Data encodeRecordMetaData(const RecordMetaData& metaData)
     encoder << metaData.cacheStorageVersion;
     encoder << metaData.key;
     encoder << metaData.epochRelativeTimeStamp;
-    encoder << metaData.headerChecksum;
+    encoder << metaData.headerHash;
     encoder << metaData.headerSize;
     encoder << metaData.bodyHash;
     encoder << metaData.bodySize;
@@ -433,7 +427,7 @@ Data Storage::encodeRecord(const Record& record, Optional<BlobStorage::Blob> blo
 
     RecordMetaData metaData(record.key);
     metaData.epochRelativeTimeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(record.timeStamp.time_since_epoch());
-    metaData.headerChecksum = hashData(record.header);
+    metaData.headerHash = computeSHA1(record.header);
     metaData.headerSize = record.header.size();
     metaData.bodyHash = blob ? blob.value().hash : computeSHA1(record.body);
     metaData.bodySize = record.body.size();
@@ -543,7 +537,7 @@ void Storage::dispatchPendingReadOperations()
         auto& pendingRetrieveQueue = m_pendingReadOperationsByPriority[priority];
         if (pendingRetrieveQueue.isEmpty())
             continue;
-        auto readOperation = pendingRetrieveQueue.takeFirst();
+        auto readOperation = pendingRetrieveQueue.takeLast();
         auto& read = *readOperation;
         m_activeReadOperations.add(WTF::move(readOperation));
         dispatchReadOperation(read);
@@ -569,14 +563,14 @@ void Storage::dispatchPendingWriteOperations()
 {
     ASSERT(RunLoop::isMain());
 
-    const int maximumActiveWriteOperationCount { 3 };
+    const int maximumActiveWriteOperationCount { 1 };
 
     while (!m_pendingWriteOperations.isEmpty()) {
         if (m_activeWriteOperations.size() >= maximumActiveWriteOperationCount) {
             LOG(NetworkCacheStorage, "(NetworkProcess) limiting parallel writes");
             return;
         }
-        auto writeOperation = m_pendingWriteOperations.takeFirst();
+        auto writeOperation = m_pendingWriteOperations.takeLast();
         auto& write = *writeOperation;
         m_activeWriteOperations.add(WTF::move(writeOperation));
 
@@ -659,7 +653,7 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
     if (retrieveFromMemory(m_activeWriteOperations, key, completionHandler))
         return;
 
-    m_pendingReadOperationsByPriority[priority].append(new ReadOperation { key, WTF::move(completionHandler) } );
+    m_pendingReadOperationsByPriority[priority].prepend(new ReadOperation { key, WTF::move(completionHandler) } );
     dispatchPendingReadOperations();
 }
 
@@ -671,12 +665,19 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
     if (!m_capacity)
         return;
 
-    m_pendingWriteOperations.append(new WriteOperation { record, WTF::move(mappedBodyHandler) });
+    m_pendingWriteOperations.prepend(new WriteOperation { record, WTF::move(mappedBodyHandler) });
 
     // Add key to the filter already here as we do lookups from the pending operations too.
     addToRecordFilter(record.key);
 
-    dispatchPendingWriteOperations();
+    bool isInitialWrite = m_pendingWriteOperations.size() == 1;
+    if (!isInitialWrite)
+        return;
+
+    // Delay the start of writes a bit to avoid affecting early page load.
+    // Completing writes will dispatch more writes without delay.
+    static const auto initialWriteDelay = 1_s;
+    m_writeOperationDispatchTimer.startOneShot(initialWriteDelay);
 }
 
 void Storage::traverse(TraverseFlags flags, TraverseHandler&& traverseHandler)
@@ -850,8 +851,6 @@ void Storage::shrink()
                 m_blobStorage.remove(bodyPath);
             }
         });
-
-        deleteEmptyRecordsDirectories(recordsPath);
 
         RunLoop::main().dispatch([this] {
             m_shrinkInProgress = false;

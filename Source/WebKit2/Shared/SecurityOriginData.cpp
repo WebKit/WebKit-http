@@ -48,7 +48,7 @@ SecurityOriginData SecurityOriginData::fromSecurityOrigin(const SecurityOrigin& 
 
 Ref<SecurityOrigin> SecurityOriginData::securityOrigin() const
 {
-    return SecurityOrigin::create(protocol, host, port);
+    return SecurityOrigin::create(protocol.isolatedCopy(), host.isolatedCopy(), port);
 }
 
 void SecurityOriginData::encode(IPC::ArgumentEncoder& encoder) const
@@ -79,26 +79,6 @@ SecurityOriginData SecurityOriginData::isolatedCopy() const
     result.port = port;
 
     return result;
-}
-
-void performAPICallbackWithSecurityOriginDataVector(const Vector<SecurityOriginData>& originDatas, ArrayCallback* callback)
-{
-    if (!callback) {
-        // FIXME: Log error or assert.
-        return;
-    }
-    
-    Vector<RefPtr<API::Object>> securityOrigins;
-    securityOrigins.reserveInitialCapacity(originDatas.size());
-
-    for (const auto& originData : originDatas) {
-        RefPtr<API::Object> origin = API::SecurityOrigin::create(originData.protocol, originData.host, originData.port);
-        if (!origin)
-            continue;
-        securityOrigins.uncheckedAppend(WTF::move(origin));
-    }
-
-    callback->performCallbackWithReturnValue(API::Array::create(WTF::move(securityOrigins)).ptr());
 }
 
 bool operator==(const SecurityOriginData& a, const SecurityOriginData& b)

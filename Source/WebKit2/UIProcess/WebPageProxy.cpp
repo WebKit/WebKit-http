@@ -309,6 +309,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_userMediaPermissionRequestManager(*this)
     , m_viewState(ViewState::NoFlags)
     , m_viewWasEverInWindow(false)
+#if PLATFORM(IOS)
+    , m_alwaysRunsAtForegroundPriority(configuration.alwaysRunsAtForegroundPriority)
+#endif
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_maintainsInactiveSelection(false)
     , m_isEditable(false)
@@ -915,7 +918,7 @@ RefPtr<API::Navigation> WebPageProxy::loadData(API::Data* data, const String& MI
         reattachToWebProcess();
 
     m_process->assumeReadAccessToBaseURL(baseURL);
-    m_process->send(Messages::WebPage::LoadData(data->dataReference(), MIMEType, encoding, baseURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadData(navigation->navigationID(), data->dataReference(), MIMEType, encoding, baseURL, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
     m_process->responsivenessTimer()->start();
 
     return WTF::move(navigation);
@@ -1414,7 +1417,7 @@ void WebPageProxy::updateActivityToken()
         m_pageIsUserObservableCount = m_process->processPool().userObservablePageCount();
 
 #if PLATFORM(IOS)
-    if (!isViewVisible())
+    if (!isViewVisible() && !m_alwaysRunsAtForegroundPriority)
         m_activityToken = nullptr;
     else if (!m_activityToken)
         m_activityToken = m_process->throttler().foregroundActivityToken();
@@ -2571,10 +2574,10 @@ void WebPageProxy::countStringMatches(const String& string, FindOptions options,
     m_process->send(Messages::WebPage::CountStringMatches(string, options, maxMatchCount), m_pageID);
 }
 
-void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<void (API::SerializedScriptValue*, CallbackBase::Error)> callbackFunction)
+void WebPageProxy::runJavaScriptInMainFrame(const String& script, std::function<void (API::SerializedScriptValue*, bool hadException, CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
-        callbackFunction(nullptr, CallbackBase::Error::Unknown);
+        callbackFunction(nullptr, false, CallbackBase::Error::Unknown);
         return;
     }
 
@@ -3774,6 +3777,16 @@ void WebPageProxy::setMuted(bool muted)
     m_process->send(Messages::WebPage::SetMuted(muted), m_pageID);
 }
 
+#if ENABLE(MEDIA_SESSION)
+void WebPageProxy::handleMediaEvent(MediaEventType eventType)
+{
+    if (!isValid())
+        return;
+    
+    m_process->send(Messages::WebPage::HandleMediaEvent(eventType), m_pageID);
+}
+#endif
+
 void WebPageProxy::setMayStartMediaWhenInWindow(bool mayStartMedia)
 {
     if (mayStartMedia == m_mayStartMediaWhenInWindow)
@@ -4631,7 +4644,7 @@ void WebPageProxy::stringCallback(const String& resultString, uint64_t callbackI
     callback->performCallbackWithReturnValue(resultString.impl());
 }
 
-void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, uint64_t callbackID)
+void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, bool hadException, uint64_t callbackID)
 {
     auto callback = m_callbacks.take<ScriptValueCallback>(callbackID);
     if (!callback) {
@@ -4643,7 +4656,7 @@ void WebPageProxy::scriptValueCallback(const IPC::DataReference& dataReference, 
     data.reserveInitialCapacity(dataReference.size());
     data.append(dataReference.data(), dataReference.size());
 
-    callback->performCallbackWithReturnValue(data.size() ? API::SerializedScriptValue::adopt(data).get() : 0);
+    callback->performCallbackWithReturnValue(data.size() ? API::SerializedScriptValue::adopt(data).ptr() : nullptr, hadException);
 }
 
 void WebPageProxy::computedPagesCallback(const Vector<IntRect>& pageRects, double totalScaleFactorForPrinting, uint64_t callbackID)

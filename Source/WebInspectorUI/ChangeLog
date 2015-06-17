@@ -1,3 +1,228 @@
+2015-06-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspector Scripts evaluated in the page should not be searchable
+        https://bugs.webkit.org/show_bug.cgi?id=146040
+
+        Reviewed by Darin Adler.
+
+        Any script with a __WebInspector source URL will be hidden by the tools.
+        There were a number of ways the inspector could evaluate script on the page
+        without getting the sourceURL and therefore not getting hidden. Audit
+        all cases of Runtime.evaluate, Runtime.callFunctionOn, and
+        Debugger.evaluateOnCallFrame, to ensure we have an appropriate source URL.
+
+        * UserInterface/Base/Utilities.js:
+        (appendWebInspectorSourceURL):
+        Helper to append a __WebInspectorInternal__ sourceURL to a string that may
+        be evaluated directly on the inspected context.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.domNodeResolved):
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted): Deleted.
+        * UserInterface/Controllers/RuntimeManager.js:
+        * UserInterface/Models/DOMTree.js:
+        (WebInspector.DOMTree.prototype._requestRootDOMNode):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        Ensure all cases that evaluate directly on the inspected page / context
+        have the intenral source URL.
+
+2015-06-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r171645): up/down key navigation of timeline sidebar tree elements is broken when scope bar filters are applied
+        https://bugs.webkit.org/show_bug.cgi?id=142315
+
+        Reviewed by Timothy Hatcher.
+
+        TreeOutline's element traversal algorithms have been rewritten to correctly skip over unrevealed tree elements.
+        Previously traversal would halt after encountering a hidden element. We now use an iterative approach, with
+        each iteration producing the next (or previous) element, with respect to the last candidate element. Iteration
+        begins with the current node, and halts once a valid element is found or candidate elements are exhausted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement.shouldSkip):
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement):
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement.shouldSkip):
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement):
+
+2015-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Stylize Node Previews
+        https://bugs.webkit.org/show_bug.cgi?id=145990
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNodePreview):
+        Style a node preview like a DOMNode. It is a simple small snippet.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        Use node previews in ObjectPreviewViews.
+
+2015-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve some cases of "Object?" Type Annotations
+        https://bugs.webkit.org/show_bug.cgi?id=145954
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype._displayTypeName):
+        The TypeSet inclusions cover all types, so we can use the leastCommonAncestor
+        name as long as the type set is just object or object and null/undefined.
+        If the typeset includes other primitives then it will gracefully go down
+        below to become something like Object or (many). 
+
+2015-06-14  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Update icon so Rendering Frames timeline distinguish between layout and painting
+        https://bugs.webkit.org/show_bug.cgi?id=145956
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg:
+        Changed to use green color.
+
+2015-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table() with a list of objects no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=145952
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsTable):
+        Don't allow expanding a cosole.table message, and don't output the total
+        object even if the table preview was lossless, as the experience is poor.
+
+2015-06-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS Regions not displaying DOM Trees in inspector
+        https://bugs.webkit.org/show_bug.cgi?id=145903
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._updateContentFlowFromPayload):
+        Fix function inside the assertion to actually return a value.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.update):
+        For DOMTreeOutlines without a root node, don't clear the tree on updates,
+        since that will clear the nodes that have already been added explicitly.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        ResourceTab and sidebar can deal with ContentFlow related views.
+
+2015-06-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: IndexedDB data not showing for MDN example page
+        https://bugs.webkit.org/show_bug.cgi?id=145851
+
+        Reviewed by Anders Carlsson.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel.prototype._indexedDatabaseWasAdded):
+        Fix typo in Storage tab refactoring that was causing an
+        uncaught exception and not showing Indexed DBs.
+
+2015-06-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: font-family names interpreted as color
+        https://bugs.webkit.org/show_bug.cgi?id=123468
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorAdditions.js: Added logic to prevent color picker buttons from appearing before colors that come after a quote character (both " and ').
+
+2015-06-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames timeline should distinguish between layout and painting
+        https://bugs.webkit.org/show_bug.cgi?id=145856
+
+        Reviewed by Timothy Hatcher.
+
+        This patch formalizes the runloop task concept in the frontend, adds new Paint task type to the Rendering
+        Frames timeline, and reorders UI elements such as chart sections and frame "segments" to match the order in
+        which tasks are executed within the runloop.
+
+        We will need to make UI changes to the standard Timelines view in a follow up patch, since tree element icons
+        for Paint records now use a different color that those of other Layout records.
+
+        * UserInterface/Images/TimelineRecordPaint.svg:
+        Changed to use green color.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord):
+        (WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask.get validRecordForTaskType):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask.set return):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.get durationRemainder): Deleted.
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForRecords.get var): Deleted.
+        Added TaskType enum to decouple runloop task types from timeline record types, and removed duration remainder
+        support now that "Other" has an associated task type.
+
+        * UserInterface/Views/RenderingFrameTimelineDataGridNode.js:
+        (WebInspector.RenderingFrameTimelineDataGridNode.prototype.get data):
+        (WebInspector.RenderingFrameTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        Added new grid column for Paint task, reordered columns to be consistent with the rest of the UI.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-script):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-layout):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-paint):
+        (.timeline-record-frame > .frame > .duration): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-network): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-layout): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-script): Deleted.
+        Updated styles for Render Frame tasks.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype._updateChildElements.createDurationElement):
+        Updated to use Render Frame task types. Frame segment insertion order is now consistent with the rest of the UI.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart.chartData.Object.keys.map):
+        (WebInspector.TimelineSidebarPanel.set this):
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart.get this):
+        (WebInspector.TimelineSidebarPanel): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart.durationForRecordType): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart): Deleted.
+        Updated to use Render Frame task types.
+
+2015-06-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Wrong overview graph shown after switching from Frames to Timelines
+        https://bugs.webkit.org/show_bug.cgi?id=145778
+
+        Reviewed by Timothy Hatcher.
+
+        TimelineSidebarPanel stores a reference to the selected timeline before switching to the Rendering Frames view,
+        which is used to restore the tree selection, overview graph, and content views when switching back to the
+        standard Timelines view. However if another recording is created before switching, the previously selected
+        timeline tracked by the sidebar cannot be restored, since it doesn't belong to the active recording.
+
+        This is addressed by storing the previously selected timeline type, rather than the timeline object itself.
+        The type is also updated whenever the selected timeline in the tree outline changes, ensuring that the correct
+        timeline will always be restored.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if.get if):
+        (WebInspector.TimelineSidebarPanel.get else): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject): Deleted.
+
 2015-06-08  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Clearing active Timeline recording should stop capturing

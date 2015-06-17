@@ -21,7 +21,7 @@
 
 #include "FileSystem.h"
 #include <glib.h>
-#include <wtf/gobject/GUniquePtr.h>
+#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 // FIXME: Merge with SharedBufferGtk?

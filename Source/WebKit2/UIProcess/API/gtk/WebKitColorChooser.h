@@ -22,7 +22,7 @@
 
 #include "WebColorPickerGtk.h"
 #include "WebKitPrivate.h"
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/glib/GRefPtr.h>
 
 typedef struct _WebKitColorChooserRequest WebKitColorChooserRequest;
 
@@ -35,7 +35,7 @@ namespace WebKit {
 
 class WebKitColorChooser final : public WebColorPickerGtk {
 public:
-    static PassRefPtr<WebKitColorChooser> create(WebPageProxy&, const WebCore::Color&, const WebCore::IntRect&);
+    static Ref<WebKitColorChooser> create(WebPageProxy&, const WebCore::Color&, const WebCore::IntRect&);
     virtual ~WebKitColorChooser();
 
     const WebCore::IntRect& elementRect() const { return m_elementRect; }

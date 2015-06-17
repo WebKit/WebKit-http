@@ -181,6 +181,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGInPlaceAbstractState.cpp
     dfg/DFGInsertOSRHintsForUpdate.cpp
     dfg/DFGIntegerCheckCombiningPhase.cpp
+    dfg/DFGIntegerRangeOptimizationPhase.cpp
     dfg/DFGInvalidationPointInjectionPhase.cpp
     dfg/DFGJITCode.cpp
     dfg/DFGJITCompiler.cpp
@@ -421,7 +422,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ArrayBufferNeuteringWatchpoint.cpp
     runtime/ArrayBufferView.cpp
     runtime/ArrayConstructor.cpp
-    runtime/ArrayIteratorConstructor.cpp
     runtime/ArrayIteratorPrototype.cpp
     runtime/ArrayPrototype.cpp
     runtime/BasicBlockLocation.cpp
@@ -474,6 +474,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
     runtime/IteratorOperations.cpp
+    runtime/IteratorPrototype.cpp
     runtime/JSAPIValueWrapper.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
@@ -531,7 +532,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MapConstructor.cpp
-    runtime/MapIteratorConstructor.cpp
     runtime/MapIteratorPrototype.cpp
     runtime/MapPrototype.cpp
     runtime/MathCommon.cpp
@@ -565,7 +565,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ScopedArguments.cpp
     runtime/ScopedArgumentsTable.cpp
     runtime/SetConstructor.cpp
-    runtime/SetIteratorConstructor.cpp
     runtime/SetIteratorPrototype.cpp
     runtime/SetPrototype.cpp
     runtime/SimpleTypedArrayController.cpp
@@ -573,7 +572,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/SparseArrayValueMap.cpp
     runtime/StrictEvalActivation.cpp
     runtime/StringConstructor.cpp
-    runtime/StringIteratorConstructor.cpp
     runtime/StringIteratorPrototype.cpp
     runtime/StringObject.cpp
     runtime/StringPrototype.cpp

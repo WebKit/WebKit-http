@@ -36,7 +36,7 @@
 #include <wtf/Threading.h>
 
 #if USE(GLIB)
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 #endif
 
 #if PLATFORM(EFL)

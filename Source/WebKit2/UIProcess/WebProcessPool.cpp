@@ -38,7 +38,6 @@
 #include "StatisticsData.h"
 #include "TextChecker.h"
 #include "WKContextPrivate.h"
-#include "WebApplicationCacheManagerProxy.h"
 #include "WebCertificateInfo.h"
 #include "WebContextSupplement.h"
 #include "WebCookieManagerProxy.h"
@@ -46,19 +45,16 @@
 #include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
-#include "WebKeyValueStorageManager.h"
 #include "WebKit2Initialize.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
-#include "WebPluginSiteDataManager.h"
 #include "WebPreferences.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxy.h"
-#include "WebResourceCacheManagerProxy.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Language.h>
@@ -79,7 +75,6 @@
 #if ENABLE(DATABASE_PROCESS)
 #include "DatabaseProcessCreationParameters.h"
 #include "DatabaseProcessMessages.h"
-#include "WebOriginDataManagerProxy.h"
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
@@ -194,26 +189,17 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 
     // NOTE: These sub-objects must be initialized after m_messageReceiverMap..
     m_iconDatabase = WebIconDatabase::create(this);
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    m_pluginSiteDataManager = WebPluginSiteDataManager::create(this);
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-    addSupplement<WebApplicationCacheManagerProxy>();
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
-    addSupplement<WebKeyValueStorageManager>();
     addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
-    addSupplement<WebResourceCacheManagerProxy>();
     addSupplement<WebDatabaseManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
 #endif
 #if ENABLE(BATTERY_STATUS)
     addSupplement<WebBatteryManagerProxy>();
-#endif
-#if ENABLE(DATABASE_PROCESS)
-    addSupplement<WebOriginDataManagerProxy>();
 #endif
 
     processPools().append(this);
@@ -260,11 +246,6 @@ WebProcessPool::~WebProcessPool()
     m_iconDatabase->clearProcessPool();
     WebIconDatabase* rawIconDatabase = m_iconDatabase.release().leakRef();
     rawIconDatabase->derefWhenAppropriate();
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    m_pluginSiteDataManager->invalidate();
-    m_pluginSiteDataManager->clearProcessPool();
-#endif
 
     invalidateCallbackMap(m_dictionaryCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 

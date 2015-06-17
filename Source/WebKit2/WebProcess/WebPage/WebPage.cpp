@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebPage.h"
 
+#include "APIArray.h"
 #include "APIGeometry.h"
 #include "Arguments.h"
 #include "DataReference.h"
@@ -1066,11 +1067,11 @@ void WebPage::loadString(uint64_t navigationID, const String& htmlString, const 
     }
 }
 
-void WebPage::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encodingName, const String& baseURLString, const UserData& userData)
+void WebPage::loadData(uint64_t navigationID, const IPC::DataReference& data, const String& MIMEType, const String& encodingName, const String& baseURLString, const UserData& userData)
 {
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(data.data()), data.size());
     URL baseURL = baseURLString.isEmpty() ? blankURL() : URL(URL(), baseURLString);
-    loadDataImpl(0, sharedBuffer, MIMEType, encodingName, baseURL, URL(), userData);
+    loadDataImpl(navigationID, sharedBuffer, MIMEType, encodingName, baseURL, URL(), userData);
 }
 
 void WebPage::loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURLString, const UserData& userData)
@@ -1160,8 +1161,7 @@ void WebPage::goForward(uint64_t navigationID, uint64_t backForwardItemID)
         return;
 
     ASSERT(!m_pendingNavigationID);
-    if (!item->isInPageCache())
-        m_pendingNavigationID = navigationID;
+    m_pendingNavigationID = navigationID;
 
     m_page->goToItem(*item, FrameLoadType::Forward);
 }
@@ -1176,8 +1176,7 @@ void WebPage::goBack(uint64_t navigationID, uint64_t backForwardItemID)
         return;
 
     ASSERT(!m_pendingNavigationID);
-    if (!item->isInPageCache())
-        m_pendingNavigationID = navigationID;
+    m_pendingNavigationID = navigationID;
 
     m_page->goToItem(*item, FrameLoadType::Back);
 }
@@ -1192,8 +1191,7 @@ void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardIte
         return;
 
     ASSERT(!m_pendingNavigationID);
-    if (!item->isInPageCache())
-        m_pendingNavigationID = navigationID;
+    m_pendingNavigationID = navigationID;
 
     m_page->goToItem(*item, FrameLoadType::IndexedBackForward);
 }
@@ -2531,7 +2529,9 @@ void WebPage::runJavaScriptInMainFrame(const String& script, uint64_t callbackID
 
     RefPtr<SerializedScriptValue> serializedResultValue;
     JSLockHolder lock(JSDOMWindow::commonVM());
+    bool hadException = true;
     if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScript(script, true).jsValue()) {
+        hadException = false;
         serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContext(),
             toRef(m_mainFrame->coreFrame()->script().globalObject(mainThreadNormalWorld())->globalExec(), resultValue), nullptr);
     }
@@ -2539,7 +2539,7 @@ void WebPage::runJavaScriptInMainFrame(const String& script, uint64_t callbackID
     IPC::DataReference dataReference;
     if (serializedResultValue)
         dataReference = serializedResultValue->data();
-    send(Messages::WebPageProxy::ScriptValueCallback(dataReference, callbackID));
+    send(Messages::WebPageProxy::ScriptValueCallback(dataReference, hadException, callbackID));
 }
 
 void WebPage::getContentsAsString(uint64_t callbackID)
@@ -4048,6 +4048,13 @@ void WebPage::setMuted(bool muted)
     m_page->setMuted(muted);
 }
 
+#if ENABLE(MEDIA_SESSION)
+void WebPage::handleMediaEvent(uint32_t eventType)
+{
+    m_page->handleMediaEvent(static_cast<MediaEventType>(eventType));
+}
+#endif
+
 void WebPage::setMayStartMediaWhenInWindow(bool mayStartMedia)
 {
     if (mayStartMedia == m_mayStartMediaWhenInWindow)
@@ -4914,6 +4921,14 @@ PassRefPtr<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const Res
     }
 
     return documentLoader.release();
+}
+
+void WebPage::updateCachedDocumentLoader(WebDocumentLoader& documentLoader, Frame& frame)
+{
+    if (m_pendingNavigationID && frame.isMainFrame()) {
+        documentLoader.setNavigationID(m_pendingNavigationID);
+        m_pendingNavigationID = 0;
+    }
 }
 
 void WebPage::getBytecodeProfile(uint64_t callbackID)

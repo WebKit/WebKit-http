@@ -39,7 +39,7 @@
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
 #include <cstdlib>
-#include <wtf/gobject/GUniquePtr.h>
+#include <wtf/glib/GUniquePtr.h>
 
 #if ENABLE(NETWORK_PROCESS)
 #include "NetworkProcessMessages.h"
@@ -94,11 +94,10 @@ WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 void WebProcessPool::platformInitialize()
 {
-    static bool useNetworkProcess = !!std::getenv("WPE_NETWORK_PROCESS");
-    if (useNetworkProcess) {
-        setUsesNetworkProcess(true);
-        setProcessModel(ProcessModelMultipleSecondaryProcesses);
-    }
+#if ENABLE(NETWORK_PROCESS)
+    setUsesNetworkProcess(true);
+    setProcessModel(ProcessModelMultipleSecondaryProcesses);
+#endif
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)

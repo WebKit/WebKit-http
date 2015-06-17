@@ -35,7 +35,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/MD5.h>
 #include <wtf/SHA1.h>
 #include <wtf/Vector.h>
 
@@ -150,10 +149,8 @@ template<typename T, size_t inlineCapacity> struct VectorCoder<true, T, inlineCa
         // Since we know the total size of the elements, we can allocate the vector in
         // one fell swoop. Before allocating we must however make sure that the decoder buffer
         // is big enough.
-        if (!decoder.bufferIsLargeEnoughToContain<T>(size)) {
-            decoder.markInvalid();
+        if (!decoder.bufferIsLargeEnoughToContain<T>(size))
             return false;
-        }
 
         Vector<T, inlineCapacity> temp;
         temp.resize(size);
@@ -194,7 +191,6 @@ template<typename KeyArg, typename MappedArg, typename HashArg, typename KeyTrai
 
             if (!tempHashMap.add(key, value).isNewEntry) {
                 // The hash map already has the specified key, bail.
-                decoder.markInvalid();
                 return false;
             }
         }
@@ -228,7 +224,6 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Coder<
 
             if (!tempHashSet.add(key).isNewEntry) {
                 // The hash map already has the specified key, bail.
-                decoder.markInvalid();
                 return false;
             }
         }
@@ -256,11 +251,6 @@ template<> struct Coder<String> {
 template<> struct Coder<WebCore::CertificateInfo> {
     static void encode(Encoder&, const WebCore::CertificateInfo&);
     static bool decode(Decoder&, WebCore::CertificateInfo&);
-};
-
-template<> struct Coder<MD5::Digest> {
-    static void encode(Encoder&, const MD5::Digest&);
-    static bool decode(Decoder&, MD5::Digest&);
 };
 
 template<> struct Coder<SHA1::Digest> {

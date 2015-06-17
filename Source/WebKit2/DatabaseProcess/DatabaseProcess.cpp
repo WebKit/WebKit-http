@@ -35,12 +35,10 @@
 #include "DatabaseToWebProcessConnection.h"
 #include "UniqueIDBDatabase.h"
 #include "WebCrossThreadCopier.h"
-#include "WebOriginDataManager.h"
-#include "WebOriginDataManagerMessages.h"
-#include "WebOriginDataManagerProxyMessages.h"
 #include "WebsiteData.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
+#include <WebCore/SessionID.h>
 #include <WebCore/TextEncoding.h>
 #include <wtf/MainThread.h>
 
@@ -56,7 +54,6 @@ DatabaseProcess& DatabaseProcess::singleton()
 
 DatabaseProcess::DatabaseProcess()
     : m_queue(WorkQueue::create("com.apple.WebKit.DatabaseProcess"))
-    , m_webOriginDataManager(std::make_unique<WebOriginDataManager>(*this, *this))
 {
     // Make sure the UTF8Encoding encoding and the text encoding maps have been built on the main thread before a background thread needs it.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=135365 - Need a more explicit way of doing this besides accessing the UTF8Encoding.
@@ -231,10 +228,7 @@ void DatabaseProcess::fetchWebsiteData(SessionID, uint64_t websiteDataTypes, uin
         // FIXME: Pick the right database store based on the session ID.
         postDatabaseTask(std::make_unique<AsyncTask>([callbackAggregator, websiteDataTypes, this] {
 
-            Vector<RefPtr<SecurityOrigin>> securityOrigins;
-
-            for (const auto& originData : getIndexedDatabaseOrigins())
-                securityOrigins.append(originData.securityOrigin());
+            Vector<RefPtr<SecurityOrigin>> securityOrigins = indexedDatabaseOrigins();
 
             RunLoop::main().dispatch([callbackAggregator, securityOrigins] {
                 for (const auto& securityOrigin : securityOrigins)
@@ -248,7 +242,7 @@ void DatabaseProcess::deleteWebsiteData(WebCore::SessionID, uint64_t websiteData
 {
     struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(std::function<void ()> completionHandler)
-        : m_completionHandler(WTF::move(completionHandler))
+            : m_completionHandler(WTF::move(completionHandler))
         {
         }
 
@@ -268,15 +262,14 @@ void DatabaseProcess::deleteWebsiteData(WebCore::SessionID, uint64_t websiteData
 
     if (websiteDataTypes & WebsiteDataTypeIndexedDBDatabases) {
         postDatabaseTask(std::make_unique<AsyncTask>([this, callbackAggregator, modifiedSince] {
-            double startDate = std::chrono::system_clock::to_time_t(modifiedSince);
 
-            deleteIndexedDatabaseEntriesModifiedBetweenDates(startDate, std::numeric_limits<double>::max());
+            deleteIndexedDatabaseEntriesModifiedSince(modifiedSince);
             RunLoop::main().dispatch([callbackAggregator] { });
         }));
     }
 }
 
-void DatabaseProcess::deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID)
+void DatabaseProcess::deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& securityOriginDatas, uint64_t callbackID)
 {
     struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(std::function<void ()> completionHandler)
@@ -299,42 +292,35 @@ void DatabaseProcess::deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t w
     }));
 
     if (websiteDataTypes & WebsiteDataTypeIndexedDBDatabases) {
-        postDatabaseTask(std::make_unique<AsyncTask>([this, origins, callbackAggregator] {
-            for (const auto& origin: origins)
-                deleteIndexedDatabaseEntriesForOrigin(origin);
+        Vector<RefPtr<WebCore::SecurityOrigin>> securityOrigins;
+        for (const auto& securityOriginData : securityOriginDatas)
+            securityOrigins.append(securityOriginData.securityOrigin());
+
+        postDatabaseTask(std::make_unique<AsyncTask>([this, securityOrigins, callbackAggregator] {
+            deleteIndexedDatabaseEntriesForOrigins(securityOrigins);
 
             RunLoop::main().dispatch([callbackAggregator] { });
         }));
     }
 }
 
-Vector<SecurityOriginData> DatabaseProcess::getIndexedDatabaseOrigins()
+Vector<RefPtr<WebCore::SecurityOrigin>> DatabaseProcess::indexedDatabaseOrigins()
 {
-    Vector<SecurityOriginData> results;
+    if (m_indexedDatabaseDirectory.isEmpty())
+        return { };
 
-    if (m_indexedDatabaseDirectory.isEmpty()) {
-        return results;
+    Vector<RefPtr<WebCore::SecurityOrigin>> securityOrigins;
+    for (auto& originPath : listDirectory(m_indexedDatabaseDirectory, "*")) {
+        String databaseIdentifier = pathGetFileName(originPath);
+
+        if (auto securityOrigin = SecurityOrigin::maybeCreateFromDatabaseIdentifier(databaseIdentifier))
+            securityOrigins.append(WTF::move(securityOrigin));
     }
 
-    Vector<String> originPaths = listDirectory(m_indexedDatabaseDirectory, "*");
-    for (auto& originPath : originPaths) {
-        URL url;
-        url.setProtocol(ASCIILiteral("file"));
-        url.setPath(originPath);
-
-        String databaseIdentifier = url.lastPathComponent();
-
-        RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::maybeCreateFromDatabaseIdentifier(databaseIdentifier);
-        if (!securityOrigin)
-            continue;
-
-        results.append(SecurityOriginData::fromSecurityOrigin(*securityOrigin));
-    }
-
-    return results;
+    return securityOrigins;
 }
 
-static void removeAllDatabasesForOriginPath(const String& originPath, double startDate, double endDate)
+static void removeAllDatabasesForOriginPath(const String& originPath, std::chrono::system_clock::time_point modifiedSince)
 {
     // FIXME: We should also close/invalidate any live handles to the database files we are about to delete.
     // Right now:
@@ -350,11 +336,14 @@ static void removeAllDatabasesForOriginPath(const String& originPath, double sta
         if (!fileExists(databaseFile))
             continue;
 
-        time_t modTime;
-        getFileModificationTime(databaseFile, modTime);
+        if (modifiedSince > std::chrono::system_clock::time_point::min()) {
+            time_t modificationTime;
+            if (!getFileModificationTime(databaseFile, modificationTime))
+                continue;
 
-        if (modTime < startDate || modTime > endDate)
-            continue;
+            if (std::chrono::system_clock::from_time_t(modificationTime) < modifiedSince)
+                continue;
+        }
 
         deleteFile(databaseFile);
         deleteEmptyDirectory(databasePath);
@@ -363,87 +352,26 @@ static void removeAllDatabasesForOriginPath(const String& originPath, double sta
     deleteEmptyDirectory(originPath);
 }
 
-void DatabaseProcess::deleteIndexedDatabaseEntriesForOrigin(const SecurityOriginData& originData)
+void DatabaseProcess::deleteIndexedDatabaseEntriesForOrigins(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins)
 {
     if (m_indexedDatabaseDirectory.isEmpty())
         return;
 
-    Ref<SecurityOrigin> origin = originData.securityOrigin();
-    String databaseIdentifier = origin->databaseIdentifier();
-    String originPath = pathByAppendingComponent(m_indexedDatabaseDirectory, databaseIdentifier);
+    for (const auto& securityOrigin : securityOrigins) {
+        String originPath = pathByAppendingComponent(m_indexedDatabaseDirectory, securityOrigin->databaseIdentifier());
 
-    removeAllDatabasesForOriginPath(originPath, std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max());
+        removeAllDatabasesForOriginPath(originPath, std::chrono::system_clock::time_point::min());
+    }
 }
 
-void DatabaseProcess::deleteIndexedDatabaseEntriesModifiedBetweenDates(double startDate, double endDate)
-{
-    if (m_indexedDatabaseDirectory.isEmpty())
-        return;
-
-    Vector<String> originPaths = listDirectory(m_indexedDatabaseDirectory, "*");
-    for (auto& originPath : originPaths)
-        removeAllDatabasesForOriginPath(originPath, startDate, endDate);
-}
-
-void DatabaseProcess::deleteAllIndexedDatabaseEntries()
+void DatabaseProcess::deleteIndexedDatabaseEntriesModifiedSince(std::chrono::system_clock::time_point modifiedSince)
 {
     if (m_indexedDatabaseDirectory.isEmpty())
         return;
 
     Vector<String> originPaths = listDirectory(m_indexedDatabaseDirectory, "*");
     for (auto& originPath : originPaths)
-        removeAllDatabasesForOriginPath(originPath, std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max());
-}
-
-void DatabaseProcess::getOrigins(WKOriginDataTypes types, std::function<void (const Vector<SecurityOriginData>&)> completion)
-{
-    if (!(types & kWKWebSQLDatabaseOriginData)) {
-        completion(Vector<SecurityOriginData>());
-        return;
-    }
-
-    postDatabaseTask(std::make_unique<AsyncTask>([completion, this] {
-        completion(getIndexedDatabaseOrigins());
-    }));
-}
-
-void DatabaseProcess::deleteEntriesForOrigin(WKOriginDataTypes types, const SecurityOriginData& origin, std::function<void ()> completion)
-{
-    if (!(types & kWKWebSQLDatabaseOriginData)) {
-        completion();
-        return;
-    }
-
-    postDatabaseTask(std::make_unique<AsyncTask>([this, origin, completion] {
-        deleteIndexedDatabaseEntriesForOrigin(origin);
-        completion();
-    }));
-}
-
-void DatabaseProcess::deleteEntriesModifiedBetweenDates(WKOriginDataTypes types, double startDate, double endDate, std::function<void ()> completion)
-{
-    if (!(types & kWKWebSQLDatabaseOriginData)) {
-        completion();
-        return;
-    }
-
-    postDatabaseTask(std::make_unique<AsyncTask>([this, startDate, endDate, completion] {
-        deleteIndexedDatabaseEntriesModifiedBetweenDates(startDate, endDate);
-        completion();
-    }));
-}
-
-void DatabaseProcess::deleteAllEntries(WKOriginDataTypes types, std::function<void ()> completion)
-{
-    if (!(types & kWKWebSQLDatabaseOriginData)) {
-        completion();
-        return;
-    }
-
-    postDatabaseTask(std::make_unique<AsyncTask>([this, completion] {
-        deleteAllIndexedDatabaseEntries();
-        completion();
-    }));
+        removeAllDatabasesForOriginPath(originPath, modifiedSince);
 }
 
 #if !PLATFORM(COCOA)

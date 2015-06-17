@@ -74,7 +74,7 @@
 
 #if HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
 #include "WebPageAccessibilityObject.h"
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 #if PLATFORM(GTK)
@@ -153,6 +153,7 @@ class VisibleContentRectUpdateInfo;
 class WebColorChooser;
 class WebContextMenu;
 class WebContextMenuItemData;
+class WebDocumentLoader;
 class WebEvent;
 class WebFrame;
 class WebFullScreenManager;
@@ -740,6 +741,10 @@ public:
     void setMuted(bool);
     void setMayStartMediaWhenInWindow(bool);
 
+#if ENABLE(MEDIA_SESSION)
+    void handleMediaEvent(uint32_t /* WebCore::MediaEventType */);
+#endif
+
     void updateMainFrameScrollOffsetPinning();
 
     bool mainFrameHasCustomContentProvider() const;
@@ -867,6 +872,7 @@ public:
     void setScrollbarOverlayStyle(WTF::Optional<uint32_t /* WebCore::ScrollbarOverlayStyle */> scrollbarStyle);
 
     PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
+    void updateCachedDocumentLoader(WebDocumentLoader&, WebCore::Frame&);
 
     void getBytecodeProfile(uint64_t callbackID);
     
@@ -943,7 +949,7 @@ private:
     // Actions
     void tryClose();
     void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, uint64_t shouldOpenExternalURLsPolicy, const UserData&);
-    void loadData(const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, const UserData&);
+    void loadData(uint64_t navigationID, const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, const UserData&);
     void loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURL, const UserData&);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, const String& provisionalLoadErrorURL, const UserData&);
     void loadPlainTextString(const String&, const UserData&);
