@@ -110,6 +110,10 @@ struct _WebKitVideoSinkPrivate {
             gst_sample_unref(sample);
         sample = nullptr;
 
+        if (previousSample)
+            gst_sample_unref(previousSample);
+        previousSample = nullptr;
+
         if (currentCaps)
             gst_caps_unref(currentCaps);
         currentCaps = nullptr;
@@ -119,6 +123,7 @@ struct _WebKitVideoSinkPrivate {
     }
 
     GstSample* sample;
+    GstSample* previousSample;
     GSourceWrap::Dynamic timeoutSource;
     GMutex sampleMutex;
     GCond dataCondition;
@@ -285,6 +290,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     }
 #endif
 
+    GstSample* currentSample = gst_sample_ref(priv->sample);
 #if USE(COORDINATED_GRAPHICS_THREADED)
     webkitVideoSinkTimeoutCallback(sink);
 #else
@@ -297,6 +303,9 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     g_cond_wait(&priv->dataCondition, &priv->sampleMutex);
 #endif
 
+    if (priv->previousSample)
+        gst_sample_unref(priv->previousSample);
+    priv->previousSample = currentSample;
     return GST_FLOW_OK;
 }
 
