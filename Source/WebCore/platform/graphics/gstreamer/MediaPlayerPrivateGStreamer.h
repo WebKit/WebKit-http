@@ -33,7 +33,7 @@
 #include <gst/gst.h>
 #include <gst/pbutils/install-plugins.h>
 #include <wtf/Forward.h>
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
 #include <wtf/text/AtomicStringHash.h>
@@ -74,44 +74,44 @@ public:
     gboolean handleMessage(GstMessage*);
     void handlePluginInstallerResult(GstInstallPluginsReturn);
 
-    bool hasVideo() const { return m_hasVideo; }
-    bool hasAudio() const { return m_hasAudio; }
+    bool hasVideo() const override { return m_hasVideo; }
+    bool hasAudio() const override { return m_hasAudio; }
 
-    void load(const String &url);
+    void load(const String &url) override;
 #if ENABLE(MEDIA_SOURCE)
-    void load(const String& url, MediaSourcePrivateClient*);
+    void load(const String& url, MediaSourcePrivateClient*) override;
 #endif
 #if ENABLE(MEDIA_STREAM)
-    void load(MediaStreamPrivate*);
+    void load(MediaStreamPrivate*) override;
 #endif
     void commitLoad();
-    void cancelLoad();
+    void cancelLoad() override;
 
-    void prepareToPlay();
-    void play();
-    void pause();
+    void prepareToPlay() override;
+    void play() override;
+    void pause() override;
 
-    bool paused() const;
-    bool seeking() const;
+    bool paused() const override;
+    bool seeking() const override;
 
-    float duration() const;
-    float currentTime() const;
-    void seek(float);
+    float duration() const override;
+    float currentTime() const override;
+    void seek(float) override;
 
     void setReadyState(MediaPlayer::ReadyState state);
 
-    void setRate(float);
+    void setRate(float) override;
     double rate() const override;
-    void setPreservesPitch(bool);
+    void setPreservesPitch(bool) override;
 
-    void setPreload(MediaPlayer::Preload);
+    void setPreload(MediaPlayer::Preload) override;
     void fillTimerFired();
 
-    std::unique_ptr<PlatformTimeRanges> buffered() const;
-    float maxTimeSeekable() const;
-    bool didLoadingProgress() const;
-    unsigned long long totalBytes() const;
-    float maxTimeLoaded() const;
+    std::unique_ptr<PlatformTimeRanges> buffered() const override;
+    float maxTimeSeekable() const override;
+    bool didLoadingProgress() const override;
+    unsigned long long totalBytes() const override;
+    float maxTimeLoaded() const override;
 
     void loadStateChanged();
     void timeChanged();
@@ -136,17 +136,17 @@ public:
 #endif
 
     void sourceChanged();
-    GstElement* audioSink() const;
+    GstElement* audioSink() const override;
     void configurePlaySink();
 
     void setAudioStreamProperties(GObject*);
 
-    void simulateAudioInterruption();
+    void simulateAudioInterruption() override;
 
     bool changePipelineState(GstState);
 
 #if ENABLE(WEB_AUDIO)
-    AudioSourceProvider* audioSourceProvider() { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
+    AudioSourceProvider* audioSourceProvider() override { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -170,7 +170,7 @@ private:
     static bool isAvailable();
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
-    GstElement* createAudioSink();
+    GstElement* createAudioSink() override;
 
     float playbackPosition() const;
 
@@ -196,17 +196,18 @@ private:
     void updatePlaybackRate();
 
 
-    virtual String engineDescription() const { return "GStreamer"; }
-    virtual bool didPassCORSAccessCheck() const;
-    virtual bool canSaveMediaData() const override;
+    String engineDescription() const override { return "GStreamer"; }
+    bool isLiveStream() const override { return m_isStreaming; }
+    bool didPassCORSAccessCheck() const override;
+    bool canSaveMediaData() const override;
 
 #if ENABLE(MEDIA_SOURCE)
     // TODO: Implement
-    virtual unsigned long totalVideoFrames() { return 0; }
-    virtual unsigned long droppedVideoFrames() { return 0; }
-    virtual unsigned long corruptedVideoFrames() { return 0; }
-    virtual MediaTime totalFrameDelay() { return MediaTime::zeroTime(); }
-    virtual GRefPtr<GstCaps> currentDemuxerCaps() const override;
+    unsigned long totalVideoFrames() override { return 0; }
+    unsigned long droppedVideoFrames() override { return 0; }
+    unsigned long corruptedVideoFrames() override { return 0; }
+    MediaTime totalFrameDelay() override { return MediaTime::zeroTime(); }
+    GRefPtr<GstCaps> currentDemuxerCaps() const override;
 #endif
 
 private:

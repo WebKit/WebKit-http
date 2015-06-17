@@ -24,8 +24,8 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 #include <wtf/HashMap.h>
-#include <wtf/gobject/GRefPtr.h>
-#include <wtf/gobject/GUniquePtr.h>
+#include <wtf/glib/GRefPtr.h>
+#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/StringHash.h>
 
 static WebKitTestServer* kServer;
@@ -209,6 +209,16 @@ static void testWebContextURIScheme(URISchemeTest* test, gconstpointer)
     test->loadURI("echo:hello-world");
     test->waitUntilLoadFinished();
     GUniquePtr<char> echoHTML(g_strdup_printf(kEchoHTMLFormat, webkit_uri_scheme_request_get_path(test->m_uriSchemeRequest.get())));
+    mainResourceDataSize = 0;
+    mainResourceData = test->mainResourceData(mainResourceDataSize);
+    g_assert_cmpint(mainResourceDataSize, ==, strlen(echoHTML.get()));
+    g_assert(!strncmp(mainResourceData, echoHTML.get(), mainResourceDataSize));
+
+    test->loadURI("echo:with#fragment");
+    test->waitUntilLoadFinished();
+    g_assert_cmpstr(webkit_uri_scheme_request_get_path(test->m_uriSchemeRequest.get()), ==, "with");
+    g_assert_cmpstr(webkit_uri_scheme_request_get_uri(test->m_uriSchemeRequest.get()), ==, "echo:with#fragment");
+    echoHTML.reset(g_strdup_printf(kEchoHTMLFormat, webkit_uri_scheme_request_get_path(test->m_uriSchemeRequest.get())));
     mainResourceDataSize = 0;
     mainResourceData = test->mainResourceData(mainResourceDataSize);
     g_assert_cmpint(mainResourceDataSize, ==, strlen(echoHTML.get()));

@@ -30,19 +30,21 @@
 
 #include "ChildProcess.h"
 #include "UniqueIDBDatabaseIdentifier.h"
-#include "WebOriginDataManagerSupplement.h"
 #include <wtf/NeverDestroyed.h>
+
+namespace WebCore {
+class SessionID;
+}
 
 namespace WebKit {
 
 class AsyncTask;
 class DatabaseToWebProcessConnection;
 class UniqueIDBDatabase;
-class WebOriginDataManager;
 
 struct DatabaseProcessCreationParameters;
 
-class DatabaseProcess : public ChildProcess, public WebOriginDataManagerSupplement  {
+class DatabaseProcess : public ChildProcess {
     WTF_MAKE_NONCOPYABLE(DatabaseProcess);
     friend class NeverDestroyed<DatabaseProcess>;
 public:
@@ -58,11 +60,6 @@ public:
     String absoluteIndexedDatabasePathFromDatabaseRelativePath(const String&);
 
     WorkQueue& queue() { return m_queue.get(); }
-
-    Vector<SecurityOriginData> getIndexedDatabaseOrigins();
-    void deleteIndexedDatabaseEntriesForOrigin(const SecurityOriginData&);
-    void deleteIndexedDatabaseEntriesModifiedBetweenDates(double startDate, double endDate);
-    void deleteAllIndexedDatabaseEntries();
 
     void postDatabaseTask(std::unique_ptr<AsyncTask>);
 
@@ -92,15 +89,13 @@ private:
     void deleteWebsiteData(WebCore::SessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForOrigins(WebCore::SessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, uint64_t callbackID);
 
+    Vector<RefPtr<WebCore::SecurityOrigin>> indexedDatabaseOrigins();
+    void deleteIndexedDatabaseEntriesForOrigins(const Vector<RefPtr<WebCore::SecurityOrigin>>&);
+    void deleteIndexedDatabaseEntriesModifiedSince(std::chrono::system_clock::time_point modifiedSince);
+
     // For execution on work queue thread only
     void performNextDatabaseTask();
     void ensurePathExists(const String&);
-
-    // WebOriginDataManagerSupplement
-    virtual void getOrigins(WKOriginDataTypes, std::function<void (const Vector<SecurityOriginData>&)> completion) override;
-    virtual void deleteEntriesForOrigin(WKOriginDataTypes, const SecurityOriginData&, std::function<void ()> completion) override;
-    virtual void deleteEntriesModifiedBetweenDates(WKOriginDataTypes, double startDate, double endDate, std::function<void ()> completion) override;
-    virtual void deleteAllEntries(WKOriginDataTypes, std::function<void ()> completion) override;
 
     Vector<RefPtr<DatabaseToWebProcessConnection>> m_databaseToWebProcessConnections;
 
@@ -112,8 +107,6 @@ private:
 
     Deque<std::unique_ptr<AsyncTask>> m_databaseTasks;
     Mutex m_databaseTaskMutex;
-
-    std::unique_ptr<WebOriginDataManager> m_webOriginDataManager;
 };
 
 } // namespace WebKit

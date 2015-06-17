@@ -41,8 +41,8 @@
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/pbutils/pbutils.h>
 #include <gst/video/video.h>
+#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
-#include <wtf/gobject/GUniquePtr.h>
 
 namespace WebCore
 {

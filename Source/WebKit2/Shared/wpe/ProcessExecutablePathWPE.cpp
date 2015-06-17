@@ -29,7 +29,7 @@
 
 #include <WebCore/FileSystem.h>
 #include <glib.h>
-#include <wtf/gobject/GlibUtilities.h>
+#include <wtf/glib/GLibUtilities.h>
 
 using namespace WebCore;
 

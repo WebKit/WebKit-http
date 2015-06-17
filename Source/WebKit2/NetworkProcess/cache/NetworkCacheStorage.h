@@ -31,6 +31,7 @@
 #include "NetworkCacheBlobStorage.h"
 #include "NetworkCacheData.h"
 #include "NetworkCacheKey.h"
+#include <WebCore/Timer.h>
 #include <wtf/BloomFilter.h>
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
@@ -83,7 +84,7 @@ public:
     size_t capacity() const { return m_capacity; }
     size_t approximateSize() const;
 
-    static const unsigned version = 3;
+    static const unsigned version = 4;
 
     String basePath() const;
     String versionPath() const;
@@ -150,6 +151,7 @@ private:
 
     Deque<std::unique_ptr<WriteOperation>> m_pendingWriteOperations;
     HashSet<std::unique_ptr<WriteOperation>> m_activeWriteOperations;
+    WebCore::Timer m_writeOperationDispatchTimer;
 
     Ref<WorkQueue> m_ioQueue;
     Ref<WorkQueue> m_backgroundIOQueue;

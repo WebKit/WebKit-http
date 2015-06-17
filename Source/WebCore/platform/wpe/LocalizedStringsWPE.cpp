@@ -28,7 +28,7 @@
 
 #include "NotImplemented.h"
 #include <wtf/text/WTFString.h>
-#include <wtf/gobject/GUniquePtr.h>
+#include <wtf/glib/GUniquePtr.h>
 
 // FIXME: Lots of unnecessarily defined functions here.
 

@@ -435,7 +435,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     _updateContentFlowFromPayload(contentFlow, flowPayload)
     {
         console.assert(contentFlow.contentNodes.length === flowPayload.content.length);
-        console.assert(contentFlow.contentNodes.every(function(node, i) { node.id === flowPayload.content[i]; }));
+        console.assert(contentFlow.contentNodes.every(function(node, i) { return node.id === flowPayload.content[i]; }));
 
         // FIXME: Collect the regions from the payload.
         contentFlow.overset = flowPayload.overset;
@@ -597,7 +597,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
             // passing the DOMNode as the "this" reference.
             var evalParameters = {
                 objectId: remoteObject.objectId,
-                functionDeclaration: backendFunction.toString(),
+                functionDeclaration: appendWebInspectorSourceURL(backendFunction.toString()),
                 doNotPauseOnExceptionsAndMuteConsole: true,
                 returnByValue: false,
                 generatePreview: false

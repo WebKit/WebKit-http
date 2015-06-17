@@ -28,7 +28,7 @@
 #include "config.h"
 #include "SharedTimer.h"
 
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 

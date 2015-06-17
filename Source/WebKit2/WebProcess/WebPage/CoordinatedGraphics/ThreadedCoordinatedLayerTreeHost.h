@@ -43,7 +43,7 @@
 #include <WebCore/Timer.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>

@@ -37,7 +37,7 @@
 #include <WebCore/WaylandSurfaceWPE.h>
 #include <wayland-client.h>
 #include <wtf/HashMap.h>
-#include <wtf/gobject/GSourceWrap.h>
+#include <wtf/glib/GSourceWrap.h>
 
 namespace WebKit {
 

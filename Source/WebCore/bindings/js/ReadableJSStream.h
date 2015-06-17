@@ -40,6 +40,11 @@
 #include <wtf/Deque.h>
 #include <wtf/Ref.h>
 
+namespace JSC {
+class JSFunction;
+class JSPromise;
+}
+    
 namespace WebCore {
 
 class JSDOMGlobalObject;
@@ -51,8 +56,8 @@ public:
 
     JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
 
-    void storeError(JSC::ExecState&);
-    JSC::JSValue error() { return m_error.get(); }
+    void storeError(JSC::ExecState&, JSC::JSValue);
+    JSC::JSValue error() override { return m_error.get(); }
 
     void enqueue(JSC::ExecState&);
 
@@ -61,18 +66,18 @@ private:
 
     void doStart(JSC::ExecState&);
 
-    JSC::JSValue invoke(JSC::ExecState&, const char*);
+    JSC::JSPromise* invoke(JSC::ExecState&, const char*);
     void storeException(JSC::ExecState&);
-    void storeError(JSC::ExecState&, JSC::JSValue);
 
     virtual bool hasValue() const override;
     virtual JSC::JSValue read() override;
-    virtual void doPull() override;
+    virtual bool doPull() override;
 
     JSDOMGlobalObject* globalObject();
 
     std::unique_ptr<ReadableStreamController> m_controller;
     JSC::Strong<JSC::Unknown> m_error;
+    JSC::Strong<JSC::JSFunction> m_errorFunction;
     JSC::Strong<JSC::JSObject> m_source;
     Deque<JSC::Strong<JSC::Unknown>> m_chunkQueue;
 };
