@@ -158,7 +158,7 @@ public:
     void signalDRM();
 #endif
 
-    virtual bool isLiveStream() const { return m_isStreaming; }
+    bool isLiveStream() const override { return m_isStreaming; }
 #if ENABLE(MEDIA_SOURCE)
     void notifyAppendComplete();
 #endif
@@ -197,7 +197,6 @@ private:
 
 
     String engineDescription() const override { return "GStreamer"; }
-    bool isLiveStream() const override { return m_isStreaming; }
     bool didPassCORSAccessCheck() const override;
     bool canSaveMediaData() const override;
 
