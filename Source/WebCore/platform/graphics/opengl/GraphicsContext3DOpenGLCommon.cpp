@@ -1820,9 +1820,6 @@ void GraphicsContext3D::synthesizeGLError(GC3Denum error)
 void GraphicsContext3D::markContextChanged()
 {
     m_layerComposited = false;
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    swapBufferIfNeeded();
-#endif
 }
 
 void GraphicsContext3D::markLayerComposited()

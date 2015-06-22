@@ -67,10 +67,7 @@ public:
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy; }
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
-    RunLoop& m_runLoop;
-    RunLoop::Timer<ImageBufferData> m_swapBuffersTimer;
-    void swapBuffersIfNeeded();
-    void swapBuffers();
+    virtual void swapBuffersIfNeeded() override;
 #else
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
 #endif

@@ -345,13 +345,6 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
     return m_private.get();
 }
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-void GraphicsContext3D::swapBufferIfNeeded()
-{
-    m_private->swapBufferIfNeeded();
-}
-#endif
-
 } // namespace WebCore
 
 #endif // ENABLE(GRAPHICS_CONTEXT_3D)
