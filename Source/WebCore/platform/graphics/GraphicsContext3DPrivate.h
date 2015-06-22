@@ -49,7 +49,7 @@ public:
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override;
-    void swapBufferIfNeeded();
+    virtual void swapBuffersIfNeeded() override;
 #elif USE(TEXTURE_MAPPER)
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
 #endif
@@ -63,8 +63,6 @@ private:
     void swapPlatformTexture();
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
     RefPtr<BitmapTextureGL> m_compositorTexture;
-    RunLoop& m_runLoop;
-    RunLoop::Timer<GraphicsContext3DPrivate> m_swapTextureTimer;
 #endif
 };
 

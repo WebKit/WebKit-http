@@ -166,6 +166,7 @@ protected:
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    virtual void swapBuffersIfNeeded() override { };
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
     RefPtr<GraphicsContext3D> m_context3D;
 #endif

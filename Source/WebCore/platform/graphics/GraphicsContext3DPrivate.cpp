@@ -52,10 +52,6 @@ namespace WebCore {
 GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, GraphicsContext3D::RenderStyle renderStyle)
     : m_context(context)
     , m_renderStyle(renderStyle)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_runLoop(RunLoop::current())
-    , m_swapTextureTimer(m_runLoop, this, &GraphicsContext3DPrivate::swapPlatformTexture)
-#endif
 {
     switch (renderStyle) {
     case GraphicsContext3D::RenderOffscreen:
@@ -98,13 +94,11 @@ RefPtr<TextureMapperPlatformLayerProxy> GraphicsContext3DPrivate::proxy() const
     return m_platformLayerProxy.copyRef();
 }
 
-void GraphicsContext3DPrivate::swapBufferIfNeeded()
+void GraphicsContext3DPrivate::swapBuffersIfNeeded()
 {
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    if (m_swapTextureTimer.isActive())
-        return;
-
-    m_swapTextureTimer.startOneShot(0);
+    if (!m_context->layerComposited())
+        swapPlatformTexture();
 }
 
 void GraphicsContext3DPrivate::swapPlatformTexture()

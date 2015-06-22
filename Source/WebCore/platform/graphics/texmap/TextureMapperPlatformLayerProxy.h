@@ -45,6 +45,7 @@ class TextureMapperPlatformLayerProxy;
 class TextureMapperPlatformLayerProxyProvider {
 public:
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const = 0;
+    virtual void swapBuffersIfNeeded() = 0;
 };
 
 class TextureMapperPlatformLayerProxy : public ThreadSafeRefCounted<TextureMapperPlatformLayerProxy> {

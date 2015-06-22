@@ -737,8 +737,10 @@ void CoordinatedGraphicsLayer::syncPlatformLayer()
 
     m_shouldSyncPlatformLayer = false;
     m_layerState.platformLayerChanged = true;
-    if (m_platformLayer)
+    if (m_platformLayer) {
+        m_platformLayer->swapBuffersIfNeeded();
         m_layerState.platformLayerProxy = m_platformLayer->proxy();
+    }
 #endif
 }
 
