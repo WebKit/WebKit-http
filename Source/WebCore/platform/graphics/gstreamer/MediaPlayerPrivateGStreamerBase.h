@@ -179,6 +179,7 @@ protected:
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    virtual void swapBuffersIfNeeded() override { };
     void updateOnCompositorThread();
     GCond m_updateCondition;
     GMutex m_updateMutex;
