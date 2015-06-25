@@ -1,3 +1,807 @@
+2015-06-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, speculative build fix after r185942.
+
+        Add missing include for StrongInlines.h.
+
+        * runtime/ArrayPrototype.cpp:
+
+2015-06-24  Darin Adler  <darin@apple.com>
+
+        Optimize Array.join and Array.reverse for high speed array types
+        https://bugs.webkit.org/show_bug.cgi?id=146275
+
+        Reviewed by Mark Lam.
+
+        This seems to yield another 17% speed improvement in the array
+        test from the Peacekeeper benchmark.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::isHole): Added. Helper to check for holes.
+        (JSC::containsHole): Ditto.
+        (JSC::arrayProtoFuncJoin): Added special cases for the various types
+        of arrays that could be in a butterfly.
+        (JSC::arrayProtoFuncReverse): Ditto.
+
+        * runtime/JSStringJoiner.h: Made appendEmptyString public so we can
+        call it from the new parts of Array.join.
+
+2015-06-24  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::SpeculativeJIT shouldn't use filter==Contradiction when it meant isClear
+        https://bugs.webkit.org/show_bug.cgi?id=146291
+        rdar://problem/21435366
+
+        Reviewed by Michael Saboff.
+        
+        The filter() method returns Contradiction only when a value *becomes* clear. This is
+        necessary for supporting the convention that non-JSValue nodes have a bottom proved
+        type. (We should fix that convention eventually, but for now let's just be consistent
+        about it.)
+        
+        * dfg/DFGFiltrationResult.h: Document the issue.
+        * dfg/DFGSpeculativeJIT32_64.cpp: Work around the issue.
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateBoolean):
+        * dfg/DFGSpeculativeJIT64.cpp: Work around the issue.
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt52):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateBoolean):
+
+2015-06-24  Michael Saboff  <msaboff@apple.com>
+
+        Crash on gog.com due to PolymorphicCallNode's having stale references to CallLinkInfo
+        https://bugs.webkit.org/show_bug.cgi?id=146285
+
+        Reviewed by Filip Pizlo.
+
+        CallLinkInfo's contain a RefPtr to a PolymorphicCallStubRoutine, named stub, which contains
+        a collection of PolymorphicCallNode.  Those PolymorphicCallNodes have a reference back to the
+        CallLinkInfo.  When a CallLinkInfo replaces or clears "stub", the ref count of the
+        PolymorphicCallStubRoutine is decremented as expected, but since it inherits from
+        GCAwareJITStubRoutine, it isn't actually deleted until GC.  In the mean time, the original
+        CallLinkInfo can go away.  If PolymorphicCallNode::unlink() is called at that point,
+        it will try to unlink a now deleted CallLinkInfo and crash as a result.
+
+        The fix is to clear the CallLinkInfo references from any PolymorphicCallNode objects when
+        when we set a new stub or clear an existing stub for a CallLinkInfo.  This is done by
+        calling PolymorphicCallNode::clearCallNodesFor() on the old stub.
+
+        The prior code would only call clearCallNodesFor() from the CallLinkInfo destructor.
+        This only took care of the last PolymorphicCallStubRoutine held in the CallLinkInfo.
+        Any prior PolymorphicCallStubRoutine would still have a, now bad, reference to the CallLinkInfo.
+
+        In the process I refactored CallLinkInfo from a struct to a class with proper accessors and
+        made all the data elements private.
+
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::clearStub): Updated to call PolymorphicCallStubRoutine::clearCallNodesFor()
+        to clear the back references to this CallLinkInfo.
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::~CallLinkInfo): Moved clearCallNodesFor() call to clearStub().
+        (JSC::CallLinkInfo::setStub): Clear any prior stub before changing to the new stub.
+
+2015-06-24  Michael Saboff  <msaboff@apple.com>
+
+        Refactor CallLinkInfo from a struct to a class
+        https://bugs.webkit.org/show_bug.cgi?id=146292
+
+        Rubber stamped by Filip Pizlo.
+
+        Refactored CallLinkInfo from a struct to a class with proper accessors and made all the
+        data elements private.
+
+        Done in preparation for fixing https://bugs.webkit.org/show_bug.cgi?id=146285.
+
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::clearStub):
+        (JSC::CallLinkInfo::unlink):
+        (JSC::CallLinkInfo::visitWeak):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::callTypeFor):
+        (JSC::CallLinkInfo::CallLinkInfo):
+        (JSC::CallLinkInfo::~CallLinkInfo):
+        (JSC::CallLinkInfo::specializationKindFor):
+        (JSC::CallLinkInfo::specializationKind):
+        (JSC::CallLinkInfo::isLinked):
+        (JSC::CallLinkInfo::setUpCall):
+        (JSC::CallLinkInfo::setCallLocations):
+        (JSC::CallLinkInfo::setUpCallFromFTL):
+        (JSC::CallLinkInfo::callReturnLocation):
+        (JSC::CallLinkInfo::hotPathBegin):
+        (JSC::CallLinkInfo::hotPathOther):
+        (JSC::CallLinkInfo::setCallee):
+        (JSC::CallLinkInfo::clearCallee):
+        (JSC::CallLinkInfo::callee):
+        (JSC::CallLinkInfo::setLastSeenCallee):
+        (JSC::CallLinkInfo::clearLastSeenCallee):
+        (JSC::CallLinkInfo::lastSeenCallee):
+        (JSC::CallLinkInfo::haveLastSeenCallee):
+        (JSC::CallLinkInfo::setStub):
+        (JSC::CallLinkInfo::stub):
+        (JSC::CallLinkInfo::seenOnce):
+        (JSC::CallLinkInfo::clearSeen):
+        (JSC::CallLinkInfo::setSeen):
+        (JSC::CallLinkInfo::hasSeenClosure):
+        (JSC::CallLinkInfo::setHasSeenClosure):
+        (JSC::CallLinkInfo::clearedByGC):
+        (JSC::CallLinkInfo::setCallType):
+        (JSC::CallLinkInfo::callType):
+        (JSC::CallLinkInfo::addressOfMaxNumArguments):
+        (JSC::CallLinkInfo::maxNumArguments):
+        (JSC::CallLinkInfo::offsetOfSlowPathCount):
+        (JSC::CallLinkInfo::setCalleeGPR):
+        (JSC::CallLinkInfo::calleeGPR):
+        (JSC::CallLinkInfo::slowPathCount):
+        (JSC::CallLinkInfo::setCodeOrigin):
+        (JSC::CallLinkInfo::codeOrigin):
+        (JSC::getCallLinkInfoCodeOrigin):
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFor):
+        (JSC::CallLinkStatus::computeFromCallLinkInfo):
+        (JSC::CallLinkStatus::computeDFGStatuses):
+        * bytecode/CallLinkStatus.h:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::printCallOp):
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * ftl/FTLJSCallBase.cpp:
+        (JSC::FTL::JSCallBase::link):
+        * jit/AccessorCallJITStubRoutine.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/JIT.h:
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileOpCall):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileOpCall):
+        * jit/JITOperations.cpp:
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallNode::unlink):
+        (JSC::PolymorphicCallNode::clearCallLinkInfo):
+        * jit/PolymorphicCallStubRoutine.h:
+        * jit/Repatch.cpp:
+        (JSC::generateByIdStub):
+        (JSC::linkSlowFor):
+        (JSC::linkFor):
+        (JSC::revertCall):
+        (JSC::unlinkFor):
+        (JSC::linkPolymorphicCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualForThunkGenerator):
+
+2015-06-24  Doug Russell  <d_russell@apple.com>
+
+        Bug 146177 - AX: AXObjectCache should try to use an unignored accessibilityObject 
+        when posting a selection notification when on the border between two accessibilityObjects
+        https://bugs.webkit.org/show_bug.cgi?id=146177
+
+        Add an adopt() function to simplify JSRetainPtr<JSStringRef> { Adopt, string } to adopt(string).
+
+        Reviewed by Darin Adler.
+
+        * API/JSRetainPtr.h:
+        (adopt):
+
+2015-06-24  Keith Miller  <keith_miller@apple.com>
+
+        Strict Equality on objects should only check that one of the two sides is an object.
+        https://bugs.webkit.org/show_bug.cgi?id=145992
+
+        This patch adds a new optimization for checking strict equality on objects.
+        If we speculate that a strict equality comparison has an object on one side
+        we only need to type check that side. Equality is then determined by a pointer
+        comparison between the two values (although in the 32-bit case we must also check
+        that the other side is a cell). Once LICM hoists type checks out of a loop we
+        can be cleverer about how we choose the operand we type check if both are
+        speculated to be objects.
+
+        For testing I added the addressOf function, which returns the address
+        of a Cell to the runtime.
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStrictEq):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectStrictEquality):
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectStrictEquality):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileObjectStrictEquality):
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectStrictEquality):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCompareStrictEq):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionAddressOf):
+        * tests/stress/equality-type-checking.js: Added.
+        (Foo):
+        (checkStrictEq):
+        (checkStrictEqOther):
+
+2015-06-24  Mark Lam  <mark.lam@apple.com>
+
+        Fixed assertion in JSStringJoiner::join() (regression from r185899).
+
+        Not reviewed.
+
+        JSStringJoiner did not account for the case where the array being joined can
+        have null or undefined elements.  As a result, its size may be less than
+        its initially reserved capacity (which was estimated based on the array length).
+
+        * runtime/JSStringJoiner.cpp:
+        (JSC::JSStringJoiner::join):
+
+2015-06-24  Darin Adler  <darin@apple.com>
+
+        Fix Array.concat with RuntimeArray (regression from my last patch)
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncConcat): Use getLength instead of JSArray::length.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty): Added comment about use of
+        JSArray::length here that is incorrect (in a really non-obvious way).
+        (JSC::JSArray::fillArgList): Ditto.
+        (JSC::JSArray::copyToArguments): Ditto.
+
+        * runtime/JSArray.h: Added a comment explaining that it is not always
+        safe to use JSArray::length.
+
+2015-06-23  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: Fixing 2 bad asserts from r185889.
+        https://bugs.webkit.org/show_bug.cgi?id=140575
+
+        Not reviewed.
+
+        * runtime/JSBoundSlotBaseFunction.cpp:
+        (JSC::JSBoundSlotBaseFunction::finishCreation):
+
+2015-06-23  Dan Bernstein  <mitz@apple.com>
+
+        Fixed iOS production builds.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-06-22  Darin Adler  <darin@apple.com>
+
+        Make Array.join work directly on substrings without reifying them
+        https://bugs.webkit.org/show_bug.cgi?id=146191
+
+        Reviewed by Andreas Kling.
+
+        Besides the Array.join change, this has other optimizations based on
+        profiling the Peacekeeper array benchmark.
+
+        I measured a 14% speed improvement in the Peacekeeper array benchmark.
+
+        Still a lot of low hanging fruit in that test because so many of functions
+        on the array prototype are not optimizing for simple cases. For example,
+        the reverse function does individual get and put calls even when the array
+        is entirely made up of integers in contiguous storage.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty): Use tryGetIndexQuickly first before getPropertySlot.
+        (JSC::argumentClampedIndexFromStartOrEnd): Marked inline.
+        (JSC::shift): Use the getProperty helper in this file instead of using
+        getPropertySlot. Use putByIndexInline instead of calling putByIndex directly.
+        In both cases this can yield a faster code path.
+        (JSC::unshift): Ditto.
+        (JSC::arrayProtoFuncToString): Updated to use the new JSStringJoiner
+        interface. Changed local variable name to thisArray since it's not a
+        JSObject*. Changed loop index to i instead of k.
+        (JSC::arrayProtoFuncToLocaleString): Updated to use the new JSStringJoiner
+        interface. Renamed thisObj to thisObject. Added a missing exception check
+        after the toLocaleString function is called, but before toString is called
+        the result of that function.
+        (JSC::arrayProtoFuncJoin): Updated to use the new JSStringJointer interface.
+        Added a missing exception check after calling toString on the separator
+        but before calling get to get the first element in the array-like object
+        being joined. Changed loop index to i instead of k. Added missing exception
+        check after calling toString on each string from the array before calling
+        get for the next element.
+        (JSC::arrayProtoFuncConcat): Use JSArray::length instead of using the
+        getLength function.
+        (JSC::arrayProtoFuncReverse): Ditto. Also use putByIndexInline.
+        (JSC::arrayProtoFuncShift): Ditto.
+        (JSC::arrayProtoFuncSplice): Use getIndex instead of get, which includes some
+        additional optimizations.
+        (JSC::getOrHole): Deleted. Unused function.
+        (JSC::arrayProtoFuncUnShift): Use putByIndexInline.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::errorDescriptionForValue): Removed the duplicate copy of the the logic
+        from JSValue::toString.
+
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::toStringSlowCase): Improved the performance when converting a
+        small integer to a single character string.
+        (JSC::JSValue::toWTFStringSlowCase): Moved the contents of the
+        inlineJSValueNotStringtoString function here.
+        * runtime/JSCJSValue.h: Removed no longer used toWTFStringInline and fixed
+        a comment with a typo.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::putByIndexInline): Marked ALWAYS_INLINE because this was not
+        getting inlined at some call sites.
+        (JSC::JSObject::indexingData): Deleted. Unused function.
+        (JSC::JSObject::currentIndexingData): Deleted. Unused function.
+        (JSC::JSObject::getHolyIndexQuickly): Deleted. Unused function.
+        (JSC::JSObject::relevantLength): Deleted. Unused function.
+        (JSC::JSObject::currentRelevantLength): Deleted. Unused function.
+
+        * runtime/JSString.h: Added the StringViewWithUnderlyingString struct and
+        the viewWithUnderlyingString function. Removed the inlineJSValueNotStringtoString
+        and toWTFStringInline functions.
+
+        * runtime/JSStringJoiner.cpp:
+        (JSC::appendStringToData): Changed this to be a template instead of writing
+        it out, since StringView::getCharactersWithUpconvert does almsot exactly what
+        this function was trying to do.
+        (JSC::joinStrings): Rewrote this to use StringView.
+        (JSC::JSStringJoiner::joinedLength): Added. Factored out from the join function.
+        (JSC::JSStringJoiner::join): Rewrote to make it a bit simpler. Added an assertion
+        that we entirely filled capacity, since we are now reserving capacity and using
+        uncheckedAppend. Use String instead of RefPtr<StringImpl> because there was no
+        particular value to using the impl directly.
+
+        * runtime/JSStringJoiner.h: Changed the interface to the class to use StringView.
+        Also changed this class so it now has the responsibility to convert each JSValue
+        into a string. This let us share more code between toString and join, and also
+        lets us use the new viewWithUnderlyingString function, which could be confusing at
+        all the call sites, but is easier to understand here.
+
+2015-06-23  Matthew Mirman  <mmirman@apple.com>
+
+        Completes native binding descriptors with native getters and potentially setters.
+        https://bugs.webkit.org/show_bug.cgi?id=140575
+        rdar://problem/19506502
+
+        Reviewed by Mark Lam.
+
+        * CMakeLists.txt:  Added JSBoundSlotBaseFunction.cpp
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/InjectedScriptSource.js: Added case for descriptor having a native getter.
+        * runtime/JSBoundSlotBaseFunction.cpp: Added.
+        (JSC::boundSlotBaseFunctionCall):
+        (JSC::JSBoundSlotBaseFunction::JSBoundSlotBaseFunction):  
+        Necessary wrapper for custom getters and setters as objects.
+        (JSC::JSBoundSlotBaseFunction::create):
+        (JSC::JSBoundSlotBaseFunction::visitChildren):
+        (JSC::JSBoundSlotBaseFunction::finishCreation):
+        * runtime/JSBoundSlotBaseFunction.h: Added.
+        (JSC::JSBoundSlotBaseFunction::createStructure):
+        (JSC::JSBoundSlotBaseFunction::boundSlotBase):
+        (JSC::JSBoundSlotBaseFunction::customGetterSetter):
+        (JSC::JSBoundSlotBaseFunction::isGetter):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Added a globally initialized structure for JSBoundSlotBaseFunction
+        (JSC::JSGlobalObject::visitChildren): visits that structure
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure): added a getter for that structure
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor): extends the case for CustomGetterSetter to 
+        actually include GetterSetter as a JSBoundSlotBaseFunction
+        * runtime/VM.cpp: Added initializer for customGetterSetterFunctionMap
+        * runtime/VM.h: Added cache for JSBoundSlotBaseFunction
+
+2015-06-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Allow trailing comma in ArrayBindingPattern and ObjectBindingPattern
+        https://bugs.webkit.org/show_bug.cgi?id=146192
+
+        Reviewed by Darin Adler.
+
+        According to the ES6 spec, trailing comma in ArrayBindingPattern and ObjectBindingPattern is allowed.
+        And empty ArrayBindingPattern and ObjectBindingPattern is also allowed.
+
+        This patch allows trailing comma and empty binding patterns.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::bindValue):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDeconstructionPattern):
+        * tests/stress/trailing-comma-in-patterns.js: Added.
+        (shouldBe):
+        (iterator):
+
+2015-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Destructuring assignment need to accept iterables
+        https://bugs.webkit.org/show_bug.cgi?id=144111
+
+        Reviewed by Darin Adler.
+
+        This patch makes that destructuring assignments to array binding patterns accept iterables.
+        Previously, it just access the indexed properties.
+        After this patch, it iterates the given value by using ES6 iterator protocol.
+
+        The iteration becomes different from the for-of case.
+        1. Since there's no break/continue case, finally scope is not necessary.
+        2. When the error is raised, the close status of the iterator becomes true. So IteratorClose is not called for that.
+        3. Since the array binding patterns requires a limited count of iterations (if there is no rest(...rest) case), IteratorClose is called when the iteration does not consume the all values of the iterator.
+        4. Since the array binding patterns requires a specified count of iterations, iterator's next call is skipped when iterator becomes closed.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitIteratorClose):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::bindValue):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::finishArrayPattern):
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDeconstructionPattern):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::operatorStackPop):
+        * tests/stress/destructuring-assignment-accepts-iterables.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (.set shouldThrow):
+
+2015-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight currently edited CSS selector
+        https://bugs.webkit.org/show_bug.cgi?id=145658
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json: Added highlightSelector to show highlight over multiple nodes.
+
+2015-06-19  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix build for EWS bots.
+
+        Not reviewed.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+
+2015-06-19  Michael Saboff  <msaboff@apple.com>
+
+        Crash in com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::FTL::fixFunctionBasedOnStackMaps + 17225
+        https://bugs.webkit.org/show_bug.cgi?id=146133
+
+        Reviewed by Geoffrey Garen.
+
+        When generating code to put in inline caching areas, if there isn't enough space,
+        then create and link to an out of line area.  We connect the inline code to this
+        out of line code area by planting a jump from the inline area to the out of line
+        code and appending a jump at the end of the out of line code bck to the instruction
+        following the inline area.  We fill the unused inline area with nops, primarily to 
+        ensure the disassembler doesn't get confused.
+
+        * ftl/FTLCompile.cpp:
+        (generateInlineIfPossibleOutOfLineIfNot): New function that determines if there is enough space
+        in the inline code area for the code to link.  If so, it links inline, otherwise it links the
+        code out of line and plants appropriate jumps to/from the out of line code.
+        (generateICFastPath):
+        (generateCheckInICFastPath):
+        (fixFunctionBasedOnStackMaps):
+        Use generateInlineIfPossibleOutOfLineIfNot() to link code intended for inline cache space.
+
+        * ftl/FTLJITFinalizer.cpp:
+        (JSC::FTL::JITFinalizer::finalizeFunction):
+        * ftl/FTLJITFinalizer.h:
+        (JSC::FTL::OutOfLineCodeInfo::OutOfLineCodeInfo):
+        Added code to finalize any out of line LinkBuffer created by generateInlineIfPossibleOutOfLineIfNot().
+
+2015-06-19  Geoffrey Garen  <ggaren@apple.com>
+
+        WebKit crash while loading nytimes at JavaScriptCore: JSC::ExecutableAllocator::allocate + 276
+        https://bugs.webkit.org/show_bug.cgi?id=146163
+        <rdar://problem/20392986>
+
+        Reviewed by Michael Saboff.
+
+        There's no good way to test this in our test harness because we don't
+        have a way to simulate executable memory pressure, and doing so would
+        cause the cases that still use JITCompilationMustSucceed to crash.
+
+        Instead, I tested by manually forcing all regexp JIT compilation to
+        fail and running the JavaScriptCore tests.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::compile): Allow compilation to fail. We can
+        fall back to the regexp interpreter if we need to.
+
+2015-06-19  Mark Lam  <mark.lam@apple.com>
+
+        Employ explicit operator bool() instead of using the UnspecifiedBoolType workaround.
+        https://bugs.webkit.org/show_bug.cgi?id=146154
+
+        Reviewed by Darin Adler.
+
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodePtr::dataLocation):
+        (JSC::MacroAssemblerCodePtr::operator bool):
+        (JSC::MacroAssemblerCodePtr::operator==):
+        (JSC::MacroAssemblerCodeRef::tryToDisassemble):
+        (JSC::MacroAssemblerCodeRef::operator bool):
+        (JSC::MacroAssemblerCodeRef::dump):
+        (JSC::MacroAssemblerCodePtr::operator UnspecifiedBoolType*): Deleted.
+        (JSC::MacroAssemblerCodeRef::operator UnspecifiedBoolType*): Deleted.
+
+        * bytecode/CodeOrigin.cpp:
+        (JSC::CodeOrigin::isApproximatelyEqualTo):
+        - Fixed a bug here where we were expecting to compare Executable pointers, but
+          ended up comparing a (UnspecifiedBoolType*)1 with another
+          (UnspecifiedBoolType*)1.
+
+        * bytecode/LLIntCallLinkInfo.h:
+        (JSC::LLIntCallLinkInfo::~LLIntCallLinkInfo):
+        (JSC::LLIntCallLinkInfo::isLinked):
+        (JSC::LLIntCallLinkInfo::unlink):
+        * dfg/DFGBlockWorklist.h:
+        (JSC::DFG::BlockWith::BlockWith):
+        (JSC::DFG::BlockWith::operator bool):
+        (JSC::DFG::BlockWithOrder::BlockWithOrder):
+        (JSC::DFG::BlockWithOrder::operator bool):
+        (JSC::DFG::BlockWith::operator UnspecifiedBoolType*): Deleted.
+        (JSC::DFG::BlockWithOrder::operator UnspecifiedBoolType*): Deleted.
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGLazyNode.h:
+        (JSC::DFG::LazyNode::operator!):
+        (JSC::DFG::LazyNode::operator bool):
+        (JSC::DFG::LazyNode::operator UnspecifiedBoolType*): Deleted.
+        * heap/CopyWriteBarrier.h:
+        (JSC::CopyWriteBarrier::operator!):
+        (JSC::CopyWriteBarrier::operator bool):
+        (JSC::CopyWriteBarrier::get):
+        (JSC::CopyWriteBarrier::operator UnspecifiedBoolType*): Deleted.
+        * heap/Handle.h:
+        (JSC::HandleBase::operator!):
+        (JSC::HandleBase::operator bool):
+        (JSC::HandleBase::slot):
+        (JSC::HandleBase::operator UnspecifiedBoolType*): Deleted.
+        * heap/Strong.h:
+        (JSC::Strong::operator!):
+        (JSC::Strong::operator bool):
+        (JSC::Strong::swap):
+        (JSC::Strong::operator UnspecifiedBoolType*): Deleted.
+        * jit/JITWriteBarrier.h:
+        (JSC::JITWriteBarrierBase::operator bool):
+        (JSC::JITWriteBarrierBase::operator!):
+        (JSC::JITWriteBarrierBase::setFlagOnBarrier):
+        (JSC::JITWriteBarrierBase::operator UnspecifiedBoolType*): Deleted.
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLengthWithArrayStorage):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::JSValue):
+        (JSC::JSValue::operator bool):
+        (JSC::JSValue::operator==):
+        (JSC::JSValue::operator UnspecifiedBoolType*): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::hasSparseMap):
+        * runtime/PropertyDescriptor.h:
+        (JSC::PropertyDescriptor::writablePresent):
+        (JSC::PropertyDescriptor::enumerablePresent):
+        (JSC::PropertyDescriptor::configurablePresent):
+        (JSC::PropertyDescriptor::setterPresent):
+        (JSC::PropertyDescriptor::getterPresent):
+        * runtime/WriteBarrier.h:
+        (JSC::WriteBarrierBase::slot):
+        (JSC::WriteBarrierBase::operator bool):
+        (JSC::WriteBarrierBase::operator!):
+        (JSC::WriteBarrierBase<Unknown>::tagPointer):
+        (JSC::WriteBarrierBase<Unknown>::payloadPointer):
+        (JSC::WriteBarrierBase<Unknown>::operator bool):
+        (JSC::WriteBarrierBase<Unknown>::operator!):
+        (JSC::WriteBarrierBase::operator UnspecifiedBoolType*): Deleted.
+        (JSC::WriteBarrierBase<Unknown>::operator UnspecifiedBoolType*): Deleted.
+
+2015-06-19  Anders Carlsson  <andersca@apple.com>
+
+        Add a JSC symlink in /System/Library/PrivateFrameworks
+        https://bugs.webkit.org/show_bug.cgi?id=146158
+        rdar://problem/21465968
+
+        Reviewed by Dan Bernstein.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2015-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid getOwnPropertyNames/Symbols on very large lists
+        https://bugs.webkit.org/show_bug.cgi?id=146141
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype._propertyDescriptors):
+        Avoid calling getOwnPropertyNames/Symbols on very large lists. Instead
+        just generate property descriptors for the first 100 indexes. Note
+        this would behave poorly for sparse arrays with a length > 100, but
+        general support for lists with more than 100 elements is poor. See:
+        <https://webkit.org/b/143589> Web Inspector: Better handling for large collections in Object Trees
+
+2015-06-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Avoid OSR exit in the middle of string concatenation
+        https://bugs.webkit.org/show_bug.cgi?id=145820
+
+        Reviewed by Filip Pizlo.
+
+        DFG attempt to compile ValueAdd with String type into MakeRope(left, ToString(ToPrimitive(right))).
+
+        So when right is speculated as SpecObject, ToPrimitive(SpecObject) is speculated as SpecString.
+        It leads ToString to become Identity with a speculated type check.
+
+        However, ToPrimitive and ToString are originated from the same bytecode. And ToPrimitive may have
+        an observable side effect when the given parameter is an object (calling object.{toString,valueOf}).
+
+        So when object.toString() returns a number (it is allowed in the ES spec), ToPrimitive performs
+        observable `object.toString()` calling. But ToString is converted into a speculated type check for
+        SpecString and it raises OSR exit. And we exit to the original ValueAdd's bytecode position and
+        it redundantly performs an observable ToPrimitive execution.
+
+        To fix this, this patch avoid fixing up for newly introduced ToString node.
+        Since fix up phase is not iterated repeatedly, by avoiding fixing up when generating the node,
+        we can avoid conversion from ToString to Check.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::attemptToMakeFastStringAdd):
+        * tests/stress/toprimitive-speculated-types.js: Added.
+        (shouldBe):
+        (raw):
+        (Counter):
+
+2015-06-18  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: improve generated types for objects passed to backend commands
+        https://bugs.webkit.org/show_bug.cgi?id=146091
+
+        Reviewed by Joseph Pecoraro.
+
+        The main change is that objects passed in will have a type like const T& or const T*,
+        rather than const RefPtr<T>&&. These protocol objects are owned by the generated dispatcher
+        methods and only exist to pass data to backend command implementations. So, there is no
+        reason for callees to add a reference or take ownership of these inputs.
+
+        Some small improvements were made in the code generator to standardize how these
+        expressions are generated for parameters. Optional in parameters are now prefixed with
+        'opt_in_' to make the generated method signatures and implementations clearer.
+
+        * inspector/InspectorValues.cpp:
+        (Inspector::InspectorArrayBase::get): Add const qualifier.
+        * inspector/InspectorValues.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::parseLocation):
+        (Inspector::InspectorDebuggerAgent::setBreakpoint):
+        (Inspector::InspectorDebuggerAgent::continueToLocation):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::callFunctionOn):
+        (Inspector::InspectorRuntimeAgent::saveResult):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        * inspector/agents/InspectorRuntimeAgent.h:
+
+        * inspector/scripts/codegen/cpp_generator.py: Always generate PrimitiveType('array').
+        (CppGenerator.cpp_type_for_unchecked_formal_in_parameter): Alter the type signature
+        for an unchecked input to use pointers or references.
+
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator._generate_handler_declaration_for_command):
+        (CppBackendDispatcherHeaderGenerator._generate_async_handler_declaration_for_command):
+        Local variables for optional parameters now have the 'opt_' prefix.
+
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_async_dispatcher_class_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        Local variables for optional parameters now have the 'opt_' prefix.
+        Split parameterName and parameterKey into two separate template variables to avoid mixups.
+
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+
+2015-06-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed. Rollout r185670 as it caused some tests to be flakey.
+
+        * debugger/Debugger.cpp:
+
+2015-06-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Log blocked loads to the WebInspector console
+        https://bugs.webkit.org/show_bug.cgi?id=146089
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::messageSourceValue):
+        * inspector/protocol/Console.json:
+        * runtime/ConsoleTypes.h:
+        Add content blocker message source.
+
+2015-06-18  Saam Barati  <saambarati1@gmail.com>
+
+        [ES6] support default values in deconstruction parameter nodes
+        https://bugs.webkit.org/show_bug.cgi?id=142679
+
+        Reviewed by Darin Adler.
+
+        ES6 destructuring allows destructuring properties to assign 
+        default values. A link to the spec: 
+        https://people.mozilla.org/~jorendorff/es6-draft.html#sec-destructuring-binding-patterns
+
+        This patch implements default values for all places where deconstruction
+        is allowed besides function parameters. This is because function
+        parameters are parsed in a separate parser arena than the function
+        body itself and ExpresionNode's which are default values for
+        deconstruction parameters will be deallocated by the time we parse the body
+        of the function. I have opened a bug to address this problem:
+        https://bugs.webkit.org/show_bug.cgi?id=145995
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::DeconstructionPatternNode::~DeconstructionPatternNode):
+        (JSC::assignDefaultValueIfUndefined):
+        (JSC::ArrayPatternNode::bindValue):
+        (JSC::ArrayPatternNode::emitDirectBinding):
+        (JSC::ArrayPatternNode::toString):
+        (JSC::ArrayPatternNode::collectBoundIdentifiers):
+        (JSC::ObjectPatternNode::bindValue):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::appendArrayPatternSkipEntry):
+        (JSC::ASTBuilder::appendArrayPatternEntry):
+        (JSC::ASTBuilder::createObjectPattern):
+        (JSC::ASTBuilder::appendObjectPatternEntry):
+        (JSC::ASTBuilder::createBindingLocation):
+        * parser/Nodes.h:
+        (JSC::ArrayPatternNode::appendIndex):
+        (JSC::ObjectPatternNode::appendEntry):
+        (JSC::ObjectPatternNode::Entry::Entry): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDeconstructionPattern):
+        (JSC::Parser<LexerType>::parseDefaultValueForDeconstructionPattern):
+        (JSC::Parser<LexerType>::parseConstDeclarationList):
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::operatorStackPop):
+
+2015-06-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not show JavaScriptCore builtins in inspector
+        https://bugs.webkit.org/show_bug.cgi?id=146049
+
+        Reviewed by Timothy Hatcher.
+
+        * debugger/Debugger.cpp:
+
+2015-06-17  Andreas Kling  <akling@apple.com>
+
+        [JSC] jsSubstring() should have a fast path for 0..baseLength "substrings."
+        <https://webkit.org/b/146051>
+
+        Reviewed by Anders Carlsson.
+
+        If asked to make a substring that actually spans the entire base string,
+        have jsSubstring() just return the base instead of allocating a new JSString.
+
+        3% speed-up on Octane/regexp.
+
+        * runtime/JSString.h:
+        (JSC::jsSubstring):
+
 2015-06-16  Alex Christensen  <achristensen@webkit.org>
 
         32-bit build fix after r185640.

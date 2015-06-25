@@ -290,6 +290,7 @@ public:
 
     // Image generators
     bool parseCanvas(CSSParserValueList&, RefPtr<CSSValue>&);
+    bool parseNamedImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
     bool parseDeprecatedGradient(CSSParserValueList&, RefPtr<CSSValue>&);
     bool parseDeprecatedLinearGradient(CSSParserValueList&, RefPtr<CSSValue>&, CSSGradientRepeat repeating);
@@ -549,8 +550,7 @@ private:
     void setupParser(const char* prefix, unsigned prefixLength, StringView, const char* suffix, unsigned suffixLength);
     bool inShorthand() const { return m_inParseShorthand; }
 
-    bool validateWidth(ValueWithCalculation&);
-    bool validateHeight(ValueWithCalculation&);
+    bool isValidSize(ValueWithCalculation&);
 
     void deleteFontFaceOnlyValues();
 

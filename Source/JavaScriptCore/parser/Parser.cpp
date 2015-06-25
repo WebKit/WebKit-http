@@ -597,42 +597,47 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::parseD
     TreeDeconstructionPattern pattern;
     switch (m_token.m_type) {
     case OPENBRACKET: {
+        JSTextPosition divotStart = tokenStartPosition();
         auto arrayPattern = context.createArrayPattern(m_token.m_location);
         next();
-        if (kind == DeconstructToExpressions && match(CLOSEBRACKET))
-            return 0;
-        failIfTrue(match(CLOSEBRACKET), "There must be at least one bound property in an array deconstruction pattern");
+
         do {
             while (match(COMMA)) {
                 context.appendArrayPatternSkipEntry(arrayPattern, m_token.m_location);
                 next();
             }
             propagateError();
+
+            if (match(CLOSEBRACKET))
+                break;
+
             JSTokenLocation location = m_token.m_location;
             auto innerPattern = parseDeconstructionPattern(context, kind, depth + 1);
             if (kind == DeconstructToExpressions && !innerPattern)
                 return 0;
             failIfFalse(innerPattern, "Cannot parse this deconstruction pattern");
-            context.appendArrayPatternEntry(arrayPattern, location, innerPattern);
+            TreeExpression defaultValue = parseDefaultValueForDeconstructionPattern(context);
+            failIfTrue(kind == DeconstructToParameters && defaultValue,  "Default values in destructuring parameters are currently not supported");
+            context.appendArrayPatternEntry(arrayPattern, location, innerPattern, defaultValue);
         } while (consume(COMMA));
-        
+
         if (kind == DeconstructToExpressions && !match(CLOSEBRACKET))
             return 0;
-
         consumeOrFail(CLOSEBRACKET, "Expected either a closing ']' or a ',' following an element deconstruction pattern");
+        context.finishArrayPattern(arrayPattern, divotStart, divotStart, lastTokenEndPosition());
         pattern = arrayPattern;
         break;
     }
     case OPENBRACE: {
-        next();
-        
-        if (kind == DeconstructToExpressions && match(CLOSEBRACE))
-            return 0;
-
-        failIfTrue(match(CLOSEBRACE), "There must be at least one bound property in an object deconstruction pattern");
         auto objectPattern = context.createObjectPattern(m_token.m_location);
-        bool wasString = false;
+        next();
+
         do {
+            bool wasString = false;
+
+            if (match(CLOSEBRACE))
+                break;
+
             Identifier propertyName;
             TreeDeconstructionPattern innerPattern = 0;
             JSTokenLocation location = m_token.m_location;
@@ -679,8 +684,11 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::parseD
             if (kind == DeconstructToExpressions && !innerPattern)
                 return 0;
             failIfFalse(innerPattern, "Cannot parse this deconstruction pattern");
-            context.appendObjectPatternEntry(objectPattern, location, wasString, propertyName, innerPattern);
+            TreeExpression defaultValue = parseDefaultValueForDeconstructionPattern(context);
+            failIfTrue(kind == DeconstructToParameters && defaultValue, "Default values in destructuring parameters are currently not supported");
+            context.appendObjectPatternEntry(objectPattern, location, wasString, propertyName, innerPattern, defaultValue);
         } while (consume(COMMA));
+
         if (kind == DeconstructToExpressions && !match(CLOSEBRACE))
             return 0;
         consumeOrFail(CLOSEBRACE, "Expected either a closing '}' or an ',' after a property deconstruction pattern");
@@ -702,6 +710,16 @@ template <class TreeBuilder> TreeDeconstructionPattern Parser<LexerType>::parseD
     }
     m_nonLHSCount = nonLHSCount;
     return pattern;
+}
+
+template <typename LexerType>
+template <class TreeBuilder> TreeExpression Parser<LexerType>::parseDefaultValueForDeconstructionPattern(TreeBuilder& context)
+{
+    if (!match(EQUAL))
+        return 0;
+
+    next(TreeBuilder::DontBuildStrings); // consume '='
+    return parseAssignmentExpression(context);
 }
 
 template <typename LexerType>

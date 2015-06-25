@@ -1,3 +1,74 @@
+2015-06-24  Anders Carlsson  <andersca@apple.com>
+
+        Move PluginMainThreadScheduler to WebKit/win
+        https://bugs.webkit.org/show_bug.cgi?id=146289
+
+        Reviewed by Tim Horton.
+
+        * Plugins/PluginMainThreadScheduler.cpp: Renamed from Source/WebCore/plugins/PluginMainThreadScheduler.cpp.
+        (WebCore::PluginMainThreadScheduler::scheduler):
+        (WebCore::PluginMainThreadScheduler::PluginMainThreadScheduler):
+        (WebCore::PluginMainThreadScheduler::scheduleCall):
+        (WebCore::PluginMainThreadScheduler::registerPlugin):
+        (WebCore::PluginMainThreadScheduler::unregisterPlugin):
+        (WebCore::PluginMainThreadScheduler::dispatchCallsForPlugin):
+        (WebCore::PluginMainThreadScheduler::dispatchCalls):
+        (WebCore::PluginMainThreadScheduler::mainThreadCallback):
+        * Plugins/PluginMainThreadScheduler.h: Renamed from Source/WebCore/plugins/PluginMainThreadScheduler.h.
+        (WebCore::PluginMainThreadScheduler::Call::Call):
+        (WebCore::PluginMainThreadScheduler::Call::performCall):
+        * Plugins/PluginView.cpp:
+
+2015-06-23  Anders Carlsson  <andersca@apple.com>
+
+        Remove windowResizerRect code, nobody is using it anymore
+        https://bugs.webkit.org/show_bug.cgi?id=146265
+
+        Reviewed by Beth Dakin.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::windowResizerRect): Deleted.
+        * WebCoreSupport/WebChromeClient.h:
+
+2015-06-23  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] WebDownload::initWithRequest is not implemented.
+        https://bugs.webkit.org/show_bug.cgi?id=146203
+
+        Reviewed by Alex Christensen.
+
+        Implement method to start download from a IWebURLRequest object.
+
+        * WebDownloadCurl.cpp:
+        (WebDownload::initWithRequest): Implemented.
+
+2015-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Remove shouldInterruptJavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=146118
+
+        Reviewed by Antti Koivisto.
+
+        * Interfaces/IWebUIDelegatePrivate.idl:
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::shouldInterruptJavaScript): Deleted.
+        * WebCoreSupport/WebChromeClient.h:
+
+2015-06-17  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win]Implement layoutTestController.dispatchPendingLoadRequests.
+        https://bugs.webkit.org/show_bug.cgi?id=26481
+
+        Reviewed by Darin Adler.
+
+        Implement WebView::dispatchPendingLoadRequests() private API for test runner.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::scaleWebView):
+        (WebView::dispatchPendingLoadRequests):
+        * WebView.h:
+
 2015-06-17  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r185636.

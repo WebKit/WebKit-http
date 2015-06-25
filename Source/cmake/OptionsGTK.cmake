@@ -2,7 +2,7 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 9)
-set(PROJECT_VERSION_MICRO 2)
+set(PROJECT_VERSION_MICRO 3)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
@@ -15,8 +15,8 @@ endif ()
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 45 0 8)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 20 1 2)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 45 1 8)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 20 2 2)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -237,14 +237,14 @@ set(GTK_INCLUDE_DIRS ${GTK3_INCLUDE_DIRS})
 set(GDK_LIBRARIES ${GDK3_LIBRARIES})
 set(GDK_INCLUDE_DIRS ${GDK3_INCLUDE_DIRS})
 
+SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_GESTURES ${GTK3_SUPPORTS_GESTURES})
 SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_UNIX_PRINTING ${GTK_UNIX_PRINT_FOUND})
-SET_AND_EXPOSE_TO_BUILD(HAVE_GTK_GESTURES ${GTK_SUPPORTS_GESTURES})
 
 set(glib_components gio gobject gthread gmodule)
 if (ENABLE_GAMEPAD_DEPRECATED OR ENABLE_GEOLOCATION)
     list(APPEND glib_components gio-unix)
 endif ()
-find_package(GLIB 2.33.2 REQUIRED COMPONENTS ${glib_components})
+find_package(GLIB 2.36 REQUIRED COMPONENTS ${glib_components})
 
 if (ENABLE_CREDENTIAL_STORAGE)
     find_package(Libsecret)
@@ -295,6 +295,8 @@ if (ENABLE_MEDIA_STREAM)
     SET_AND_EXPOSE_TO_BUILD(USE_OPENWEBRTC TRUE)
 endif ()
 
+SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER TRUE)
+
 if (ENABLE_OPENGL)
     # ENABLE_OPENGL is true if either USE_OPENGL or ENABLE_GLES2 is true.
     # But USE_OPENGL is the opposite of ENABLE_GLES2.
@@ -318,7 +320,6 @@ if (ENABLE_OPENGL)
 
     SET_AND_EXPOSE_TO_BUILD(ENABLE_GRAPHICS_CONTEXT_3D TRUE)
 
-    SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER TRUE)
     SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER_GL TRUE)
 
     SET_AND_EXPOSE_TO_BUILD(USE_EGL ${EGL_FOUND})
@@ -378,6 +379,10 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
 endif ()
 
 if (ENABLE_X11_TARGET)
+    if (NOT GTK3_SUPPORTS_X11)
+        message(FATAL_ERROR "Recompile GTK+ with X11 backend to use ENABLE_X11_TARGET")
+    endif ()
+
     find_package(X11 REQUIRED)
     if (NOT X11_Xcomposite_FOUND)
         message(FATAL_ERROR "libXcomposite is required for ENABLE_X11_TARGET")
@@ -391,6 +396,10 @@ if (ENABLE_X11_TARGET)
 endif ()
 
 if (ENABLE_WAYLAND_TARGET)
+    if (NOT GTK3_SUPPORTS_WAYLAND)
+        message(FATAL_ERROR "Recompile GTK+ with Wayland backend to use ENABLE_WAYLAND_TARGET")
+    endif ()
+
     find_package(Wayland REQUIRED)
 endif ()
 

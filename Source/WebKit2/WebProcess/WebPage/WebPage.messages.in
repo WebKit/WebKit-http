@@ -292,8 +292,6 @@ messages -> WebPage LegacyReceiver {
     # Notification
     DidReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed)
 
-    SetWindowResizerSize(WebCore::IntSize intersectsView)
-
     # Printing.
     BeginPrinting(uint64_t frameID, struct WebKit::PrintInfo printInfo)
     EndPrinting()
@@ -434,4 +432,5 @@ messages -> WebPage LegacyReceiver {
 
     ClearWheelEventTestTrigger()
     SetShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocument)
+    SetUserContentExtensionsEnabled(bool userContentExtensionsEnabled)
 }

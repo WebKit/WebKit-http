@@ -308,14 +308,17 @@ public:
     void appendArrayPatternSkipEntry(ArrayPattern, const JSTokenLocation&)
     {
     }
-    void appendArrayPatternEntry(ArrayPattern, const JSTokenLocation&, DeconstructionPattern)
+    void appendArrayPatternEntry(ArrayPattern, const JSTokenLocation&, DeconstructionPattern, int)
+    {
+    }
+    void finishArrayPattern(ArrayPattern, const JSTextPosition&, const JSTextPosition&, const JSTextPosition&)
     {
     }
     ObjectPattern createObjectPattern(const JSTokenLocation&)
     {
         return ObjectDeconstruction;
     }
-    void appendObjectPatternEntry(ArrayPattern, const JSTokenLocation&, bool, const Identifier&, DeconstructionPattern)
+    void appendObjectPatternEntry(ArrayPattern, const JSTokenLocation&, bool, const Identifier&, DeconstructionPattern, int)
     {
     }
     DeconstructionPattern createBindingLocation(const JSTokenLocation&, const Identifier&, const JSTextPosition&, const JSTextPosition&)

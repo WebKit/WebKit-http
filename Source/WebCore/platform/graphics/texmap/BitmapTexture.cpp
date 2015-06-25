@@ -36,6 +36,10 @@ namespace WebCore {
 void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)
 {
     std::unique_ptr<ImageBuffer> imageBuffer = ImageBuffer::create(targetRect.size());
+
+    if (!imageBuffer)
+        return;
+
     GraphicsContext* context = imageBuffer->context();
     context->setImageInterpolationQuality(textureMapper->imageInterpolationQuality());
     context->setTextDrawingMode(textureMapper->textDrawingMode());
@@ -46,6 +50,8 @@ void BitmapTexture::updateContents(TextureMapper* textureMapper, GraphicsLayer* 
     sourceLayer->paintGraphicsLayerContents(*context, sourceRect);
 
     RefPtr<Image> image = imageBuffer->copyImage(DontCopyBackingStore);
+    if (!image)
+        return;
 
     updateContents(image.get(), targetRect, IntPoint(), updateContentsFlag);
 }

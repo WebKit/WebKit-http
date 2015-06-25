@@ -1,3 +1,746 @@
+2015-06-24  Jason Marcell  <jmarcell@apple.com>
+
+        Work towards: Add status of Safari projects on iOS Dashboard on build-safari
+        https://bugs.webkit.org/show_bug.cgi?id=146126
+        <rdar://problem/18226291>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Main.js:
+        (documentReady): Using combined queues to display iOS projects
+
+2015-06-24  Doug Russell  <d_russell@apple.com>
+
+        Bug 146177 - AX: AXObjectCache should try to use an unignored accessibilityObject 
+        when posting a selection notification when on the border between two accessibilityObjects
+        https://bugs.webkit.org/show_bug.cgi?id=146177
+
+        Reviewed by Darin Adler.
+
+        Add support for mapping WebCore Accessibility types into JSValueRef types
+        so they can be used in tests.
+
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (webAccessibilityObjectWrapperClass):
+        (-[AccessibilityNotificationHandler startObserving]):
+        (makeValueRefForValue):
+        (makeArrayRefForArray):
+        (makeObjectRefForDictionary):
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        (webAccessibilityObjectWrapperClass):
+        (-[AccessibilityNotificationHandler startObserving]):
+        (makeValueRefForValue):
+        (makeArrayRefForArray):
+        (makeObjectRefForDictionary):
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+
+2015-06-24  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: roundToDevicePixel() snaps to wrong value.
+        https://bugs.webkit.org/show_bug.cgi?id=146273
+        rdar://problem/18509840
+
+        Reviewed by Simon Fraser.
+
+        Due to the floating point approximate representation, we can't always produce
+        the correct snap value. This patch addresses the issue by removing redundant kFixedPointDenominator multiplication
+        and by changing the rounding in roundToDevicePixel() from float to double.
+
+        * TestWebKitAPI/Tests/WebCore/LayoutUnit.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-06-24  Brady Eidson  <beidson@apple.com>
+
+        Update JavaScript dialog delegates to include a WKSecurityOriginRef argument.
+        <rdar://problem/21269187> and https://bugs.webkit.org/show_bug.cgi?id=146249
+
+        Reviewed by Alex Christensen.
+
+        - Update WKTR to the new client structure.
+        - Update existing TestWebKitAPI tests to either use the new client structure or
+          assign the old function signature to the updated variable name.
+        - Include a new test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+        * TestWebKitAPI/Tests/WebKit2/CloseFromWithinCreatePage.cpp:
+        (TestWebKitAPI::runJavaScriptAlert):
+
+        * TestWebKitAPI/Tests/WebKit2/DocumentStartUserScriptAlertCrash.cpp:
+        (TestWebKitAPI::TEST):
+
+        * TestWebKitAPI/Tests/WebKit2/ModalAlertsSPI.cpp:
+        (TestWebKitAPI::analyzeDialogArguments):
+        (TestWebKitAPI::runJavaScriptAlert):
+        (TestWebKitAPI::runJavaScriptConfirm):
+        (TestWebKitAPI::runJavaScriptPrompt):
+        (TestWebKitAPI::createNewPage):
+        (TestWebKitAPI::TEST):
+
+        * TestWebKitAPI/Tests/mac/FullscreenZoomInitialFrame.mm:
+        (TestWebKitAPI::FullscreenZoomInitialFrame::initializeView):
+
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        (TestWebKitAPI::PageVisibilityStateWithWindowChanges::initializeView):
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+
+2015-06-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Refactoring benchmark runner script to follow pep8 code style.
+        https://bugs.webkit.org/show_bug.cgi?id=146264
+
+        Reviewed by Ryosuke Niwa.
+
+        Refactor benchmark runner script to follow pep8 code style.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder.prepare):
+        (GenericBenchmarkBuilder._run_create_script):
+        (GenericBenchmarkBuilder._copy_benchmark_to_temp_dir):
+        (GenericBenchmarkBuilder._fetch_remote_archive):
+        (GenericBenchmarkBuilder):
+        (GenericBenchmarkBuilder._checkout_with_subversion):
+        (GenericBenchmarkBuilder._apply_patch):
+        (GenericBenchmarkBuilder.clean):
+        (GenericBenchmarkBuilder._runCreateScript): Deleted.
+        (GenericBenchmarkBuilder._copyBenchmarkToTempDir): Deleted.
+        (GenericBenchmarkBuilder._fetchRemoteArchive): Deleted.
+        (GenericBenchmarkBuilder._checkoutWithSubverion): Deleted.
+        (GenericBenchmarkBuilder._applyPatch): Deleted.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner._find_plan_file):
+        (BenchmarkRunner.execute):
+        (BenchmarkRunner._cleanup):
+        (BenchmarkRunner._dump):
+        (BenchmarkRunner._wrap):
+        (BenchmarkRunner._merge):
+        (BenchmarkRunner._show_results):
+        (BenchmarkRunner._findPlanFile): Deleted.
+        (BenchmarkRunner.cleanup): Deleted.
+        (BenchmarkRunner.dump): Deleted.
+        (BenchmarkRunner.wrap): Deleted.
+        (BenchmarkRunner.merge): Deleted.
+        (BenchmarkRunner.show_results): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.prepare_env):
+        (BrowserDriver.launch_url):
+        (BrowserDriver.close_browsers):
+        (BrowserDriver.prepareEnv): Deleted.
+        (BrowserDriver.launchUrl): Deleted.
+        (BrowserDriver.closeBrowser): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.prepare_env):
+        (OSXBrowserDriver.close_browsers):
+        (OSXBrowserDriver._launch_process):
+        (OSXBrowserDriver._terminiate_processes):
+        (OSXBrowserDriver._launch_process_with_caffinate):
+        (OSXBrowserDriver._screen_size):
+        (OSXBrowserDriver.prepareEnv): Deleted.
+        (OSXBrowserDriver.closeBrowsers): Deleted.
+        (OSXBrowserDriver.launchProcess): Deleted.
+        (OSXBrowserDriver.terminateProcesses): Deleted.
+        (OSXBrowserDriver.launchProcessWithCaffinate): Deleted.
+        (OSXBrowserDriver.screenSize): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver):
+        (OSXChromeDriver.launch_url):
+        (OSXChromeCanaryDriver):
+        (OSXChromeCanaryDriver.launch_url):
+        (OSXChromeDriver.launchUrl): Deleted.
+        (OSXChromeCanaryDriver.launchUrl): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver):
+        (OSXFirefoxDriver.launch_url):
+        (OSXFirefoxNightlyDriver):
+        (OSXFirefoxNightlyDriver.launch_url):
+        (OSXFirefoxDriver.launchUrl): Deleted.
+        (OSXFirefoxNightlyDriver.launchUrl): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+        (OSXSafariDriver.prepare_env):
+        (OSXSafariDriver.launch_url):
+        (OSXSafariDriver.close_browsers):
+        (OSXSafariDriver._maximize_window):
+        (OSXSafariDriver.prepareEnv): Deleted.
+        (OSXSafariDriver.launchUrl): Deleted.
+        (OSXSafariDriver.closeBrowsers): Deleted.
+        (OSXSafariDriver.maximizeWindow): Deleted.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver.fetch_result):
+        (HTTPServerDriver.kill_server):
+        (HTTPServerDriver.get_return_code):
+        (HTTPServerDriver.set_device_id):
+        (HTTPServerDriver.fetchResult): Deleted.
+        (HTTPServerDriver.killServer): Deleted.
+        (HTTPServerDriver.getReturnCode): Deleted.
+        (HTTPServerDriver.setDeviceID): Deleted.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver.serve):
+        (SimpleHTTPServerDriver.base_url):
+        (SimpleHTTPServerDriver.fetch_result):
+        (SimpleHTTPServerDriver.kill_server):
+        (SimpleHTTPServerDriver.get_return_code):
+        (SimpleHTTPServerDriver): Deleted.
+        (SimpleHTTPServerDriver.baseUrl): Deleted.
+        (SimpleHTTPServerDriver.fetchResult): Deleted.
+        (SimpleHTTPServerDriver.killServer): Deleted.
+        (SimpleHTTPServerDriver.getReturnCode): Deleted.
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (get_path_from_project_root):
+        (force_remove):
+        (getPathFromProjectRoot): Deleted.
+        (forceRemove): Deleted.
+
+2015-06-23  Anders Carlsson  <andersca@apple.com>
+
+        Add operator! and copy/move constructors to WeakObjCPtr
+        https://bugs.webkit.org/show_bug.cgi?id=146255
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WebKit2/cocoa/WeakObjCPtr.mm:
+        (TEST):
+
+2015-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Expose some more rendering progress events, and have MiniBrowser log for each of them
+        https://bugs.webkit.org/show_bug.cgi?id=146227
+
+        Reviewed by Darin Adler.
+
+        Register for layout milestones/rendering progress events in the WK1 and WK2
+        browser window controllers, and, if logging is turned on, log when they are
+        reached.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController awakeFromNib]):
+        (-[WK1BrowserWindowController webView:didLayout:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController _webView:renderingProgressDidChange:]):
+
+2015-06-23  Brady Eidson  <beidson@apple.com>
+
+        WKFrameInfo should have an accessor for the Frame's current security origin.
+        https://bugs.webkit.org/show_bug.cgi?id=146162
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/modal-alerts-in-new-about-blank-window.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ModalAlerts.mm: Added.
+        (sawDialog):
+        (-[ModalAlertsUIDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (-[ModalAlertsUIDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[ModalAlertsUIDelegate webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[ModalAlertsUIDelegate webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2015-06-23  Tanay C  <tanay.c@samsung.com>
+
+        Remove build warnings in Tools/DumpRenderTree/TestNetscapePlugIn
+        https://bugs.webkit.org/show_bug.cgi?id=146007
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt:
+        * DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp: Add attribute to functions.
+        (pluginLogWithWindowObject):
+        (pluginLogWithArguments):
+        (pluginLog):
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp: Add attribute to functions.
+        (PluginTest::executeScript):
+        (PluginTest::log):
+
+2015-06-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Add libhyphen-dev as dependency after r185862
+        https://bugs.webkit.org/show_bug.cgi?id=146230
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/install-dependencies:
+
+2015-06-22  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Hyphenation is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=89830
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules: Added webkitgtk-test-dicts for layout test.
+
+2015-06-22  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Get rid of factory json files in benchmark_runner
+        https://bugs.webkit.org/show_bug.cgi?id=146175
+
+        Reviewed by Ryosuke Niwa.
+
+        Get rid of factory json files in benchmark_runner and refactoring the code.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/__init__.py:
+        (benchmark_builder_loader):
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/benchmark_builder_factory.py:
+        (BenchmarkBuilderFactory):
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/benchmark_builders.json: Removed.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/__init__.py:
+        (browser_driver_loader):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver_factory.py:
+        (BrowserDriverFactory):
+        (BrowserDriverFactory.available_platforms):
+        (BrowserDriverFactory.available_browsers):
+        (BrowserDriverFactory.add_browser_driver):
+        (BrowserDriverFactory.create):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_drivers.json: Removed.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.prepareEnv):
+        (OSXBrowserDriver.terminateProcesses):
+        (OSXBrowserDriver.screenSize):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver):
+        (OSXChromeCanaryDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver):
+        (OSXFirefoxNightlyDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+        * Scripts/webkitpy/benchmark_runner/generic_factory.py:
+        (GenericFactory.create):
+        (GenericFactory.add):
+        (GenericFactory.iterateGetItem): Deleted.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/__init__.py:
+        (http_server_driver_loader):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver_factory.py:
+        (HTTPServerDriverFactory):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_drivers.json: Removed.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver):
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (is_subclass):
+        (load_subclasses):
+        (ModuleNotFoundError): Deleted.
+        (loadModule): Deleted.
+        (loadJSONFromFile): Deleted.
+
+2015-06-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to enable incremental rendering suppression in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=146223
+        
+        Reviewed by Tim Horton.
+
+        Add a menu item to enable incremental rendering suppression to MiniBrowser.
+        
+        For WK1, this just toggles a pref, and takes effect immediately.
+        
+        For WK2, this is a WKConfiguration property, so only affects new web views.
+        
+        Also remove a toolbar item connection to toggleUseMinimumViewSize: that caused
+        logging on launch.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration):
+        * MiniBrowser/mac/BrowserWindow.xib:
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController toggleIncrementalRenderingSuppressed:]):
+        (-[SettingsController incrementalRenderingSuppressed]):
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController didChangeSettings]):
+
+2015-06-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Run CDjs as part of JSC stress testing
+        https://bugs.webkit.org/show_bug.cgi?id=146174
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Make this aware of the cdjs-tests.yaml.
+        * Scripts/run-jsc-stress-tests:
+        - Teach this about tests that indicate error by returning an error code while also having lots of output even when they succeed.
+        - Add the ability to have "tests" be a list of tests rather than just one test. This could also be a list of directories that have tests.
+        - Fix a bug with bundle copying: whether the $collection should have the basename appended depends on whether we copy into bundleDir.dirname, not on whether absoluteCollection is a directory.
+
+2015-06-21  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r172975): navigator.language unable to tell region for Traditional Chinese users
+        https://bugs.webkit.org/show_bug.cgi?id=146121
+        rdar://problem/21395180
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/NavigatorLanguage.mm: Added.
+        (-[NavigatorLanguageDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::overrideAppleLanguages):
+        (TestWebKitAPI::languageForSystemLanguage):
+        (TestWebKitAPI::TEST):
+
+2015-06-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Ignore warnings from system headers when compiling Tools
+        https://bugs.webkit.org/show_bug.cgi?id=146185
+
+        Reviewed by Martin Robinson.
+
+        Use the SYSTEM argument to the include_directories() command to silence compiler warnings
+        from system headers that we don't control.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt:
+        * ImageDiff/CMakeLists.txt: Also, remove an EFL include directory from here...
+        * ImageDiff/PlatformEfl.cmake: ...and put it here where it belongs.
+        * ImageDiff/PlatformGTK.cmake:
+        * MiniBrowser/efl/CMakeLists.txt:
+        * MiniBrowser/gtk/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WebKitTestRunner/PlatformEfl.cmake:
+        * WebKitTestRunner/PlatformGTK.cmake:
+
+2015-06-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Define GDK_VERSION_MIN_REQUIRED when compiling MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=146186
+
+        Reviewed by Martin Robinson.
+
+        Define GDK_VERSION_MIN_REQUIRED when compiling MiniBrowser to silence several dozen
+        deprecation warnings. (MiniBrowser is unique in that it does not include wtf/Platform.h.)
+
+        * MiniBrowser/gtk/CMakeLists.txt:
+
+2015-06-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r146125.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+        (OSXSafariDriver.prepareEnv):
+
+2015-06-19  Brady Eidson  <beidson@apple.com>
+
+        Rename WKSecurityOrigin.h/cpp to WKSecurityOriginRef.h/cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=146152
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        * WebKitTestRunner/WebNotificationProvider.cpp:
+
+2015-06-19  Mark Lam  <mark.lam@apple.com>
+
+        CheckedArithmetic's operator bool() and operator==() is broken.
+        https://bugs.webkit.org/show_bug.cgi?id=146129
+
+        Reviewed by Geoffrey Garen and Oliver Hunt.
+
+        Added API tests for operator ==, !=, <, <=, >, and >=, and tested for both normal
+        and overflow scenarios in usage of the Checked arithmetic class.
+
+        * TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp:
+        (TestWebKitAPI::OverflowCrashLogger::overflowed):
+        (TestWebKitAPI::OverflowCrashLogger::clearOverflow):
+        (TestWebKitAPI::OverflowCrashLogger::crash):
+        (TestWebKitAPI::OverflowCrashLogger::reset):
+        (TestWebKitAPI::OverflowCrashLogger::hasOverflowed):
+        (TestWebKitAPI::OverflowCrashLogger::overflowCount):
+        (TestWebKitAPI::OverflowCrashLogger::didCrash):
+        - crash logger for verifying that a crash occurs when expected. 
+
+        (TestWebKitAPI::resetOverflow):
+        - convenience function for resetting a test value to an initial overflowed state
+          before a crash.  We will use this value in the overflow testing.
+
+        (TestWebKitAPI::CheckedArithmeticTester::run):
+        - Added new tests for all the comparison operators.
+
+2015-06-19  Per Arne Vollan  <peavo@outlook.com>
+
+        Fix the Windows build after r185721
+        https://bugs.webkit.org/show_bug.cgi?id=146146
+
+        Reviewed by Csaba Osztrogonác.
+
+        Speculative buildfix.
+
+        * DumpRenderTree/win/UIDelegate.h:
+        (UIDelegate::unused4): Added.
+        (UIDelegate::webViewShouldInterruptJavaScript): Deleted.
+
+2015-06-19  Diego Pino Garcia  <dpino@igalia.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove unnecessary svn:executable flags
+        https://bugs.webkit.org/show_bug.cgi?id=146107
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/images/favicon-green.png: Removed property svn:executable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/images/favicon-red.png: Removed property svn:executable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/daterangepicker.css: Removed property svn:executable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/jquery.daterangepicker.js: Removed property svn:executable.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/External/moment.min.js: Removed property svn:executable.
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html: Removed property svn:executable.
+        * CygwinDownloader/cygwin-downloader.zip: Removed property svn:executable.
+        * DumpRenderTree/ForwardingHeaders/runtime/JSExportMacros.h: Removed property svn:executable.
+        * DumpRenderTree/win/TextInputController.cpp: Removed property svn:executable.
+        * DumpRenderTree/win/TextInputController.h: Removed property svn:executable.
+        * DumpRenderTree/win/TextInputControllerWin.cpp: Removed property svn:executable.
+        * Scripts/webkitpy/port/base_unittest.py: Removed property svn:executable.
+        * Scripts/webkitpy/port/driver.py: Removed property svn:executable.
+        * Scripts/webkitpy/w3c/test_parser.py: Removed property svn:executable.
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Disable tests on the WinCairo buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=146106
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2015-06-19  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Fix the minibrowser after r185725
+        https://bugs.webkit.org/show_bug.cgi?id=146135
+
+        Reviewed by Gyuyoung Kim.
+
+        Removed the HAVE_ECORE_X guard in MiniBrowser because it is an unnecessary guard
+        for the elm_config_accel_preference_set() to set the config of acceleration preference.
+
+        * MiniBrowser/efl/main.c:
+        (elm_main): Deleted the HAVE_ECORE_X guard.
+
+2015-06-18  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend capability of run-benchmark script to support mobile device
+        https://bugs.webkit.org/show_bug.cgi?id=146125
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend capability of run-benchmark to support mobile device, and move majority of run-benchmark script code to
+        benchmark_runner directory, and make run-benchmark a wrapping script. Also correct a typo.
+
+        * Scripts/run-benchmark:
+        (main): Deleted.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.prepareEnv):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.prepareEnv):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.prepareEnv):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver.getReturnCode):
+        (HTTPServerDriver):
+        (HTTPServerDriver.setDeviceID):
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py: Copied from Tools/Scripts/run-benchmark.
+        (parse_args):
+        (start):
+        (main):
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (getPathFromProjectRoot):
+
+2015-06-18  Jon Lee  <jonlee@apple.com>
+
+        Unreviewed. Add Matt Daiter as a contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-18  Mark Lam  <mark.lam@apple.com>
+
+        Refactor CheckedArithmeticOperations.cpp to use templates instead of macros.
+        https://bugs.webkit.org/show_bug.cgi?id=146103
+
+        Not reviewed.
+
+        Follow up to fix some typos not caught before original patch was landed.
+
+        * TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp:
+        (TestWebKitAPI::CheckedArithmeticTester::run):
+        (TestWebKitAPI::AllowMixedSignednessTest::run):
+        (TestWebKitAPI::IgnoreMixedSignednessTest::run):
+
+2015-06-18  Daniel Bates  <dabates@apple.com>
+
+        Make webkitdirs::runGitUpdate() work when invoked in more than one Git checkout
+        https://bugs.webkit.org/show_bug.cgi?id=146082
+
+        Reviewed by Darin Adler.
+
+        The function webkitdirs::runGitUpdate may not update the Git checkout in the current
+        working directory after being invoked in a different Git checkout. In particular,
+        calling runGitUpdate() inside a Git SVN checkout and subsequently calling it inside
+        a pure Git checkout g will fail to update g.
+
+        Currently webkitdirs::runGitUpdate() calls VCSUtils::isGitSVN() to determine whether
+        the current working directory is a Git SVN checkout. And isGitSVN() caches its result
+        to speed up subsequent queries. This prevents runGitUpdate() from being used to update
+        an arbitrary Git checkout (since isGitSVN() may return a cached result for a directory
+        different than the current working directory). Instead runGitUpdate() should check
+        whether the current working directory is a Git SVN checkout on each invocation.
+
+        * Scripts/VCSUtils.pm: Export function isGitSVNDirectory so that it can be used from webkitdirs::runGitUpdate().
+        (isGitSVNDirectory): Extracted logic to determine whether a directory is a Git
+        SVN directory from isGitSVN().
+        (isGitSVN): Implemented in terms of isGitSVNDirectory().
+        * Scripts/webkitdirs.pm:
+        (runGitUpdate): Modified to use isGitSVNDirectory().
+
+2015-06-18  Mark Lam  <mark.lam@apple.com>
+
+        Refactor CheckedArithmeticOperations.cpp to use templates instead of macros.
+        https://bugs.webkit.org/show_bug.cgi?id=146103
+
+        Reviewed by Anders Carlsson.
+
+        Presently, the tests in CheckedArithmeticOperations.cpp are all implemented as
+        part of a large macro.  This makes them harder to:
+
+        1. write: no editor help with indentations, have to add trailing '\'s,
+           inconvenient to add line breaks and comments.
+
+        2. read: no chroma coding / syntax highlighting.
+
+        3. debug: compile time errors are reported as being on the single line where
+           the macro is used.
+
+        Refactoring the tests to use C++ templates solves all these issues.
+
+        * TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp:
+        (TestWebKitAPI::CheckedArithmeticTester::run):
+        (TestWebKitAPI::AllowMixedSignednessTest::run):
+        (TestWebKitAPI::IgnoreMixedSignednessTest::run):
+        (TestWebKitAPI::CoerceLiteralToUnsigned::coerce):
+        (TestWebKitAPI::CoerceLiteralNop::coerce):
+
+2015-06-18  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [EFL][WK2] Use Web Browser cache model in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=112273
+
+        Reviewed by Laszlo Gombos.
+
+        Set cache model to EWK_CACHE_MODEL_PRIMARY_WEBBROWSER in EFL's MiniBrowser
+        instead of leaving the default value (EWK_CACHE_MODEL_DOCUMENT_VIEWER).
+        This way we have a decent cache capacity and the page cache actually works.
+
+        * MiniBrowser/efl/main.c:
+        (elm_main):
+
+2015-06-18  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove redundant Chromium bug keyword
+        https://bugs.webkit.org/show_bug.cgi?id=146097
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._parse_modifiers): Remove BUGCR for TestExpectations.
+        (TestExpectationLine._format_line): Deleted.
+
+2015-06-17  Daniel Bates  <dabates@apple.com>
+
+        Client may receive began editing callback for already focused text field
+        https://bugs.webkit.org/show_bug.cgi?id=146074
+        <rdar://problem/21293562>
+
+        Reviewed by Darin Adler.
+
+        Add a unit test to ensure that a client receives exactly one began editing
+        callback when a text field is newly focused. In particular, dispatching
+        a DOM focus event at an already focused text field does not dispatch a
+        began editing callback to the client.
+
+        * TestWebKitAPI/Tests/WebKit2/TextFieldDidBeginAndEndEditing.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-06-17  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win]Implement layoutTestController.dispatchPendingLoadRequests. 
+        https://bugs.webkit.org/show_bug.cgi?id=26481
+
+        Reviewed by Darin Adler.
+
+        Implement WebView::dispatchPendingLoadRequests() private API for test runner.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::dispatchPendingLoadRequests):
+        (TestRunner::overridePreference):
+
+2015-06-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Fail to parse invalid arrays
+        https://bugs.webkit.org/show_bug.cgi?id=146079
+        rdar://problem/21422649
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Correct and add parsing tests with invalid arrays.
+
+2015-06-17  Matt Rajca  <mrajca@apple.com>
+
+        Unreviewed. Added myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-17  Daniel Bates  <dabates@apple.com>
+
+        Export VCSUtils::gitTreeDirectory()
+        <rdar://problem/21248901>
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * Scripts/VCSUtils.pm:
+
+2015-06-17  Tim Horton  <timothy_horton@apple.com>
+
+        Safari tabs still have shrunken content after coming out of fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=146037
+        <rdar://problem/21105960>
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ShrinkToFit.mm: Added.
+        (-[ShrinkToFitNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        Add a test that ensures that disabling scale-to-fit mode correctly updates
+        the page's layout.
+
 2015-06-17  Dan Bernstein  <mitz@apple.com>
 
         [Cocoa] Expose UIDelegate::UIClient::close via WKUIDelegate

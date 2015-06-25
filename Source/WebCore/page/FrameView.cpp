@@ -2485,6 +2485,19 @@ void FrameView::speculativeTilingEnableTimerFired()
     adjustTiledBackingCoverage();
 }
 
+void FrameView::show()
+{
+    ScrollView::show();
+
+    if (frame().isMainFrame()) {
+        // Turn off speculative tiling for a brief moment after a FrameView appears on screen.
+        // Note that adjustTiledBackingCoverage() kicks the (500ms) timer to re-enable it.
+        m_speculativeTilingEnabled = false;
+        m_wasScrolledByUser = false;
+        adjustTiledBackingCoverage();
+    }
+}
+
 void FrameView::layoutTimerFired()
 {
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
@@ -3399,13 +3412,6 @@ void FrameView::invalidateScrollbarRect(Scrollbar* scrollbar, const IntRect& rec
     IntRect dirtyRect = rect;
     dirtyRect.moveBy(scrollbar->location());
     invalidateRect(dirtyRect);
-}
-
-IntRect FrameView::windowResizerRect() const
-{
-    if (Page* page = frame().page())
-        return page->chrome().windowResizerRect();
-    return IntRect();
 }
 
 float FrameView::visibleContentScaleFactor() const

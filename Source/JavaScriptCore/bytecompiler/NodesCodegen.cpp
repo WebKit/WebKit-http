@@ -3119,18 +3119,76 @@ RegisterID* DeconstructingAssignmentNode::emitBytecode(BytecodeGenerator& genera
 DeconstructionPatternNode::~DeconstructionPatternNode()
 {
 }
-    
+
+static void assignDefaultValueIfUndefined(BytecodeGenerator& generator, RegisterID* maybeUndefined, ExpressionNode* defaultValue)
+{
+    ASSERT(defaultValue);
+    RefPtr<Label> isNotUndefined = generator.newLabel();
+    generator.emitJumpIfFalse(generator.emitIsUndefined(generator.newTemporary(), maybeUndefined), isNotUndefined.get());
+    generator.emitNode(maybeUndefined, defaultValue);
+    generator.emitLabel(isNotUndefined.get());
+}
+
 void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) const
 {
-    for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        auto target = m_targetPatterns[i];
-        if (!target)
-            continue;
-        RefPtr<RegisterID> temp = generator.newTemporary();
-        generator.emitLoad(temp.get(), jsNumber(i));
-        generator.emitGetByVal(temp.get(), rhs, temp.get());
-        target->bindValue(generator, temp.get());
+    RefPtr<RegisterID> iterator = generator.newTemporary();
+    {
+        generator.emitGetById(iterator.get(), rhs, generator.propertyNames().iteratorSymbol);
+        CallArguments args(generator, nullptr);
+        generator.emitMove(args.thisRegister(), rhs);
+        generator.emitCall(iterator.get(), iterator.get(), NoExpectedFunction, args, divot(), divotStart(), divotEnd());
     }
+
+    if (m_targetPatterns.isEmpty()) {
+        generator.emitIteratorClose(iterator.get(), this);
+        return;
+    }
+
+    RefPtr<RegisterID> done;
+    for (auto& target : m_targetPatterns) {
+        RefPtr<RegisterID> value = generator.newTemporary();
+
+        RefPtr<Label> iterationSkipped = generator.newLabel();
+        if (!done)
+            done = generator.newTemporary();
+        else
+            generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
+
+        {
+            RefPtr<RegisterID> next = generator.emitGetById(generator.newTemporary(), iterator.get(), generator.propertyNames().next);
+            CallArguments nextArguments(generator, nullptr);
+            generator.emitMove(nextArguments.thisRegister(), iterator.get());
+            generator.emitCall(value.get(), next.get(), NoExpectedFunction, nextArguments, divot(), divotStart(), divotEnd());
+        }
+        {
+            RefPtr<Label> typeIsObject = generator.newLabel();
+            generator.emitJumpIfTrue(generator.emitIsObject(generator.newTemporary(), value.get()), typeIsObject.get());
+            generator.emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
+            generator.emitLabel(typeIsObject.get());
+        }
+
+        {
+            generator.emitGetById(done.get(), value.get(), generator.propertyNames().done);
+            RefPtr<Label> valueIsSet = generator.newLabel();
+            generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
+            generator.emitGetById(value.get(), value.get(), generator.propertyNames().value);
+            generator.emitJump(valueIsSet.get());
+            generator.emitLabel(iterationSkipped.get());
+            generator.emitLoad(value.get(), jsUndefined());
+            generator.emitLabel(valueIsSet.get());
+        }
+
+        if (!target.pattern)
+            continue;
+        if (target.defaultValue)
+            assignDefaultValueIfUndefined(generator, value.get(), target.defaultValue);
+        target.pattern->bindValue(generator, value.get());
+    }
+
+    RefPtr<Label> iteratorClosed = generator.newLabel();
+    generator.emitJumpIfTrue(done.get(), iteratorClosed.get());
+    generator.emitIteratorClose(iterator.get(), this);
+    generator.emitLabel(iteratorClosed.get());
 }
 
 RegisterID* ArrayPatternNode::emitDirectBinding(BytecodeGenerator& generator, RegisterID* dst, ExpressionNode* rhs)
@@ -3152,13 +3210,15 @@ RegisterID* ArrayPatternNode::emitDirectBinding(BytecodeGenerator& generator, Re
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
         registers.uncheckedAppend(generator.newTemporary());
         generator.emitNode(registers.last().get(), elements[i]);
+        if (m_targetPatterns[i].defaultValue)
+            assignDefaultValueIfUndefined(generator, registers.last().get(), m_targetPatterns[i].defaultValue);
         if (resultRegister)
             generator.emitPutByIndex(resultRegister.get(), i, registers.last().get());
     }
     
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        if (m_targetPatterns[i])
-            m_targetPatterns[i]->bindValue(generator, registers[i].get());
+        if (m_targetPatterns[i].pattern)
+            m_targetPatterns[i].pattern->bindValue(generator, registers[i].get());
     }
     if (resultRegister)
         return generator.moveToDestinationIfNeeded(dst, resultRegister.get());
@@ -3169,11 +3229,11 @@ void ArrayPatternNode::toString(StringBuilder& builder) const
 {
     builder.append('[');
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        if (!m_targetPatterns[i]) {
+        if (!m_targetPatterns[i].pattern) {
             builder.append(',');
             continue;
         }
-        m_targetPatterns[i]->toString(builder);
+        m_targetPatterns[i].pattern->toString(builder);
         if (i < m_targetPatterns.size() - 1)
             builder.append(',');
     }
@@ -3183,7 +3243,7 @@ void ArrayPatternNode::toString(StringBuilder& builder) const
 void ArrayPatternNode::collectBoundIdentifiers(Vector<Identifier>& identifiers) const
 {
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        if (DeconstructionPatternNode* node = m_targetPatterns[i].get())
+        if (DeconstructionPatternNode* node = m_targetPatterns[i].pattern.get())
             node->collectBoundIdentifiers(identifiers);
     }
 }
@@ -3210,6 +3270,8 @@ void ObjectPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs)
         auto& target = m_targetPatterns[i];
         RefPtr<RegisterID> temp = generator.newTemporary();
         generator.emitGetById(temp.get(), rhs, target.propertyName);
+        if (target.defaultValue)
+            assignDefaultValueIfUndefined(generator, temp.get(), target.defaultValue);
         target.pattern->bindValue(generator, temp.get());
     }
 }

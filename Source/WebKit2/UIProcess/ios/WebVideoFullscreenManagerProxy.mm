@@ -38,10 +38,6 @@
 #import <WebCore/TimeRanges.h>
 #import <WebKitSystemInterface.h>
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-#import "BackBoardServicesSPI.h"
-#endif
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -62,7 +58,7 @@ bool WebVideoFullscreenManagerProxy::hasMode(HTMLMediaElementEnums::VideoFullscr
     return false;
 }
 
-bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoOptimized() const
+bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoPictureInPicture() const
 {
     return false;
 }
@@ -266,10 +262,10 @@ bool WebVideoFullscreenManagerProxy::hasMode(HTMLMediaElementEnums::VideoFullscr
     return false;
 }
 
-bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoOptimized() const
+bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoPictureInPicture() const
 {
     for (auto& tuple : m_contextMap.values()) {
-        if (std::get<1>(tuple)->mayAutomaticallyShowVideoOptimized())
+        if (std::get<1>(tuple)->mayAutomaticallyShowVideoPictureInPicture())
             return true;
     }
     return false;
@@ -306,7 +302,7 @@ WebCore::WebVideoFullscreenInterfaceAVKit& WebVideoFullscreenManagerProxy::ensur
 
 #pragma mark Messages from WebVideoFullscreenManager
 
-void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint64_t contextId, uint32_t videoLayerID, const WebCore::IntRect& initialRect, float hostingDeviceScaleFactor, HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode, bool allowOptimizedFullscreen)
+void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint64_t contextId, uint32_t videoLayerID, const WebCore::IntRect& initialRect, float hostingDeviceScaleFactor, HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode, bool allowsPictureInPicture)
 {
     ASSERT(videoLayerID);
     RefPtr<WebVideoFullscreenModelContext> model;
@@ -323,7 +319,7 @@ void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint64_t contextId, u
     }
 
     UIView *parentView = downcast<RemoteLayerTreeDrawingAreaProxy>(*m_page->drawingArea()).remoteLayerTreeHost().rootLayer();
-    interface->setupFullscreen(*model->layerHost(), initialRect, parentView, videoFullscreenMode, allowOptimizedFullscreen);
+    interface->setupFullscreen(*model->layerHost(), initialRect, parentView, videoFullscreenMode, allowsPictureInPicture);
 }
 
 void WebVideoFullscreenManagerProxy::resetMediaState(uint64_t contextId)
@@ -516,12 +512,7 @@ void WebVideoFullscreenManagerProxy::didCleanupFullscreen(uint64_t contextId)
 void WebVideoFullscreenManagerProxy::setVideoLayerFrame(uint64_t contextId, WebCore::FloatRect frame)
 {
     @autoreleasepool {
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-        BKSAnimationFenceHandle* synchronizationFence = [UIWindow _synchronizedDrawingFence];
-        mach_port_name_t fencePort = [synchronizationFence CAPort];
-#else
         mach_port_name_t fencePort = [UIWindow _synchronizeDrawingAcrossProcesses];
-#endif
 
         m_page->send(Messages::WebVideoFullscreenManager::SetVideoLayerFrameFenced(contextId, frame, IPC::Attachment(fencePort, MACH_MSG_TYPE_MOVE_SEND)), m_page->pageID());
     }

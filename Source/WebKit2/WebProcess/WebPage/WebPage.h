@@ -104,8 +104,6 @@ OBJC_CLASS CALayer;
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSObject;
 OBJC_CLASS WKAccessibilityWebPageObject;
-
-#define ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC 1
 #endif
 
 namespace API {
@@ -261,7 +259,6 @@ public:
     String userAgent(const WebCore::URL&) const;
     String userAgent(WebFrame*, const WebCore::URL&) const;
     String platformUserAgent(const WebCore::URL&) const;
-    WebCore::IntRect windowResizerRect() const;
     WebCore::KeyboardUIMode keyboardUIMode();
 
     WebUndoStep* webUndoStep(uint64_t);
@@ -961,7 +958,6 @@ private:
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
     void tryRestoreScrollPosition();
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, uint64_t callbackID);
-    void setWindowResizerSize(const WebCore::IntSize&);
     void updateIsInWindow(bool isInitialState = false);
     void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
@@ -1138,6 +1134,7 @@ private:
     void clearWheelEventTestTrigger();
 
     void setShouldScaleViewToFitDocument(bool);
+    void setUserContentExtensionsEnabled(bool);
 
     uint64_t m_pageID;
 
@@ -1229,8 +1226,6 @@ private:
     bool m_mayStartMediaWhenInWindow;
 
     HashMap<uint64_t, RefPtr<WebUndoStep>> m_undoStepMap;
-
-    WebCore::IntSize m_windowResizerSize;
 
 #if ENABLE(CONTEXT_MENUS)
     std::unique_ptr<API::InjectedBundle::PageContextMenuClient> m_contextMenuClient;

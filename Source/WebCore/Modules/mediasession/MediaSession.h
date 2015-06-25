@@ -29,9 +29,12 @@
 #if ENABLE(MEDIA_SESSION)
 
 #include "MediaRemoteControls.h"
+#include "MediaSessionMetadata.h"
 
 namespace WebCore {
 
+class Dictionary;
+class Document;
 class HTMLMediaElement;
 
 class MediaSession final : public RefCounted<MediaSession> {
@@ -41,7 +44,7 @@ public:
         Active,
         Interrupted
     };
-    
+
     static Ref<MediaSession> create(ScriptExecutionContext& context, const String& kind)
     {
         return adoptRef(*new MediaSession(context, kind));
@@ -55,12 +58,16 @@ public:
     
     State currentState() const { return m_currentState; }
 
+    void setMetadata(const Dictionary&);
+
     void releaseSession();
     
     // Runs the media session invocation algorithm and returns true on success.
     bool invoke();
 
     void togglePlayback();
+    void skipToNextTrack();
+    void skipToPreviousTrack();
 
 private:
     friend class HTMLMediaElement;
@@ -70,13 +77,17 @@ private:
 
     void addActiveMediaElement(HTMLMediaElement&);
 
+    void releaseInternal();
+
     State m_currentState { State::Idle };
     Vector<HTMLMediaElement*> m_participatingElements;
     HashSet<HTMLMediaElement*> m_activeParticipatingElements;
     HashSet<HTMLMediaElement*>* m_iteratedActiveParticipatingElements { nullptr };
 
+    Document& m_document;
     const String m_kind;
     RefPtr<MediaRemoteControls> m_controls;
+    MediaSessionMetadata m_metadata;
 };
 
 } // namespace WebCore

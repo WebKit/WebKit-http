@@ -70,8 +70,12 @@ void HTMLScriptElement::parseAttribute(const QualifiedName& name, const AtomicSt
 Node::InsertionNotificationRequest HTMLScriptElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    ScriptElement::insertedInto(insertionPoint);
-    return InsertionDone;
+    return shouldCallFinishedInsertingSubtree(insertionPoint) ? InsertionShouldCallFinishedInsertingSubtree : InsertionDone;
+}
+
+void HTMLScriptElement::finishedInsertingSubtree()
+{
+    ScriptElement::finishedInsertingSubtree();
 }
 
 void HTMLScriptElement::setText(const String &value)

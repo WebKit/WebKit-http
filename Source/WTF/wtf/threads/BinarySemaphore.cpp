@@ -26,8 +26,6 @@
 #include "config.h"
 #include "BinarySemaphore.h"
 
-#if !PLATFORM(WIN)
-
 namespace WTF {
 
 BinarySemaphore::BinarySemaphore()
@@ -77,5 +75,3 @@ bool BinarySemaphore::wait(double absoluteTime)
 }
 
 } // namespace WTF
-
-#endif // !PLATFORM(WIN)

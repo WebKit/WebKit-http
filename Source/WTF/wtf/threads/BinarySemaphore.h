@@ -42,19 +42,11 @@ public:
     WTF_EXPORT_PRIVATE bool wait(double absoluteTime);
     WTF_EXPORT_PRIVATE bool wait();
 
-#if PLATFORM(WIN)
-    HANDLE event() const { return m_event; }
-#endif
-
 private:
-#if PLATFORM(WIN)
-    HANDLE m_event;
-#else
     bool m_isSet;
 
     Mutex m_mutex;
     ThreadCondition m_condition;
-#endif
 };
 
 } // namespace WTF

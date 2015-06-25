@@ -2437,12 +2437,10 @@ elm_main(int argc, char *argv[])
 
     if (evas_engine_name)
         elm_config_accel_preference_set(evas_engine_name);
-#if defined(HAVE_ECORE_X)
     else {
         evas_engine_name = "opengl";
         elm_config_accel_preference_set(evas_engine_name);
     }
-#endif
 
     Ewk_Context *context = ewk_context_default_get();
 
@@ -2451,6 +2449,9 @@ elm_main(int argc, char *argv[])
 
     // Enable favicon database.
     ewk_context_favicon_database_directory_set(context, NULL);
+
+    // Use a proper cache model.
+    ewk_context_cache_model_set(context, EWK_CACHE_MODEL_PRIMARY_WEBBROWSER);
 
     if (cookies_policy_string) {
         Ewk_Cookie_Accept_Policy cookie_policy = parse_cookies_policy(cookies_policy_string);

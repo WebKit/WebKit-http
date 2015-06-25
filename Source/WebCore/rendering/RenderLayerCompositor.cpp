@@ -3937,6 +3937,8 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Lay
                 scrollingGeometry.horizontalSnapOffsets = *offsets;
             if (const Vector<LayoutUnit>* offsets = layer.verticalSnapOffsets())
                 scrollingGeometry.verticalSnapOffsets = *offsets;
+            scrollingGeometry.currentHorizontalSnapPointIndex = layer.currentHorizontalSnapPointIndex();
+            scrollingGeometry.currentVerticalSnapPointIndex = layer.currentVerticalSnapPointIndex();
 #endif
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }
