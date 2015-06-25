@@ -109,6 +109,7 @@ NSString *WebConsoleMessageAppCacheMessageSource = @"AppCacheMessageSource";
 NSString *WebConsoleMessageRenderingMessageSource = @"RenderingMessageSource";
 NSString *WebConsoleMessageCSSMessageSource = @"CSSMessageSource";
 NSString *WebConsoleMessageSecurityMessageSource = @"SecurityMessageSource";
+NSString *WebConsoleMessageContentBlockerMessageSource = @"ContentBlockerMessageSource";
 NSString *WebConsoleMessageOtherMessageSource = @"OtherMessageSource";
 
 NSString *WebConsoleMessageDebugMessageLevel = @"DebugMessageLevel";
@@ -132,12 +133,6 @@ NSString *WebConsoleMessageErrorMessageLevel = @"ErrorMessageLevel";
 @interface NSView (WebOldWebKitPlugInDetails)
 - (void)setIsSelected:(BOOL)isSelected;
 @end
-
-#if !PLATFORM(IOS)
-@interface NSWindow (AppKitSecretsIKnowAbout)
-- (NSRect)_growBoxRect;
-@end
-#endif
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -387,6 +382,8 @@ inline static NSString *stringForMessageSource(MessageSource source)
         return WebConsoleMessageCSSMessageSource;
     case MessageSource::Security:
         return WebConsoleMessageSecurityMessageSource;
+    case MessageSource::ContentBlocker:
+        return WebConsoleMessageContentBlockerMessageSource;
     case MessageSource::Other:
         return WebConsoleMessageOtherMessageSource;
     }
@@ -545,11 +542,6 @@ bool WebChromeClient::runJavaScriptPrompt(Frame* frame, const String& prompt, co
     return !result.isNull();
 }
 
-bool WebChromeClient::shouldInterruptJavaScript()
-{
-    return CallUIDelegateReturningBoolean(NO, m_webView, @selector(webViewShouldInterruptJavaScript:));
-}
-
 void WebChromeClient::setStatusbarText(const String& status)
 {
     // We want the temporaries allocated here to be released even before returning to the 
@@ -557,15 +549,6 @@ void WebChromeClient::setStatusbarText(const String& status)
     NSAutoreleasePool* localPool = [[NSAutoreleasePool alloc] init];
     CallUIDelegate(m_webView, @selector(webView:setStatusText:), (NSString *)status);
     [localPool drain];
-}
-
-IntRect WebChromeClient::windowResizerRect() const
-{
-#if !PLATFORM(IOS)
-    return enclosingIntRect([[m_webView window] _growBoxRect]);
-#else
-    return IntRect();
-#endif
 }
 
 bool WebChromeClient::supportsImmediateInvalidation()

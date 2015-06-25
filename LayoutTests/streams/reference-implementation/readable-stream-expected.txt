@@ -9,7 +9,7 @@ FAIL ReadableStream start should be called with the proper parameters assert_arr
 FAIL ReadableStream start controller parameter should be extensible assert_array_equals: prototype should have the right properties lengths differ, expected 5 got 4
 PASS ReadableStream should be able to call start method within prototype chain of its source 
 PASS ReadableStream start should be able to return a promise 
-TIMEOUT ReadableStream start should be able to return a promise and reject it Test timed out
+PASS ReadableStream start should be able to return a promise and reject it 
 PASS ReadableStream should be able to enqueue different objects. 
 PASS ReadableStream: if pull rejects, it should error the stream 
 PASS ReadableStream: should only call pull once upon starting the stream 
@@ -25,7 +25,7 @@ PASS ReadableStream pull should be able to close a stream.
 PASS ReadableStream: enqueue should throw when the stream is readable but draining 
 PASS ReadableStream: enqueue should throw when the stream is closed 
 PASS ReadableStream: enqueue should throw the stored error when the stream is errored 
-FAIL ReadableStream: should call underlying source methods as methods releaseLock is not implemented
+PASS ReadableStream: should call underlying source methods as methods 
 FAIL ReadableStream strategies: the default strategy should give desiredSize of 1 to start, decreasing by 1 per enqueue assert_equals: expected (number) 1 but got (undefined) undefined
 FAIL ReadableStream strategies: the default strategy should continue giving desiredSize of 1 if the chunks are read immediately assert_equals: desiredSize should start at 1 expected (number) 1 but got (undefined) undefined
 PASS ReadableStream integration test: adapting a random push source 

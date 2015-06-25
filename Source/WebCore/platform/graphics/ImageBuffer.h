@@ -153,6 +153,7 @@ private:
     friend class GraphicsContext;
     friend class GeneratedImage;
     friend class CrossfadeGeneratedImage;
+    friend class NamedImageGeneratedImage;
     friend class GradientImage;
 
 private:

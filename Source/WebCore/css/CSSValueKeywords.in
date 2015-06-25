@@ -186,6 +186,7 @@ threedshadow
 window
 windowframe
 windowtext
+-apple-wireless-playback-target-active
 -apple-system-blue
 -apple-system-brown
 -apple-system-gray
@@ -680,6 +681,7 @@ skip-white-space
 // CSS_PROP_WORD_BREAK
 //
 break-all
+keep-all
 
 //
 // CSS_PROP_WORD_WRAP

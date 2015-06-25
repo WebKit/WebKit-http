@@ -135,9 +135,6 @@ fast/history/page-cache-notification-suspendable.html [ Skip ]
 # TODO DumpRenderTree code to enable Java is currently a no-op. Windows doesn't come with Java by default.
 java/ [ Skip ]
 
-# TODO Implement testRunner.dispatchPendingLoadRequests
-webkit.org/b/26481 http/tests/loading/deleted-host-in-resource-load-delegate-callback.html [ Skip ]
-
 # TODO No support for print-to-pdf in Windows DRT
 printing/compositing-layer-printing.html [ Skip ]
 printing/media-queries-print.html [ Skip ]
@@ -512,9 +509,6 @@ fast/events/constructors/device-proximity-event-constructor.html
 
 # TODO Fail until SUBPIXEL_LAYOUT is enabled
 webkit.org/b/85532 fast/sub-pixel [ Skip ]
-
-# These tests reference specific fonts on Mac port.
-fast/text/font-weights-zh.html [ WontFix ]
 
 # TODO LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
 compositing/visible-rect/  [ Skip ]
@@ -1327,8 +1321,6 @@ webkit.org/b/140798 [ Release ] accessibility/html-html-element-is-ignored.html 
 webkit.org/b/140798 [ Debug ] accessibility/html-html-element-is-ignored.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/inline-block-assertion.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/inline-block-assertion.html [ Skip ] # Debug assertion
-webkit.org/b/140798 [ Release ] accessibility/input-auto-fill-button.html [ Failure ]
-webkit.org/b/140798 [ Debug ] accessibility/input-auto-fill-button.html [ Failure ]
 webkit.org/b/140798 [ Release ] accessibility/input-type-hidden-in-aria-hidden-false.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/input-type-hidden-in-aria-hidden-false.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/legend-children-are-visible.html [ Failure ]
@@ -1419,6 +1411,11 @@ webkit.org/b/140798 [ Release ] accessibility/aria-switch-checked.html [ Skip ]
 webkit.org/b/140798 [ Debug ] accessibility/aria-switch-checked.html [ Skip ]
 webkit.org/b/140798 [ Release ] accessibility/aria-switch-text.html [ Skip ]
 webkit.org/b/140798 [ Debug ] accessibility/aria-switch-text.html [ Skip ]
+
+webkit.org/b/146243 accessibility/hit-test-input-auto-fill-button.html [ Failure ]
+webkit.org/b/146243 accessibility/hit-test-input-search-cancel-button.html [ Failure ]
+webkit.org/b/140798 accessibility/input-auto-fill-button.html [ Failure ]
+webkit.org/b/146243 accessibility/input-search-cancel-button.html [ Failure ]
 
 # The following timeouts are caused by the same problem: [ Failure ]
 webkit.org/b/126066 accessibility/loading-iframe-updates-axtree.html [ Skip ]

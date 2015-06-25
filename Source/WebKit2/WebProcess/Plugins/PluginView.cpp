@@ -296,7 +296,7 @@ PluginView::PluginView(PassRefPtr<HTMLPlugInElement> pluginElement, PassRefPtr<P
 #endif
     , m_manualStreamState(StreamStateInitial)
     , m_pluginSnapshotTimer(*this, &PluginView::pluginSnapshotTimerFired, pluginSnapshotTimerDelay)
-#if PLATFORM(COCOA) || ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC) || PLATFORM(COCOA)
     , m_countSnapshotRetries(0)
 #endif
     , m_didReceiveUserInteraction(false)
@@ -1517,14 +1517,6 @@ void PluginView::pluginProcessCrashed()
     downcast<RenderEmbeddedObject>(*m_pluginElement->renderer()).setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
     
     Widget::invalidate();
-}
-
-void PluginView::willSendEventToPlugin()
-{
-    // If we're sending an event to a plug-in, we can't control how long the plug-in
-    // takes to process it (e.g. it may display a context menu), so we tell the UI process
-    // to stop the responsiveness timer in this case.
-    m_webPage->send(Messages::WebPageProxy::StopResponsivenessTimer());
 }
 
 #if PLATFORM(COCOA)

@@ -48,6 +48,7 @@
 #include "NavigationActionData.h"
 #include "PluginInformation.h"
 #include "PrintInfo.h"
+#include "SecurityOriginData.h"
 #include "WKAPICast.h"
 #include "WKPagePolicyClientInternal.h"
 #include "WKPageRenderingProgressEventsInternal.h"
@@ -349,6 +350,11 @@ WKStringRef WKPageCopyCustomUserAgent(WKPageRef pageRef)
 void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 {
     toImpl(pageRef)->setCustomUserAgent(toWTFString(userAgentRef));
+}
+
+void WKPageSetUserContentExtensionsEnabled(WKPageRef pageRef, bool enabled)
+{
+    toImpl(pageRef)->setUserContentExtensionsEnabled(enabled);
 }
 
 bool WKPageSupportsTextEncoding(WKPageRef pageRef)
@@ -1328,7 +1334,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         }
 
     private:
-        virtual PassRefPtr<WebPageProxy> createNewPage(WebPageProxy* page, WebFrameProxy*, const ResourceRequest& resourceRequest, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData) override
+        virtual PassRefPtr<WebPageProxy> createNewPage(WebPageProxy* page, WebFrameProxy*, const SecurityOriginData&, const ResourceRequest& resourceRequest, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData) override
         {
             if (!m_client.base.version && !m_client.createNewPage_deprecatedForUseWithV0)
                 return 0;
@@ -1402,36 +1408,53 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.unfocus(toAPI(page), m_client.base.clientInfo);
         }
 
-        virtual void runJavaScriptAlert(WebPageProxy* page, const String& message, WebFrameProxy* frame, std::function<void ()> completionHandler) override
+        virtual void runJavaScriptAlert(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void ()> completionHandler) override
         {
-            if (!m_client.runJavaScriptAlert) {
+            if (!m_client.runJavaScriptAlert && !m_client.runJavaScriptAlert_deprecatedForUseWithV0) {
                 completionHandler();
                 return;
             }
 
-            m_client.runJavaScriptAlert(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+            if (m_client.runJavaScriptAlert) {
+                RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(securityOriginData.protocol, securityOriginData.host, securityOriginData.port);
+                m_client.runJavaScriptAlert(toAPI(page), toAPI(message.impl()), toAPI(frame), toAPI(securityOrigin.get()), m_client.base.clientInfo);
+            } else
+                m_client.runJavaScriptAlert_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+
             completionHandler();
         }
 
-        virtual void runJavaScriptConfirm(WebPageProxy* page, const String& message, WebFrameProxy* frame, std::function<void (bool)> completionHandler) override
+        virtual void runJavaScriptConfirm(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void (bool)> completionHandler) override
         {
-            if (!m_client.runJavaScriptConfirm) {
+            if (!m_client.runJavaScriptConfirm && !m_client.runJavaScriptConfirm_deprecatedForUseWithV0) {
                 completionHandler(false);
                 return;
             }
 
-            bool result = m_client.runJavaScriptConfirm(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+            bool result;
+            if (m_client.runJavaScriptConfirm) {
+                RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(securityOriginData.protocol, securityOriginData.host, securityOriginData.port);
+                result = m_client.runJavaScriptConfirm(toAPI(page), toAPI(message.impl()), toAPI(frame), toAPI(securityOrigin.get()), m_client.base.clientInfo);
+            } else
+                result = m_client.runJavaScriptConfirm_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(frame), m_client.base.clientInfo);
+
             completionHandler(result);
         }
 
-        virtual void runJavaScriptPrompt(WebPageProxy* page, const String& message, const String& defaultValue, WebFrameProxy* frame, std::function<void (const String&)> completionHandler) override
+        virtual void runJavaScriptPrompt(WebPageProxy* page, const String& message, const String& defaultValue, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void (const String&)> completionHandler) override
         {
-            if (!m_client.runJavaScriptPrompt) {
+            if (!m_client.runJavaScriptPrompt && !m_client.runJavaScriptPrompt_deprecatedForUseWithV0) {
                 completionHandler(String());
                 return;
             }
 
-            RefPtr<API::String> string = adoptRef(toImpl(m_client.runJavaScriptPrompt(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.base.clientInfo)));
+            RefPtr<API::String> string;
+            if (m_client.runJavaScriptPrompt) {
+                RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(securityOriginData.protocol, securityOriginData.host, securityOriginData.port);
+                string = adoptRef(toImpl(m_client.runJavaScriptPrompt(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), toAPI(securityOrigin.get()), m_client.base.clientInfo)));
+            } else
+                string = adoptRef(toImpl(m_client.runJavaScriptPrompt_deprecatedForUseWithV0(toAPI(page), toAPI(message.impl()), toAPI(defaultValue.impl()), toAPI(frame), m_client.base.clientInfo)));
+
             if (!string) {
                 completionHandler(String());
                 return;
@@ -1729,14 +1752,6 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.saveDataToFileInDownloadsFolder(toAPI(page), toAPI(suggestedFilename.impl()), toAPI(mimeType.impl()), toURLRef(originatingURLString.impl()), toAPI(data), m_client.base.clientInfo);
         }
 
-        virtual bool shouldInterruptJavaScript(WebPageProxy* page) override
-        {
-            if (!m_client.shouldInterruptJavaScript)
-                return false;
-
-            return m_client.shouldInterruptJavaScript(toAPI(page), m_client.base.clientInfo);
-        }
-
         virtual void pinnedStateDidChange(WebPageProxy& page) override
         {
             if (!m_client.pinnedStateDidChange)
@@ -1856,11 +1871,11 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
             m_client.didFailNavigation(toAPI(&page), toAPI(navigation), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
 
-        virtual void didFailProvisionalLoadInSubframeWithError(WebPageProxy& page, WebFrameProxy& subframe, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
+        virtual void didFailProvisionalLoadInSubframeWithError(WebPageProxy& page, WebFrameProxy& subframe, const WebKit::SecurityOriginData& securityOriginData, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object* userData) override
         {
             if (!m_client.didFailProvisionalLoadInSubframe)
                 return;
-            m_client.didFailProvisionalLoadInSubframe(toAPI(&page), toAPI(navigation), toAPI(API::FrameInfo::create(subframe).ptr()), toAPI(error), toAPI(userData), m_client.base.clientInfo);
+            m_client.didFailProvisionalLoadInSubframe(toAPI(&page), toAPI(navigation), toAPI(API::FrameInfo::create(subframe, securityOriginData.securityOrigin()).ptr()), toAPI(error), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void didFinishDocumentLoad(WebPageProxy& page, API::Navigation* navigation, API::Object* userData) override

@@ -422,6 +422,14 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return [self convertPathToScreenSpace:path];
 }
 
+- (BOOL)accessibilityHasPopup
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+    
+    return m_object->ariaHasPopup();
+}
+
 - (NSString *)accessibilityLanguage
 {
     if (![self _prepareAccessibilityCall])
@@ -433,16 +441,17 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 - (BOOL)_accessibilityIsLandmarkRole:(AccessibilityRole)role
 {
     switch (role) {
-        case LandmarkApplicationRole:
-        case LandmarkBannerRole:
-        case LandmarkComplementaryRole:
-        case LandmarkContentInfoRole:
-        case LandmarkMainRole:
-        case LandmarkNavigationRole:
-        case LandmarkSearchRole:
-            return YES;
-        default:
-            return NO;
+    case DocumentRegionRole:
+    case LandmarkApplicationRole:
+    case LandmarkBannerRole:
+    case LandmarkComplementaryRole:
+    case LandmarkContentInfoRole:
+    case LandmarkMainRole:
+    case LandmarkNavigationRole:
+    case LandmarkSearchRole:
+        return YES;
+    default:
+        return NO;
     }    
 }
 

@@ -1,44 +1,43 @@
 #!/usr/bin/env python
 
-import json
+import imp
+import inspect
 import logging
 import os
 import signal
 import shutil
+import sys
 
 
 _log = logging.getLogger(__name__)
 
 
-class ModuleNotFoundError(Exception):
-    pass
+# Borrow following code from stackoverflow
+# Link: http://stackoverflow.com/questions/11461356/issubclass-returns-flase-on-the-same-class-imported-from-different-paths
+def is_subclass(child, parent_name):
+    return inspect.isclass(child) and parent_name in [cls.__name__ for cls in inspect.getmro(child)]
 
 
-def loadModule(moduleDesc):
-    try:
-        ret = getattr(__import__(moduleDesc['filePath'], globals(), locals(), moduleDesc['moduleName'], -1), moduleDesc['moduleName'])
-        return ret
-    except Exception as error:
-        raise ModuleNotFoundError('Error loading module (%s) with path(%s): {%s}' % (moduleDesc['moduleName'], moduleDesc['filePath'], error))
+def load_subclasses(dirname, base_class_name, loader):
+    for filename in os.listdir(dirname):
+        if not filename.endswith('.py') or filename in ['__init__.py']:
+            continue
+        module_name = filename[:-3]
+        module = imp.load_source(module_name, os.path.join(dirname, filename))
+        for item_name in dir(module):
+            item = getattr(module, item_name)
+            if is_subclass(item, base_class_name):
+                loader(item)
 
 
-def getPathFromProjectRoot(relativePathToProjectRoot):
-    # Choose the directory containning current file as start point,
+def get_path_from_project_root(relative_path_to_project_root):
+    # Choose the directory containing current file as start point,
     # compute relative path base on the parameter,
     # and return an absolute path
-    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), relativePathToProjectRoot))
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path_to_project_root))
 
 
-def loadJSONFromFile(filePath):
-    try:
-        jsonObject = json.load(open(filePath, 'r'))
-        assert(jsonObject)
-        return jsonObject
-    except Exception as error:
-        raise Exception("Invalid json format or empty json was found in %s - Error: %s" % (filePath, error))
-
-
-def forceRemove(path):
+def force_remove(path):
     try:
         shutil.rmtree(path)
     except Exception as error:

@@ -1,3 +1,974 @@
+2015-06-24  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add a new color -apple-wireless-playback-target-active
+        https://bugs.webkit.org/show_bug.cgi?id=146269
+        <rdar://problem/21465189>
+
+        Reviewed by Dean Jackson.
+
+        Modify existing tests to include the new color value.
+
+        * fast/css/apple-system-colors-expected.txt:
+        * fast/css/apple-system-colors.html:
+        * platform/ios-simulator/fast/css/apple-system-colors-expected.txt:
+        * platform/mac-mavericks/fast/css/apple-system-colors-expected.txt:
+        * platform/mac/fast/css/apple-system-colors-expected.txt:
+
+2015-06-24  Doug Russell  <d_russell@apple.com>
+
+        Bug 146177 - AX: AXObjectCache should try to use an unignored accessibilityObject
+        when posting a selection notification when on the border between two accessibilityObjects
+        https://bugs.webkit.org/show_bug.cgi?id=146177
+
+        Add test for forward and backward tabbing between links and corresponding notifications
+        change element
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/accessibility/selection-element-tabbing-to-link-expected.txt: Added.
+        * platform/mac/accessibility/selection-element-tabbing-to-link.html: Added.
+
+2015-06-24  Keith Miller  <keith_miller@apple.com>
+
+        Strict Equality on objects should only check that one of the two sides is an object.
+        https://bugs.webkit.org/show_bug.cgi?id=145992
+
+        Reviewed by Mark Lam.
+
+        Adds a test that checks if strict equality checks with objects properly exit out of DFG code when
+        dealing with document.all, which is an object that masquerades as undefined.
+
+        * js/dom/document-all-strict-eq-expected.txt: Added.
+        * js/dom/document-all-strict-eq.html: Added.
+        * js/dom/script-tests/document-all-strict-eq.js: Added.
+        (f):
+
+2015-06-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening for fast/text/font-weight{,-zh}.html
+        https://bugs.webkit.org/show_bug.cgi?id=146266
+        <rdar://problem/21391628>
+        <rdar://problem/21391673>
+
+        Unreviewed.
+
+        * platform/win/fast/text/font-weights-expected.png: Added.
+        * platform/win/fast/text/font-weights-expected.txt: Added.
+        * platform/win/fast/text/font-weights-zh-expected.png: Added.
+        * platform/win/fast/text/font-weights-zh-expected.txt: Added.
+
+2015-06-24  Daniel Bates  <dabates@apple.com>
+
+        Content Security Policy error message when frame load is blocked does not read well
+        https://bugs.webkit.org/show_bug.cgi?id=146279
+
+        Reviewed by Csaba Osztrogonác.
+
+        Update expected results.
+
+        * http/tests/security/contentSecurityPolicy/frame-src-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/frame-src-redirect-blocked-expected.txt:
+
+2015-06-24  Daniel Bates  <dabates@apple.com>
+
+        LayoutTests/http/tests/security/contentSecurityPolicy/media-src-track-block.html always passes
+        https://bugs.webkit.org/show_bug.cgi?id=146272
+
+        Reviewed by Darin Adler.
+
+        Fixes an issue where the test LayoutTests/http/tests/security/contentSecurityPolicy/media-src-track-block.html
+        will always pass regardless of whether the Content Security Policy <meta> tag is present because
+        the external text track file is not valid WebVTT-formatted file.
+
+        The test verifies that the external text track file LayoutTests/http/tests/security/contentSecurityPolicy/resources/track.vtt
+        fails to load when the Content Security Policy of the page disallows loading of all media (media-src: "none")
+        by listening for a DOM error event to be dispatched to the <track>. And the text track file is not a valid
+        WebVTT-formatted file. So, it will always fail to load; => a DOM error event is always dispatched to the
+        <track>; => the test always passes.
+
+        * http/tests/security/contentSecurityPolicy/resources/track.vtt:
+
+2015-06-11  Sergio Villar Senin  <svillar@igalia.com>
+
+        intrinsic size keywords don't work for heights
+        https://bugs.webkit.org/show_bug.cgi?id=113610
+
+        Reviewed by Darin Adler.
+
+        Based on Blink's r148314 by <cbiesinger@chromium.org>.
+
+        * fast/css-intrinsic-dimensions/height-css-tables-collapsed-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-css-tables-collapsed.html: Added.
+        * fast/css-intrinsic-dimensions/height-css-tables-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-css-tables.html: Added.
+        * fast/css-intrinsic-dimensions/height-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-flexbox-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-flexbox.html: Added.
+        * fast/css-intrinsic-dimensions/height-positioned-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-positioned-replaced-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-positioned-replaced.html: Added.
+        * fast/css-intrinsic-dimensions/height-positioned.html: Added.
+        * fast/css-intrinsic-dimensions/height-property-value-expected.txt:
+        * fast/css-intrinsic-dimensions/height-property-value.html:
+        * fast/css-intrinsic-dimensions/height-property-value.html.orig: Copied from LayoutTests/fast/css-intrinsic-dimensions/height-property-value.html.
+        * fast/css-intrinsic-dimensions/height-replaced-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-replaced.html: Added.
+        * fast/css-intrinsic-dimensions/height-tables-collapsed-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-tables-collapsed.html: Added.
+        * fast/css-intrinsic-dimensions/height-tables-expected.html: Added.
+        * fast/css-intrinsic-dimensions/height-tables.html: Added.
+        * fast/css-intrinsic-dimensions/height.html: Added.
+        * fast/css-intrinsic-dimensions/resources/height-keyword-classes.css: Added.
+        (.min-content):
+        (.max-content):
+        (.fill-available):
+        (.fit-content):
+        (.max-height-min-content):
+        (.max-height-max-content):
+        (.max-height-fill-available):
+        (.max-height-fit-content):
+        (.min-height-min-content):
+        (.min-height-max-content):
+        (.min-height-fill-available):
+        (.min-height-fit-content):
+
+2015-06-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Rebaseline fast/text/font-weight{,-zh}.html for El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=146266
+        <rdar://problem/21391628>
+        <rdar://problem/21391673>
+
+        Unreviewed.
+
+        * fast/text/font-weights.html: Renamed from LayoutTests/platform/mac/fast/text/font-weights.html.
+        * platform/mac/TestExpectations:
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/mac/fast/text/font-weights-expected.png: Added.
+        * platform/mac/fast/text/font-weights-expected.txt:
+        * platform/mac/fast/text/font-weights-zh-expected.png: Added.
+        * platform/mac/fast/text/font-weights-zh-expected.txt:
+        * platform/mac-mavericks/fast/text/font-weights-expected.txt: Moved from platform/mac/fast/text/font-weights-expected.txt
+        * platform/mac-yosemite/fast/text/font-weights-expected.txt: Ditto.
+        * platform/mac-yosemite/fast/text/font-weights-zh-expected.txt: Moved from platform/mac/fast/text/font-weights-zh-expected.txt
+
+2015-06-23  Matthew Mirman  <mmirman@apple.com>
+
+        Completes native binding descriptors with native getters and potentially setters.
+        https://bugs.webkit.org/show_bug.cgi?id=140575
+        rdar://problem/19506502
+
+        Reviewed by Mark Lam.
+
+        * inspector-protocol/runtime/getProperties-expected.txt: updated.
+        * js/dom/native-bindings-descriptors-expected.txt: Added.
+        * js/dom/native-bindings-descriptors.html: Added.
+        * js/dom/script-tests/native-bindings-descriptors.js: Added.
+
+2015-06-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unreviewed test gardening after r185842
+        https://bugs.webkit.org/show_bug.cgi?id=145681
+        <rdar://problem/21169844>
+
+        * platform/mac-yosemite/fast/text/arabic-times-new-roman-expected.png: Copied from LayoutTests/platform/mac/fast/text/arabic-times-new-roman-expected.png.
+        * platform/mac-yosemite/fast/text/arabic-times-new-roman-expected.txt: Copied from LayoutTests/platform/mac/fast/text/arabic-times-new-roman-expected.txt.
+        * platform/mac/fast/text/arabic-times-new-roman-expected.png:
+        * platform/mac/fast/text/arabic-times-new-roman-expected.txt:
+        * platform/win/fast/text/arabic-times-new-roman-expected.png: Added.
+        * platform/win/fast/text/arabic-times-new-roman-expected.txt: Added.
+
+2015-06-23  Daniel Bates  <dabates@apple.com>
+
+        AX Tests hit-test-input-{auto-fill, search}-button.html and input-search-cancel-button.html fail on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=146243
+
+        Mark the tests as failing for now.
+
+        * platform/win/TestExpectations:
+
+2015-06-23  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        MediaDevices.getUserMedia should migrate from callbacks to DOMPromise
+        https://bugs.webkit.org/show_bug.cgi?id=146200
+
+        Reviewed by Darin Adler.
+
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt:
+
+2015-06-23  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Implement ReadableStream js source "'cancel" callback
+        https://bugs.webkit.org/show_bug.cgi?id=146204
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/readable-stream-cancel-expected.txt:
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt:
+
+2015-06-23  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed, gardening.
+
+        Mark fast/forms/listbox-visible-size.html to failure and skip
+        fast/text/arabic-times-new-roman.html because it is for iOS.
+
+        * platform/efl/TestExpectations:
+
+2015-06-22  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Hyphenation is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=89830
+
+        Reviewed by Gyuyoung Kim.
+
+        Rebaseline expected results which is related to hyphenation.
+
+        * platform/efl/TestExpectations: Unskip hyphenate-locale.html
+        * platform/efl/fast/text/hyphenate-character-expected.png:
+        * platform/efl/fast/text/hyphenate-character-expected.txt:
+        * platform/efl/fast/text/hyphenate-first-word-expected.png:
+        * platform/efl/fast/text/hyphenate-first-word-expected.txt:
+        * platform/efl/fast/text/hyphenate-limit-before-after-expected.png:
+        * platform/efl/fast/text/hyphenate-limit-before-after-expected.txt:
+        * platform/efl/fast/text/hyphenate-limit-lines-expected.png:
+        * platform/efl/fast/text/hyphenate-limit-lines-expected.txt:
+        * platform/efl/fast/text/hyphenate-locale-expected.png: Added.
+        * platform/efl/fast/text/hyphenate-locale-expected.txt: Added.
+        * platform/efl/fast/text/hyphens-expected.png:
+        * platform/efl/fast/text/hyphens-expected.txt:
+
+2015-06-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Allow trailing comma in ArrayBindingPattern and ObjectBindingPattern
+        https://bugs.webkit.org/show_bug.cgi?id=146192
+
+        Reviewed by Darin Adler.
+
+        * js/object-literal-syntax-expected.txt:
+
+2015-06-22  Simon Fraser  <simon.fraser@apple.com>
+
+        -webkit-clip-path clips incorrectly if the element bounds go beyond the top edge of the page
+        https://bugs.webkit.org/show_bug.cgi?id=146218
+        rdar://problem/21127840
+
+        Reviewed by Zalan Bujtas.
+        
+        Test clip path on layers with non-zero bounds offsetFromRenderer because of box shadow,
+        or vertical writing mode.
+
+        * compositing/masks/compositing-clip-path-origin-expected.html: Added.
+        * compositing/masks/compositing-clip-path-origin.html: Added.
+
+2015-06-22  David Kilzer  <ddkilzer@apple.com>
+
+        fast/text/justify-ideograph-{complex,simple,vertical}.html tests are flaky on El Capitan Debug builds
+
+        Tracked by <rdar://problem/21486062>.
+
+        * platform/mac/TestExpectations: Mark tests as flaky:
+        - fast/text/justify-ideograph-complex.html
+        - fast/text/justify-ideograph-simple.html
+        - fast/text/justify-ideograph-vertical.html
+
+2015-06-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Web sockets should be treated as active mixed content
+        https://bugs.webkit.org/show_bug.cgi?id=140624
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/security/mixedContent/resources/frame-with-insecure-websocket.html: Added.
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-iframe-expected.txt: Added.
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-iframe.html: Added.
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame-expected.txt: Added.
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame.html: Added.
+
+2015-06-22  Dean Jackson  <dino@apple.com>
+
+        Element with blur backdrop-filter shows edge duplication and dark edges
+        https://bugs.webkit.org/show_bug.cgi?id=146215
+        <rdar://problem/20367695>
+
+        Reviewed by Tim Horton.
+
+        Add a pixel test to show that the input images to backdrop filters should duplicate their
+        edge pixels. Unfortunately this is not reproducible with normal filters, so it
+        can't be a reference test.
+
+        * css3/filters/backdrop/blur-input-bounds.html: Added.
+        * platform/mac/css3/filters/backdrop/blur-input-bounds-expected.png: Added.
+        * platform/mac/css3/filters/backdrop/blur-input-bounds-expected.txt: Added.
+
+2015-06-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic text styled with Georgia is rendered as boxes
+        https://bugs.webkit.org/show_bug.cgi?id=145681
+        <rdar://problem/21169844>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/arabic-times-new-roman.html: Added.
+        * platform/ios-simulator/fast/text/arabic-times-new-roman-expected.txt: Added.
+        * platform/ios-simulator/fast/text/arabic-times-new-roman-expected.png: Added.
+        * platform/mac-mavericks/fast/text/arabic-times-new-roman-expected.txt: Added.
+        * platform/mac/fast/text/arabic-times-new-roman-expected.txt: Added.
+        * platform/mac/fast/text/arabic-times-new-roman-expected.png: Added.
+
+2015-06-22  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r169105) Dangling renderer pointer in SelectionSubtreeRoot::SelectionSubtreeData.
+        https://bugs.webkit.org/show_bug.cgi?id=146116
+        rdar://problem/20959369
+
+        Reviewed by Brent Fulgham.
+
+        This patch ensures that we don't adjust the selection unless the visual selection still matches this subtree root.
+
+        When multiple selection roots are present we need to ensure that a RenderObject
+        only shows up in one of them.
+        RenderView::splitSelectionBetweenSubtrees(), as the name implies, splits the
+        selection and sets the selection range (start/end) on each selection root.
+        However, SelectionSubtreeRoot::adjustForVisibleSelection() later recomputes the range
+        based on visible selection and that could end up collecting renderers as selection start/end
+        from another selection subtree.
+        RenderObject's holds the last selection state (RenderObject::setSelectionState).
+        If we set a renderer first as "on selection border" and later "inside" using multiple selection roots,
+        we can't clean up selections properly when this object gets destroyed.
+        One of the roots ends up with a dangling RenderObject pointer.
+
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees-expected.txt: Added.
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees.html: Added.
+
+2015-06-22  Daniel Bates  <dabates@apple.com>
+
+        AX: UI Automation cannot find AutoFill or search cancel buttons
+        https://bugs.webkit.org/show_bug.cgi?id=145241
+        <rdar://problem/21051411>
+
+        Reviewed by Chris Fleizach.
+
+        Add tests to ensure that there exists an accessibility element for the
+        search cancel button and that it can be hit using a cursor position. Also
+        add a test to ensue that the AutoFill button can be hit using a cursor position.
+
+        * accessibility/hit-test-input-auto-fill-button-expected.txt: Added.
+        * accessibility/hit-test-input-auto-fill-button.html: Copied from LayoutTests/accessibility/input-auto-fill-button.html.
+        * accessibility/hit-test-input-search-cancel-button-expected.txt: Added.
+        * accessibility/hit-test-input-search-cancel-button.html: Added.
+        * accessibility/input-search-cancel-button-expected.txt: Added.
+        * accessibility/input-search-cancel-button.html: Copied from LayoutTests/accessibility/input-auto-fill-button.html.
+        * accessibility/resources/shouldBeAccessibleByCursor.js: Added.
+        (shouldBeAccessibleByCursor): Tests whether an AccessibilityUIElement can be hit
+        using its screen position.
+        * platform/wk2/TestExpectations: Mark tests hit-test-input-{auto-fill, search-cancel}-button.html
+        as failing due to <https://bugs.webkit.org/show_bug.cgi?id=71298>.
+
+2015-06-22  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Implement ReadableStream cancel (abstract part)
+        https://bugs.webkit.org/show_bug.cgi?id=146111
+
+        Reviewed by Darin Adler.
+
+        Rebasing expectations.
+
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/readable-stream-cancel-expected.txt:
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+
+2015-06-22  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Correct releaseLock test in readable-stream-templated.html
+        https://bugs.webkit.org/show_bug.cgi?id=146101
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-templated-expected.txt: Rebased changed test.
+        * streams/reference-implementation/readable-stream-templated.html: Removed testharness wrapper around function.
+
+2015-06-22  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Navigator.webkitGetUserMedia() requires three arguments
+        https://bugs.webkit.org/show_bug.cgi?id=146022
+
+        Reviewed by Eric Carlson.
+
+        Updated and unskipped three existing tests.
+
+        * fast/mediastream/argument-types-expected.txt:
+        * fast/mediastream/getusermedia-expected.txt:
+        * fast/mediastream/getusermedia.html:
+        * fast/mediastream/script-tests/argument-types.js:
+        * platform/gtk/TestExpectations:
+
+2015-06-21  David Kilzer  <ddkilzer@apple.com>
+
+        fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html is slow on Mavericks WK1 Debug builds
+
+        The Flakiness Dashboard says that this test times out, but only
+        on Mavericks WK1 Debug builds (and the leaks bot):
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fcanvas%2Fwebgl%2Ftex-image-and-sub-image-2d-with-video.html>
+
+        * platform/mac-wk1/TestExpectations: Mark test as slow on
+        Mavericks Debug builds:
+        - fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html
+
+2015-06-21  David Kilzer  <ddkilzer@apple.com>
+
+        fast/fixed-layout/fixed-layout.html times out on Apple WK2 bots
+
+        The Flakiness Dashboard says this test times out on Apple
+        WebKit2 platforms by not calling testRunner.notifyDone():
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Ffixed-layout%2Ffixed-layout.html>
+
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html:
+        Use the same mechanism here that was just added in r185811.
+        * fast/fixed-layout/fixed-layout.html: Switch to using a
+        zero-delay timer instead of document.body.offsetTop.
+
+2015-06-21  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r185809): fast/css-grid-layout/flex-content-sized-columns-resize.html hangs on WK1
+
+        Since window.resize() occurs in the same runloop as the load on
+        WK1, testRunner.notifyDone() would never get called.
+
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html:
+        Call document.body.offsetTop to ensure layout occurs at the
+        initial window size before calling window.resize().
+
+2015-06-21  David Kilzer  <ddkilzer@apple.com>
+
+        fast/css-grid-layout/flex-content-sized-columns-resize.html is flaky
+
+        The Flakiness Dashboard says this test is flaky on Apple and EFL
+        WebKit2 platforms:
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fcss-grid-layout%2Fflex-content-sized-columns-resize.html>
+
+        It currently doesn't wait for window.resize() to complete, which
+        is likely the source of flakiness.
+
+        * fast/css-grid-layout/flex-content-sized-columns-resize.html:
+        Switch to using notifyDone() inside a window.onresize function,
+        and make the test work in a web browser without TestRunner.
+
+2015-06-20  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r185779): fast/canvas/{canvas-toDataURL-crash,pattern-too-large-to-create}.html are broken
+
+        This layout test started failing after the fix for:
+
+            Extremely large canvas crashes on pre-El Capitan machines
+            https://bugs.webkit.org/show_bug.cgi?id=146169
+            <rdar://problem/21410046>
+
+        Different limits require different test results for each
+        platform.  This is the same fix for these tests as r185793.
+
+        * fast/canvas/canvas-toDataURL-crash-expected.txt: Update.
+        * fast/canvas/pattern-too-large-to-create-expected.txt: Update.
+        - Set limit to 268435456.
+
+        * platform/ios-simulator/fast/canvas/canvas-toDataURL-crash-expected.txt: Copied from LayoutTests/fast/canvas/canvas-toDataURL-crash-expected.txt.
+        * platform/ios-simulator/fast/canvas/pattern-too-large-to-create-expected.txt: Copied from LayoutTests/fast/canvas/pattern-too-large-to-create-expected.txt.
+        - Set limit to 16777216.
+
+        * platform/mac-yosemite/fast/canvas/canvas-toDataURL-crash-expected.txt: Copied from LayoutTests/fast/canvas/canvas-toDataURL-crash-expected.txt.
+        * platform/mac-yosemite/fast/canvas/pattern-too-large-to-create-expected.txt: Copied from LayoutTests/fast/canvas/pattern-too-large-to-create-expected.txt.
+        - Set limit to 67108864.
+
+2015-06-20  David Kilzer  <ddkilzer@apple.com>
+
+        fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html is slow on Mavericks WK1 Debug builds
+
+        The Flakiness Dashboard says that this test times out, but only
+        on Mavericks WK1 Debug builds:
+
+        <https://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fcanvas%2Fwebgl%2Ftex-image-and-uniform-binding-bugs.html>
+
+        * platform/mac-wk1/TestExpectations: Mark test as slow on
+        Mavericks Debug builds:
+        - fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html
+
+2015-06-20  David Kilzer  <ddkilzer@apple.com>
+
+        editing/selection/leak-document-with-selection-inside.html is flaky
+        <http://webkit.org/b/146182>
+
+        * TestExpectations: Mark as flaky:
+        - editing/selection/leak-document-with-selection-inside.html
+
+2015-06-20  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r185779): fast/canvas/canvas-too-large-to-draw.html is still broken
+
+        This layout test started failing after the fix for:
+
+            Extremely large canvas crashes on pre-El Capitan machines
+            https://bugs.webkit.org/show_bug.cgi?id=146169
+            <rdar://problem/21410046>
+
+        Different limits require different test results for each
+        platform.  Also update the line number from 35 to 36 since the
+        html test file was modified in r185792.
+
+        * fast/canvas/canvas-too-large-to-draw-expected.txt:
+        - Update limit to 16384x16384 for El Capitan (and other ports)
+          and update line number.
+        * platform/ios-simulator/fast/canvas/canvas-too-large-to-draw-expected.txt: Added.
+        - New results with 4096x4096 limit for iOS.
+        * platform/mac-yosemite/fast/canvas/canvas-too-large-to-draw-expected.txt: Added.
+        - New results with 8192x8192 limit for Mac OS X 10.10.x and older.
+
+2015-06-20  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r185779): fast/canvas/canvas-too-large-to-draw.html broken prior to El Capitan
+
+        This layout test started failing after the fix for:
+
+            Extremely large canvas crashes on pre-El Capitan machines
+            https://bugs.webkit.org/show_bug.cgi?id=146169
+            <rdar://problem/21410046>
+
+        * fast/canvas/canvas-too-large-to-draw.html: Update test for new
+        expectations after r185779.
+
+2015-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Destructuring assignment need to accept iterables
+        https://bugs.webkit.org/show_bug.cgi?id=144111
+
+        Reviewed by Darin Adler.
+
+        From this patch, we use iterators for destructuring assignments to array binding patterns.
+        So test results become different.
+
+        * js/destructuring-assignment-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/destructuring-assignment.js:
+
+2015-06-19  Dean Jackson  <dino@apple.com>
+
+        Extremely large canvas crashes on pre-El Capitan machines
+        https://bugs.webkit.org/show_bug.cgi?id=146169
+        <rdar://problem/21410046>
+
+        Update expected results.
+
+        * fast/canvas/canvas-toDataURL-crash-expected.txt:
+        * fast/canvas/canvas-too-large-to-draw-expected.txt:
+        * fast/canvas/pattern-too-large-to-create-expected.txt:
+
+2015-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight currently edited CSS selector
+        https://bugs.webkit.org/show_bug.cgi?id=145658
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom/highlightSelector-expected.txt: Added.
+        * inspector/dom/highlightSelector-iframe.html: Added.
+        * inspector/dom/highlightSelector.html: Added.
+
+2015-06-19  Dean Jackson  <dino@apple.com>
+
+        Extremely large canvas crashes on pre-El Capitan machines
+        https://bugs.webkit.org/show_bug.cgi?id=146169
+        <rdar://problem/21410046>
+
+        Reviewed by Tim Horton.
+
+        Un-skip fast/canvas/canvas-too-large-to-draw.html.
+
+        * platform/mac/TestExpectations:
+
+2015-06-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineAgent needs to handle nested runloops
+        https://bugs.webkit.org/show_bug.cgi?id=145090
+
+        Reviewed by Joseph Pecoraro.
+
+        * TestExpectations:
+        Unskip tests after improvements to nested runloop handling in InspectorTimelineAgent.
+
+2015-06-19  Andy Estes  <aestes@apple.com>
+
+        Various assertion failures occur when executing script in the midst of DOM insertion
+        https://bugs.webkit.org/show_bug.cgi?id=132482
+
+        Reviewed by Darin Adler.
+
+        Wrote named-map-removed-while-inserting-parent-crash.html by reducing the test case attached to bug 132482.
+        The remaining tests were taken from blink r132482.
+
+        * fast/dom/element-removed-while-inserting-parent-crash-expected.txt: Added.
+        * fast/dom/element-removed-while-inserting-parent-crash.html: Added.
+        * fast/dom/named-map-removed-while-inserting-parent-crash-expected.txt: Added.
+        * fast/dom/named-map-removed-while-inserting-parent-crash.html: Added.
+        * fast/forms/form-control-removed-while-inserting-parent-crash-expected.txt: Added.
+        * fast/forms/form-control-removed-while-inserting-parent-crash.html: Added.
+        * svg/dom/element-removed-while-inserting-parent-crash-expected.txt: Added.
+        * svg/dom/element-removed-while-inserting-parent-crash.html: Added.
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the useless LayoutTests/platform/wincairo/TestExpectations file
+        https://bugs.webkit.org/show_bug.cgi?id=146105
+
+        Reviewed by Darin Adler.
+
+        * platform/wincairo/TestExpectations: Removed.
+
+2015-06-19  Zalan Bujtas  <zalan@apple.com>
+
+        RenderRubyText requires RenderRubyRun parent.
+        https://bugs.webkit.org/show_bug.cgi?id=146148
+        rdar://problem/21423319
+
+        Reviewed by Simon Fraser.
+
+        RenderRubyText expects its parent to be RenderRubyRun and since a
+        a non-block <rt> requires anonymous wrapper, we should check whether
+        the display type is actually block.
+
+        * fast/ruby/crash-when-ruby-rt-is-non-block-expected.txt: Added.
+        * fast/ruby/crash-when-ruby-rt-is-non-block.html: Added.
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove unnecessary svn:executable flags
+        https://bugs.webkit.org/show_bug.cgi?id=146107
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/block/float/intruding-float-not-removed-writing-mode.xhtml: Removed property svn:executable.
+        * fast/canvas/script-tests/canvas-image-shadow.js: Removed property svn:executable.
+        * fast/css-grid-layout/resources/display-grid-set-get.js: Removed property svn:executable.
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js: Removed property svn:executable.
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set.js: Removed property svn:executable.
+        * fast/css/readonly-pseudoclass-common-element.html: Removed property svn:executable.
+        * fast/css/readwrite-pseudoclass-editable.html: Removed property svn:executable.
+        * fast/dom/HTMLObjectElement/beforeload-set-text-crash.xhtml: Removed property svn:executable.
+        * fast/dom/resources/node-move-to-new-document-crash.svg: Removed property svn:executable.
+        * fast/dom/text-node-attach-crash.xhtml: Removed property svn:executable.
+        * fast/dynamic/crash-paint-no-documentElement-renderer.html-disabled: Removed property svn:executable.
+        * fast/frames/resources/subframe-load-crash.svg: Removed property svn:executable.
+        * fast/text/split-text-crash.xhtml: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onchecking.manifest: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onchecking.text: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-ondownloading-resource-404.manifest: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-ondownloading.manifest: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-ondownloading.text: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onprogress-1.text: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onprogress-2.text: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onprogress-3.text: Removed property svn:executable.
+        * http/tests/appcache/resources/abort-cache-onprogress-4.text: Removed property svn:executable.
+        * http/tests/xmlhttprequest/methods-async-expected.txt: Removed property svn:executable.
+        * http/tests/xmlhttprequest/methods-expected.txt: Removed property svn:executable.
+        * http/tests/xmlhttprequest/workers/methods-async-expected.txt: Removed property svn:executable.
+        * http/tests/xmlhttprequest/workers/methods-expected.txt: Removed property svn:executable.
+        * platform/efl/mathml/presentation/menclose-notation-default-longdiv-expected.png: Removed property svn:executable.
+        * platform/gtk/mathml/presentation/menclose-notation-default-longdiv-expected.png: Removed property svn:executable.
+        * platform/mac/fast/css-generated-content/nested-tables-with-before-after-content-crash-expected.png: Removed property svn:executable.
+        * platform/mac/mathml/presentation/menclose-notation-default-longdiv-expected.png: Removed property svn:executable.
+        * platform/win/fast/canvas/fallback-content-expected.txt: Removed property svn:executable.
+        * platform/win/fast/dom/tabindex-clamp-expected.txt: Removed property svn:executable.
+        * platform/win/fast/events/ondrop-text-html-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/basic-textareas-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/basic-textareas-quirks-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/button-inner-block-reuse-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/control-clip-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/fieldset-align-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/fieldset-legend-padding-unclipped-fieldset-border-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/fieldset-with-float-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/float-before-fieldset-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/focus-selection-textarea-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/indeterminate-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-appearance-readonly-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-appearance-visibility-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-first-letter-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-readonly-dimmed-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-spaces-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-text-click-outside-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-type-text-min-width-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/input-width-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/listbox-onchange-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/menulist-option-wrap-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/menulist-separator-painting-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/negativeLineHeight-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/onselect-textarea-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/placeholder-pseudo-style-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/input-appearance-range-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/range-thumb-height-percentage-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/slider-padding-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/slider-thumb-shared-style-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/slider-thumb-stylability-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/range/thumbslider-no-parent-slider-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/search-cancel-button-style-sharing-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/search-display-none-cancel-button-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/search-rtl-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/search-vertical-alignment-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/select-background-none-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/select-empty-option-height-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/select-size-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/select-style-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/select-visual-hebrew-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/selectlist-minsize-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/stuff-on-my-optgroup-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textAreaLineHeight-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-align-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-metrics-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-placeholder-pseudo-style-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-scroll-height-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-scrolled-type-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textarea-setinnerhtml-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textfield-overflow-by-value-update-expected.txt: Removed property svn:executable.
+        * platform/win/fast/forms/textfield-overflow-expected.txt: Removed property svn:executable.
+        * platform/win/fast/html/details-no-summary4-expected.txt: Removed property svn:executable.
+        * platform/win/fast/html/details-open-javascript-expected.txt: Removed property svn:executable.
+        * platform/win/fast/html/details-open2-expected.txt: Removed property svn:executable.
+        * platform/win/fast/html/details-open4-expected.txt: Removed property svn:executable.
+        * platform/win/fast/repaint/slider-thumb-drag-release-expected.txt: Removed property svn:executable.
+        * platform/win/fast/repaint/slider-thumb-float-expected.txt: Removed property svn:executable.
+        * platform/win/fast/replaced/table-percent-height-expected.txt: Removed property svn:executable.
+        * platform/win/fast/replaced/three-selects-break-expected.txt: Removed property svn:executable.
+        * platform/win/fast/transforms/transformed-focused-text-input-expected.txt: Removed property svn:executable.
+        * platform/win/inverted-colors/non-composited-expected.png: Removed property svn:executable.
+        * platform/win/inverted-colors/resources/gradient.png: Removed property svn:executable.
+        * platform/win/js/dom/constructor-length-expected.txt: Removed property svn:executable.
+        * platform/win/platform/win/accessibility/option-element-position-and-size-expected.txt: Removed property svn:executable.
+        * platform/win/tables/mozilla/bugs/bug131020-expected.png: Removed property svn:executable.
+        * platform/wk2/http/tests/media/video-auth-expected.txt: Removed property svn:executable.
+        * svg/animations/animate-beginElementAt.svg: Removed property svn:executable.
+        * svg/animations/animate-calcMode-spline-crash-bad-array-length.xhtml: Removed property svn:executable.
+        * svg/custom/assert-empty-layout-attributes.svg: Removed property svn:executable.
+        * svg/custom/crash-text-in-textpath.svg: Removed property svn:executable.
+        * svg/custom/intersection-list-crash.svg: Removed property svn:executable.
+        * svg/custom/resources/crash-textPath-attributes-iframe.svg: Removed property svn:executable.
+        * svg/custom/symbol-viewport-element-crash.svg: Removed property svn:executable.
+        * svg/custom/text-node-in-text-invalidated.svg: Removed property svn:executable.
+        * svg/dom/resources/SVGStyledElement-pendingResource-crash.svg: Removed property svn:executable.
+        * svg/text/font-size-null-assertion.svg: Removed property svn:executable.
+
+2015-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid getOwnPropertyNames/Symbols on very large lists
+        https://bugs.webkit.org/show_bug.cgi?id=146141
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        There were existing progressions (0 => -1).
+        There were existing regressions (RegExp properties moving to prototype with descriptors on the prototype).
+        Add a test for a very large list that would have caused out of memory / hang.
+
+2015-06-18  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed, gardening on June 19th.
+
+        Mark fast/css/named-images.html to Missing. Additionally accessibility/math-multiscript-attributes.html
+        and accessibility/transformed-element.html are treated as failure.
+
+        * platform/efl/TestExpectations:
+
+2015-06-18  Dean Jackson  <dino@apple.com>
+
+        Provide a way for web developers to draw a Theme-specific Wireless Playback icon
+        https://bugs.webkit.org/show_bug.cgi?id=146123
+        <rdar://problem/21119287>
+
+        Reviewed by Simon Fraser.
+
+        Test the new -webkit-named-image CSS generator. Only "wireless-playback"
+        is supported for now, and has platform-specific results for Cocoa.
+
+        * fast/css/named-images-expected.png: Added.
+        * fast/css/named-images.html: Added.
+        * platform/mac/fast/css/named-images-expected.png: Added.
+        * platform/mac/fast/css/named-images-expected.txt: Added.
+
+2015-06-18  KyungTae Kim  <ktf.kim@samsung.com> and Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [CSS3] Add support for the word-break:keep-all CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=123782
+
+        Reviewed by Darin Adler.
+
+        * fast/text/word-break-keep-all.html: Added.
+        * platform/mac/fast/text/word-break-keep-all-expected.png: Added.
+        * platform/mac/fast/text/word-break-keep-all-expected.txt: Added.
+
+2015-06-18  Conrad Shultz  <conrad_shultz@apple.com>
+
+        REGRESSION: js/dom/navigator-plugins-crash.html asserts a lot
+        https://bugs.webkit.org/show_bug.cgi?id=144399
+
+        * TestExpectations:
+        Revert change marking navigator-plugins-crash.html as flaky now that the underlying bug has been addressed.
+
+2015-06-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Log blocked loads to the WebInspector console
+        https://bugs.webkit.org/show_bug.cgi?id=146089
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/contentextensions/basic-filter-expected.txt:
+        * http/tests/contentextensions/character-set-basic-support-expected.txt:
+        * http/tests/contentextensions/domain-rules-expected.txt:
+        * http/tests/contentextensions/filters-with-quantifiers-combined-expected.txt:
+        * http/tests/contentextensions/main-resource-redirect-blocked-expected.txt:
+        * http/tests/contentextensions/media-filtered-expected.txt:
+        * http/tests/contentextensions/subresource-redirect-blocked-expected.txt:
+        * http/tests/contentextensions/text-track-blocked-expected.txt:
+        Add new logs.
+
+2015-06-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark mathml/very-large-stretchy-operators.html as Slow on newer OS X versions.
+
+        * platform/mac/TestExpectations:
+
+2015-06-18  Saam Barati  <saambarati1@gmail.com>
+
+        [ES6] support default values in deconstruction parameter nodes
+        https://bugs.webkit.org/show_bug.cgi?id=142679
+
+        Reviewed by Darin Adler.
+
+        * js/destructuring-assignment-default-values-expected.txt: Added.
+        * js/destructuring-assignment-default-values.html: Added.
+        * js/script-tests/destructuring-assignment-default-values.js: Added.
+        (assert):
+        (test1):
+        (arr):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        (shouldThrow):
+
+2015-06-18  Youenn Fablet <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Implement ReadableStreamReader.releaseLock
+        https://bugs.webkit.org/show_bug.cgi?id=145299
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-expected.txt: Rebasing expectations.
+        * streams/reference-implementation/readable-stream-reader-expected.txt: Ditto.
+        * streams/reference-implementation/readable-stream-templated-expected.txt: Ditto.
+
+2015-06-18  Youenn Fablet <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Rejected start promise test does not timeout anymore
+        https://bugs.webkit.org/show_bug.cgi?id=146065
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-expected.txt: Updated expectations to PASS.
+        * streams/reference-implementation/readable-stream.html: Removed timeout
+
+2015-06-17  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win]Implement layoutTestController.dispatchPendingLoadRequests.
+        https://bugs.webkit.org/show_bug.cgi?id=26481
+
+        Reviewed by Darin Adler.
+
+        Implement WebView::dispatchPendingLoadRequests() private API for test runner.
+
+        * platform/win/TestExpectations:
+
+2015-06-17  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver in iOS not announcing generic WAI-ARIA region, even if labelled properly
+        https://bugs.webkit.org/show_bug.cgi?id=146066
+
+        Reviewed by Darin Adler.
+
+        * platform/ios-simulator/accessibility/landmark-type-expected.txt:
+        * platform/ios-simulator/accessibility/landmark-type.html:
+
+2015-06-17  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r173283-r173296): Amazon.com front page has no caret in the search field
+        https://bugs.webkit.org/show_bug.cgi?id=146073
+        rdar://problem/21022203
+
+        Reviewed by Tim Horton.
+
+        Dump layers for composited text inputs and textareas.
+
+        * compositing/backing/form-controls-backing-expected.txt: Added.
+        * compositing/backing/form-controls-backing.html: Added.
+
+2015-06-17  Zalan Bujtas  <zalan@apple.com>
+
+        Selection cache produces invalid result when ancestor has float element.
+        https://bugs.webkit.org/show_bug.cgi?id=146042
+        rdar://problem/20604592
+
+        Reviewed by Ryosuke Niwa.
+
+        Selection cache already takes floats into account, however it's not enough to check current
+        block against floats. Any of the ancestor's float starting from the selection root block
+        can impact the selection offsets.
+
+        * fast/block/selection-cache-is-incorrect-when-non-direct-parent-has-float-expected.txt: Added.
+        * fast/block/selection-cache-is-incorrect-when-non-direct-parent-has-float.html: Added.
+
+2015-06-17  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Expose element tag name as an object attribute
+        https://bugs.webkit.org/show_bug.cgi?id=146062
+
+        Reviewed by Mario Sanchez Prada.
+
+        The following tests all include the AtkObject attributes of elements. Now that
+        tag name is exposed, the expectations needed to be updated to reflect the change.
+
+        * platform/gtk/accessibility/image-link-expected.txt: Updated.
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated.
+        * platform/gtk/accessibility/lists-expected.txt: Updated.
+        * platform/gtk/accessibility/math-multiscript-attributes-expected.txt: Updated.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated.
+        * platform/gtk/accessibility/table-one-cell-expected.txt: Updated.
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated.
+        * platform/gtk/accessibility/transformed-element-expected.txt: Updated.
+        * platform/gtk/accessibility/xml-roles-exposed-expected.txt: Updated.
+
+2015-06-17  Brent Fulgham  <bfulgham@apple.com>
+
+        CSS scroll snap: defining snap points on axis that does not scroll does not work properly
+        https://bugs.webkit.org/show_bug.cgi?id=146043
+        <rdar://problem/20125511>
+
+        Reviewed by Simon Fraser.
+
+        * css3/scroll-snap/scroll-snap-mismatch-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-mismatch.html: Added.
+
 2015-06-17  Alexey Proskuryakov  <ap@apple.com>
 
         New test inspector/console/console-table.html frequently times out in debug.

@@ -1061,6 +1061,10 @@ void RenderLayerBacking::updateMaskingLayerGeometry()
             LayoutSize offset = LayoutSize(snapSizeToDevicePixel(m_devicePixelFractionFromRenderer, LayoutPoint(), deviceScaleFactor()));
             Path clipPath = m_owningLayer.computeClipPath(offset, referenceBoxForClippedInline, windRule);
 
+            FloatSize pathOffset = m_maskLayer->offsetFromRenderer();
+            if (!pathOffset.isZero())
+                clipPath.translate(-pathOffset);
+            
             m_maskLayer->setShapeLayerPath(clipPath);
             m_maskLayer->setShapeLayerWindRule(windRule);
         }
@@ -1846,6 +1850,9 @@ static bool isCompositedPlugin(RenderObject& renderer)
 bool RenderLayerBacking::isSimpleContainerCompositingLayer() const
 {
     if (renderer().isRenderReplaced() && (!isCompositedPlugin(renderer()) || isRestartedPlugin(renderer())))
+        return false;
+
+    if (renderer().isTextControl())
         return false;
 
     if (paintsBoxDecorations() || paintsChildren())

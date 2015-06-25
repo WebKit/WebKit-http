@@ -1,3 +1,86 @@
+2015-06-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. A/B testing is broken when continuous builders report revisions out of order.
+
+        * public/v2/app.js:
+        (App.AnalysisTaskController.Ember.Controller.extend.):
+
+2015-06-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A/B testing results should be shown even if they were submitted to different platforms
+        https://bugs.webkit.org/show_bug.cgi?id=146219
+
+        Reviewed by Andreas Kling.
+
+        Fetch A/B testing results regardless of the platform to which results are submitted
+        by providing the platform ID to which the results were submitted for each test group.
+
+        * public/api/test-groups.php:
+        (main): Include the platform id in the test groups.
+        * public/v2/analysis.js:
+        (App.TestGroup._fetchTestResults): Fetch results from the platform associated with the group.
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove unnecessary svn:executable flags
+        https://bugs.webkit.org/show_bug.cgi?id=146107
+
+        Reviewed by Alexey Proskuryakov.
+
+        * public/js/helper-classes.js: Removed property svn:executable.
+        * public/js/jquery.flot.plugins.js: Removed property svn:executable.
+        * public/v2/app.css: Removed property svn:executable.
+        * public/v2/app.js: Removed property svn:executable.
+        * public/v2/chart-pane.css: Removed property svn:executable.
+        * public/v2/data.js: Removed property svn:executable.
+        * public/v2/index.html: Removed property svn:executable.
+        * public/v2/js/d3/LICENSE: Removed property svn:executable.
+        * public/v2/js/d3/d3.js: Removed property svn:executable.
+        * public/v2/js/d3/d3.min.js: Removed property svn:executable.
+        * public/v2/js/ember-data.js: Removed property svn:executable.
+        * public/v2/js/ember.js: Removed property svn:executable.
+        * public/v2/js/handlebars.js: Removed property svn:executable.
+        * public/v2/js/jquery.min.js: Removed property svn:executable.
+        * public/v2/js/statistics.js: Removed property svn:executable.
+        * public/v2/manifest.js: Removed property svn:executable.
+        * public/v2/popup.js: Removed property svn:executable.
+
+2015-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Reading the list of analysis tasks is extremely slow
+        https://bugs.webkit.org/show_bug.cgi?id=146086
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by Ember data requesting manifest.js hundreds of times.
+        Fetch it ahead of time in each route instead.
+
+        * public/v2/app.js:
+        (App.AnalysisRoute.model):
+        (App.AnalysisTaskRoute.model):
+
+2015-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update ReadMe.md and Install.md per database changes
+        https://bugs.webkit.org/show_bug.cgi?id=146076
+
+        Reviewed by Darin Adler.
+
+        Updated.
+
+        * Install.md:
+        * ReadMe.md:
+
+2015-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Increase the popup dismissal time from 100ms to 500ms
+        https://bugs.webkit.org/show_bug.cgi?id=146077
+
+        Rubber-stamped by Andreas Kling.
+
+        * public/v2/popup.js:
+        (App.PopupView.scheduleHiding):
+
 2015-06-16  Ryosuke Niwa  <rniwa@webkit.org>
 
         v2 UI should have buttons to breakdown a test
