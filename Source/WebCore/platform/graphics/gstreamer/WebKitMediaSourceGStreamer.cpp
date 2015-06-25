@@ -298,6 +298,7 @@ static gboolean webKitMediaSrcEventWithParent(GstPad*, GstObject*, GstEvent*);
 static gboolean webKitMediaSrcDemuxerEventWithParent(GstPad*, GstObject*, GstEvent*);
 static gboolean webKitMediaSrcSeekDataCb(GstAppSrc*, guint64 offset, gpointer userData);
 
+inline static AtomicString getStreamTrackId(Stream* stream);
 static Stream* getStreamByDemuxerPad(WebKitMediaSrc* src, const GstPad* demuxersrcpad);
 static GstClockTime toGstClockTime(float);
 
@@ -724,7 +725,7 @@ static gboolean webKitWebSrcDidReceiveSample(gpointer userdata)
             sample->sample->presentationTime() <= timestampOffset + MediaTime::createWithDouble(0.1)) {
             RefPtr<WebCore::GStreamerMediaSample> fakeSample = WebCore::GStreamerMediaSample::createFakeSample(
                     timestampOffset, sample->sample->decodeTime(), sample->sample->presentationTime() - timestampOffset, sample->sample->presentationSize(),
-                    sample->stream->audioTrack ? sample->stream->audioTrack->get()->id() : sample->stream->videoTrack->get()->id());
+                    getStreamTrackId(sample->stream));
             sample->stream->parent->parent->priv->mediaSourceClient->didReceiveSample(sample->stream->parent->sourceBuffer, fakeSample);
         }
 
@@ -792,7 +793,7 @@ static GstPadProbeReturn webKitWebSrcBufferProbe(GstPad*, GstPadProbeInfo* info,
     if (initSegmentAlreadyProcessed) {
         ReceiveSample* sample = g_new0(ReceiveSample, 1);
 
-        sample->sample = WebCore::GStreamerMediaSample::create(buffer, stream->presentationSize, stream->audioTrack ? stream->audioTrack->get()->id() : stream->videoTrack->get()->id());
+        sample->sample = WebCore::GStreamerMediaSample::create(buffer, stream->presentationSize, getStreamTrackId(stream));
         sample->stream = stream;
         stream->parent->pendingSamplesAfterInitSegment++;
 
@@ -1237,7 +1238,7 @@ static gboolean webKitMediaSrcDidReceiveInitializationSegment(gpointer userdata)
         GList* m;
         for (m = stream->pendingReceiveSample; m; m = m->next) {
             PendingReceiveSample* pending = (PendingReceiveSample*)m->data;
-            RefPtr<WebCore::GStreamerMediaSample> sample = WebCore::GStreamerMediaSample::create(pending->buffer, pending->presentationSize, stream->audioTrack ? stream->audioTrack->get()->id() : stream->videoTrack->get()->id());
+            RefPtr<WebCore::GStreamerMediaSample> sample = WebCore::GStreamerMediaSample::create(pending->buffer, pending->presentationSize, getStreamTrackId(stream));
 
             // Add a fake sample if a gap is detected before the first sample
             if (samples.size()==0 &&
@@ -1245,7 +1246,7 @@ static gboolean webKitMediaSrcDidReceiveInitializationSegment(gpointer userdata)
                     sample->presentationTime() <= timestampOffset + MediaTime::createWithDouble(0.1)) {
                 RefPtr<WebCore::GStreamerMediaSample> fakeSample = WebCore::GStreamerMediaSample::createFakeSample(
                         timestampOffset, sample->decodeTime(), sample->presentationTime() - timestampOffset, pending->presentationSize,
-                        stream->audioTrack ? stream->audioTrack->get()->id() : stream->videoTrack->get()->id());
+                        getStreamTrackId(stream));
                 samples.append(fakeSample);
             }
 
@@ -1458,6 +1459,16 @@ static gboolean webKitMediaSrcSeekDataCb(GstAppSrc*, guint64 offset, gpointer us
     return result;
 }
 
+inline static AtomicString getStreamTrackId(Stream* stream)
+{
+    if (stream->audioTrack)
+        return stream->audioTrack->get()->id();
+    if (stream->videoTrack)
+        return stream->videoTrack->get()->id();
+    GST_DEBUG("Stream has no audio and no video track");
+    return AtomicString();
+}
+
 static Stream* getStreamByTrackId(WebKitMediaSrc* src, AtomicString trackIDString)
 {
     // WebKitMediaSrc should be locked at this point.
@@ -1465,8 +1476,9 @@ static Stream* getStreamByTrackId(WebKitMediaSrc* src, AtomicString trackIDStrin
         Source* source = static_cast<Source*>(sources->data);
         for (GList* streams = source->streams; streams; streams = streams->next) {
             Stream* stream = static_cast<Stream*>(streams->data);
-            const AtomicString& id = stream->audioTrack ? stream->audioTrack->get()->id() : stream->videoTrack->get()->id();
-            if (id == trackIDString)
+            if (stream->audioTrack && stream->audioTrack->get()->id() == trackIDString)
+                return stream;
+            if (stream->videoTrack && stream->videoTrack->get()->id() == trackIDString)
                 return stream;
         }
     }
