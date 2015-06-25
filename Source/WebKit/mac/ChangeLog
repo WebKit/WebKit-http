@@ -1,3 +1,134 @@
+2015-06-23  Anders Carlsson  <andersca@apple.com>
+
+        Remove windowResizerRect code, nobody is using it anymore
+        https://bugs.webkit.org/show_bug.cgi?id=146265
+
+        Reviewed by Beth Dakin.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::windowResizerRect): Deleted.
+
+2015-06-22  Chris Dumez  <cdumez@apple.com>
+
+        [WK1] WebAllowDenyPolicyListener.denyOnlyThisRequest() should not start a new permission request
+        https://bugs.webkit.org/show_bug.cgi?id=146228
+        <rdar://problem/15179262>
+
+        Reviewed by Daniel Bates.
+
+        Call the new Geolocation::resetIsAllowed() API after denying the
+        current request, instead of calling
+        Geolocation::resetAllGeolocationPermission(). In addition to resetting
+        m_allowGeolocation to Unknown, the latter would also start a new
+        permission request. However, for
+        WebAllowDenyPolicyListener.denyOnlyThisRequest(), we really only want
+        to deny the current request and then reset m_allowGeolocation to
+        Unknown so that permission is requested again later if the app requests
+        a position again.
+
+        The previous implementation meant that if the client application keeps
+        calling WebAllowDenyPolicyListener.denyOnlyThisRequest(), we would end
+        up in an infinite loop (requesting for permission), even though the
+        application did not make any new geolocation requests.
+
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (-[WebGeolocationPolicyListener denyOnlyThisRequest]):
+
+2015-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Delegates should be formal protocols
+        https://bugs.webkit.org/show_bug.cgi?id=146222
+        rdar://problem/17380856
+
+        Reviewed by Dan Bernstein.
+
+        Flip the switch on OS X and make delegates formal protocols.
+
+        * postprocess-headers.sh:
+
+2015-06-20  Tim Horton  <timothy_horton@apple.com>
+
+        Deselection of text causes a noticeable jump on force touch machines
+        https://bugs.webkit.org/show_bug.cgi?id=146173
+        <rdar://problem/20992842>
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForText]):
+        Get rid of TextIndicatorPresentationTransition::Crossfade.
+
+2015-06-19  Brent Fulgham  <bfulgham@apple.com>
+
+        All calls of ImageBuffer::create should null check the return value
+        https://bugs.webkit.org/show_bug.cgi?id=22132
+
+        Reviewed by Zalan Bujtas.
+
+        ImageBuffer::create returns nullptr for a number of reasons, and should be
+        expected to do so. We missed this check in a few places, resulting in
+        crashes on some systems. Likewise, ImageBuffer::copyImage may return nullptr
+        in normal use and should be checked.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem): Add nullptr check
+        for copyImage.
+
+2015-06-18  Jon Lee  <jonlee@apple.com>
+
+        Update AVKit usage of pip
+        https://bugs.webkit.org/show_bug.cgi?id=146095
+        <rdar://problem/21386853>
+
+        Reviewed by Eric Carlson.
+
+        - Rename preference key
+        - Rename shouldAllowAlternateFullscreen to shouldAllowPictureInPictureMediaPlayback
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences allowsAlternateFullscreen]): Call allowsPictureInPictureMediaPlayback.
+        (-[WebPreferences setAllowsAlternateFullscreen:]):
+        (-[WebPreferences allowsPictureInPictureMediaPlayback]): Added.
+        (-[WebPreferences setAllowsPictureInPictureMediaPlayback:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+
+2015-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Remove shouldInterruptJavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=146118
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::shouldInterruptJavaScript): Deleted.
+        * WebView/WebUIDelegatePrivate.h:
+
+2015-06-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Log blocked loads to the WebInspector console
+        https://bugs.webkit.org/show_bug.cgi?id=146089
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageSource):
+        Added content blocker message source.
+
+2015-06-17  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19034131> Cleaned up the WebDownload.h framework header.
+
+        Reviewed by Anders Carlsson.
+
+        * Misc/WebDownload.h: Changed to use USE_APPLE_INTERNAL_SDK instead of __has_include.
+        * postprocess-headers.sh: Define USE_APPLE_INTERNAL_SDK when postprocessing framework
+        headers.
+
 2015-06-17  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r185636.

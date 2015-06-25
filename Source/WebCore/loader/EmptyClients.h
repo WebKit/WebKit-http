@@ -114,7 +114,6 @@ public:
     virtual void runJavaScriptAlert(Frame*, const String&) override { }
     virtual bool runJavaScriptConfirm(Frame*, const String&) override { return false; }
     virtual bool runJavaScriptPrompt(Frame*, const String&, const String&, String&) override { return false; }
-    virtual bool shouldInterruptJavaScript() override { return false; }
 
     virtual bool selectItemWritingDirectionIsNatural() override { return false; }
     virtual bool selectItemAlignmentFollowsMenuWritingDirection() override { return false; }
@@ -125,8 +124,6 @@ public:
     virtual void setStatusbarText(const String&) override { }
 
     virtual KeyboardUIMode keyboardUIMode() override { return KeyboardAccessDefault; }
-
-    virtual IntRect windowResizerRect() const override { return IntRect(); }
 
     virtual void invalidateRootView(const IntRect&) override { }
     virtual void invalidateContentsAndRootView(const IntRect&) override { }

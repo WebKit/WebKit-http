@@ -242,15 +242,15 @@ static int32_t deviceOrientation()
     return deviceOrientationForUIInterfaceOrientation([[UIApplication sharedApplication] statusBarOrientation]);
 }
 
-- (BOOL)_isShowingVideoOptimized
+- (BOOL)_isShowingVideoPictureInPicture
 {
     if (!_page || !_page->videoFullscreenManager())
         return false;
     
-    return _page->videoFullscreenManager()->hasMode(WebCore::HTMLMediaElementEnums::VideoFullscreenModeOptimized);
+    return _page->videoFullscreenManager()->hasMode(WebCore::HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
 }
 
-- (BOOL)_mayAutomaticallyShowVideoOptimized
+- (BOOL)_mayAutomaticallyShowVideoPictureInPicture
 {
 #if (__IPHONE_OS_VERSION_MIN_REQUIRED <= 80200) || !HAVE(AVKIT)
     return false;
@@ -258,15 +258,15 @@ static int32_t deviceOrientation()
     if (!_page || !_page->videoFullscreenManager())
         return false;
 
-    return _page->videoFullscreenManager()->mayAutomaticallyShowVideoOptimized();
+    return _page->videoFullscreenManager()->mayAutomaticallyShowVideoPictureInPicture();
 #endif
 }
 
-static bool shouldAllowAlternateFullscreen()
+static bool shouldAllowPictureInPictureMediaPlayback()
 {
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-    static bool shouldAllowAlternateFullscreen = iosExecutableWasLinkedOnOrAfterVersion(wkIOSSystemVersion_9_0);
-    return shouldAllowAlternateFullscreen;
+    static bool shouldAllowPictureInPictureMediaPlayback = iosExecutableWasLinkedOnOrAfterVersion(wkIOSSystemVersion_9_0);
+    return shouldAllowPictureInPictureMediaPlayback;
 #else
     return false;
 #endif
@@ -323,7 +323,7 @@ static bool shouldAllowAlternateFullscreen()
     webPageConfiguration.alwaysRunsAtForegroundPriority = [_configuration _alwaysRunsAtForegroundPriority];
 
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
-    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAlternateFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowAlternateFullscreen()));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration requiresUserActionForMediaPlayback]));
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -515,6 +515,15 @@ static bool shouldAllowAlternateFullscreen()
 - (BOOL)hasOnlySecureContent
 {
     return _page->pageLoadState().hasOnlySecureContent();
+}
+
+- (NSArray *)certificateChain
+{
+    auto certificateInfo = _page->pageLoadState().certificateInfo();
+    if (!certificateInfo)
+        return @[ ];
+
+    return (NSArray *)certificateInfo->certificateInfo().certificateChain() ?: @[ ];
 }
 
 - (BOOL)canGoBack
@@ -1900,12 +1909,21 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (NSString *)_customUserAgent
 {
     return self.customUserAgent;
-
 }
 
 - (void)_setCustomUserAgent:(NSString *)customUserAgent
 {
     self.customUserAgent = customUserAgent;
+}
+
+- (void)_setUserContentExtensionsEnabled:(BOOL)userContentExtensionsEnabled
+{
+    _page->setUserContentExtensionsEnabled(userContentExtensionsEnabled);
+}
+
+- (BOOL)_userContentExtensionsEnabled
+{
+    return _page->userContentExtensionsEnabled();
 }
 
 - (pid_t)_webProcessIdentifier
@@ -2068,6 +2086,12 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 
     if (events & _WKRenderingProgressEventReachedSessionRestorationRenderTreeSizeThreshold)
         milestones |= WebCore::ReachedSessionRestorationRenderTreeSizeThreshold;
+
+    if (events & _WKRenderingProgressEventFirstLayoutAfterSuppressedIncrementalRendering)
+        milestones |= WebCore::DidFirstLayoutAfterSuppressedIncrementalRendering;
+
+    if (events & _WKRenderingProgressEventFirstPaintAfterSuppressedIncrementalRendering)
+        milestones |= WebCore::DidFirstPaintAfterSuppressedIncrementalRendering;
 
     return milestones;
 }
@@ -2591,6 +2615,12 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     [self _updateVisibleContentRects];
 }
 
+- (void)_hideContentUntilNextUpdate
+{
+    if (auto* area = _page->drawingArea())
+        area->hideContentUntilNextUpdate();
+}
+
 - (void)_beginAnimatedResizeWithUpdates:(void (^)(void))updateBlock
 {
     CGRect oldBounds = self.bounds;
@@ -2616,9 +2646,10 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     int32_t newOrientation = activeOrientation(self);
     UIEdgeInsets newObscuredInsets = _obscuredInsets;
     CGRect futureUnobscuredRectInSelfCoordinates = UIEdgeInsetsInsetRect(newBounds, _obscuredInsets);
+    CGRect contentViewBounds = [_contentView bounds];
 
     ASSERT_WITH_MESSAGE(!(_overridesMinimumLayoutSize && newMinimumLayoutSize.isEmpty()), "Clients controlling the layout size should maintain a valid layout size to minimize layouts.");
-    if (CGRectIsEmpty(newBounds) || newMinimumLayoutSize.isEmpty() || CGRectIsEmpty(futureUnobscuredRectInSelfCoordinates)) {
+    if (CGRectIsEmpty(newBounds) || newMinimumLayoutSize.isEmpty() || CGRectIsEmpty(futureUnobscuredRectInSelfCoordinates) || CGRectIsEmpty(contentViewBounds)) {
         _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
         [self _frameOrBoundsChanged];
         if (_overridesMinimumLayoutSize)
@@ -2649,7 +2680,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     [_resizeAnimationView addSubview:_contentView.get()];
     [_resizeAnimationView addSubview:[_contentView unscaledView]];
 
-    CGSize contentSizeInContentViewCoordinates = [_contentView bounds].size;
+    CGSize contentSizeInContentViewCoordinates = contentViewBounds.size;
     [_scrollView setMinimumZoomScale:std::min(newMinimumLayoutSize.width() / contentSizeInContentViewCoordinates.width, [_scrollView minimumZoomScale])];
     [_scrollView setMaximumZoomScale:std::max(newMinimumLayoutSize.width() / contentSizeInContentViewCoordinates.width, [_scrollView maximumZoomScale])];
 

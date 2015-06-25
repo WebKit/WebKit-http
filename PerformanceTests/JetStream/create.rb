@@ -26,15 +26,35 @@
 require "pathname"
 require "shellwords"
 
-VERSION = "1.1-alpha1"
+VERSION = "1.1-alpha2"
 DIRECTORY_NAME = "JetStream-#{VERSION}"
+
+CDJS_FILES = [
+    "constants.js",
+    "util.js",
+    "red_black_tree.js",
+    "call_sign.js",
+    "vector_2d.js",
+    "vector_3d.js",
+    "motion.js",
+    "reduce_collision_set.js",
+    "simulator.js",
+    "collision.js",
+    "collision_detector.js",
+    "benchmark.js"
+]
 
 raise unless system("rm -rf " + DIRECTORY_NAME)
 raise unless system("mkdir -p " + DIRECTORY_NAME)
 raise unless system("mkdir -p #{DIRECTORY_NAME}/sunspider")
 raise unless system("mkdir -p #{DIRECTORY_NAME}/sources")
 raise unless system("cp sunspider/*.js #{DIRECTORY_NAME}/sunspider")
-raise unless system("cp -r JetStream.css JetStreamDriver.js LLVM-test-suite-LICENSE.txt simple Octane2 Octane2Setup.js SimpleSetup.js SunSpiderSetup.js Octane OctaneSetup.js Reference.js TestingSetup.js JetStream-Logo.png JetStream-Logo@2x.png Swoosh.png Swoosh@2x.png " + DIRECTORY_NAME)
+raise unless system("mkdir -p #{DIRECTORY_NAME}/cdjs")
+CDJS_FILES.each {
+    | filename |
+    raise unless system("cp cdjs/#{filename} #{DIRECTORY_NAME}/cdjs")
+}
+raise unless system("cp -r JetStream.css JetStreamDriver.js LLVM-test-suite-LICENSE.txt simple Octane2 Octane2Setup.js SimpleSetup.js SunSpiderSetup.js Octane OctaneSetup.js CDjsSetup.js Reference.js TestingSetup.js JetStream-Logo.png JetStream-Logo@2x.png Swoosh.png Swoosh@2x.png " + DIRECTORY_NAME)
 
 def detemplatize(basename)
     File.open(DIRECTORY_NAME + "/#{basename}.html", "w") {
@@ -116,6 +136,7 @@ transferSource("code-first-load", "Octane2/code-load.js")
 transferSource("box2d", "Octane2/box2d.js")
 transferSource("zlib", "Octane2/zlib.js", "Octane2/zlib-data.js")
 transferSource("typescript", "Octane2/typescript.js", "Octane2/typescript-compiler.js", "Octane2/typescript-input.js")
+transferSource("cdjs", *(CDJS_FILES.collect { | filename | "cdjs/#{filename}" }))
 
 puts "You can now run JetStream by navigating to file://" + (Pathname.new(DIRECTORY_NAME) + "index.html").realpath.to_s
 

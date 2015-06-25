@@ -829,9 +829,7 @@ void SpeculativeJIT::emitCall(Node* node)
 
     jsValueResult(resultTagGPR, resultPayloadGPR, node, DataFormatJS, UseChildrenCalledExplicitly);
 
-    info->callType = callType;
-    info->codeOrigin = node->origin.semantic;
-    info->calleeGPR = calleePayloadGPR;
+    info->setUpCall(callType, node->origin.semantic, calleePayloadGPR);
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, info);
     
     // If we were varargs, then after the calls are done, we need to reestablish our stack pointer.
@@ -846,7 +844,8 @@ GPRReg SpeculativeJIT::fillSpeculateInt32Internal(Edge edge, DataFormat& returnF
     SpeculatedType type = value.m_type;
     ASSERT(edge.useKind() != KnownInt32Use || !(value.m_type & ~SpecInt32));
 
-    if (m_interpreter.filter(value, SpecInt32) == Contradiction) {
+    m_interpreter.filter(value, SpecInt32);
+    if (value.isClear()) {
         terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
         returnFormat = DataFormatInt32;
         return allocate();
@@ -973,7 +972,8 @@ GPRReg SpeculativeJIT::fillSpeculateCell(Edge edge)
     SpeculatedType type = value.m_type;
     ASSERT((edge.useKind() != KnownCellUse && edge.useKind() != KnownStringUse) || !(value.m_type & ~SpecCell));
 
-    if (m_interpreter.filter(value, SpecCell) == Contradiction) {
+    m_interpreter.filter(value, SpecCell);
+    if (value.isClear()) {
         terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
         return allocate();
     }
@@ -1055,7 +1055,8 @@ GPRReg SpeculativeJIT::fillSpeculateBoolean(Edge edge)
     AbstractValue& value = m_state.forNode(edge);
     SpeculatedType type = value.m_type;
 
-    if (m_interpreter.filter(value, SpecBoolean) == Contradiction) {
+    m_interpreter.filter(value, SpecBoolean);
+    if (value.isClear()) {
         terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
         return allocate();
     }
@@ -1182,6 +1183,57 @@ void SpeculativeJIT::compileObjectEquality(Node* node)
     done.link(&m_jit);
 
     booleanResult(resultPayloadGPR, node);
+}
+
+void SpeculativeJIT::compileObjectStrictEquality(Edge objectChild, Edge otherChild)
+{
+    SpeculateCellOperand op1(this, objectChild);
+    JSValueOperand op2(this, otherChild);
+
+    GPRReg op1GPR = op1.gpr();
+    GPRReg op2GPR = op2.payloadGPR();
+
+    DFG_TYPE_CHECK(JSValueSource::unboxedCell(op1GPR), objectChild, SpecObject, m_jit.branchIfNotObject(op1GPR));
+
+    GPRTemporary resultPayload(this, Reuse, op1);
+    GPRReg resultPayloadGPR = resultPayload.gpr();
+    
+    MacroAssembler::Jump op2CellJump = m_jit.branchIfCell(op2.jsValueRegs());
+    
+    m_jit.move(TrustedImm32(0), resultPayloadGPR);
+    MacroAssembler::Jump op2NotCellJump = m_jit.jump();
+    
+    // At this point we know that we can perform a straight-forward equality comparison on pointer
+    // values because we are doing strict equality.
+    op2CellJump.link(&m_jit);
+    m_jit.compare32(MacroAssembler::Equal, op1GPR, op2GPR, resultPayloadGPR);
+    
+    op2NotCellJump.link(&m_jit);
+    booleanResult(resultPayloadGPR, m_currentNode);
+}
+    
+void SpeculativeJIT::compilePeepHoleObjectStrictEquality(Edge objectChild, Edge otherChild, Node* branchNode)
+{
+    BasicBlock* taken = branchNode->branchData()->taken.block;
+    BasicBlock* notTaken = branchNode->branchData()->notTaken.block;
+
+    SpeculateCellOperand op1(this, objectChild);
+    JSValueOperand op2(this, otherChild);
+    
+    GPRReg op1GPR = op1.gpr();
+    GPRReg op2GPR = op2.payloadGPR();
+
+    DFG_TYPE_CHECK(JSValueSource::unboxedCell(op1GPR), objectChild, SpecObject, m_jit.branchIfNotObject(op1GPR));
+
+    branch32(MacroAssembler::NotEqual, op2.tagGPR(), TrustedImm32(JSValue::CellTag), notTaken);
+    
+    if (taken == nextBlock()) {
+        branch32(MacroAssembler::NotEqual, op1GPR, op2GPR, notTaken);
+        jump(taken);
+    } else {
+        branch32(MacroAssembler::Equal, op1GPR, op2GPR, taken);
+        jump(notTaken);
+    }
 }
 
 void SpeculativeJIT::compileObjectToObjectOrOtherEquality(Edge leftChild, Edge rightChild)

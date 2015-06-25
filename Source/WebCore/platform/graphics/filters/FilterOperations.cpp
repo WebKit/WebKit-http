@@ -58,13 +58,13 @@ bool FilterOperations::operator==(const FilterOperations& o) const
 {
     if (m_operations.size() != o.m_operations.size())
         return false;
-        
+
     unsigned s = m_operations.size();
     for (unsigned i = 0; i < s; i++) {
         if (*m_operations[i] != *o.m_operations[i])
             return false;
     }
-    
+
     return true;
 }
 
@@ -74,7 +74,7 @@ bool FilterOperations::operationsMatch(const FilterOperations& other) const
     // If the sizes of the function lists don't match, the lists don't match
     if (numOperations != other.operations().size())
         return false;
-    
+
     // If the types of each function are not the same, the lists don't match
     for (size_t i = 0; i < numOperations; ++i) {
         if (!operations()[i]->isSameType(*other.operations()[i]))

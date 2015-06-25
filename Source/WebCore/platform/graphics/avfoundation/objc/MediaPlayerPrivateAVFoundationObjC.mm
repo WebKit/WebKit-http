@@ -414,28 +414,28 @@ private:
     virtual void refAuthenticationClient() override { ref(); }
     virtual void derefAuthenticationClient() override { deref(); }
 
-    virtual void receivedCredential(const AuthenticationChallenge&, const Credential& credential)
+    virtual void receivedCredential(const AuthenticationChallenge&, const Credential& credential) override
     {
         [[m_challenge sender] useCredential:credential.nsCredential() forAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) override
     {
         [[m_challenge sender] continueWithoutCredentialForAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedCancellation(const AuthenticationChallenge&)
+    virtual void receivedCancellation(const AuthenticationChallenge&) override
     {
         [[m_challenge sender] cancelAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+    virtual void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&) override
     {
         if ([[m_challenge sender] respondsToSelector:@selector(performDefaultHandlingForAuthenticationChallenge:)])
             [[m_challenge sender] performDefaultHandlingForAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedChallengeRejection(const AuthenticationChallenge&)
+    virtual void receivedChallengeRejection(const AuthenticationChallenge&) override
     {
         if ([[m_challenge sender] respondsToSelector:@selector(rejectProtectionSpaceAndContinueWithChallenge:)])
             [[m_challenge sender] rejectProtectionSpaceAndContinueWithChallenge:m_challenge.get()];
@@ -693,8 +693,8 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
         [m_videoLayer setFrame:m_videoInlineLayer.get().bounds];
     }
-    if ([m_videoLayer respondsToSelector:@selector(setEnterOptimizedFullscreenModeEnabled:)])
-        [m_videoLayer setEnterOptimizedFullscreenModeEnabled:(player()->fullscreenMode() & MediaPlayer::VideoFullscreenModeOptimized)];
+    if ([m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
+        [m_videoLayer setPIPModeEnabled:(player()->fullscreenMode() & MediaPlayer::VideoFullscreenModePictureInPicture)];
 #else
     [m_videoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
 #endif
@@ -1105,38 +1105,25 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     
-    CALayer *oldRootLayer = videoFullscreenLayer;
-    while (oldRootLayer.superlayer)
-        oldRootLayer = oldRootLayer.superlayer;
-
-    CALayer *newRootLayer = nil;
+    CAContext *oldContext = [m_videoLayer context];
+    CAContext *newContext = nil;
     
     if (m_videoFullscreenLayer && m_videoLayer) {
         [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
         [m_videoLayer removeFromSuperlayer];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        newRootLayer = m_videoFullscreenLayer.get();
+        newContext = [m_videoFullscreenLayer context];
     } else if (m_videoInlineLayer && m_videoLayer) {
         [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
         [m_videoLayer removeFromSuperlayer];
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        newRootLayer = m_videoInlineLayer.get();
+        newContext = [m_videoInlineLayer context];
     } else if (m_videoLayer)
         [m_videoLayer removeFromSuperlayer];
 
-    while (newRootLayer.superlayer)
-        newRootLayer = newRootLayer.superlayer;
-
-    if (oldRootLayer && newRootLayer && oldRootLayer != newRootLayer) {
-        mach_port_t fencePort = 0;
-        for (CAContext *context in [CAContext allContexts]) {
-            if (context.layer == oldRootLayer || context.layer == newRootLayer) {
-                if (!fencePort)
-                    fencePort = [context createFencePort];
-                else
-                    [context setFencePort:fencePort];
-            }
-        }
+    if (oldContext && newContext && oldContext != newContext) {
+        mach_port_t fencePort = [oldContext createFencePort];
+        [newContext setFencePort:fencePort];
         mach_port_deallocate(mach_task_self(), fencePort);
     }
     [CATransaction commit];
@@ -1186,8 +1173,8 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenGravity(MediaPlayer::
 
 void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode mode)
 {
-    if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setEnterOptimizedFullscreenModeEnabled:)])
-        [m_videoLayer setEnterOptimizedFullscreenModeEnabled:(mode & MediaPlayer::VideoFullscreenModeOptimized)];
+    if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
+        [m_videoLayer setPIPModeEnabled:(mode & MediaPlayer::VideoFullscreenModePictureInPicture)];
 }
 
 NSArray *MediaPlayerPrivateAVFoundationObjC::timedMetadata() const

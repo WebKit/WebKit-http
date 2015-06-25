@@ -431,20 +431,6 @@ void WebChromeClient::setStatusbarText(const String& statusText)
     }
 }
 
-bool WebChromeClient::shouldInterruptJavaScript()
-{
-    COMPtr<IWebUIDelegate> uiDelegate;
-    if (SUCCEEDED(m_webView->uiDelegate(&uiDelegate))) {
-        COMPtr<IWebUIDelegatePrivate> uiPrivate;
-        if (SUCCEEDED(uiDelegate->QueryInterface(IID_IWebUIDelegatePrivate, (void**)&uiPrivate))) {
-            BOOL result;
-            if (SUCCEEDED(uiPrivate->webViewShouldInterruptJavaScript(m_webView, &result)))
-                return !!result;
-        }
-    }
-    return false;
-}
-
 KeyboardUIMode WebChromeClient::keyboardUIMode()
 {
     BOOL enabled = FALSE;
@@ -453,11 +439,6 @@ KeyboardUIMode WebChromeClient::keyboardUIMode()
         preferences->tabsToLinks(&enabled);
 
     return enabled ? KeyboardAccessTabsToLinks : KeyboardAccessDefault;
-}
-
-IntRect WebChromeClient::windowResizerRect() const
-{
-    return IntRect();
 }
 
 void WebChromeClient::invalidateRootView(const IntRect& windowRect)

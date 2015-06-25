@@ -40,9 +40,9 @@ class FilterOperations {
 public:
     WEBCORE_EXPORT FilterOperations();
     FilterOperations(const FilterOperations& other) { *this = other; }
-    
+
     WEBCORE_EXPORT FilterOperations& operator=(const FilterOperations&);
-    
+
     bool operator==(const FilterOperations&) const;
     bool operator!=(const FilterOperations& o) const
     {

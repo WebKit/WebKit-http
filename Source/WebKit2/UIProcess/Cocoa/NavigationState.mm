@@ -37,6 +37,7 @@
 #import "CompletionHandlerCallChecker.h"
 #import "NavigationActionData.h"
 #import "PageLoadState.h"
+#import "SecurityOriginData.h"
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKFrameInfoInternal.h"
@@ -142,6 +143,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewNavigationDidSameDocumentNavigation = [delegate respondsToSelector:@selector(_webView:navigation:didSameDocumentNavigation:)];
     m_navigationDelegateMethods.webViewRenderingProgressDidChange = [delegate respondsToSelector:@selector(_webView:renderingProgressDidChange:)];
     m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallengeCompletionHandler = [delegate respondsToSelector:@selector(webView:didReceiveAuthenticationChallenge:completionHandler:)];
+    m_navigationDelegateMethods.webViewWebContentProcessDidTerminate = [delegate respondsToSelector:@selector(webViewWebContentProcessDidTerminate:)];
     m_navigationDelegateMethods.webViewCanAuthenticateAgainstProtectionSpace = [delegate respondsToSelector:@selector(_webView:canAuthenticateAgainstProtectionSpace:)];
     m_navigationDelegateMethods.webViewDidReceiveAuthenticationChallenge = [delegate respondsToSelector:@selector(_webView:didReceiveAuthenticationChallenge:)];
     m_navigationDelegateMethods.webViewWebProcessDidCrash = [delegate respondsToSelector:@selector(_webViewWebProcessDidCrash:)];
@@ -448,7 +450,7 @@ void NavigationState::NavigationClient::didFailProvisionalNavigationWithError(We
 }
 
 // FIXME: Shouldn't need to pass the WebFrameProxy in here. At most, a FrameHandle.
-void NavigationState::NavigationClient::didFailProvisionalLoadInSubframeWithError(WebPageProxy& page, WebFrameProxy& webFrameProxy, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object*)
+void NavigationState::NavigationClient::didFailProvisionalLoadInSubframeWithError(WebPageProxy& page, WebFrameProxy& webFrameProxy, const SecurityOriginData& securityOrigin, API::Navigation* navigation, const WebCore::ResourceError& error, API::Object*)
 {
     // FIXME: We should assert that navigation is not null here, but it's currently null because WebPageProxy::didFailProvisionalLoadForFrame passes null.
     RetainPtr<WKNavigation> wkNavigation;
@@ -461,7 +463,7 @@ void NavigationState::NavigationClient::didFailProvisionalLoadInSubframeWithErro
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     auto errorWithRecoveryAttempter = createErrorWithRecoveryAttempter(m_navigationState.m_webView, webFrameProxy, error);
 
-    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView navigation:nil didFailProvisionalLoadInSubframe:wrapper(API::FrameInfo::create(webFrameProxy)) withError:errorWithRecoveryAttempter.get()];
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView navigation:nil didFailProvisionalLoadInSubframe:wrapper(API::FrameInfo::create(webFrameProxy, securityOrigin.securityOrigin())) withError:errorWithRecoveryAttempter.get()];
 }
 
 void NavigationState::NavigationClient::didCommitNavigation(WebPageProxy& page, API::Navigation* navigation, API::Object*)
@@ -635,12 +637,18 @@ void NavigationState::NavigationClient::didReceiveAuthenticationChallenge(WebPag
 
 void NavigationState::NavigationClient::processDidCrash(WebKit::WebPageProxy& page)
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webViewWebProcessDidCrash)
+    if (!m_navigationState.m_navigationDelegateMethods.webViewWebContentProcessDidTerminate && !m_navigationState.m_navigationDelegateMethods.webViewWebProcessDidCrash)
         return;
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     if (!navigationDelegate)
         return;
+
+    // We prefer webViewWebContentProcessDidTerminate: over _webViewWebProcessDidCrash:.
+    if (m_navigationState.m_navigationDelegateMethods.webViewWebContentProcessDidTerminate) {
+        [navigationDelegate webViewWebContentProcessDidTerminate:m_navigationState.m_webView];
+        return;
+    }
 
     [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webViewWebProcessDidCrash:m_navigationState.m_webView];
 }
@@ -831,6 +839,16 @@ void NavigationState::willChangeNetworkRequestsInProgress()
 void NavigationState::didChangeNetworkRequestsInProgress()
 {
     [m_webView didChangeValueForKey:@"_networkRequestsInProgress"];
+}
+
+void NavigationState::willChangeCertificateInfo()
+{
+    [m_webView willChangeValueForKey:@"certificateChain"];
+}
+
+void NavigationState::didChangeCertificateInfo()
+{
+    [m_webView didChangeValueForKey:@"certificateChain"];
 }
 
 } // namespace WebKit

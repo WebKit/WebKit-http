@@ -1,3 +1,473 @@
+2015-06-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pressing tab in the styles sidebar shouldn't insert a tab character
+        https://bugs.webkit.org/show_bug.cgi?id=146189
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js: Added variable to control whether semicolons are added to the end of autocompleted css values.
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.set noEndingSemicolon):
+        (WebInspector.CodeMirrorCompletionController.prototype._generateCSSCompletions):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorSwitchRule):
+        (WebInspector.CSSStyleDeclarationSection.prototype.focusRuleSelector):
+        (WebInspector.CSSStyleDeclarationSection.prototype.selectLastProperty):
+        (WebInspector.CSSStyleDeclarationSection.prototype.get selectorLocked):
+        (WebInspector.CSSStyleDeclarationSection.prototype.get locked):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleKeyDown):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor): Added functions for "Tab", "Shift-Tab", and "Shift-Enter" keypresses to improve usability.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.selectFirstProperty): Highlights the first property.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.selectLastProperty): Highlights the last property.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._insertNewlineAfterCurrentLine): Inserts a newline after the currently selected line.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey.switchRule):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey): Pressing shift-tab will move the cursor to the previous non-word character that is immediately after a word character.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey.switchRule):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey.highlightNextNameOrValue):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey): Pressing tab will move the cursor to each space character until the end of the line is reached, at
+        which point the cursor will move to the beginning of the next line.  Once the cursor is at the last line, pressing tab again will insert a newline.
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorNextRule): Switches the focused rule to the next section.
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorPrevRule): Switches the focused rule to the previous section.
+
+2015-06-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.group looks poor in console
+        https://bugs.webkit.org/show_bug.cgi?id=146295
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        String for the default group name if you use console.group() without a name parameter.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-group-title::before):
+        Tweak the positioning and eliminate the log level ::before image.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        Reorder a bit to reduce a couple branches.
+
+        (WebInspector.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        Take a very straightforward approach for group names.
+
+2015-06-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Show warning icon for invalid CSS properties and/or values
+        https://bugs.webkit.org/show_bug.cgi?id=145657
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.prototype.getClosestPropertyName): Calculates the levenshtein distance between a given property and every existing property name.  Returns the property name with the smallest distance or, in the case of multiple properties having the same distance, the first property in alphabetical order.
+        (WebInspector.CSSCompletions.prototype.propertyRequiresWebkitPrefix): Retruns if the property name exists only with a '-webkit-' prefix.
+        (WebInspector.CSSCompletions):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker.clickable:hover):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded.duplicatePropertyExistsBelow): Determines if there exists a property below (visually) the given property that has the same name.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded.generateInvalidMarker): Creates a warning icon marker at the given position with the given title.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded.instancesOfProperty): Returns the number of properties in the rule that have the same name.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): A button with a warning icon is now added to the beginning of an invalid property.  If this button is clicked, the property is replaced with the closest matching property and the autocomplete menu is opened.
+
+2015-06-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Background of Computed Styles is missing
+        https://bugs.webkit.org/show_bug.cgi?id=146209
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.computed-style-properties.details-section): Added white background.
+
+2015-06-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Right/Left arrow no longer works in console to expand/collapse ObjectTrees
+        https://bugs.webkit.org/show_bug.cgi?id=141949
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        (WebInspector.ConsoleMessageView.prototype.get expandable):
+        (WebInspector.ConsoleMessageView.prototype.set expandable): Deleted.
+        (WebInspector.ConsoleMessageView.prototype._appendExtraParameters):
+        (WebInspector.ConsoleMessageView.prototype._appendStackTrace):
+        (WebInspector.ConsoleMessageView.prototype._makeExpandable):
+        Clarify what makes a ConsoleMessageView expandable or not.
+
+        (WebInspector.ConsoleMessageView.prototype.expand):
+        (WebInspector.ConsoleMessageView.prototype.collapse):
+        Handle the expand/collapse cases which could apply to the
+        ConsoleMessageView itself or an inner ObjectTreeView if that is all we contain.
+
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsObject):
+        Delete out of date comment. A console.log("message", obj) will want the
+        object tree member variable to handle auto expanding/collapsing of the
+        single object in the message.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._leftArrowWasPressed):
+        (WebInspector.LogContentView.prototype._rightArrowWasPressed):
+        Use the higher level ConsoleMessageView objects accessible from the element
+        to call through to expand/collapse.
+
+2015-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce QuickConsole DidResize events if it did not change
+        https://bugs.webkit.org/show_bug.cgi?id=146258
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.prototype.consoleLogVisibilityChanged):
+        Do not trigger the event unless there was a change in visibility.
+
+2015-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TextEditor scroll position not correctly restored when switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=146254
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.updateLayout):
+        Workaround a larger issue with ContentView restoration so that
+        TextEditors restore their scroll position as expected.
+
+2015-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Some brief previews are incorrectly treated as lossless
+        https://bugs.webkit.org/show_bug.cgi?id=146247
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        When we have a brief preview we may need to override lossless / overflow
+        if the preview view itself shows less properties than were in the preview.
+
+2015-06-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Layout & Rendering timeline should show paint and layout records in separate rows
+        https://bugs.webkit.org/show_bug.cgi?id=146119
+
+        Reviewed by Timothy Hatcher.
+
+        This patch makes the original Layout & Rendering timeline visually consistent with the Rendering Frames
+        timeline, which uses green to distinguish Paint from Layout. In order to support having record bars with
+        different colors in the same overview graph, the timeline has been split into two rows.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.css:
+        (.timeline-overview-graph.layout > .graph-row):
+        (.timeline-overview-graph.layout > .graph-row > .timeline-record-bar):
+        (.timeline-overview-graph.layout > .graph-row > .timeline-record-bar > .segment):
+        New row styles.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.reset.createRecordRow):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.reset):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype._updateRowLayout.createBar):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype._updateRowLayout):
+        (WebInspector.LayoutTimelineOverviewGraph.prototype._layoutTimelineRecordAdded):
+        (WebInspector.LayoutTimelineOverviewGraph): Deleted.
+        Added bookkeeping objects for timeline row elements and their associated records.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment):
+        New style for layout record event types.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.set records):
+        Add style class for eventType, if present.
+
+2015-06-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: gaps between sections of the styles sidebar rules tab confusing, should say "Media: all"
+        https://bugs.webkit.org/show_bug.cgi?id=142918
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label:not(.filter-section-non-matching) ~ .label):
+        Now properly adds padding to filtered labels.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label ~ .label): Deleted.
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): If a section of CSS rules has no media or inheritance, add
+        a label that says "Media: all" above the section.
+
+2015-06-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Consider making read-only style rules have a darker background
+        https://bugs.webkit.org/show_bug.cgi?id=145983
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:not(.locked)):
+        (.style-declaration-section): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor.read-only > .CodeMirror):
+
+2015-06-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Unable to select text of user input messages in the console
+        https://bugs.webkit.org/show_bug.cgi?id=145888
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-user-command > .console-message-text):
+
+2015-06-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Unable to select parent element in the DOM tree path bar
+        https://bugs.webkit.org/show_bug.cgi?id=145810
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype.get selectionPathComponents):
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WebInspector.HierarchicalPathComponent.prototype.get selectedPathComponent):
+        (WebInspector.HierarchicalPathComponent.prototype._selectElementMouseUp):
+        (WebInspector.HierarchicalPathComponent.prototype._selectElementSelectionChanged):
+        (WebInspector.HierarchicalPathComponent):
+        (WebInspector.HierarchicalPathComponent.prototype._selectElementMouseDown): Deleted.
+
+2015-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Duplication of style attribute in rules panel for shadow content
+        https://bugs.webkit.org/show_bug.cgi?id=146176
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        The styleText can be non-empty for a readonly editor if the editor is for
+        the style attribute of a shadow dom node. Instead of assuming it is empty
+        we can just clear the editor ourselves and regenerate from properties.
+
+2015-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight currently edited CSS selector
+        https://bugs.webkit.org/show_bug.cgi?id=145658
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Added event listeners on the selector text for mouseover and mouseout.
+        (WebInspector.CSSStyleDeclarationSection.prototype._highlightNodesWithSelector): Selector text mouseover action that highlights all nodes that match the selector string in the corresponding frame.
+        (WebInspector.CSSStyleDeclarationSection.prototype._hideHighlightOnNodesWithSelector): Selector text mouseout action that clears all highlights on matching nodes.
+        * UserInterface/Views/DOMNode.js:
+        (WebInspector.DOMNode): If the payload contains a frameId, then save it.
+        (WebInspector.DOMNode.frameIdentifier):
+
+2015-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Overlapping dashboard views causing lots of layers in source view
+        https://bugs.webkit.org/show_bug.cgi?id=146153
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard:not(.visible)):
+        Hide non-visible dashboard views. The !important is used
+        to override more specific toolbar .dashboard.foo styles.
+
+2015-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Make rule icon toggle all properties for that selector on and off
+        https://bugs.webkit.org/show_bug.cgi?id=146031
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header > .icon.toggle-able:hover):
+        (.style-declaration-section.rule-disabled > .header > .icon):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Added event listener to selector icon to toggle commenting of all properties for that rule.
+        (WebInspector.CSSStyleDeclarationSection.prototype._toggleRuleOnOff): Adds or removes comments to all properties for that rule.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.uncommentAllProperties.uncommentProperties):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.uncommentAllProperties): Uncomments all properties.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.commentAllProperties): Comments out all properties.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._propertyCheckboxChanged): Moved comment logic to its own function.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._propertyCommentCheckboxChanged): Moved uncomment logic to its own function.
+
+2015-06-19  Jon Lee  <jonlee@apple.com>
+
+        Update font and font-family keyword completions
+        https://bugs.webkit.org/show_bug.cgi?id=144558
+        <rdar://problem/20795292>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Replace -webkit-system-font and
+        -apple-system-font with -apple-system, which is the recommended token for getting the
+        system font. Also add -title{1,2,3} for font, as they were missing, but already exist
+        in font-family.
+
+2015-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid getOwnPropertyNames/Symbols on very large lists
+        https://bugs.webkit.org/show_bug.cgi?id=146141
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded):
+        When building completions for a large array, instead of building a list of all the indices
+        just send a single number back to the frontend and let it generate a list for completion.
+        We should do even better and avoid building a lookup table here for completion of an index.
+
+2015-06-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames timeline selection should snap to frame boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=146120
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RenderingFrameTimelineOverview.js:
+        Enable snapping to frame boundaries.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._updateFrameSelection):
+        Updated filtering to account for ruler snapping.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.get snapInterval):
+        (WebInspector.TimelineRuler.prototype.set snapInterval):
+        (WebInspector.TimelineRuler.prototype.set selectionStartTime):
+        (WebInspector.TimelineRuler.prototype.set selectionEndTime):
+        (WebInspector.TimelineRuler.prototype._snapValue):
+        (WebInspector.TimelineRuler.prototype._handleMouseMove):
+        Added support for snapping to a specified interval.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Removed unnecessary code.
+
+2015-06-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add a filter for CSS properties in the Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=145536
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js: Added function to Strings that returns an array of all matching indexes of a given string.
+        (.value):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh.appendSelector):
+        (WebInspector.CSSStyleDeclarationSection.prototype.findMatchingPropertiesAndSelectors): Loops through the property list and selectors of each section to find matches to the filtered text.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.findMatchingProperties): Searches through the properties list to find and highlight all matching properties.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.removeNonMatchingProperties): Removes all properties that do not match and highlights the specific matched text in matching properties.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.resetFilteredProperties): Restores all properties to full visibility and removes any highlighting.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): Classes are added to selections of the text editor of that partiular selection contains text which matches the filter (see CSSStyleDetailsSidebarPanel.css for different classes).
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._iterateOverProperties): If a filter is active, find properties matching the filter instead of all properties.
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content.has-filter-bar + .filter-bar):
+        (.sidebar > .panel.details.css-style > .content:not(.has-filter-bar) + .filter-bar):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel): Added a filter bar to the CSS sidebar.
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._switchPanels): Switching panels preserves and applies filter bar text.
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._filterDidChange): Function called when the filter bar text changes that calls the current panel's filterDidChange function if it exists.
+        * UserInterface/Views/FilterBar.js: Added function and variable to check if the text in the filter bar had changed.
+        * UserInterface/Views/MetricsStyleDetailsPanel.js:
+        (WebInspector.MetricsStyleDetailsPanel.prototype.refresh): Now calls superclass refresh.
+        (WebInspector.MetricsStyleDetailsPanel): Added delegate variable to constructor.
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label ~ .label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label.filter-matching-label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .new-rule):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .style-declaration-section:not(.filter-section-non-matching) ~ .label:not(.filter-section-non-matching)):
+        (.sidebar > .panel.details.css-style > .content:not(.filter-in-progress) > .rules > .new-rule + .style-declaration-section):
+        (.sidebar > .panel.details.css-style > .content > .rules:not(.filter-non-matching) > .no-filter-results):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules.filter-non-matching > .no-filter-results):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules.filter-non-matching > .no-filter-results > .no-filter-results-message):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel): Added delegate variable to constructor.
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Now calls superclass refresh.
+        (WebInspector.RulesStyleDetailsPanel.prototype.filterDidChange): Function to search through the computed styles list and highlight all matched properties and selectors of the filter bar text, turning all non matching properties slightly opaque (unless a selector for that property is a match).
+        (WebInspector.StyleDetailsPanel): Added delegate variable to constructor.
+        (WebInspector.StyleDetailsPanel.prototype.refresh): Added event dispatch for panel refresh.
+
+2015-06-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Ability to Copy entire CSS Rule from Styles Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=138812
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Right clicking on the header of a rule will replcae the default context menu to allow copying of the entire rule to the clipboard.
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleContextMenuEvent): Creates a new context menu to copy the entire CSS rule.
+        (WebInspector.CSSStyleDeclarationSection.prototype._generateCSSRuleString): Generates a string representing the formatted CSS rule.
+
+2015-06-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve a few more node preview types
+        https://bugs.webkit.org/show_bug.cgi?id=146048
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNodePreview):
+
+2015-06-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: New Rule button doesn't reveal the newly added rule if not visible upon creation
+        https://bugs.webkit.org/show_bug.cgi?id=117600
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js: Made previousFocusedSection into a member variable of the RulesStyleDetailsPanel.  This way, when the nodeStyles is refreshed (when a new rule is added), the previousFocusedSection will be scrolled into view.
+        (WebInspector.RulesStyleDetailsPanel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.appendStyleSection):
+        (WebInspector.RulesStyleDetailsPanel.prototype.nodeStylesRefreshed):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Deleted.
+
+2015-06-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185671.
+        https://bugs.webkit.org/show_bug.cgi?id=146114
+
+        Caused frequent flaky failures on profiler tests (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Improve a few more node preview types"
+        https://bugs.webkit.org/show_bug.cgi?id=146048
+        http://trac.webkit.org/changeset/185671
+
+2015-06-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve a few more node preview types
+        https://bugs.webkit.org/show_bug.cgi?id=146048
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNodePreview):
+
+2015-06-17  Diego Pino Garcia  <dpino@igalia.com>
+
+        Web Inspector: Show/Hide sidebar buttons have inconsistent highlighted state
+        https://bugs.webkit.org/show_bug.cgi?id=145073
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype._detailsSidebarPanelSelected):
+
 2015-06-16  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Inspector Scripts evaluated in the page should not be searchable

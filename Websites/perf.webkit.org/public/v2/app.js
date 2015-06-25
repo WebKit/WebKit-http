@@ -1185,8 +1185,11 @@ App.PaneController = Ember.ObjectController.extend({
 
 App.AnalysisRoute = Ember.Route.extend({
     model: function () {
-        return this.store.findAll('analysisTask').then(function (tasks) {
-            return Ember.Object.create({'tasks': tasks.sortBy('createdAt').toArray().reverse()});
+        var store = this.store;
+        return App.Manifest.fetch(store).then(function () {
+            return store.findAll('analysisTask').then(function (tasks) {
+                return Ember.Object.create({'tasks': tasks.sortBy('createdAt').toArray().reverse()});
+            });
         });
     },
 });
@@ -1194,7 +1197,10 @@ App.AnalysisRoute = Ember.Route.extend({
 App.AnalysisTaskRoute = Ember.Route.extend({
     model: function (param)
     {
-        return this.store.find('analysisTask', param.taskId);
+        var store = this.store;
+        return App.Manifest.fetch(store).then(function () {
+            return store.find('analysisTask', param.taskId);
+        });
     },
 });
 
@@ -1325,19 +1331,16 @@ App.AnalysisTaskController = Ember.Controller.extend({
             var revisions = point.measurement.formattedRevisions();
             for (var repositoryId in revisions) {
                 if (!repositoryToRevisions[repositoryId])
-                    repositoryToRevisions[repositoryId] = {commits: null, revisions: []};
+                    repositoryToRevisions[repositoryId] = new Array();
                 var revision = revisions[repositoryId];
-                repositoryToRevisions[repositoryId].revisions[pointIndex] = {
-                    label: point.label + ': ' + revision.label,
-                    value: revision.currentRevision,
-                };
+                repositoryToRevisions[repositoryId].push({time: point.measurement.latestCommitTime(), value: revision.currentRevision});
             }
         });
 
         var commitsPromises = [];
         var repositoryToIndex = {};
         for (var repositoryId in repositoryToRevisions) {
-            var revisions = repositoryToRevisions[repositoryId].revisions;
+            var revisions = repositoryToRevisions[repositoryId].sort(function (a, b) { return a.time - b.time; });
             repositoryToIndex[repositoryId] = commitsPromises.length;
             commitsPromises.push(CommitLogs.fetchCommits(repositoryId, revisions[0].value, revisions[revisions.length - 1].value));
         }
