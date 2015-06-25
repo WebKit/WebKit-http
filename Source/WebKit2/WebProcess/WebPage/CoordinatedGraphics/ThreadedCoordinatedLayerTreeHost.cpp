@@ -65,8 +65,11 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
-    , m_layerFlushTimer(RunLoop::main(), this, &ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush)
+    , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 40)
     , m_layerFlushSchedulingEnabled(true)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor))
+#endif
 {
     m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
 
@@ -89,7 +92,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleLayerFlush()
         return;
 
     if (!m_layerFlushTimer.isActive())
-        m_layerFlushTimer.startOneShot(0);
+        m_layerFlushTimer.schedule();
 }
 
 void ThreadedCoordinatedLayerTreeHost::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
@@ -221,8 +224,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleAnimation()
     if (m_layerFlushTimer.isActive())
         return;
 
-    m_layerFlushTimer.startOneShot(m_coordinator->nextAnimationServiceTime());
-    scheduleLayerFlush();
+    m_layerFlushTimer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(m_coordinator->nextAnimationServiceTime())));
 }
 #endif
 
@@ -246,7 +248,7 @@ void ThreadedCoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& r
 
 void ThreadedCoordinatedLayerTreeHost::cancelPendingLayerFlush()
 {
-    m_layerFlushTimer.stop();
+    m_layerFlushTimer.cancel();
 }
 
 void ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush()
@@ -266,6 +268,11 @@ void ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush()
 void ThreadedCoordinatedLayerTreeHost::purgeBackingStores()
 {
     m_coordinator->purgeBackingStores();
+}
+
+void ThreadedCoordinatedLayerTreeHost::frameComplete()
+{
+    m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
 }
 
 void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
@@ -294,6 +301,36 @@ void ThreadedCoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphic
 void ThreadedCoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, GraphicsContext&, const IntRect&)
 {
 }
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCoordinatedLayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID)
+{
+    return m_displayRefreshMonitor;
+}
+
+ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::DisplayRefreshMonitor()
+    : WebCore::DisplayRefreshMonitor(0)
+    , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::displayRefreshCallback)
+{
+}
+
+bool ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::requestRefreshCallback()
+{
+    setIsScheduled(true);
+    return true;
+}
+
+void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
+{
+    if (isScheduled())
+        m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCoordinatedLayerTreeHost::DisplayRefreshMonitor::displayRefreshCallback()
+{
+    DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+}
+#endif
 
 } // namespace WebKit
 

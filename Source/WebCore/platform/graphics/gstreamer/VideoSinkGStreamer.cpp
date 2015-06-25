@@ -136,7 +136,9 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
     WebKitVideoSinkPrivate* priv = sink->priv;
 
+#if !USE(COORDINATED_GRAPHICS_THREADED)
     WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
+#endif
 
     if (priv->unlocked)
         return GST_FLOW_OK;
@@ -215,6 +217,9 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     }
 #endif
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    webkitVideoSinkTimeoutCallback(sink);
+#else
     // This should likely use a lower priority, but glib currently starves
     // lower priority sources.
     // See: https://bugzilla.gnome.org/show_bug.cgi?id=610830.
@@ -222,6 +227,7 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     priv->timeoutSource.schedule([protector] { webkitVideoSinkTimeoutCallback(WEBKIT_VIDEO_SINK(protector.get())); });
 
     g_cond_wait(&priv->dataCondition, &priv->sampleMutex);
+#endif
     return GST_FLOW_OK;
 }
 

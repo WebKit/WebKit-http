@@ -2938,7 +2938,11 @@ bool RenderLayerCompositor::documentUsesTiledBacking() const
     if (!backing)
         return false;
 
+#if USE(TILED_BACKING_STORE)
+    return true;
+#else
     return backing->usingTiledBacking();
+#endif
 }
 
 bool RenderLayerCompositor::isMainFrameCompositor() const

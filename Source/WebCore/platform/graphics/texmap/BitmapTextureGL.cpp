@@ -60,37 +60,6 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-BitmapTextureGL::BitmapTextureGL(PassRefPtr<GraphicsContext3D> context3D)
-    : m_id(0)
-    , m_fbo(0)
-    , m_rbo(0)
-    , m_depthBufferObject(0)
-    , m_shouldClear(true)
-    , m_context3D(context3D)
-{
-}
-
-bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, Flags)
-{
-    return contentsSize == m_textureSize;
-}
-
-#if OS(DARWIN)
-#define DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE GL_UNSIGNED_INT_8_8_8_8_REV
-#else
-#define DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE GraphicsContext3D::UNSIGNED_BYTE
-#endif
-
-static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 0)
-{
-    stride = stride ? stride : rect.width();
-    for (int y = rect.y(); y < rect.maxY(); ++y) {
-        uint32_t* p = data + y * stride;
-        for (int x = rect.x(); x < rect.maxX(); ++x)
-            p[x] = ((p[x] << 16) & 0xff0000) | ((p[x] >> 16) & 0xff) | (p[x] & 0xff00ff00);
-    }
-}
-
 // If GL_EXT_texture_format_BGRA8888 is supported in the OpenGLES
 // internal and external formats need to be BGRA
 static bool driverSupportsExternalTextureBGRA(GraphicsContext3D* context)
@@ -101,6 +70,44 @@ static bool driverSupportsExternalTextureBGRA(GraphicsContext3D* context)
     }
 
     return true;
+}
+
+BitmapTextureGL::BitmapTextureGL(PassRefPtr<GraphicsContext3D> context3D)
+    : m_id(0)
+    , m_fbo(0)
+    , m_rbo(0)
+    , m_depthBufferObject(0)
+    , m_shouldClear(true)
+    , m_context3D(context3D)
+#if OS(DARWIN)
+    , m_type(GL_UNSIGNED_INT_8_8_8_8_REV)
+#else
+    , m_type(GraphicsContext3D::UNSIGNED_BYTE)
+#endif
+{
+    m_internalFormat = GraphicsContext3D::RGBA;
+    m_format = GraphicsContext3D::BGRA;
+    if (m_context3D->isGLES2Compliant()) {
+        if (driverSupportsExternalTextureBGRA(m_context3D.get()))
+            m_internalFormat = GraphicsContext3D::BGRA;
+        else
+            m_format = GraphicsContext3D::RGBA;
+    }
+}
+
+bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, bool)
+{
+    return contentsSize == m_textureSize;
+}
+
+static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 0)
+{
+    stride = stride ? stride : rect.width();
+    for (int y = rect.y(); y < rect.maxY(); ++y) {
+        uint32_t* p = data + y * stride;
+        for (int x = rect.x(); x < rect.maxX(); ++x)
+            p[x] = ((p[x] << 16) & 0xff0000) | ((p[x] >> 16) & 0xff) | (p[x] & 0xff00ff00);
+    }
 }
 
 static bool driverSupportsSubImage(GraphicsContext3D* context)
@@ -122,7 +129,6 @@ void BitmapTextureGL::didReset()
     if (m_textureSize == contentSize())
         return;
 
-
     m_textureSize = contentSize();
     m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
     m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_MIN_FILTER, GraphicsContext3D::LINEAR);
@@ -130,16 +136,7 @@ void BitmapTextureGL::didReset()
     m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::CLAMP_TO_EDGE);
     m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::CLAMP_TO_EDGE);
 
-    Platform3DObject internalFormat = GraphicsContext3D::RGBA;
-    Platform3DObject externalFormat = GraphicsContext3D::BGRA;
-    if (m_context3D->isGLES2Compliant()) {
-        if (driverSupportsExternalTextureBGRA(m_context3D.get()))
-            internalFormat = GraphicsContext3D::BGRA;
-        else
-            externalFormat = GraphicsContext3D::RGBA;
-    }
-
-    m_context3D->texImage2DDirect(GraphicsContext3D::TEXTURE_2D, 0, internalFormat, m_textureSize.width(), m_textureSize.height(), 0, externalFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, 0);
+    m_context3D->texImage2DDirect(GraphicsContext3D::TEXTURE_2D, 0, m_internalFormat, m_textureSize.width(), m_textureSize.height(), 0, m_format, m_type, 0);
 }
 
 void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, Platform3DObject glFormat)
@@ -153,7 +150,7 @@ void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect
         m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
     }
 
-    m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
+    m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, m_type, srcData);
 
     // For ES drivers that don't support sub-images.
     if (driverSupportsSubImage(m_context3D.get())) {
@@ -165,7 +162,6 @@ void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect
 
 void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag updateContentsFlag)
 {
-    Platform3DObject glFormat = GraphicsContext3D::RGBA;
     m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
 
     const unsigned bytesPerPixel = 4;
@@ -195,12 +191,10 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
         adjustedSourceOffset = IntPoint(0, 0);
     }
 
-    if (driverSupportsExternalTextureBGRA(m_context3D.get()))
-        glFormat = GraphicsContext3D::BGRA;
-    else
+    if (!driverSupportsExternalTextureBGRA(m_context3D.get()))
         swizzleBGRAToRGBA(reinterpret_cast_ptr<uint32_t*>(data), IntRect(adjustedSourceOffset, targetRect.size()), bytesPerLine / bytesPerPixel);
 
-    updateContentsNoSwizzle(data, targetRect, adjustedSourceOffset, bytesPerLine, bytesPerPixel, glFormat);
+    updateContentsNoSwizzle(data, targetRect, adjustedSourceOffset, bytesPerLine, bytesPerPixel, m_format);
 }
 
 void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)

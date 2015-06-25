@@ -28,7 +28,12 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "ThreadedCompositor.h"
 
+#include <WebCore/GLContextEGL.h>
+#include <WebCore/PlatformDisplayWayland.h>
 #include <WebCore/TransformationMatrix.h>
+#include <cstdio>
+#include <cstdlib>
+#include <wtf/Atomics.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
@@ -47,17 +52,12 @@ class CompositingRunLoop {
     WTF_MAKE_NONCOPYABLE(CompositingRunLoop);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum UpdateTiming {
-        Immediate,
-        WaitUntilNextFrame,
-    };
-
     CompositingRunLoop(std::function<void()> updateFunction)
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
         , m_updateFunction(WTF::move(updateFunction))
-        , m_lastUpdateTime(0)
     {
+        m_updateState.store(UpdateState::Completed);
     }
 
     void callOnCompositingRunLoop(std::function<void()> function)
@@ -70,23 +70,38 @@ public:
         m_runLoop.dispatch(WTF::move(function));
     }
 
-    void setUpdateTimer(UpdateTiming timing = Immediate)
+    void scheduleUpdate()
     {
         if (m_updateTimer.isActive())
             return;
 
-        const static double targetFPS = 60;
-        double nextUpdateTime = 0;
-        if (timing == WaitUntilNextFrame)
-            nextUpdateTime = std::max((1 / targetFPS) - (monotonicallyIncreasingTime() - m_lastUpdateTime), 0.0);
+        if (m_updateState.load() == UpdateState::Completed) {
+            m_updateTimer.startOneShot(0);
+            return;
+        }
 
-        m_updateTimer.startOneShot(nextUpdateTime);
+        m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::UpdateOnCompletion);
     }
 
-    void stopUpdateTimer()
+    void stopUpdates()
     {
-        if (m_updateTimer.isActive())
-            m_updateTimer.stop();
+        m_updateTimer.stop();
+        m_updateState.store(UpdateState::Completed);
+    }
+
+    void updateCompleted()
+    {
+        ASSERT(&RunLoop::current() == &m_runLoop);
+
+        if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
+            return;
+
+        if (m_updateState.compareExchangeStrong(UpdateState::UpdateOnCompletion, UpdateState::Completed)) {
+            updateTimerFired();
+            return;
+        }
+
+        ASSERT_NOT_REACHED();
     }
 
     RunLoop& runLoop()
@@ -95,18 +110,26 @@ public:
     }
 
 private:
+    enum class UpdateState {
+        Completed,
+        InProgress,
+        UpdateOnCompletion,
+    };
 
     void updateTimerFired()
     {
-        m_updateFunction();
-        m_lastUpdateTime = monotonicallyIncreasingTime();
+        if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
+            m_updateFunction();
+            return;
+        }
+
+        ASSERT_NOT_REACHED();
     }
 
     RunLoop& m_runLoop;
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void()> m_updateFunction;
-
-    double m_lastUpdateTime;
+    Atomic<UpdateState> m_updateState;
 };
 
 PassRefPtr<ThreadedCompositor> ThreadedCompositor::create(Client* client)
@@ -196,7 +219,7 @@ void ThreadedCompositor::renderNextFrame()
 
 void ThreadedCompositor::updateViewport()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::WaitUntilNextFrame);
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& offset)
@@ -227,26 +250,33 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    if (!m_nativeSurfaceHandle)
+    RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
+    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
+    if (!m_waylandSurface)
         return 0;
+    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
+    setNativeSurfaceHandleForCompositing(0);
 
-    m_context = GLContext::createContextForWindow(m_nativeSurfaceHandle, GLContext::sharingContext());
+    m_context = m_waylandSurface->createGLContext();
     return m_context.get();
 }
 
 void ThreadedCompositor::scheduleDisplayImmediately()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::Immediate);
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::didChangeVisibleRect()
 {
     FloatRect visibleRect = viewportController()->visibleContentsRect();
     float scale = viewportController()->pageScaleFactor();
-    callOnMainThread([=] {
-        m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
+    RefPtr<ThreadedCompositor> protector(this);
+    RunLoop::main().dispatch([protector, visibleRect, scale] {
+        protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
+    if (m_waylandSurface)
+        m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -267,6 +297,7 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
+    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
 }
 
@@ -317,7 +348,7 @@ void ThreadedCompositor::runCompositingThread()
 
     m_compositingRunLoop->runLoop().run();
 
-    m_compositingRunLoop->stopUpdateTimer();
+    m_compositingRunLoop->stopUpdates();
     m_scene->purgeGLResources();
 
     {
@@ -339,6 +370,35 @@ void ThreadedCompositor::terminateCompositingThread()
 
     m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
 }
+
+static void debugThreadedCompositorFPS()
+{
+    static double lastTime = currentTime();
+    static unsigned frameCount = 0;
+
+    double ct = currentTime();
+    frameCount++;
+
+    if (ct - lastTime >= 5.0) {
+        fprintf(stderr, "ThreadedCompositor: frame callbacks %.2f FPS\n", frameCount / (ct - lastTime));
+        lastTime = ct;
+        frameCount = 0;
+    }
+}
+
+const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
+    // frame
+    [](void* data, struct wl_callback* callback, uint32_t) {
+        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+        if (reportFPS)
+            debugThreadedCompositorFPS();
+        wl_callback_destroy(callback);
+
+        auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
+        threadedCompositor.m_client->frameComplete();
+        threadedCompositor.m_compositingRunLoop->updateCompleted();
+    }
+};
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)

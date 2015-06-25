@@ -98,13 +98,32 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
     WebProcess/WebPage/DrawingAreaImpl.cpp
-    WebProcess/WebPage/wpe/LayerTreeHostWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
     WebProcess/wpe/WebProcessMainWPE.cpp
 )
+if (ENABLE_THREADED_COMPOSITOR)
+    list(APPEND WebKit2_SOURCES
+        Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
+        Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
+        Shared/CoordinatedGraphics/SimpleViewportController.cpp
+        Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
+        Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+        WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+    )
+    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
+        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
+        "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
+    )
+else ()
+    list(APPEND WebKit2_SOURCES
+        WebProcess/WebPage/wpe/LayerTreeHostWPE.cpp
+    )
+endif ()
 
 list(APPEND WebKit2_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
@@ -239,7 +258,6 @@ set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
 )
 
 file(GLOB InspectorFilesDependencies
@@ -257,8 +275,9 @@ add_custom_command(
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml
     DEPENDS ${InspectorFilesDependencies}
+            ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
             ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py
-    COMMAND ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py --output=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml ${InspectorFiles}
+    COMMAND ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py --output=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml ${InspectorFiles} ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
     VERBATIM
 )
 

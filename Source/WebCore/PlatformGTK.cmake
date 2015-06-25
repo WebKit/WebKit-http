@@ -412,6 +412,9 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
         page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
 
+        platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
+        platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
+
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
         platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp

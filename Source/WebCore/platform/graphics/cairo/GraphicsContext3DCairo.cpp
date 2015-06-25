@@ -85,7 +85,11 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
     , m_texture(0)
     , m_compositorTexture(0)
     , m_fbo(0)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    , m_compositorFBO(0)
+#endif
     , m_depthStencilBuffer(0)
+    , m_layerComposited(false)
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
@@ -108,6 +112,17 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
         // Create an FBO.
         ::glGenFramebuffers(1, &m_fbo);
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        ::glGenFramebuffers(1, &m_compositorFBO);
+        ::glGenTextures(1, &m_compositorTexture);
+        ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
+        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        ::glBindTexture(GL_TEXTURE_2D, 0);
+#endif
 
         m_state.boundFBO = m_fbo;
         if (!m_attrs.antialias) {
@@ -186,6 +201,9 @@ GraphicsContext3D::~GraphicsContext3D()
 #endif
     }
     ::glDeleteFramebuffers(1, &m_fbo);
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    ::glDeleteFramebuffers(1, &m_compositorFBO);
+#endif
 }
 
 GraphicsContext3D::ImageExtractor::~ImageExtractor()
@@ -326,6 +344,13 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
 {
     return m_private.get();
 }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void GraphicsContext3D::swapBufferIfNeeded()
+{
+    m_private->swapBufferIfNeeded();
+}
+#endif
 
 } // namespace WebCore
 
