@@ -1799,6 +1799,10 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
     if (!c)
         return;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    canvas()->buffer()->commitChangesIfNeeded();
+#endif
+
     if (!state().m_hasInvertibleTransform)
         return;
 

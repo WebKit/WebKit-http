@@ -75,6 +75,8 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy))
+    , m_runLoop(RunLoop::current())
+    , m_commitChangesTimer(m_runLoop, this, &ImageBufferData::commitChanges)
 #endif
     , m_texture(0)
 #endif
@@ -82,7 +84,15 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-void ImageBufferData::swapBuffersIfNeeded()
+void ImageBufferData::commitChangesIfNeeded()
+{
+    if (m_commitChangesTimer.isActive())
+        return;
+
+    m_commitChangesTimer.startOneShot(0);
+}
+
+void ImageBufferData::commitChanges()
 {
     GLContext* previousActiveContext = GLContext::getCurrent();
     cairo_surface_flush(m_surface.get());
@@ -458,6 +468,13 @@ PlatformLayer* ImageBuffer::platformLayer() const
 #endif
     return 0;
 }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void ImageBuffer::commitChangesIfNeeded()
+{
+    m_data.commitChangesIfNeeded();
+}
+#endif
 
 } // namespace WebCore
 
