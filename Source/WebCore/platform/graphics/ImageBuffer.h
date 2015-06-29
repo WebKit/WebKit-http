@@ -133,7 +133,7 @@ public:
     static FloatRect clampedRect(const FloatRect&);
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    void commitChangesIfNeeded();
+    void markBufferChanged();
 #endif
 
 private:

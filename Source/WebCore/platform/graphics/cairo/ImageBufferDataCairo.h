@@ -67,11 +67,13 @@ public:
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy; }
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
-    virtual void swapBuffersIfNeeded() override { };
-    RunLoop& m_runLoop;
-    RunLoop::Timer<ImageBufferData> m_commitChangesTimer;
-    void commitChangesIfNeeded();
-    void commitChanges();
+    virtual void swapBuffersIfNeeded() override;
+    void markBufferChanged();
+    bool m_bufferChanged;
+    RefPtr<cairo_surface_t> m_compositorSurface;
+    uint32_t m_compositorTexture;
+    void createCompositorBuffer();
+    RefPtr<cairo_t> m_compositorCr;
 #else
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
 #endif

@@ -75,33 +75,64 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     , m_platformLayerProxy(adoptRef(new TextureMapperPlatformLayerProxy))
-    , m_runLoop(RunLoop::current())
-    , m_commitChangesTimer(m_runLoop, this, &ImageBufferData::commitChanges)
+    , m_bufferChanged(false)
+    , m_compositorTexture(0)
 #endif
     , m_texture(0)
 #endif
 {
 }
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
-void ImageBufferData::commitChangesIfNeeded()
+void ImageBufferData::createCompositorBuffer()
 {
-    if (m_commitChangesTimer.isActive())
-        return;
+    GLContext::sharingContext()->makeContextCurrent();
 
-    m_commitChangesTimer.startOneShot(0);
+    glGenTextures(1, &m_compositorTexture);
+    glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0 , GL_RGBA, m_size.width(), m_size.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+    cairo_device_t* device = GLContext::sharingContext()->cairoDevice();
+    m_compositorSurface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, m_compositorTexture, m_size.width(), m_size.height()));
+    m_compositorCr = adoptRef(cairo_create(m_compositorSurface.get()));
+    cairo_set_antialias(m_compositorCr.get(), CAIRO_ANTIALIAS_NONE);
 }
 
-void ImageBufferData::commitChanges()
+void ImageBufferData::markBufferChanged()
 {
+    m_bufferChanged = true;
+}
+
+void ImageBufferData::swapBuffersIfNeeded()
+{
+    if (!m_bufferChanged)
+        return;
+
     GLContext* previousActiveContext = GLContext::getCurrent();
-    cairo_surface_flush(m_surface.get());
+
+    if (!m_compositorTexture) {
+        createCompositorBuffer();
+        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, true, false));
+    }
+
+    // It would be great if we could just swap the buffers here as we do with webgl, but that breaks the cases
+    // where one frame uses the content already rendered in the previous frame. So we just copy the content
+    // into the compositor buffer.
+    cairo_set_source_surface(m_compositorCr.get(), m_surface.get(), 0, 0);
+    cairo_set_operator(m_compositorCr.get(), CAIRO_OPERATOR_SOURCE);
+    cairo_paint(m_compositorCr.get());
+
+    m_bufferChanged = false;
     if (previousActiveContext)
         previousActiveContext->makeContextCurrent();
 }
 #endif
-
-#if ENABLE(ACCELERATED_2D_CANVAS)
 void ImageBufferData::createCairoGLSurface()
 {
     GLContext::sharingContext()->makeContextCurrent();
@@ -118,10 +149,6 @@ void ImageBufferData::createCairoGLSurface()
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, m_size.width(), m_size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_texture, m_size, true, false));
-#endif
 
     GLContext* context = GLContext::sharingContext();
     cairo_device_t* device = context->cairoDevice();
@@ -156,7 +183,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
     m_data.m_platformContext.setCr(cr.get());
-    cairo_set_antialias(m_data.m_platformContext.cr(), CAIRO_ANTIALIAS_NONE);
+    cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
     m_data.m_context = std::make_unique<GraphicsContext>(&m_data.m_platformContext);
     success = true;
 }
@@ -470,9 +497,9 @@ PlatformLayer* ImageBuffer::platformLayer() const
 }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-void ImageBuffer::commitChangesIfNeeded()
+void ImageBuffer::markBufferChanged()
 {
-    m_data.commitChangesIfNeeded();
+    m_data.markBufferChanged();
 }
 #endif
 

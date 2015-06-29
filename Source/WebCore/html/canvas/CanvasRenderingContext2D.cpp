@@ -1800,7 +1800,7 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
         return;
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    canvas()->buffer()->commitChangesIfNeeded();
+    canvas()->buffer()->markBufferChanged();
 #endif
 
     if (!state().m_hasInvertibleTransform)
