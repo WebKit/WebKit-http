@@ -709,6 +709,12 @@ static GstPad* get_internal_linked_pad(GstPad* pad)
 
 typedef struct {
     Stream* stream;
+
+    // GStreamerMediaSamples can't be created from non-main threads.
+    // In this case we store the needed parameters here (buffer != 0, sample.get()==0) and delay the creation.
+    GstBuffer* buffer;
+    WebCore::FloatSize presentationSize;
+
     WTF::RefPtr<WebCore::GStreamerMediaSample> sample;
 } ReceiveSample;
 
@@ -717,8 +723,17 @@ static gboolean webKitWebSrcDidReceiveSample(gpointer userdata)
 {
     ReceiveSample* sample = (ReceiveSample*)userdata;
 
+    // The sample came from a non-main thread. We don't have the
+    // GStreamerMediaSample, only the parameters needed for its creation.
+    if (!(sample->sample)) {
+        sample->sample = WebCore::GStreamerMediaSample::create(sample->buffer, sample->presentationSize, getStreamTrackId(sample->stream));
+        if (sample->buffer)
+            gst_buffer_unref(sample->buffer);
+    }
+
     if (sample->stream->parent) {
         MediaTime timestampOffset(MediaTime::createWithDouble(sample->stream->parent->sourceBuffer->timestampOffset()));
+
 
         // Add a fake sample if a gap is detected before the first sample
         if (sample->sample->presentationTime() >= timestampOffset &&
@@ -793,7 +808,12 @@ static GstPadProbeReturn webKitWebSrcBufferProbe(GstPad*, GstPadProbeInfo* info,
     if (initSegmentAlreadyProcessed) {
         ReceiveSample* sample = g_new0(ReceiveSample, 1);
 
-        sample->sample = WebCore::GStreamerMediaSample::create(buffer, stream->presentationSize, getStreamTrackId(stream));
+        if (buffer)
+            gst_buffer_ref(buffer);
+
+        sample->buffer = buffer;
+        sample->presentationSize = stream->presentationSize;
+        sample->sample = nullptr;
         sample->stream = stream;
         stream->parent->pendingSamplesAfterInitSegment++;
 
