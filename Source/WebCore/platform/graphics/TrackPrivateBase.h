@@ -31,7 +31,7 @@
 #include <wtf/Forward.h>
 #include <wtf/MediaTime.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/RefCounted.h>
 #include <wtf/text/AtomicString.h>
 
 #if ENABLE(VIDEO_TRACK)
@@ -49,7 +49,7 @@ public:
     virtual void willRemove(TrackPrivateBase*) = 0;
 };
 
-class TrackPrivateBase : public ThreadSafeRefCounted<TrackPrivateBase> {
+class TrackPrivateBase : public RefCounted<TrackPrivateBase> {
     WTF_MAKE_NONCOPYABLE(TrackPrivateBase); WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~TrackPrivateBase() { }

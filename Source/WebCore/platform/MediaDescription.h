@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-class MediaDescription : public ThreadSafeRefCounted<MediaDescription> {
+class MediaDescription : public RefCounted<MediaDescription> {
 public:
     virtual ~MediaDescription() { }
 
