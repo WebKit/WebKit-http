@@ -214,7 +214,6 @@ set(WebKit2_SOURCES
     Shared/CacheModel.cpp
     Shared/ChildProcess.cpp
     Shared/ChildProcessProxy.cpp
-    Shared/ConnectionStack.cpp
     Shared/ContextMenuContextData.cpp
     Shared/DictionaryPopupInfo.cpp
     Shared/EditorState.cpp

@@ -287,9 +287,10 @@ ControllerIOS.prototype = {
     handlePlayButtonTouchEnd: function(event) {
         this.controls.playButton.classList.remove('active');
 
-        if (this.canPlay())
+        if (this.canPlay()) {
             this.video.play();
-        else
+            this.showControls();
+        } else
             this.video.pause();
 
         return true;
@@ -346,11 +347,9 @@ ControllerIOS.prototype = {
 
         this.mostRecentNumberOfTargettedTouches = event.targetTouches.length;
 
-        if (this.controlsAreHidden()) {
+        if (this.controlsAreHidden() || !this.controls.panel.classList.contains(this.ClassNames.show)) {
             this.showControls();
-            if (this.hideTimer)
-                clearTimeout(this.hideTimer);
-            this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
+            this.resetHideControlsTimer();
         } else if (!this.canPlay())
             this.hideControls();
     },
@@ -540,7 +539,7 @@ ControllerIOS.prototype = {
         this.updateShouldListenForPlaybackTargetAvailabilityEvent();
         if (!this.video.controls)
             return;
-        
+
         this.updateForShowingControls();
         if (this.shouldHaveControls() && !this.controls.panelContainer.parentElement) {
             this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
@@ -562,6 +561,7 @@ ControllerIOS.prototype = {
 
         switch (presentationMode) {
             case 'inline':
+                this.controls.panelContainer.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
                 this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholderTextTop.classList.remove(this.ClassNames.pictureInPicture);
@@ -570,6 +570,7 @@ ControllerIOS.prototype = {
                 this.controls.pictureInPictureButton.classList.remove(this.ClassNames.returnFromPictureInPicture);
                 break;
             case 'picture-in-picture':
+                this.controls.panelContainer.classList.add(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
 
@@ -581,6 +582,7 @@ ControllerIOS.prototype = {
                 this.controls.pictureInPictureButton.classList.add(this.ClassNames.returnFromPictureInPicture);
                 break;
             default:
+                this.controls.panelContainer.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholderTextTop.classList.remove(this.ClassNames.pictureInPicture);
                 this.controls.inlinePlaybackPlaceholderTextBottom.classList.remove(this.ClassNames.pictureInPicture);
@@ -591,6 +593,7 @@ ControllerIOS.prototype = {
 
         this.updateControls();
         this.updateCaptionContainer();
+        this.resetHideControlsTimer();
         if (presentationMode != 'fullscreen' && this.video.paused && this.controlsAreHidden())
             this.showControls();
     },

@@ -243,7 +243,6 @@
 #import "WebStorageManagerPrivate.h"
 #import "WebUIKitSupport.h"
 #import "WebVisiblePosition.h"
-#import <WebCore/DispatchSPI.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/GraphicsLayer.h>
@@ -1234,7 +1233,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setMinimumFontSize([_private->preferences minimumFontSize]);
 
     // This is a workaround for <rdar://problem/21309911>.
-    _private->page->settings().setMetaRefreshEnabled([_private->preferences metaRefreshEnabled]);
+    _private->page->settings().setHttpEquivEnabled([_private->preferences httpEquivEnabled]);
 
     _private->page->setGroupName(groupName);
 
@@ -1285,7 +1284,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         [WebView _handleMemoryWarning];
     }, shouldAutoClearPressureOnMemoryRelease);
 
-    static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS, 0, DISPATCH_MEMORYSTATUS_PRESSURE_WARN, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+    static dispatch_source_t memoryNotificationEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_WARN, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
     dispatch_source_set_event_handler(memoryNotificationEventSource, ^{
         // Set memory pressure flag and schedule releasing memory in web thread runloop exit.
         MemoryPressureHandler::singleton().setReceivedMemoryPressure(WebCore::MemoryPressureReasonVMPressure);
@@ -1295,15 +1294,15 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
     if (!shouldAutoClearPressureOnMemoryRelease) {
         // Listen to memory status notification to reset the memory pressure flag.
-        static dispatch_source_t memoryStatusEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYSTATUS,
+        static dispatch_source_t memoryStatusEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE,
                                                                                     0,
-                                                                                    DISPATCH_MEMORYSTATUS_PRESSURE_WARN | DISPATCH_MEMORYSTATUS_PRESSURE_NORMAL,
+                                                                                    DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_NORMAL,
                                                                                     dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
         dispatch_source_set_event_handler(memoryStatusEventSource, ^{
             unsigned long currentStatus = dispatch_source_get_data(memoryStatusEventSource);
-            if (currentStatus == DISPATCH_MEMORYSTATUS_PRESSURE_NORMAL)
+            if (currentStatus == DISPATCH_MEMORYPRESSURE_NORMAL)
                 MemoryPressureHandler::singleton().clearMemoryPressure();
-            else if (currentStatus == DISPATCH_MEMORYSTATUS_PRESSURE_WARN)
+            else if (currentStatus == DISPATCH_MEMORYPRESSURE_WARN)
                 MemoryPressureHandler::singleton().setReceivedMemoryPressure(WebCore::MemoryPressureReasonVMStatus);
         });
 
@@ -2295,6 +2294,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setRequiresUserGestureForMediaPlayback([preferences mediaPlaybackRequiresUserGesture]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setAllowsPictureInPictureMediaPlayback([preferences allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback());
+    settings.setMediaControlsScaleWithPageZoom([preferences mediaControlsScaleWithPageZoom]);
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
     settings.setBackspaceKeyNavigationEnabled([preferences backspaceKeyNavigationEnabled]);
     settings.setWantsBalancedSetDefersLoadingBehavior([preferences wantsBalancedSetDefersLoadingBehavior]);
@@ -2327,7 +2327,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     }
 
     settings.setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
-    settings.setMetaRefreshEnabled([preferences metaRefreshEnabled]);
+    settings.setHttpEquivEnabled([preferences httpEquivEnabled]);
 
     settings.setFixedPositionCreatesStackingContext(true);
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

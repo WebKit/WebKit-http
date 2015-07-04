@@ -60,7 +60,6 @@
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
 #include "JSBoundFunction.h"
-#include "JSBoundSlotBaseFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
@@ -130,6 +129,10 @@
 #include "WeakMapPrototype.h"
 #include "WeakSetConstructor.h"
 #include "WeakSetPrototype.h"
+
+#if ENABLE(INTL)
+#include "IntlObject.h"
+#endif // ENABLE(INTL)
 
 #if ENABLE(PROMISES)
 #include "JSPromise.h"
@@ -242,7 +245,6 @@ void JSGlobalObject::init(VM& vm)
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
-    m_boundSlotBaseFunctionStructure.set(vm, this, JSBoundSlotBaseFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
     m_internalFunctionStructure.set(vm, this, InternalFunction::createStructure(vm, this, m_functionPrototype.get()));
@@ -424,6 +426,9 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     m_evalFunction.set(vm, this, JSFunction::create(vm, this, 1, vm.propertyNames->eval.string(), globalFuncEval));
     putDirectWithoutTransition(vm, vm.propertyNames->eval, m_evalFunction.get(), DontEnum);
     
+#if ENABLE(INTL)
+    putDirectWithoutTransition(vm, vm.propertyNames->Intl, IntlObject::create(vm, IntlObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
+#endif // ENABLE(INTL)
     putDirectWithoutTransition(vm, vm.propertyNames->JSON, JSONObject::create(vm, JSONObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Math, MathObject::create(vm, this, MathObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum);
     
@@ -777,7 +782,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_errorStructure);
     visitor.append(&thisObject->m_calleeStructure);
     visitor.append(&thisObject->m_functionStructure);
-    visitor.append(&thisObject->m_boundSlotBaseFunctionStructure);
     visitor.append(&thisObject->m_boundFunctionStructure);
     visitor.append(&thisObject->m_namedFunctionStructure);
     visitor.append(&thisObject->m_symbolObjectStructure);

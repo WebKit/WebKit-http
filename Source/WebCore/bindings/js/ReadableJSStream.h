@@ -50,25 +50,32 @@ namespace WebCore {
 class JSDOMGlobalObject;
 class ReadableStreamController;
 
+typedef int ExceptionCode;
+
 class ReadableJSStream: public ReadableStream {
 public:
     static RefPtr<ReadableJSStream> create(JSC::ExecState&, ScriptExecutionContext&);
 
     JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
+    void close(ExceptionCode&);
 
     void storeError(JSC::ExecState&, JSC::JSValue);
     JSC::JSValue error() override { return m_error.get(); }
 
-    void enqueue(JSC::ExecState&);
+    void enqueue(JSC::ExecState&, JSC::JSValue);
+    void error(JSC::ExecState&, JSC::JSValue, ExceptionCode&);
+
+    double desiredSize() const { return m_highWaterMark - m_totalQueueSize; }
 
 private:
-    ReadableJSStream(ScriptExecutionContext&, JSC::ExecState&, JSC::JSObject*);
+    ReadableJSStream(ScriptExecutionContext&, JSC::ExecState&, JSC::JSObject*, double, JSC::JSFunction*);
 
     void doStart(JSC::ExecState&);
 
     JSC::JSPromise* invoke(JSC::ExecState&, const char*, JSC::JSValue parameter);
     void storeException(JSC::ExecState&);
 
+    virtual bool hasEnoughValues() const override { return desiredSize() <= 0; }
     virtual bool hasValue() const override;
     virtual JSC::JSValue read() override;
     virtual bool doPull() override;
@@ -76,11 +83,23 @@ private:
 
     JSDOMGlobalObject* globalObject();
 
+    double retrieveChunkSize(JSC::ExecState&, JSC::JSValue);
+
     std::unique_ptr<ReadableStreamController> m_controller;
+    // FIXME: we should consider not using JSC::Strong, see https://bugs.webkit.org/show_bug.cgi?id=146278
     JSC::Strong<JSC::Unknown> m_error;
     JSC::Strong<JSC::JSFunction> m_errorFunction;
     JSC::Strong<JSC::JSObject> m_source;
-    Deque<JSC::Strong<JSC::Unknown>> m_chunkQueue;
+
+    struct Chunk {
+        JSC::Strong<JSC::Unknown> value;
+        double size;
+    };
+    Deque<Chunk> m_chunkQueue;
+
+    double m_totalQueueSize { 0 };
+    double m_highWaterMark;
+    JSC::Strong<JSC::JSFunction> m_sizeFunction;
 };
 
 } // namespace WebCore

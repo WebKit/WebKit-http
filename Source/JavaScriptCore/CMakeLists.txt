@@ -56,7 +56,6 @@ set(JavaScriptCore_SOURCES
     API/OpaqueJSString.cpp
 
     assembler/ARMAssembler.cpp
-    assembler/ARMv7Assembler.cpp
     assembler/LinkBuffer.cpp
     assembler/MacroAssembler.cpp
     assembler/MacroAssemblerARM.cpp
@@ -209,6 +208,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGOSRExitCompiler32_64.cpp
     dfg/DFGOSRExitCompiler64.cpp
     dfg/DFGOSRExitCompilerCommon.cpp
+    dfg/DFGOSRExitFuzz.cpp
     dfg/DFGOSRExitJumpPlaceholder.cpp
     dfg/DFGOSRExitPreparation.cpp
     dfg/DFGObjectAllocationSinkingPhase.cpp
@@ -473,10 +473,10 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/InitializeThreading.cpp
     runtime/IntendedStructureChain.cpp
     runtime/InternalFunction.cpp
+    runtime/IntlObject.cpp
     runtime/IteratorOperations.cpp
     runtime/IteratorPrototype.cpp
     runtime/JSAPIValueWrapper.cpp
-    runtime/JSBoundSlotBaseFunction.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
     runtime/JSArrayBufferConstructor.cpp

@@ -816,6 +816,10 @@ public:
     void interactionOccurredWhileProcessUnresponsive();
     void processDidBecomeResponsive();
     void processDidCrash();
+#if PLATFORM(IOS)
+    void processWillBecomeSuspended();
+    void processWillBecomeForeground();
+#endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
@@ -1011,6 +1015,7 @@ public:
     void navigationGestureDidBegin();
     void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&);
     void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&);
+    void navigationGestureDidEnd();
     void navigationGestureSnapshotWasRemoved();
     void willRecordNavigationSnapshot(WebBackForwardListItem&);
 
@@ -1395,6 +1400,7 @@ private:
     float textAutosizingWidth();
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition, uint64_t dynamicViewportSizeUpdateID);
+    void couldNotRestorePageState();
     void restorePageState(const WebCore::FloatRect&, double scale);
     void restorePageCenterAndScale(const WebCore::FloatPoint&, double scale);
 
@@ -1530,6 +1536,7 @@ private:
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
     uint64_t m_layerTreeTransactionIdAtLastTouchStart;
     uint64_t m_currentDynamicViewportSizeUpdateID { 0 };
+    bool m_hasNetworkRequestsOnSuspended;
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1731,6 +1738,7 @@ private:
     bool m_waitingForDidUpdateViewState;
 
     bool m_shouldScaleViewToFitDocument { false };
+    bool m_suppressNavigationSnapshotting { false };
 
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;

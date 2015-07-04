@@ -118,6 +118,7 @@ private:
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) override;
+    virtual void couldNotRestorePageState() override;
     virtual void restorePageState(const WebCore::FloatRect&, double) override;
     virtual void restorePageCenterAndScale(const WebCore::FloatPoint&, double) override;
 
@@ -175,10 +176,12 @@ private:
     virtual void navigationGestureDidBegin() override;
     virtual void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&) override;
     virtual void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&) override;
+    virtual void navigationGestureDidEnd() override;
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
 
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() override;
     virtual void didFinishLoadForMainFrame() override;
+    virtual void didFailLoadForMainFrame() override;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
     virtual void didChangeBackgroundColor() override;

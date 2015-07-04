@@ -1,3 +1,610 @@
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Just give up on -Wunreachable-code in JavaScriptCore.
+
+        * Configurations/Base.xcconfig:
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the LLINT CLoop build.
+
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_UNREACHABLE_CODE and
+        GCC_NO_COMMON_BLOCKS. Removed GCC_MODEL_TUNING.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+        * dfg/DFGGraph.h: Tweaked the definition of DFG_CRASH to suppress unreachable code warnings.
+
+2015-07-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Relax builtin JS restriction about try-catch
+        https://bugs.webkit.org/show_bug.cgi?id=146555
+
+        Reviewed by Sam Weinig.
+
+        When retrieving the captured variables from the full activated scope,
+        it swapped the given vector with the stored declared variables vector.
+        This is because retrieving the captured variables are executed in the
+        last sequence of the parser, so declared variables are no longer used.
+        However, in builtins functions case, after retrieving the captured
+        variables, we check the variables by using declared variables vector.
+        So at that time, the declared variables vector becomes empty and it
+        raises assertion failures when the builtins function contains the full
+        activated scope. try-catch's catch scope requires the upper scope full
+        activated, so JS code in the builtins cannot use the try-catch.
+
+        This patch relaxes this restriction. When retrieving the captured
+        variables from the scope, just copy to the given vector.
+
+        * parser/Parser.h:
+        (JSC::Scope::getCapturedVariables):
+
+2015-07-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should have an OSR exit fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=146562
+
+        Reviewed by Benjamin Poulain.
+        
+        Adds a basic OSR exit fuzzer to JSC. This isn't hooked into any test harnesses yet, but I
+        spot-checked it on v8-earley-boyer.js and so far found no bugs. I'd like to figure out how
+        to harness this after I land it.
+        
+        Since it's turned off by default, it should have no effect on behavior.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOSRExitFuzz.cpp: Added.
+        (JSC::numberOfOSRExitFuzzChecks):
+        * dfg/DFGOSRExitFuzz.h: Added.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitGetArgumentStart):
+        (JSC::DFG::SpeculativeJIT::emitOSRExitFuzzCheck):
+        (JSC::DFG::SpeculativeJIT::speculationCheck):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExit):
+        * jsc.cpp:
+        (jscmain):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.h:
+
+2015-07-02  Saam barati  <saambarati1@gmail.com>
+
+        Rename "Deconstruction" to "Destructuring" throughout JSC
+        https://bugs.webkit.org/show_bug.cgi?id=146100
+
+        Reviewed by Mark Lam.
+
+        It is good to use the same naming conventions as the ES6 
+        spec because it is the de facto way of speaking about these 
+        language features. This also has the benefit of improving JSC's
+        hackability because it improves code readability for newcomers 
+        to JSC or newcomers to this part of the code base.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeNextParameter):
+        (JSC::BytecodeGenerator::visibleNameForParameter):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::registerFor):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::tryGetBoundLocal):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::ClassExprNode::emitBytecode):
+        (JSC::DestructuringAssignmentNode::emitBytecode):
+        (JSC::DestructuringPatternNode::~DestructuringPatternNode):
+        (JSC::ArrayPatternNode::collectBoundIdentifiers):
+        (JSC::DeconstructingAssignmentNode::emitBytecode): Deleted.
+        (JSC::DeconstructionPatternNode::~DeconstructionPatternNode): Deleted.
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createElementList):
+        (JSC::ASTBuilder::createFormalParameterList):
+        (JSC::ASTBuilder::createClause):
+        (JSC::ASTBuilder::createClauseList):
+        (JSC::ASTBuilder::createForInLoop):
+        (JSC::ASTBuilder::createForOfLoop):
+        (JSC::ASTBuilder::isBindingNode):
+        (JSC::ASTBuilder::isResolve):
+        (JSC::ASTBuilder::createDestructuringAssignment):
+        (JSC::ASTBuilder::createArrayPattern):
+        (JSC::ASTBuilder::appendArrayPatternSkipEntry):
+        (JSC::ASTBuilder::appendArrayPatternEntry):
+        (JSC::ASTBuilder::appendArrayPatternRestEntry):
+        (JSC::ASTBuilder::createObjectPattern):
+        (JSC::ASTBuilder::appendObjectPatternEntry):
+        (JSC::ASTBuilder::createDeconstructingAssignment): Deleted.
+        * parser/NodeConstructors.h:
+        (JSC::TryNode::TryNode):
+        (JSC::ParameterNode::ParameterNode):
+        (JSC::ForOfNode::ForOfNode):
+        (JSC::DestructuringPatternNode::DestructuringPatternNode):
+        (JSC::ArrayPatternNode::ArrayPatternNode):
+        (JSC::ArrayPatternNode::create):
+        (JSC::ObjectPatternNode::ObjectPatternNode):
+        (JSC::BindingNode::create):
+        (JSC::BindingNode::BindingNode):
+        (JSC::DestructuringAssignmentNode::DestructuringAssignmentNode):
+        (JSC::DeconstructionPatternNode::DeconstructionPatternNode): Deleted.
+        (JSC::DeconstructingAssignmentNode::DeconstructingAssignmentNode): Deleted.
+        * parser/Nodes.cpp:
+        (JSC::FunctionParameters::create):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isResolveNode):
+        (JSC::ExpressionNode::isBracketAccessorNode):
+        (JSC::ExpressionNode::isDotAccessorNode):
+        (JSC::ExpressionNode::isDestructuringNode):
+        (JSC::ExpressionNode::isFuncExprNode):
+        (JSC::ExpressionNode::isCommaNode):
+        (JSC::ExpressionNode::isSimpleArray):
+        (JSC::ParameterNode::pattern):
+        (JSC::ParameterNode::nextParam):
+        (JSC::FunctionParameters::size):
+        (JSC::FunctionParameters::at):
+        (JSC::FunctionParameters::patterns):
+        (JSC::DestructuringPatternNode::isBindingNode):
+        (JSC::DestructuringPatternNode::emitDirectBinding):
+        (JSC::ArrayPatternNode::appendIndex):
+        (JSC::ObjectPatternNode::appendEntry):
+        (JSC::BindingNode::boundProperty):
+        (JSC::DestructuringAssignmentNode::bindings):
+        (JSC::ExpressionNode::isDeconstructionNode): Deleted.
+        (JSC::DeconstructionPatternNode::isBindingNode): Deleted.
+        (JSC::DeconstructionPatternNode::emitDirectBinding): Deleted.
+        (JSC::DeconstructingAssignmentNode::bindings): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclaration):
+        (JSC::Parser<LexerType>::parseWhileStatement):
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        (JSC::Parser<LexerType>::createBindingPattern):
+        (JSC::Parser<LexerType>::tryParseDestructuringPatternExpression):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseDefaultValueForDestructuringPattern):
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::tryParseDeconstructionPatternExpression): Deleted.
+        (JSC::Parser<LexerType>::parseDeconstructionPattern): Deleted.
+        (JSC::Parser<LexerType>::parseDefaultValueForDeconstructionPattern): Deleted.
+        * parser/Parser.h:
+        (JSC::isEvalNode):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createPropertyList):
+        (JSC::SyntaxChecker::createElementList):
+        (JSC::SyntaxChecker::createFormalParameterList):
+        (JSC::SyntaxChecker::createClause):
+        (JSC::SyntaxChecker::createClauseList):
+        (JSC::SyntaxChecker::operatorStackPop):
+        * tests/stress/reserved-word-with-escape.js:
+        * tests/stress/rest-elements.js:
+
+2015-07-02  Mark Lam  <mark.lam@apple.com>
+
+        Build fix for Win EWS bot.
+        https://bugs.webkit.org/show_bug.cgi?id=146551
+
+        Not reviewed.
+
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionCrash):
+
+2015-07-02  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21429613> [iOS] Stop making symlinks from PrivateFrameworks to Frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=146542
+
+        Reviewed by Sam Weinig.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Removed the build phase that makes the symlink.
+
+2015-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Aggregate profile call information on the backend to drastically reduce profile sizes
+        https://bugs.webkit.org/show_bug.cgi?id=146536
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+        Change a CPUProfile from sending a required "calls" param to sending a required
+        "callInfo" param which includes aggregated information about the calls.
+
+2015-06-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::freezeFragile should register the frozen value's structure
+        https://bugs.webkit.org/show_bug.cgi?id=136055
+        rdar://problem/21042120
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+        
+        This fixes weird concurrency bugs where the constant folding phase tries to convert
+        something to a constant but then crashes because the constant's structure wasn't
+        registered. The AI was registering the structure of any value it saw, but constant folding
+        wasn't - and that's fine so long as there ain't no concurrency.
+        
+        The best fix is to just make it impossible to introduce a constant into the IR without
+        registering its structure. That's what this change does. This is not only a great
+        concurrency fix - it also makes the compiler somewhat easier to hack on because it's one
+        less case of structure registering that you have to remember about.
+        
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::setOSREntryValue): No need to register.
+        (JSC::DFG::AbstractValue::set): We still call register, but just to get the watchpoint state.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::freezeFragile): Register the structure.
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run): Assert that these are all registered.
+
+2015-07-01  Matthew Mirman  <mmirman@apple.com>
+
+        Unreviewed, rolling out r185889
+        https://bugs.webkit.org/show_bug.cgi?id=146528
+        rdar://problem/21573959
+
+        Patch breaks chromeexperiments.com
+        
+        Reverted changeset:
+        
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/InjectedScriptSource.js:
+        (.):
+        * runtime/JSBoundSlotBaseFunction.cpp: Removed.
+        * runtime/JSBoundSlotBaseFunction.h: Removed.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Deleted.
+        (JSC::JSGlobalObject::visitChildren): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure): Deleted.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM): Deleted.
+        * runtime/VM.h:
+
+2015-07-01  Dean Jackson  <dino@apple.com>
+
+        Disable the experimental WebGL2 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=146526
+        <rdar://problem/21641235>
+
+        Reviewed by Myles Maxfield.
+
+        Add (and disable) an ENABLE_WEBGL2 flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-07-01  Matthew Daiter  <mdaiter@apple.com>
+
+        Enable MEDIA_STREAM flag
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        <rdar://problem/21365829>
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig: Added MEDIA_STREAM flag
+
+2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=90906
+
+        Reviewed by Benjamin Poulain.
+
+        * CMakeLists.txt: add IntlObject.cpp
+        * Configurations/FeatureDefines.xcconfig: add ENABLE_INTL flag
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: add IntlObject
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: add IntlObject
+        * JavaScriptCore.xcodeproj/project.pbxproj: add IntlObject
+        * runtime/CommonIdentifiers.h: add "Intl" name
+        * runtime/IntlObject.cpp: Added.
+        (JSC::IntlObject::IntlObject):
+        (JSC::IntlObject::create):
+        (JSC::IntlObject::finishCreation):
+        (JSC::IntlObject::createStructure):
+        * runtime/IntlObject.h: Added.
+        * runtime/JSGlobalObject.cpp: Add global Intl
+        (JSC::JSGlobalObject::init):
+
+2015-06-30  Basile Clement  <basile_clement@apple.com>
+
+        Allow object allocation sinking through GetScope, GetExecutable and SkipScope nodes
+        https://bugs.webkit.org/show_bug.cgi?id=146431
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isFunctionAllocation):
+        (JSC::DFG::Node::isPhantomFunctionAllocation):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPromoteHeapAccess.h:
+        (JSC::DFG::promoteHeapAccess):
+
+2015-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Reduce rendering frames "Other" time by instrumenting compositing
+        https://bugs.webkit.org/show_bug.cgi?id=146168
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Timeline.json:
+        New timeline record type for compositing events.
+
+2015-06-29  Dean Jackson  <dino@apple.com>
+
+        Temporarily disable PICTURE_SIZES
+        https://bugs.webkit.org/show_bug.cgi?id=146435
+        <rdar://problem/21087013>
+
+        Reviewed by Tim Horton.
+
+        Temporarily disable PICTURE_SIZES because it causes problems with out
+        of date <picture> polyfills.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-06-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Binding generator should allow using JSC::Value for "any" parameter in lieu of ScriptValue
+        https://bugs.webkit.org/show_bug.cgi?id=146403
+
+        Reviewed by Darin Adler.
+
+        * bindings/ScriptValue.h: Added implicit conversion to JSC::JSValue.
+
+2015-06-28 Aleksandr Skachkov   <gskachkov@gmail.com>
+
+        [ES6] Implement ES6 arrow function syntax. No Line terminator between function parameters and =>
+        https://bugs.webkit.org/show_bug.cgi?id=146394
+
+        Reviewed by Yusuke Suzuki.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2015-06-27  Darin Adler  <darin@apple.com>
+
+        Make converting JSString to StringView idiomatically safe
+        https://bugs.webkit.org/show_bug.cgi?id=146387
+
+        Reviewed by Anders Carlsson.
+
+        * jsc.cpp:
+        (functionPrint): Add explicit call to SafeView::get, needed since there
+        is no StringView temporary.
+        (functionDebug): Ditto.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::holesMustForwardToPrototype): Refactored into helper function.
+        (JSC::join): Refactored so that StringView is a function argument, making
+        the lifetime simpler.
+        (JSC::arrayProtoFuncJoin): Ditto.
+        (JSC::arrayProtoFuncReverse): Use new holesMustForwardToPrototype helper.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode): Add explicit call to SafeView::get.
+
+        * runtime/JSString.h: Moved declarations of functions to the top of the
+        file instead of mixing them in with the function definitions. Changed
+        return type of the view function to return a JSString::SafeView so that
+        the JSString's lifetime will last as long as the StringView does in
+        typical coding idioms.
+        (JSC::JSString::getIndex): Use unsafeView so we can index into the
+        view; could also have used view.get but here in this class this seems fine.
+        (JSC::JSRopeString::unsafeView): Renamed existing view function to this.
+        (JSC::JSString::unsafeView): Ditto.
+        (JSC::JSString::SafeView::SafeView): Contains reference to an ExecState
+        and a JSString. The ExecState is needed to create the StringView, and the
+        JSString needs to be kept alive as long as the StringView is.
+        (JSC::JSString::SafeView::operator StringView): Call unsafeView.
+        (JSC::JSString::SafeView::get): Convenience for when we want to call
+        StringView member functions.
+        (JSC::JSString::view): Added. Returns a SafeView.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncIndexOf): Add explicit call to SafeView::get.
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ARMv7Assembler.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=146340
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARMv7Assembler.cpp: Removed.
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(ES6_ARROWFUNCTION_SYNTAX) build after r185989
+        https://bugs.webkit.org/show_bug.cgi?id=146344
+
+        Reviewed by Yusuke Suzuki.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseSourceElements):
+
+2015-06-26 Aleksandr Skachkov  <gskachkov@gmail.com>
+
+         [ES6] Implement ES6 arrow function syntax. Parser of arrow function with execution as common function. 
+         https://bugs.webkit.org/show_bug.cgi?id=144955
+
+         Reviewed by Yusuke Suzuki.
+
+         Added support of ES6 arrow function. Changes were made according to following spec http://wiki.ecmascript.org/doku.php?id=harmony:arrow_function_syntax. Patch does not include any arrow function specific behavior e.g. lexical bind this, arguments and etc.     
+        This patch implements the simplest cases of arrow function declaration:
+           parameters             () => 10 + 20
+           parameter               x => x + 20
+           parameters         (x, y) => x + y
+           function with block     x => { return x*10; }
+
+        Not implemented:
+           bind of the this, arguments, super and etc.
+           exception in case of trying to use 'new' with arrow function
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createArrowFunctionExpr):
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::setTokenPosition):
+        (JSC::Lexer<T>::lex):
+        * parser/Lexer.h:
+        (JSC::Lexer::lastTokenLocation):
+        (JSC::Lexer::setTerminator):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::parseSourceElements):
+        (JSC::Parser<LexerType>::parseArrowFunctionSingleExpressionBody):
+        (JSC::Parser<LexerType>::parseSwitchClauses):
+        (JSC::Parser<LexerType>::parseSwitchDefaultClause):
+        (JSC::Parser<LexerType>::parseBlockStatement):
+        (JSC::Parser<LexerType>::parseFunctionBody):
+        (JSC::stringForFunctionMode):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        (JSC::Parser<LexerType>::parseArrowFunctionExpression):
+        * parser/Parser.h:
+        (JSC::Parser::locationBeforeLastToken):
+        (JSC::Parser::isEndOfArrowFunction):
+        (JSC::Parser::isArrowFunctionParamters):
+        (JSC::Parser::setEndOfStatement):
+        * parser/ParserFunctionInfo.h:
+        * parser/ParserTokens.h:
+        * parser/SourceCode.h:
+        (JSC::SourceCode::subArrowExpression):
+        * parser/SourceProviderCacheItem.h:
+        (JSC::SourceProviderCacheItem::endFunctionToken):
+        (JSC::SourceProviderCacheItem::SourceProviderCacheItem):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createArrowFunctionExpr):
+        (JSC::SyntaxChecker::setFunctionNameStart):
+
+2015-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Support rest element in destructuring assignments
+        https://bugs.webkit.org/show_bug.cgi?id=146206
+
+        Reviewed by Oliver Hunt.
+
+        This patch enables rest element (...rest) in array binding patterns.
+        It generates array from the iterables.
+        In variable declarations and parameters, `[...identifier]` form is only allowed,
+        while expressions can take `[...[...rest]]` pattern.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitIteratorNext):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::bindValue):
+        (JSC::ArrayPatternNode::toString):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::appendArrayPatternSkipEntry):
+        (JSC::ASTBuilder::appendArrayPatternEntry):
+        (JSC::ASTBuilder::appendArrayPatternRestEntry):
+        * parser/Nodes.h:
+        (JSC::ArrayPatternNode::appendIndex):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseDeconstructionPattern):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::operatorStackPop):
+        * tests/stress/rest-elements.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2015-06-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185956.
+        https://bugs.webkit.org/show_bug.cgi?id=146321
+
+        Causes massive crashes on test bots (Requested by bfulgham on
+        #webkit).
+
+        Reverted changeset:
+
+        "Enabling MEDIA_STREAM"
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        http://trac.webkit.org/changeset/185956
+
+2015-06-25  Michael Saboff  <msaboff@apple.com>
+
+        Minor fix to idx bounds check after 185954
+
+        Rubber Stamped by Ryosuke Niwa.
+
+        Changed "idx > 1" to "idx > 0" in two places.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::functionCallBase):
+
+2015-06-25  Keith Miller  <keith_miller@apple.com>
+
+        Address Sanitizer does not play well with memcpy in JSC::MachineThreads::tryCopyOtherThreadStack.
+        https://bugs.webkit.org/show_bug.cgi?id=146297
+
+        Reviewed by Filip Pizlo.
+
+        Since we cannot blacklist the system memcpy we must use our own naive implementation,
+        copyMemory. This is not a significant performance loss as tryCopyOtherThreadStack is
+        only called as part of an O(heapsize) operation. As the heap is generally much larger
+        than the stack the performance hit is minimal.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::copyMemory):
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+        (JSC::asanUnsafeMemcpy): Deleted.
+
+2015-06-25  Matthew Daiter  <mdaiter@apple.com>
+
+        Enabling MEDIA_STREAM
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        <rdar://problem/21365829>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-06-25  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r181889): basspro.com hangs on load under JSC::ErrorInstance::finishCreation(JSC::ExecState*, JSC::VM&, WTF::String const&, bool) + 2801 (JavaScriptCore + 3560689)
+        https://bugs.webkit.org/show_bug.cgi?id=146298
+
+        Reviewed by Mark Lam.
+
+        We were underflowing in ExceptionHelpers.cpp::functionCallBase() with a right to left
+        string index.  Added checks that idx stays within the string.  Also added a termination
+        condition when idx is 0.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::functionCallBase):
+
 2015-06-24  Chris Dumez  <cdumez@apple.com>
 
         Unreviewed, speculative build fix after r185942.

@@ -1,3 +1,74 @@
+2015-07-03  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        [GTK] Forcefully disable gtk-doc and gobject-introspection when crossbuilding
+        https://bugs.webkit.org/show_bug.cgi?id=146590
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: override the cached variables to
+        forcefully disable gtk-doc and gobject-introspection when
+        crosscompiling.
+        * Source/cmake/OptionsGTK.cmake: avoid running gtk-doc to check the
+        documentation syntax when cross-building.
+
+
+2015-07-02  Przemek Piorkowski  <piorkowskiprzemyslaw@gmail.com>
+
+        [EFL] test_ewk2_application_cache_manager has been failed since r185527
+        https://bugs.webkit.org/show_bug.cgi?id=146016
+
+        Reviewed by Gyuyoung Kim.
+
+        In order to handle properly WebApplicationCacheManagerProxy implementation which use
+        WebsiteDataRecord it is necessary to enable PUBLIC_SUFFIX_LIST for EFL.
+        Implementation of PUBLIC_SUFFIX_LIST already exists for soup so EFL can use it as well.
+
+        * Source/cmake/OptionsEfl.cmake: set ENABLE_PUBLIC_SUFFIX_LIST to ON for EFL.
+
+2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=90906
+
+        Reviewed by Benjamin Poulain.
+
+        Begin implementing the Intl apis behind ENABLE_INTL flag.
+        Create the base Intl namespace object.
+
+        * Source/cmake/WebKitFeatures.cmake: add ENABLE_INTL flag
+
+2015-06-30  Philippe Normand  <pnormand@igalia.com>
+
+        [CMake] Error when gst-plugins-base is missing is too confusing
+        https://bugs.webkit.org/show_bug.cgi?id=145682
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Error out if the required
+        GStreamer libraries are not found on the host.
+
+2015-06-28  Philip Chimento  <philip.chimento@gmail.com>
+
+        CairoGL should be checked unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=146390
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsGTK.cmake: Move check for CairoGL so that
+        it is run unconditionally; this is necessary because its result
+        is used later on, outside of any conditions.
+
+2015-06-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][SOUP] Implement WebCore::PublicSuffix for soup and enable PUBLIC_SUFFIX_LIST for GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=146318
+
+        Reviewed by Sergio Villar Senin.
+
+        Enable PUBLIC_SUFFIX_LIST for GTK+.
+
+        * Source/cmake/OptionsGTK.cmake:
+
 2015-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.3 release.

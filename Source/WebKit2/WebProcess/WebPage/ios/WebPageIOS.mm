@@ -60,6 +60,7 @@
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
+#import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLElementTypeHelpers.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLInputElement.h>
@@ -296,8 +297,10 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
 {
     // When a HistoryItem is cleared, its scale factor and scroll point are set to zero. We should not try to restore the other
     // parameters in those conditions.
-    if (!historyItem.pageScaleFactor())
+    if (!historyItem.pageScaleFactor()) {
+        send(Messages::WebPageProxy::CouldNotRestorePageState());
         return;
+    }
 
     // We can restore the exposed rect and scale, but we cannot touch the scroll position since the obscured insets
     // may be changing in the UIProcess. The UIProcess can update the position from the information we send and will then
@@ -2131,18 +2134,49 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
             }
 
             if (elementIsLinkOrImage) {
-                // Ensure that the image contains at most 600K pixels, so that it is not too big.
-                if (RefPtr<WebImage> snapshot = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024))
-                    info.image = snapshot->bitmap();
+                if (linkElement) {
+                    // Ensure that the image contains at most 600K pixels, so that it is not too big.
+                    if (RefPtr<WebImage> snapshot = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024))
+                        info.image = snapshot->bitmap();
+                } else if (element->renderer() && element->renderer()->isRenderImage()) {
+                    auto& renderImage = downcast<RenderImage>(*(element->renderer()));
+                    if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
+                        info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
+                        if (Image* image = renderImage.cachedImage()->imageForRenderer(&renderImage)) {
+                            FloatSize screenSizeInPixels = screenSize();
+                            screenSizeInPixels.scale(corePage()->deviceScaleFactor());
+                            FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
+                            FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
+                            if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
+                                auto graphicsContext = sharedBitmap->createGraphicsContext();
+                                graphicsContext->drawImage(image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
+                                info.image = sharedBitmap;
+                            }
+                        }
+                    }
+                }
             }
             if (linkElement)
                 info.url = [(NSURL *)linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr))) absoluteString];
             info.title = element->fastGetAttribute(HTMLNames::titleAttr).string();
             if (linkElement && info.title.isEmpty())
                 info.title = element->innerText();
-            if (element->renderer()) {
-                info.bounds = element->renderer()->absoluteBoundingBoxRect(true);
+            if (element->renderer())
                 info.touchCalloutEnabled = element->renderer()->style().touchCalloutEnabled();
+
+            if (element == linkElement) {
+                RefPtr<Range> linkRange = rangeOfContents(*linkElement);
+                Vector<FloatQuad> quads;
+                linkRange->textQuads(quads);
+                FloatRect linkBoundingBox;
+                for (const auto& quad : quads)
+                    linkBoundingBox.unite(quad.enclosingBoundingBox());
+                info.bounds = IntRect(linkBoundingBox);
+            } else if (RenderElement* renderer = element->renderer()) {
+                if (renderer->isRenderImage())
+                    info.bounds = downcast<RenderImage>(*renderer).absoluteContentQuad().enclosingBoundingBox();
+                else
+                    info.bounds = renderer->absoluteBoundingBoxRect();
             }
         }
     }
@@ -2836,6 +2870,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     double scaleChangeRate = visibleContentRectUpdateInfo.scaleChangeRate();
     adjustVelocityDataForBoundedScale(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.scale(), m_viewportConfiguration.minimumScale(), m_viewportConfiguration.maximumScale());
 
+    frameView.setViewportIsStable(m_isInStableState);
     frameView.setScrollVelocity(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.timestamp());
 
     if (m_isInStableState)

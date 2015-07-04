@@ -1,3 +1,340 @@
+2015-07-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: The arrow that appears for Web Inspector Layout & Rendering records overlaps the category switcher
+        https://bugs.webkit.org/show_bug.cgi?id=146605
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.data-grid.timeline > .navigation-bar-container):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_UNREACHABLE_CODE and
+        GCC_NO_COMMON_BLOCKS.
+        * WebInspectorUI.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+2015-07-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Show suggest popover on Tab press even if it wasn't showing before
+        https://bugs.webkit.org/show_bug.cgi?id=146496
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey): Pressing tab will try to autocomplete before trying
+        to add an ending colon/semicolon or highlight the next section of text.
+
+2015-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Aggregate profile call information on the backend to drastically reduce profile sizes
+        https://bugs.webkit.org/show_bug.cgi?id=146536
+
+        Reviewed by Timothy Hatcher.
+
+        Since we still support legacy backends, the frontend documents where
+        it is handling legacy backends with compatibility comments.
+
+        * UserInterface/Models/ProfileNode.js:
+        (WebInspector.ProfileNode):
+        (WebInspector.ProfileNode.prototype.get callInfo):
+        Handle a ProfileNode created with callInfo or calls. They are mutually exclusive.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload.profileNodeFromPayload):
+        If the profile has per-call information, construct ProfileNodeCall objects, otherwise
+        just construct the ProfileNode with the aggregate callInfo value.
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        When we have aggregate call information we cannot easily partition a script,
+        so we instead treat the entire script as one large atomic unit in the timeline.
+        If the timeline range has any portion of the script, show the entire script.
+        Users used to be able to select a portion of a script and view the relevant
+        functions called in just that sliver, but this doesn't appear to be a well
+        known feature or commonly used. In fact, given the small ranges of time it
+        could be confusing for users.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.matchTreeElementAgainstCustomFilters):
+        Treat as a discrete unit.
+
+2015-07-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: When autocompleting, pressing tab twice shouldn't insert a tab character
+        https://bugs.webkit.org/show_bug.cgi?id=145885
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.updateCompletions): Resolves the promise as having completions.
+        (WebInspector.CodeMirrorCompletionController.prototype.hideCompletions): Resolves the promise as not having completions.
+        (WebInspector.CodeMirrorCompletionController.prototype.completeAtCurrentPositionIfNeeded): Returns a WrappedPromise that allows
+        callers of this function to determine if the autocomplete had any values or was instead not shown.
+        (WebInspector.CodeMirrorCompletionController.prototype._resolveUpdatePromise):
+        * UserInterface/Main.html: Added WrappedPromise class.
+        * UserInterface/Models/WrappedPromise.js: Added WrappedPromise object to expose resolve and reject functions.
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt.prototype._handleTabKey): Attempts to find completions for current text.  If there are none, beep.
+
+2015-07-01  Devin Rousso  <drousso@apple.com>
+
+        Make the first click on a rule section create a newline for easy property addition
+        https://bugs.webkit.org/show_bug.cgi?id=146490
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._highlightNextNameOrValue):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleEnterKey): Inserts a semicolon if the line is missing one.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseDown): If the user clicks on a property with the editor being
+        unfocused, the name/value containing the cursor will be highlighted.  If instead the user clicks at the end of a line, the
+        cursor's position is saved for mouseUp.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp): If the mouseDown cursor position was saved and is equal
+        to the current cursor's position (the user did not drag), add a newline after the current line and place the cursor on that line.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey.highlightNextNameOrValue): Deleted.
+
+2015-06-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add " = $0" hint after selected element in main DOMTreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=145739
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css: Adds a semi-opaque " = $0" to the selected element in the DOM tree.
+        (.dom-tree-outline li.selected > span::after):
+        (.dom-tree-outline:focus li.selected > span::after):
+
+2015-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ProfileNode cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=146472
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ProfileNode.js:
+        (WebInspector.ProfileNode):
+        Use Array.prototype.every instead of reduce.
+        Correct the name of a function to be what callers expect!
+
+2015-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: iOS 8: Profile Nodes not showing in JavaScript Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=146471
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload.profileNodeCallFromPayload):
+        For legacy backends, convert the startTime to the proper timestamp type.
+
+2015-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Reduce rendering frames "Other" time by instrumenting compositing
+        https://bugs.webkit.org/show_bug.cgi?id=146168
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._processRecord):
+        Added handling for new Composite record type. Paint records with a parent Composite record
+        are flagged to simplify processing after the event hierarchy is unpacked.
+
+        * UserInterface/Images/TimelineRecordComposite.svg: Added.
+        New composite record icon.
+
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord):
+        (WebInspector.LayoutTimelineRecord.displayNameForEventType):
+        (WebInspector.LayoutTimelineRecord.prototype.get duringComposite): Added
+        Composite record support.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask.get validRecordForTaskType):
+        Add compositing time when bucketing runloop tasks, ignoring Paint events that are
+        contained within a Composite event.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype._layoutTimelineRecordAdded):
+        Add Composite records to paint timeline row.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype._processPendingRecords):
+        Small unrelated fix.
+
+        * UserInterface/Views/TimelineIcons.css:
+        (.composite-record .icon):
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-composite > .segment):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        New styles and tree element icon.
+
+2015-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: iOS 8: Uncaught Exception expanding Object Prototype
+        https://bugs.webkit.org/show_bug.cgi?id=146427
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._updateProperties):
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype._updateProperties):
+        We are supposed to receive value properties for __proto__ properties
+        so that we can immediately start showing information about the property.
+        When that is not the case, which appeared to only be on legacy
+        backends for the top level prototype, just ignore it.
+
+2015-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Misc. Timeline cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=146430
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Timeline.js:
+        (WebInspector.Timeline.prototype.reset):
+        Nobody listens for this event. Just remove it.
+
+        * UserInterface/Models/TimelineRecording.js:
+        Avoiding doing multiple lookups.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimes):
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.updateLayout):
+        Eliminate some unnecessary deletes.
+
+2015-06-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Unable to select the text of an inline error message
+        https://bugs.webkit.org/show_bug.cgi?id=145813
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror-linewidget):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.createWidgetForLine):
+
+2015-06-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove harmless error for not getting named flows
+        https://bugs.webkit.org/show_bug.cgi?id=146417
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+
+2015-06-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network errors (404) are missing location link in console messages
+        https://bugs.webkit.org/show_bug.cgi?id=146442
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        Restore behavior of adding a location link for network messages with urls.
+
+2015-06-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: iOS 8: Resources Timeline Data does not show up
+        https://bugs.webkit.org/show_bug.cgi?id=146433
+
+        Reviewed by Timothy Hatcher.
+
+        There were a couple issues with initializing the legacy base timestamp
+        for attempting to dynamically compute monotonically increasing timestamps
+        for timeline events for legacy backends.
+
+            * Sometimes legacy timestamps were in seconds since epochs,
+              sometimes milliseconds. The frontend did not handle both.
+
+            * On navigations, even while resetting the base timestamp for
+              the first new record received, the main resource still had
+              a will send request time computed from the previous page's
+              time system. This patch re-uses the original timestamp for
+              this main resource as the new base and all future records
+              are computed relative to this.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWillBeSent):
+        (WebInspector.FrameResourceManager.prototype._addNewResourceToFrame):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.get originalRequestWillBeSentTimestamp):
+        For legacy timestamp calculations, save the original request will be sent
+        timestamp on the Resource in case it is needed.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._loadNewRecording):
+        When auto-starting a new recording for a navigation / reload, use the
+        main resource's request will be sent timestamp as the new base.
+
+        * UserInterface/Models/TimelineRecording.js:
+        Address legacy timeline timestamps by handling both legacy timestamps
+        that may be seconds / milliseconds.
+
+2015-06-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Jump to Definition is broken
+        https://bugs.webkit.org/show_bug.cgi?id=146376
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        Allow changing tabs when jumping to function definition.
+
+2015-06-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Wrong border color of console messages when filters are enabled
+        https://bugs.webkit.org/show_bug.cgi?id=146392
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-error-level:not(.filtered-out, .filtered-out-by-search) + .console-item):
+        (.console-warning-level:not(.filtered-out, .filtered-out-by-search) + .console-item):
+
+2015-06-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Wrong timeline selected after switching from Rendering Frames to Timelines
+        https://bugs.webkit.org/show_bug.cgi?id=146331
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Set previously selected timeline type to null if no tree element is selected when switching
+        view mode to Rendering Frames.
+
+2015-06-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Web Inspector: Window dragging on toolbar should behave more like native window dragging
+        https://bugs.webkit.org/show_bug.cgi?id=146324
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        On Mac 10.11 transition to using InspectorFrontendHost.startWindowDrag.
+        For older Macs continue to use InspectorFrontendHost.moveWindowBy.
+        
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+        (WebInspector.InspectorFrontendHostStub.prototype.startWindowDrag):
+        Add the stub for InspectorFrontendHostStub.
+
 2015-06-24  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Pressing tab in the styles sidebar shouldn't insert a tab character

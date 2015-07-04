@@ -73,7 +73,7 @@ static const int cMaxPixelDimension = 1280;
 static const int cMaxPixelDimensionLowMemory = 1024;
 static const int cMemoryLevelToUseSmallerPixelDimension = 35;
 #else
-static const int cMaxPixelDimension = 2000;
+static const int cMaxPixelDimension = 2048;
 #endif
 
 // Derived empirically: <rdar://problem/13401861>
@@ -357,7 +357,7 @@ GraphicsLayerCA::GraphicsLayerCA(Type layerType, GraphicsLayerClient& client)
     : GraphicsLayer(layerType, client)
     , m_needsFullRepaint(false)
     , m_usingBackdropLayerType(false)
-    , m_allowsBackingStoreDetachment(true)
+    , m_isViewportConstrained(false)
     , m_intersectsCoverageRect(false)
 {
 }
@@ -1092,20 +1092,20 @@ FloatPoint GraphicsLayerCA::computePositionRelativeToBase(float& pageScale) cons
     return FloatPoint();
 }
 
-void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect)
+void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect, bool viewportIsStable)
 {
     TransformState state(TransformState::UnapplyInverseTransformDirection, FloatQuad(clipRect));
     FloatQuad coverageQuad(clipRect);
     state.setSecondaryQuad(&coverageQuad);
-    recursiveCommitChanges(CommitState(), state);
+    recursiveCommitChanges(CommitState(viewportIsStable), state);
 }
 
-void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
+void GraphicsLayerCA::flushCompositingStateForThisLayerOnly(bool viewportIsStable)
 {
     float pageScaleFactor;
     bool hadChanges = m_uncommittedChanges;
     
-    CommitState commitState;
+    CommitState commitState(viewportIsStable);
 
     FloatPoint offset = computePositionRelativeToBase(pageScaleFactor);
     commitLayerChangesBeforeSublayers(commitState, pageScaleFactor, offset);
@@ -1272,15 +1272,18 @@ bool GraphicsLayerCA::adjustCoverageRect(VisibleAndCoverageRects& rects, const F
     return true;
 }
 
-void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool allowBackingStoreDetachment)
+void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool isViewportConstrained, bool viewportIsStable)
 {
     bool visibleRectChanged = rects.visibleRect != m_visibleRect;
     bool coverageRectChanged = rects.coverageRect != m_coverageRect;
     if (!visibleRectChanged && !coverageRectChanged)
         return;
 
+    if (isViewportConstrained && !viewportIsStable)
+        return;
+
     // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
-    bool intersectsCoverageRect = !allowBackingStoreDetachment || rects.coverageRect.intersects(FloatRect(m_boundsOrigin, size()));
+    bool intersectsCoverageRect = isViewportConstrained || rects.coverageRect.intersects(FloatRect(m_boundsOrigin, size()));
     if (intersectsCoverageRect != m_intersectsCoverageRect) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_intersectsCoverageRect = intersectsCoverageRect;
@@ -1329,7 +1332,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
             localState.setLastPlanarSecondaryQuad(&secondaryQuad);
         }
     }
-    setVisibleAndCoverageRects(rects, m_allowsBackingStoreDetachment && commitState.ancestorsAllowBackingStoreDetachment);
+    setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained, commitState.viewportIsStable);
 
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
@@ -1373,7 +1376,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         affectedByTransformAnimation = true;
     }
     
-    childCommitState.ancestorsAllowBackingStoreDetachment &= m_allowsBackingStoreDetachment;
+    childCommitState.ancestorIsViewportConstrained |= m_isViewportConstrained;
 
     if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer))
         maskLayer->commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition);
@@ -3673,12 +3676,12 @@ void GraphicsLayerCA::updateOpacityOnLayer()
     }
 }
 
-void GraphicsLayerCA::setAllowsBackingStoreDetachment(bool allowDetachment)
+void GraphicsLayerCA::setIsViewportConstrained(bool isViewportConstrained)
 {
-    if (allowDetachment == m_allowsBackingStoreDetachment)
+    if (isViewportConstrained == m_isViewportConstrained)
         return;
 
-    m_allowsBackingStoreDetachment = allowDetachment;
+    m_isViewportConstrained = isViewportConstrained;
     noteLayerPropertyChanged(CoverageRectChanged);
 }
 

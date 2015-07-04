@@ -176,7 +176,7 @@ SessionID CachedResourceLoader::sessionID() const
 CachedResourceHandle<CachedImage> CachedResourceLoader::requestImage(CachedResourceRequest& request)
 {
     if (Frame* frame = this->frame()) {
-        if (frame->loader().pageDismissalEventBeingDispatched() != Page::DismissalType::None) {
+        if (frame->loader().pageDismissalEventBeingDispatched() != FrameLoader::PageDismissalType::None) {
             URL requestURL = request.resourceRequest().url();
             if (requestURL.isValid() && canRequest(CachedResource::ImageResource, requestURL, request.options(), request.forPreload()))
                 PingLoader::loadImage(*frame, requestURL);
@@ -565,6 +565,9 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
         resource->setLoadPriority(request.priority());
 
     if ((policy != Use || resource->stillNeedsLoad()) && CachedResourceRequest::NoDefer == request.defer()) {
+        if (request.acceptOverride())
+            resource->setAccept(request.acceptOverride().value());
+
         resource->load(*this, request.options());
 
         // We don't support immediate loads, but we do support immediate failure.

@@ -112,8 +112,6 @@ struct WebPageConfiguration;
 
 - (WebKit::ColorSpaceData)_colorSpace;
 
-- (void)_cacheWindowBottomCornerRect;
-
 - (NSInteger)spellCheckerDocumentTag;
 - (void)handleAcceptedAlternativeText:(NSString*)text;
 
@@ -122,6 +120,7 @@ struct WebPageConfiguration;
 
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
 - (void)_didFinishLoadForMainFrame;
+- (void)_didFailLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;
 - (void)_removeNavigationGestureSnapshot;
 
@@ -144,6 +143,10 @@ struct WebPageConfiguration;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (void)_didPerformImmediateActionHitTest:(const WebKit::WebHitTestResult::Data&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+- (void)_startWindowDrag;
 #endif
 
 @property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;

@@ -650,9 +650,10 @@ audio::-webkit-media-controls-wireless-playback-text-bottom.small {
 video::-webkit-media-controls-wireless-playback-status.picture-in-picture,
 audio::-webkit-media-controls-wireless-playback-status.picture-in-picture
 {
+    background-color: #ccc;
     background-size: 304px auto;
     background-position: 50% calc(.5 * (100% - 25px));
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 304 150\"><g fill=\"none\" stroke=\"#3c3c3c\" stroke-width=\"3\"><path d=\"m 172,106 -81,0 c -3.5,0 -6,-2.5 -6,-6 l 0,-89 c 0,-3.5 2.5,-6 6,-6 l 122,0 c 3.5,0 6,2.5 6,6 l 0,57\" /><path d=\"m 233,119 -53,0 c -3,0 -3,-0 -3,-3 l 0,-40 c 0,-3 0,-3 3,-3 l 53,0 c 3,0 3,0 3,3 l 0,40 c 0,3 0,3 -3,3 z\" /></g></svg>');
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 304 150"><g fill="none" stroke="#8e8e93" stroke-width="3"><path d="m 172,106 -81,0 c -3.5,0 -6,-2.5 -6,-6 l 0,-89 c 0,-3.5 2.5,-6 6,-6 l 122,0 c 3.5,0 6,2.5 6,6 l 0,57" /><path d="m 233,119 -53,0 c -3,0 -3,-0 -3,-3 l 0,-40 c 0,-3 0,-3 3,-3 l 53,0 c 3,0 3,0 3,3 l 0,40 c 0,3 0,3 -3,3 z" /></g></svg>');
 }
 
 video::-webkit-media-controls-wireless-playback-text-top.picture-in-picture,
@@ -669,5 +670,11 @@ audio::-webkit-media-controls-wireless-playback-text-bottom.picture-in-picture {
 video::-webkit-media-controls-wireless-playback-status.hidden,
 audio::-webkit-media-controls-wireless-playback-status.hidden {
     display: none;
+}
+
+/* When PiP is active, we don't want the controls container showing. */
+video::-webkit-media-controls-panel-container.picture-in-picture {
+    opacity: 0;
+    pointer-events: none;
 }
 

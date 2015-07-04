@@ -118,7 +118,7 @@ void PageClientImpl::PageClientImpl::processDidExit()
 
 void PageClientImpl::didRelaunchProcess()
 {
-    notImplemented();
+    webkitWebViewBaseDidRelaunchWebProcess(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::toolTipChanged(const String&, const String& newToolTip)
@@ -407,6 +407,10 @@ void PageClientImpl::navigationGestureWillEnd(bool, WebBackForwardListItem&)
 }
 
 void PageClientImpl::navigationGestureDidEnd(bool, WebBackForwardListItem&)
+{
+}
+
+void PageClientImpl::navigationGestureDidEnd()
 {
 }
 

@@ -53,7 +53,6 @@ my (
     $classSyntax,
     $templateLiteralSyntax,
     $cspNextSupport,
-    $css3ConditionalRulesSupport,
     $css3TextSupport,
     $css3TextLineBreakSupport,
     $css4ImagesSupport,
@@ -91,6 +90,7 @@ my (
     $inputTypeMonthSupport,
     $inputTypeTimeSupport,
     $inputTypeWeekSupport,
+    $intlSupport,
     $jitSupport,
     $legacyNotificationsSupport,
     $legacyVendorPrefixSupport,
@@ -192,9 +192,6 @@ my @features = (
     { option => "css-grid-layout", desc => "Toggle CSS Grid Layout support",
       define => "ENABLE_CSS_GRID_LAYOUT", default => 1, value => \$cssGridLayoutSupport },
 
-    { option => "css3-conditional-rules", desc => "Toggle CSS3 Conditional Rules support (i.e. \@supports)",
-      define => "ENABLE_CSS3_CONDITIONAL_RULES", default => 1, value => \$css3ConditionalRulesSupport },
-
     { option => "css3-text", desc => "Toggle CSS3 Text support",
       define => "ENABLE_CSS3_TEXT", default => (isEfl() || isGtk()), value => \$css3TextSupport },
 
@@ -287,6 +284,9 @@ my @features = (
 
     { option => "input-type-week", desc => "Toggle Input Type Week support",
       define => "ENABLE_INPUT_TYPE_WEEK", default => 0, value => \$inputTypeWeekSupport },
+
+    { option => "intl", desc => "Toggle Intl support",
+      define => "ENABLE_INTL", default => 0, value => \$intlSupport },
 
     { option => "legacy-notifications", desc => "Toggle Legacy Notifications support",
       define => "ENABLE_LEGACY_NOTIFICATIONS", default => 0, value => \$legacyNotificationsSupport },

@@ -719,6 +719,21 @@ void MediaPlayerPrivateAVFoundationObjC::destroyVideoLayer()
     m_videoLayer = nil;
 }
 
+MediaTime MediaPlayerPrivateAVFoundationObjC::getStartDate() const
+{
+    // Date changes as the track's playback position changes. Must subtract currentTime (offset in seconds) from date offset to get date beginning
+    double date = [[m_avPlayerItem currentDate] timeIntervalSince1970] * 1000;
+
+    // No live streams were made during the epoch (1970). AVFoundation returns 0 if the media file doesn't have a start date
+    if (!date)
+        return MediaTime::invalidTime();
+
+    double currentTime = CMTimeGetSeconds([m_avPlayerItem currentTime]) * 1000;
+
+    // Rounding due to second offset error when subtracting.
+    return MediaTime::createWithDouble(round(date - currentTime));
+}
+
 bool MediaPlayerPrivateAVFoundationObjC::hasAvailableVideoFrame() const
 {
     if (currentRenderingMode() == MediaRenderingToLayer)
@@ -1530,77 +1545,6 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(GraphicsContext
         CGContextDrawImage(context->platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), image.get());
         image = 0;
     }
-}
-
-static bool isUnsupportedMIMEType(const String& type)
-{
-    String lowerCaseType = type.convertToASCIILowercase();
-
-    // AVFoundation will return non-video MIME types which it claims to support, but which we
-    // do not support in the <video> element. Reject all non video/, audio/, and application/ types.
-    if (!lowerCaseType.startsWith("video/") && !lowerCaseType.startsWith("audio/") && !lowerCaseType.startsWith("application/"))
-        return true;
-
-    // Reject types we know AVFoundation does not support that sites commonly ask about.
-    if (lowerCaseType == "video/webm" || lowerCaseType == "audio/webm" || lowerCaseType == "video/x-webm")
-        return true;
-
-    if (lowerCaseType == "video/x-flv")
-        return true;
-
-    if (lowerCaseType == "audio/ogg" || lowerCaseType == "video/ogg" || lowerCaseType == "application/ogg")
-        return true;
-
-    if (lowerCaseType == "video/h264")
-        return true;
-
-    return false;
-}
-
-static const HashSet<String>& staticMIMETypeList()
-{
-    static NeverDestroyed<HashSet<String>> cache = [] () {
-        HashSet<String> types;
-
-        static const char* typeNames[] = {
-            "application/vnd.apple.mpegurl",
-            "application/x-mpegurl",
-            "audio/3gpp",
-            "audio/aac",
-            "audio/aacp",
-            "audio/aiff",
-            "audio/basic",
-            "audio/mp3",
-            "audio/mp4",
-            "audio/mpeg",
-            "audio/mpeg3",
-            "audio/mpegurl",
-            "audio/mpg",
-            "audio/wav",
-            "audio/wave",
-            "audio/x-aac",
-            "audio/x-aiff",
-            "audio/x-m4a",
-            "audio/x-mpegurl",
-            "audio/x-wav",
-            "video/3gpp",
-            "video/3gpp2",
-            "video/mp4",
-            "video/mpeg",
-            "video/mpeg2",
-            "video/mpg",
-            "video/quicktime",
-            "video/x-m4v",
-            "video/x-mpeg",
-            "video/x-mpg",
-        };
-        for (size_t i = 0; i < WTF_ARRAY_LENGTH(typeNames); ++i)
-            types.add(typeNames[i]);
-
-        return types;
-    }();
-
-    return cache;
 }
 
 static const HashSet<String>& avfMIMETypes()

@@ -519,6 +519,11 @@ void PageClientImpl::dynamicViewportUpdateChangedTarget(double newScale, const W
     [m_webView _dynamicViewportUpdateChangedTargetToScale:newScale position:newScrollPosition nextValidLayerTreeTransactionID:nextValidLayerTreeTransactionID];
 }
 
+void PageClientImpl::couldNotRestorePageState()
+{
+    [m_webView _couldNotRestorePageState];
+}
+
 void PageClientImpl::restorePageState(const WebCore::FloatRect& exposedRect, double scale)
 {
     [m_webView _restorePageStateToExposedRect:exposedRect scale:scale];
@@ -685,6 +690,7 @@ Vector<String> PageClientImpl::mimeTypesWithCustomContentProviders()
 
 void PageClientImpl::navigationGestureDidBegin()
 {
+    [m_webView _navigationGestureDidBegin];
     NavigationState::fromWebPage(*m_webView->_page).navigationGestureDidBegin();
 }
 
@@ -696,6 +702,12 @@ void PageClientImpl::navigationGestureWillEnd(bool willNavigate, WebBackForwardL
 void PageClientImpl::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
 {
     NavigationState::fromWebPage(*m_webView->_page).navigationGestureDidEnd(willNavigate, item);
+    [m_webView _navigationGestureDidEnd];
+}
+
+void PageClientImpl::navigationGestureDidEnd()
+{
+    [m_webView _navigationGestureDidEnd];
 }
 
 void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem& item)
@@ -710,6 +722,11 @@ void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 void PageClientImpl::didFinishLoadForMainFrame()
 {
     [m_webView _didFinishLoadForMainFrame];
+}
+
+void PageClientImpl::didFailLoadForMainFrame()
+{
+    [m_webView _didFailLoadForMainFrame];
 }
 
 void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType navigationType)

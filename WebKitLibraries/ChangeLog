@@ -1,3 +1,62 @@
+2015-07-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add WebKitSystemInterface for iOS 8.4
+        https://bugs.webkit.org/show_bug.cgi?id=146548
+
+        Rubber-stamped by Zalan Bujtas.
+
+        * WebKitSystemInterfaceIOS.h:
+        * libWebKitSystemInterfaceIOSDevice8.4.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator8.4.a: Added.
+
+2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=90906
+
+        Reviewed by Benjamin Poulain.
+
+        * win/tools/vsprops/FeatureDefines.props: add ENABLE_INTL flag
+        * win/tools/vsprops/FeatureDefinesCairo.props: add ENABLE_INTL flag
+
+2015-06-29  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Activate SSE support for 32-bit builds.
+        https://bugs.webkit.org/show_bug.cgi?id=144923
+
+        Reviewed by Brent Fulgham.
+
+        * win/tools/vsprops/common.props:
+
+2015-06-26  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Enable WEB_TIMING.
+        https://bugs.webkit.org/show_bug.cgi?id=146357
+
+        Reviewed by Brent Fulgham.
+
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed buildfix after r185971, disable WEB_TIMING.
+
+        * win/tools/vsprops/FeatureDefinesCairo.props:
+
+2015-06-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [WIN] Enable WEB_TIMING API
+        https://bugs.webkit.org/show_bug.cgi?id=146330
+        <rdar://problem/21530765>
+
+        Reviewed by Dean Jackson.
+
+        Enable WEB_TIMING features on Windows by activating the feature flag,
+        and correcting some build errors.
+
+        * win/tools/vsprops/FeatureDefines.props: Enable feature flag.
+        * win/tools/vsprops/FeatureDefinesCairo.props: Ditto.
+
 2015-05-27  Dean Jackson  <dino@apple.com>
 
         img.currentSrc problem in strict mode with old picturefill

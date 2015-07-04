@@ -50,12 +50,13 @@ public:
         return adoptRef(*new MediaSession(context, kind));
     }
 
+    explicit MediaSession(Document&);
     MediaSession(ScriptExecutionContext&, const String&);
     ~MediaSession();
 
-    String kind() const { return m_kind; }
+    String kind() const;
     MediaRemoteControls* controls(bool& isNull);
-    
+
     State currentState() const { return m_currentState; }
 
     void setMetadata(const Dictionary&);
@@ -72,20 +73,33 @@ public:
 private:
     friend class HTMLMediaElement;
 
+    enum class Kind {
+        Default,
+        Content,
+        Transient,
+        TransientSolo,
+        Ambient
+    };
+
+    static Kind parseKind(const String&);
+    Kind kindEnum() const { return m_kind; }
+
     void addMediaElement(HTMLMediaElement&);
     void removeMediaElement(HTMLMediaElement&);
 
     void addActiveMediaElement(HTMLMediaElement&);
+    bool isMediaElementActive(HTMLMediaElement&);
+    bool hasActiveMediaElements();
 
     void releaseInternal();
 
     State m_currentState { State::Idle };
-    Vector<HTMLMediaElement*> m_participatingElements;
+    HashSet<HTMLMediaElement*> m_participatingElements;
     HashSet<HTMLMediaElement*> m_activeParticipatingElements;
     HashSet<HTMLMediaElement*>* m_iteratedActiveParticipatingElements { nullptr };
 
     Document& m_document;
-    const String m_kind;
+    const Kind m_kind { Kind::Default };
     RefPtr<MediaRemoteControls> m_controls;
     MediaSessionMetadata m_metadata;
 };

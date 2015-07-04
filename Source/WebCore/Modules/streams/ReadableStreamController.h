@@ -36,6 +36,8 @@
 
 namespace WebCore {
 
+typedef int ExceptionCode;
+
 // This class is only used for JS source readable streams to allow enqueuing, closing or erroring a readable stream.
 // Its definition is at https://streams.spec.whatwg.org/#rs-controller-class.
 // Note that its constructor is taking a ReadableJSStream as it should only be used for JS sources.
@@ -46,8 +48,15 @@ public:
 
     ReadableJSStream& stream() { return m_stream; }
 
+    void error(JSC::ExecState* state, JSC::JSValue value, ExceptionCode& ec) { m_stream.error(*state, value, ec); }
+
+    void enqueue(JSC::ExecState* state, JSC::JSValue value) { m_stream.enqueue(*state, value); }
+
     void ref() { m_stream.ref(); }
     void deref() { m_stream.deref(); }
+
+    void close(ExceptionCode& ec) { m_stream.close(ec); }
+    double desiredSize() const { return m_stream.desiredSize(); }
 
 private:
     ReadableJSStream& m_stream;

@@ -66,7 +66,7 @@ public:
 
     virtual ~ReadableStream();
 
-    ReadableStreamReader& getReader();
+    ReadableStreamReader* getReader(ExceptionCode&);
     const ReadableStreamReader* reader() const { return m_reader.get(); }
 
     bool locked() const { return !!m_reader; }
@@ -93,8 +93,8 @@ public:
     void cancel(JSC::JSValue, CancelPromise&&, ExceptionCode&);
     void cancelNoCheck(JSC::JSValue, CancelPromise&&);
 
-    typedef std::function<void()> ClosedSuccessCallback;
-    void closed(ClosedSuccessCallback&&, FailureCallback&&);
+    typedef DOMPromise<std::nullptr_t, JSC::JSValue> ClosedPromise;
+    void closed(ClosedPromise&&);
 
     typedef std::function<void(JSC::JSValue)> ReadSuccessCallback;
     typedef std::function<void()> ReadEndCallback;
@@ -114,6 +114,7 @@ private:
     void clearCallbacks();
     void close();
 
+    virtual bool hasEnoughValues() const = 0;
     virtual bool hasValue() const = 0;
     virtual JSC::JSValue read() = 0;
     virtual bool doPull() = 0;
@@ -123,9 +124,7 @@ private:
     Vector<std::unique_ptr<ReadableStreamReader>> m_releasedReaders;
 
     Optional<CancelPromise> m_cancelPromise;
-
-    ClosedSuccessCallback m_closedSuccessCallback;
-    FailureCallback m_closedFailureCallback;
+    Optional<ClosedPromise> m_closedPromise;
 
     struct ReadCallbacks {
         ReadSuccessCallback successCallback;

@@ -765,6 +765,10 @@ void PageClientImpl::navigationGestureDidEnd(bool willNavigate, WebBackForwardLi
 #endif
 }
 
+void PageClientImpl::navigationGestureDidEnd()
+{
+}
+
 void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem& item)
 {
 #if WK_API_ENABLED
@@ -783,6 +787,11 @@ void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 void PageClientImpl::didFinishLoadForMainFrame()
 {
     [m_wkView _didFinishLoadForMainFrame];
+}
+
+void PageClientImpl::didFailLoadForMainFrame()
+{
+    [m_wkView _didFailLoadForMainFrame];
 }
 
 void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)

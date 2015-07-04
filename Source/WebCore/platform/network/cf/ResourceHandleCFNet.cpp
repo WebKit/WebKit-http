@@ -252,11 +252,13 @@ bool ResourceHandle::start()
 
     bool shouldUseCredentialStorage = !client() || client()->shouldUseCredentialStorage(this);
 
-#if ENABLE(WEB_TIMING)
+#if ENABLE(WEB_TIMING) && PLATFORM(COCOA)
     setCollectsTimingData();
 #endif
 
-    createCFURLConnection(shouldUseCredentialStorage, d->m_shouldContentSniff, SchedulingBehavior::Asynchronous, client()->connectionProperties(this).get());
+    SchedulingBehavior schedulingBehavior = client()->loadingSynchronousXHR() ? SchedulingBehavior::Synchronous : SchedulingBehavior::Asynchronous;
+
+    createCFURLConnection(shouldUseCredentialStorage, d->m_shouldContentSniff, schedulingBehavior, client()->connectionProperties(this).get());
 
     d->m_connectionDelegate->setupConnectionScheduling(d->m_connection.get());
     CFURLConnectionStart(d->m_connection.get());

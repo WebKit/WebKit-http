@@ -34,6 +34,7 @@
 
 #include "ExceptionCode.h"
 #include "ReadableStreamReader.h"
+#include "ScriptExecutionContext.h"
 #include <runtime/JSCJSValueInlines.h>
 #include <wtf/RefCountedLeakCounter.h>
 
@@ -59,9 +60,7 @@ ReadableStream::~ReadableStream()
 
 void ReadableStream::clearCallbacks()
 {
-    m_closedSuccessCallback = nullptr;
-    m_closedFailureCallback = nullptr;
-
+    m_closedPromise = Nullopt;
     m_readRequests.clear();
 }
 
@@ -85,8 +84,8 @@ void ReadableStream::close()
 
 void ReadableStream::releaseReader()
 {
-    if (m_closedSuccessCallback)
-        m_closedSuccessCallback();
+    if (m_closedPromise)
+        m_closedPromise.value().resolve(nullptr);
 
     for (auto& request : m_readRequests)
         request.endCallback();
@@ -103,8 +102,8 @@ void ReadableStream::changeStateToErrored()
     m_state = State::Errored;
 
     JSC::JSValue error = this->error();
-    if (m_closedFailureCallback)
-        m_closedFailureCallback(error);
+    if (m_closedPromise)
+        m_closedPromise.value().reject(error);
 
     for (auto& request : m_readRequests)
         request.failureCallback(error);
@@ -124,8 +123,8 @@ void ReadableStream::pull()
 {
     if (!m_isStarted || m_state == State::Closed || m_state == State::Errored || m_closeRequested)
         return;
-    // FIXME: Implement queueSize check.
-    if (m_readRequests.isEmpty() && hasValue())
+
+    if (m_readRequests.isEmpty() && hasEnoughValues())
         return;
 
     if (m_isPulling) {
@@ -134,8 +133,12 @@ void ReadableStream::pull()
     }
 
     m_isPulling = true;
-    if (doPull())
-        finishPulling();
+    if (doPull()) {
+        RefPtr<ReadableStream> protectedStream(this);
+        scriptExecutionContext()->postTask([protectedStream](ScriptExecutionContext&) {
+            protectedStream->finishPulling();
+        });
+    }
 }
 
 void ReadableStream::finishPulling()
@@ -147,8 +150,12 @@ void ReadableStream::finishPulling()
     }
 }
 
-ReadableStreamReader& ReadableStream::getReader()
+ReadableStreamReader* ReadableStream::getReader(ExceptionCode& ec)
 {
+    if (locked()) {
+        ec = TypeError;
+        return nullptr;
+    }
     ASSERT(!m_reader);
 
     std::unique_ptr<ReadableStreamReader> newReader = std::make_unique<ReadableStreamReader>(*this);
@@ -156,11 +163,11 @@ ReadableStreamReader& ReadableStream::getReader()
 
     if (m_state == State::Readable) {
         m_reader = WTF::move(newReader);
-        return reader;
+        return &reader;
     }
 
     m_releasedReaders.append(WTF::move(newReader));
-    return reader;
+    return &reader;
 }
 
 void ReadableStream::cancel(JSC::JSValue reason, CancelPromise&& promise, ExceptionCode& ec)
@@ -210,18 +217,17 @@ void ReadableStream::notifyCancelFailed()
     m_cancelPromise = Nullopt;
 }
 
-void ReadableStream::closed(ClosedSuccessCallback&& successCallback, FailureCallback&& failureCallback)
+void ReadableStream::closed(ClosedPromise&& promise)
 {
     if (m_state == State::Closed) {
-        successCallback();
+        promise.resolve(nullptr);
         return;
     }
     if (m_state == State::Errored) {
-        failureCallback(error());
+        promise.reject(error());
         return;
     }
-    m_closedSuccessCallback = WTF::move(successCallback);
-    m_closedFailureCallback = WTF::move(failureCallback);
+    m_closedPromise = WTF::move(promise);
 }
 
 void ReadableStream::read(ReadSuccessCallback&& successCallback, ReadEndCallback&& endCallback, FailureCallback&& failureCallback)

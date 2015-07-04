@@ -117,6 +117,8 @@ public:
     virtual bool hasVideo() const override { return false; }
     virtual bool hasAudio() const override;
 
+    static HashSet<HTMLMediaElement*>& allMediaElements();
+
     void rewind(double timeDelta);
     WEBCORE_EXPORT virtual void returnToRealtime() override;
 
@@ -178,6 +180,7 @@ public:
     WEBCORE_EXPORT virtual double currentTime() const override;
     virtual void setCurrentTime(double) override;
     virtual void setCurrentTime(double, ExceptionCode&);
+    virtual double getStartDate() const;
     WEBCORE_EXPORT virtual double duration() const override;
     WEBCORE_EXPORT virtual bool paused() const override;
     virtual double defaultPlaybackRate() const override;
@@ -206,6 +209,8 @@ public:
     void fastSeek(double);
     double minFastReverseRate() const;
     double maxFastForwardRate() const;
+
+    void purgeBufferedDataIfPossible();
 
 // captions
     bool webkitHasClosedCaptions() const;
@@ -551,6 +556,10 @@ private:
     virtual bool dispatchEvent(PassRefPtr<Event>) override;
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+    void setSessionInternal(MediaSession&);
+#endif
+
     virtual String mediaPlayerReferrer() const override;
     virtual String mediaPlayerUserAgent() const override;
 
@@ -725,7 +734,12 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void documentWillSuspendForPageCache() override final;
     virtual void documentDidResumeFromPageCache() override final;
-    void updateMediaState();
+
+    enum class UpdateMediaState {
+        Asynchronously,
+        Synchronously,
+    };
+    void updateMediaState(UpdateMediaState updateState = UpdateMediaState::Synchronously);
 #endif
 
     Timer m_pendingActionTimer;
@@ -837,6 +851,7 @@ private:
     bool m_autoplaying : 1;
     bool m_muted : 1;
     bool m_explicitlyMuted : 1;
+    bool m_initiallyMuted : 1;
     bool m_paused : 1;
     bool m_seeking : 1;
 
@@ -926,6 +941,7 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_hasPlaybackTargetAvailabilityListeners { false };
+    bool m_failedToPlayToWirelessTarget { false };
 #endif
 };
 

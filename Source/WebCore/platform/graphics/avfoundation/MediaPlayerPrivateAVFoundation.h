@@ -33,6 +33,7 @@
 #include "MediaPlayerPrivate.h"
 #include "Timer.h"
 #include <functional>
+#include <wtf/HashSet.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
@@ -153,7 +154,7 @@ protected:
     virtual void load(const String&, MediaSourcePrivateClient*) override;
 #endif
 #if ENABLE(MEDIA_STREAM)
-    virtual void load(MediaStreamPrivate*) { }
+    void load(MediaStreamPrivate*) override { }
 #endif
     virtual void cancelLoad() override = 0;
 
@@ -255,6 +256,9 @@ protected:
     virtual bool hasLayerRenderer() const = 0;
 
     virtual void updateVideoLayerGravity() = 0;
+
+    static bool isUnsupportedMIMEType(const String&);
+    static const HashSet<String>& staticMIMETypeList();
 
 protected:
     void updateStates();

@@ -467,13 +467,19 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
-        rootLayer->flushCompositingState(frameView.exposedContentRect());
+        FloatRect exposedRect = frameView.exposedContentRect();
+        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %.2f, %.2f, %.2fx%.2f (stable viewport %d)", this, isFlushRoot,
+            exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height(), frameView.viewportIsStable());
+        rootLayer->flushCompositingState(exposedRect, frameView.viewportIsStable());
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
         if (!frameView.exposedRect().isInfinite())
             visibleRect.intersect(IntRect(frameView.exposedRect()));
-        rootLayer->flushCompositingState(visibleRect);
+
+        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %d, %d, %dx%d (stable viewport %d)", this, isFlushRoot,
+            visibleRect.x(), visibleRect.y(), visibleRect.width(), visibleRect.height(), frameView.viewportIsStable());
+        rootLayer->flushCompositingState(visibleRect, frameView.viewportIsStable());
 #endif
     }
     
@@ -3196,11 +3202,11 @@ void RenderLayerCompositor::rootBackgroundTransparencyChanged()
     if (!inCompositingMode())
         return;
 
-    Color documentBackgroundColor = m_renderView.frameView().documentBackgroundColor();
-    Color lastDocumentBackgroundColor = m_lastDocumentBackgroundColor;
-    m_lastDocumentBackgroundColor = documentBackgroundColor;
-    if (lastDocumentBackgroundColor.isValid() && lastDocumentBackgroundColor.hasAlpha() == documentBackgroundColor.hasAlpha())
+    bool isTransparent = viewHasTransparentBackground();
+    if (m_viewBackgroundIsTransparent == isTransparent)
         return;
+
+    m_viewBackgroundIsTransparent = isTransparent;
 
     // FIXME: We should do something less expensive than a full layer rebuild.
     setCompositingLayersNeedRebuild();

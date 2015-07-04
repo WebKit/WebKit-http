@@ -250,6 +250,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMediaPlaybackAllowsInline:(BOOL)flag;
 - (BOOL)mediaPlaybackAllowsInline;
 
+- (void)setMediaControlsScaleWithPageZoom:(BOOL)flag;
+- (BOOL)mediaControlsScaleWithPageZoom;
+
 - (void)setAllowsAlternateFullscreen:(BOOL)flag;
 - (BOOL)allowsAlternateFullscreen;
 
@@ -444,6 +447,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setMetaRefreshEnabled:(BOOL)flag;
 - (BOOL)metaRefreshEnabled;
+
+- (void)setHTTPEquivEnabled:(BOOL)flag;
+- (BOOL)httpEquivEnabled;
 
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 

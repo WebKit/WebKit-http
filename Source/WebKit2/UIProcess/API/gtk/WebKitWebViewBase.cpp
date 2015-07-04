@@ -1065,8 +1065,13 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
 
 WebKitWebViewBase* webkitWebViewBaseCreate(WebProcessPool* context, WebPreferences* preferences, WebPageGroup* pageGroup, WebUserContentControllerProxy* userContentController, WebPageProxy* relatedPage)
 {
-    WebKitWebViewBase* webkitWebViewBase = WEBKIT_WEB_VIEW_BASE(g_object_new(WEBKIT_TYPE_WEB_VIEW_BASE, NULL));
-    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, preferences, pageGroup, userContentController, relatedPage);
+    WebKitWebViewBase* webkitWebViewBase = WEBKIT_WEB_VIEW_BASE(g_object_new(WEBKIT_TYPE_WEB_VIEW_BASE, nullptr));
+    WebPageConfiguration webPageConfiguration;
+    webPageConfiguration.preferences = preferences;
+    webPageConfiguration.pageGroup = pageGroup;
+    webPageConfiguration.relatedPage = relatedPage;
+    webPageConfiguration.userContentController = userContentController;
+    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, WTF::move(webPageConfiguration));
     return webkitWebViewBase;
 }
 
@@ -1087,7 +1092,7 @@ static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
 }
 #endif // HAVE(GTK_SCALE_FACTOR)
 
-void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebProcessPool* context, WebPreferences* preferences, WebPageGroup* pageGroup, WebUserContentControllerProxy* userContentController, WebPageProxy* relatedPage)
+void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebProcessPool* context, WebPageConfiguration&& configuration)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
 
@@ -1095,15 +1100,10 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebPro
     // FIXME: Accelerated compositing under Wayland is not yet supported.
     // https://bugs.webkit.org/show_bug.cgi?id=115803
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
-        preferences->setAcceleratedCompositingEnabled(false);
+        configuration.preferences->setAcceleratedCompositingEnabled(false);
 #endif
 
-    WebPageConfiguration webPageConfiguration;
-    webPageConfiguration.preferences = preferences;
-    webPageConfiguration.pageGroup = pageGroup;
-    webPageConfiguration.relatedPage = relatedPage;
-    webPageConfiguration.userContentController = userContentController;
-    priv->pageProxy = context->createWebPage(*priv->pageClient, WTF::move(webPageConfiguration));
+    priv->pageProxy = context->createWebPage(*priv->pageClient, WTF::move(configuration));
     priv->pageProxy->initializeWebPage();
 
     priv->inputMethodFilter.setPage(priv->pageProxy.get());
@@ -1385,5 +1385,21 @@ void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase* webkitWe
         priv->redirectedWindow->resize(IntSize());
 #else
     UNUSED_PARAM(webkitWebViewBase);
+#endif
+}
+
+void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase* webkitWebViewBase)
+{
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+    ASSERT(drawingArea);
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (!priv->redirectedWindow)
+        return;
+    drawingArea->setNativeSurfaceHandleForCompositing(priv->redirectedWindow->windowID());
+#else
+    if (!gtk_widget_get_realized(GTK_WIDGET(webkitWebViewBase)))
+        return;
+    drawingArea->setNativeSurfaceHandleForCompositing(GDK_WINDOW_XID(gtk_widget_get_window(GTK_WIDGET(webkitWebViewBase))));
 #endif
 }
