@@ -35,11 +35,15 @@
 #include <OpenGL/gl.h>
 #elif PLATFORM(WIN)
 #include "OpenGLESShims.h"
-#elif PLATFORM(GTK) || PLATFORM(EFL)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
+#if USE(OPENGL_ES_2)
+#include <GLES2/gl2.h>
+#else
 #include "OpenGLShims.h"
 #endif
+#endif
 
-#if !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(WIN) && !defined(BUILDING_WITH_CMAKE)
+#if !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(WPE) && !PLATFORM(WIN) && !defined(BUILDING_WITH_CMAKE)
 #include "ANGLE/ShaderLang.h"
 #elif PLATFORM(WIN) && !defined(BUILDING_WITH_CMAKE)
 #include "GLSLANG/ShaderLang.h"
@@ -74,7 +78,7 @@ struct ANGLEShaderSymbol {
         return symbolType == SHADER_SYMBOL_TYPE_UNIFORM
             && (dataType == GL_SAMPLER_2D
             || dataType == GL_SAMPLER_CUBE
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS) && !((PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)) && USE(OPENGL_ES_2))
             || dataType == GL_SAMPLER_2D_RECT_ARB
 #endif
             );

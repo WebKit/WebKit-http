@@ -227,6 +227,10 @@ void PageClientImpl::navigationGestureDidEnd(bool, WebBackForwardListItem&)
 {
 }
 
+void PageClientImpl::navigationGestureDidEnd()
+{
+}
+
 void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem&)
 {
 }
@@ -236,6 +240,10 @@ void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 }
 
 void PageClientImpl::didFinishLoadForMainFrame()
+{
+}
+
+void PageClientImpl::didFailLoadForMainFrame()
 {
 }
 
