@@ -135,6 +135,10 @@ if (ENABLE_ACCELERATED_2D_CANVAS)
     find_package(CairoGL 1.10.2 REQUIRED COMPONENTS cairo-egl)
 endif ()
 
+if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
+    find_package(LibGcrypt REQUIRED)
+endif ()
+
 add_definitions(-DBUILDING_WPE__=1)
 add_definitions(-DDATA_DIR="${CMAKE_INSTALL_DATADIR}")
 

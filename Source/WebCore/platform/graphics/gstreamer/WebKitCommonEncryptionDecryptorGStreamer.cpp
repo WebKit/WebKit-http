@@ -223,6 +223,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     GstMapInfo subSamplesMap;
     GstByteReader* reader = nullptr;
     GstProtectionMeta* protectionMeta;
+    gboolean bufferMapped = FALSE;
+    gboolean subsamplesBufferMapped = FALSE;
 
     g_mutex_lock(&self->mutex);
 
@@ -249,7 +251,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         goto release;
     }
 
-    if (!gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE))) {
+    bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
+    if (!bufferMapped) {
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         result = GST_FLOW_NOT_SUPPORTED;
         goto release;
@@ -303,7 +306,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             goto release;
         }
         subsamplesBuffer = gst_value_get_buffer(value);
-        if (!gst_buffer_map(subsamplesBuffer, &subSamplesMap, GST_MAP_READ)) {
+        subsamplesBufferMapped = gst_buffer_map(subsamplesBuffer, &subSamplesMap, GST_MAP_READ);
+        if (!subsamplesBufferMapped) {
             GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
             result = GST_FLOW_NOT_SUPPORTED;
             goto release;
@@ -357,7 +361,10 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     }
 
 beach:
-    gst_buffer_unmap(buffer, &map);
+
+    if (bufferMapped)
+        gst_buffer_unmap(buffer, &map);
+
     if (state)
         webkit_media_aes_ctr_decrypt_unref(state);
 
@@ -365,7 +372,7 @@ release:
     if (reader)
         gst_byte_reader_free(reader);
 
-    if (subsamplesBuffer)
+    if (subsamplesBufferMapped)
         gst_buffer_unmap(subsamplesBuffer, &subSamplesMap);
 
     if (protectionMeta)

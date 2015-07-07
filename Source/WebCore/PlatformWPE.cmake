@@ -370,8 +370,11 @@ if (ENABLE_SUBTLE_CRYPTO)
 endif ()
 
 if (ENABLE_ENCRYPTED_MEDIA)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${LIBGCRYPT_INCLUDE_DIRS}
+    )
     list(APPEND WebCore_LIBRARIES
-        -lcrypto
+        ${LIBGCRYPT_LIBRARIES}
     )
 
     list(APPEND WebCore_SOURCES

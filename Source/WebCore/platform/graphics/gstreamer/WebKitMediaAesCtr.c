@@ -19,83 +19,75 @@
  * Boston, MA 02110-1335, USA.
  */
 
-#include <openssl/aes.h>
+#include <gcrypt.h>
+#include <glib-object.h>
+#include <stdint.h>
 #include <string.h>
-#include <gst/gst.h>
+
 
 #include "WebKitMediaAesCtr.h"
 
+#define KEY_SIZE 16
 struct _AesCtrState {
-  volatile gint refcount;
-  AES_KEY key;
-  unsigned char ivec[16];
-  unsigned int num;
-  unsigned char ecount[16];
+    volatile gint refCount;
+    gcry_cipher_hd_t handle;
 };
 
 AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv)
 {
-  unsigned char* buf;
-  GstMapInfo map;
-  gsize iv_length;
-  AesCtrState* state;
+    const uint8_t* ivBuffer;
+    const uint8_t* keyBuffer;
+    gsize ivSize, keySize;
+    AesCtrState* state;
+    uint8_t ctr[KEY_SIZE];
 
-  g_return_val_if_fail(key!=NULL,NULL);
-  g_return_val_if_fail(iv!=NULL,NULL);
+    if (!key || !iv)
+        return NULL;
 
-  state = g_slice_new(AesCtrState);
-  if(!state) {
-    GST_ERROR("Failed to allocate AesCtrState");
-    return NULL;
-  }
-  g_assert (g_bytes_get_size (key) == 16);
-  AES_set_encrypt_key ((const unsigned char*) g_bytes_get_data (key, NULL),
-      8 * g_bytes_get_size (key), &state->key);
+    state = g_slice_new(AesCtrState);
+    if (!state)
+        return NULL;
 
-  buf = (unsigned char*)g_bytes_get_data(iv, &iv_length);
-  state->num = 0; 
-  memset(state->ecount, 0, 16);      
-  if(iv_length==8){
-    memset(state->ivec + 8, 0, 8);  
-    memcpy(state->ivec, buf, 8); 
-  }
-  else{
-    memcpy(state->ivec, buf, 16); 
-  }
-  return state;
-} 
+    keyBuffer = (const uint8_t*) g_bytes_get_data(key, &keySize);
+    g_assert(keySize == KEY_SIZE);
 
-AesCtrState*
-webkit_media_aes_ctr_decrypt_ref(AesCtrState *state)
-{
-  g_return_val_if_fail (state != NULL, NULL);
+    gcry_cipher_open(&(state->handle), GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CTR, 0);
+    gcry_cipher_setkey(state->handle, keyBuffer, keySize);
 
-  g_atomic_int_inc (&state->refcount);
+    ivBuffer = (const uint8_t*) g_bytes_get_data(iv, &ivSize);
+    if (ivSize == 8) {
+        memset(ctr + 8, 0, 8);
+        memcpy(ctr, ivBuffer, 8);
+    } else
+        memcpy(ctr, ivBuffer, KEY_SIZE);
+    gcry_cipher_setctr(state->handle, ctr, KEY_SIZE);
 
-  return state;
+    return state;
 }
 
-void
-webkit_media_aes_ctr_decrypt_unref(AesCtrState *state)
+gboolean webkit_media_aes_ctr_decrypt_ip(AesCtrState* state, unsigned char* data, int length)
 {
-  g_return_if_fail (state != NULL);
-
-  if (g_atomic_int_dec_and_test (&state->refcount)) {
-    g_slice_free (AesCtrState, state);
-  }
+    gcry_cipher_decrypt(state->handle, data, length, 0, 0);
+    return TRUE;
 }
 
-
-gboolean
-webkit_media_aes_ctr_decrypt_ip(AesCtrState *state, 
-		       unsigned char *data,
-		       int length)
+AesCtrState* webkit_media_aes_ctr_decrypt_ref(AesCtrState* state)
 {
-  AES_ctr128_encrypt(data, data, length, &state->key, state->ivec, 
-		     state->ecount, &state->num);
-  return TRUE;
+    g_return_val_if_fail(state != NULL, NULL);
+
+    g_atomic_int_inc(&(state->refCount));
+    return state;
 }
 
-G_DEFINE_BOXED_TYPE (AesCtrState, webkit_media_aes_ctr,
-		     (GBoxedCopyFunc) webkit_media_aes_ctr_decrypt_ref,
-		     (GBoxedFreeFunc) webkit_media_aes_ctr_decrypt_unref);
+void webkit_media_aes_ctr_decrypt_unref(AesCtrState* state)
+{
+    g_return_if_fail(state != NULL);
+
+    if (g_atomic_int_dec_and_test(&(state->refCount))) {
+        gcry_cipher_close(state->handle);
+        g_slice_free(AesCtrState, state);
+    }
+}
+
+G_DEFINE_BOXED_TYPE(AesCtrState, webkit_media_aes_ctr, (GBoxedCopyFunc) webkit_media_aes_ctr_decrypt_ref,
+    (GBoxedFreeFunc) webkit_media_aes_ctr_decrypt_unref);
