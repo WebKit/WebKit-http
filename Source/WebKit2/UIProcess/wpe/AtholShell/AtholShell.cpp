@@ -139,10 +139,12 @@ gpointer AtholShell::launchWPE(gpointer data)
 {
     auto& shell = *static_cast<AtholShell*>(data);
 
-    GMainContext* threadContext = g_main_context_new();
-    GMainLoop* threadLoop = g_main_loop_new(threadContext, FALSE);
+    shell.m_threadContext = g_main_context_new();
+    GMainLoop* threadLoop = g_main_loop_new(shell.m_threadContext, FALSE);
 
-    g_main_context_push_thread_default(threadContext);
+    g_main_context_push_thread_default(shell.m_threadContext);
+
+    shell.m_dialServer = std::make_unique<DIAL::Server>(shell);
 
     auto pageGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString("WPEPageGroup"));
     auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
@@ -196,7 +198,52 @@ gpointer AtholShell::launchWPE(gpointer data)
     WKPageLoadURL(WKViewGetPage(view), shellURL.get());
 
     g_main_loop_run(threadLoop);
+
+    g_main_context_pop_thread_default(shell.m_threadContext);
+    g_main_context_unref(shell.m_threadContext);
     return nullptr;
+}
+
+void AtholShell::startApp(unsigned, const char* appURL)
+{
+    m_DIALAppURL = g_strdup(appURL);
+    scheduleDIALAppLoad();
+}
+
+void AtholShell::stopApp(unsigned)
+{
+    m_DIALAppURL = g_strdup("http://www.youtube.com/tv/");
+    scheduleDIALAppLoad();
+}
+
+void AtholShell::scheduleDIALAppLoad()
+{
+    if (m_DIALAppSource)
+        return;
+
+    m_DIALAppSource = g_idle_source_new();
+    g_source_set_callback(m_DIALAppSource, reinterpret_cast<GSourceFunc>(&AtholShell::loadDIALApp), this, nullptr);
+    g_source_set_ready_time(m_DIALAppSource, 0);
+    g_source_attach(m_DIALAppSource, m_threadContext);
+}
+
+gboolean AtholShell::loadDIALApp(gpointer data)
+{
+    auto& shell = *reinterpret_cast<AtholShell*>(data);
+    g_source_unref(shell.m_DIALAppSource);
+    shell.m_DIALAppSource = nullptr;
+
+    if (!shell.m_DIALAppURL)
+        return FALSE;
+
+    std::fprintf(stderr, "[AtholShell] Loading '%s' through DIAL\n", shell.m_DIALAppURL);
+    auto shellURL = adoptWK(WKURLCreateWithUTF8CString(shell.m_DIALAppURL));
+    WKPageLoadURL(WKViewGetPage(shell.m_view.get()), shellURL.get());
+
+    g_free(shell.m_DIALAppURL);
+    shell.m_DIALAppURL = nullptr;
+
+    return FALSE;
 }
 
 } // namespace WPE

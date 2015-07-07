@@ -25,6 +25,7 @@
 
 #include <Athol/Interfaces.h>
 #include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
+#include <DIAL/Server.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKView.h>
 #include <glib.h>
@@ -35,7 +36,7 @@ namespace WPE {
 class InputClient;
 class View;
 
-class AtholShell {
+class AtholShell : public DIAL::Server::Client {
 public:
     AtholShell(API::Compositor*);
     static gpointer launchWPE(gpointer);
@@ -51,6 +52,17 @@ private:
     uint32_t height() { return m_compositor->height(); }
 
     WKRetainPtr<WKViewRef> m_view;
+
+    // DIAL::Server::Client
+    virtual void startApp(unsigned, const char*) override;
+    virtual void stopApp(unsigned) override;
+
+    std::unique_ptr<DIAL::Server> m_dialServer;
+    GMainContext* m_threadContext;
+    GSource* m_DIALAppSource { nullptr };
+    char* m_DIALAppURL;
+    void scheduleDIALAppLoad();
+    static gboolean loadDIALApp(gpointer);
 };
 
 } // namespace WPE

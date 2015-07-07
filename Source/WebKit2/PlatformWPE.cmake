@@ -224,10 +224,18 @@ if (ENABLE_ATHOL_SHELL)
 set(WPEAtholShell_SOURCES
     UIProcess/wpe/AtholShell/AtholShell.cpp
     UIProcess/wpe/AtholShell/Module.cpp
+
+    UIProcess/wpe/AtholShell/DIAL/Server.cpp
+    UIProcess/wpe/AtholShell/DIAL/dial_data.c
+    UIProcess/wpe/AtholShell/DIAL/dial_server.c
+    UIProcess/wpe/AtholShell/DIAL/mongoose.c
+    UIProcess/wpe/AtholShell/DIAL/quick_ssdp.c
+    UIProcess/wpe/AtholShell/DIAL/url_lib.c
 )
 
 set(WPEAtholShell_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/wpe"
+    "${WEBKIT2_DIR}/UIProcess/wpe/AtholShell"
     ${ATHOL_INCLUDE_DIRS}
 )
 
