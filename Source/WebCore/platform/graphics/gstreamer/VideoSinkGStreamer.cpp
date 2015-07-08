@@ -465,6 +465,18 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     case GST_QUERY_DRAIN:
     {
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
+        {
+#if !USE(COORDINATED_GRAPHICS_THREADED)
+            WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
+#endif
+            if (priv->sample)
+                gst_sample_unref(priv->sample);
+            priv->sample = nullptr;
+
+            if (priv->previousSample)
+                gst_sample_unref(priv->previousSample);
+            priv->previousSample = nullptr;
+        }
         GST_OBJECT_LOCK (sink);
         g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
         GST_OBJECT_UNLOCK (sink);
