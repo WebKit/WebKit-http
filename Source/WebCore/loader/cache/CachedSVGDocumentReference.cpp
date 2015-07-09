@@ -34,42 +34,29 @@
 
 namespace WebCore {
 
-CachedSVGDocumentReference::CachedSVGDocumentReference(const String& url, CachedSVGDocumentClient* additionalDocumentClient, bool canReuseResource)
+CachedSVGDocumentReference::CachedSVGDocumentReference(const String& url)
     : m_url(url)
     , m_document(0)
     , m_loadRequested(false)
-    , m_additionalDocumentClient(additionalDocumentClient)
-    , m_canReuseResource(canReuseResource)
 {
 }
 
 CachedSVGDocumentReference::~CachedSVGDocumentReference()
 {
-    if (m_document) {
+    if (m_document)
         m_document->removeClient(this);
-        
-        if (m_additionalDocumentClient)
-            m_document->removeClient(m_additionalDocumentClient);
-    }
 }
 
-void CachedSVGDocumentReference::load(CachedResourceLoader& loader)
+void CachedSVGDocumentReference::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     if (m_loadRequested)
         return;
 
-    CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url)));
+    CachedResourceRequest request(ResourceRequest(loader.document()->completeURL(m_url)), options);
     request.setInitiator(cachedResourceRequestInitiators().css);
-    if (m_acceptsAnyImageType)
-        request.setAcceptOverride("image/*");
     m_document = loader.requestSVGDocument(request);
-    if (m_document) {
-        m_document->setCanReuse(m_canReuseResource);
+    if (m_document)
         m_document->addClient(this);
-        
-        if (m_additionalDocumentClient)
-            m_document->addClient(m_additionalDocumentClient);
-    }
 
     m_loadRequested = true;
 }

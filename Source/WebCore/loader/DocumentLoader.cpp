@@ -1406,7 +1406,7 @@ void DocumentLoader::startLoadingMainResource()
     // If this is a reload the cache layer might have made the previous request conditional. DocumentLoader can't handle 304 responses itself.
     request.makeUnconditional();
 
-    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo);
+    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck);
     CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
     cachedResourceRequest.setInitiator(*this);
     m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
@@ -1524,7 +1524,7 @@ void DocumentLoader::getIconLoadDecisionForIconURL(const String& urlString)
 void DocumentLoader::continueIconLoadWithDecision(IconLoadDecision decision)
 {
     ASSERT(m_iconLoadDecisionCallback);
-    m_iconLoadDecisionCallback = 0;
+    m_iconLoadDecisionCallback = nullptr;
     if (m_frame)
         m_frame->loader().icon().continueLoadWithDecision(decision);
 }

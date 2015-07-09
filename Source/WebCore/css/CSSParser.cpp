@@ -90,7 +90,6 @@
 #include "TextEncoding.h"
 #include "WebKitCSSFilterValue.h"
 #include "WebKitCSSRegionRule.h"
-#include "WebKitCSSResourceValue.h"
 #include "WebKitCSSTransformValue.h"
 #include <JavaScriptCore/Profile.h>
 #include <bitset>
@@ -4502,15 +4501,15 @@ void CSSParser::parseFillPosition(CSSParserValueList& valueList, RefPtr<CSSValue
     if (value2)
         valueList.next();
     else {
-        value1.clear();
+        value1 = nullptr;
         return;
     }
 
     RefPtr<CSSPrimitiveValue> parsedValue1 = downcast<CSSPrimitiveValue>(value1.get());
     RefPtr<CSSPrimitiveValue> parsedValue2 = downcast<CSSPrimitiveValue>(value2.get());
 
-    value1.clear();
-    value2.clear();
+    value1 = nullptr;
+    value2 = nullptr;
 
     // Per CSS3 syntax, <position> can't have 'center' as its second keyword as we have more arguments to follow.
     if (parsedValue2->getValueID() == CSSValueCenter)
@@ -4549,7 +4548,7 @@ void CSSParser::parse2ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
             valueList.next();
         else {
             if (!inShorthand()) {
-                value1.clear();
+                value1 = nullptr;
                 return;
             }
         }
@@ -4704,11 +4703,8 @@ bool CSSParser::parseFillProperty(CSSPropertyID propId, CSSPropertyID& propId1, 
                     }
                     break;
                 case CSSPropertyBackgroundImage:
-                    if (parseFillImage(*m_valueList, currValue))
-                        m_valueList->next();
-                    break;
                 case CSSPropertyWebkitMaskImage:
-                    if (parseMaskImage(*m_valueList, currValue))
+                    if (parseFillImage(*m_valueList, currValue))
                         m_valueList->next();
                     break;
                 case CSSPropertyWebkitBackgroundClip:
@@ -7587,8 +7583,8 @@ struct ShadowParseContext {
         }
 
         // Now reset for the next shadow value.
-        x = 0;
-        y = 0;
+        x = nullptr;
+        y = nullptr;
         blur = nullptr;
         spread = nullptr;
         style = nullptr;
@@ -9911,30 +9907,6 @@ bool CSSParser::parseFilter(CSSParserValueList& valueList, RefPtr<CSSValue>& res
     return true;
 }
 
-bool CSSParser::parseMaskImage(CSSParserValueList& valueList, RefPtr<CSSValue>& outValue)
-{
-    outValue = nullptr;
-    CSSParserValue* value = valueList.current();
-    if (value->id == CSSValueNone) {
-        outValue = WebKitCSSResourceValue::create(cssValuePool().createIdentifierValue(CSSValueNone));
-        return outValue.get();
-    }
-
-    RefPtr<CSSValue> resourceValue;
-    if (value->unit == CSSPrimitiveValue::CSS_URI) {
-        if (protocolIs(value->string, "data"))
-            parseFillImage(valueList, resourceValue);
-        else
-            resourceValue = CSSPrimitiveValue::create(completeURL(value->string), CSSPrimitiveValue::CSS_URI);
-    } else
-        parseFillImage(valueList, resourceValue);
-
-    if (resourceValue)
-        outValue = WebKitCSSResourceValue::create(resourceValue);
-
-    return outValue.get();
-}
-
 #if ENABLE(CSS_REGIONS)
 static bool validFlowName(const String& flowName)
 {
@@ -12184,7 +12156,7 @@ PassRefPtr<CSSRuleSourceData> CSSParser::popRuleData()
         return nullptr;
 
     ASSERT(!m_currentRuleDataStack->isEmpty());
-    m_currentRuleData.clear();
+    m_currentRuleData = nullptr;
     RefPtr<CSSRuleSourceData> data = m_currentRuleDataStack->last();
     m_currentRuleDataStack->removeLast();
     return data.release();
@@ -12605,7 +12577,7 @@ void CSSParser::markRuleBodyStart()
 {
     if (!isExtractingSourceData())
         return;
-    m_currentRuleData.clear();
+    m_currentRuleData = nullptr;
     unsigned offset = tokenStartOffset();
     if (tokenStartChar() == '{')
         ++offset; // Skip the rule body opening brace.

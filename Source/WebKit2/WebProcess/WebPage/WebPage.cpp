@@ -221,6 +221,8 @@ using namespace WebCore;
 
 namespace WebKit {
 
+static const double pageScrollHysteresisSeconds = 0.3;
+
 class SendStopResponsivenessTimer {
 public:
     SendStopResponsivenessTimer(WebPage* page)
@@ -295,6 +297,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(MEDIA_STREAM)
     , m_userMediaPermissionRequestManager(*this)
 #endif
+    , m_pageScrolledHysteresis([this](HysteresisState state) { if (state == HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisSeconds)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
     , m_isRunningModal(false)
@@ -314,7 +317,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 #if PLATFORM(IOS)
     , m_selectionAnchor(Start)
-    , m_firstLayerTreeTransactionIDAfterDidCommitLoad(0)
     , m_hasReceivedVisibleContentRectsAfterDidCommitLoad(false)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
@@ -930,23 +932,23 @@ void WebPage::close()
     }
 
 #if ENABLE(FULLSCREEN_API)
-    m_fullScreenManager = 0;
+    m_fullScreenManager = nullptr;
 #endif
 
     if (m_activePopupMenu) {
         m_activePopupMenu->disconnectFromPage();
-        m_activePopupMenu = 0;
+        m_activePopupMenu = nullptr;
     }
 
     if (m_activeOpenPanelResultListener) {
         m_activeOpenPanelResultListener->disconnectFromPage();
-        m_activeOpenPanelResultListener = 0;
+        m_activeOpenPanelResultListener = nullptr;
     }
 
 #if ENABLE(INPUT_TYPE_COLOR)
     if (m_activeColorChooser) {
         m_activeColorChooser->disconnectFromPage();
-        m_activeColorChooser = 0;
+        m_activeColorChooser = nullptr;
     }
 #endif
 
@@ -1146,7 +1148,7 @@ void WebPage::reload(uint64_t navigationID, bool reloadFromOrigin, const Sandbox
 {
     SendStopResponsivenessTimer stopper(this);
 
-    ASSERT(!m_pendingNavigationID);
+    ASSERT(!m_mainFrame->coreFrame()->loader().frameHasLoaded() || !m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
 
     m_sandboxExtensionTracker.beginLoad(m_mainFrame.get(), sandboxExtensionHandle);
@@ -1817,7 +1819,16 @@ void WebPage::pageDidScroll()
 #endif
     m_uiClient->pageDidScroll(this);
 
+    m_pageScrolledHysteresis.impulse();
+
     send(Messages::WebPageProxy::PageDidScroll());
+}
+
+void WebPage::pageStoppedScrolling()
+{
+    // Maintain the current history item's scroll position up-to-date.
+    if (Frame* frame = m_mainFrame->coreFrame())
+        frame->loader().history().saveScrollPositionAndViewStateToItem(frame->loader().history().currentItem());
 }
 
 #if USE(COORDINATED_GRAPHICS)
@@ -3270,7 +3281,7 @@ void WebPage::countStringMatches(const String& string, uint32_t options, uint32_
 void WebPage::didChangeSelectedIndexForActivePopupMenu(int32_t newIndex)
 {
     changeSelectedIndex(newIndex);
-    m_activePopupMenu = 0;
+    m_activePopupMenu = nullptr;
 }
 
 void WebPage::changeSelectedIndex(int32_t index)
@@ -3306,12 +3317,12 @@ void WebPage::didChooseFilesForOpenPanel(const Vector<String>& files)
         return;
 
     m_activeOpenPanelResultListener->didChooseFiles(files);
-    m_activeOpenPanelResultListener = 0;
+    m_activeOpenPanelResultListener = nullptr;
 }
 
 void WebPage::didCancelForOpenPanel()
 {
-    m_activeOpenPanelResultListener = 0;
+    m_activeOpenPanelResultListener = nullptr;
 }
 
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -3415,7 +3426,7 @@ void WebPage::didSelectItemFromActiveContextMenu(const WebContextMenuItemData& i
         return;
 
     m_contextMenu->itemSelected(item);
-    m_contextMenu = 0;
+    m_contextMenu = nullptr;
 }
 #endif
 
@@ -4600,6 +4611,11 @@ void WebPage::didReplaceMultipartContent(const WebFrame& frame)
 
 void WebPage::didCommitLoad(WebFrame* frame)
 {
+#if PLATFORM(IOS)
+    frame->setFirstLayerTreeTransactionIDAfterDidCommitLoad(downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID());
+    cancelPotentialTapInFrame(*frame);
+#endif
+
     if (!frame->isMainFrame())
         return;
 
@@ -4618,10 +4634,8 @@ void WebPage::didCommitLoad(WebFrame* frame)
 #if PLATFORM(IOS)
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = false;
     m_scaleWasSetByUIProcess = false;
-    m_firstLayerTreeTransactionIDAfterDidCommitLoad = downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID();
     m_userHasChangedPageScaleFactor = false;
     m_estimatedLatency = std::chrono::milliseconds(1000 / 60);
-    cancelPotentialTap();
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     WebProcess::singleton().eventDispatcher().clearQueuedTouchEventsForPage(*this);

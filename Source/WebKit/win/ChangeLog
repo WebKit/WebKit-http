@@ -1,3 +1,33 @@
+2015-07-08  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the Apple Windows build after <https://trac.webkit.org/changeset/186566>
+        (https://bugs.webkit.org/show_bug.cgi?id=146591)
+
+        Update implementation of PluginView::create() to return a Ref<PluginView> object
+        instead of a PassRefPtr<PluginView> object.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::create):
+
+2015-07-07  Brady Eidson  <beidson@apple.com>
+
+        HTTP Auth cached after disabling private browsing/reset.
+        <rdar://problem/8293055> and https://bugs.webkit.org/show_bug.cgi?id=146654
+
+        Reviewed by Tim Horton.
+
+        * WebDownloadCFNet.cpp:
+        (WebDownload::didReceiveAuthenticationChallenge):
+
+2015-07-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop RefPtr::clear() method
+        https://bugs.webkit.org/show_bug.cgi?id=146556
+
+        Reviewed by Brady Eidson.
+
+        Drop RefPtr::clear() method in favor of "= nullptr;" pattern.
+
 2015-06-30  Simon Fraser  <simon.fraser@apple.com>
 
         Fix Mac and Windows builds.

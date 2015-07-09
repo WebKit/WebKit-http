@@ -250,7 +250,7 @@ public:
     WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
-    ShadowRoot& ensureUserAgentShadowRoot();
+    WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
 
     // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
@@ -706,6 +706,11 @@ inline UniqueElementData& Element::ensureUniqueElementData()
     if (!elementData() || !elementData()->isUnique())
         createUniqueElementData();
     return static_cast<UniqueElementData&>(*m_elementData);
+}
+
+inline bool shouldIgnoreAttributeCase(const Element& element)
+{
+    return element.isHTMLElement() && element.document().isHTMLDocument();
 }
 
 } // namespace WebCore

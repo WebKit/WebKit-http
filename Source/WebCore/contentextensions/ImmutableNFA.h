@@ -53,11 +53,11 @@ struct ImmutableNFANode {
 
 template <typename CharacterType, typename ActionType>
 struct ImmutableNFA {
-    Vector<ImmutableNFANode> nodes;
-    Vector<ImmutableRange<CharacterType>> transitions;
-    Vector<uint32_t> targets;
-    Vector<uint32_t> epsilonTransitionsTargets;
-    Vector<ActionType> actions;
+    Vector<ImmutableNFANode, 0, ContentExtensionsOverflowHandler> nodes;
+    Vector<ImmutableRange<CharacterType>, 0, ContentExtensionsOverflowHandler> transitions;
+    Vector<uint32_t, 0, ContentExtensionsOverflowHandler> targets;
+    Vector<uint32_t, 0, ContentExtensionsOverflowHandler> epsilonTransitionsTargets;
+    Vector<ActionType, 0, ContentExtensionsOverflowHandler> actions;
 
     struct ConstTargetIterator {
         const ImmutableNFA& immutableNFA;
@@ -93,9 +93,6 @@ struct ImmutableNFA {
         const ImmutableNFA& immutableNFA;
         uint32_t position;
 
-        const ImmutableRange<CharacterType>& operator*() const { return immutableNFA.transitions[position]; }
-        const ImmutableRange<CharacterType>* operator->() const { return &immutableNFA.transitions[position]; }
-
         bool operator==(const ConstRangeIterator& other) const
         {
             ASSERT(&immutableNFA == &other.immutableNFA);
@@ -109,11 +106,27 @@ struct ImmutableNFA {
             return *this;
         }
 
+        CharacterType first() const
+        {
+            return range().first;
+        }
+
+        CharacterType last() const
+        {
+            return range().last;
+        }
+
         IterableConstTargets data() const
         {
-            const ImmutableRange<CharacterType>& range = immutableNFA.transitions[position];
+            const ImmutableRange<CharacterType>& range = this->range();
             return { immutableNFA, range.targetStart, range.targetEnd };
         };
+
+    private:
+        const ImmutableRange<CharacterType>& range() const
+        {
+            return immutableNFA.transitions[position];
+        }
     };
 
     struct IterableConstRange {

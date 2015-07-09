@@ -76,7 +76,7 @@ using namespace WebKit;
 
 - (void)dealloc
 {
-    _connection.clear();
+    _connection = nullptr;
     [_urlConnection cancel];
     [_urlConnection release];
     [super dealloc];
@@ -129,6 +129,11 @@ CustomProtocolManagerProxy::CustomProtocolManagerProxy(ChildProcessProxy* childP
 {
     ASSERT(m_childProcessProxy);
     m_childProcessProxy->addMessageReceiver(Messages::CustomProtocolManagerProxy::messageReceiverName(), *this);
+}
+
+CustomProtocolManagerProxy::~CustomProtocolManagerProxy()
+{
+    m_childProcessProxy->removeMessageReceiver(Messages::CustomProtocolManagerProxy::messageReceiverName());
 }
 
 void CustomProtocolManagerProxy::startLoading(uint64_t customProtocolID, const ResourceRequest& coreRequest)

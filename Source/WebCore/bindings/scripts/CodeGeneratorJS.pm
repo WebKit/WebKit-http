@@ -2799,15 +2799,14 @@ sub GenerateImplementation
             if (IsReturningPromise($function) && !$isCustom) {
                 AddToImplIncludes("JSDOMPromise.h");
 
-                push(@implContent, "static inline EncodedJSValue ${functionName}Promise(ExecState*, " . $className . "*, JSPromiseDeferred*);\n");
+                push(@implContent, "static inline EncodedJSValue ${functionName}Promise(ExecState*, JSPromiseDeferred*);\n");
                 push(@implContent, "EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)\n");
                 push(@implContent, "{\n");
 
-                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function);
-                push(@implContent, "    return JSValue::encode(callPromiseFunction(*exec, *castedThis, ${functionName}Promise));\n");
+                push(@implContent, "    return JSValue::encode(callPromiseFunction(*exec, ${functionName}Promise));\n");
 
                 push(@implContent, "}\n");
-                push(@implContent, "\nstatic inline EncodedJSValue ${functionName}Promise(ExecState* exec, " . $className . "* castedThis, JSPromiseDeferred* promiseDeferred)\n");
+                push(@implContent, "\nstatic inline EncodedJSValue ${functionName}Promise(ExecState* exec, JSPromiseDeferred* promiseDeferred)\n");
             }
             else {
                 push(@implContent, "EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)\n");
@@ -2831,7 +2830,7 @@ sub GenerateImplementation
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interfaceName);
                 }
             } else {
-                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function) if not (IsReturningPromise($function) && !$isCustom);
+                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function);
 
                 if ($interface->extendedAttributes->{"CheckSecurity"} and
                     !$function->signature->extendedAttributes->{"DoNotCheckSecurity"}) {
@@ -4661,6 +4660,9 @@ END
             my $numParameters = @{$function->parameters};
             my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, $numParameters, $interfaceName, "constructorCallback", undef, undef, undef);
 
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
+                push(@constructorArgList, "*exec");
+            }
             if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptExecutionContext")) {
                 push(@constructorArgList, "*context");
                 push(@$outputArray, "    ScriptExecutionContext* context = castedThis->scriptExecutionContext();\n");
@@ -4701,6 +4703,11 @@ END
                 push(@$outputArray, "        setDOMException(exec, ec);\n");
                 push(@$outputArray, "        return JSValue::encode(JSValue());\n");
                 push(@$outputArray, "    }\n");
+            }
+
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
+                 push(@$outputArray, "    if (UNLIKELY(exec->hadException()))\n");
+                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
 
             push(@$outputArray, "    return JSValue::encode(asObject(toJS(exec, castedThis->globalObject(), object.get())));\n");

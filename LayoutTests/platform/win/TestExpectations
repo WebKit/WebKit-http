@@ -451,6 +451,7 @@ webkit.org/b/86914 webaudio/ [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-closed-audiocontext.html [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-running-audiocontext.html [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-suspended-audiocontext.html [ Skip ]
+webkit.org/b/86914 media/W3C/audio [ Skip ]
 
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html [ Skip ]
@@ -745,9 +746,6 @@ fast/media [ Skip ]
 http/tests/media [ Skip ] 
 
 fast/layers/video-layer.html [ Skip ] # Skip until video control changes are done.
-
-# Web Audio is not supported on Windows
-media/W3C/audio [ Skip ]
 
 # Assertion failures
 webkit.org/b/48910 [ Debug ] http/tests/media/pdf-served-as-pdf.html [ Skip ]  # Crashing
@@ -2119,18 +2117,21 @@ webkit.org/b/140703 [ Debug ] http/tests/misc/link-rel-icon-beforeload.html [ Sk
 webkit.org/b/140703 http/tests/misc/will-send-request-returns-null-on-redirect.html [ Failure ]
 webkit.org/b/140703 http/tests/misc/window-dot-stop.html [ Failure ]
 webkit.org/b/140703 http/tests/security/401-logout/401-logout.php [ Failure ]
+webkit.org/b/146701 http/tests/security/private-browsing-http-auth.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-allowall.html [ Failure ]
+webkit.org/b/140703 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-cached.html [ Crash ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny.html [ Failure ]
+webkit.org/b/140703 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event.html [ Crash ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html [ Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html [ Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-invalid.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny.html [ Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html [ Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html [ Crash Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
 webkit.org/b/140703 http/tests/xmlhttprequest/failed-auth.html [ Failure ]
 
@@ -3116,3 +3117,6 @@ fast/text/decorations-vertical-underline.html [ Skip ]
 # Test requires hardcoded font names, which I do not have for this port.
 fast/text/han-generic-font-families.html [ WontFix ]
 fast/text/hangul-generic-font-families.html [ WontFix ]
+
+# New test for Bug 144830 (r186388) always fails.
+http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Failure ]

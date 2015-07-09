@@ -1,3 +1,777 @@
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Copy Rule in the context menu copies hidden properties in the rule
+        https://bugs.webkit.org/show_bug.cgi?id=146775
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._generateCSSRuleString):
+        Now only uses properties from the rule's visibleProperties list.
+
+2015-07-08  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add page weight and time back to the toolbar dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=146755
+
+        Revert r183328 which removed the page weight and load time from the dashboard. We have space
+        in the dashboard, we can put these back since we didn't find a better home for them.
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Base/Main.js:
+        (WebInspector.showNetworkTab):
+        * UserInterface/Images/Time.svg: Added.
+        * UserInterface/Images/Weight.svg: Added.
+        * UserInterface/Images/gtk/Time.svg: Added.
+        * UserInterface/Images/gtk/Weight.svg: Added.
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard):
+        (WebInspector.DefaultDashboard.prototype.get resourcesSize):
+        (WebInspector.DefaultDashboard.prototype.set resourcesSize):
+        (WebInspector.DefaultDashboard.prototype.get time):
+        (WebInspector.DefaultDashboard.prototype.set time):
+        (WebInspector.DefaultDashboard.prototype._mainResourceDidChange):
+        (WebInspector.DefaultDashboard.prototype._capturingStopped):
+        (WebInspector.DefaultDashboard.prototype._startUpdatingTime):
+        (WebInspector.DefaultDashboard.prototype._stopUpdatingTime):
+        (WebInspector.DefaultDashboard.prototype._updateTime):
+        * UserInterface/Views/DashboardContainerView.css:
+        (body.web .toolbar .dashboard-container):
+        (body.javascript .toolbar .dashboard-container):
+        (.toolbar.collapsed .dashboard-container):
+        (.toolbar .dashboard-container): Deleted.
+        * UserInterface/Views/DefaultDashboardView.css:
+        (body.web .toolbar.collapsed .dashboard.default > :matches(.resourcesSize, .time, .logs)):
+        (body.javascript .toolbar .dashboard.default > :matches(.resourcesCount, .resourcesSize, .time)):
+        (.toolbar .dashboard.default > .resourcesSize):
+        (.toolbar .dashboard.default > .time > img):
+        (.toolbar .dashboard.default > .resourcesSize > img):
+        (body.web .toolbar.collapsed .dashboard.default > .item.resourcesCount): Deleted.
+        (body.javascript .toolbar .dashboard.default > .item.resourcesCount): Deleted.
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView):
+        (WebInspector.DefaultDashboardView.prototype._updateDisplay):
+        (WebInspector.DefaultDashboardView.prototype._networkItemWasClicked):
+        (WebInspector.DefaultDashboardView.prototype._timelineItemWasClicked):
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Style sidebar is showing incorrect strikethroughs
+        https://bugs.webkit.org/show_bug.cgi?id=146768
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._markOverriddenProperties):
+        No longer sets the effective property as overridden if the overriding property is anonymous (not visible).
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Color swatches show up in color names in comments
+        https://bugs.webkit.org/show_bug.cgi?id=146757
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorAdditions.js: Color markers now only appear if the color is in a keyword.
+
+2015-07-08  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Only record a timeline when the Timelines tab is showing
+        https://bugs.webkit.org/show_bug.cgi?id=146759
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.get autoCaptureOnPageLoad):
+        (WebInspector.TimelineManager.prototype.set autoCaptureOnPageLoad):
+        (WebInspector.TimelineManager.prototype._startAutoCapturing):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype.shown):
+        (WebInspector.TimelineTabContentView.prototype.hidden):
+
+2015-07-08  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Details sidebar doesn't activate on first selected resource in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=146691
+
+        Make sure the SelectionPathComponentsDidChange event is dispatched when the tree elements are selected.
+        Selecting in the DataGrid selects the TreeElements, but onselect is not fired to avoid an inifinte loop.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView): Hook up _treeElementSelected.
+        (WebInspector.NetworkGridContentView.prototype._treeElementSelected): Added. Moved from
+        NetworkSidebarPanel and added dispatch of SelectionPathComponentsDidChange event.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel): Removed _treeElementSelected.
+        (WebInspector.NetworkSidebarPanel.prototype.canShowDifferentContentView): Renamed from _canShowDifferentContentView.
+        (WebInspector.NetworkSidebarPanel.prototype._canShowDifferentContentView): Deleted.
+        (WebInspector.NetworkSidebarPanel.prototype._treeElementSelected): Moved to NetworkGridContentView.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.treeElementSelected): Dispatch SelectionPathComponentsDidChange event.
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Confusingly crossed out properties in .sidebar > .panel.navigation.timeline > .title-bar
+        https://bugs.webkit.org/show_bug.cgi?id=146727
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        The properties map used for refreshing each property now holds a list of properties for each line to ensure that
+        if a duplicate property exists, it also gets refreshed.
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Can't select last row in the timeline because it's covered by filter selector
+        https://bugs.webkit.org/show_bug.cgi?id=146603
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ScopeBar.js: Now adds a class to the scope bar if the default item is selected.
+        * UserInterface/Views/LayoutTimelineView.js:
+        * UserInterface/Views/NetworkTimelineView.js:
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.data-grid.timeline > .navigation-bar-container): Deleted.
+        (.data-grid.timeline.has-non-default-filter > .navigation-bar-container): Deleted.
+        (.data-grid.timeline:hover > .navigation-bar-container): Deleted.
+        (.data-grid.timeline > .navigation-bar-container > .navigation-bar): Deleted.
+        (body.window-inactive .data-grid.timeline > .navigation-bar-container > .navigation-bar): Deleted.
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid):
+        (WebInspector.TimelineDataGrid.createColumnScopeBar):
+        (WebInspector.TimelineDataGrid.prototype.updateLayout): Deleted.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events > .title-bar-scope-bar):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events > .title-bar-scope-bar > .default-item-selected > .multiple):
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events > .title-bar-scope-bar > .default-item-selected > .multiple path):
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.set contentTreeOutlineScopeBar):
+        Clears the title bar scope element and adds the given element as a child node.
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.get navigationSidebarTreeOutlineScopeBar):
+        Returns the scope bar element of the current object if it exists.
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Clicking style checkbox selects the property name while mouse down
+        https://bugs.webkit.org/show_bug.cgi?id=146728
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseDown):
+        Now returns if the click was not at the end of the line.
+
+2015-07-08  Timothy Hatcher  <timothy@apple.com>
+
+        REGRESSION (r185629): Web Inspector: Filtering doesn't display any items if folders are used to organize the web page resources
+        https://bugs.webkit.org/show_bug.cgi?id=146675
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.revealed): Added ignoreHidden parameter.
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement.shouldSkip): Pass true to ignore hidden elements.
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement): Populate up front like the old traverseNextTreeElement.
+        This is needed to traverse into lazy populated tree elements. Don't call shouldSkip in the loop.
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement.shouldSkip): Pass true to ignore hidden elements.
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement): Add some newlines.
+
+2015-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pressing delete in the styles sidebar with no text causes text to become misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=146715
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleBeforeChange):
+        Now returns if the change was in the first character of the first line.
+
+2015-07-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Use "hairline" borders on retina screen
+        https://bugs.webkit.org/show_bug.cgi?id=146619
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section):
+        (.style-declaration-section.locked):
+        (.style-declaration-section:not(.locked)):
+        (.style-declaration-section.last-in-group):
+        (.style-declaration-section + .style-declaration-section):
+        (.style-declaration-section.last-in-group + .style-declaration-section):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section .details-section):
+        (.details-section > .content > .group:nth-child(even)):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        * UserInterface/Views/DividerNavigationItem.css:
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .label + .style-declaration-section):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label.filter-matching-label):
+        (.sidebar > .panel.details.css-style > .content:not(.filter-in-progress) > .rules > .new-rule + .style-declaration-section):
+        (.sidebar > .panel.details.css-style > .content:not(.filter-in-progress) > .rules > .new-rule + .label):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pressing tab on a comment in the styles sidebar doesn't highlight the comment
+        https://bugs.webkit.org/show_bug.cgi?id=146709
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.selectFirstProperty):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.selectLastProperty):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._textAtCursorIsComment):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._highlightNextNameOrValue):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleEnterKey):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._insertNewlineAfterCurrentLine):
+        Determines if the text at the given cursor position in the given line is a comment.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleTabKey):
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: spacebar should pause/resume timeline recording when timelines are open
+        https://bugs.webkit.org/show_bug.cgi?id=143267
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineSidebarPanel): Added two new keyboard shortcuts: space and shift-space.
+        (WebInspector.TimelineSidebarPanel.prototype.shown): Enables the keyboard shortcuts.
+        (WebInspector.TimelineSidebarPanel.prototype.hidden): Disables the keyboard shortcuts.
+        (WebInspector.TimelineSidebarPanel.prototype._toggleRecordingOnSpacebar):
+        (WebInspector.TimelineSidebarPanel.prototype._toggleNewRecordingOnSpacebar):
+        (WebInspector.TimelineSidebarPanel.prototype._toggleRecording): Starts/stops recording.
+
+2015-07-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve names for unprefixed animation events
+        https://bugs.webkit.org/show_bug.cgi?id=146708
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+
+2015-07-07  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Timeline record bars are not white when the row is selected from the sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=146694
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment):
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment.inactive):
+        (:matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive)):
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Unnecessary space added after -webkit- prefixed property values
+        https://bugs.webkit.org/show_bug.cgi?id=146671
+
+        Reviewed by Joseph Pecoraro.
+
+        * Tools/PrettyPrinting/css-rule-tests/do-not-add-whitespace-before-prefixed-property-value-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/do-not-add-whitespace-before-prefixed-property-value.css: Added.
+        * Tools/PrettyPrinting/index.html:
+        * UserInterface/Views/CodeMirrorFormatters.js: Now only adds a space if both the current and previous
+        tokens are a property, value, or atom.
+
+2015-07-07  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Pad ruler selection area by 1px in the Rendering Frames timeline overview
+        https://bugs.webkit.org/show_bug.cgi?id=146248
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RenderingFrameTimelineOverview.js:
+        Enable duration pixel alignment.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.frames > .timeline-ruler > .header > .divider):
+        (.timeline-overview.frames > .timeline-ruler > .selection-handle.right):
+        (.timeline-overview.frames > .timeline-ruler > .shaded-area.right):
+        Shift ruler elements 1 pixel to the right, so that selection boundaries and dividers are
+        positioned inside the gap between frame elements.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype.set secondsPerPixel):
+        (WebInspector.TimelineOverview.prototype.get pixelAlignDuration):
+        (WebInspector.TimelineOverview.prototype.set pixelAlignDuration):
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        Added a property to force the overview graph to align duration units on the y-axis to pixel boundaries.
+        When enabled, frame elements are displayed in integer widths while zooming, preventing subpixel blurring
+        and maintaining a consistent 1 pixel gap between frames.
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Tabbing in the styles sidebar doesn't highlight the next section of text
+        https://bugs.webkit.org/show_bug.cgi?id=146676
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._highlightNextNameOrValue): Modified the logic to only search the
+        remaining text after the current cursor position.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey): Now only searches for matches before the colon.
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Option+Click not jumping to resource
+        https://bugs.webkit.org/show_bug.cgi?id=146498
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js: Always show the tab which contains the represented object.
+        (WebInspector._domNodeWasInspected):
+        (WebInspector._frameWasAdded):
+        (WebInspector.showConsoleTab):
+        (WebInspector.showRepresentedObject): Removed forceShowTab parameter.
+        (WebInspector.showMainFrameDOMTree):
+        (WebInspector.showContentFlowDOMTree):
+        (WebInspector.showSourceCodeForFrame):
+        (WebInspector.showSourceCode):
+        (WebInspector.showSourceCodeLocation):
+        (WebInspector.showOriginalUnformattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeTextRange):
+        (WebInspector.showResourceRequest):
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._mouseButtonWasReleasedOverEditor):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.showMainResourceForFrame):
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype._goToContentFlowArrowWasClicked):
+        (WebInspector.ComputedStyleDetailsPanel):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        (WebInspector.ObjectTreeBaseTreeElement):
+
+2015-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Regression: CSS autocompletion suggestion applies on pressing delete
+        https://bugs.webkit.org/show_bug.cgi?id=146672
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleBeforeChange): Now returns if completions are showing.
+
+2015-07-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Properly align checkboxes in the styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=146673
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines input[type=checkbox]):
+
+2015-07-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frame bars appear misaligned and contain gaps when displaying small task segments
+        https://bugs.webkit.org/show_bug.cgi?id=146475
+
+        Reviewed by Timothy Hatcher.
+
+        Displaying all task segments within a frame in the Rendering Frames graph is impossible, as very short tasks
+        would result in a bar with a height of less than 1 pixel. Consecutive small tasks, each less than a visible
+        pixel, appear as gaps in the frame bar. This patch addresses these shortcomings by introducing a minimum
+        displayable frame height (3 pixels), and setting the height of every frame to a multiple of the minimum height.
+
+        * UserInterface/Base/Utilities.js:
+        (.value):
+        Added Math.roundTo to simplify rounding to arbitrary intervals.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame):
+        (.timeline-record-frame > .frame > .duration):
+        Enforce 3px min height for frames & segments. TimelineRenderingFrame's segment height calculator
+        creates segments that are always at least 3px, this is just a precaution.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype._calculateFrameDisplayData.updateDurationRemainder):
+        (WebInspector.TimelineRecordFrame.prototype._calculateFrameDisplayData.pushCurrentSegment):
+        (WebInspector.TimelineRecordFrame.prototype._calculateFrameDisplayData.invisibleSegments.forEach):
+        (WebInspector.TimelineRecordFrame.prototype._updateChildElements.createDurationElement): Deleted.
+        Added algorithm for calculating frame segment heights, rather than simply dividing each task's
+        duration by the frame duration. Results are cached so the segment heights aren't needlessly
+        recalculated on every scroll/zoom.
+
+2015-07-06  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Force show Console tab when supportsSplitContentBrowser is false
+        https://bugs.webkit.org/show_bug.cgi?id=146661
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.showConsoleTab):
+
+2015-07-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Clearing the console does not remove the unread message icon
+        https://bugs.webkit.org/show_bug.cgi?id=146649
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._clearLog): Removes the "unread" class from all scope bar items.
+
+2015-07-02  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add a dedicated Network tab that is always live
+        https://bugs.webkit.org/show_bug.cgi?id=146568
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.isTabTypeAllowed):
+        (WebInspector._tabContentViewForType):
+        (WebInspector._updateNewTabButtonState):
+        Add NetworkTabContentView to the right places.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype.get persistentNetworkTimeline):
+        (WebInspector.TimelineManager.prototype._mainResourceDidChange):
+        (WebInspector.TimelineManager.prototype._resourceWasAdded):
+        Add a persistent network timeline that always has all resources.
+
+        * UserInterface/Images/Network.svg: Added.
+
+        * UserInterface/Main.html: Added new files.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content):
+        Drive-by fix. The bottom was off by one. This caused misalignment between sidebar and content view when
+        scrolled all the way to the bottom of the content view.
+
+        * UserInterface/Views/NetworkGridContentView.css: Added.
+        (.content-view.network-grid > .data-grid):
+        (.content-view.network-grid > .data-grid th):
+        (.content-view.network-grid > .data-grid td):
+        (.content-view.network-grid > .data-grid table.data):
+        Mostly copied from TimelineView.css and NetworkTimelineView.css.
+
+        * UserInterface/Views/NetworkGridContentView.js: Added.
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype.get navigationSidebarTreeOutline):
+        (WebInspector.NetworkGridContentView.prototype.get selectionPathComponents):
+        (WebInspector.NetworkGridContentView.prototype.get zeroTime):
+        (WebInspector.NetworkGridContentView.prototype.shown):
+        (WebInspector.NetworkGridContentView.prototype.hidden):
+        (WebInspector.NetworkGridContentView.prototype.closed):
+        (WebInspector.NetworkGridContentView.prototype.updateLayout):
+        (WebInspector.NetworkGridContentView.prototype.needsLayout):
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        (WebInspector.NetworkGridContentView.prototype._processPendingRecords):
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineReset):
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        (WebInspector.NetworkGridContentView.prototype._treeElementPathComponentSelected):
+        (WebInspector.NetworkGridContentView.prototype._dataGridNodeSelected):
+        Mostly copied from NetworkTimelineView.
+
+        * UserInterface/Views/NetworkSidebarPanel.css: Added.
+        (.sidebar > .panel.navigation.network > :matches(.content, .empty-content-placeholder)):
+        (.sidebar > .panel.navigation.network > .navigation-bar):
+        (.sidebar > .panel.navigation.network > .title-bar):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing > .content):
+        (.sidebar > .panel.navigation.network .item:hover:not(.selected) .status .close.status-button):
+        (.sidebar > .panel.navigation.network:not(.network-grid-content-view-showing) .status .go-to-arrow.status-button):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing .status .close.status-button):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing .navigation-sidebar-panel-content-tree-outline.network-grid .item .subtitle):
+        (.sidebar > .panel.navigation.network > .content > .navigation-sidebar-panel-content-tree-outline):
+        (.sidebar > .panel.navigation.network.network-grid-content-view-showing > .content > .navigation-sidebar-panel-content-tree-outline):
+        Mostly copied from TimelineSidebarPanel.css and NetworkTimelineView.css.
+
+        * UserInterface/Views/NetworkSidebarPanel.js: Added.
+        (WebInspector.NetworkSidebarPanel):
+        (WebInspector.NetworkSidebarPanel.prototype.closed):
+        (WebInspector.NetworkSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.NetworkSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.NetworkSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.NetworkSidebarPanel.prototype.hasCustomFilters):
+        (WebInspector.NetworkSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WebInspector.NetworkSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.NetworkSidebarPanel.prototype.treeElementAddedOrChanged):
+        (WebInspector.NetworkSidebarPanel.prototype._networkTimelineReset):
+        (WebInspector.NetworkSidebarPanel.prototype._contentBrowserCurrentContentViewDidChange):
+        (WebInspector.NetworkSidebarPanel.prototype._treeElementGoToArrowWasClicked):
+        (WebInspector.NetworkSidebarPanel.prototype._treeElementCloseButtonClicked):
+        (WebInspector.NetworkSidebarPanel.prototype._canShowDifferentContentView):
+        (WebInspector.NetworkSidebarPanel.prototype._treeElementSelected):
+        (WebInspector.NetworkSidebarPanel.prototype._scopeBarSelectionDidChange):
+        A hybrid of ResourceSidebarPanel and TimelineSidebarPanel.
+
+        * UserInterface/Views/NetworkTabContentView.js: Added.
+        (WebInspector.NetworkTabContentView):
+        (WebInspector.NetworkTabContentView.prototype.get type):
+        (WebInspector.NetworkTabContentView.prototype.canShowRepresentedObject):
+
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView): Add Network tab and sort the tabs by their localized name.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype._handleNewTabClick):
+        Drive-by fix. Don't fire the click event if the new tab button is disabled.
+
+2015-07-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Mark console filters that have unseen messages by colored dots
+        https://bugs.webkit.org/show_bug.cgi?id=146616
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.css:
+        (.log-scope-bar > li.unread::before):
+        (.log-scope-bar > li.unread:hover::before):
+        (.log-scope-bar > li.unread.errors::before):
+        (.log-scope-bar > li.unread.warnings::before):
+        (.log-scope-bar > li.unread.logs::before):
+        (@keyframes unread-background-pulse):
+
+2015-07-06  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Exceptions in Network timeline when resource updates and filters are applied
+        https://bugs.webkit.org/show_bug.cgi?id=146609
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.insertChild):
+        (WebInspector.DataGrid.prototype.removeChild):
+        (WebInspector.DataGridNode.prototype.savePosition):
+        Convert exceptions to asserts and early returns.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._refreshDirtyDataGridNodes): Add some asserts and checks.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype.appendChild):
+        (WebInspector.TreeOutline.prototype.insertChild):
+        (WebInspector.TreeOutline.prototype.removeChildAtIndex):
+        (WebInspector.TreeOutline.prototype.removeChild):
+        Convert exceptions to asserts and early returns.
+
+2015-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Cached resources are missing startTime and size in Network timeline
+        https://bugs.webkit.org/show_bug.cgi?id=146607
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWasServedFromMemoryCache): Pass elapsedTime in the right argument order.
+        Add missing calls to Resource.increaseSize and Resource.increaseTransferSize.
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidReceiveResponse): Pass elapsedTime in the right argument order.
+
+2015-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Dim more borders when the window is inactive
+        https://bugs.webkit.org/show_bug.cgi?id=146608
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.css:
+        (body.window-inactive .data-grid th):
+        (body.window-inactive .data-grid :matches(th, td):not(:last-child)):
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (body.window-inactive .sidebar > .panel.navigation > .overflow-shadow):
+        * UserInterface/Views/OverviewTimelineView.css:
+        (body.window-inactive .timeline-view.overview > .timeline-ruler > .header):
+        * UserInterface/Views/TimelineDataGrid.css:
+        (body.window-inactive .data-grid.timeline th):
+        (body.window-inactive .data-grid.timeline > .navigation-bar-container > .navigation-bar):
+        * UserInterface/Views/TimelineRuler.css:
+        (body.window-inactive .timeline-ruler > .header):
+        (body.window-inactive .timeline-ruler > .header > .divider):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .status-bar):
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .title-bar):
+        (body.window-inactive .sidebar > .panel.navigation.timeline > .title-bar.timeline-events):
+
+2015-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Timeline row selection should have same background color in sidebar and data grid
+        https://bugs.webkit.org/show_bug.cgi?id=146606
+
+        Support a force-focus class name that TreeOutlineDataGridSynchronizer applies when one of the
+        elements is focused, so the other can look focused too.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child)):
+        (.data-grid:matches(:focus, .force-focus) tr.parent.selected td.disclosure::before):
+        (.data-grid:matches(:focus, .force-focus) tr.parent.expanded.selected td.disclosure::before):
+        (.data-grid:matches(:focus, .force-focus) tr.selected):
+        (.data-grid:matches(:focus, .force-focus) tr.selected td .subtitle):
+
+        * UserInterface/Views/Main.css:
+        (:matches(:focus, .force-focus) .selected .go-to-arrow):
+        (:matches(:focus, .force-focus) .selected .go-to-arrow:active):
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .disclosure-button):
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected.expanded .disclosure-button):
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected):
+        (.navigation-sidebar-panel-content-tree-outline:matches(:focus, .force-focus) .item.selected .subtitle):
+
+        * UserInterface/Views/TreeElementStatusButton.css:
+        (:matches(:focus, .force-focus) .item.selected > .status > .status-button > svg .filled):
+        (:matches(:focus, .force-focus) .item.selected > .status > .status-button > svg .stroked):
+
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridGainedFocus): Added.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridLostFocus): Added.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineGainedFocus): Added.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineLostFocus): Added.
+
+2015-07-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Deleting in the CSS sidebar causes the warning icon to appear mid-word
+        https://bugs.webkit.org/show_bug.cgi?id=146617
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleBeforeChange): Now removes all marks whenever the user deletes.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): The invalid marker now calculates
+        it's position based off of where the semicolon is in the property text.
+
+2015-07-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS rule with 2 pseudo-selectors appears twice
+        https://bugs.webkit.org/show_bug.cgi?id=146576
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+        Only adds pseudo-elements if the previous pseudo-element has a different selector.
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Wrong cursor position in styles panel when deleting a line break
+        https://bugs.webkit.org/show_bug.cgi?id=146577
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleBeforeChange): If the change is a deletion at the beginning of a line,
+        remove all markers on that line to ensure that there is no blank space on the previous line after deleting.
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pressing tab on a newline in the console should insert a tab character
+        https://bugs.webkit.org/show_bug.cgi?id=146612
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt.prototype._handleTabKey): Tabs can now be inserted at the beginning of newlines and before the first
+        non-space character on any other line.
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pressing enter on a newline in the styles sidebar inserts a semicolon
+        https://bugs.webkit.org/show_bug.cgi?id=146611
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleEnterKey): Now returns if the line is empty.
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console should indicate if you have unseen messages in console due to filters
+        https://bugs.webkit.org/show_bug.cgi?id=143166
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.updatePreviousMessageRepeatCount): Now returns true/false depending on if
+        the message count was actually updated.
+        * UserInterface/Views/LogContentView.css:
+        (.log-scope-bar > li.unread): Applies the unread-border-pulse keyframe animation.
+        (.log-scope-bar > li.unread.errors): The pulsing border is colored red.
+        (.log-scope-bar > li.unread.warnings): The pulsing border is colored yellow(ish).
+        (.log-scope-bar > li.unread.logs): The pulsing border is colored grey.
+        (@keyframes unread-border-pulse): Changes the color of the border from transparent to whatever is specificed.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype._determineMessageLevel):
+        (WebInspector.LogContentView.prototype._pulseScopeBarItemBorder): Adds the class "unread" to the scope bar item whose panel
+        the newest message belongs to, but only if that panel or the All panel is not visible.
+        (WebInspector.LogContentView.prototype._messageAdded):
+        (WebInspector.LogContentView.prototype._previousMessageRepeatCountUpdated):
+        (WebInspector.LogContentView.prototype._scopeBarSelectionDidChange): Clears the "unread" class on the selected scope bar item.
+        (WebInspector.LogContentView.prototype._filterMessageElements):
+        * UserInterface/Views/ScopeBar.js:
+        (WebInspector.ScopeBar.prototype.get items): Returns a list of all the items in the scope bar.
+        * UserInterface/Views/ScopeBarItem.js:
+        (WebInspector.ScopeBarItem): Added another parameter to allow for a custom class name.
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pseudo Styles Ordering and Media Queries
+        https://bugs.webkit.org/show_bug.cgi?id=145979
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label:not(.filter-section-non-matching) + .label.filter-matching-label:not(.filter-section-non-matching)):
+        Fix filter label styling with pseudo selectors.
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Pseudo-selector rules will now order directly after the last style that
+        matches the pseudo-selector without the pseudo-element.  If no rules match, place the pseudo-selector rules above the first
+        inherited or UserAgent rule (whichever comes first).
+
+2015-07-04  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION(r184000): Web Inspector: Multiline CSS in Styles Sidebar is marked as invalid
+        https://bugs.webkit.org/show_bug.cgi?id=146178
+
+        Reviewed by Timothy Hatcher.
+
+        First changes made by Tobias Reiss  <tobi+webkit@basecode.de>
+
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-between-values-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-between-values.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-between-rules-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-between-rules.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-newline-between-values-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-newline-between-values.css: Added.
+        * Tools/PrettyPrinting/index.html:
+        Add regression tests.
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Remove newlines before values that belong in one line and add whitespace between values. 
+
 2015-07-04  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: The arrow that appears for Web Inspector Layout & Rendering records overlaps the category switcher

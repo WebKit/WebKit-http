@@ -610,14 +610,14 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
 
 void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransactionId)
 {
-    if (lastLayerTreeTransactionId < m_firstLayerTreeTransactionIDAfterDidCommitLoad) {
-        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
-        return;
-    }
-
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
-    handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+    Frame* frameRespondingToClick = nodeRespondingToClick ? nodeRespondingToClick->document().frame() : nullptr;
+
+    if (!frameRespondingToClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToClick)->firstLayerTreeTransactionIDAfterDidCommitLoad())
+        send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
+    else
+        handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
 }
 
 void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
@@ -664,13 +664,19 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 
 void WebPage::commitPotentialTap(uint64_t lastLayerTreeTransactionId)
 {
-    if (!m_potentialTapNode || !m_potentialTapNode->renderer() || lastLayerTreeTransactionId < m_firstLayerTreeTransactionIDAfterDidCommitLoad) {
+    if (!m_potentialTapNode || !m_potentialTapNode->renderer()) {
         commitPotentialTapFailed();
         return;
     }
 
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(m_potentialTapLocation, adjustedPoint);
+    Frame* frameRespondingToClick = nodeRespondingToClick ? nodeRespondingToClick->document().frame() : nullptr;
+
+    if (!frameRespondingToClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToClick)->firstLayerTreeTransactionIDAfterDidCommitLoad()) {
+        commitPotentialTapFailed();
+        return;
+    }
 
     if (m_potentialTapNode == nodeRespondingToClick)
         handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
@@ -689,6 +695,17 @@ void WebPage::commitPotentialTapFailed()
 
 void WebPage::cancelPotentialTap()
 {
+    cancelPotentialTapInFrame(*m_mainFrame);
+}
+
+void WebPage::cancelPotentialTapInFrame(WebFrame& frame)
+{
+    if (m_potentialTapNode) {
+        Frame* potentialTapFrame = m_potentialTapNode->document().frame();
+        if (potentialTapFrame && !potentialTapFrame->tree().isDescendantOf(frame.coreFrame()))
+            return;
+    }
+
     m_potentialTapNode = nullptr;
     m_potentialTapLocation = FloatPoint();
 }
@@ -1978,7 +1995,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
         while (textForRange.length() && textForRange.length() > originalText.length() && loopCount < maxPositionsAttempts) {
             position = position.next();
             if (position.isNotNull() && position >= frame.selection().selection().start())
-                range = NULL;
+                range = nullptr;
             else
                 range = Range::create(*frame.document(), position, frame.selection().selection().start());
             textForRange = (range) ? plainTextReplacingNoBreakSpace(range.get()) : emptyString();
@@ -2164,15 +2181,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
             if (element->renderer())
                 info.touchCalloutEnabled = element->renderer()->style().touchCalloutEnabled();
 
-            if (element == linkElement) {
-                RefPtr<Range> linkRange = rangeOfContents(*linkElement);
-                Vector<FloatQuad> quads;
-                linkRange->textQuads(quads);
-                FloatRect linkBoundingBox;
-                for (const auto& quad : quads)
-                    linkBoundingBox.unite(quad.enclosingBoundingBox());
-                info.bounds = IntRect(linkBoundingBox);
-            } else if (RenderElement* renderer = element->renderer()) {
+            if (RenderElement* renderer = element->renderer()) {
                 if (renderer->isRenderImage())
                     info.bounds = downcast<RenderImage>(*renderer).absoluteContentQuad().enclosingBoundingBox();
                 else
@@ -2431,8 +2440,12 @@ void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
 
 void WebPage::elementDidFocus(WebCore::Node* node)
 {
+    if (m_assistedNode == node && m_hasFocusedDueToUserInteraction)
+        return;
+
     if (node->hasTagName(WebCore::HTMLNames::selectTag) || node->hasTagName(WebCore::HTMLNames::inputTag) || node->hasTagName(WebCore::HTMLNames::textareaTag) || node->hasEditableStyle()) {
         m_assistedNode = node;
+        m_hasFocusedDueToUserInteraction |= m_userIsInteracting;
         AssistedNodeInformation information;
         getAssistedNodeInformation(information);
         RefPtr<API::Object> userData;
@@ -2458,7 +2471,8 @@ void WebPage::elementDidBlur(WebCore::Node* node)
                 send(Messages::WebPageProxy::StopAssistingNode());
             m_hasPendingBlurNotification = false;
         });
-        m_assistedNode = 0;
+        m_hasFocusedDueToUserInteraction = false;
+        m_assistedNode = nullptr;
     }
 }
 
@@ -2804,7 +2818,7 @@ static inline FloatRect adjustExposedRectForBoundedScale(const FloatRect& expose
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo, double oldestTimestamp)
 {
     // Skip any VisibleContentRectUpdate that have been queued before DidCommitLoad suppresses the updates in the UIProcess.
-    if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() < m_firstLayerTreeTransactionIDAfterDidCommitLoad)
+    if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() < m_mainFrame->firstLayerTreeTransactionIDAfterDidCommitLoad())
         return;
 
     m_hasReceivedVisibleContentRectsAfterDidCommitLoad = true;

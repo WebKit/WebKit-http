@@ -485,7 +485,7 @@ void EventHandler::clear()
     m_mousePositionIsUnknown = true;
     m_lastKnownMousePosition = IntPoint();
     m_lastKnownMouseGlobalPosition = IntPoint();
-    m_mousePressNode = 0;
+    m_mousePressNode = nullptr;
     m_mousePressed = false;
     m_capturesDragging = false;
     m_capturingMouseEventsElement = nullptr;
@@ -494,7 +494,7 @@ void EventHandler::clear()
 #endif
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_originatingTouchPointTargets.clear();
-    m_originatingTouchPointDocument.clear();
+    m_originatingTouchPointDocument = nullptr;
     m_originatingTouchPointTargetKey = 0;
 #endif
     m_maxMouseMovedDuration = 0;
@@ -633,8 +633,14 @@ void EventHandler::selectClosestContextualWordFromMouseEvent(const MouseEventWit
 void EventHandler::selectClosestContextualWordOrLinkFromMouseEvent(const MouseEventWithHitTestResults& result)
 {
     Element* urlElement = result.hitTestResult().URLElement();
-    if (!urlElement || !isDraggableLink(*urlElement))
+    if (!urlElement || !isDraggableLink(*urlElement)) {
+        if (Node* targetNode = result.targetNode()) {
+            if (isEditableNode(*targetNode))
+                return selectClosestWordFromMouseEvent(result);
+        }
+
         return selectClosestContextualWordFromMouseEvent(result);
+    }
 
     Node* targetNode = result.targetNode();
 
@@ -3994,7 +4000,7 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
     }
     m_touchPressed = touches->length() > 0;
     if (allTouchReleased)
-        m_originatingTouchPointDocument.clear();
+        m_originatingTouchPointDocument = nullptr;
 
     // Now iterate the changedTouches list and m_targets within it, sending events to the targets as required.
     bool swallowedEvent = false;

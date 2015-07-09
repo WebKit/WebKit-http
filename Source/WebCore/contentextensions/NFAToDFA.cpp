@@ -44,15 +44,17 @@ namespace ContentExtensions {
 typedef MutableRange<char, NFANodeIndexSet> NFANodeRange;
 typedef MutableRangeList<char, NFANodeIndexSet> NFANodeRangeList;
 typedef MutableRangeList<char, NFANodeIndexSet, 128> PreallocatedNFANodeRangeList;
+typedef Vector<uint32_t, 0, ContentExtensionsOverflowHandler> UniqueNodeList;
+typedef Vector<UniqueNodeList, 0, ContentExtensionsOverflowHandler> NFANodeClosures;
 
 // FIXME: set a better initial size.
 // FIXME: include the hash inside NodeIdSet.
 typedef NFANodeIndexSet NodeIdSet;
 
-static inline void epsilonClosureExcludingSelf(NFA& nfa, unsigned nodeId, Vector<unsigned>& output)
+static inline void epsilonClosureExcludingSelf(NFA& nfa, unsigned nodeId, UniqueNodeList& output)
 {
     NodeIdSet closure({ nodeId });
-    Vector<unsigned, 64> unprocessedNodes({ nodeId });
+    Vector<unsigned, 64, ContentExtensionsOverflowHandler> unprocessedNodes({ nodeId });
 
     do {
         unsigned unprocessedNodeId = unprocessedNodes.takeLast();
@@ -71,7 +73,7 @@ static inline void epsilonClosureExcludingSelf(NFA& nfa, unsigned nodeId, Vector
     output.shrinkToFit();
 }
 
-static void resolveEpsilonClosures(NFA& nfa, Vector<Vector<unsigned>>& nfaNodeClosures)
+static void resolveEpsilonClosures(NFA& nfa, NFANodeClosures& nfaNodeClosures)
 {
     unsigned nfaGraphSize = nfa.nodes.size();
     nfaNodeClosures.resize(nfaGraphSize);
@@ -85,10 +87,10 @@ static void resolveEpsilonClosures(NFA& nfa, Vector<Vector<unsigned>>& nfaNodeCl
     nfa.epsilonTransitionsTargets.clear();
 }
 
-static ALWAYS_INLINE void extendSetWithClosure(const Vector<Vector<unsigned>>& nfaNodeClosures, unsigned nodeId, NodeIdSet& set)
+static ALWAYS_INLINE void extendSetWithClosure(const NFANodeClosures& nfaNodeClosures, unsigned nodeId, NodeIdSet& set)
 {
     ASSERT(set.contains(nodeId));
-    const Vector<unsigned>& nodeClosure = nfaNodeClosures[nodeId];
+    const UniqueNodeList& nodeClosure = nfaNodeClosures[nodeId];
     if (!nodeClosure.isEmpty())
         set.add(nodeClosure.begin(), nodeClosure.end());
 }
@@ -110,6 +112,8 @@ struct UniqueNodeIdSetImpl {
 private:
     unsigned m_buffer[1];
 };
+
+typedef Vector<UniqueNodeIdSetImpl*, 128, ContentExtensionsOverflowHandler> UniqueNodeQueue;
 
 class UniqueNodeIdSet {
 public:
@@ -295,7 +299,7 @@ private:
 };
 
 struct DataConverterWithEpsilonClosure {
-    const Vector<Vector<unsigned>>& nfaNodeclosures;
+    const NFANodeClosures& nfaNodeclosures;
 
     template<typename Iterable>
     NFANodeIndexSet convert(const Iterable& iterable)
@@ -303,7 +307,7 @@ struct DataConverterWithEpsilonClosure {
         NFANodeIndexSet result;
         for (unsigned nodeId : iterable) {
             result.add(nodeId);
-            const Vector<unsigned>& nodeClosure = nfaNodeclosures[nodeId];
+            const UniqueNodeList& nodeClosure = nfaNodeclosures[nodeId];
             result.add(nodeClosure.begin(), nodeClosure.end());
         }
         return result;
@@ -315,14 +319,14 @@ struct DataConverterWithEpsilonClosure {
         for (unsigned nodeId : iterable) {
             auto addResult = destination.add(nodeId);
             if (addResult.isNewEntry) {
-                const Vector<unsigned>& nodeClosure = nfaNodeclosures[nodeId];
+                const UniqueNodeList& nodeClosure = nfaNodeclosures[nodeId];
                 destination.add(nodeClosure.begin(), nodeClosure.end());
             }
         }
     }
 };
 
-static inline void createCombinedTransition(PreallocatedNFANodeRangeList& combinedRangeList, const UniqueNodeIdSetImpl& sourceNodeSet, const NFA& immutableNFA, const Vector<Vector<unsigned>>& nfaNodeclosures)
+static inline void createCombinedTransition(PreallocatedNFANodeRangeList& combinedRangeList, const UniqueNodeIdSetImpl& sourceNodeSet, const NFA& immutableNFA, const NFANodeClosures& nfaNodeclosures)
 {
     combinedRangeList.clear();
 
@@ -336,74 +340,7 @@ static inline void createCombinedTransition(PreallocatedNFANodeRangeList& combin
     }
 }
 
-static inline bool canUseFallbackTransition(const PreallocatedNFANodeRangeList& rangeList)
-{
-    // Transitions can contains "0" if the expression has a end-of-line marker.
-    // Fallback transitions cover 1-127. We have to be careful with the first.
-
-    auto iterator = rangeList.begin();
-    auto end = rangeList.end();
-    if (iterator == end)
-        return false;
-
-    char lastSeenCharacter = 0;
-    if (!iterator->first) {
-        lastSeenCharacter = iterator->last;
-        if (lastSeenCharacter == 127)
-            return true;
-        ++iterator;
-    }
-
-    for (;iterator != end; ++iterator) {
-        ASSERT(iterator->first > lastSeenCharacter);
-        if (iterator->first != lastSeenCharacter + 1)
-            return false;
-
-        if (iterator->last == 127)
-            return true;
-        lastSeenCharacter = iterator->last;
-    }
-    return false;
-}
-
-static inline uint32_t findBestFallbackTarget(const PreallocatedNFANodeRangeList& rangeList, const Vector<unsigned, 128>& rangeToTarget)
-{
-    ASSERT(canUseFallbackTransition(rangeList));
-
-    HashMap<uint32_t, unsigned, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> histogram;
-
-    unsigned rangeToTargetIndex = 0;
-    auto iterator = rangeList.begin();
-    auto end = rangeList.end();
-    ASSERT_WITH_MESSAGE(iterator != end, "An empty range list cannot use a fallback transition.");
-
-    if (!iterator->first && !iterator->last) {
-        ++iterator;
-        ++rangeToTargetIndex;
-    }
-    ASSERT_WITH_MESSAGE(iterator != end, "An empty range list matching only zero cannot use a fallback transition.");
-
-    uint32_t bestTarget = rangeToTarget[rangeToTargetIndex];
-    unsigned bestTargetScore = !iterator->first ? iterator->size() - 1 : iterator->size();
-    histogram.add(bestTarget, bestTargetScore);
-    ++iterator;
-    ++rangeToTargetIndex;
-
-    for (;iterator != end; ++iterator, ++rangeToTargetIndex) {
-        unsigned rangeSize = iterator->size();
-        uint32_t target = rangeToTarget[rangeToTargetIndex];
-        auto addResult = histogram.add(target, rangeSize);
-        if (!addResult.isNewEntry)
-            addResult.iterator->value += rangeSize;
-        if (addResult.iterator->value > bestTargetScore) {
-            bestTargetScore = addResult.iterator->value;
-            bestTarget = target;
-        }
-    }
-    return bestTarget;
-}
-
-static ALWAYS_INLINE unsigned getOrCreateDFANode(const NodeIdSet& nfaNodeSet, const NFA& nfa, DFA& dfa, UniqueNodeIdSetTable& uniqueNodeIdSetTable, Vector<UniqueNodeIdSetImpl*>& unprocessedNodes)
+static ALWAYS_INLINE unsigned getOrCreateDFANode(const NodeIdSet& nfaNodeSet, const NFA& nfa, DFA& dfa, UniqueNodeIdSetTable& uniqueNodeIdSetTable, UniqueNodeQueue& unprocessedNodes)
 {
     NodeIdSetToUniqueNodeIdSetSource nodeIdSetToUniqueNodeIdSetSource(dfa, nfa, nfaNodeSet);
     auto uniqueNodeIdAddResult = uniqueNodeIdSetTable.add<NodeIdSetToUniqueNodeIdSetTranslator>(nodeIdSetToUniqueNodeIdSetSource);
@@ -415,7 +352,7 @@ static ALWAYS_INLINE unsigned getOrCreateDFANode(const NodeIdSet& nfaNodeSet, co
 
 DFA NFAToDFA::convert(NFA& nfa)
 {
-    Vector<Vector<unsigned>> nfaNodeClosures;
+    NFANodeClosures nfaNodeClosures;
     resolveEpsilonClosures(nfa, nfaNodeClosures);
 
     DFA dfa;
@@ -428,50 +365,28 @@ DFA NFAToDFA::convert(NFA& nfa)
     NodeIdSetToUniqueNodeIdSetSource initialNodeIdSetToUniqueNodeIdSetSource(dfa, nfa, initialSet);
     auto addResult = uniqueNodeIdSetTable.add<NodeIdSetToUniqueNodeIdSetTranslator>(initialNodeIdSetToUniqueNodeIdSetSource);
 
-    Vector<UniqueNodeIdSetImpl*> unprocessedNodes;
+    UniqueNodeQueue unprocessedNodes;
     unprocessedNodes.append(addResult.iterator->impl());
 
     PreallocatedNFANodeRangeList combinedRangeList;
-    Vector<unsigned, 128> rangeToTarget;
     do {
         UniqueNodeIdSetImpl* uniqueNodeIdSetImpl = unprocessedNodes.takeLast();
         createCombinedTransition(combinedRangeList, *uniqueNodeIdSetImpl, nfa, nfaNodeClosures);
 
-        rangeToTarget.clear();
+        unsigned transitionsStart = dfa.transitionRanges.size();
         for (const NFANodeRange& range : combinedRangeList) {
             unsigned targetNodeId = getOrCreateDFANode(range.data, nfa, dfa, uniqueNodeIdSetTable, unprocessedNodes);
-            rangeToTarget.append(targetNodeId);
+            dfa.transitionRanges.append({ range.first, range.last });
+            dfa.transitionDestinations.append(targetNodeId);
         }
-
-        bool useFallbackTransition = canUseFallbackTransition(combinedRangeList);
-        uint32_t preferedFallbackTarget = 0;
-        if (useFallbackTransition)
-            preferedFallbackTarget = findBestFallbackTarget(combinedRangeList, rangeToTarget);
-
-        unsigned transitionsStart = dfa.transitionCharacters.size();
-        unsigned rangeToTargetIndex = 0;
-
-        for (const NFANodeRange& range : combinedRangeList) {
-            unsigned targetNodeId = rangeToTarget[rangeToTargetIndex];
-
-            if (!(useFallbackTransition && targetNodeId == preferedFallbackTarget)) {
-                for (unsigned i = range.first; i <= static_cast<unsigned>(range.last); ++i) {
-                    dfa.transitionCharacters.append(static_cast<uint8_t>(i));
-                    dfa.transitionDestinations.append(targetNodeId);
-                }
-            }
-            ++rangeToTargetIndex;
-        }
-        unsigned transitionsEnd = dfa.transitionCharacters.size();
+        unsigned transitionsEnd = dfa.transitionRanges.size();
         unsigned transitionsLength = transitionsEnd - transitionsStart;
+
         unsigned dfaNodeId = uniqueNodeIdSetImpl->m_dfaNodeId;
         DFANode& dfaSourceNode = dfa.nodes[dfaNodeId];
-        ASSERT_WITH_MESSAGE(transitionsLength < 127, "Transitions covering the entire alphabet should use a fallback transition");
         dfaSourceNode.setTransitions(transitionsStart, static_cast<uint8_t>(transitionsLength));
-
-        if (useFallbackTransition)
-            dfaSourceNode.addFallbackTransition(dfa, preferedFallbackTarget);
     } while (!unprocessedNodes.isEmpty());
+
     return dfa;
 }
 

@@ -1,3 +1,579 @@
+2015-07-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix grammar issue in TypeError attempting to change an unconfigurable property
+        https://bugs.webkit.org/show_bug.cgi?id=146774
+
+        Reviewed by Brent Fulgham.
+
+        * js/dom/Object-defineProperty-expected.txt:
+
+2015-07-08  Daniel Bates  <dbates@webkit.org>
+
+        [EFL] vibration/navigator-vibration.html failed after r186265
+        https://bugs.webkit.org/show_bug.cgi?id=146770
+
+        Reviewed by Gyuyoung Kim.
+
+        Update test LayoutTests/vibration/navigator-vibration.html and its expected result.
+
+        Following <http://trac.webkit.org/changeset/186265> extra arguments passed
+        to a Web IDL overloaded function are ignored per section "Interface object Call? method"
+        of the Web IDL spec, <http://www.w3.org/TR/2012/CR-WebIDL-20120419/> (19 April 2012).
+
+        * vibration/navigator-vibration-expected.txt:
+        * vibration/navigator-vibration.html:
+
+2015-07-08  Andreas Kling  <akling@apple.com>
+
+        Videos on apple.com don't show up when restored from page cache.
+        <https://webkit.org/b/146766>
+        <rdar://problem/21712311>
+
+        Reviewed by Darin Adler.
+
+        Tweaked an existing media element page caching test to dump out the video height
+        after restoring from page cache. Failure to restore the video player would result
+        in incorrect geometry (it falls back to RenderReplaced's default 300x150.)
+
+        * media/restore-from-page-cache-expected.txt:
+        * media/restore-from-page-cache.html:
+
+2015-07-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] Fuse undistinguishable actions as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=146762
+
+        Reviewed by Alex Christensen.
+
+        Make sure the last CSS rule is not ignored.
+
+        * http/tests/contentextensions/css-display-none-after-ignore-previous-rules-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-after-ignore-previous-rules.html: Added.
+        * http/tests/contentextensions/css-display-none-after-ignore-previous-rules.html.json: Added.
+        * http/tests/contentextensions/single-css-display-none-expected.txt: Added.
+        * http/tests/contentextensions/single-css-display-none.html: Added.
+        * http/tests/contentextensions/single-css-display-none.html.json: Added.
+
+2015-07-08  Wenson Hsieh  <whsieh@berkeley.edu>
+
+        Fix asynchronous function calls for scroll snap animation tests
+        https://bugs.webkit.org/show_bug.cgi?id=146753
+
+        Reviewed by Brent Fulgham.
+
+        Fixes unintended use of setTimeout in several scroll snap tests.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html: Fixed asynchronous Javascript invocations.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html: See above.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html: See above.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html: See above.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html: See above.
+
+2015-07-08  Brady Eidson  <beidson@apple.com>
+
+        Now that PingLoaders work in the NetworkProcess, re-enable http/tests/navigation/ping-cookie.html
+        https://bugs.webkit.org/show_bug.cgi?id=146747
+
+        Reviewed by Tim Horton.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2015-07-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Crash when appending an SVG <use> element dynamically which has animated SVG <path> element
+        https://bugs.webkit.org/show_bug.cgi?id=146690
+        <rdar://problem/20790376>
+
+        Reviewed by Dean Jackson.
+
+        When adding dynamically a new <use> element which references an animated
+        SVG path after the animation starts, ensure that WebKit is not crashing.
+
+        * svg/animations/insert-animate-use-path-while-animation-expected.txt: Added.
+        * svg/animations/insert-animate-use-path-while-animation.svg: Added.
+
+2015-07-08  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/xmlviewer/dumpAsText/svg.xml contains a typo that breaks the test with libxml2 v2.9.2
+
+        * http/tests/xmlviewer/dumpAsText/svg.xml: Add missing space to
+        <svg:svg> tag make this test work with libxml2 v2.9.2.
+
+2015-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening after r186500.
+
+        * platform/gtk/TestExpectations: Mark new failures and remove new passes
+        that were affected by the update of libraries inside the JHBuild.
+        * platform/gtk/fast/css/input-search-padding-expected.png: Rebaseline test.
+        * platform/gtk/fast/css/input-search-padding-expected.txt: Rebaseline test.
+
+2015-07-08  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-{cached,deny-delete-frame-in-load-event}.html crash on Windows Debug bots
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-cached.html>
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-deny-delete-frame-in-load-event.html>
+
+        * platform/win/TestExpectations: Mark tests as crashing:
+        - http/tests/security/XFrameOptions/x-frame-options-cached.html
+        - http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event.html
+
+2015-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations: Report and mark new failing tests.
+        * platform/gtk/editing/pasteboard/onpaste-text-html-expected.txt: Rebaseline after r186191.
+        * platform/gtk/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt: Added. Rebaseline after r185166.
+        * platform/gtk/fast/images/gif-loop-count-expected.png: Removed. Remove unneded expected image result after 185310.
+        * platform/gtk/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt: Rebaseline after r185533.
+        * platform/gtk/media/media-controls-clone-expected.png: Rebaseline after r184932.
+        * platform/gtk/media/media-controls-clone-expected.txt: Rebaseline after r184932.
+        * platform/gtk/media/video-controls-rendering-expected.png: Rebaseline after r184932.
+        * platform/gtk/media/video-controls-rendering-expected.txt: Rebaseline after r184932.
+
+2015-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        Crash when parent iframe is set to display none and the child frame is mutated the same time.
+        https://bugs.webkit.org/show_bug.cgi?id=146699
+        rdar://problem/16207881
+
+        Reviewed by Andreas Kling.
+
+        When the parent iframe is set to display: none, we destroy the associated renderer (RenderIFrame).
+        However if the child frame is mutated the same time, during layout we try to access this RenderIFrame
+        to check whether it needs frame flattening.
+        This patch checks whether the parent render widget is still valid.
+
+        * fast/frames/crash-display-none-iframe-during-onbeforeload-expected.txt: Added.
+        * fast/frames/crash-display-none-iframe-during-onbeforeload.html: Added.
+        * fast/frames/resources/displaynone-this-during-object-beforeload.html: Added.
+
+2015-07-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed test skip after r186476.
+
+        * platform/win/TestExpectations:
+
+2015-07-07  Brady Eidson  <beidson@apple.com>
+
+        HTTP Auth cached after disabling private browsing/reset.
+        <rdar://problem/8293055> and https://bugs.webkit.org/show_bug.cgi?id=146654
+
+        Reviewed by Tim Horton.
+
+        * http/tests/security/private-browsing-http-auth-expected.txt: Added.
+        * http/tests/security/private-browsing-http-auth.html: Added.
+        * http/tests/security/resources/auth-echo.php: Added.
+        * http/tests/security/resources/basic-auth.php: Added.
+        * platform/wk2/TestExpectations:
+
+2015-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(169105): CSS Regions: renderer returns wrong selection root when it is inside a column flow.
+        https://bugs.webkit.org/show_bug.cgi?id=146529
+        rdar://problem/21613670
+
+        Reviewed by Mihnea Ovidenie and David Kilzer.
+
+        This patch ensures that RenderObject::selectionRoot() handles column flows properly while searching for the associated
+        selection root.
+        When the renderer is inside a column flow and the column flow is part of a named flow, we stop
+        traversing the ancestor chain, searching for the selection root, when we reach the column flow.
+        Since the column flow is not a selection root, we mistakenly fall back to the RenderView as selection root.
+        Instead, we should check if the column is inside a named flow and return the selection root accordingly.
+        Returning the wrong selection root confuses RenderView::splitSelectionBetweenSubtrees() logic and this particular
+        RenderObject could end up in multiple selection trees.
+
+        * fast/regions/selection/crash-when-element-is-inside-column-and-the-containing-block-is-inside-flow-expected.txt: Added.
+        * fast/regions/selection/crash-when-element-is-inside-column-and-the-containing-block-is-inside-flow.html: Added.
+
+2015-07-07  Wenson Hsieh  <whsieh@berkeley.edu>
+
+        Snap point regions containing X and Y snap points should do a better job animating
+        https://bugs.webkit.org/show_bug.cgi?id=142523
+        <rdar://problem/20100753>
+
+        Reviewed by Brent Fulgham.
+
+        Tests that snap points are honored when scrolling in a 2D overflow container.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow.html: Added.
+
+2015-07-07  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r183706): HTMLImageElement sometimes fails to register as document named item.
+        <https://webkit.org/b/146679>
+        <rdar://problem/21613839>
+
+        Reviewed by Antti Koivisto.
+
+        Add a test that would assert when removing a named HTMLImageElement from the DOM
+        after having failed to register it as a document named item.
+
+        * fast/dom/HTMLImageElement/remove-img-with-name-from-document-crash-expected.txt: Added.
+        * fast/dom/HTMLImageElement/remove-img-with-name-from-document-crash.html: Added.
+
+2015-07-07  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186388): http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html always fails on Windows
+
+        * platform/win/TestExpectations: Consolidate WebAudio skips.
+        Mark test as always failing:
+        - http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html
+
+2015-07-07  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html crashes on Windows sometimes
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-deny-meta-tag-parent-same-origin-allow.html>
+
+        * platform/win/TestExpectations: Mark test as crashing, too:
+        - http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html
+
+2015-07-07  David Kilzer  <ddkilzer@apple.com>
+
+        El Capitan: Hangs caused by PDFs should be fixed
+
+        * platform/mac-wk1/TestExpectations: Remove skipped tests as the
+        PDF hangs should be fixed.
+
+2015-07-07  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186391): css3/masking/mask-repeat-space-padding.html image-only failure on El Capitan WK1
+
+        * platform/mac-wk1/TestExpectations: Mark as image-only failure:
+        - css3/masking/mask-repeat-space-padding.html
+
+2015-07-07  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Remove ReadableStreamStream.read() custom binding
+        https://bugs.webkit.org/show_bug.cgi?id=146643
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/brand-checks-expected.txt:
+
+2015-07-06  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION: Slider thumb does not render properly (image tests with <input type="range">)
+        https://bugs.webkit.org/show_bug.cgi?id=146669
+        rdar://problem/21677831
+
+        Reviewed by Simon Fraser.
+
+        Draw NSSliderCell's knob only when slider's thumb paint is requested.
+
+        Covered by existing tests.
+
+        * platform/mac/TestExpectations: Unskip slider tests.
+
+2015-07-06  Andreas Kling  <akling@apple.com>
+
+        Crash when setting text direction via MakeTextWritingDirection* editing commands.
+        <https://webkit.org/b/146665>
+        <rdar://problem/20835477>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a test that covers some very simple MakeTextWritingDirection* command usage.
+
+        * editing/style/change-text-direction-crash-expected.txt: Added.
+        * editing/style/change-text-direction-crash.html: Added.
+
+2015-07-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert use of SVG <mask> elements for -webkit-mask-image (r176798, r177494, r186180)
+        https://bugs.webkit.org/show_bug.cgi?id=146653
+
+        Reviewed by Dean Jackson.
+
+        Fixes rdar://problem/21435233.
+
+        r177494 caused a number of regressions (bugs 141857, 146509, 146561), added new layering violations, and
+        was not being maintained, so revert it.
+
+        This patch reverts r177494.
+
+        * css3/masking/mask-base64-expected.html: Removed.
+        * css3/masking/mask-base64.html: Removed.
+        * css3/masking/mask-multiple-values-expected.html: Removed.
+        * css3/masking/mask-multiple-values.html: Removed.
+        * css3/masking/mask-repeat-space-padding-expected.html:
+        * css3/masking/mask-repeat-space-padding.html:
+        * css3/masking/mask-svg-clipped-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-clipped-fragmentId.html: Removed.
+        * css3/masking/mask-svg-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-fragmentId.html: Removed.
+        * css3/masking/mask-svg-inline-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-inline-fragmentId.html: Removed.
+        * css3/masking/mask-svg-inline-invalid-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-inline-invalid-fragmentId.html: Removed.
+        * css3/masking/mask-svg-invalid-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-invalid-fragmentId.html: Removed.
+        * css3/masking/mask-svg-no-fragmentId-expected.html: Removed.
+        * css3/masking/mask-svg-no-fragmentId-tiled-expected.html: Removed.
+        * css3/masking/mask-svg-no-fragmentId-tiled.html: Removed.
+        * css3/masking/mask-svg-no-fragmentId.html: Removed.
+        * css3/masking/mask-svg-script-entire-svg-to-mask-expected.html: Removed.
+        * css3/masking/mask-svg-script-entire-svg-to-mask.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-entire-svg-expected.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-entire-svg.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-none-expected.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-none.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-png-expected.html: Removed.
+        * css3/masking/mask-svg-script-mask-to-png.html: Removed.
+        * css3/masking/mask-svg-script-none-to-mask-expected.html: Removed.
+        * css3/masking/mask-svg-script-none-to-mask.html: Removed.
+        * css3/masking/mask-svg-script-none-to-png-expected.html: Removed.
+        * css3/masking/mask-svg-script-none-to-png.html: Removed.
+        * css3/masking/mask-svg-script-png-to-mask-expected.html: Removed.
+        * css3/masking/mask-svg-script-png-to-mask.html: Removed.
+        * css3/masking/mask-svg-script-png-to-none-expected.html: Removed.
+        * css3/masking/mask-svg-script-png-to-none.html: Removed.
+        * css3/masking/resources/masks.svg: Removed.
+
+2015-07-06  Daniel Bates  <dabates@apple.com>
+
+        Isolated worlds should respect Content Security Policy; User Agent Shadow DOM
+        should be exempt from Content Security Policy
+        https://bugs.webkit.org/show_bug.cgi?id=144830
+        <rdar://problem/18860261>
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests to ensure that we exempt nodes in a user agent shadow tree from the Content Security Policy (CSP) of the page.
+
+        Updated test LayoutTests/http/tests/security/isolatedWorld/bypass-main-world-csp.html to ensure that
+        we do not bypass the CSP of the page for a script that executes in an isolated world and renamed the
+        file image-load-should-not-bypass-main-world-csp.html.
+
+        * http/tests/security/contentSecurityPolicy/resources/alert-pass-and-notify-done.js: Added.
+        * http/tests/security/contentSecurityPolicy/resources/wait-until-done.js: Added.
+        (alertAndDone):
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-background-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-background.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-cursor-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-cursor.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-filter-on-image-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-filter-on-image.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-webkit-image-set-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-css-webkit-image-set.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-embed-plugin-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-embed-plugin.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-external-script-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-external-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-image-after-redirect-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-image-after-redirect.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-image-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-image.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-script-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-style-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-style.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-stylesheet-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-inline-stylesheet.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-object-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-object-plugin-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-object-plugin.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-object.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-feimage-element-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-feimage-element.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-font-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-font.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-use-element-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-svg-use-element.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-track-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-track.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/block-loading-user-agent-image-from-non-user-agent-content-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/block-loading-user-agent-image-from-non-user-agent-content.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked2-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked2.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked3-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked3.html: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/resources/ABCFont.svg: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/resources/allow-inline-script.js: Added.
+        (window.onload):
+        (testPassed):
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/resources/floodGreenFilter.svg: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/video-controls-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/video-controls-allowed.html: Added.
+        * http/tests/security/isolatedWorld/image-load-should-not-bypass-main-world-csp-expected.txt: Renamed from LayoutTests/http/tests/security/isolatedWorld/bypass-main-world-csp-expected.txt.
+        * http/tests/security/isolatedWorld/image-load-should-not-bypass-main-world-csp.html: Renamed from LayoutTests/http/tests/security/isolatedWorld/bypass-main-world-csp.html.
+
+2015-07-06  Saam barati  <saambarati1@gmail.com>
+
+        JSC's parser should follow the ES6 spec with respect to parsing Declarations
+        https://bugs.webkit.org/show_bug.cgi?id=146621
+
+        Reviewed by Mark Lam.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/const.js:
+        (with1):
+        (with2):
+        * js/script-tests/parser-syntax-check.js:
+        * js/script-tests/statement-list-item-syntax-errors.js: Added.
+        (testSyntax):
+        (runTests):
+        * js/statement-list-item-syntax-errors-expected.txt: Added.
+        * js/statement-list-item-syntax-errors.html: Added.
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.5-expected.txt:
+
+2015-07-06  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html crashes on Windows sometimes
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-deny-meta-tag.html>
+
+        * platform/win/TestExpectations: Mark test as crashing, too:
+        - http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html
+
+2015-07-06  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html crashes on Windows sometimes
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-parent-same-origin-deny.html>
+
+        * platform/win/TestExpectations: Mark test as crashing, too:
+        - http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny.html
+
+2015-07-06  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Promise-returning functions should reject promises if the callee is not of the expected type
+        https://bugs.webkit.org/show_bug.cgi?id=146585
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/brand-checks-expected.txt:
+
+2015-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Update toLength / toInteger names in control profiler test results
+        https://bugs.webkit.org/show_bug.cgi?id=146229
+
+        Reviewed by Simon Fraser.
+
+        ToLength / ToInteger are renamed to toLength / toInteger.
+        Update the names in the test results for control profiler.
+
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt:
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt:
+
+2015-07-05  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r180582): background-attachment: local; does not scroll the background image when scrolling the the element's contents
+        https://bugs.webkit.org/show_bug.cgi?id=146623
+
+        Reviewed by Zalan Bujtas.
+        
+        Ref test for background-attachment: local.
+
+        * fast/backgrounds/background-attachment-local-expected.html: Added.
+        * fast/backgrounds/background-attachment-local.html: Added.
+
+2015-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement the latest Promise spec in JS
+        https://bugs.webkit.org/show_bug.cgi?id=146229
+
+        Reviewed by Sam Weinig.
+
+        Add a test to guarantee that `Promise.resolve` looks up `then` field synchronously.
+
+        * js/dom/Promise-resolve-lookup-then-expected.txt: Added.
+        * js/dom/Promise-resolve-lookup-then.html: Added.
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (El Capitan): Slider thumb of range input is rotated on reference tests
+
+        Fix tracked by <rdar://problem/21677831>.
+
+        * platform/mac/TestExpectations: Mark tests as image-only failures:
+        - css3/flexbox/flexitem-stretch-range.html
+        - fast/forms/range/input-appearance-range-rtl.html
+        - fast/forms/range/range-change-min-max.html
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186198): js/dom/global-constructors-attributes.html fails on El Capitan
+
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        Update results after r186198.
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        fast/canvas/webgl/oes-texture-half-float-linear.html is flakey on Yosemite Release/Debug WK1/WK2
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fcanvas%2Fwebgl%2Foes-texture-half-float-linear.html>
+
+        * platform/mac/TestExpectations: Mark test as flaky:
+        - fast/canvas/webgl/oes-texture-half-float-linear.html
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        fast/forms/textarea/textarea-state-restore.html is flaky on WK2
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fforms%2Ftextarea%2Ftextarea-state-restore.html>
+
+        Fix tracked by <http://webkit.org/b/90980>.
+
+        * platform/efl/TestExpectations: Move expectation from here...
+        * platform/gtk/TestExpectations: ...and here...
+        * platform/wk2/TestExpectations: ...to here:
+        - fast/forms/textarea/textarea-state-restore.html
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html crashes on Windows Debug
+
+        <https://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-parent-same-origin-allow.html>
+
+        * platform/win/TestExpectations: Mark as crashing:
+        - http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow.html
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        webgl/1.0.2/conformance/more/functions/copyTexImage2DBadArgs.html fails due to truncated expected results on Yosemite Debug WK1
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=webgl%2F1.0.2%2Fconformance%2Fmore%2Ffunctions%2FcopyTexImage2DBadArgs.html>
+
+        Fix tracked by <http://webkit.org/b/146622>.
+
+        * platform/mac-wk1/TestExpectations: Mark as flaky:
+        - webgl/1.0.2/conformance/more/functions/copyTexImage2DBadArgs.html
+
+2015-07-05  David Kilzer  <ddkilzer@apple.com>
+
+        fast/preloader/document-write-2.html is flaky on WK2
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Fpreloader%2Fdocument-write-2.html>
+
+        When the test fails, the first two lines are reversed:
+
+        @@ -1,2 +1,2 @@
+        +script1.js has MIME type text/javascript
+         document-write-plaintext.js has MIME type text/javascript
+        -script1.js has MIME type text/javascript
+
+        * platform/wk2/TestExpectations: Mark test as flaky:
+        - fast/preloader/document-write-2.html
+
 2015-07-03  Chris Dumez  <cdumez@apple.com>
 
         REGRESSION (r178097): HTMLSelectElement.add(option, undefined) prepends option to the list of options; should append to the end of the list of options

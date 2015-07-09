@@ -1,3 +1,134 @@
+2015-07-08  Brady Eidson  <beidson@apple.com>
+
+        Crash calling [WebView close] in didFinishLoadForFrame callback.
+        <rdar://problem/21690765> and https://bugs.webkit.org/show_bug.cgi?id=146773
+
+        Reviewed by David Kilzer.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        
+        * TestWebKitAPI/Tests/mac/WebViewCloseInsideDidFinishLoadForFrame.mm: Added.
+        (-[WebViewCloseFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2015-07-08  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Fix ASSERTION FAILED: !m_pendingNavigationID in WebPage::reload().
+        https://bugs.webkit.org/show_bug.cgi?id=146546
+
+        Reviewed by Darin Adler.
+
+        We did't reset pendingNavigationID value when request url is empty.
+        Hence we need to ignore ASSERT check in this case.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-07-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] Fuse undistinguishable actions as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=146762
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        Test that combinations and flags still work as expected.
+
+2015-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [Wayland] Allow building and testing the Wayland target with the default JHBuild moduleset.
+        https://bugs.webkit.org/show_bug.cgi?id=146056
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: libepoxy is now required for building GTK+.
+        * gtk/jhbuild-wayland.modules: Removed. Not longer needed.
+        * gtk/jhbuild.modules: Upgrade GTK+ (3.16.4) and required dependencies for building:
+        Cairo (1.14.2), Gdk-Pixbuf (2.30.8) and GLib (2.44.1).
+        * gtk/patches/cairo-1.12.8-add_disable-lto.patch: Removed. Not longer needed.
+        Cairo removed support for LTO on (1.14). Upstream commit: c7ff9bb.
+        * gtk/patches/gtk-3.6-do-not-shutdown-accessibility.patch: Removed. Not longer needed.
+        GTK+ merged this patch on GTK+-3.10. Upstream commit: 8d83d98.
+
+2015-07-06  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: propagate metadata changes to UI clients
+        https://bugs.webkit.org/show_bug.cgi?id=146660
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp: Build fixes for updated PageUIClient.
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+
+2015-07-07  Brady Eidson  <beidson@apple.com>
+
+        HTTP Auth cached after disabling private browsing/reset.
+        <rdar://problem/8293055> and https://bugs.webkit.org/show_bug.cgi?id=146654
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting): Clear in-memory credentials in between test runs.
+
+2015-07-06  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Remove memory page reporting
+        https://bugs.webkit.org/show_bug.cgi?id=146659
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-07-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        [Content Extensions] Make the DFA transitions ranges instead of characters
+        https://bugs.webkit.org/show_bug.cgi?id=146575
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+        Since the minimizer is perfect, we get the minimal solution now,
+        which is really cool!
+
+2015-07-06  Brady Eidson  <beidson@apple.com>
+
+        ShouldOpenExternalURLsPolicy should default to "Allow" for WK2 API loads.
+        <rdar://problem/21640050> and https://bugs.webkit.org/show_bug.cgi?id=146563
+
+        Reviewed by Geoff Garen.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke): For testing purposes, all pages should start with the 
+          ShouldOpenExternalURLsPolicy set to "ShouldNotAllow"
+
+2015-07-06  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r170639.
+
+        Broke using webkit-patch apply-attachment to apply an
+        attachment from a security bug. The patch incorrectly assumed
+        that Bugzilla returns a non-HTTP 200 status code in its HTTP
+        response when authentication is required.
+
+        Reverted changeset:
+
+        "webkit-patch apply-from-bug / apply-attachment should not ask
+        for credentials if none are required"
+        https://bugs.webkit.org/show_bug.cgi?id=40095
+        http://trac.webkit.org/changeset/170639
+
+2015-07-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop RefPtr::clear() method
+        https://bugs.webkit.org/show_bug.cgi?id=146556
+
+        Reviewed by Brady Eidson.
+
+        Drop RefPtr::clear() method in favor of "= nullptr;" pattern.
+
 2015-07-03  Dan Bernstein  <mitz@apple.com>
 
         Fixed the iOS build.

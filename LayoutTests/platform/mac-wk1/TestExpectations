@@ -36,10 +36,7 @@ webkit.org/b/144127 compositing/scrolling/touch-scroll-to-clip.html [ Pass Failu
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
-# <rdar://problem/21344582>
-[ ElCapitan+ ] fast/history/history-back-while-pdf-in-pagecache.html
-[ ElCapitan+ ] http/tests/loading/pdf-commit-load-callbacks.html
-[ ElCapitan+ ] platform/mac/fast/loader/non-html-load-event.html
+webkit.org/b/146622 [ Yosemite Debug ] webgl/1.0.2/conformance/more/functions/copyTexImage2DBadArgs.html [ Pass Failure ]
 
 ### END OF (1) Failures with bug reports
 ########################################
@@ -122,6 +119,8 @@ loader/navigation-policy [ Skip ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Pass Timeout ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Pass Timeout ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html [ Pass Timeout ]
+
+[ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
 ### END OF (2) Failures without bug reports
 ########################################

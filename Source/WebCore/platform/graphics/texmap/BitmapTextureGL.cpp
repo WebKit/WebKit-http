@@ -272,7 +272,7 @@ PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(TextureMapper* textureMa
             texmapGL->drawFiltered(*resultSurface.get(), spareSurface.get(), *filter, j);
             if (!j && filter->type() == FilterOperation::DROP_SHADOW) {
                 spareSurface = resultSurface;
-                resultSurface.clear();
+                resultSurface = nullptr;
             }
             std::swap(resultSurface, intermediateSurface);
         }
