@@ -1101,11 +1101,11 @@ static gboolean freeStreamLater(Stream* stream)
         gst_caps_unref(stream->caps);
 #if ENABLE(VIDEO_TRACK)
     if (stream->audioTrack) {
-        stream->audioTrack->clear();
+        *stream->audioTrack = nullptr;
         delete stream->audioTrack;
     }
     if (stream->videoTrack) {
-        stream->videoTrack->clear();
+        *stream->videoTrack = nullptr;
         delete stream->videoTrack;
     }
 #endif
