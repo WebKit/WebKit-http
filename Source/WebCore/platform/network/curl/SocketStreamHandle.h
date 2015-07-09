@@ -50,11 +50,12 @@ namespace WebCore {
 
 class AuthenticationChallenge;
 class Credential;
+class NetworkingContext;
 class SocketStreamHandleClient;
 
 class SocketStreamHandle : public ThreadSafeRefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
 public:
-    static Ref<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(*new SocketStreamHandle(url, client)); }
+    static Ref<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(*new SocketStreamHandle(url, client)); }
 
     virtual ~SocketStreamHandle();
 

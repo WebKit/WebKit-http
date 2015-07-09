@@ -59,16 +59,16 @@
     border-bottom-left-radius: 0 !important;
 }
 
-:focus .selected .timeline-record-bar > .segment {
+:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment {
     background-color: white !important;
     border: none !important;
 }
 
-:focus .selected .timeline-record-bar > .segment.inactive {
+:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment.inactive {
     background-color: rgb(196, 215, 242) !important;
 }
 
-:focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+:matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
     border-left: 1px solid rgba(56, 121, 217, 0.7) !important;
 }
 
@@ -87,7 +87,9 @@
     border-color: rgb(212, 108, 108);
 }
 
-.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment {
+
+.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment,
+.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-composite > .segment {
     background-color: rgb(176, 204, 105);
     border-color: rgb(152, 188, 77);
 }

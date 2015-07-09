@@ -28,6 +28,7 @@
 
 #include "objc_instance.h"
 #include "WebScriptObject.h"
+#include "WebScriptObjectProtocol.h"
 
 namespace JSC {
 namespace Bindings {
@@ -162,7 +163,10 @@ Field* ObjcClass::fieldNamed(PropertyName propertyName, Instance* instance) cons
     RetainPtr<CFStringRef> fieldName = adoptCF(CFStringCreateWithCString(NULL, jsName.data(), kCFStringEncodingASCII));
     id targetObject = (static_cast<ObjcInstance*>(instance))->getObject();
 #if PLATFORM(IOS)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
     id attributes = [targetObject respondsToSelector:@selector(attributeKeys)] ? [targetObject performSelector:@selector(attributeKeys)] : nil;
+#pragma clang diagnostic pop
 #else
     id attributes = [targetObject attributeKeys];
 #endif

@@ -46,22 +46,22 @@ void ReadableStreamReader::cancel(JSC::JSValue reason, ReadableStream::CancelPro
     m_stream.cancelNoCheck(reason, WTF::move(promise));
 }
 
-void ReadableStreamReader::closed(ReadableStream::ClosedSuccessCallback&& successCallback, ReadableStream::FailureCallback&& failureCallback)
+void ReadableStreamReader::closed(ReadableStream::ClosedPromise&& promise)
 {
     if (m_stream.isReadable() && m_stream.reader() != this) {
-        successCallback();
+        promise.resolve(nullptr);
         return;
     }
-    m_stream.closed(WTF::move(successCallback), WTF::move(failureCallback));
+    m_stream.closed(WTF::move(promise));
 }
 
-void ReadableStreamReader::read(ReadableStream::ReadSuccessCallback&& successCallback, ReadableStream::ReadEndCallback&& endCallback, ReadableStream::FailureCallback&& failureCallback)
+void ReadableStreamReader::read(ReadableStream::ReadPromise&& promise)
 {
     if (m_stream.isReadable() && m_stream.reader() != this) {
-        endCallback();
+        promise.resolveEnd();
         return;
     }
-    m_stream.read(WTF::move(successCallback), WTF::move(endCallback), WTF::move(failureCallback));
+    m_stream.read(WTF::move(promise));
 }
 
 void ReadableStreamReader::releaseLock(ExceptionCode& ec)

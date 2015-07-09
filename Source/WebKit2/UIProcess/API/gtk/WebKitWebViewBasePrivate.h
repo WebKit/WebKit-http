@@ -39,7 +39,7 @@
 WebKitWebViewBase* webkitWebViewBaseCreate(WebKit::WebProcessPool*, WebKit::WebPreferences*, WebKit::WebPageGroup*, WebKit::WebUserContentControllerProxy*, WebKit::WebPageProxy*);
 GtkIMContext* webkitWebViewBaseGetIMContext(WebKitWebViewBase*);
 WebKit::WebPageProxy* webkitWebViewBaseGetPage(WebKitWebViewBase*);
-void webkitWebViewBaseCreateWebPage(WebKitWebViewBase*, WebKit::WebProcessPool*, WebKit::WebPreferences*, WebKit::WebPageGroup*, WebKit::WebUserContentControllerProxy*, WebKit::WebPageProxy*);
+void webkitWebViewBaseCreateWebPage(WebKitWebViewBase*, WebKit::WebProcessPool*, WebKit::WebPageConfiguration&&);
 void webkitWebViewBaseSetTooltipText(WebKitWebViewBase*, const char*);
 void webkitWebViewBaseSetTooltipArea(WebKitWebViewBase*, const WebCore::IntRect&);
 void webkitWebViewBaseForwardNextKeyEvent(WebKitWebViewBase*);
@@ -71,6 +71,7 @@ void webkitWebViewBaseAddWebInspector(WebKitWebViewBase*, GtkWidget* inspector, 
 void webkitWebViewBaseResetClickCounter(WebKitWebViewBase*);
 void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase*);
 void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase*);
+void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase*);
 
 #if ENABLE(DRAG_SUPPORT)
 WebKit::DragAndDropHandler& webkitWebViewBaseDragAndDropHandler(WebKitWebViewBase*);

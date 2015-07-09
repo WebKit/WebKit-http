@@ -38,7 +38,7 @@ namespace WebCore {
 namespace ContentExtensions {
 
 struct PrefixTreeEdge {
-    Term term;
+    const Term* term;
     std::unique_ptr<PrefixTreeVertex> child;
 };
     
@@ -46,15 +46,13 @@ typedef Vector<PrefixTreeEdge, 0, WTF::CrashOnOverflow, 1> PrefixTreeEdges;
 
 struct PrefixTreeVertex {
     PrefixTreeEdges edges;
-    ActionList finalActions;
 };
 
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
 static size_t recursiveMemoryUsed(const PrefixTreeVertex& vertex)
 {
     size_t size = sizeof(PrefixTreeVertex)
-        + vertex.edges.capacity() * sizeof(PrefixTreeEdge)
-        + vertex.finalActions.capacity() * sizeof(uint64_t);
+        + vertex.edges.capacity() * sizeof(PrefixTreeEdge);
     for (const auto& edge : vertex.edges) {
         ASSERT(edge.child);
         size += recursiveMemoryUsed(*edge.child.get());
@@ -65,7 +63,17 @@ static size_t recursiveMemoryUsed(const PrefixTreeVertex& vertex)
 size_t CombinedURLFilters::memoryUsed() const
 {
     ASSERT(m_prefixTreeRoot);
-    return recursiveMemoryUsed(*m_prefixTreeRoot.get());
+
+    size_t actionsSize = 0;
+    for (const auto& slot : m_actions)
+        actionsSize += slot.value.capacity() * sizeof(uint64_t);
+
+    return sizeof(CombinedURLFilters)
+        + m_alphabet.memoryUsed()
+        + recursiveMemoryUsed(*m_prefixTreeRoot.get())
+        + sizeof(HashMap<PrefixTreeVertex*, ActionList>)
+        + m_actions.capacity() * (sizeof(PrefixTreeVertex*) + sizeof(ActionList))
+        + actionsSize;
 }
 #endif
     
@@ -76,9 +84,13 @@ static String prefixTreeVertexToString(const PrefixTreeVertex& vertex, unsigned 
     while (depth--)
         builder.append("  ");
     builder.append("vertex actions: ");
-    for (auto action : vertex.finalActions) {
-        builder.appendNumber(action);
-        builder.append(',');
+
+    auto actionsSlot = m_actions.find(&vertex);
+    if (actionsSlot != m_actions.end()) {
+        for (auto action : *actionsSlot->value) {
+            builder.appendNumber(action);
+            builder.append(',');
+        }
     }
     builder.append('\n');
     return builder.toString();
@@ -92,7 +104,7 @@ static void recursivePrint(const PrefixTreeVertex& vertex, unsigned depth)
         for (unsigned i = 0; i < depth * 2; ++i)
             builder.append(' ');
         builder.append("vertex edge: ");
-        builder.append(edge.term.toString());
+        builder.append(edge.term->toString());
         builder.append('\n');
         dataLogF("%s", builder.toString().utf8().data());
         ASSERT(edge.child);
@@ -122,31 +134,44 @@ bool CombinedURLFilters::isEmpty() const
 
 void CombinedURLFilters::addDomain(uint64_t actionId, const String& domain)
 {
-    // This is like adding (.|^)domain$ by adding two Vector<Term>'s,
-    // but interpreting domain as a series of characters, not a regular expression.
-    // This way a domain of "webkit.org" will match "bugs.webkit.org" and "webkit.org".
-    // FIXME: Add support for matching only subdomains or no subdomains.
-    Vector<Term> prependDot;
-    Vector<Term> prependBeginningOfLine;
-    prependDot.reserveInitialCapacity(domain.length() + 3);
-    prependBeginningOfLine.reserveInitialCapacity(domain.length() + 1); // This is just no .* at the beginning.
-    
-    Term canonicalDotStar(Term::UniversalTransition);
-    canonicalDotStar.quantify(AtomQuantifier::ZeroOrMore);
-    prependDot.uncheckedAppend(canonicalDotStar);
-    prependDot.uncheckedAppend(Term('.', true));
-    
-    for (unsigned i = 0; i < domain.length(); i++) {
-        ASSERT(isASCII(domain[i]));
-        ASSERT(!isASCIIUpper(domain[i]));
-        prependDot.uncheckedAppend(Term(domain[i], true));
-        prependBeginningOfLine.uncheckedAppend(Term(domain[i], true));
+    unsigned domainLength = domain.length();
+    if (domainLength && domain[0] == '*') {
+        // If domain starts with a '*' then it means match domain and its subdomains, like (^|.)domain$
+        // This way a domain of "*webkit.org" will match "bugs.webkit.org" and "webkit.org".
+        Vector<Term> prependDot;
+        Vector<Term> prependBeginningOfLine;
+        prependDot.reserveInitialCapacity(domainLength + 2);
+        prependBeginningOfLine.reserveInitialCapacity(domainLength); // This is just no .* at the beginning.
+        
+        Term canonicalDotStar(Term::UniversalTransition);
+        canonicalDotStar.quantify(AtomQuantifier::ZeroOrMore);
+        prependDot.uncheckedAppend(canonicalDotStar);
+        prependDot.uncheckedAppend(Term('.', true));
+        
+        for (unsigned i = 1; i < domainLength; i++) {
+            ASSERT(isASCII(domain[i]));
+            ASSERT(!isASCIIUpper(domain[i]));
+            prependDot.uncheckedAppend(Term(domain[i], true));
+            prependBeginningOfLine.uncheckedAppend(Term(domain[i], true));
+        }
+        prependDot.uncheckedAppend(Term::EndOfLineAssertionTerm);
+        prependBeginningOfLine.uncheckedAppend(Term::EndOfLineAssertionTerm);
+        
+        addPattern(actionId, prependDot);
+        addPattern(actionId, prependBeginningOfLine);
+    } else {
+        // This is like adding ^domain$, but interpreting domain as a series of characters, not a regular expression.
+        // "webkit.org" will match "webkit.org" but not "bugs.webkit.org".
+        Vector<Term> prependBeginningOfLine;
+        prependBeginningOfLine.reserveInitialCapacity(domainLength + 1); // This is just no .* at the beginning.
+        for (unsigned i = 0; i < domainLength; i++) {
+            ASSERT(isASCII(domain[i]));
+            ASSERT(!isASCIIUpper(domain[i]));
+            prependBeginningOfLine.uncheckedAppend(Term(domain[i], true));
+        }
+        prependBeginningOfLine.uncheckedAppend(Term::EndOfLineAssertionTerm);
+        addPattern(actionId, prependBeginningOfLine);
     }
-    prependDot.uncheckedAppend(Term::EndOfLineAssertionTerm);
-    prependBeginningOfLine.uncheckedAppend(Term::EndOfLineAssertionTerm);
-    
-    addPattern(actionId, prependDot);
-    addPattern(actionId, prependBeginningOfLine);
 }
 
 void CombinedURLFilters::addPattern(uint64_t actionId, const Vector<Term>& pattern)
@@ -162,7 +187,7 @@ void CombinedURLFilters::addPattern(uint64_t actionId, const Vector<Term>& patte
     for (const Term& term : pattern) {
         size_t nextEntryIndex = WTF::notFound;
         for (size_t i = 0; i < lastPrefixTree->edges.size(); ++i) {
-            if (lastPrefixTree->edges[i].term == term) {
+            if (*lastPrefixTree->edges[i].term == term) {
                 nextEntryIndex = i;
                 break;
             }
@@ -170,35 +195,36 @@ void CombinedURLFilters::addPattern(uint64_t actionId, const Vector<Term>& patte
         if (nextEntryIndex != WTF::notFound)
             lastPrefixTree = lastPrefixTree->edges[nextEntryIndex].child.get();
         else {
-            lastPrefixTree->edges.append(PrefixTreeEdge({term, std::make_unique<PrefixTreeVertex>()}));
+            lastPrefixTree->edges.append(PrefixTreeEdge({m_alphabet.interned(term), std::make_unique<PrefixTreeVertex>()}));
             lastPrefixTree = lastPrefixTree->edges.last().child.get();
         }
     }
 
-    ActionList& actions = lastPrefixTree->finalActions;
+    auto addResult = m_actions.add(lastPrefixTree, ActionList());
+    ActionList& actions = addResult.iterator->value;
     if (actions.find(actionId) == WTF::notFound)
         actions.append(actionId);
 }
 
-static void generateNFAForSubtree(NFA& nfa, unsigned nfaRootId, PrefixTreeVertex& root, size_t maxNFASize)
+static void generateNFAForSubtree(NFA& nfa, ImmutableCharNFANodeBuilder&& subtreeRoot, PrefixTreeVertex& root, HashMap<const PrefixTreeVertex*, ActionList>& actions, size_t maxNFASize)
 {
     // This recurses the subtree of the prefix tree.
     // For each edge that has fixed length (no quantifiers like ?, *, or +) it generates the nfa graph,
     // recurses into children, and deletes any processed leaf nodes.
     struct ActiveSubtree {
-        ActiveSubtree(PrefixTreeVertex& vertex, unsigned nfaNodeId, unsigned edgeIndex)
+        ActiveSubtree(PrefixTreeVertex& vertex, ImmutableCharNFANodeBuilder&& nfaNode, unsigned edgeIndex)
             : vertex(vertex)
-            , nfaNodeId(nfaNodeId)
+            , nfaNode(WTF::move(nfaNode))
             , edgeIndex(edgeIndex)
         {
         }
         PrefixTreeVertex& vertex;
-        unsigned nfaNodeId;
+        ImmutableCharNFANodeBuilder nfaNode;
         unsigned edgeIndex;
     };
     Vector<ActiveSubtree> stack;
     if (!root.edges.isEmpty())
-        stack.append(ActiveSubtree(root, nfaRootId, 0));
+        stack.append(ActiveSubtree(root, WTF::move(subtreeRoot), 0));
     bool nfaTooBig = false;
     
     // Generate graphs for each subtree that does not contain any quantifiers.
@@ -207,7 +233,7 @@ static void generateNFAForSubtree(NFA& nfa, unsigned nfaRootId, PrefixTreeVertex
         const unsigned edgeIndex = stack.last().edgeIndex;
         
         // Only stop generating an NFA at a leaf to ensure we have a correct NFA. We could go slightly over the maxNFASize.
-        if (vertex.edges.isEmpty() && nfa.graphSize() > maxNFASize)
+        if (vertex.edges.isEmpty() && nfa.nodes.size() > maxNFASize)
             nfaTooBig = true;
         
         if (edgeIndex < vertex.edges.size()) {
@@ -220,26 +246,27 @@ static void generateNFAForSubtree(NFA& nfa, unsigned nfaRootId, PrefixTreeVertex
             }
             
             // Quantified edges in the subtree will be a part of another NFA.
-            if (!edge.term.hasFixedLength()) {
+            if (!edge.term->hasFixedLength()) {
                 stack.last().edgeIndex++;
                 continue;
             }
-            
-            unsigned subtreeRootId = edge.term.generateGraph(nfa, stack.last().nfaNodeId, edge.child->finalActions);
+
+
+            ImmutableCharNFANodeBuilder newNode = edge.term->generateGraph(nfa, stack.last().nfaNode, actions.get(edge.child.get()));
             ASSERT(edge.child.get());
-            stack.append(ActiveSubtree(*edge.child.get(), subtreeRootId, 0));
+            stack.append(ActiveSubtree(*edge.child.get(), WTF::move(newNode), 0));
         } else {
             ASSERT(edgeIndex == vertex.edges.size());
             vertex.edges.removeAllMatching([](PrefixTreeEdge& edge)
             {
-                return edge.term.isDeletedValue();
+                return !edge.term;
             });
             stack.removeLast();
             if (!stack.isEmpty()) {
                 auto& activeSubtree = stack.last();
                 auto& edge = activeSubtree.vertex.edges[stack.last().edgeIndex];
                 if (edge.child->edges.isEmpty())
-                    edge.term = Term(Term::DeletedValue); // Mark this leaf for deleting.
+                    edge.term = nullptr; // Mark this leaf for deleting.
                 activeSubtree.edgeIndex++;
             }
         }
@@ -268,27 +295,31 @@ void CombinedURLFilters::processNFAs(size_t maxNFASize, std::function<void(NFA&&
         // Find the prefix root for this NFA. This is the vertex after the last term with a quantifier if there is one,
         // or the root if there are no quantifiers left.
         while (stack.size() > 1) {
-            if (!stack[stack.size() - 2]->edges.last().term.hasFixedLength())
+            if (!stack[stack.size() - 2]->edges.last().term->hasFixedLength())
                 break;
             stack.removeLast();
         }
         ASSERT_WITH_MESSAGE(!stack.isEmpty(), "At least the root should be in the stack");
-        
+
         // Make an NFA with the subtrees for whom this is also the last quantifier (or who also have no quantifier).
         NFA nfa;
-        // Put the prefix into the NFA.
-        unsigned prefixEnd = nfa.root();
-        for (unsigned i = 0; i < stack.size() - 1; ++i) {
-            ASSERT(!stack[i]->edges.isEmpty());
-            const PrefixTreeEdge& edge = stack[i]->edges.last();
-            prefixEnd = edge.term.generateGraph(nfa, prefixEnd, edge.child->finalActions);
+        {
+            // Put the prefix into the NFA.
+            ImmutableCharNFANodeBuilder lastNode(nfa);
+            for (unsigned i = 0; i < stack.size() - 1; ++i) {
+                const PrefixTreeEdge& edge = stack[i]->edges.last();
+                ImmutableCharNFANodeBuilder newNode = edge.term->generateGraph(nfa, lastNode, m_actions.get(edge.child.get()));
+                lastNode = WTF::move(newNode);
+            }
+
+            // Put the non-quantified vertices in the subtree into the NFA and delete them.
+            ASSERT(stack.last());
+            generateNFAForSubtree(nfa, WTF::move(lastNode), *stack.last(), m_actions, maxNFASize);
         }
-        // Put the non-quantified vertices in the subtree into the NFA and delete them.
-        ASSERT(stack.last());
-        generateNFAForSubtree(nfa, prefixEnd, *stack.last(), maxNFASize);
-        
+        nfa.finalize();
+
         handler(WTF::move(nfa));
-        
+
         // Clean up any processed leaf nodes.
         while (true) {
             if (stack.size() > 1) {

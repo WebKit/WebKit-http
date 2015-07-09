@@ -171,30 +171,17 @@ static void calculateWebTimingInformations(ResourceHandleInternal* d)
     curl_easy_getinfo(d->m_handle, CURLINFO_STARTTRANSFER_TIME, &startTransfertTime);
     curl_easy_getinfo(d->m_handle, CURLINFO_PRETRANSFER_TIME, &preTransferTime);
 
-    d->m_response.resourceLoadTiming()->dnsStart = 0;
-    d->m_response.resourceLoadTiming()->dnsEnd = static_cast<int>(dnslookupTime * 1000);
+    d->m_response.resourceLoadTiming().domainLookupStart = 0;
+    d->m_response.resourceLoadTiming().domainLookupEnd = static_cast<int>(dnslookupTime * 1000);
 
-    d->m_response.resourceLoadTiming()->connectStart = static_cast<int>(dnslookupTime * 1000);
-    d->m_response.resourceLoadTiming()->connectEnd = static_cast<int>(connectTime * 1000);
+    d->m_response.resourceLoadTiming().connectStart = static_cast<int>(dnslookupTime * 1000);
+    d->m_response.resourceLoadTiming().connectEnd = static_cast<int>(connectTime * 1000);
 
-    d->m_response.resourceLoadTiming()->sendStart = static_cast<int>(connectTime *1000);
-    d->m_response.resourceLoadTiming()->sendEnd =static_cast<int>(preTransferTime * 1000);
+    d->m_response.resourceLoadTiming().requestStart = static_cast<int>(connectTime *1000);
+    d->m_response.resourceLoadTiming().responseStart =static_cast<int>(preTransferTime * 1000);
 
-    if (appConnectTime) {
-        d->m_response.resourceLoadTiming()->sslStart = static_cast<int>(connectTime * 1000);
-        d->m_response.resourceLoadTiming()->sslEnd = static_cast<int>(appConnectTime *1000);
-    }
-}
-
-static int sockoptfunction(void* data, curl_socket_t /*curlfd*/, curlsocktype /*purpose*/)
-{
-    ResourceHandle* job = static_cast<ResourceHandle*>(data);
-    ResourceHandleInternal* d = job->getInternal();
-
-    if (d->m_response.resourceLoadTiming())
-        d->m_response.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
-
-    return 0;
+    if (appConnectTime)
+        d->m_response.resourceLoadTiming().secureConnectionStart = static_cast<int>(connectTime * 1000);
 }
 #endif
 
@@ -517,11 +504,6 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
             if (parsed)
                 d->m_multipartHandle = std::make_unique<MultipartHandle>(job, boundary);
         }
-
-#if ENABLE(WEB_TIMING)
-        if (d->m_response.resourceLoadTiming() && d->m_response.resourceLoadTiming()->requestTime)
-            d->m_response.resourceLoadTiming()->receiveHeadersEnd = milisecondsSinceRequest(d->m_response.resourceLoadTiming()->requestTime);
-#endif
 
         // HTTP redirection
         if (isHttpRedirect(httpCode)) {
@@ -985,13 +967,13 @@ void ResourceHandleManager::applyAuthenticationToRequest(ResourceHandle* handle,
         if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
             // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
             // try and reuse the credential preemptively, as allowed by RFC 2617.
-            d->m_initialCredential = CredentialStorage::get(request.url());
+            d->m_initialCredential = CredentialStorage::defaultCredentialStorage().get(request.url());
         } else {
             // If there is already a protection space known for the URL, update stored credentials
             // before sending a request. This makes it possible to implement logout by sending an
             // XMLHttpRequest with known incorrect credentials, and aborting it immediately (so that
             // an authentication dialog doesn't pop up).
-            CredentialStorage::set(Credential(d->m_user, d->m_pass, CredentialPersistenceNone), request.url());
+            CredentialStorage::defaultCredentialStorage().set(Credential(d->m_user, d->m_pass, CredentialPersistenceNone), request.url());
         }
     }
 
@@ -1149,11 +1131,6 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
         curl_easy_setopt(d->m_handle, CURLOPT_PROXY, m_proxy.utf8().data());
         curl_easy_setopt(d->m_handle, CURLOPT_PROXYTYPE, m_proxyType);
     }
-#if ENABLE(WEB_TIMING)
-    curl_easy_setopt(d->m_handle, CURLOPT_SOCKOPTFUNCTION, sockoptfunction);
-    curl_easy_setopt(d->m_handle, CURLOPT_SOCKOPTDATA, job);
-    d->m_response.setResourceLoadTiming(ResourceLoadTiming::create());
-#endif
 }
 
 void ResourceHandleManager::initCookieSession()

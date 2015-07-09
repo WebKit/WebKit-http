@@ -76,13 +76,11 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkProviderInternal.h"
-#import <JavaScriptCore/JSContext.h>
-#import <JavaScriptCore/JSValue.h>
 #import <WebCore/IOSurface.h>
-#import <WebCore/WebCoreSystemInterface.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -109,6 +107,7 @@
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
 - (BOOL)_isScrollingToTop;
 - (BOOL)_isInterruptingDeceleration;
+- (CGPoint)_animatedTargetOffset;
 @end
 
 @interface UIPeripheralHost(UIKitInternal)
@@ -189,6 +188,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     uint64_t _resizeAnimationTransformTransactionID;
     RetainPtr<UIView> _resizeAnimationView;
     CGFloat _lastAdjustmentForScroller;
+    Optional<CGRect> _frozenVisibleContentRect;
+    Optional<CGRect> _frozenUnobscuredContentRect;
 
     BOOL _needsToRestoreExposedRect;
     WebCore::FloatRect _exposedRectToRestore;
@@ -210,6 +211,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     BOOL _pageIsPrintingToPDF;
     RetainPtr<CGPDFDocumentRef> _printedDocument;
+    Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
@@ -449,7 +451,11 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request
 {
-    return [self _loadRequest:request withOptions:nil];
+    auto navigation = _page->loadRequest(request);
+    if (!navigation)
+        return nil;
+
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (WKNavigation *)loadFileURL:(NSURL *)URL allowingReadAccessToURL:(NSURL *)readAccessURL
@@ -633,11 +639,8 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
             return;
         }
 
-        auto context = adoptNS([[JSContext alloc] init]);
-        JSValueRef valueRef = serializedScriptValue->deserialize([context JSGlobalContextRef], 0);
-        JSValue *value = [JSValue valueWithJSValueRef:valueRef inContext:context.get()];
-
-        rawHandler([value toObject], nil);
+        id body = API::SerializedScriptValue::deserialize(*serializedScriptValue->internalRepresentation(), 0);
+        rawHandler(body, nil);
     });
 }
 
@@ -968,6 +971,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         _needsResetViewStateAfterCommitLoadForMainFrame = NO;
         [_scrollView setContentOffset:[self _adjustedContentOffset:CGPointZero]];
         [self _updateVisibleContentRects];
+        if (_observedRenderingProgressEvents & _WKRenderingProgressEventFirstPaint)
+            _navigationState->didFirstPaint();
     }
 
     bool isTransactionAfterPageRestore = layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore;
@@ -980,7 +985,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             exposedPosition.scale(_scaleToRestore, _scaleToRestore);
 
             changeContentOffsetBoundedInValidRange(_scrollView.get(), exposedPosition);
-            _gestureController->didRestoreScrollPosition();
+            if (_gestureController)
+                _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
@@ -991,13 +997,14 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
             CGRect unobscuredRect = UIEdgeInsetsInsetRect(self.bounds, _obscuredInsets);
             WebCore::FloatSize unobscuredContentSizeAtNewScale(unobscuredRect.size.width / _scaleToRestore, unobscuredRect.size.height / _scaleToRestore);
-            WebCore::FloatPoint topLeftInDocumentCoordinate(_unobscuredCenterToRestore.x() - unobscuredContentSizeAtNewScale.width() / 2, _unobscuredCenterToRestore.y() - unobscuredContentSizeAtNewScale.height() / 2);
+            WebCore::FloatPoint topLeftInDocumentCoordinates(_unobscuredCenterToRestore.x() - unobscuredContentSizeAtNewScale.width() / 2, _unobscuredCenterToRestore.y() - unobscuredContentSizeAtNewScale.height() / 2);
 
-            topLeftInDocumentCoordinate.scale(_scaleToRestore, _scaleToRestore);
-            topLeftInDocumentCoordinate.moveBy(WebCore::FloatPoint(-_obscuredInsets.left, -_obscuredInsets.top));
+            topLeftInDocumentCoordinates.scale(_scaleToRestore, _scaleToRestore);
+            topLeftInDocumentCoordinates.moveBy(WebCore::FloatPoint(-_obscuredInsets.left, -_obscuredInsets.top));
 
-            changeContentOffsetBoundedInValidRange(_scrollView.get(), topLeftInDocumentCoordinate);
-            _gestureController->didRestoreScrollPosition();
+            changeContentOffsetBoundedInValidRange(_scrollView.get(), topLeftInDocumentCoordinates);
+            if (_gestureController)
+                _gestureController->didRestoreScrollPosition();
         }
         [self _updateVisibleContentRects];
     }
@@ -1021,6 +1028,16 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         _resizeAnimationTransformAdjustments.m42 = (currentContentOffset.y - newContentOffset.y) / animatingScaleTarget;
         _resizeAnimationTransformTransactionID = nextValidLayerTreeTransactionID;
     }
+}
+
+- (void)_couldNotRestorePageState
+{
+    // The gestureController may be waiting for the scroll position to be restored
+    // in order to remove the swipe snapshot. Since the scroll position could not be
+    // restored, tell the gestureController it was restored so that it no longer waits
+    // for it.
+    if (_gestureController)
+        _gestureController->didRestoreScrollPosition();
 }
 
 - (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale
@@ -1190,6 +1207,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     [_scrollView setContentOffset:([_scrollView contentOffset] + scrollViewOffsetDelta) animated:YES];
     return true;
+}
+
+- (void)_scrollByOffset:(WebCore::FloatPoint)offset
+{
+    CGPoint currentOffset = ([_scrollView _isAnimatingScroll]) ? [_scrollView _animatedTargetOffset] : [_scrollView contentOffset];
+
+    CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), currentOffset + offset);
+    
+    if (CGPointEqualToPoint(boundedOffset, currentOffset))
+        return;
+    [_contentView willStartZoomOrScroll];
+    [_scrollView setContentOffset:boundedOffset animated:YES];
 }
 
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated
@@ -1438,7 +1467,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         CGSize maxScrollOffsets = CGSizeMake(scrollView.contentSize.width - scrollView.bounds.size.width, scrollView.contentSize.height - scrollView.bounds.size.height);
         
         CGRect fullViewRect = self.bounds;
-        CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, [self _computedContentInset]);
+
+        UIEdgeInsets contentInset;
+
+        id<WKUIDelegatePrivate> uiDelegatePrivate = static_cast<id <WKUIDelegatePrivate>>([self UIDelegate]);
+        if ([uiDelegatePrivate respondsToSelector:@selector(_webView:finalObscuredInsetsForScrollView:withVelocity:targetContentOffset:)])
+            contentInset = [uiDelegatePrivate _webView:self finalObscuredInsetsForScrollView:scrollView withVelocity:velocity targetContentOffset:targetContentOffset];
+        else
+            contentInset = [self _computedContentInset];
+
+        CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, contentInset);
         
         coordinator->adjustTargetContentOffsetForSnapping(maxScrollOffsets, velocity, unobscuredRect.origin.y, targetContentOffset);
     }
@@ -1556,15 +1594,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (_needsResetViewStateAfterCommitLoadForMainFrame)
         return;
 
+    if ([_scrollView isZoomBouncing])
+        return;
+
     CGRect fullViewRect = self.bounds;
-    CGRect visibleRectInContentCoordinates = [self convertRect:fullViewRect toView:_contentView.get()];
+    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:fullViewRect toView:_contentView.get()];
 
     CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, [self _computedContentInset]);
-    CGRect unobscuredRectInContentCoordinates = [self convertRect:unobscuredRect toView:_contentView.get()];
+    CGRect unobscuredRectInContentCoordinates = _frozenUnobscuredContentRect ? _frozenUnobscuredContentRect.value() : [self convertRect:unobscuredRect toView:_contentView.get()];
 
     CGFloat scaleFactor = contentZoomScale(self);
 
-    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
+    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
 
     // FIXME: this can be made static after we stop supporting iOS 8.x.
     if (isStableState && [_scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
@@ -1601,6 +1642,12 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     if (_gestureController)
         _gestureController->didFinishLoadForMainFrame();
+}
+
+- (void)_didFailLoadForMainFrame
+{
+    if (_gestureController)
+        _gestureController->didFailLoadForMainFrame();
 }
 
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType
@@ -1708,7 +1755,25 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return _allowsBackForwardNavigationGestures;
 }
 
-#endif
+- (void)_navigationGestureDidBegin
+{
+    // During a back/forward swipe, there's a view interposed between this view and the content view that has
+    // an offset and animation on it, which results in computing incorrect rectangles. Work around by using
+    // frozen rects during swipes.
+    CGRect fullViewRect = self.bounds;
+    CGRect unobscuredRect = UIEdgeInsetsInsetRect(fullViewRect, [self _computedContentInset]);
+
+    _frozenVisibleContentRect = [self convertRect:fullViewRect toView:_contentView.get()];
+    _frozenUnobscuredContentRect = [self convertRect:unobscuredRect toView:_contentView.get()];
+}
+
+- (void)_navigationGestureDidEnd
+{
+    _frozenVisibleContentRect = Nullopt;
+    _frozenUnobscuredContentRect = Nullopt;
+}
+
+#endif // PLATFORM(IOS)
 
 #pragma mark OS X-specific methods
 
@@ -1798,7 +1863,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     return [_wkView performDragOperation:sender];
 }
-#endif
+#endif // PLATFORM(MAC)
 
 @end
 
@@ -1806,14 +1871,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (WKNavigation *)_loadRequest:(NSURLRequest *)request withOptions:(NSDictionary *)loadOptions
 {
-    bool shouldOpenExternalURLs = [loadOptions[_WKShouldOpenExternalURLsKey] boolValue];
-    WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = shouldOpenExternalURLs ? WebCore::ShouldOpenExternalURLsPolicy::ShouldAllow : WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow;
-
-    auto navigation = _page->loadRequest(request, shouldOpenExternalURLsPolicy);
-    if (!navigation)
-        return nil;
-
-    return [wrapper(*navigation.release().leakRef()) autorelease];
+    return [self loadRequest:request];
 }
 
 - (BOOL)_isEditable
@@ -2316,6 +2374,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->hideFindUI();
 }
 
+- (void)_saveBackForwardSnapshotForItem:(WKBackForwardListItem *)item
+{
+    _page->recordNavigationSnapshot(item._item);
+}
+
 - (id <_WKFormDelegate>)_formDelegate
 {
     return _formDelegate.getAutoreleased();
@@ -2618,7 +2681,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_hideContentUntilNextUpdate
 {
     if (auto* area = _page->drawingArea())
-        area->hideContentUntilNextUpdate();
+        area->hideContentUntilAnyUpdate();
 }
 
 - (void)_beginAnimatedResizeWithUpdates:(void (^)(void))updateBlock
@@ -2772,6 +2835,9 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
     [_contentView setHidden:NO];
     [self _updateVisibleContentRects];
+
+    while (!_snapshotsDeferredDuringResize.isEmpty())
+        _snapshotsDeferredDuringResize.takeLast()();
 }
 
 - (void)_resizeWhileHidingContentWithUpdates:(void (^)(void))updateBlock
@@ -2790,6 +2856,17 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_snapshotRect:(CGRect)rectInViewCoordinates intoImageOfWidth:(CGFloat)imageWidth completionHandler:(void(^)(CGImageRef))completionHandler
 {
+    if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
+        // Defer snapshotting until after the current resize completes.
+        void (^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
+        RetainPtr<WKWebView> retainedSelf = self;
+        _snapshotsDeferredDuringResize.append([retainedSelf, rectInViewCoordinates, imageWidth, copiedCompletionHandler] {
+            [retainedSelf _snapshotRect:rectInViewCoordinates intoImageOfWidth:imageWidth completionHandler:copiedCompletionHandler];
+            [copiedCompletionHandler release];
+        });
+        return;
+    }
+
     CGRect snapshotRectInContentCoordinates = [self convertRect:rectInViewCoordinates toView:self._currentContentView];
     CGFloat imageScale = imageWidth / snapshotRectInContentCoordinates.size.width;
     CGFloat imageHeight = imageScale * snapshotRectInContentCoordinates.size.height;
@@ -2826,7 +2903,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         UIGraphicsEndImageContext();
         return;
     }
-
 
     void(^copiedCompletionHandler)(CGImageRef) = [completionHandler copy];
     _page->takeSnapshot(WebCore::enclosingIntRect(snapshotRectInContentCoordinates), WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebKit::SnapshotOptionsExcludeDeviceScaleFactor, [=](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {

@@ -314,7 +314,7 @@ void WebInspectorProxy::createInspectorWindow()
     [window setDelegate:m_inspectorProxyObjCAdapter.get()];
     [window setMinSize:NSMakeSize(minimumWindowWidth, minimumWindowHeight)];
     [window setReleasedWhenClosed:NO];
-    [window setCollectionBehavior:([window collectionBehavior] | NSWindowCollectionBehaviorFullScreenAuxiliary)];
+    [window setCollectionBehavior:([window collectionBehavior] | NSWindowCollectionBehaviorFullScreenPrimary)];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     CGFloat approximatelyHalfScreenSize = (window.screen.frame.size.width / 2) - 4;
@@ -816,6 +816,13 @@ void WebInspectorProxy::platformSetToolbarHeight(unsigned height)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
     [m_inspectorWindow setContentBorderThickness:height forEdge:NSMaxYEdge];
+#endif
+}
+
+void WebInspectorProxy::platformStartWindowDrag()
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    [m_inspectorView->_page->wkView() _startWindowDrag];
 #endif
 }
 

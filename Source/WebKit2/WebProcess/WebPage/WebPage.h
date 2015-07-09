@@ -53,6 +53,7 @@
 #include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/HitTestResult.h>
+#include <WebCore/HysteresisActivity.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
@@ -488,6 +489,7 @@ public:
     void commitPotentialTap(uint64_t lastLayerTreeTransactionId);
     void commitPotentialTapFailed();
     void cancelPotentialTap();
+    void cancelPotentialTapInFrame(WebFrame&);
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
@@ -615,6 +617,7 @@ public:
     void getCenterForZoomGesture(const WebCore::IntPoint& centerInViewCoordinates, WebCore::IntPoint& result);
 #endif
 
+    void didApplyStyle();
     void didChangeSelection();
     void discardedComposition();
 
@@ -1081,7 +1084,7 @@ private:
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
 #if ENABLE(MEDIA_STREAM)
-    void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed);
+    WK_EXPORT void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed);
 #endif
 
     void advanceToNextMisspelling(bool startBeforeSelection);
@@ -1135,6 +1138,8 @@ private:
 
     void setShouldScaleViewToFitDocument(bool);
     void setUserContentExtensionsEnabled(bool);
+
+    void pageStoppedScrolling();
 
     uint64_t m_pageID;
 
@@ -1281,6 +1286,8 @@ private:
     RefPtr<SandboxExtension> m_pendingDropSandboxExtension;
     Vector<RefPtr<SandboxExtension>> m_pendingDropExtensionsForFileUpload;
 
+    WebCore::HysteresisActivity m_pageScrolledHysteresis;
+
     bool m_canRunBeforeUnloadConfirmPanel;
 
     bool m_canRunModal;
@@ -1324,12 +1331,12 @@ private:
     WebCore::FloatPoint m_potentialTapLocation;
 
     WebCore::ViewportConfiguration m_viewportConfiguration;
-    uint64_t m_firstLayerTreeTransactionIDAfterDidCommitLoad;
     bool m_hasReceivedVisibleContentRectsAfterDidCommitLoad;
     bool m_scaleWasSetByUIProcess;
     bool m_userHasChangedPageScaleFactor;
     bool m_hasStablePageScaleFactor;
     bool m_userIsInteracting;
+    bool m_hasFocusedDueToUserInteraction { false };
     bool m_hasPendingBlurNotification;
     bool m_useTestingViewportConfiguration;
     bool m_isInStableState;

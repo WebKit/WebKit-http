@@ -256,7 +256,11 @@ bool HTMLCanvasElement::is2dType(const String& type)
 bool HTMLCanvasElement::is3dType(const String& type)
 {
     // Retain support for the legacy "webkit-3d" name.
-    return type == "webgl" || type == "experimental-webgl" || type == "webkit-3d" || type == "experimental-webgl2";
+    return type == "webgl" || type == "experimental-webgl"
+#if ENABLE(WEBGL2)
+        || type == "experimental-webgl2"
+#endif
+        || type == "webkit-3d";
 }
 #endif
 
@@ -419,7 +423,7 @@ void HTMLCanvasElement::makePresentationCopy()
 
 void HTMLCanvasElement::clearPresentationCopy()
 {
-    m_presentedImage.clear();
+    m_presentedImage = nullptr;
 }
 
 void HTMLCanvasElement::setSurfaceSize(const IntSize& size)
@@ -640,7 +644,7 @@ void HTMLCanvasElement::clearImageBuffer() const
 
 void HTMLCanvasElement::clearCopiedImage()
 {
-    m_copiedImage.clear();
+    m_copiedImage = nullptr;
     m_didClearImageBuffer = false;
 }
 

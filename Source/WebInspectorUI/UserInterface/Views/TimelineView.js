@@ -66,6 +66,11 @@ WebInspector.TimelineView.prototype = {
         return null;
     },
 
+    get navigationSidebarTreeOutlineScopeBar()
+    {
+        return this._scopeBar;
+    },
+
     get timelineSidebarPanel()
     {
         return this._timelineSidebarPanel;
@@ -172,7 +177,7 @@ WebInspector.TimelineView.prototype = {
     {
         if (this._scheduledLayoutUpdateIdentifier) {
             cancelAnimationFrame(this._scheduledLayoutUpdateIdentifier);
-            delete this._scheduledLayoutUpdateIdentifier;
+            this._scheduledLayoutUpdateIdentifier = undefined;
         }
 
         // Implemented by sub-classes if needed.
@@ -232,6 +237,8 @@ WebInspector.TimelineView.prototype = {
     treeElementSelected: function(treeElement, selectedByUser)
     {
         // Implemented by sub-classes if needed.
+
+        this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
 
         if (!this._timelineSidebarPanel.canShowDifferentContentView())
             return;

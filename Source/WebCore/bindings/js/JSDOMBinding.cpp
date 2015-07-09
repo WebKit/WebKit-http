@@ -113,6 +113,13 @@ String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
     return value.toString(exec)->value(exec);
 }
 
+JSValue jsDateOrNaN(ExecState* exec, double value)
+{
+    if (std::isnan(value))
+        return jsDoubleNumber(value);
+    return jsDateOrNull(exec, value);
+}
+
 JSValue jsDateOrNull(ExecState* exec, double value)
 {
     if (!std::isfinite(value))
@@ -217,6 +224,9 @@ JSValue createDOMException(ExecState* exec, ExceptionCode ec)
     // FIXME: Handle other WebIDL exception types.
     if (ec == TypeError)
         return createTypeError(exec);
+    if (ec == RangeError)
+        return createRangeError(exec, ASCIILiteral("Bad value"));
+
 
     // FIXME: All callers to setDOMException need to pass in the right global object
     // for now, we're going to assume the lexicalGlobalObject.  Which is wrong in cases like this:

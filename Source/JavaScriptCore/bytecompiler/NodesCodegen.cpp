@@ -2256,8 +2256,8 @@ RegisterID* ForInNode::tryGetBoundLocal(BytecodeGenerator& generator)
         return generator.variable(ident).local();
     }
 
-    if (m_lexpr->isDeconstructionNode()) {
-        DeconstructingAssignmentNode* assignNode = static_cast<DeconstructingAssignmentNode*>(m_lexpr);
+    if (m_lexpr->isDestructuringNode()) {
+        DestructuringAssignmentNode* assignNode = static_cast<DestructuringAssignmentNode*>(m_lexpr);
         auto binding = assignNode->bindings();
         if (!binding->isBindingNode())
             return nullptr;
@@ -2318,8 +2318,8 @@ void ForInNode::emitLoopHeader(BytecodeGenerator& generator, RegisterID* propert
         return;
     }
 
-    if (m_lexpr->isDeconstructionNode()) {
-        DeconstructingAssignmentNode* assignNode = static_cast<DeconstructingAssignmentNode*>(m_lexpr);
+    if (m_lexpr->isDestructuringNode()) {
+        DestructuringAssignmentNode* assignNode = static_cast<DestructuringAssignmentNode*>(m_lexpr);
         auto binding = assignNode->bindings();
         if (!binding->isBindingNode()) {
             assignNode->bindings()->bindValue(generator, propertyName);
@@ -2536,8 +2536,8 @@ void ForOfNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
                 generator.emitTypeProfilerExpressionInfo(assignNode->divotStart(), assignNode->divotEnd());
             }
         } else {
-            ASSERT(m_lexpr->isDeconstructionNode());
-            DeconstructingAssignmentNode* assignNode = static_cast<DeconstructingAssignmentNode*>(m_lexpr);
+            ASSERT(m_lexpr->isDestructuringNode());
+            DestructuringAssignmentNode* assignNode = static_cast<DestructuringAssignmentNode*>(m_lexpr);
             assignNode->bindings()->bindValue(generator, value);
         }
         generator.emitProfileControlFlow(m_statement->startOffset());
@@ -3105,8 +3105,8 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
 }
 #endif
     
-// ------------------------------ DeconstructingAssignmentNode -----------------
-RegisterID* DeconstructingAssignmentNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+// ------------------------------ DestructuringAssignmentNode -----------------
+RegisterID* DestructuringAssignmentNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     if (RegisterID* result = m_bindings->emitDirectBinding(generator, dst, m_initializer))
         return result;
@@ -3116,7 +3116,7 @@ RegisterID* DeconstructingAssignmentNode::emitBytecode(BytecodeGenerator& genera
     return generator.moveToDestinationIfNeeded(dst, initializer.get());
 }
 
-DeconstructionPatternNode::~DeconstructionPatternNode()
+DestructuringPatternNode::~DestructuringPatternNode()
 {
 }
 
@@ -3146,43 +3146,66 @@ void ArrayPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) 
 
     RefPtr<RegisterID> done;
     for (auto& target : m_targetPatterns) {
-        RefPtr<RegisterID> value = generator.newTemporary();
+        switch (target.bindingType) {
+        case BindingType::Elision:
+        case BindingType::Element: {
+            RefPtr<Label> iterationSkipped = generator.newLabel();
+            if (!done)
+                done = generator.newTemporary();
+            else
+                generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
 
-        RefPtr<Label> iterationSkipped = generator.newLabel();
-        if (!done)
-            done = generator.newTemporary();
-        else
-            generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
-
-        {
-            RefPtr<RegisterID> next = generator.emitGetById(generator.newTemporary(), iterator.get(), generator.propertyNames().next);
-            CallArguments nextArguments(generator, nullptr);
-            generator.emitMove(nextArguments.thisRegister(), iterator.get());
-            generator.emitCall(value.get(), next.get(), NoExpectedFunction, nextArguments, divot(), divotStart(), divotEnd());
-        }
-        {
-            RefPtr<Label> typeIsObject = generator.newLabel();
-            generator.emitJumpIfTrue(generator.emitIsObject(generator.newTemporary(), value.get()), typeIsObject.get());
-            generator.emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
-            generator.emitLabel(typeIsObject.get());
-        }
-
-        {
+            RefPtr<RegisterID> value = generator.newTemporary();
+            generator.emitIteratorNext(value.get(), iterator.get(), this);
             generator.emitGetById(done.get(), value.get(), generator.propertyNames().done);
-            RefPtr<Label> valueIsSet = generator.newLabel();
             generator.emitJumpIfTrue(done.get(), iterationSkipped.get());
             generator.emitGetById(value.get(), value.get(), generator.propertyNames().value);
-            generator.emitJump(valueIsSet.get());
-            generator.emitLabel(iterationSkipped.get());
-            generator.emitLoad(value.get(), jsUndefined());
-            generator.emitLabel(valueIsSet.get());
+
+            {
+                RefPtr<Label> valueIsSet = generator.newLabel();
+                generator.emitJump(valueIsSet.get());
+                generator.emitLabel(iterationSkipped.get());
+                generator.emitLoad(value.get(), jsUndefined());
+                generator.emitLabel(valueIsSet.get());
+            }
+
+            if (target.bindingType == BindingType::Element) {
+                if (target.defaultValue)
+                    assignDefaultValueIfUndefined(generator, value.get(), target.defaultValue);
+                target.pattern->bindValue(generator, value.get());
+            }
+            break;
         }
 
-        if (!target.pattern)
-            continue;
-        if (target.defaultValue)
-            assignDefaultValueIfUndefined(generator, value.get(), target.defaultValue);
-        target.pattern->bindValue(generator, value.get());
+        case BindingType::RestElement: {
+            RefPtr<RegisterID> array = generator.emitNewArray(generator.newTemporary(), 0, 0);
+
+            RefPtr<Label> iterationDone = generator.newLabel();
+            if (!done)
+                done = generator.newTemporary();
+            else
+                generator.emitJumpIfTrue(done.get(), iterationDone.get());
+
+            RefPtr<RegisterID> index = generator.newTemporary();
+            generator.emitLoad(index.get(), jsNumber(0));
+            RefPtr<Label> loopStart = generator.newLabel();
+            generator.emitLabel(loopStart.get());
+
+            RefPtr<RegisterID> value = generator.newTemporary();
+            generator.emitIteratorNext(value.get(), iterator.get(), this);
+            generator.emitGetById(done.get(), value.get(), generator.propertyNames().done);
+            generator.emitJumpIfTrue(done.get(), iterationDone.get());
+            generator.emitGetById(value.get(), value.get(), generator.propertyNames().value);
+
+            generator.emitDirectPutByVal(array.get(), index.get(), value.get());
+            generator.emitInc(index.get());
+            generator.emitJump(loopStart.get());
+
+            generator.emitLabel(iterationDone.get());
+            target.pattern->bindValue(generator, array.get());
+            break;
+        }
+        }
     }
 
     RefPtr<Label> iteratorClosed = generator.newLabel();
@@ -3229,13 +3252,24 @@ void ArrayPatternNode::toString(StringBuilder& builder) const
 {
     builder.append('[');
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        if (!m_targetPatterns[i].pattern) {
+        const auto& target = m_targetPatterns[i];
+
+        switch (target.bindingType) {
+        case BindingType::Elision:
             builder.append(',');
-            continue;
+            break;
+
+        case BindingType::Element:
+            target.pattern->toString(builder);
+            if (i < m_targetPatterns.size() - 1)
+                builder.append(',');
+            break;
+
+        case BindingType::RestElement:
+            builder.append("...");
+            target.pattern->toString(builder);
+            break;
         }
-        m_targetPatterns[i].pattern->toString(builder);
-        if (i < m_targetPatterns.size() - 1)
-            builder.append(',');
     }
     builder.append(']');
 }
@@ -3243,7 +3277,7 @@ void ArrayPatternNode::toString(StringBuilder& builder) const
 void ArrayPatternNode::collectBoundIdentifiers(Vector<Identifier>& identifiers) const
 {
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        if (DeconstructionPatternNode* node = m_targetPatterns[i].pattern.get())
+        if (DestructuringPatternNode* node = m_targetPatterns[i].pattern.get())
             node->collectBoundIdentifiers(identifiers);
     }
 }

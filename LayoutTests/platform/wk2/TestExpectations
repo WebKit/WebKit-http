@@ -46,8 +46,6 @@
 webkit.org/b/101773 fast/repaint/body-background-image.html [ ImageOnlyFailure Pass ]
 
 # AX tests that require hit testing do not work in WK2.
-webkit.org/b/71298 accessibility/hit-test-input-auto-fill-button.html
-webkit.org/b/71298 accessibility/hit-test-input-search-cancel-button.html
 webkit.org/b/71298 accessibility/loading-iframe-updates-axtree.html
 webkit.org/b/71298 platform/mac/accessibility/html-slider-indicator.html
 webkit.org/b/71298 platform/mac/accessibility/listbox-hit-test.html
@@ -222,6 +220,8 @@ webkit.org/b/132297 svg/custom/bug79798.html [ Skip ]
 webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
 
 webkit.org/b/141122 editing/selection/programmatic-selection-on-mac-is-directionless.html [ Pass Failure ]
+
+webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -421,6 +421,9 @@ fast/dynamic/window-resize-scrollbars-test.html [ Failure ]
 # This test is not the cause of the problem, just the one that happens to currently be the victim.
 svg/filters/filter-hidden-content.svg [ Pass Failure ]
 
+# No good way to test private browsing in WKTR right now
+http/tests/security/private-browsing-http-auth.html
+
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
 
@@ -563,6 +566,9 @@ http/tests/loading/pdf-commit-load-callbacks.html
 
 # Times out unexpectedly.
 http/tests/security/feed-urls-from-remote.html
+
+# First two lines are reversed when test is flaky.
+fast/preloader/document-write-2.html [ Pass Fail ]
 
 ### END OF (3) Unclassified failures
 ########################################

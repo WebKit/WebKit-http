@@ -151,12 +151,18 @@ public:
     struct CommitState {
         int treeDepth { 0 };
         bool ancestorHasTransformAnimation { false };
-        bool ancestorsAllowBackingStoreDetachment { true };
+        bool ancestorIsViewportConstrained { false };
+        bool viewportIsStable { true };
+        
+        CommitState(bool stableViewport)
+            : viewportIsStable(stableViewport)
+        {
+        }
     };
     void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
-    WEBCORE_EXPORT virtual void flushCompositingState(const FloatRect&) override;
-    WEBCORE_EXPORT virtual void flushCompositingStateForThisLayerOnly() override;
+    WEBCORE_EXPORT virtual void flushCompositingState(const FloatRect&, bool viewportIsStable) override;
+    WEBCORE_EXPORT virtual void flushCompositingStateForThisLayerOnly(bool viewportIsStable) override;
 
     WEBCORE_EXPORT virtual bool visibleRectChangeRequiresFlush(const FloatRect& visibleRect) const override;
 
@@ -195,8 +201,8 @@ private:
 
     virtual bool isCommittingChanges() const override { return m_isCommittingChanges; }
 
-    WEBCORE_EXPORT virtual void setAllowsBackingStoreDetachment(bool) override;
-    virtual bool allowsBackingStoreDetachment() const override { return m_allowsBackingStoreDetachment; }
+    WEBCORE_EXPORT virtual void setIsViewportConstrained(bool) override;
+    virtual bool isViewportConstrained() const override { return m_isViewportConstrained; }
 
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const override;
 
@@ -294,7 +300,7 @@ private:
     const FloatRect& visibleRect() const { return m_visibleRect; }
     const FloatRect& coverageRect() const { return m_coverageRect; }
 
-    void setVisibleAndCoverageRects(const VisibleAndCoverageRects&, bool allowBackingStoreDetachment);
+    void setVisibleAndCoverageRects(const VisibleAndCoverageRects&, bool isViewportConstrained, bool viewportIsStable);
     
     static FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize);
 
@@ -437,7 +443,7 @@ private:
     bool appendToUncommittedAnimations(const KeyframeValueList&, const TransformOperations*, const Animation*, const String& animationName, const FloatSize& boxSize, int animationIndex, double timeOffset, bool isMatrixAnimation);
     bool appendToUncommittedAnimations(const KeyframeValueList&, const FilterOperation*, const Animation*, const String& animationName, int animationIndex, double timeOffset);
 
-    enum LayerChange {
+    enum LayerChange : uint64_t {
         NoChange =                      0,
         NameChanged =                   1LLU << 1,
         ChildrenChanged =               1LLU << 2, // also used for content layer, and preserves-3d, and size if tiling changes?
@@ -513,7 +519,7 @@ private:
     ContentsLayerPurpose m_contentsLayerPurpose { NoContentsLayer };
     bool m_needsFullRepaint : 1;
     bool m_usingBackdropLayerType : 1;
-    bool m_allowsBackingStoreDetachment : 1;
+    bool m_isViewportConstrained : 1;
     bool m_intersectsCoverageRect : 1;
 
     Color m_contentsSolidColor;

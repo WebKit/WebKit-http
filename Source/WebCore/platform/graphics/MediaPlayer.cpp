@@ -314,10 +314,10 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, const Str
     m_contentMIMETypeWasInferredFromExtension = false;
 
 #if ENABLE(MEDIA_SOURCE)
-    m_mediaSource = 0;
+    m_mediaSource = nullptr;
 #endif
 #if ENABLE(MEDIA_STREAM)
-    m_mediaStream = 0;
+    m_mediaStream = nullptr;
 #endif
 
     // If the MIME type is missing or is not meaningful, try to figure it out from the URL.
@@ -363,6 +363,7 @@ bool MediaPlayer::load(MediaStreamPrivate* mediaStream)
     ASSERT(mediaStream);
     m_mediaStream = mediaStream;
     m_keySystem = "";
+    m_contentMIMEType = "";
     m_contentMIMETypeWasInferredFromExtension = false;
     loadWithNextMediaEngine(0);
     return m_currentMediaEngine;
@@ -532,6 +533,11 @@ MediaTime MediaPlayer::initialTime() const
 MediaTime MediaPlayer::currentTime() const
 {
     return m_private->currentMediaTime();
+}
+
+MediaTime MediaPlayer::getStartDate() const
+{
+    return m_private->getStartDate();
 }
 
 void MediaPlayer::seekWithTolerance(const MediaTime& time, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance)

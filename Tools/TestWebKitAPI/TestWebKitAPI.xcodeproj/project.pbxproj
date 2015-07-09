@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 45;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -51,6 +51,7 @@
 		51393E221523952D005F39C5 /* DOMWindowExtensionBasic_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51393E1D1523944A005F39C5 /* DOMWindowExtensionBasic_Bundle.cpp */; };
 		5142B2731517C8C800C32B19 /* ContextMenuCanCopyURL.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5142B2721517C89100C32B19 /* ContextMenuCanCopyURL.html */; };
 		517E7E04151119C100D0B008 /* MemoryCachePruneWithinResourceLoadDelegate.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 517E7E031511187500D0B008 /* MemoryCachePruneWithinResourceLoadDelegate.html */; };
+		51B454EC1B4E236B0085EAA6 /* WebViewCloseInsideDidFinishLoadForFrame.mm in Sources */ = {isa = PBXBuildFile; fileRef = 51B454EB1B4E236B0085EAA6 /* WebViewCloseInsideDidFinishLoadForFrame.mm */; };
 		51CB4AD81B3A079C00C1B1C6 /* ModalAlertsSPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51CB4AD71B3A079C00C1B1C6 /* ModalAlertsSPI.cpp */; };
 		51CD1C6C1B38CE4300142CA5 /* ModalAlerts.mm in Sources */ = {isa = PBXBuildFile; fileRef = 51CD1C6A1B38CE3600142CA5 /* ModalAlerts.mm */; };
 		51CD1C721B38D48400142CA5 /* modal-alerts-in-new-about-blank-window.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51CD1C711B38D48400142CA5 /* modal-alerts-in-new-about-blank-window.html */; };
@@ -299,6 +300,7 @@
 		E194E1BD177E53C7009C4D4E /* StopLoadingFromDidReceiveResponse.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = E194E1BC177E534A009C4D4E /* StopLoadingFromDidReceiveResponse.html */; };
 		E19DB9791B32137C00DB38D4 /* NavigatorLanguage.mm in Sources */ = {isa = PBXBuildFile; fileRef = E19DB9781B32137C00DB38D4 /* NavigatorLanguage.mm */; };
 		E40019331ACE9B88001B0A2A /* BloomFilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E40019301ACE9B5C001B0A2A /* BloomFilter.cpp */; };
+		E4C9ABC91B3DB2C40040A987 /* RunLoop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4C9ABC71B3DB1710040A987 /* RunLoop.cpp */; };
 		F660AA1115A5F631003A1243 /* GetInjectedBundleInitializationUserDataCallback_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F660AA0F15A5F624003A1243 /* GetInjectedBundleInitializationUserDataCallback_Bundle.cpp */; };
 		F660AA1515A61ABF003A1243 /* InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F660AA1415A61ABF003A1243 /* InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp */; };
 		F6B7BE9517469212008A3445 /* DidAssociateFormControls_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F6B7BE92174691EF008A3445 /* DidAssociateFormControls_Bundle.cpp */; };
@@ -520,6 +522,7 @@
 		5142B2721517C89100C32B19 /* ContextMenuCanCopyURL.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = ContextMenuCanCopyURL.html; sourceTree = "<group>"; };
 		517E7DFB15110EA600D0B008 /* MemoryCachePruneWithinResourceLoadDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MemoryCachePruneWithinResourceLoadDelegate.mm; sourceTree = "<group>"; };
 		517E7E031511187500D0B008 /* MemoryCachePruneWithinResourceLoadDelegate.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = MemoryCachePruneWithinResourceLoadDelegate.html; sourceTree = "<group>"; };
+		51B454EB1B4E236B0085EAA6 /* WebViewCloseInsideDidFinishLoadForFrame.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebViewCloseInsideDidFinishLoadForFrame.mm; sourceTree = "<group>"; };
 		51CB4AD71B3A079C00C1B1C6 /* ModalAlertsSPI.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ModalAlertsSPI.cpp; sourceTree = "<group>"; };
 		51CD1C6A1B38CE3600142CA5 /* ModalAlerts.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ModalAlerts.mm; sourceTree = "<group>"; };
 		51CD1C711B38D48400142CA5 /* modal-alerts-in-new-about-blank-window.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "modal-alerts-in-new-about-blank-window.html"; sourceTree = "<group>"; };
@@ -727,6 +730,7 @@
 		E40019301ACE9B5C001B0A2A /* BloomFilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BloomFilter.cpp; sourceTree = "<group>"; };
 		E490296714E2E3A4002BEDD1 /* TypingStyleCrash.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TypingStyleCrash.mm; sourceTree = "<group>"; };
 		E4A757D3178AEA5B00B5D7A4 /* Deque.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Deque.cpp; sourceTree = "<group>"; };
+		E4C9ABC71B3DB1710040A987 /* RunLoop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RunLoop.cpp; sourceTree = "<group>"; };
 		F3FC3EE213678B7300126A65 /* libgtest.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgtest.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		F660AA0C15A5F061003A1243 /* GetInjectedBundleInitializationUserDataCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GetInjectedBundleInitializationUserDataCallback.cpp; sourceTree = "<group>"; };
 		F660AA0F15A5F624003A1243 /* GetInjectedBundleInitializationUserDataCallback_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GetInjectedBundleInitializationUserDataCallback_Bundle.cpp; sourceTree = "<group>"; };
@@ -1096,6 +1100,7 @@
 				86BD19971A2DB05B006DCF0A /* RefCounter.cpp */,
 				93A427AD180DA60F00CD24D7 /* RefLogger.h */,
 				93A427A8180D9B0700CD24D7 /* RefPtr.cpp */,
+				E4C9ABC71B3DB1710040A987 /* RunLoop.cpp */,
 				14F3B11215E45EAB00210069 /* SaturatedArithmeticOperations.cpp */,
 				CD5393C91757BAC400C07123 /* SHA1.cpp */,
 				81B50192140F232300D9EB58 /* StringBuilder.cpp */,
@@ -1240,6 +1245,7 @@
 				E490296714E2E3A4002BEDD1 /* TypingStyleCrash.mm */,
 				51FBBB4C1513D4E900822738 /* WebViewCanPasteURL.mm */,
 				C2EB2DD116CAC7AC009B52EE /* WebViewDidCreateJavaScriptContext.mm */,
+				51B454EB1B4E236B0085EAA6 /* WebViewCloseInsideDidFinishLoadForFrame.mm */,
 				37E38C33169B7D010084C28C /* WebViewDidRemoveFrameFromHierarchy.mm */,
 				CE32C7C718184C4900CD8C28 /* WillPerformClientRedirectToURLCrash.mm */,
 				1A7BFC0A171A0BDB00BC5F64 /* WillSendSubmitEvent.mm */,
@@ -1386,6 +1392,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0700;
+				LastUpgradeCheck = 0700;
 				TargetAttributes = {
 					7CCE7E8B1A41144E00447C4C = {
 						CreatedOnToolsVersion = 6.3;
@@ -1393,7 +1400,7 @@
 				};
 			};
 			buildConfigurationList = 1DEB927808733DD40010E9CD /* Build configuration list for PBXProject "TestWebKitAPI" */;
-			compatibilityVersion = "Xcode 3.1";
+			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
@@ -1527,6 +1534,7 @@
 				7CCE7F4C1A411B9800447C4C /* OSObjectPtr.cpp in Sources */,
 				7CCE7F071A411AE600447C4C /* PageLoadBasic.cpp in Sources */,
 				7CCE7F081A411AE600447C4C /* PageLoadDidChangeLocationWithinPageForFrame.cpp in Sources */,
+				E4C9ABC91B3DB2C40040A987 /* RunLoop.cpp in Sources */,
 				7CCE7EC71A411A7E00447C4C /* PageVisibilityStateWithWindowChanges.mm in Sources */,
 				7CCE7F091A411AE600447C4C /* ParentFrame.cpp in Sources */,
 				7CCE7F0A1A411AE600447C4C /* PasteboardNotifications.mm in Sources */,
@@ -1620,6 +1628,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2D9A53AF1B31FA8D0074D5AA /* ShrinkToFit.mm in Sources */,
+				51B454EC1B4E236B0085EAA6 /* WebViewCloseInsideDidFinishLoadForFrame.mm in Sources */,
 				7AA021BB1AB09EA70052953F /* DateMath.cpp in Sources */,
 				2D1FE0B01AD465C1006CD9E6 /* FixedLayoutSize.mm in Sources */,
 				1CB9BC381A67482300FE5678 /* WeakPtr.cpp in Sources */,

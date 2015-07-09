@@ -44,10 +44,6 @@ webkit.org/b/72698 media/audio-garbage-collect.html [ Skip ]
 
 webkit.org/b/53990 fast/forms/search-event-delay.html [ Pass Failure ]
 
-# No port in WebKit already support getMediaStream, so we are skipping those for now.
-fast/mediastream/MediaStream-construct-with-ended-tracks.html [ Skip ]
-fast/mediastream/MediaStream-clone.html [ Skip ]
-
 webkit.org/b/126142 css3/calc/transitions-dependent.html [ Pass Failure ]
 
 webkit.org/b/124932 media/video-size.html [ Pass Failure ]
@@ -520,8 +516,6 @@ webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-3.html [ Failure ]
 
 webkit.org/b/144258 [ Debug ] js/class-syntax-semicolon.html [ Skip ]
 
-webkit.org/b/145007 js/regress-141098.html [ Skip ]
-
 webkit.org/b/145390 storage/indexeddb/deleteIndex-bug110792.html [ Pass Failure ]
 
 # DumpRenderTree does not allow GIFs to animate, thus animated GIF tests don't work in WebKit1.
@@ -529,3 +523,9 @@ fast/images/animated-gif-no-layout.html [ ImageOnlyFailure ]
 fast/images/gif-loop-count.html [ ImageOnlyFailure ]
 
 webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [ Pass Failure ]
+
+webkit.org/b/146434 fast/dom/HTMLImageElement/sizes [ Skip ]
+
+# Intl is not enabled yet
+js/intl.html [ Skip ]
+

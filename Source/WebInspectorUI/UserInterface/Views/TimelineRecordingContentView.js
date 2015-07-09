@@ -308,10 +308,8 @@ WebInspector.TimelineRecordingContentView.prototype = {
 
         if (treeElement instanceof WebInspector.ProfileNodeTreeElement) {
             var profileNode = treeElement.profileNode;
-            for (var call of profileNode.calls) {
-                if (checkTimeBounds(call.startTime, call.endTime))
-                    return true;
-            }
+            if (checkTimeBounds(profileNode.startTime, profileNode.endTime))
+                return true;
 
             return false;
         }
@@ -334,6 +332,7 @@ WebInspector.TimelineRecordingContentView.prototype = {
         if (timelineView) {
             this._timelineSidebarPanel.contentTreeOutline = timelineView.navigationSidebarTreeOutline;
             this._timelineSidebarPanel.contentTreeOutlineLabel = timelineView.navigationSidebarTreeOutlineLabel;
+            this._timelineSidebarPanel.contentTreeOutlineScopeBar = timelineView.navigationSidebarTreeOutlineScopeBar;
 
             if (timelineView.representedObject.type === WebInspector.TimelineRecord.Type.RenderingFrame)
                 newTimelineOverview = this._renderingFrameTimelineOverview;
@@ -417,7 +416,7 @@ WebInspector.TimelineRecordingContentView.prototype = {
             for (var timelineView of this._timelineViewMap.values())
                 timelineView.zeroTime = startTime;
 
-            delete this._startTimeNeedsReset;
+            this._startTimeNeedsReset = false;
         }
 
         this._linearTimelineOverview.endTime = Math.max(endTime, currentTime);

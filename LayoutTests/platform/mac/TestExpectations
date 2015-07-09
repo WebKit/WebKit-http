@@ -405,17 +405,12 @@ svg/stroke/zero-length-arc-linecaps-rendering.svg [ Failure ]
 svg/stroke/zero-length-path-linecap-rendering.svg [ Failure ]
 svg/stroke/zero-length-subpaths-linecap-rendering.svg [ Failure ]
 
-# https://bugs.webkit.org/show_bug.cgi?id=110871
-compositing/overlap-blending/reflection-opacity-huge.html [ ImageOnlyFailure ]
+webkit.org/b/110871 compositing/overlap-blending/reflection-opacity-huge.html [ ImageOnlyFailure ]
+webkit.org/b/114340 compositing/overlap-blending/nested-overlap.html [ ImageOnlyFailure ]
+webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
+webkit.org/b/146523 compositing/masks/compositing-clip-path-origin.html [ Pass ImageOnlyFailure ]
 
-# https://bugs.webkit.org/show_bug.cgi?id=114340
-compositing/overlap-blending/nested-overlap.html [ ImageOnlyFailure ]
-
-# https://bugs.webkit.org/show_bug.cgi?id=114338
-compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
-
-# https://bugs.webkit.org/show_bug.cgi?id=95027
-fast/block/float/016.html [ Failure ]
+webkit.org/b/95027 fast/block/float/016.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=93878
 # Due to JSC::Bindings::Instance::createRuntimeObject(JSC::ExecState*) crashes:
@@ -605,7 +600,7 @@ webkit.org/b/85308 ietestcenter/css3/valuesandunits/units-000.htm [ Skip ]
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 
 webaudio/mediastreamaudiodestinationnode.html [ Failure ]
-webaudio/mediastreamaudiosourcenode.html [ Failure ]
+webaudio/mediastreamaudiosourcenode.html [ Skip ]
 webaudio/codec-tests/vorbis/ [ WontFix ]
 webkit.org/b/119467 webaudio/audiobuffersource-loop-points.html [ Skip ]
 
@@ -853,6 +848,7 @@ webkit.org/b/132385 compositing/repaint/repaint-on-layer-grouping-change.html [ 
 [ Mavericks ] http/tests/misc/webtiming-cross-origin-redirect.php [ WontFix ]
 [ Mavericks ] http/tests/misc/webtiming-no-origin.html [ WontFix ]
 [ Mavericks ] http/tests/misc/webtiming-one-redirect.php [ WontFix ]
+[ Mavericks ] http/tests/misc/webtiming-resolution.html [ WontFix ]
 [ Mavericks ] http/tests/misc/webtiming-slow-load.php [ WontFix ]
 [ Mavericks ] http/tests/misc/webtiming-ssl.php [ WontFix ]
 [ Mavericks ] http/tests/misc/webtiming-two-redirects.php [ WontFix ]
@@ -995,6 +991,10 @@ webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 
 webkit.org/b/140639 http/tests/media/video-play-waiting.html [ Pass Timeout ]
 
+# ENABLE(MEDIA_SESSION) is disabled
+media/session/controls-existence.html
+media/session/default-session.html
+
 # This test requires generation of progress events during loading
 webkit.org/b/100984 media/progress-events-generated-correctly.html [ Failure ]
 
@@ -1111,12 +1111,17 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 
 # Passing Media Source tests
 [ Yosemite+ ] http/tests/media/media-source/ [ Skip ]
+[ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-readyState.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-removed.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-updating.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-addsourcebuffer.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-append-buffer.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-closed.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-config-change-mp4-v-bitrate.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-config-change-mp4-v-framerate.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-endofstream-invaliderror.html [ Pass ]
+[ Yosemite+ ] http/tests/media/media-source/mediasource-is-type-supported.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-multiple-attach.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-play.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-remove.html [ Pass ]
@@ -1279,14 +1284,12 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 [ ElCapitan+ ] http/tests/media/video-play-stall.html [ Failure ]
 
 # <rdar://problem/21263363>
-[ ElCapitan+ ] http/tests/media/remove-while-loading.html [ Skip ]
-[ ElCapitan+ ] http/tests/media/video-accept-encoding.html [ Failure ]
-[ ElCapitan+ ] http/tests/media/video-cancel-load.html [ Skip ]
-[ ElCapitan+ ] http/tests/media/video-served-as-text.html [ Failure ]
-[ ElCapitan+ ] http/tests/media/video-throttled-load-metadata.html [ Failure ]
-[ ElCapitan+ ] http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
+http/tests/media/remove-while-loading.html [ Skip ]
+http/tests/media/video-accept-encoding.html [ Failure ]
+http/tests/media/video-cancel-load.html [ Skip ]
+http/tests/media/video-served-as-text.html [ Failure ]
+http/tests/media/video-throttled-load-metadata.html [ Failure ]
+http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
-# <rdar://problem/21486062>
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-complex.html [ Pass Failure ]
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-simple.html [ Pass Failure ]
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-vertical.html [ Pass Failure ]
+[ Yosemite ] fast/canvas/webgl/oes-texture-half-float-linear.html [ Pass Failure ]
+

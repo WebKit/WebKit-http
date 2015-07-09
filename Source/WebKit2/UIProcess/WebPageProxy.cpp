@@ -159,6 +159,11 @@
 #include <WebCore/WebMediaSessionManager.h>
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+#include "WebMediaSessionMetadata.h"
+#include <WebCore/MediaSessionMetadata.h>
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -303,6 +308,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
     , m_dynamicViewportSizeUpdateLayerTreeTransactionID(0)
     , m_layerTreeTransactionIdAtLastTouchStart(0)
+    , m_hasNetworkRequestsOnSuspended(false)
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
@@ -1049,7 +1055,7 @@ void WebPageProxy::recordNavigationSnapshot()
 
 void WebPageProxy::recordNavigationSnapshot(WebBackForwardListItem& item)
 {
-    if (!m_shouldRecordNavigationSnapshots)
+    if (!m_shouldRecordNavigationSnapshots || m_suppressNavigationSnapshotting)
         return;
 
 #if PLATFORM(COCOA)
@@ -2143,6 +2149,10 @@ RefPtr<API::Navigation> WebPageProxy::restoreFromSessionState(SessionState sessi
             process().registerNewWebBackForwardListItem(entry.get());
 
         process().send(Messages::WebPage::RestoreSession(m_backForwardList->itemStates()), m_pageID);
+
+        // The back / forward list was restored from a sessionState so we don't want to snapshot the current
+        // page when navigating away. Suppress navigation snapshotting until the next load has committed.
+        m_suppressNavigationSnapshotting = true;
     }
 
     // FIXME: Navigating should be separate from state restoration.
@@ -2936,9 +2946,10 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     auto transaction = m_pageLoadState.transaction();
     bool markPageInsecure = m_treatsSHA1CertificatesAsInsecure && certificateInfo.containsNonRootSHA1SignedCertificate();
     Ref<WebCertificateInfo> webCertificateInfo = WebCertificateInfo::create(certificateInfo);
-    if (frame->isMainFrame())
+    if (frame->isMainFrame()) {
         m_pageLoadState.didCommitLoad(transaction, webCertificateInfo, markPageInsecure);
-    else if (markPageInsecure)
+        m_suppressNavigationSnapshotting = false;
+    } else if (markPageInsecure)
         m_pageLoadState.didDisplayOrRunInsecureContent(transaction);
 
 #if USE(APPKIT)
@@ -3045,7 +3056,9 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
+    bool isMainFrame = frame->isMainFrame();
+
+    if (isMainFrame)
         m_pageLoadState.didFailLoad(transaction);
 
     frame->didFailLoad();
@@ -3057,10 +3070,8 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
     } else
         m_loaderClient->didFailLoadWithErrorForFrame(*this, *frame, navigation.get(), error, m_process->transformHandlesToObjects(userData.object()).get());
 
-    // Notify the PageClient that the main frame finished loading. The WebView / GestureController need to know the load has
-    // finished (e.g. to clear the back swipe snapshot).
-    if (frame->isMainFrame())
-        m_pageClient.didFinishLoadForMainFrame();
+    if (isMainFrame)
+        m_pageClient.didFailLoadForMainFrame();
 }
 
 void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t opaqueSameDocumentNavigationType, const String& url, const UserData& userData)
@@ -3700,7 +3711,7 @@ void WebPageProxy::runOpenPanel(uint64_t frameID, const FileChooserSettings& set
 {
     if (m_openPanelResultListener) {
         m_openPanelResultListener->invalidate();
-        m_openPanelResultListener = 0;
+        m_openPanelResultListener = nullptr;
     }
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
@@ -3802,7 +3813,7 @@ void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const Int
 #if ENABLE(INPUT_TYPE_COLOR_POPOVER)
     // A new popover color well needs to be created (and the previous one destroyed) for
     // each activation of a color element.
-    m_colorPicker = 0;
+    m_colorPicker = nullptr;
 #endif
     if (!m_colorPicker)
         m_colorPicker = m_pageClient.createColorPicker(this, initialColor, elementRect);
@@ -4294,7 +4305,7 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     m_process->send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs), m_pageID);
 
     m_openPanelResultListener->invalidate();
-    m_openPanelResultListener = 0;
+    m_openPanelResultListener = nullptr;
 }
 
 void WebPageProxy::didCancelForOpenPanel()
@@ -4305,7 +4316,7 @@ void WebPageProxy::didCancelForOpenPanel()
     m_process->send(Messages::WebPage::DidCancelForOpenPanel(), m_pageID);
     
     m_openPanelResultListener->invalidate();
-    m_openPanelResultListener = 0;
+    m_openPanelResultListener = nullptr;
 }
 
 void WebPageProxy::advanceToNextMisspelling(bool startBeforeSelection)
@@ -4761,7 +4772,7 @@ void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64
 void WebPageProxy::focusedFrameChanged(uint64_t frameID)
 {
     if (!frameID) {
-        m_focusedFrame = 0;
+        m_focusedFrame = nullptr;
         return;
     }
 
@@ -4774,7 +4785,7 @@ void WebPageProxy::focusedFrameChanged(uint64_t frameID)
 void WebPageProxy::frameSetLargestFrameChanged(uint64_t frameID)
 {
     if (!frameID) {
-        m_frameSetLargestFrame = 0;
+        m_frameSetLargestFrame = nullptr;
         return;
     }
 
@@ -4828,6 +4839,27 @@ void WebPageProxy::processDidCrash()
     else
         m_loaderClient->processDidCrash(*this);
 }
+
+#if PLATFORM(IOS)
+void WebPageProxy::processWillBecomeSuspended()
+{
+    ASSERT(m_isValid);
+
+    m_hasNetworkRequestsOnSuspended = m_pageLoadState.networkRequestsInProgress();
+    if (m_hasNetworkRequestsOnSuspended)
+        setNetworkRequestsInProgress(false);
+}
+
+void WebPageProxy::processWillBecomeForeground()
+{
+    ASSERT(m_isValid);
+
+    if (m_hasNetworkRequestsOnSuspended) {
+        setNetworkRequestsInProgress(true);
+        m_hasNetworkRequestsOnSuspended = false;
+    }
+}
+#endif
 
 void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
@@ -4898,6 +4930,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
     m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
     m_layerTreeTransactionIdAtLastTouchStart = 0;
+    m_hasNetworkRequestsOnSuspended = false;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
@@ -5746,6 +5779,11 @@ void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardList
     m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
 }
 
+void WebPageProxy::navigationGestureDidEnd()
+{
+    m_pageClient.navigationGestureDidEnd();
+}
+
 void WebPageProxy::willRecordNavigationSnapshot(WebBackForwardListItem& item)
 {
     m_pageClient.willRecordNavigationSnapshot(item);
@@ -5771,8 +5809,15 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
 }
 
 #if ENABLE(MEDIA_SESSION)
+void WebPageProxy::hasMediaSessionWithActiveMediaElementsDidChange(bool state)
+{
+    m_hasMediaSessionWithActiveMediaElements = state;
+}
+
 void WebPageProxy::mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata& metadata)
 {
+    Ref<WebMediaSessionMetadata> webMetadata = WebMediaSessionMetadata::create(metadata);
+    m_uiClient->mediaSessionMetadataDidChange(*this, webMetadata.ptr());
 }
 #endif
 

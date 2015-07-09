@@ -201,6 +201,10 @@ protected:
     WriteBarrier<JSFunction> m_applyFunction;
     WriteBarrier<JSFunction> m_definePropertyFunction;
     WriteBarrier<JSFunction> m_arrayProtoValuesFunction;
+#if ENABLE(PROMISES)
+    WriteBarrier<JSFunction> m_initializePromiseFunction;
+    WriteBarrier<JSFunction> m_newPromiseDeferredFunction;
+#endif
     WriteBarrier<GetterSetter> m_throwTypeErrorGetterSetter;
 
     WriteBarrier<ObjectPrototype> m_objectPrototype;
@@ -238,7 +242,6 @@ protected:
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
     WriteBarrier<Structure> m_boundFunctionStructure;
-    WriteBarrier<Structure> m_boundSlotBaseFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
@@ -414,6 +417,10 @@ public:
     JSFunction* applyFunction() const { return m_applyFunction.get(); }
     JSFunction* definePropertyFunction() const { return m_definePropertyFunction.get(); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(); }
+#if ENABLE(PROMISES)
+    JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(); }
+    JSFunction* newPromiseDeferredFunction() const { return m_newPromiseDeferredFunction.get(); }
+#endif
     GetterSetter* throwTypeErrorGetterSetter(VM& vm)
     {
         if (!m_throwTypeErrorGetterSetter)
@@ -479,7 +486,6 @@ public:
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
-    Structure* boundSlotBaseFunctionStructure() const { return m_boundSlotBaseFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }

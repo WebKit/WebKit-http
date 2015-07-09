@@ -1,3 +1,71 @@
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * ANGLE.xcodeproj/project.pbxproj: Enabled CLANG_WARN_BOOL_CONVERSION,
+        CLANG_WARN_ENUM_CONVERSION, CLANG_WARN_INT_CONVERSION, ENABLE_STRICT_OBJC_MSGSEND and
+        GCC_NO_COMMON_BLOCKS.
+
+        * Configurations/Base.xcconfig: Updated LastUpgradeCheck.
+
+2015-07-03  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][WebGL] Enable HLSL.
+        https://bugs.webkit.org/show_bug.cgi?id=146559
+
+        Reviewed by Alex Christensen.
+
+        High Level Shader Language needs to be enabled for WebGL to work on Windows.
+
+        * ANGLE.vcxproj/translatorCommon.props:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters:
+
+2015-07-01  Alex Christensen  <achristensen@webkit.org>
+
+        Re-enable WebGL on WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=146537
+
+        Reviewed by Csaba Osztrogonác.
+
+        * ANGLE.vcxproj/DirectX32.props:
+        * ANGLE.vcxproj/DirectX64.props:
+        * ANGLE.vcxproj/libGLESv2Common.props:
+        Update DirectX directories to use the Windows SDK instead of the June 2010 DirectX SDK.
+
+2015-07-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ANGLE Windows build after r186169.
+        https://bugs.webkit.org/show_bug.cgi?id=146532
+
+        Reviewed by Brent Fulgham.
+
+        * ANGLE.vcxproj/libEGL.vcxproj:
+        * ANGLE.vcxproj/libEGL.vcxproj.filters:
+        * ANGLE.vcxproj/libGLESv2.vcxproj:
+        * ANGLE.vcxproj/libGLESv2.vcxproj.filters:
+        * ANGLE.vcxproj/libGLESv2Common.props:
+        * ANGLE.vcxproj/translator_common.vcxproj:
+        * ANGLE.vcxproj/translator_common.vcxproj.filters:
+        * ANGLE.vcxproj/translator_glsl.vcxproj:
+        * ANGLE.vcxproj/translator_glsl.vcxproj.filters:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj:
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters:
+        Update Windows build to build new files.
+
+2015-06-30  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE to b11e2483742db884bd0af41f78f528240577356b.
+        https://bugs.webkit.org/show_bug.cgi?id=145010
+
+        Reviewed by Dean Jackson.
+
+        Huge list of source changes omitted.
+        ROLL DEPS!
+
 2015-05-26  Dan Bernstein  <mitz@apple.com>
 
         <rdar://problem/21104551> Update build settings

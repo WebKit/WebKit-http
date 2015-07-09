@@ -91,6 +91,7 @@ typedef void (*WKPageDidCancelTrackingPotentialLongMousePressCallback)(WKPageRef
 typedef void (*WKPageIsPlayingAudioDidChangeCallback)(WKPageRef page, const void* clientInfo);
 typedef void (*WKPageDecidePolicyForUserMediaPermissionRequestCallback)(WKPageRef page, WKFrameRef frame, WKSecurityOriginRef origin, WKUserMediaPermissionRequestRef permissionRequest, const void* clientInfo);
 typedef void (*WKPageDidClickAutoFillButtonCallback)(WKPageRef page, WKTypeRef userData, const void *clientInfo);
+typedef void (*WKPageMediaSessionMetadataDidChangeCallback)(WKPageRef page, WKMediaSessionMetadataRef metadata, const void* clientInfo);
 
 // Deprecated
 typedef WKPageRef (*WKPageCreateNewPageCallback_deprecatedForUseWithV0)(WKPageRef page, WKDictionaryRef features, WKEventModifiers modifiers, WKEventMouseButton mouseButton, const void *clientInfo);
@@ -116,9 +117,9 @@ typedef struct WKPageUIClientV0 {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
@@ -161,9 +162,9 @@ typedef struct WKPageUIClientV1 {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
@@ -212,9 +213,9 @@ typedef struct WKPageUIClientV2 {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
@@ -268,9 +269,9 @@ typedef struct WKPageUIClientV3 {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
@@ -327,9 +328,9 @@ typedef struct WKPageUIClientV4 {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;
@@ -452,6 +453,7 @@ typedef struct WKPageUIClientV5 {
     WKPageRunJavaScriptAlertCallback                                    runJavaScriptAlert;
     WKPageRunJavaScriptConfirmCallback                                  runJavaScriptConfirm;
     WKPageRunJavaScriptPromptCallback                                   runJavaScriptPrompt;
+    WKPageMediaSessionMetadataDidChangeCallback                         mediaSessionMetadataDidChange;
 } WKPageUIClientV5;
 
 enum { kWKPageUIClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 2 };
@@ -466,9 +468,9 @@ typedef struct WKPageUIClient {
     WKPageTakeFocusCallback                                             takeFocus;
     WKPageFocusCallback                                                 focus;
     WKPageUnfocusCallback                                               unfocus;
-    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert_deprecatedForUseWithV0;
-    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm_deprecatedForUseWithV0;
-    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt_deprecatedForUseWithV0;
+    WKPageRunJavaScriptAlertCallback_deprecatedForUseWithV0             runJavaScriptAlert;
+    WKPageRunJavaScriptConfirmCallback_deprecatedForUseWithV0           runJavaScriptConfirm;
+    WKPageRunJavaScriptPromptCallback_deprecatedForUseWithV0            runJavaScriptPrompt;
     WKPageSetStatusTextCallback                                         setStatusText;
     WKPageMouseDidMoveOverElementCallback_deprecatedForUseWithV0        mouseDidMoveOverElement_deprecatedForUseWithV0;
     WKPageMissingPluginButtonClickedCallback_deprecatedForUseWithV0     missingPluginButtonClicked_deprecatedForUseWithV0;

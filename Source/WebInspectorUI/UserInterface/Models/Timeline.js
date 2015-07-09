@@ -107,8 +107,8 @@ WebInspector.Timeline = class Timeline extends WebInspector.Object
         this._endTime = NaN;
 
         if (!suppressEvents) {
-            this.dispatchEventToListeners(WebInspector.Timeline.Event.Reset);
             this.dispatchEventToListeners(WebInspector.Timeline.Event.TimesUpdated);
+            this.dispatchEventToListeners(WebInspector.Timeline.Event.Reset);
         }
     }
 

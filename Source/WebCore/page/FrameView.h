@@ -129,6 +129,9 @@ public:
 
     WEBCORE_EXPORT bool renderedCharactersExceed(unsigned threshold);
 
+    WEBCORE_EXPORT void setViewportIsStable(bool stable) { m_viewportIsStable = stable; }
+    bool viewportIsStable() const { return m_viewportIsStable; }
+
 #if PLATFORM(IOS)
     bool useCustomFixedPositionLayoutRect() const { return m_useCustomFixedPositionLayoutRect; }
     IntRect customFixedPositionLayoutRect() const { return m_customFixedPositionLayoutRect; }
@@ -361,6 +364,10 @@ public:
     WEBCORE_EXPORT Color documentBackgroundColor() const;
 
     bool isInChildFrameWithFrameFlattening() const;
+
+    void startDisallowingLayout() { ++m_layoutDisallowed; }
+    void endDisallowingLayout() { ASSERT(m_layoutDisallowed > 0); --m_layoutDisallowed; }
+    bool layoutDisallowed() const { return m_layoutDisallowed; }
 
     static double currentPaintTimeStamp() { return sCurrentPaintTimeStamp; } // returns 0 if not painting
     
@@ -733,6 +740,7 @@ private:
 
     unsigned m_deferSetNeedsLayoutCount;
     bool m_setNeedsLayoutWasDeferred;
+    int m_layoutDisallowed { 0 };
 
     RefPtr<Node> m_nodeToDraw;
     PaintBehavior m_paintBehavior;
@@ -742,6 +750,8 @@ private:
     unsigned m_visuallyNonEmptyPixelCount;
     bool m_isVisuallyNonEmpty;
     bool m_firstVisuallyNonEmptyLayoutCallbackPending;
+
+    bool m_viewportIsStable { true };
 
     RefPtr<ContainerNode> m_maintainScrollPositionAnchor;
 
@@ -757,11 +767,6 @@ private:
 
     bool m_useCustomSizeForResizeEvent;
     IntSize m_customSizeForResizeEvent;
-
-    double m_horizontalVelocity;
-    double m_verticalVelocity;
-    double m_scaleChangeRate;
-    double m_lastVelocityUpdateTime;
 #endif
 
     IntSize m_overrideViewportSize;

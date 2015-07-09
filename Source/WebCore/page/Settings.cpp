@@ -70,19 +70,11 @@ static void invalidateAfterGenericFamilyChange(Page* page)
 }
 
 #if USE(AVFOUNDATION)
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-bool Settings::gAVFoundationEnabled = false;
-#else
 bool Settings::gAVFoundationEnabled = true;
-#endif
 #endif
 
 #if PLATFORM(COCOA)
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-bool Settings::gQTKitEnabled = true;
-#else
 bool Settings::gQTKitEnabled = false;
-#endif
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -135,6 +127,7 @@ static const bool defaultAudioPlaybackRequiresUserGesture = true;
 static const bool defaultShouldRespectImageOrientation = true;
 static const bool defaultImageSubsamplingEnabled = true;
 static const bool defaultScrollingTreeIncludesFrames = true;
+static const bool defaultMediaControlsScaleWithPageZoom = true;
 #else
 static const bool defaultFixedPositionCreatesStackingContext = false;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
@@ -145,6 +138,7 @@ static const bool defaultAudioPlaybackRequiresUserGesture = false;
 static const bool defaultShouldRespectImageOrientation = false;
 static const bool defaultImageSubsamplingEnabled = false;
 static const bool defaultScrollingTreeIncludesFrames = false;
+static const bool defaultMediaControlsScaleWithPageZoom = true;
 #endif
 
 static const bool defaultAllowsPictureInPictureMediaPlayback = true;

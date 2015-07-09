@@ -543,6 +543,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_INSPECTOR_ALTERNATE_DISPATCHERS 0
 #endif
 
+#if !defined(ENABLE_INTL)
+#define ENABLE_INTL 0
+#endif
+
 #if !defined(ENABLE_JAVASCRIPT_I18N_API)
 #define ENABLE_JAVASCRIPT_I18N_API 0
 #endif
@@ -757,6 +761,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_WEBGL 0
 #endif
 
+#if !defined(ENABLE_WEBGL2)
+#define ENABLE_WEBGL2 0
+#endif
+
 #if !defined(ENABLE_GRAPHICS_CONTEXT_3D)
 #define ENABLE_GRAPHICS_CONTEXT_3D ENABLE_WEBGL
 #endif
@@ -778,7 +786,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_PICTURE_SIZES)
-#define ENABLE_PICTURE_SIZES 1
+#define ENABLE_PICTURE_SIZES 0
 #endif
 
 #if !defined(ENABLE_WEB_TIMING)

@@ -25,6 +25,7 @@
 #ifndef Element_h
 #define Element_h
 
+#include "AXTextStateChangeIntent.h"
 #include "Document.h"
 #include "ElementData.h"
 #include "HTMLNames.h"
@@ -249,7 +250,7 @@ public:
     WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
-    ShadowRoot& ensureUserAgentShadowRoot();
+    WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
 
     // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
@@ -321,6 +322,7 @@ public:
     virtual const AtomicString& imageSourceURL() const;
     virtual String target() const { return String(); }
 
+    static AXTextStateChangeIntent defaultFocusTextStateChangeIntent() { return AXTextStateChangeIntent(AXTextStateChangeTypeSelectionMove, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown, true }); }
     void updateFocusAppearanceAfterAttachIfNeeded();
     virtual void focus(bool restorePreviousSelection = true, FocusDirection = FocusDirectionNone);
     virtual void updateFocusAppearance(bool restorePreviousSelection);
@@ -704,6 +706,11 @@ inline UniqueElementData& Element::ensureUniqueElementData()
     if (!elementData() || !elementData()->isUnique())
         createUniqueElementData();
     return static_cast<UniqueElementData&>(*m_elementData);
+}
+
+inline bool shouldIgnoreAttributeCase(const Element& element)
+{
+    return element.isHTMLElement() && element.document().isHTMLDocument();
 }
 
 } // namespace WebCore

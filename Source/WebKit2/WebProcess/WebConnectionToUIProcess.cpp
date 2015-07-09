@@ -33,9 +33,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<WebConnectionToUIProcess> WebConnectionToUIProcess::create(WebProcess* process)
+Ref<WebConnectionToUIProcess> WebConnectionToUIProcess::create(WebProcess* process)
 {
-    return adoptRef(new WebConnectionToUIProcess(process));
+    return adoptRef(*new WebConnectionToUIProcess(process));
 }
 
 WebConnectionToUIProcess::WebConnectionToUIProcess(WebProcess* process)
@@ -46,6 +46,7 @@ WebConnectionToUIProcess::WebConnectionToUIProcess(WebProcess* process)
 
 void WebConnectionToUIProcess::invalidate()
 {
+    m_process->removeMessageReceiver(Messages::WebConnection::messageReceiverName());
     m_process = nullptr;
 }
 

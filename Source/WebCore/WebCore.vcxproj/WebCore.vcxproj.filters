@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="DerivedSources">
@@ -6532,17 +6532,11 @@
     <ClCompile Include="..\platform\graphics\GraphicsContext3D.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\OpenGLShims.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\gpu\Texture.cpp">
       <Filter>platform\graphics\gpu</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\gpu\TilingData.cpp">
       <Filter>platform\graphics\gpu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGL.cpp">
-      <Filter>platform\graphics\opengl</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\opengl\Extensions3DOpenGLCommon.cpp">
       <Filter>platform\graphics\opengl</Filter>
@@ -7111,15 +7105,6 @@
     <ClCompile Include="..\editing\win\EditorWin.cpp">
       <Filter>editing</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\MaskImageOperation.cpp">
-      <Filter>platform\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\rendering\RenderLayerMaskImageInfo.cpp">
-      <Filter>rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="..\css\WebKitCSSResourceValue.cpp">
-      <Filter>css</Filter>
-    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\WebCore\DerivedSources\JSEXTsRGB.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -7666,7 +7651,7 @@
       <Filter>accessibility</Filter>
     </ClInclude>
     <ClInclude Include="..\accessibility\AXTextStateChangeIntent.h">
-        <Filter>accessibility</Filter>
+      <Filter>accessibility</Filter>
     </ClInclude>
     <ClInclude Include="..\accessibility\win\AccessibilityObjectWrapperWin.h">
       <Filter>accessibility\win</Filter>
@@ -8278,9 +8263,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\ScrollbarTheme.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\ScrollbarThemeClient.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\ScrollbarThemeComposite.h">
@@ -13928,17 +13910,11 @@
     <ClInclude Include="..\platform\graphics\GraphicsContext3D.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\OpenGLShims.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\graphics\gpu\Texture.h">
       <Filter>platform\graphics\gpu</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\gpu\TilingData.h">
       <Filter>platform\graphics\gpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGL.h">
-      <Filter>platform\graphics\opengl</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\opengl\Extensions3DOpenGLCommon.h">
       <Filter>platform\graphics\opengl</Filter>
@@ -14309,9 +14285,6 @@
     <ClInclude Include="..\platform\network\soup\GUniquePtrSoup.h">
       <Filter>platform\network\soup</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\network\soup\ProxyResolverSoup.h">
-      <Filter>platform\network\soup</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\network\soup\ResourceError.h">
       <Filter>platform\network\soup</Filter>
     </ClInclude>
@@ -14560,15 +14533,6 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\avfoundation\MediaTimeAVFoundation.h">
       <Filter>platform\graphics\avfoundation</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\MaskImageOperation.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\rendering\RenderLayerMaskImageInfo.h">
-      <Filter>rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="..\css\WebKitCSSResourceValue.h">
-      <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSEXTsRGB.h">
       <Filter>DerivedSources</Filter>
@@ -15268,6 +15232,9 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\win\PlatformDisplayWin.h">
       <Filter>platform\graphics\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\VNodeTracker.h">
+      <Filter>platform</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

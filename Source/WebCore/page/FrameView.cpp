@@ -188,10 +188,6 @@ FrameView::FrameView(Frame& frame)
 #if PLATFORM(IOS)
     , m_useCustomFixedPositionLayoutRect(false)
     , m_useCustomSizeForResizeEvent(false)
-    , m_horizontalVelocity(0)
-    , m_verticalVelocity(0)
-    , m_scaleChangeRate(0)
-    , m_lastVelocityUpdateTime(0)
 #endif
     , m_hasOverrideViewportSize(false)
     , m_shouldAutoSize(false)
@@ -290,6 +286,7 @@ void FrameView::reset()
     m_visuallyNonEmptyPixelCount = 0;
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
+    m_viewportIsStable = true;
     m_maintainScrollPositionAnchor = nullptr;
 }
 
@@ -1082,6 +1079,8 @@ bool FrameView::isEnclosedInCompositingLayer() const
 
 bool FrameView::flushCompositingStateIncludingSubframes()
 {
+    InspectorInstrumentation::willComposite(frame());
+
     bool allFramesFlushed = flushCompositingStateForThisFrame(&frame());
 
     for (Frame* child = frame().tree().firstRenderedChild(); child; child = child->tree().traverseNextRendered(m_frame.ptr())) {
@@ -1139,6 +1138,9 @@ inline void FrameView::forceLayoutParentViewIfNeeded()
 void FrameView::layout(bool allowSubtree)
 {
     if (isInLayout())
+        return;
+
+    if (layoutDisallowed())
         return;
 
     // Protect the view from being deleted during layout (in recalcStyle).
@@ -2169,9 +2171,8 @@ void FrameView::updateScriptedAnimationsAndTimersThrottlingState(const IntRect& 
     if (!document)
         return;
 
-    // FIXME: This doesn't work for subframes of a "display: none" frame because
-    // they have a non-null ownerRenderer.
-    bool shouldThrottle = !frame().ownerRenderer() || visibleRect.isEmpty();
+    // We don't throttle zero-size or display:none frames because those are usually utility frames.
+    bool shouldThrottle = visibleRect.isEmpty() && !m_size.isEmpty() && frame().ownerRenderer();
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     if (auto* scriptedAnimationController = document->scriptedAnimationController())
@@ -2784,8 +2785,7 @@ FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() c
 #if PLATFORM(IOS)
     // <rdar://problem/16201373>
     return ExtendedBackgroundModeNone;
-#endif
-
+#else
     if (!frame().settings().backgroundShouldExtendBeyondPage())
         return ExtendedBackgroundModeNone;
 
@@ -2813,6 +2813,7 @@ FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() c
         mode |= ExtendedBackgroundModeVertical;
 
     return mode;
+#endif
 }
 
 void FrameView::updateTilesForExtendedBackgroundMode(ExtendedBackgroundMode mode)
@@ -3723,21 +3724,25 @@ FrameView* FrameView::parentFrameView() const
 
 bool FrameView::isInChildFrameWithFrameFlattening() const
 {
-    if (!parent() || !frame().ownerElement())
+    if (!frameFlatteningEnabled())
+        return false;
+
+    if (!parent())
+        return false;
+
+    HTMLFrameOwnerElement* ownerElement = frame().ownerElement();
+    if (!ownerElement)
+        return false;
+
+    if (!ownerElement->renderWidget())
         return false;
 
     // Frame flattening applies when the owner element is either in a frameset or
     // an iframe with flattening parameters.
-    if (is<HTMLIFrameElement>(*frame().ownerElement())) {
-        RenderIFrame& iframeRenderer = downcast<RenderIFrame>(*frame().ownerElement()->renderWidget());
-        if (iframeRenderer.flattenFrame())
-            return true;
-    }
+    if (is<HTMLIFrameElement>(*ownerElement))
+        return downcast<RenderIFrame>(*ownerElement->renderWidget()).flattenFrame();
 
-    if (!frameFlatteningEnabled())
-        return false;
-
-    if (is<HTMLFrameElement>(*frame().ownerElement()))
+    if (is<HTMLFrameElement>(*ownerElement))
         return true;
 
     return false;
@@ -3764,9 +3769,6 @@ void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
         parentView = parentView->parentFrameView();
 
     parentView->layout(allowSubtree);
-
-    RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
-    ASSERT_UNUSED(root, !root->needsLayout());
 }
 
 void FrameView::updateControlTints()
@@ -4770,6 +4772,9 @@ IntSize FrameView::viewportSizeForCSSViewportUnits() const
 {
     if (m_hasOverrideViewportSize)
         return m_overrideViewportSize;
+
+    if (useFixedLayout())
+        return fixedLayoutSize();
     
     // FIXME: the value returned should take into account the value of the overflow
     // property on the root element.

@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2015 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -112,6 +112,7 @@
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "PlatformLocale.h"
+#include "PlatformMediaSessionManager.h"
 #include "PlatformStrategies.h"
 #include "PlugInsResources.h"
 #include "PluginDocument.h"
@@ -231,6 +232,10 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "MediaPlaybackTargetClient.h"
+#endif
+
+#if ENABLE(MEDIA_SESSION)
+#include "MediaSession.h"
 #endif
 
 using namespace WTF;
@@ -628,6 +633,8 @@ Document::~Document()
     if (m_cachedResourceLoader->document() == this)
         m_cachedResourceLoader->setDocument(nullptr);
 
+    PlatformMediaSessionManager::sharedManager().stopAllMediaPlaybackForDocument(this);
+    
     // We must call clearRareData() here since a Document class inherits TreeScope
     // as well as Node. See a comment on TreeScope.h for the reason.
     if (hasRareData())
@@ -2420,7 +2427,7 @@ void Document::detachParser()
     if (!m_parser)
         return;
     m_parser->detach();
-    m_parser.clear();
+    m_parser = nullptr;
 }
 
 void Document::cancelParsing()
@@ -3019,6 +3026,9 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
 {
     ASSERT(!equiv.isNull() && !content.isNull());
 
+    if (page() && !page()->settings().httpEquivEnabled())
+        return;
+
     Frame* frame = this->frame();
 
     HTTPHeaderName headerName;
@@ -3039,9 +3049,6 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         break;
 
     case HTTPHeaderName::Refresh: {
-        if (page() && !page()->settings().metaRefreshEnabled())
-            break;
-
         double delay;
         String urlString;
         if (frame && parseHTTPRefresh(content, true, delay, urlString)) {
@@ -5878,7 +5885,7 @@ void Document::clearScriptedAnimationController()
     // FIXME: consider using ActiveDOMObject.
     if (m_scriptedAnimationController)
         m_scriptedAnimationController->clearDocumentPointer();
-    m_scriptedAnimationController.clear();
+    m_scriptedAnimationController = nullptr;
 }
 #endif
     
@@ -6296,7 +6303,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
             curr->setActive(false);
             m_userActionElements.setInActiveChain(curr, false);
         }
-        m_activeElement.clear();
+        m_activeElement = nullptr;
     } else {
         Element* newActiveElement = innerElementInDocument;
         if (!oldActiveElement && newActiveElement && request.active() && !request.touchMove()) {
@@ -6649,6 +6656,16 @@ void Document::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
     it->value->setShouldPlayToPlaybackTarget(shouldPlay);
 }
 #endif // ENABLE(WIRELESS_PLAYBACK_TARGET)
+
+#if ENABLE(MEDIA_SESSION)
+MediaSession& Document::defaultMediaSession()
+{
+    if (!m_defaultMediaSession)
+        m_defaultMediaSession = adoptRef(*new MediaSession(*this));
+
+    return *m_defaultMediaSession;
+}
+#endif
 
 ShouldOpenExternalURLsPolicy Document::shouldOpenExternalURLsPolicyToPropagate() const
 {

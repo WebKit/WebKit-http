@@ -338,6 +338,8 @@ webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 webkit.org/b/144155 [ Yosemite ] fast/frames/flattening/iframe-flattening-resize-event-count.html [ Pass Failure ]
 
+[ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -497,10 +499,6 @@ storage/domstorage/localstorage/private-browsing-affects-storage.html [ Skip ]
 storage/domstorage/sessionstorage/private-browsing-affects-storage.html [ Skip ]
 storage/websql/private-browsing-noread-nowrite.html [ Skip ]
 
-# FIXME: Needs bugzilla (<rdar://problem/12829991>)
-# PPT: PingLoader is still in WebProcess. As a result, this test fails and also fails to delete its cookie, breaking many other cookie tests.
-webkit.org/b/138688 http/tests/navigation/ping-cookie.html [ Skip ]
-
 # There is no network load scheduling or prioritization with NetworkProcess.
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet-in-error.html [ Pass Failure ]
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Pass Failure ]
@@ -535,4 +533,6 @@ webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout
 ### END OF (7) New WebKit2-only failures in Yosemite
 ########################################
 
+# Content Extensions tests must be enabled explicitly on mac-wk2.
 http/tests/contentextensions [ Pass ]
+webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]

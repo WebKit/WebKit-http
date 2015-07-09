@@ -828,7 +828,7 @@ void Editor::removeFormattingAndStyle()
 
 void Editor::clearLastEditCommand() 
 {
-    m_lastEditCommand.clear();
+    m_lastEditCommand = nullptr;
 }
 #if PLATFORM(IOS)
 // If the selection is adjusted from UIKit without closing the typing, the typing command may
@@ -884,8 +884,7 @@ void Editor::applyStyle(StyleProperties* style, EditAction editingAction)
 {
     switch (m_frame.selection().selection().selectionType()) {
     case VisibleSelection::NoSelection:
-        // do nothing
-        break;
+        return;
     case VisibleSelection::CaretSelection:
         computeAndSetTypingStyle(EditingStyle::create(style), editingAction);
         break;
@@ -894,14 +893,14 @@ void Editor::applyStyle(StyleProperties* style, EditAction editingAction)
             applyCommand(ApplyStyleCommand::create(document(), EditingStyle::create(style).ptr(), editingAction));
         break;
     }
+    client()->didApplyStyle();
 }
 
 void Editor::applyStyle(RefPtr<EditingStyle>&& style, EditAction editingAction)
 {
     switch (m_frame.selection().selection().selectionType()) {
     case VisibleSelection::NoSelection:
-        // do nothing
-        break;
+        return;
     case VisibleSelection::CaretSelection:
         computeAndSetTypingStyle(*style, editingAction);
         break;
@@ -910,6 +909,7 @@ void Editor::applyStyle(RefPtr<EditingStyle>&& style, EditAction editingAction)
             applyCommand(ApplyStyleCommand::create(document(), style.get(), editingAction));
         break;
     }
+    client()->didApplyStyle();
 }
     
 bool Editor::shouldApplyStyle(StyleProperties* style, Range* range)
@@ -921,14 +921,14 @@ void Editor::applyParagraphStyle(StyleProperties* style, EditAction editingActio
 {
     switch (m_frame.selection().selection().selectionType()) {
     case VisibleSelection::NoSelection:
-        // do nothing
-        break;
+        return;
     case VisibleSelection::CaretSelection:
     case VisibleSelection::RangeSelection:
         if (style)
             applyCommand(ApplyStyleCommand::create(document(), EditingStyle::create(style).ptr(), editingAction, ApplyStyleCommand::ForceBlockProperties));
         break;
     }
+    client()->didApplyStyle();
 }
 
 void Editor::applyStyleToSelection(StyleProperties* style, EditAction editingAction)
@@ -1066,7 +1066,7 @@ void Editor::unappliedEditing(PassRefPtr<EditCommandComposition> cmd)
 
     m_alternativeTextController->respondToUnappliedEditing(cmd.get());
 
-    m_lastEditCommand = 0;
+    m_lastEditCommand = nullptr;
     if (client())
         client()->registerRedoStep(cmd);
     respondToChangedContents(newSelection);
@@ -1084,7 +1084,7 @@ void Editor::reappliedEditing(PassRefPtr<EditCommandComposition> cmd)
     
     updateEditorUINowIfScheduled();
 
-    m_lastEditCommand = 0;
+    m_lastEditCommand = nullptr;
     if (client())
         client()->registerUndoStep(cmd);
     respondToChangedContents(newSelection);
@@ -1727,7 +1727,7 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
     if (text.isEmpty() && mode != CancelComposition)
         TypingCommand::deleteSelection(document(), 0);
 
-    m_compositionNode = 0;
+    m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
 
     insertTextForConfirmedComposition(text);
@@ -1802,7 +1802,7 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
     if (text.isEmpty())
         TypingCommand::deleteSelection(document(), TypingCommand::PreventSpellChecking);
 
-    m_compositionNode = 0;
+    m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
 
     if (!text.isEmpty()) {
@@ -3567,38 +3567,5 @@ Document& Editor::document() const
     ASSERT(m_frame.document());
     return *m_frame.document();
 }
-
-#if PLATFORM(COCOA)
-// FIXME: This figures out the current style by inserting a <span>!
-RenderStyle* Editor::styleForSelectionStart(Frame* frame, Node *&nodeToRemove)
-{
-    nodeToRemove = nullptr;
-
-    if (frame->selection().isNone())
-        return nullptr;
-
-    Position position = frame->selection().selection().visibleStart().deepEquivalent();
-    if (!position.isCandidate() || position.isNull())
-        return nullptr;
-
-    RefPtr<EditingStyle> typingStyle = frame->selection().typingStyle();
-    if (!typingStyle || !typingStyle->style())
-        return &position.deprecatedNode()->renderer()->style();
-
-    RefPtr<Element> styleElement = frame->document()->createElement(spanTag, false);
-
-    String styleText = typingStyle->style()->asText() + " display: inline";
-    styleElement->setAttribute(styleAttr, styleText);
-
-    styleElement->appendChild(frame->document()->createEditingTextNode(""), ASSERT_NO_EXCEPTION);
-
-    position.deprecatedNode()->parentNode()->appendChild(styleElement, ASSERT_NO_EXCEPTION);
-
-    nodeToRemove = styleElement.get();
-
-    frame->document()->updateStyleIfNeeded();
-    return styleElement->renderer() ? &styleElement->renderer()->style() : nullptr;
-}
-#endif
 
 } // namespace WebCore

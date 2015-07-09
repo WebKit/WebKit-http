@@ -80,6 +80,7 @@
 #endif
 
 #if ENABLE(MEDIA_SESSION)
+#include "WebMediaSessionMetadata.h"
 #include <WebCore/MediaEventTypes.h>
 #endif
 
@@ -410,7 +411,7 @@ WKTypeRef WKPageCopySessionState(WKPageRef pageRef, void* context, WKPageSession
     if (shouldReturnData)
         return toAPI(encodeLegacySessionState(sessionState).release().leakRef());
 
-    return toAPI(API::SessionState::create(WTF::move(sessionState)).leakRef());
+    return toAPI(&API::SessionState::create(WTF::move(sessionState)).leakRef());
 }
 
 void WKPageRestoreFromSessionState(WKPageRef pageRef, WKTypeRef sessionStateRef)
@@ -804,7 +805,7 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
             if (!m_client.customContextMenuItemSelected)
                 return;
 
-            m_client.customContextMenuItemSelected(toAPI(&page), toAPI(WebContextMenuItem::create(itemData).get()), m_client.base.clientInfo);
+            m_client.customContextMenuItemSelected(toAPI(&page), toAPI(WebContextMenuItem::create(itemData).ptr()), m_client.base.clientInfo);
         }
 
         virtual void contextMenuDismissed(WebPageProxy& page) override
@@ -1800,6 +1801,16 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             m_client.didClickAutoFillButton(toAPI(&page), toAPI(userInfo), m_client.base.clientInfo);
         }
+
+#if ENABLE(MEDIA_SESSION)
+        virtual void mediaSessionMetadataDidChange(WebPageProxy& page, WebMediaSessionMetadata* metadata) override
+        {
+            if (!m_client.mediaSessionMetadataDidChange)
+                return;
+
+            m_client.mediaSessionMetadataDidChange(toAPI(&page), toAPI(metadata), m_client.base.clientInfo);
+        }
+#endif
     };
 
     toImpl(pageRef)->setUIClient(std::make_unique<UIClient>(wkClient));
@@ -2140,6 +2151,16 @@ void WKPageSetMediaVolume(WKPageRef page, float volume)
 void WKPageSetMuted(WKPageRef page, bool muted)
 {
     toImpl(page)->setMuted(muted);
+}
+
+bool WKPageHasMediaSessionWithActiveMediaElements(WKPageRef page)
+{
+#if ENABLE(MEDIA_SESSION)
+    return toImpl(page)->hasMediaSessionWithActiveMediaElements();
+#else
+    UNUSED_PARAM(page);
+    return false;
+#endif
 }
 
 void WKPageHandleMediaEvent(WKPageRef page, WKMediaEventType wkEventType)

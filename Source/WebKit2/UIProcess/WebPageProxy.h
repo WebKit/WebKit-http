@@ -363,7 +363,7 @@ public:
     bool tryClose();
     bool isClosed() const { return m_isClosed; }
 
-    RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllow, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
@@ -816,6 +816,10 @@ public:
     void interactionOccurredWhileProcessUnresponsive();
     void processDidBecomeResponsive();
     void processDidCrash();
+#if PLATFORM(IOS)
+    void processWillBecomeSuspended();
+    void processWillBecomeForeground();
+#endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
@@ -936,6 +940,7 @@ public:
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
         
 #if ENABLE(MEDIA_SESSION)
+    bool hasMediaSessionWithActiveMediaElements() const { return m_hasMediaSessionWithActiveMediaElements; }
     void handleMediaEvent(WebCore::MediaEventType);
 #endif
 
@@ -1011,6 +1016,7 @@ public:
     void navigationGestureDidBegin();
     void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&);
     void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&);
+    void navigationGestureDidEnd();
     void navigationGestureSnapshotWasRemoved();
     void willRecordNavigationSnapshot(WebBackForwardListItem&);
 
@@ -1020,6 +1026,7 @@ public:
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags);
 
 #if ENABLE(MEDIA_SESSION)
+    void hasMediaSessionWithActiveMediaElementsDidChange(bool);
     void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&);
 #endif
 
@@ -1395,6 +1402,7 @@ private:
     float textAutosizingWidth();
 
     void dynamicViewportUpdateChangedTarget(double newTargetScale, const WebCore::FloatPoint& newScrollPosition, uint64_t dynamicViewportSizeUpdateID);
+    void couldNotRestorePageState();
     void restorePageState(const WebCore::FloatRect&, double scale);
     void restorePageCenterAndScale(const WebCore::FloatPoint&, double scale);
 
@@ -1530,6 +1538,7 @@ private:
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
     uint64_t m_layerTreeTransactionIdAtLastTouchStart;
     uint64_t m_currentDynamicViewportSizeUpdateID { 0 };
+    bool m_hasNetworkRequestsOnSuspended;
 #endif
 
 #if ENABLE(VIBRATION)
@@ -1731,6 +1740,7 @@ private:
     bool m_waitingForDidUpdateViewState;
 
     bool m_shouldScaleViewToFitDocument { false };
+    bool m_suppressNavigationSnapshotting { false };
 
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
@@ -1753,6 +1763,10 @@ private:
     Vector<uint64_t> m_nextViewStateChangeCallbacks;
 
     WebCore::MediaProducer::MediaStateFlags m_mediaState { WebCore::MediaProducer::IsNotPlaying };
+
+#if ENABLE(MEDIA_SESSION)
+    bool m_hasMediaSessionWithActiveMediaElements { false };
+#endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     bool m_requiresTargetMonitoring { false };

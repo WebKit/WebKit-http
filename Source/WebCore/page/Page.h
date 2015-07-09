@@ -117,7 +117,6 @@ class ViewStateChangeObserver;
 class VisitedLinkStore;
 
 typedef uint64_t LinkHash;
-class SharedBuffer;
 
 enum FindDirection { FindDirectionForward, FindDirectionBackward };
 
@@ -135,8 +134,6 @@ public:
     WEBCORE_EXPORT ~Page();
 
     WEBCORE_EXPORT uint64_t renderTreeSize() const;
-    
-    static std::unique_ptr<Page> createPageFromBuffer(PageConfiguration&, const SharedBuffer*, const String& mimeType, bool canHaveScrollbars, bool transparent);
 
     void setNeedsRecalcStyleInAllFrames();
 
@@ -156,14 +153,7 @@ public:
     MainFrame& mainFrame() { ASSERT(m_mainFrame); return *m_mainFrame; }
     const MainFrame& mainFrame() const { ASSERT(m_mainFrame); return *m_mainFrame; }
 
-    enum class DismissalType {
-        None,
-        BeforeUnload,
-        PageHide,
-        Unload
-    };
-    DismissalType dismissalEventBeingDispatched() const { return m_dismissalEventBeingDispatched; }
-    void setDismissalEventBeingDispatched(DismissalType dismissalType) { m_dismissalEventBeingDispatched = dismissalType; }
+    bool inPageCache() const;
 
     bool openedByDOM() const;
     void setOpenedByDOM();
@@ -627,7 +617,6 @@ private:
     bool m_isClosing;
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
-    DismissalType m_dismissalEventBeingDispatched { DismissalType::None };
     
     bool m_userContentExtensionsEnabled { true };
 };

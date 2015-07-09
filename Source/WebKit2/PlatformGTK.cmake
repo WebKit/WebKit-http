@@ -91,11 +91,13 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/gtk/WKFullScreenClientGtk.cpp
     UIProcess/API/C/gtk/WKInspectorClientGtk.cpp
+    UIProcess/API/C/gtk/WKTextCheckerGtk.cpp
     UIProcess/API/C/gtk/WKView.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
+    UIProcess/API/gtk/APIWebsiteDataStoreGtk.cpp
     UIProcess/API/gtk/PageClientImpl.cpp
     UIProcess/API/gtk/PageClientImpl.h
     UIProcess/API/gtk/WebKitAuthenticationDialog.cpp
@@ -250,6 +252,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWebViewBaseAccessible.h
     UIProcess/API/gtk/WebKitWebViewBasePrivate.h
     UIProcess/API/gtk/WebKitWebViewPrivate.h
+    UIProcess/API/gtk/WebKitWebsiteDataManager.cpp
+    UIProcess/API/gtk/WebKitWebsiteDataManager.h
+    UIProcess/API/gtk/WebKitWebsiteDataManagerPrivate.h
     UIProcess/API/gtk/WebKitWindowProperties.cpp
     UIProcess/API/gtk/WebKitWindowProperties.h
     UIProcess/API/gtk/WebKitWindowPropertiesPrivate.h
@@ -398,6 +403,7 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebResource.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebView.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebViewBase.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWebsiteDataManager.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitWindowProperties.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/webkit2.h
 )
@@ -681,7 +687,6 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
         Shared/BlobDataFileReferenceWithSandboxExtension.cpp
         Shared/ChildProcess.cpp
         Shared/ChildProcessProxy.cpp
-        Shared/ConnectionStack.cpp
         Shared/ShareableBitmap.cpp
         Shared/WebCoreArgumentCoders.cpp
         Shared/WebEvent.cpp

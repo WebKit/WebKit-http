@@ -38,6 +38,7 @@
     macro(EvalError) \
     macro(Function) \
     macro(Infinity) \
+    macro(Intl) \
     macro(JSON) \
     macro(Map)\
     macro(MapIterator)\
@@ -261,8 +262,6 @@
     macro(charCodeAt) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
-    macro(resolve) \
-    macro(reject) \
     macro(promise) \
     macro(fulfillmentHandler) \
     macro(rejectionHandler) \
@@ -277,6 +276,7 @@
     macro(Number) \
     macro(Array) \
     macro(String) \
+    macro(Promise) \
     macro(abs) \
     macro(floor) \
     macro(isFinite) \
@@ -286,7 +286,18 @@
     macro(undefined) \
     macro(BuiltinLog) \
     macro(homeObject) \
-    macro(getTemplateObject)
+    macro(getTemplateObject) \
+    macro(enqueueJob) \
+    macro(handler) \
+    macro(promiseState) \
+    macro(promisePending) \
+    macro(promiseFulfilled) \
+    macro(promiseRejected) \
+    macro(promiseFulfillReactions) \
+    macro(promiseRejectReactions) \
+    macro(promiseResult) \
+    macro(capabilities) \
+
 
 namespace JSC {
     

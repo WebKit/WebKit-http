@@ -301,8 +301,8 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
             m_compositedImage = TextureMapperTiledBackingStore::create();
         m_compositedImage->setContentsToImage(image);
     } else {
-        m_compositedNativeImagePtr = 0;
-        m_compositedImage = 0;
+        m_compositedNativeImagePtr = nullptr;
+        m_compositedImage = nullptr;
     }
 
     setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerForImage);
@@ -363,7 +363,7 @@ void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
     notifyChange(IsScrollableChange);
 }
 
-void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
+void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly(bool)
 {
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
@@ -500,19 +500,19 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     m_changeMask = NoChanges;
 }
 
-void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
+void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect, bool viewportIsStable)
 {
     if (!m_layer.textureMapper())
         return;
 
-    flushCompositingStateForThisLayerOnly();
+    flushCompositingStateForThisLayerOnly(viewportIsStable);
 
     if (maskLayer())
-        downcast<GraphicsLayerTextureMapper>(maskLayer())->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(maskLayer())->flushCompositingState(rect, viewportIsStable);
     if (replicaLayer())
-        downcast<GraphicsLayerTextureMapper>(replicaLayer())->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(replicaLayer())->flushCompositingState(rect, viewportIsStable);
     for (auto* child : children())
-        downcast<GraphicsLayerTextureMapper>(child)->flushCompositingState(rect);
+        downcast<GraphicsLayerTextureMapper>(child)->flushCompositingState(rect, viewportIsStable);
 }
 
 void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers()

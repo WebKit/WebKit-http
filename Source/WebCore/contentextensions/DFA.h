@@ -38,6 +38,8 @@ namespace ContentExtensions {
 
 // The DFA abstract a partial DFA graph in a compact form.
 struct WEBCORE_EXPORT DFA {
+    static DFA empty();
+
     void minimize();
     unsigned graphSize() const;
     size_t memoryUsed() const;
@@ -45,13 +47,38 @@ struct WEBCORE_EXPORT DFA {
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
     void debugPrintDot() const;
 #endif
-    
-    Vector<uint64_t> actions;
-    Vector<uint8_t> transitionCharacters;
-    Vector<uint32_t> transitionDestinations;
-    Vector<DFANode> nodes;
+
+    Vector<DFANode, 0, ContentExtensionsOverflowHandler> nodes;
+    Vector<uint64_t, 0, ContentExtensionsOverflowHandler> actions;
+    Vector<CharRange, 0, ContentExtensionsOverflowHandler> transitionRanges;
+    Vector<uint32_t, 0, ContentExtensionsOverflowHandler> transitionDestinations;
     unsigned root { 0 };
 };
+
+inline const CharRange& DFANode::ConstRangeIterator::range() const
+{
+    return dfa.transitionRanges[position];
+}
+
+inline uint32_t DFANode::ConstRangeIterator::target() const
+{
+    return dfa.transitionDestinations[position];
+}
+
+inline const CharRange& DFANode::RangeIterator::range() const
+{
+    return dfa.transitionRanges[position];
+}
+
+inline uint32_t DFANode::RangeIterator::target() const
+{
+    return dfa.transitionDestinations[position];
+}
+
+inline void DFANode::RangeIterator::resetTarget(uint32_t newTarget)
+{
+    dfa.transitionDestinations[position] = newTarget;
+}
 
 }
 

@@ -71,9 +71,6 @@ public:
     enum EmptyValueTag { EmptyValue };
     Term(EmptyValueTag);
 
-    enum DeletedValueTag { DeletedValue };
-    Term(DeletedValueTag);
-
     ~Term();
 
     bool isValid() const;
@@ -86,7 +83,7 @@ public:
 
     void quantify(const AtomQuantifier&);
 
-    unsigned generateGraph(NFA&, unsigned start, const ActionList& finalActions) const;
+    ImmutableCharNFANodeBuilder generateGraph(NFA&, ImmutableCharNFANodeBuilder& start, const ActionList& finalActions) const;
 
     bool isEndOfLineAssertion() const;
 
@@ -107,10 +104,13 @@ public:
     unsigned hash() const;
 
     bool isEmptyValue() const;
-    bool isDeletedValue() const;
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
     String toString() const;
+#endif
+
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+    size_t memoryUsed() const;
 #endif
     
 private:
@@ -118,13 +118,12 @@ private:
     // The return value can be false for a group equivalent to a universal transition.
     bool isUniversalTransition() const;
 
-    unsigned generateSubgraphForAtom(NFA&, unsigned source) const;
+    ImmutableCharNFANodeBuilder generateSubgraphForAtom(NFA&, ImmutableCharNFANodeBuilder& source) const;
 
     void destroy();
 
     enum class TermType : uint8_t {
         Empty,
-        Deleted,
         CharacterSet,
         Group
     };
@@ -230,8 +229,6 @@ inline String Term::toString() const
     switch (m_termType) {
     case TermType::Empty:
         return "(Empty)";
-    case TermType::Deleted:
-        return "(Deleted)";
     case TermType::CharacterSet: {
         StringBuilder builder;
         builder.append('[');
@@ -262,14 +259,6 @@ inline String Term::toString() const
     }
 }
 #endif
-    
-struct TermHash {
-    static unsigned hash(const Term& term) { return term.hash(); }
-    static bool equal(const Term& a, const Term& b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = true;
-};
-
-struct TermHashTraits : public WTF::CustomHashTraits<Term> { };
 
 inline Term::Term()
 {
@@ -286,7 +275,7 @@ inline Term::Term(UniversalTransitionTag)
     : m_termType(TermType::CharacterSet)
 {
     new (NotNull, &m_atomData.characterSet) CharacterSet();
-    for (UChar i = 0; i < 128; ++i)
+    for (UChar i = 1; i < 128; ++i)
         m_atomData.characterSet.set(i);
 }
 
@@ -316,7 +305,6 @@ inline Term::Term(const Term& other)
 {
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         break;
     case TermType::CharacterSet:
         new (NotNull, &m_atomData.characterSet) CharacterSet(other.m_atomData.characterSet);
@@ -333,7 +321,6 @@ inline Term::Term(Term&& other)
 {
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         break;
     case TermType::CharacterSet:
         new (NotNull, &m_atomData.characterSet) CharacterSet(WTF::move(other.m_atomData.characterSet));
@@ -350,11 +337,6 @@ inline Term::Term(EmptyValueTag)
 {
 }
 
-inline Term::Term(DeletedValueTag)
-    : m_termType(TermType::Deleted)
-{
-}
-
 inline Term::~Term()
 {
     destroy();
@@ -362,7 +344,7 @@ inline Term::~Term()
 
 inline bool Term::isValid() const
 {
-    return m_termType != TermType::Empty && m_termType != TermType::Deleted;
+    return m_termType != TermType::Empty;
 }
 
 inline void Term::addCharacter(UChar character, bool isCaseSensitive)
@@ -395,11 +377,11 @@ inline void Term::quantify(const AtomQuantifier& quantifier)
     m_quantifier = quantifier;
 }
 
-inline unsigned Term::Term::generateGraph(NFA& nfa, unsigned start, const ActionList& finalActions) const
+inline ImmutableCharNFANodeBuilder Term::generateGraph(NFA& nfa, ImmutableCharNFANodeBuilder& start, const ActionList& finalActions) const
 {
     ASSERT(isValid());
 
-    unsigned newEnd;
+    ImmutableCharNFANodeBuilder newEnd;
 
     switch (m_quantifier) {
     case AtomQuantifier::One: {
@@ -408,36 +390,36 @@ inline unsigned Term::Term::generateGraph(NFA& nfa, unsigned start, const Action
     }
     case AtomQuantifier::ZeroOrOne: {
         newEnd = generateSubgraphForAtom(nfa, start);
-        nfa.addEpsilonTransition(start, newEnd);
+        start.addEpsilonTransition(newEnd);
         break;
     }
     case AtomQuantifier::ZeroOrMore: {
-        unsigned repeatStart = nfa.createNode();
-        nfa.addEpsilonTransition(start, repeatStart);
+        ImmutableCharNFANodeBuilder repeatStart(nfa);
+        start.addEpsilonTransition(repeatStart);
 
-        unsigned repeatEnd = generateSubgraphForAtom(nfa, repeatStart);
-        nfa.addEpsilonTransition(repeatEnd, repeatStart);
+        ImmutableCharNFANodeBuilder repeatEnd = generateSubgraphForAtom(nfa, repeatStart);
+        repeatEnd.addEpsilonTransition(repeatStart);
 
-        unsigned kleenEnd = nfa.createNode();
-        nfa.addEpsilonTransition(repeatEnd, kleenEnd);
-        nfa.addEpsilonTransition(start, kleenEnd);
-        newEnd = kleenEnd;
+        ImmutableCharNFANodeBuilder kleenEnd(nfa);
+        repeatEnd.addEpsilonTransition(kleenEnd);
+        start.addEpsilonTransition(kleenEnd);
+        newEnd = WTF::move(kleenEnd);
         break;
     }
     case AtomQuantifier::OneOrMore: {
-        unsigned repeatStart = nfa.createNode();
-        nfa.addEpsilonTransition(start, repeatStart);
+        ImmutableCharNFANodeBuilder repeatStart(nfa);
+        start.addEpsilonTransition(repeatStart);
 
-        unsigned repeatEnd = generateSubgraphForAtom(nfa, repeatStart);
-        nfa.addEpsilonTransition(repeatEnd, repeatStart);
+        ImmutableCharNFANodeBuilder repeatEnd = generateSubgraphForAtom(nfa, repeatStart);
+        repeatEnd.addEpsilonTransition(repeatStart);
 
-        unsigned afterRepeat = nfa.createNode();
-        nfa.addEpsilonTransition(repeatEnd, afterRepeat);
-        newEnd = afterRepeat;
+        ImmutableCharNFANodeBuilder afterRepeat(nfa);
+        repeatEnd.addEpsilonTransition(afterRepeat);
+        newEnd = WTF::move(afterRepeat);
         break;
     }
     }
-    nfa.setActions(newEnd, finalActions);
+    newEnd.setActions(finalActions.begin(), finalActions.end());
     return newEnd;
 }
 
@@ -471,7 +453,6 @@ inline bool Term::isKnownToMatchAnyString() const
 
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         ASSERT_NOT_REACHED();
         break;
     case TermType::CharacterSet:
@@ -513,7 +494,6 @@ inline bool Term::hasFixedLength() const
 
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         ASSERT_NOT_REACHED();
         break;
     case TermType::CharacterSet:
@@ -552,7 +532,6 @@ inline bool Term::operator==(const Term& other) const
 
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         return true;
     case TermType::CharacterSet:
         return m_atomData.characterSet == other.m_atomData.characterSet;
@@ -571,9 +550,6 @@ inline unsigned Term::hash() const
     case TermType::Empty:
         secondary = 52184393;
         break;
-    case TermType::Deleted:
-        secondary = 40342988;
-        break;
     case TermType::CharacterSet:
         secondary = m_atomData.characterSet.hash();
         break;
@@ -589,18 +565,12 @@ inline bool Term::isEmptyValue() const
     return m_termType == TermType::Empty;
 }
 
-inline bool Term::isDeletedValue() const
-{
-    return m_termType == TermType::Deleted;
-}
-
 inline bool Term::isUniversalTransition() const
 {
     ASSERT(isValid());
 
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         ASSERT_NOT_REACHED();
         break;
     case TermType::CharacterSet:
@@ -612,36 +582,60 @@ inline bool Term::isUniversalTransition() const
     return false;
 }
 
-inline unsigned Term::generateSubgraphForAtom(NFA& nfa, unsigned source) const
+inline ImmutableCharNFANodeBuilder Term::generateSubgraphForAtom(NFA& nfa, ImmutableCharNFANodeBuilder& source) const
 {
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         ASSERT_NOT_REACHED();
-        return -1;
+        return ImmutableCharNFANodeBuilder();
     case TermType::CharacterSet: {
-        unsigned target = nfa.createNode();
-        if (isUniversalTransition())
-            nfa.addTransitionsOnAnyCharacter(source, target);
-        else {
-            if (!m_atomData.characterSet.inverted()) {
-                for (UChar i = 0; i < 128; ++i) {
-                    if (m_atomData.characterSet.get(i))
-                        nfa.addTransition(source, target, static_cast<char>(i));
-                }
-            } else {
-                for (UChar i = 1; i < 128; ++i) {
-                    if (!m_atomData.characterSet.get(i))
-                        nfa.addTransition(source, target, static_cast<char>(i));
-                }
+        ImmutableCharNFANodeBuilder newNode(nfa);
+        if (!m_atomData.characterSet.inverted()) {
+            UChar i = 0;
+            while (true) {
+                while (i < 128 && !m_atomData.characterSet.get(i))
+                    ++i;
+                if (i == 128)
+                    break;
+
+                UChar start = i;
+                ++i;
+                while (i < 128 && m_atomData.characterSet.get(i))
+                    ++i;
+                source.addTransition(start, i - 1, newNode);
+            }
+        } else {
+            UChar i = 1;
+            while (true) {
+                while (i < 128 && m_atomData.characterSet.get(i))
+                    ++i;
+                if (i == 128)
+                    break;
+
+                UChar start = i;
+                ++i;
+                while (i < 128 && !m_atomData.characterSet.get(i))
+                    ++i;
+                source.addTransition(start, i - 1, newNode);
             }
         }
-        return target;
+        return newNode;
     }
     case TermType::Group: {
-        unsigned lastTarget = source;
-        for (const Term& term : m_atomData.group.terms)
-            lastTarget = term.generateGraph(nfa, lastTarget, ActionList());
+        if (m_atomData.group.terms.isEmpty()) {
+            // FIXME: any kind of empty term could be avoided in the parser. This case should turned into an assertion.
+            ImmutableCharNFANodeBuilder newNode(nfa);
+            source.addEpsilonTransition(newNode);
+            return newNode;
+        }
+
+        ImmutableCharNFANodeBuilder lastTarget = m_atomData.group.terms.first().generateGraph(nfa, source, ActionList());
+        for (unsigned i = 1; i < m_atomData.group.terms.size(); ++i) {
+            const Term& currentTerm = m_atomData.group.terms[i];
+            ImmutableCharNFANodeBuilder newNode = currentTerm.generateGraph(nfa, lastTarget, ActionList());
+            lastTarget = WTF::move(newNode);
+        }
+
         return lastTarget;
     }
     }
@@ -651,7 +645,6 @@ inline void Term::destroy()
 {
     switch (m_termType) {
     case TermType::Empty:
-    case TermType::Deleted:
         break;
     case TermType::CharacterSet:
         m_atomData.characterSet.~CharacterSet();
@@ -660,8 +653,20 @@ inline void Term::destroy()
         m_atomData.group.~Group();
         break;
     }
-    m_termType = TermType::Deleted;
+    m_termType = TermType::Empty;
 }
+
+#if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
+inline size_t Term::memoryUsed() const
+{
+    size_t extraMemory = 0;
+    if (m_termType == TermType::Group) {
+        for (const Term& term : m_atomData.group.terms)
+            extraMemory += term.memoryUsed();
+    }
+    return sizeof(Term) + extraMemory;
+}
+#endif
 
 } // namespace ContentExtensions
 } // namespace WebCore

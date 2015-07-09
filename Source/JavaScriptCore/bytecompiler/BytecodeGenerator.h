@@ -546,6 +546,7 @@ namespace JSC {
         RegisterID* emitIsObject(RegisterID* dst, RegisterID* src);
         RegisterID* emitIsUndefined(RegisterID* dst, RegisterID* src);
 
+        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node);
         void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node);
 
         void emitReadOnlyExceptionIfNeeded();
@@ -652,7 +653,7 @@ namespace JSC {
 
         // Initializes the stack form the parameter; does nothing for the symbol table.
         RegisterID* initializeNextParameter();
-        UniquedStringImpl* visibleNameForParameter(DeconstructionPatternNode*);
+        UniquedStringImpl* visibleNameForParameter(DestructuringPatternNode*);
         
         RegisterID& registerFor(VirtualRegister reg)
         {
@@ -755,7 +756,7 @@ namespace JSC {
         Vector<SwitchInfo> m_switchContextStack;
         Vector<std::unique_ptr<ForInContext>> m_forInContextStack;
         Vector<TryContext> m_tryContextStack;
-        Vector<std::pair<RefPtr<RegisterID>, const DeconstructionPatternNode*>> m_deconstructedParameters;
+        Vector<std::pair<RefPtr<RegisterID>, const DestructuringPatternNode*>> m_destructuringParameters;
         enum FunctionVariableType : uint8_t { NormalFunctionVariable, GlobalFunctionVariable };
         Vector<std::pair<FunctionBodyNode*, FunctionVariableType>> m_functionsToInitialize;
         bool m_needToInitializeArguments { false };

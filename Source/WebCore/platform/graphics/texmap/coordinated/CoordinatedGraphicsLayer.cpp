@@ -490,8 +490,8 @@ void CoordinatedGraphicsLayer::setContentsToImage(Image* image)
         m_compositedImage = image;
         m_compositedNativeImagePtr = newNativeImagePtr;
     } else {
-        m_compositedImage = 0;
-        m_compositedNativeImagePtr = 0;
+        m_compositedImage = nullptr;
+        m_compositedNativeImagePtr = nullptr;
     }
 
     GraphicsLayer::setContentsToImage(image);
@@ -597,21 +597,21 @@ void CoordinatedGraphicsLayer::setFixedToViewport(bool isFixed)
     didChangeLayerState();
 }
 
-void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect)
+void CoordinatedGraphicsLayer::flushCompositingState(const FloatRect& rect, bool viewportIsStable)
 {
     if (notifyFlushRequired())
         return;
 
     if (CoordinatedGraphicsLayer* mask = toCoordinatedGraphicsLayer(maskLayer()))
-        mask->flushCompositingStateForThisLayerOnly();
+        mask->flushCompositingStateForThisLayerOnly(viewportIsStable);
 
     if (CoordinatedGraphicsLayer* replica = toCoordinatedGraphicsLayer(replicaLayer()))
-        replica->flushCompositingStateForThisLayerOnly();
+        replica->flushCompositingStateForThisLayerOnly(viewportIsStable);
 
-    flushCompositingStateForThisLayerOnly();
+    flushCompositingStateForThisLayerOnly(viewportIsStable);
 
     for (auto& child : children())
-        child->flushCompositingState(rect);
+        child->flushCompositingState(rect, viewportIsStable);
 }
 
 CoordinatedGraphicsLayer* toCoordinatedGraphicsLayer(GraphicsLayer* layer)
@@ -789,7 +789,7 @@ void CoordinatedGraphicsLayer::createPlatformLayerIfNeeded()
 }
 #endif
 
-void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
+void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly(bool)
 {
     ASSERT(m_coordinator->isFlushingLayerChanges());
 
@@ -853,7 +853,7 @@ void CoordinatedGraphicsLayer::releaseImageBackingIfNeeded()
 
     ASSERT(m_coordinator);
     m_coordinatedImageBacking->removeHost(this);
-    m_coordinatedImageBacking.clear();
+    m_coordinatedImageBacking = nullptr;
     m_layerState.imageID = InvalidCoordinatedImageBackingID;
     m_layerState.imageChanged = true;
 }

@@ -89,7 +89,6 @@
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderLayerFilterInfo.h"
-#include "RenderLayerMaskImageInfo.h"
 #include "RenderMarquee.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderNamedFlowFragment.h"
@@ -303,7 +302,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     , m_layerListMutationAllowed(true)
 #endif
     , m_hasFilterInfo(false)
-    , m_hasMaskImageInfo(false)
 #if ENABLE(CSS_COMPOSITING)
     , m_blendMode(BlendModeNormal)
     , m_hasNotIsolatedCompositedBlendingDescendants(false)
@@ -370,7 +368,6 @@ RenderLayer::~RenderLayer()
         removeReflection();
 
     FilterInfo::remove(*this);
-    MaskImageInfo::remove(*this);
 
     // Child layers will be deleted by their corresponding render objects, so
     // we don't need to delete them ourselves.
@@ -6713,7 +6710,6 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     updateBlendMode();
 #endif
     updateOrRemoveFilterClients();
-    updateOrRemoveMaskImageClients();
 
     updateNeedsCompositedScrolling();
 
@@ -6866,14 +6862,6 @@ void RenderLayer::updateOrRemoveFilterClients()
         FilterInfo::get(*this).updateReferenceFilterClients(renderer().style().filter());
     else if (FilterInfo* filterInfo = FilterInfo::getIfExists(*this))
         filterInfo->removeReferenceFilterClients();
-}
-
-void RenderLayer::updateOrRemoveMaskImageClients()
-{
-    if (renderer().style().maskImage().get())
-        MaskImageInfo::get(*this).updateMaskImageClients();
-    else if (MaskImageInfo* maskImageInfo = MaskImageInfo::getIfExists(*this))
-        maskImageInfo->removeMaskImageClients();
 }
 
 void RenderLayer::updateOrRemoveFilterEffectRenderer()

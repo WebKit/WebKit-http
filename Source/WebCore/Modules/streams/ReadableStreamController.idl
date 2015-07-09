@@ -33,7 +33,9 @@
     ImplementationLacksVTable,
     NoInterfaceObject
 ] interface ReadableStreamController {
-    [Custom, RaisesException] boolean enqueue(any chunk);
-    [Custom, RaisesException] void close();
-    [Custom, RaisesException] void error(any error);
+    [CallWith=ScriptState] void enqueue([Default=Undefined] optional any chunk);
+    [RaisesException] void close();
+    [CallWith=ScriptState, RaisesException] void error([Default=Undefined] optional any error);
+
+    readonly attribute double desiredSize;
 };

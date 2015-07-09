@@ -264,6 +264,7 @@ public:
 
     virtual void didCommitLayerTree(const RemoteLayerTreeTransaction&) = 0;
     virtual void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) = 0;
+    virtual void couldNotRestorePageState() = 0;
     virtual void restorePageState(const WebCore::FloatRect&, double) = 0;
     virtual void restorePageCenterAndScale(const WebCore::FloatPoint&, double) = 0;
 
@@ -307,10 +308,12 @@ public:
     virtual void navigationGestureDidBegin() = 0;
     virtual void navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem&) = 0;
     virtual void navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem&) = 0;
+    virtual void navigationGestureDidEnd() = 0;
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) = 0;
 
     virtual void didFirstVisuallyNonEmptyLayoutForMainFrame() = 0;
     virtual void didFinishLoadForMainFrame() = 0;
+    virtual void didFailLoadForMainFrame() = 0;
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
 
     virtual void didChangeBackgroundColor() = 0;

@@ -74,14 +74,13 @@ WebInspector.ScriptTimelineRecord = class ScriptTimelineRecord extends WebInspec
             return;
 
         var payload = this._profilePayload;
-        delete this._profilePayload;
+        this._profilePayload = undefined;
 
         console.assert(payload.rootNodes instanceof Array);
 
         function profileNodeFromPayload(nodePayload)
         {
             console.assert("id" in nodePayload);
-            console.assert(nodePayload.calls instanceof Array);
 
             if (nodePayload.url) {
                 var sourceCode = WebInspector.frameResourceManager.resourceForURL(nodePayload.url);
@@ -99,9 +98,16 @@ WebInspector.ScriptTimelineRecord = class ScriptTimelineRecord extends WebInspec
 
             var type = isProgramCode ? WebInspector.ProfileNode.Type.Program : WebInspector.ProfileNode.Type.Function;
             var functionName = !isProgramCode && !isAnonymousFunction && nodePayload.functionName !== "(unknown)" ? nodePayload.functionName : null;
-            var calls = nodePayload.calls.map(profileNodeCallFromPayload);
 
-            return new WebInspector.ProfileNode(nodePayload.id, type, functionName, sourceCodeLocation, calls, nodePayload.children);
+            // COMPATIBILITY (iOS8): Timeline.CPUProfileNodes used to include an array of complete
+            // call information instead of the aggregated "callInfo" data.
+            var calls = null;
+            if ("calls" in nodePayload) {
+                console.assert(nodePayload.calls instanceof Array);
+                calls = nodePayload.calls.map(profileNodeCallFromPayload);
+            }
+
+            return new WebInspector.ProfileNode(nodePayload.id, type, functionName, sourceCodeLocation, nodePayload.callInfo, calls, nodePayload.children);
         }
 
         function profileNodeCallFromPayload(nodeCallPayload)
@@ -109,7 +115,9 @@ WebInspector.ScriptTimelineRecord = class ScriptTimelineRecord extends WebInspec
             console.assert("startTime" in nodeCallPayload);
             console.assert("totalTime" in nodeCallPayload);
 
-            return new WebInspector.ProfileNodeCall(nodeCallPayload.startTime, nodeCallPayload.totalTime);
+            var startTime = WebInspector.timelineManager.computeElapsedTime(nodeCallPayload.startTime);
+
+            return new WebInspector.ProfileNodeCall(startTime, nodeCallPayload.totalTime);
         }
 
         var rootNodes = payload.rootNodes;
@@ -173,6 +181,9 @@ WebInspector.ScriptTimelineRecord.EventType.displayName = function(eventType, de
         nameMap.set("addsourcebuffer", "Add Source Buffer");
         nameMap.set("addstream", "Add Stream");
         nameMap.set("addtrack", "Add Track");
+        nameMap.set("animationend", "Animation End");
+        nameMap.set("animationiteration", "Animation Iteration");
+        nameMap.set("animationstart", "Animation Start");
         nameMap.set("audioend", "Audio End");
         nameMap.set("audioprocess", "Audio Process");
         nameMap.set("audiostart", "Audio Start");

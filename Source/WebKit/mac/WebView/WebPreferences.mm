@@ -443,7 +443,8 @@ public:
 #endif
         [NSNumber numberWithBool:YES],  WebKitPluginsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitDatabasesEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES],  WebKitMetaRefreshEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitHTTPEquivEnabledPreferenceKey,
+
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitStorageTrackerEnabledPreferenceKey,
 #endif
@@ -518,6 +519,7 @@ public:
 #if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowsInlineMediaPlaybackPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitMediaControlsScaleWithPageZoomPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitBackspaceKeyNavigationEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldDisplaySubtitlesPreferenceKey,
@@ -528,6 +530,7 @@ public:
 #else
         [NSNumber numberWithBool:YES],  WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAllowsInlineMediaPlaybackPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitMediaControlsScaleWithPageZoomPreferenceKey,
         [NSNumber numberWithUnsignedInt:AudioSession::None],  WebKitAudioSessionCategoryOverride,
 #if HAVE(AVKIT)
         [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
@@ -2195,6 +2198,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitAllowsInlineMediaPlaybackPreferenceKey];
 }
 
+- (BOOL)mediaControlsScaleWithPageZoom
+{
+    return [self _boolValueForKey:WebKitMediaControlsScaleWithPageZoomPreferenceKey];
+}
+
+- (void)setMediaControlsScaleWithPageZoom:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaControlsScaleWithPageZoomPreferenceKey];
+}
+
 - (BOOL)allowsAlternateFullscreen
 {
     return [self allowsPictureInPictureMediaPlayback];
@@ -2526,12 +2539,22 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setMetaRefreshEnabled:(BOOL)enabled
 {
-    [self _setBoolValue:enabled forKey:WebKitMetaRefreshEnabledPreferenceKey];
+    [self setHTTPEquivEnabled:enabled];
 }
 
 - (BOOL)metaRefreshEnabled
 {
-    return [self _boolValueForKey:WebKitMetaRefreshEnabledPreferenceKey];
+    return [self metaRefreshEnabled];
+}
+
+- (void)setHTTPEquivEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitHTTPEquivEnabledPreferenceKey];
+}
+
+- (BOOL)httpEquivEnabled
+{
+    return [self _boolValueForKey:WebKitHTTPEquivEnabledPreferenceKey];
 }
 
 - (BOOL)javaScriptMarkupEnabled

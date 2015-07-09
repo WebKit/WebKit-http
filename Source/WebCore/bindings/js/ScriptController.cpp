@@ -102,7 +102,7 @@ ScriptController::~ScriptController()
     if (m_cacheableBindingRootObject) {
         JSLockHolder lock(JSDOMWindowBase::commonVM());
         m_cacheableBindingRootObject->invalidate();
-        m_cacheableBindingRootObject = 0;
+        m_cacheableBindingRootObject = nullptr;
     }
 
     // It's likely that destroying m_windowShells will create a lot of garbage.
@@ -258,7 +258,7 @@ JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld& world)
         if (shouldBypassMainWorldContentSecurityPolicy)
             windowShell->window()->setEvalEnabled(true);
         else
-            windowShell->window()->setEvalEnabled(m_frame.document()->contentSecurityPolicy()->allowEval(0, ContentSecurityPolicy::SuppressReport), m_frame.document()->contentSecurityPolicy()->evalDisabledErrorMessage());
+            windowShell->window()->setEvalEnabled(m_frame.document()->contentSecurityPolicy()->allowEval(0, shouldBypassMainWorldContentSecurityPolicy, ContentSecurityPolicy::ReportingStatus::SuppressReport), m_frame.document()->contentSecurityPolicy()->evalDisabledErrorMessage());
     }
 
     if (Page* page = m_frame.page()) {
@@ -489,7 +489,7 @@ void ScriptController::clearScriptObjects()
 
     if (m_bindingRootObject) {
         m_bindingRootObject->invalidate();
-        m_bindingRootObject = 0;
+        m_bindingRootObject = nullptr;
     }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -498,7 +498,7 @@ void ScriptController::clearScriptObjects()
         // script object properly.
         // This shouldn't cause any problems for plugins since they should have already been stopped and destroyed at this point.
         _NPN_DeallocateObject(m_windowScriptNPObject);
-        m_windowScriptNPObject = 0;
+        m_windowScriptNPObject = nullptr;
     }
 #endif
 }

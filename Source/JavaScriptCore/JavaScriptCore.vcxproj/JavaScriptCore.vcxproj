@@ -447,6 +447,7 @@
     <ClCompile Include="..\dfg\DFGOSRExitCompiler32_64.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitCompiler64.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitCompilerCommon.cpp" />
+    <ClCompile Include="..\dfg\DFGOSRExitFuzz.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitJumpPlaceholder.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitPreparation.cpp" />
     <ClCompile Include="..\dfg\DFGObjectAllocationSinkingPhase.cpp" />
@@ -729,6 +730,7 @@
     <ClCompile Include="..\runtime\InitializeThreading.cpp" />
     <ClCompile Include="..\runtime\IntendedStructureChain.cpp" />
     <ClCompile Include="..\runtime\InternalFunction.cpp" />
+    <ClCompile Include="..\runtime\IntlObject.cpp" />
     <ClCompile Include="..\runtime\IteratorOperations.cpp" />
     <ClCompile Include="..\runtime\IteratorPrototype.cpp" />
     <ClCompile Include="..\runtime\JSAPIValueWrapper.cpp" />
@@ -740,7 +742,6 @@
     <ClCompile Include="..\runtime\JSArrayBufferPrototype.cpp" />
     <ClCompile Include="..\runtime\JSArrayBufferView.cpp" />
     <ClCompile Include="..\runtime\JSBoundFunction.cpp" />
-    <ClCompile Include="..\runtime\JSBoundSlotBaseFunction.cpp" />
     <ClCompile Include="..\runtime\JSCJSValue.cpp" />
     <ClCompile Include="..\runtime\JSCallee.cpp" />
     <ClCompile Include="..\runtime\JSCatchScope.cpp" />
@@ -753,6 +754,7 @@
     <ClCompile Include="..\runtime\JSFunctionNameScope.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObject.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp" />
+    <ClCompile Include="..\runtime\JSJob.cpp" />
     <ClCompile Include="..\runtime\JSLock.cpp" />
     <ClCompile Include="..\runtime\JSMap.cpp" />
     <ClCompile Include="..\runtime\JSMapIterator.cpp" />
@@ -763,8 +765,6 @@
     <ClCompile Include="..\runtime\JSPromise.cpp" />
     <ClCompile Include="..\runtime\JSPromiseConstructor.cpp" />
     <ClCompile Include="..\runtime\JSPromiseDeferred.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseFunctions.cpp" />
-    <ClCompile Include="..\runtime\JSPromiseReaction.cpp" />
     <ClCompile Include="..\runtime\JSPromisePrototype.cpp" />
     <ClCompile Include="..\runtime\JSPropertyNameEnumerator.cpp" />
     <ClCompile Include="..\runtime\JSProxy.cpp" />
@@ -1147,6 +1147,7 @@
     <ClInclude Include="..\dfg\DFGOSRExitCompilationInfo.h" />
     <ClInclude Include="..\dfg\DFGOSRExitCompiler.h" />
     <ClInclude Include="..\dfg\DFGOSRExitCompilerCommon.h" />
+    <ClInclude Include="..\dfg\DFGOSRExitFuzz.h" />
     <ClInclude Include="..\dfg\DFGOSRExitJumpPlaceholder.h" />
     <ClInclude Include="..\dfg\DFGOSRExitPreparation.h" />
     <ClInclude Include="..\dfg\DFGPhantomInsertionPhase.h" />
@@ -1290,7 +1291,6 @@
     <ClInclude Include="..\heap\HandleStack.h" />
     <ClInclude Include="..\heap\HandleTypes.h" />
     <ClInclude Include="..\heap\Heap.h" />
-    <ClInclude Include="..\heap\HeapBlock.h" />
     <ClInclude Include="..\heap\HeapInlines.h" />
     <ClInclude Include="..\heap\HeapOperation.h" />
     <ClInclude Include="..\heap\HeapRootVisitor.h" />
@@ -1532,6 +1532,7 @@
     <ClInclude Include="..\runtime\Int8Array.h" />
     <ClInclude Include="..\runtime\IntendedStructureChain.h" />
     <ClInclude Include="..\runtime\InternalFunction.h" />
+    <ClInclude Include="..\runtime\IntlObject.h" />
     <ClInclude Include="..\runtime\Intrinsic.h" />
     <ClInclude Include="..\runtime\IterationStatus.h" />
     <ClInclude Include="..\runtime\IteratorOperations.h" />
@@ -1546,7 +1547,6 @@
     <ClInclude Include="..\runtime\JSArrayBufferViewInlines.h" />
     <ClInclude Include="..\runtime\JSArrayIterator.h" />
     <ClInclude Include="..\runtime\JSBoundFunction.h" />
-    <ClInclude Include="..\runtime\JSBoundSlotBaseFunction.h" />
     <ClInclude Include="..\runtime\JSCInlines.h" />
     <ClInclude Include="..\runtime\JSCJSValue.h" />
     <ClInclude Include="..\runtime\JSCJSValueInlines.h" />
@@ -1571,6 +1571,7 @@
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeInlines.h" />
     <ClInclude Include="..\runtime\JSGlobalObject.h" />
     <ClInclude Include="..\runtime\JSGlobalObjectFunctions.h" />
+    <ClInclude Include="..\runtime\JSJob.h" />
     <ClInclude Include="..\runtime\JSInt16Array.h" />
     <ClInclude Include="..\runtime\JSInt32Array.h" />
     <ClInclude Include="..\runtime\JSInt8Array.h" />
@@ -1584,8 +1585,6 @@
     <ClInclude Include="..\runtime\JSPromise.h" />
     <ClInclude Include="..\runtime\JSPromiseConstructor.h" />
     <ClInclude Include="..\runtime\JSPromiseDeferred.h" />
-    <ClInclude Include="..\runtime\JSPromiseFunctions.h" />
-    <ClInclude Include="..\runtime\JSPromiseReaction.h" />
     <ClInclude Include="..\runtime\JSPromisePrototype.h" />
     <ClInclude Include="..\runtime\JSPropertyNameEnumerator.h" />
     <ClInclude Include="..\runtime\JSProxy.h" />

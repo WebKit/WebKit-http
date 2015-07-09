@@ -176,10 +176,6 @@ AuthenticationManager& NetworkProcess::downloadsAuthenticationManager()
 void NetworkProcess::lowMemoryHandler(Critical critical)
 {
     platformLowMemoryHandler(critical);
-#if ENABLE(NETWORK_CACHE)
-    if (NetworkCache::singleton().isEnabled())
-        NetworkCache::singleton().handleMemoryPressureNotification(critical);
-#endif
     WTF::releaseFastMallocFreeMemory();
 }
 
@@ -352,6 +348,13 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, uint64_t websiteDataT
 
 void NetworkProcess::deleteWebsiteData(SessionID sessionID, uint64_t websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
+#if PLATFORM(COCOA)
+    if (websiteDataTypes & WebsiteDataTypeHSTSCache) {
+        if (auto* networkStorageSession = SessionTracker::session(sessionID))
+            clearHSTSCache(*networkStorageSession, modifiedSince);
+    }
+#endif
+
     if (websiteDataTypes & WebsiteDataTypeCookies) {
         if (auto* networkStorageSession = SessionTracker::session(sessionID))
             deleteAllCookiesModifiedSince(*networkStorageSession, modifiedSince);

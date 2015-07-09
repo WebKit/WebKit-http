@@ -43,7 +43,7 @@ void TextureMapperTiledBackingStore::updateContentsFromImageIfNeeded(TextureMapp
 
     if (m_image->imageObserver())
         m_image->imageObserver()->didDraw(m_image.get());
-    m_image.clear();
+    m_image = nullptr;
 }
 
 TransformationMatrix TextureMapperTiledBackingStore::adjustedTransformForRect(const FloatRect& targetRect)

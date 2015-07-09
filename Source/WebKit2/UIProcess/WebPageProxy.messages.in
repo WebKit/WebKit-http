@@ -359,6 +359,7 @@ messages -> WebPageProxy {
 
 #if PLATFORM(IOS)
     DynamicViewportUpdateChangedTarget(double newTargetScale, WebCore::FloatPoint newScrollPosition, uint64_t dynamicViewportSizeUpdateID)
+    CouldNotRestorePageState()
     RestorePageState(WebCore::FloatRect exposedRect, double scale)
     RestorePageCenterAndScale(WebCore::FloatPoint unobscuredCenter, double scale)
     DidGetTapHighlightGeometries(uint64_t requestID, WebCore::Color color, Vector<WebCore::FloatQuad> geometries, WebCore::IntSize topLeftRadius, WebCore::IntSize topRightRadius, WebCore::IntSize bottomLeftRadius, WebCore::IntSize bottomRightRadius)
@@ -424,6 +425,7 @@ messages -> WebPageProxy {
     IsPlayingMediaDidChange(unsigned state)
 
 #if ENABLE(MEDIA_SESSION)
+    HasMediaSessionWithActiveMediaElementsDidChange(bool state)
     MediaSessionMetadataDidChange(WebCore::MediaSessionMetadata metadata);
 #endif
 

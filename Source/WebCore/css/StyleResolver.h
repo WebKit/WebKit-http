@@ -28,7 +28,6 @@
 #include "DocumentRuleSets.h"
 #include "InspectorCSSOMWrappers.h"
 #include "LinkHash.h"
-#include "MaskImageOperation.h"
 #include "MediaQueryExp.h"
 #include "RenderStyle.h"
 #include "RuleFeature.h"
@@ -302,7 +301,6 @@ private:
 #endif
     
     void adjustStyleForInterCharacterRuby();
-    void adjustStyleForMaskImages();
     
     bool fastRejectSelector(const RuleData&) const;
 
@@ -382,7 +380,6 @@ public:
         PendingImagePropertyMap& pendingImageProperties() { return m_pendingImageProperties; }
 
         Vector<RefPtr<ReferenceFilterOperation>>& filtersWithPendingSVGDocuments() { return m_filtersWithPendingSVGDocuments; }
-        Vector<RefPtr<MaskImageOperation>>& maskImagesWithPendingSVGDocuments() { return m_maskImagesWithPendingSVGDocuments; }
 
         void setFontDirty(bool isDirty) { m_fontDirty = isDirty; }
         bool fontDirty() const { return m_fontDirty; }
@@ -429,7 +426,6 @@ public:
         PendingImagePropertyMap m_pendingImageProperties;
 
         Vector<RefPtr<ReferenceFilterOperation>> m_filtersWithPendingSVGDocuments;
-        Vector<RefPtr<MaskImageOperation>> m_maskImagesWithPendingSVGDocuments;
 
         bool m_fontDirty;
         bool m_fontSizeHasViewportUnits;

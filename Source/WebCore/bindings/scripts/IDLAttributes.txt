@@ -29,7 +29,7 @@ CheckSecurityForNode
 Clamp
 Conditional=*
 Constructor
-ConstructorCallWith=Document|ScriptExecutionContext
+ConstructorCallWith=Document|ScriptExecutionContext|ScriptState
 ConstructorConditional=*
 ConstructorRaisesException
 ConstructorTemplate=Event|TypedArray
@@ -111,6 +111,7 @@ SkipVTableValidation
 StrictTypeChecking
 SuppressToJSObject
 TreatNullAs=NullString
+TreatReturnedNaNDateAs=Null|NaN
 TreatReturnedNullStringAs=Null|Undefined
 TreatUndefinedAs=NullString
 TypedArray=*

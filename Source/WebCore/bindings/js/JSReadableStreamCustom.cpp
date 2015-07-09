@@ -47,26 +47,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue JSReadableStream::cancel(ExecState* exec)
-{
-    // FIXME: We should be able to remove this custom binding, once we can pass a JSValue or a ScriptValue.
-    ExceptionCode ec = 0;
-    JSPromiseDeferred& promiseDeferred = *JSPromiseDeferred::create(exec, globalObject());
-    impl().cancel(exec->argument(0), DeferredWrapper(exec, globalObject(), &promiseDeferred), ec);
-
-    if (ec)
-        DeferredWrapper(exec, globalObject(), &promiseDeferred).reject(ec);
-
-    return promiseDeferred.promise();
-}
-
-JSValue JSReadableStream::getReader(ExecState* exec)
-{
-    if (impl().locked())
-        return exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("ReadableStream is locked")));
-    return toJS(exec, globalObject(), impl().getReader());
-}
-
 JSValue JSReadableStream::pipeTo(ExecState* exec)
 {
     JSValue error = createError(exec, ASCIILiteral("pipeTo is not implemented"));
@@ -77,20 +57,6 @@ JSValue JSReadableStream::pipeThrough(ExecState* exec)
 {
     JSValue error = createError(exec, ASCIILiteral("pipeThrough is not implemented"));
     return exec->vm().throwException(exec, error);
-}
-
-EncodedJSValue JSC_HOST_CALL constructJSReadableStream(ExecState* exec)
-{
-    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
-    ASSERT(jsConstructor);
-
-    RefPtr<ReadableJSStream> readableStream = ReadableJSStream::create(*exec, *jsConstructor->scriptExecutionContext());
-
-    if (!readableStream) {
-        ASSERT(exec->hadException());
-        return JSValue::encode(jsUndefined());
-    }
-    return JSValue::encode(toJS(exec, jsCast<JSDOMGlobalObject*>(exec->callee()->globalObject()), WTF::move(readableStream)));
 }
 
 } // namespace WebCore

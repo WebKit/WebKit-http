@@ -691,7 +691,7 @@ void TextureMapperGL::bindDefaultSurface()
     data().projectionMatrix = createProjectionMatrix(IntSize(viewport[2], viewport[3]), data().PaintFlags & PaintingMirrored);
     m_context3D->viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
     m_clipStack.apply(m_context3D.get());
-    data().currentSurface.clear();
+    data().currentSurface = nullptr;
 }
 
 void TextureMapperGL::bindSurface(BitmapTexture *surface)

@@ -384,9 +384,6 @@ webkit.org/b/86623 http/tests/security/dataTransfer-set-data-file-url.html
 webkit.org/b/86623 http/tests/security/drag-drop-different-origin.html
 webkit.org/b/86623 http/tests/security/drag-over-remote-content-iframe.html
 
-# Needs baselines
-editing/selection/designmode-no-caret.html [ Timeout ]
-
 # Test is failing due to a scrolling problem on second iteration.
 webkit.org/b/106240 fast/events/mouse-cursor-image-set.html [ Failure ]
 
@@ -779,9 +776,6 @@ webkit.org/b/98761 svg/text/selection-tripleclick.svg [ Failure Pass ]
 # Test is flaky and needs to be fixed
 webkit.org/b/56985 http/tests/loading/bad-server-subframe.html [ Crash Pass ]
 
-# Affects multiple platforms.
-webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Failure Pass ]
-
 # Flaky, probably because the result is sometimes taken before data about visited link have passed through IPC.
 webkit.org/b/81797 fast/history/visited-link-background-color.html [ ImageOnlyFailure Pass ]
 
@@ -1076,6 +1070,11 @@ pageoverlay/overlay-large-document-scrolled.html [ Crash Pass ]
 http/tests/misc/iframe-reparenting-id-collision.html [ Crash Pass ]
 http/tests/loading/text-content-type-with-binary-extension.html [ Failure Pass ]
 perf/rel-list-remove.html [ Failure Pass ]
+
+webkit.org/b/146495 fast/history/multiple-classes-visited.html [ Timeout Pass ]
+webkit.org/b/146495 http/tests/security/contentSecurityPolicy/directive-parsing-multiple-headers.html [ Timeout Pass ]
+webkit.org/b/146495 js/dom/create-lots-of-workers.html [ Crash Timeout Pass Failure ]
+webkit.org/b/146495 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS WITH INCORRECT EXPECTATIONS
@@ -2169,7 +2168,6 @@ webkit.org/b/142561 svg/animations/smil-leak-element-instances.svg [ Failure ]
 webkit.org/b/142561 svg/animations/smil-leak-elements.svg [ Failure ]
 
 webkit.org/b/142763 fast/images/animated-gif-window-resizing.html [ Timeout ]
-webkit.org/b/142764 accessibility/content-editable-as-textarea.html [ Timeout ]
 
 # [EFL] r182307 broke 87 layouttests
 webkit.org/b/143364 fast/fixed-layout [ Skip ]
@@ -2276,3 +2274,17 @@ accessibility/transformed-element.html [ Failure ]
 webkit.org/b/146139 fast/css/named-images.html [ Missing ]
 
 webkit.org/b/146233 fast/forms/listbox-visible-size.html [ Failure ]
+
+webkit.org/b/146495 accessibility/content-editable-as-textarea.html [ Timeout ]
+webkit.org/b/146495 editing/selection/designmode-no-caret.html [ Timeout ]
+webkit.org/b/146495 media/session/controls-existence.html [ Timeout ]
+
+# Test requires hardcoded font names, which I do not have for this port.
+fast/text/han-generic-font-families.html [ WontFix ]
+fast/text/hangul-generic-font-families.html [ WontFix ]
+
+# Below tests need to have own expectataion files.
+accessibility/aria-hidden-false-works-in-subtrees.html [ Missing ]
+accessibility/radio-button-group-members.html [ Missing ]
+editing/selection/designmode-no-caret.html [ Missing ]
+accessibility/content-editable-as-textarea.html [ Missing ]

@@ -30,31 +30,31 @@
 
 namespace WebCore {
 
-bool ScrollbarThemeWPE::hasButtons(ScrollbarThemeClient*)
+bool ScrollbarThemeWPE::hasButtons(Scrollbar&)
 {
     notImplemented();
     return true;
 }
 
-bool ScrollbarThemeWPE::hasThumb(ScrollbarThemeClient*)
+bool ScrollbarThemeWPE::hasThumb(Scrollbar&)
 {
     notImplemented();
     return true;
 }
 
-IntRect ScrollbarThemeWPE::backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool)
+IntRect ScrollbarThemeWPE::backButtonRect(Scrollbar&, ScrollbarPart, bool)
 {
     notImplemented();
     return IntRect();
 }
 
-IntRect ScrollbarThemeWPE::forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool)
+IntRect ScrollbarThemeWPE::forwardButtonRect(Scrollbar&, ScrollbarPart, bool)
 {
     notImplemented();
     return IntRect();
 }
 
-IntRect ScrollbarThemeWPE::trackRect(ScrollbarThemeClient*, bool)
+IntRect ScrollbarThemeWPE::trackRect(Scrollbar&, bool)
 {
     notImplemented();
     return IntRect();

@@ -44,9 +44,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<WebInspectorUI> WebInspectorUI::create(WebPage* page)
+Ref<WebInspectorUI> WebInspectorUI::create(WebPage* page)
 {
-    return adoptRef(new WebInspectorUI(page));
+    return adoptRef(*new WebInspectorUI(page));
 }
 
 WebInspectorUI::WebInspectorUI(WebPage* page)
@@ -102,6 +102,11 @@ void WebInspectorUI::frontendLoaded()
     bringToFront();
 }
 
+void WebInspectorUI::startWindowDrag()
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::StartWindowDrag(), m_inspectedPageIdentifier);
+}
+
 void WebInspectorUI::moveWindowBy(float x, float y)
 {
     FloatRect frameRect = m_page->corePage()->chrome().windowRect();
@@ -118,7 +123,8 @@ void WebInspectorUI::closeWindow()
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::DidClose(), m_inspectedPageIdentifier);
 
-    m_backendConnection->invalidate();
+    if (m_backendConnection)
+        m_backendConnection->invalidate();
     m_backendConnection = nullptr;
 
     m_inspectedPageIdentifier = 0;

@@ -75,6 +75,7 @@ struct PrintInfo;
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction;
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID;
+- (void)_couldNotRestorePageState;
 - (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale;
 - (void)_restorePageStateToUnobscuredCenter:(WebCore::FloatPoint)center scale:(double)scale;
 
@@ -82,6 +83,7 @@ struct PrintInfo;
 
 - (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffset;
 - (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance;
+- (void)_scrollByOffset:(WebCore::FloatPoint)offset;
 - (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRect selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
 - (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance;
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
@@ -96,12 +98,16 @@ struct PrintInfo;
 - (void)_updateVisibleContentRects;
 
 - (void)_didFinishLoadForMainFrame;
+- (void)_didFailLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType;
 
 - (BOOL)_isShowingVideoPictureInPicture;
 - (BOOL)_mayAutomaticallyShowVideoPictureInPicture;
 
 - (void)_updateScrollViewBackground;
+
+- (void)_navigationGestureDidBegin;
+- (void)_navigationGestureDidEnd;
 
 @property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
 #else

@@ -494,9 +494,9 @@ public:
     float pageScaleFactor() const { return m_client.pageScaleFactor(); }
     float deviceScaleFactor() const { return m_client.deviceScaleFactor(); }
     
-    // Whether this layer (and descendants) can detach backing store when outside the coverage area.
-    virtual void setAllowsBackingStoreDetachment(bool) { }
-    virtual bool allowsBackingStoreDetachment() const { return true; }
+    // Whether this layer is viewport constrained, implying that it's moved around externally from GraphicsLayer (e.g. by the scrolling tree).
+    virtual void setIsViewportConstrained(bool) { }
+    virtual bool isViewportConstrained() const { return false; }
 
     virtual void deviceOrPageScaleFactorChanged() { }
     WEBCORE_EXPORT void noteDeviceOrPageScaleFactorChangedIncludingDescendants();
@@ -504,8 +504,8 @@ public:
     // Some compositing systems may do internal batching to synchronize compositing updates
     // with updates drawn into the window. These methods flush internal batched state on this layer
     // and descendant layers, and this layer only.
-    virtual void flushCompositingState(const FloatRect& /* clipRect */) { }
-    virtual void flushCompositingStateForThisLayerOnly() { }
+    virtual void flushCompositingState(const FloatRect& /* clipRect */, bool /* viewportIsStable */) { }
+    virtual void flushCompositingStateForThisLayerOnly(bool /* viewportIsStable */) { }
 
     // If the exposed rect of this layer changes, returns true if this or descendant layers need a flush,
     // for example to allocate new tiles.

@@ -1383,20 +1383,22 @@ sub GenerateParametersCheckExpression
             # For Callbacks only checks if the value is null or object.
             push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
             $usedArguments{$parameterIndex} = 1;
-        } elsif ($codeGenerator->GetArrayType($type) || $codeGenerator->GetSequenceType($type)) {
-            # FIXME: Add proper support for T[], T[]?, sequence<T>
-            if ($parameter->isNullable) {
-                push(@andExpression, "(${value}.isNull() || (${value}.isObject() && isJSArray(${value})))");
-            } else {
-                push(@andExpression, "(${value}.isObject() && isJSArray(${value}))");
-            }
-            $usedArguments{$parameterIndex} = 1;
         } elsif (!IsNativeType($type)) {
-            if ($parameter->isNullable) {
-                push(@andExpression, "(${value}.isNull() || (${value}.isObject() && asObject(${value})->inherits(JS${type}::info())))");
+            my $condition = "";
+            $condition .= "${value}.isUndefined() || " if $parameter->isOptional;
+
+            # FIXME: WebIDL says that undefined is also acceptable for nullable parameters and
+            # should be converted to null:
+            # http://heycam.github.io/webidl/#es-nullable-type
+            $condition .= "${value}.isNull() || " if $parameter->isNullable;
+
+            if ($codeGenerator->GetArrayType($type) || $codeGenerator->GetSequenceType($type)) {
+                # FIXME: Add proper support for T[], T[]?, sequence<T>.
+                $condition .= "(${value}.isObject() && isJSArray(${value}))";
             } else {
-                push(@andExpression, "(${value}.isObject() && asObject(${value})->inherits(JS${type}::info()))");
+                $condition .= "(${value}.isObject() && asObject(${value})->inherits(JS${type}::info()))";
             }
+            push(@andExpression, "(" . $condition . ")");
             $usedArguments{$parameterIndex} = 1;
         }
         $parameterIndex++;
@@ -1453,6 +1455,17 @@ sub GenerateFunctionParametersCheck
     return ($numMandatoryParams, join(" || ", @orExpression), @neededArguments);
 }
 
+sub LengthOfLongestFunctionParameterList
+{
+    my ($overloads) = @_;
+    my $result = 0;
+    foreach my $overload (@{$overloads}) {
+        my @parameters = @{$overload->parameters};
+        $result = @parameters if $result < @parameters;
+    }
+    return $result;
+}
+
 sub GenerateOverloadedFunction
 {
     my $function = shift;
@@ -1468,10 +1481,13 @@ sub GenerateOverloadedFunction
     my $kind = $function->isStatic ? "Constructor" : "Prototype";
     my $functionName = "js${interfaceName}${kind}Function" . $codeGenerator->WK_ucfirst($function->signature->name);
 
+    # FIXME: Implement support for overloaded functions with variadic arguments.
+    my $lengthOfLongestOverloadedFunctionParameterList = LengthOfLongestFunctionParameterList($function->{overloads});
+
     push(@implContent, "EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)\n");
     push(@implContent, <<END);
 {
-    size_t argsCount = exec->argumentCount();
+    size_t argsCount = std::min<size_t>($lengthOfLongestOverloadedFunctionParameterList, exec->argumentCount());
 END
 
     my %fetchedArguments = ();
@@ -2783,15 +2799,14 @@ sub GenerateImplementation
             if (IsReturningPromise($function) && !$isCustom) {
                 AddToImplIncludes("JSDOMPromise.h");
 
-                push(@implContent, "static inline EncodedJSValue ${functionName}Promise(ExecState*, " . $className . "*, JSPromiseDeferred*);\n");
+                push(@implContent, "static inline EncodedJSValue ${functionName}Promise(ExecState*, JSPromiseDeferred*);\n");
                 push(@implContent, "EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)\n");
                 push(@implContent, "{\n");
 
-                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function);
-                push(@implContent, "    return JSValue::encode(callPromiseFunction(*exec, *castedThis, ${functionName}Promise));\n");
+                push(@implContent, "    return JSValue::encode(callPromiseFunction(*exec, ${functionName}Promise));\n");
 
                 push(@implContent, "}\n");
-                push(@implContent, "\nstatic inline EncodedJSValue ${functionName}Promise(ExecState* exec, " . $className . "* castedThis, JSPromiseDeferred* promiseDeferred)\n");
+                push(@implContent, "\nstatic inline EncodedJSValue ${functionName}Promise(ExecState* exec, JSPromiseDeferred* promiseDeferred)\n");
             }
             else {
                 push(@implContent, "EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)\n");
@@ -2815,7 +2830,7 @@ sub GenerateImplementation
                     GenerateImplementationFunctionCall($function, $functionString, "    ", $svgPropertyType, $interfaceName);
                 }
             } else {
-                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function) if not (IsReturningPromise($function) && !$isCustom);
+                GenerateFunctionCastedThis($interface, $interfaceName, $className, $function);
 
                 if ($interface->extendedAttributes->{"CheckSecurity"} and
                     !$function->signature->extendedAttributes->{"DoNotCheckSecurity"}) {
@@ -3243,7 +3258,7 @@ sub GenerateParametersCheck
             push(@$outputArray, "    if (argsCount <= $argsIndex) {\n");
 
             my @optionalCallbackArguments = @arguments;
-            push(@optionalCallbackArguments, "ec") if $raisesException;
+            push @optionalCallbackArguments, GenerateReturnParameters($function);
             my $functionString = "$functionName(" . join(", ", @optionalCallbackArguments) . ")";
             GenerateImplementationFunctionCall($function, $functionString, "    " x 2, $svgPropertyType, $interfaceName);
             push(@$outputArray, "    }\n\n");
@@ -3411,11 +3426,19 @@ sub GenerateParametersCheck
         $argsIndex++;
     }
 
-    push(@arguments, "DeferredWrapper(exec, castedThis->globalObject(), promiseDeferred)") if IsReturningPromise($function);
-
-    push(@arguments, "ec") if $raisesException;
+    push @arguments, GenerateReturnParameters($function);
 
     return ("$functionName(" . join(", ", @arguments) . ")", scalar @arguments);
+}
+
+sub GenerateReturnParameters
+{
+    my $function = shift;
+    my @arguments;
+
+    push(@arguments, "DeferredWrapper(exec, castedThis->globalObject(), promiseDeferred)") if IsReturningPromise($function);
+    push(@arguments, "ec") if $function->signature->extendedAttributes->{"RaisesException"};
+    return @arguments;
 }
 
 sub GenerateCallbackHeader
@@ -3868,6 +3891,7 @@ sub JSValueToNative
     }
 
     if ($type eq "any") {
+        AddToImplIncludes("<bindings/ScriptValue.h>");
         return "{ exec->vm(), $value }";
     }
 
@@ -3934,6 +3958,13 @@ sub NativeToJSValue
 
     # Need to check Date type before IsPrimitiveType().
     if ($type eq "Date") {
+        my $conv = $signature->extendedAttributes->{"TreatReturnedNaNDateAs"};
+        if (defined $conv) {
+            return "jsDateOrNull(exec, $value)" if $conv eq "Null";
+            return "jsDateOrNaN(exec, $value)" if $conv eq "NaN";
+            
+            die "Unknown value for TreatReturnedNaNDateAs extended attribute";
+        }
         return "jsDateOrNull(exec, $value)";
     }
 
@@ -4484,10 +4515,14 @@ sub GenerateOverloadedConstructorDefinition
     my $interface = shift;
 
     my $functionName = "${className}Constructor::construct${className}";
+
+    # FIXME: Implement support for overloaded constructors with variadic arguments.
+    my $lengthOfLongestOverloadedConstructorParameterList = LengthOfLongestFunctionParameterList($interface->constructors);
+
     push(@$outputArray, <<END);
 EncodedJSValue JSC_HOST_CALL ${functionName}(ExecState* exec)
 {
-    size_t argsCount = exec->argumentCount();
+    size_t argsCount = std::min<size_t>($lengthOfLongestOverloadedConstructorParameterList, exec->argumentCount());
 END
 
     my %fetchedArguments = ();
@@ -4625,6 +4660,9 @@ END
             my $numParameters = @{$function->parameters};
             my ($dummy, $paramIndex) = GenerateParametersCheck($outputArray, $function, $interface, $numParameters, $interfaceName, "constructorCallback", undef, undef, undef);
 
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
+                push(@constructorArgList, "*exec");
+            }
             if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptExecutionContext")) {
                 push(@constructorArgList, "*context");
                 push(@$outputArray, "    ScriptExecutionContext* context = castedThis->scriptExecutionContext();\n");
@@ -4665,6 +4703,11 @@ END
                 push(@$outputArray, "        setDOMException(exec, ec);\n");
                 push(@$outputArray, "        return JSValue::encode(JSValue());\n");
                 push(@$outputArray, "    }\n");
+            }
+
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"ConstructorCallWith"}, "ScriptState")) {
+                 push(@$outputArray, "    if (UNLIKELY(exec->hadException()))\n");
+                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
 
             push(@$outputArray, "    return JSValue::encode(asObject(toJS(exec, castedThis->globalObject(), object.get())));\n");
