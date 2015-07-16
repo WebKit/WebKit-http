@@ -77,18 +77,15 @@ void PageClientImpl::scrollView(const WebCore::IntRect& scrollRect, const WebCor
     setViewNeedsDisplay(scrollRect);
 }
 
-void PageClientImpl::requestScroll(const WebCore::FloatPoint&, bool)
+void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool)
 {
     notImplemented();
 }
 
 WebCore::IntSize PageClientImpl::viewSize()
 {
-    if (!gtk_widget_get_realized(m_viewWidget))
-        return IntSize();
-    GtkAllocation allocation;
-    gtk_widget_get_allocation(m_viewWidget, &allocation);
-    return IntSize(allocation.width, allocation.height);
+    auto* drawingArea = static_cast<DrawingAreaProxyImpl*>(webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(m_viewWidget))->drawingArea());
+    return drawingArea ? drawingArea->size() : IntSize();
 }
 
 bool PageClientImpl::isViewWindowActive()
@@ -432,6 +429,16 @@ void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigatio
 
 void PageClientImpl::didChangeBackgroundColor()
 {
+}
+
+void PageClientImpl::refView()
+{
+    g_object_ref(m_viewWidget);
+}
+
+void PageClientImpl::derefView()
+{
+    g_object_unref(m_viewWidget);
 }
 
 } // namespace WebKit

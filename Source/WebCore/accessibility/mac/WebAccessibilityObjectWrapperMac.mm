@@ -1928,6 +1928,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { ListBoxRole, NSAccessibilityListRole },
         { ListBoxOptionRole, NSAccessibilityStaticTextRole },
         { CellRole, NSAccessibilityCellRole },
+        { GridCellRole, NSAccessibilityCellRole },
         { TableHeaderContainerRole, NSAccessibilityGroupRole },
         { ColumnHeaderRole, NSAccessibilityCellRole },
         { RowHeaderRole, NSAccessibilityCellRole },
@@ -3096,7 +3097,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([attributeName isEqualToString: NSAccessibilitySelectedChildrenAttribute])
         return m_object->canSetSelectedChildrenAttribute();
     
-    if ([attributeName isEqualToString:NSAccessibilityDisclosingAttribute])
+    if ([attributeName isEqualToString:NSAccessibilityDisclosingAttribute]
+        || [attributeName isEqualToString:NSAccessibilityExpandedAttribute])
         return m_object->canSetExpandedAttribute();
     
     if ([attributeName isEqualToString:NSAccessibilitySelectedRowsAttribute])
@@ -3423,7 +3425,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         } else if ([attributeName isEqualToString: NSAccessibilityVisibleCharacterRangeAttribute]) {
             m_object->makeRangeVisible(PlainTextRange(range.location, range.length));
         }
-    } else if ([attributeName isEqualToString:NSAccessibilityDisclosingAttribute])
+    } else if ([attributeName isEqualToString:NSAccessibilityDisclosingAttribute] || [attributeName isEqualToString:NSAccessibilityExpandedAttribute])
         m_object->setIsExpanded([number boolValue]);
     else if ([attributeName isEqualToString:NSAccessibilitySelectedRowsAttribute]) {
         AccessibilityObject::AccessibilityChildrenVector selectedRows;

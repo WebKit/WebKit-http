@@ -213,7 +213,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 @interface UIWebFormAccessory (StagingToRemove)
-- (UITextInputAssistantItem *)inputAssistantItem;
+- (id)initWithInputAssistantItem:(UITextInputAssistantItem *)inputAssistantItem;
 @end
 #endif
 
@@ -1256,32 +1256,21 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (UIView *)inputAccessoryView
 {
-    if (![self requiresAccessoryView])
-        return nil;
-
     if (!_formAccessoryView) {
-        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+        if ([UIWebFormAccessory instancesRespondToSelector:@selector(initWithInputAssistantItem:)])
+            _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] initWithInputAssistantItem:[self inputAssistantItem]]);
+        else
+#endif
+            _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
         [_formAccessoryView setDelegate:self];
     }
+
+    if (![self requiresAccessoryView])
+        return nil;
     
     return _formAccessoryView.get();
 }
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-- (UITextInputAssistantItem *)inputAssistantItem
-{
-    if (!_formAccessoryView) {
-        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
-        [_formAccessoryView setDelegate:self];
-    }
-    return ([_formAccessoryView respondsToSelector:@selector(inputAssistantItem)]) ? [_formAccessoryView inputAssistantItem] : nil;
-}
-
-- (UITextInputAssistantItem *)_inputAssistantItem
-{
-    return [self inputAssistantItem];
-}
-#endif
 
 - (NSArray *)supportedPasteboardTypesForCurrentSelection
 {
@@ -2049,6 +2038,16 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
     
     _page->updateSelectionWithExtentPoint(WebCore::IntPoint(point), [selectionHandler](bool endIsMoving, WebKit::CallbackBase::Error error) {
+        selectionHandler(endIsMoving);
+        [selectionHandler release];
+    });
+}
+
+- (void)updateSelectionWithExtentPoint:(CGPoint)point withBoundary:(UITextGranularity)granularity completionHandler:(void (^)(BOOL selectionEndIsMoving))completionHandler
+{
+    UIWKSelectionWithDirectionCompletionHandler selectionHandler = [completionHandler copy];
+    
+    _page->updateSelectionWithExtentPointAndBoundary(WebCore::IntPoint(point), toWKTextGranularity(granularity), [selectionHandler](bool endIsMoving, WebKit::CallbackBase::Error error) {
         selectionHandler(endIsMoving);
         [selectionHandler release];
     });
@@ -3163,6 +3162,13 @@ static bool isAssistableInputType(InputType type)
     [self _attemptClickAtLocation:location];
 }
 
+#if HAVE(APP_LINKS)
+- (BOOL)actionSheetAssistant:(WKActionSheetAssistant *)assistant shouldIncludeAppLinkActionsForElement:(_WKActivatedElementInfo *)element
+{
+    return _page->uiClient().shouldIncludeAppLinkActionsForElement(element);
+}
+#endif
+
 - (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions
 {
     return _page->uiClient().actionsForElement(element, WTF::move(defaultActions));
@@ -3186,16 +3192,20 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_registerPreviewInWindow:(UIWindow *)window
 {
-    [window.rootViewController registerPreviewSourceView:self previewingDelegate:self];
-    _previewGestureRecognizer = self.gestureRecognizers.lastObject;
+    _previewing = [[window.rootViewController registerForPreviewingWithSourceView:self] retain];
+    _previewing.delegate = self;
+    _previewGestureRecognizer = _previewing.presentationGestureRecognizer;
     [_previewGestureRecognizer setDelegate:self];
 }
 
 - (void)_unregisterPreviewInWindow:(UIWindow *)window
 {
-    [window.rootViewController unregisterPreviewSourceView:self];
+    [window.rootViewController unregisterPreviewing:_previewing];
+    _previewing.delegate = nil;
     [_previewGestureRecognizer setDelegate:nil];
     _previewGestureRecognizer = nil;
+    [_previewing release];
+    _previewing = nil;
 }
 
 - (UIViewController *)previewViewControllerForPosition:(CGPoint)position inSourceView:(UIView *)sourceView
@@ -3222,11 +3232,12 @@ static bool isAssistableInputType(InputType type)
     if (canShowLinkPreview) {
         _previewType = PreviewElementType::Link;
         NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
+        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+        RetainPtr<NSArray> actions = [_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()];
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:defaultActions:elementInfo:)]) {
             _highlightLongPressCanClick = NO;
-            RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
             _page->startInteractionWithElementAtPosition(_positionInformation.point);
-            return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:[_actionSheetAssistant defaultActionsForLinkSheet].get() elementInfo:elementInfo.get()];
+            return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:actions.get() elementInfo:elementInfo.get()];
         }
 
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)]) {
@@ -3236,7 +3247,10 @@ static bool isAssistableInputType(InputType type)
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
         SFSafariViewController *previewViewController = [allocSFSafariViewControllerInstance() initWithURL:targetURL];
         previewViewController._showingLinkPreview = YES;
+        previewViewController._activatedElementInfo = elementInfo.get();
+        previewViewController._previewActions = actions.get();
         _highlightLongPressCanClick = NO;
+        _page->startInteractionWithElementAtPosition(_positionInformation.point);
         return [previewViewController autorelease];
 #else
         return nil;
@@ -3256,7 +3270,7 @@ static bool isAssistableInputType(InputType type)
             [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];
         RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
         _page->startInteractionWithElementAtPosition(_positionInformation.point);
-        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy() defaultActions:[_actionSheetAssistant defaultActionsForImageSheet] elementInfo:elementInfo] autorelease];
+        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy() defaultActions:[_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()] elementInfo:elementInfo] autorelease];
     }
 
     return nil;

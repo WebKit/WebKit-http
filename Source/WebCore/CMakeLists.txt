@@ -1088,6 +1088,7 @@ set(WebCore_SOURCES
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
+    bindings/js/JSCharacterDataCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
@@ -1119,6 +1120,8 @@ set(WebCore_SOURCES
     bindings/js/JSDeviceOrientationEventCustom.cpp
     bindings/js/JSDictionary.cpp
     bindings/js/JSDocumentCustom.cpp
+    bindings/js/JSDocumentFragmentCustom.cpp
+    bindings/js/JSDocumentTypeCustom.cpp
     bindings/js/JSElementCustom.cpp
     bindings/js/JSErrorHandler.cpp
     bindings/js/JSEventCustom.cpp
@@ -1168,6 +1171,7 @@ set(WebCore_SOURCES
     bindings/js/JSNodeFilterCondition.cpp
     bindings/js/JSNodeFilterCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
+    bindings/js/JSNodeOrString.cpp
     bindings/js/JSNodeListCustom.cpp
     bindings/js/JSOscillatorNodeCustom.cpp
     bindings/js/JSPannerNodeCustom.cpp
@@ -1444,6 +1448,7 @@ set(WebCore_SOURCES
     dom/NodeFilter.cpp
     dom/NodeFilterCondition.cpp
     dom/NodeIterator.cpp
+    dom/NodeOrString.cpp
     dom/NodeRareData.cpp
     dom/NodeRenderingTraversal.cpp
     dom/NodeTraversal.cpp
@@ -1737,6 +1742,7 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
+    html/canvas/DOMPath.cpp
     html/canvas/EXTBlendMinMax.cpp
     html/canvas/EXTFragDepth.cpp
     html/canvas/EXTShaderTextureLOD.cpp
@@ -2168,6 +2174,7 @@ set(WebCore_SOURCES
     platform/graphics/NamedImageGeneratedImage.cpp
     platform/graphics/Path.cpp
     platform/graphics/PathTraversalState.cpp
+    platform/graphics/PathUtilities.cpp
     platform/graphics/Pattern.cpp
     platform/graphics/PlatformTimeRanges.cpp
     platform/graphics/Region.cpp

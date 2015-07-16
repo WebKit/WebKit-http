@@ -32,6 +32,7 @@
 #include "CommonSlowPathsExceptions.h"
 #include "Error.h"
 #include "ErrorHandlingScope.h"
+#include "Exception.h"
 #include "ExceptionFuzz.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
@@ -468,14 +469,6 @@ LLINT_SLOW_PATH_DECL(stack_check)
 #endif
 
 #endif
-    // This stack check is done in the prologue for a function call, and the
-    // CallFrame is not completely set up yet. For example, if the frame needs
-    // a lexical environment object, the lexical environment object will only be
-    // set up after we start executing the function. If we need to throw a
-    // StackOverflowError here, then we need to tell the prologue to start the
-    // stack unwinding from the caller frame (which is fully set up) instead.
-    // To do that, we return the caller's CallFrame in the second return value.
-    //
     // If the stack check succeeds and we don't need to throw the error, then
     // we'll return 0 instead. The prologue will check for a non-zero value
     // when determining whether to set the callFrame or not.
@@ -489,24 +482,11 @@ LLINT_SLOW_PATH_DECL(stack_check)
         LLINT_RETURN_TWO(pc, 0);
 #endif
 
-    exec = exec->callerFrame(vm.topVMEntryFrame);
     vm.topCallFrame = exec;
     ErrorHandlingScope errorScope(vm);
     CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
     pc = returnToThrowForThrownException(exec);
     LLINT_RETURN_TWO(pc, exec);
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_create_lexical_environment)
-{
-    LLINT_BEGIN();
-#if LLINT_SLOW_PATH_TRACING
-    dataLogF("Creating an lexicalEnvironment, exec = %p!\n", exec);
-#endif
-    int scopeReg = pc[2].u.operand;
-    JSScope* scope = exec->uncheckedR(scopeReg).Register::scope();
-    JSLexicalEnvironment* lexicalEnvironment = JSLexicalEnvironment::create(vm, exec, scope, exec->codeBlock());
-    LLINT_RETURN(JSValue(lexicalEnvironment));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_new_object)
@@ -1295,15 +1275,6 @@ LLINT_SLOW_PATH_DECL(slow_path_push_with_scope)
     JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
     exec->uncheckedR(scopeReg) = JSWithScope::create(exec, o, currentScope);
     
-    LLINT_END();
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_pop_scope)
-{
-    LLINT_BEGIN();
-    int scopeReg = pc[1].u.operand;
-    JSScope* scope = exec->uncheckedR(scopeReg).Register::scope();
-    exec->uncheckedR(scopeReg) = scope->next();
     LLINT_END();
 }
 

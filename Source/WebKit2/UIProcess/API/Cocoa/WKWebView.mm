@@ -1145,12 +1145,14 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     return contentOffset;
 }
 
-- (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffsetInPageCoordinates
+- (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffsetInPageCoordinates scrollOrigin:(WebCore::IntPoint)scrollOrigin
 {
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
 
-    WebCore::FloatPoint scaledOffset = contentOffsetInPageCoordinates;
+    WebCore::FloatPoint contentOffsetRespectingOrigin = scrollOrigin + toFloatSize(contentOffsetInPageCoordinates);
+
+    WebCore::FloatPoint scaledOffset = contentOffsetRespectingOrigin;
     CGFloat zoomScale = contentZoomScale(self);
     scaledOffset.scale(zoomScale, zoomScale);
 
@@ -1868,11 +1870,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 @end
 
 @implementation WKWebView (WKPrivate)
-
-- (WKNavigation *)_loadRequest:(NSURLRequest *)request withOptions:(NSDictionary *)loadOptions
-{
-    return [self loadRequest:request];
-}
 
 - (BOOL)_isEditable
 {

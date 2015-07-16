@@ -252,6 +252,10 @@ public:
                         VALIDATE((node), !variant.oldStructureForTransition()->dfgShouldWatch());
                     }
                     break;
+                case DoubleConstant:
+                case Int52Constant:
+                    VALIDATE((node), node->isNumberConstant());
+                    break;
                 default:
                     break;
                 }
@@ -524,10 +528,40 @@ private:
                 case Phantom:
                     VALIDATE((node), !"bad node type for SSA");
                     break;
-                    
+
                 default:
                     // FIXME: Add more things here.
                     // https://bugs.webkit.org/show_bug.cgi?id=123471
+                    break;
+                }
+                switch (node->op()) {
+                case PhantomNewObject:
+                case PhantomNewFunction:
+                case PhantomCreateActivation:
+                case PhantomDirectArguments:
+                case PhantomClonedArguments:
+                case MovHint:
+                case Upsilon:
+                case ForwardVarargs:
+                case CallForwardVarargs:
+                case ConstructForwardVarargs:
+                case GetMyArgumentByVal:
+                    break;
+
+                case Check:
+                    // FIXME: This is probably not correct.
+                    break;
+
+                case PutHint:
+                    VALIDATE((node), node->child1()->isPhantomAllocation());
+                    break;
+
+                default:
+                    m_graph.doToChildren(
+                        node,
+                        [&] (const Edge& edge) {
+                            VALIDATE((node), !edge->isPhantomAllocation());
+                        });
                     break;
                 }
             }
@@ -540,9 +574,9 @@ private:
             return;
 
         if (m_graph.m_planStage < PlanStage::AfterFixup)
-            VALIDATE((node, edge), edge.useKind() == UntypedUse);
-        else
-            VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepMachineIntUse);
+            return;
+        
+        VALIDATE((node, edge), edge.useKind() == DoubleRepUse || edge.useKind() == DoubleRepRealUse || edge.useKind() == DoubleRepMachineIntUse);
     }
 
     void checkOperand(

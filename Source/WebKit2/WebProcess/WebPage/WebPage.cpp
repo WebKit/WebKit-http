@@ -1472,7 +1472,7 @@ void WebPage::scaleView(double scale)
 void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, uint64_t callbackID)
 {
     scaleView(scale);
-    m_drawingArea->updateGeometry(viewSize, IntSize(), false);
+    m_drawingArea->updateGeometry(viewSize, IntSize(), false, MachSendRight());
     m_drawingArea->replyWithFenceAfterNextFlush(callbackID);
 }
 #endif
@@ -2948,6 +2948,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
 {
     layerTransaction.setContentsSize(corePage()->mainFrame().view()->contentsSize());
+    layerTransaction.setScrollOrigin(corePage()->mainFrame().view()->scrollOrigin());
     layerTransaction.setPageScaleFactor(corePage()->pageScaleFactor());
     layerTransaction.setRenderTreeSize(corePage()->renderTreeSize());
     layerTransaction.setPageExtendedBackgroundColor(corePage()->pageExtendedBackgroundColor());
@@ -3507,7 +3508,7 @@ void WebPage::mainFrameDidLayout()
 #endif
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
-        IntSize newContentSize = frameView->contentsSize();
+        IntSize newContentSize = frameView->contentsSizeRespectingOverflow();
         if (m_viewportConfiguration.contentsSize() != newContentSize) {
             m_viewportConfiguration.setContentsSize(newContentSize);
             viewportConfigurationChanged();
@@ -4041,6 +4042,11 @@ void WebPage::setMuted(bool muted)
 void WebPage::handleMediaEvent(uint32_t eventType)
 {
     m_page->handleMediaEvent(static_cast<MediaEventType>(eventType));
+}
+
+void WebPage::handleMediaSessionInterruptionEvent(uint32_t event, uint32_t category)
+{
+    m_page->handleMediaSessionInterruptionEvent(static_cast<MediaSessionInterruptionEvent>(event), static_cast<MediaSessionInterruptingCategory>(category));
 }
 #endif
 

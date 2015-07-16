@@ -799,34 +799,10 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             });
 
             if (!this._codeMirror.getOption("readOnly")) {
-                // Matches a comment like: /* -webkit-foo: bar; */
-                var commentedPropertyRegex = /\/\*\s*[-\w]+\s*:\s*[^;]+;?\s*\*\//g;
-
                 // Look for comments that look like properties and add checkboxes in front of them.
-                var lineCount = this._codeMirror.lineCount();
-                for (var i = 0; i < lineCount; ++i) {
-                    var lineContent = this._codeMirror.getLine(i);
-
-                    var match = commentedPropertyRegex.exec(lineContent);
-                    while (match) {
-                        var checkboxElement = document.createElement("input");
-                        checkboxElement.type = "checkbox";
-                        checkboxElement.checked = false;
-                        checkboxElement.addEventListener("change", this._propertyCommentCheckboxChanged.bind(this));
-
-                        var from = {line: i, ch: match.index};
-                        var to = {line: i, ch: match.index + match[0].length};
-
-                        var checkboxMarker = this._codeMirror.setUniqueBookmark(from, checkboxElement);
-                        checkboxMarker.__propertyCheckbox = true;
-
-                        var commentTextMarker = this._codeMirror.markText(from, to);
-
-                        checkboxElement.__commentTextMarker = commentTextMarker;
-
-                        match = commentedPropertyRegex.exec(lineContent);
-                    }
-                }
+                this._codeMirror.eachLine(function(lineHandler) {
+                    this._createCommentedCheckboxMarker(lineHandler);
+                }.bind(this));
             }
 
             // Look for colors and make swatches.
@@ -839,6 +815,41 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             update.call(this);
         else
             this._codeMirror.operation(update.bind(this));
+    }
+
+    _createCommentedCheckboxMarker(lineHandle)
+    {
+        var lineNumber = lineHandle.lineNo();
+
+        // Since lineNumber can be 0, it is also necessary to check if it is a number before returning.
+        if (!lineNumber && isNaN(lineNumber))
+            return;
+
+        // Matches a comment like: /* -webkit-foo: bar; */
+        var commentedPropertyRegex = /\/\*\s*[-\w]+\s*:\s*[^;]+;?\s*\*\//g;
+
+        var match = commentedPropertyRegex.exec(lineHandle.text);
+        if (!match)
+            return;
+
+        while (match) {
+            var checkboxElement = document.createElement("input");
+            checkboxElement.type = "checkbox";
+            checkboxElement.checked = false;
+            checkboxElement.addEventListener("change", this._propertyCommentCheckboxChanged.bind(this));
+
+            var from = {line: lineNumber, ch: match.index};
+            var to = {line: lineNumber, ch: match.index + match[0].length};
+
+            var checkboxMarker = this._codeMirror.setUniqueBookmark(from, checkboxElement);
+            checkboxMarker.__propertyCheckbox = true;
+
+            var commentTextMarker = this._codeMirror.markText(from, to);
+
+            checkboxElement.__commentTextMarker = commentTextMarker;
+
+            match = commentedPropertyRegex.exec(lineHandle.text);
+        }
     }
 
     _createColorSwatches(nonatomic, lineNumber)
@@ -1062,14 +1073,23 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
             this._codeMirror.markText(start, end, {className: "invalid"});
 
-            var valueReplacement = property.value.length ? WebInspector.UIString("The value '%s' is not supported for this property.\nClick to delete and open autocomplete.").format(property.value) : WebInspector.UIString("This property needs a value.\nClick to open autocomplete.");
+            if (/^(?:\d+)$/.test(property.value)) {
+                invalidMarkerInfo = {
+                    position: start,
+                    title: WebInspector.UIString("The value '%s' needs units.\nClick to add 'px' to the value.").format(property.value),
+                    correction: property.name + ": " + property.value + "px;",
+                    autocomplete: false
+                };
+            } else {
+                var valueReplacement = property.value.length ? WebInspector.UIString("The value '%s' is not supported for this property.\nClick to delete and open autocomplete.").format(property.value) : WebInspector.UIString("This property needs a value.\nClick to open autocomplete.");
 
-            invalidMarkerInfo = {
-                position: start,
-                title: valueReplacement,
-                correction: property.name + ": ",
-                autocomplete: true
-            };
+                invalidMarkerInfo = {
+                    position: start,
+                    title: valueReplacement,
+                    correction: property.name + ": ",
+                    autocomplete: true
+                };
+            }
         } else if (!instancesOfProperty.call(this, "-webkit-" + property.name) && WebInspector.CSSCompletions.cssNameCompletions.propertyRequiresWebkitPrefix(property.name)) {
             // The property is valid and exists in the rule while its prefixed version does not.
             invalidMarkerInfo = {
@@ -1539,8 +1559,10 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                 var lineContentSansWhitespace = lineHandler.text.replace(findWhitespace, "");
                 var properties = cssPropertiesMap.get(lineContentSansWhitespace);
 
-                if (!properties)
+                if (!properties) {
+                    this._createCommentedCheckboxMarker(lineHandler);
                     return;
+                }
 
                 for (var property of properties) {
                     if (property.__refreshedAfterBlur)

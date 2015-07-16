@@ -1,3 +1,378 @@
+2015-07-16  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add new Network icon for the GTK+ port
+        https://bugs.webkit.org/show_bug.cgi?id=147002
+
+        Reviewed by Martin Robinson.
+
+        * UserInterface/Images/gtk/Network.svg: Added.
+        Icon for the new Network tab.
+
+2015-07-16  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add new composite record icon for the GTK+ port
+        https://bugs.webkit.org/show_bug.cgi?id=146998
+
+        Reviewed by Martin Robinson.
+
+        * UserInterface/Images/gtk/TimelineRecordComposite.svg: Added.
+        New composite record icon.
+
+2015-07-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Resizing TimelineRuler selection on both sides doesn't work with snapping enabled
+        https://bugs.webkit.org/show_bug.cgi?id=146970
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseMove):
+        Use snapped current time value when setting selection bounds.
+
+2015-07-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r186698): Web Inspector: Frame selector is monospace again
+        https://bugs.webkit.org/show_bug.cgi?id=146954
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component):
+
+2015-07-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineRuler minimum selection time range should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=146944
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/RenderingFrameTimelineOverview.js:
+        Set minimum selection to 1 frame.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype.set selectionDuration):
+        Use ruler's minimum duration.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype.get minimumSelectionDuration):
+        (WebInspector.TimelineRuler.prototype.set minimumSelectionDuration):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseMove):
+        Added property for setting minimum selection duration. Default minimum duration is 0.01, which is
+        equal to the old hard-coded minimum selection time range.
+
+2015-07-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception in inspector for some ConsoleMessages
+        https://bugs.webkit.org/show_bug.cgi?id=146919
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        The parameters list may not exist, so null check it before use.
+
+2015-07-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Use -apple-system-monospaced-numbers for line numbers
+        https://bugs.webkit.org/show_bug.cgi?id=146898
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror .CodeMirror-linenumber): Decrease font-size by 1px to make 4 digit numbers fit.
+
+2015-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Add -apple-system-monospaced-numbers to font and font-family autocomplete
+        https://bugs.webkit.org/show_bug.cgi?id=146865
+
+        Reviewed by Daniel Bates.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2015-07-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Inspector should be able to be docked to the bottom of a narrow window
+        https://bugs.webkit.org/show_bug.cgi?id=146871
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Toolbar.css:
+        (@media (max-width: 539px)): Hide download button to fit search field into the screen.
+
+2015-07-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Improve runtime of pseudo-element sidebar style ordering
+        https://bugs.webkit.org/show_bug.cgi?id=146866
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.update): Determines the most specific selector and saves it to a variable.
+        (WebInspector.CSSRule.prototype.get mostSpecificSelector): Returns the most specific selector.
+        (WebInspector.CSSRule.prototype.selectorIsGreater): Compares the most specific selector to a given selector.
+        (WebInspector.CSSRule.prototype._determineMostSpecificSelector):
+        Searches through the selector list to find and return the selector that is the most specific.
+        (WebInspector.CSSRule):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+
+2015-07-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Warning icon tooltip for numbers with no units could be improved
+        https://bugs.webkit.org/show_bug.cgi?id=146859
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded):
+        If the property's value is incorrect and is comprised of only numbers, that must mean that the value needs
+        to have units (like "px") after the number.  Added another warning icon case to support this scenario.
+
+2015-07-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Use -apple-system instead of -webkit-system-font
+        https://bugs.webkit.org/show_bug.cgi?id=146860
+
+        Remove explicit uses of font-family where inhertance from the body is enough.
+        Change -webkit-system-font to -apple-system and use -apple-system-monospaced-numbers
+        for DataGrid and the toolbar dashboard.
+
+        Reviewed by Sam Weinig.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-placeholder):
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid td):
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item):
+        (.toolbar .dashboard.default > :matches(.time, .resourcesSize)):
+        (.toolbar .dashboard.default > .resourcesSize):
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component):
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages):
+        * UserInterface/Views/Main.css:
+        (body):
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-name):
+        * UserInterface/Views/ObjectTreePropertyTreeElement.css:
+        (.object-tree-property .prototype-name):
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree-outline li .empty-message):
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .divider > .label):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .issue-widget > .text):
+        * UserInterface/Views/TypeTreeView.css:
+        (.type-tree):
+
+2015-07-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add source links to functions logged in the console
+        https://bugs.webkit.org/show_bug.cgi?id=146377
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.findFunctionSourceCodeLocation):
+        Returns a promise that contains the sourceCodeLocation if the object represents a function and has an objectId.
+        (WebInspector.RemoteObject.prototype._isFunction):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message .console-message-location):
+        Added specified values for font sizing and family to ensure that all location links have the same styling.
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView):
+        Now creates a link to the source code of the entered text if the message is of the type "result".
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        (WebInspector.ConsoleMessageView.prototype._createRemoteObjectIfNeeded):
+        (WebInspector.ConsoleMessageView.prototype._appendFormattedArguments):
+        (WebInspector.ConsoleMessageView.prototype._linkifyLocation):
+        (WebInspector.ConsoleMessageView.prototype._linkifyCallFrameLocation):
+        (WebInspector.ConsoleMessageView.prototype._linkifyCallFrame):
+
+2015-07-10  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Storage tab should have a scope bar in the sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=146799
+
+        Fix a couple typos found post review.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel):
+
+2015-07-09  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Storage tab should have a scope bar in the sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=146799
+
+        Reviewed by Mark Lam.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/Main.html: Added StorageSidebarPanel.css.
+        * UserInterface/Views/StorageSidebarPanel.css: Added.
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel):
+        (WebInspector.StorageSidebarPanel.prototype.hasCustomFilters):
+        (WebInspector.StorageSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WebInspector.StorageSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WebInspector.StorageSidebarPanel.prototype._scopeBarSelectionDidChange):
+
+2015-07-09  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Make the TabBar work better with AX
+        https://bugs.webkit.org/show_bug.cgi?id=146806
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar): Set role to tablist and drop tabIndex.
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem): Set role to tab and tabIndex.
+        (WebInspector.TabBarItem.prototype.set selected): Toggle aria-selected.
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't clear the console when navigating to a different page
+        https://bugs.webkit.org/show_bug.cgi?id=142751
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager): No longer distinguishes from page refreshes and page navigations for console clearing.
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        (WebInspector.LogManager.prototype._mainResourceDidChange):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent): Changed context menu keep/clear log text.
+        (WebInspector.LogContentView.prototype._toggleClearLogOnNavigateSetting):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting): Deleted.
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Pseudo-element style ordering is wrong for pseudo-styles on unique selectors
+        https://bugs.webkit.org/show_bug.cgi?id=146804
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.selectorIsGreater):
+        Loops through the selectors in a rule to check if their specificity is greater than a given selector's specificity.
+        * UserInterface/Models/CSSSelector.js:
+        (WebInspector.CSSSelector.prototype.isGreaterThan):
+        Determines if the given selector's specificity is greater than this selector's specificity.
+        (WebInspector.CSSSelector):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+        If the pseudo-element selector's specificity is greater than the current selector's
+        specificity, create the pseudo-element's section and add it before the current style.
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Special Logs to Console that do not have an expression should be styled differently, looks like code
+        https://bugs.webkit.org/show_bug.cgi?id=143840
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.WebInspector.JavaScriptLogViewController.appendImmediateExecutionWithResult):
+        Now applies a class to special logs initiated by the user (log element, log object, etc).
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WebInspector.ConsoleCommandView): Added className parameter.
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-user-command.selected-element-log):
+        (.console-user-command.special-user-log > .console-message-text):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.logElement):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu):
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._contextMenuHandler):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._logSymbolProperty):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._logValue):
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Checkbox disappears when unchecking CSS background style
+        https://bugs.webkit.org/show_bug.cgi?id=146776
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateTextMarkers.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateTextMarkers): Now uses _createCommentedCheckboxMarker.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createCommentedCheckboxMarker):
+        Scans the content of the given lineHandle for any commented text and adds an unselected checkbox to
+        the beginning of that lineHandle's line.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent): Now adds commented checkbox markers.
+
+2015-07-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Align slider knobs in the color picker
+        https://bugs.webkit.org/show_bug.cgi?id=146778
+
+        Also:
+        - Use half pixel borders on retina
+        - Remove one pixel white outline to match native OS X color picker more closely
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker > .slider > img):
+        * UserInterface/Views/Slider.css:
+        (.slider):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+
+2015-07-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frame segment colors should match those used in original Timelines graph
+        https://bugs.webkit.org/show_bug.cgi?id=146777
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame > .frame > .duration):
+        (.timeline-record-frame > .frame > .duration:last-child):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-script):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-layout):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-paint):
+        Use same RGB values as TimelineRecordBar.
+
+2015-07-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: New JavaScript/Probe breakpoint action disappears when clicking continue checkbox
+        https://bugs.webkit.org/show_bug.cgi?id=146688
+
+        Reviewed by Brian Burg.
+
+        Delay removal of empty Evaluate and Probe actions until after the breakpoint popover has been dismissed. This
+        will make the breakpoint editing experience less jarring, by preventing actions from disappearing when clicking
+        other controls in the popover.
+
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.didDismissPopover):
+        Clear empty Evaluate and Probe actions on popover dismissal.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.prototype._codeMirrorBlurred):
+        Don't remove actions with empty data on CodeMirror blur.
+
+2015-07-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: new breakpoint action dialog should reuse same action type
+        https://bugs.webkit.org/show_bug.cgi?id=137255
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.prototype._appendActionButtonClicked):
+        Use the view's action type instead of the default.
+
 2015-07-08  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Copy Rule in the context menu copies hidden properties in the rule
