@@ -140,6 +140,9 @@ Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client)
 ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
     , m_threadIdentifier(0)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(this)))
+#endif
 {
     createCompositingThread();
 }
@@ -397,10 +400,56 @@ const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
         wl_callback_destroy(callback);
 
         auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
-        threadedCompositor.m_client->frameComplete();
-        threadedCompositor.m_compositingRunLoop->updateCompleted();
+        threadedCompositor.m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
     }
 };
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
+{
+    return m_displayRefreshMonitor;
+}
+
+ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor* compositor)
+    : WebCore::DisplayRefreshMonitor(0)
+    , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
+    , m_compositor(compositor)
+{
+}
+
+bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
+{
+    MutexLocker locker(mutex());
+    setIsScheduled(true);
+    return true;
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
+{
+    m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
+{
+    bool shouldHandleDisplayRefreshNotification = false;
+    {
+        MutexLocker locker(mutex());
+        shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
+        if (shouldHandleDisplayRefreshNotification) {
+            setIsPreviousFrameDone(false);
+            setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
+        }
+    }
+
+    if (shouldHandleDisplayRefreshNotification)
+        DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+
+    if (m_compositor) {
+        m_compositor->m_scene->renderNextFrame();
+        m_compositor->m_compositingRunLoop->updateCompleted();
+    }
+}
+#endif
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
