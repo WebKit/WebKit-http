@@ -614,15 +614,14 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
     removeReleasedImageBackingsIfNeeded();
 
     // The pending tiles state is on its way for the screen, tell the web process to render the next one.
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnMainThread([=] {
-        protector->renderNextFrame();
-    });
+    m_clientShouldRenderNextFrame = true;
 }
 
 void CoordinatedGraphicsScene::renderNextFrame()
 {
-    if (m_client)
+    ASSERT(WTF::isMainThread());
+    bool clientShouldRenderNextFrame = std::exchange(m_clientShouldRenderNextFrame, false);
+    if (clientShouldRenderNextFrame && m_client)
         m_client->renderNextFrame();
 }
 
@@ -736,6 +735,7 @@ void CoordinatedGraphicsScene::setActive(bool active)
 
     m_isActive = active;
     if (m_isActive) {
+        m_clientShouldRenderNextFrame = true;
         RefPtr<CoordinatedGraphicsScene> protector(this);
         dispatchOnMainThread([=] {
             protector->renderNextFrame();
