@@ -271,7 +271,7 @@ void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
     m_coordinator->renderNextFrame();
-    scheduleLayerFlush();
+    performScheduledLayerFlush();
 }
 
 void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const IntSize& offset)
