@@ -675,7 +675,11 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
         }
 
         updateTexture(buffer->textureGL(), videoInfo);
-        m_platformLayerProxy->pushNextBuffer(WTF::move(buffer), TextureMapperPlatformLayerProxy::PushOnCompositionThread);
+        {
+            MutexLocker locker(m_platformLayerProxy->mutex());
+            m_platformLayerProxy->pushNextBuffer(locker, WTF::move(buffer));
+            m_platformLayerProxy->requestUpdate(locker);
+        }
     }
 
     g_cond_signal(&m_updateCondition);
