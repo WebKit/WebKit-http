@@ -151,10 +151,7 @@ ThreadedCompositor::~ThreadedCompositor()
 
 void ThreadedCompositor::setNeedsDisplay()
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([=] {
-        protector->scheduleDisplayImmediately();
-    });
+    m_compositingRunLoop->scheduleUpdate();
 }
 
 void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
