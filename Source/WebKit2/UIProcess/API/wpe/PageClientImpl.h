@@ -45,7 +45,7 @@ private:
     virtual void displayView() override;
     virtual bool canScrollView() override { return false; }
     virtual void scrollView(const WebCore::IntRect&, const WebCore::IntSize&) override;
-    virtual void requestScroll(const WebCore::FloatPoint&, bool) override;
+    virtual void requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool) override;
     virtual WebCore::IntSize viewSize() override;
     virtual bool isViewWindowActive() override;
     virtual bool isViewFocused() override;
@@ -105,6 +105,9 @@ private:
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
     virtual void didChangeBackgroundColor() override;
+
+    virtual void refView() override;
+    virtual void derefView() override;
 
     WKWPE::View& m_view;
 };
