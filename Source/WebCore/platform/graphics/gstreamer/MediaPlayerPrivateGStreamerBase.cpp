@@ -692,9 +692,8 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     {
         WTF::GMutexLocker<GMutex> lock(m_updateMutex);
-        m_platformLayerProxy->scheduleUpdateOnCompositorThread([this] {
-            this->updateOnCompositorThread();
-        });
+        if (!m_platformLayerProxy->scheduleUpdateOnCompositorThread([this] { this->updateOnCompositorThread(); }))
+            return;
         g_cond_wait(&m_updateCondition, &m_updateMutex);
     }
     return;

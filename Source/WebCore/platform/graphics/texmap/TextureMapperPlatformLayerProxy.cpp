@@ -145,14 +145,15 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     }
 }
 
-void TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
 {
     MutexLocker locker(m_pushMutex);
     if (!m_compositorThreadUpdateTimer)
-        return;
+        return false;
 
     m_compositorThreadUpdateFunction = WTF::move(updateFunction);
     m_compositorThreadUpdateTimer->startOneShot(0);
+    return true;
 }
 
 void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()

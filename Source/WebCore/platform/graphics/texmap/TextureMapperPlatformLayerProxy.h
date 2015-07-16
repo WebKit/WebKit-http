@@ -72,7 +72,7 @@ public:
 
     void swapBuffer();
 
-    void scheduleUpdateOnCompositorThread(std::function<void()>&&);
+    bool scheduleUpdateOnCompositorThread(std::function<void()>&&);
 
 private:
     void scheduleReleaseUnusedBuffers();
