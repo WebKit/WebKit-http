@@ -202,10 +202,8 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
-    RefPtr<CoordinatedGraphicsScene> protector(this);
-    dispatchOnClientRunLoop([=] {
-        protector->updateViewport();
-    });
+    if (m_client)
+        m_client->updateViewport();
 }
 #endif
 
