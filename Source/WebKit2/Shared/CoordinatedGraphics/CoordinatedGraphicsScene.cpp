@@ -608,16 +608,12 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     commitPendingBackingStoreOperations();
     removeReleasedImageBackingsIfNeeded();
-
-    // The pending tiles state is on its way for the screen, tell the web process to render the next one.
-    m_clientShouldRenderNextFrame = true;
 }
 
 void CoordinatedGraphicsScene::renderNextFrame()
 {
     ASSERT(WTF::isMainThread());
-    bool clientShouldRenderNextFrame = std::exchange(m_clientShouldRenderNextFrame, false);
-    if (clientShouldRenderNextFrame && m_client)
+    if (m_client)
         m_client->renderNextFrame();
 }
 

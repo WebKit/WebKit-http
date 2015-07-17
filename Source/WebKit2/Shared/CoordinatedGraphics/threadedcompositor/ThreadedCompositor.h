@@ -34,6 +34,7 @@
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
 #include <WebCore/WaylandSurfaceWPE.h>
+#include <wtf/Atomics.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -131,6 +132,8 @@ private:
         DisplayRefreshMonitor(ThreadedCompositor*);
 
         virtual bool requestRefreshCallback() override;
+
+        bool requiresDisplayRefreshCallback();
         void dispatchDisplayRefreshCallback();
 
     private:
@@ -140,6 +143,9 @@ private:
     };
     RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
+
+    Atomic<bool> m_clientRendersNextFrame;
+    Atomic<bool> m_coordinateUpdateCompletionWithClient;
 };
 
 } // namespace WebKit
