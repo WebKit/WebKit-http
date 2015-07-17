@@ -112,12 +112,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations()) {
-        RefPtr<CoordinatedGraphicsScene> protector(this);
-        dispatchOnClientRunLoop([=] {
-            protector->updateViewport();
-        });
-    }
+    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations() && m_client)
+        m_client->updateViewport();
 }
 
 void CoordinatedGraphicsScene::paintToGraphicsContext(PlatformGraphicsContext* platformContext, const Color& backgroundColor, bool drawsBackground)
