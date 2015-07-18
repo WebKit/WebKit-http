@@ -324,6 +324,8 @@ public:
     PassRefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
     PassRefPtr<SerializedScriptValue> deserializeBuffer(PassRefPtr<ArrayBuffer>) const;
 
+    bool isFromCurrentWorld(Deprecated::ScriptValue) const;
+
     void setUsesOverlayScrollbars(bool enabled);
 
     String getCurrentCursorInfo(ExceptionCode&);
@@ -415,7 +417,7 @@ public:
     String scrollSnapOffsets(Element*, ExceptionCode&);
 #endif
 
-    PassRefPtr<DOMPath> pathWithShrinkWrappedRects(Vector<double>, ExceptionCode&);
+    PassRefPtr<DOMPath> pathWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode&);
 
 private:
     explicit Internals(Document*);

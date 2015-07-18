@@ -943,7 +943,6 @@ public:
 #if ENABLE(MEDIA_SESSION)
     bool hasMediaSessionWithActiveMediaElements() const { return m_hasMediaSessionWithActiveMediaElements; }
     void handleMediaEvent(WebCore::MediaEventType);
-    void handleMediaSessionInterruptionEvent(WebCore::MediaSessionInterruptionEvent, WebCore::MediaSessionInterruptingCategory);
 #endif
 
     // WebPopupMenuProxy::Client
@@ -1641,6 +1640,7 @@ private:
     bool m_syncNavigationActionPolicyActionIsValid;
     WebCore::PolicyAction m_syncNavigationActionPolicyAction;
     uint64_t m_syncNavigationActionPolicyDownloadID;
+    bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;

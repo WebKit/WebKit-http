@@ -1,3 +1,272 @@
+2015-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r169105): Do not assign a renderer to multiple selection subtrees.
+        https://bugs.webkit.org/show_bug.cgi?id=147038
+        rdar://problem/21819351
+
+        Reviewed by David Kilzer.
+
+        A renderer should never be assigned to multiple selection subtrees. (Currently RenderObject maintains the last selection state.)
+        RenderView::applySubtreeSelection() loops from the start to the end of the selection to find renderers that are inside the selection.
+        However, in case of regions (when multiple selection roots are present) traversing the renderer tree by calling RenderObject::nextInPreOrder() could
+        end up going across selection roots.
+        This patch ensures that we assign renderers to a specific selection only when the current selection root and the renderer's selection root match.
+
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees2-expected.txt: Added.
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees2.html: Added.
+
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/form-submission-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/http-equiv-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/http-equiv-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/plugins-disabled-expected.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/plugins-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/cross-origin-frames-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/form-submission-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/http-equiv-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/plugins-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/scripts-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/scripts-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/scripts-disabled.html: Added.
+
+2015-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        (display: block)input range's thumb disappears when moved.
+        https://bugs.webkit.org/show_bug.cgi?id=146896
+        <rdar://problem/21787807>
+
+        Reviewed by Simon Fraser.
+
+        Since the thumb is positioned after the layout for the input (shadow) subtree is finished, the repaint rects
+        issued during the layout will not cover the re-positioned thumb.
+        We need to issue a repaint soon after the thumb is re-positioned.
+
+        * fast/repaint/block-inputrange-repaint-expected.txt: Added.
+        * fast/repaint/block-inputrange-repaint.html: Added.
+
+2015-07-17  Tim Horton  <timothy_horton@apple.com>
+
+        Improve rect shrink-wrapping algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=147037
+        <rdar://problem/21643094>
+
+        Reviewed by Simon Fraser.
+
+        * fast/shrink-wrap/rect-shrink-wrap-expected.png:
+        * fast/shrink-wrap/rect-shrink-wrap.html:
+        Add a radius parameter to testRects, defaulting to 8.
+
+        Add an offset parameter to testRects, making it easier to slide
+        the rect sets around.
+
+        Add some more test cases.
+
+2015-07-17  Nan Wang  <n_wang@apple.com>
+
+        AX: iframe within table cell is inaccessible to VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=147001
+        <rdar://problem/21106945>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/iframe-within-cell-expected.txt: Added.
+        * accessibility/iframe-within-cell.html: Added.
+
+2015-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        style.fontFamily accessor crashes on unstyled node created from DOMParser().parseFromString()
+        https://bugs.webkit.org/show_bug.cgi?id=147026
+        <rdar://problem/21864487>
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/crash-font-family-parsed-expected.txt: Added.
+        * fast/text/crash-font-family-parsed.html: Added.
+
+2015-07-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, rename test file from promise-resolve-non-dom.js to promise-resolve-in-non-dom.js
+        https://bugs.webkit.org/show_bug.cgi?id=146828
+
+        This is the simple follow up patch.
+        When executing the JSC stress tests, script-tests's file name and the expectation file name should be equal.
+
+        * js/promise-resolve-in-non-dom.html:
+        * js/script-tests/promise-resolve-in-non-dom.js: Renamed from LayoutTests/js/script-tests/promise-resolve-non-dom.js.
+        (value.then):
+        * js/script-tests/promise-resolve-non-dom.js:
+        (value.then): Deleted.
+
+2015-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Video posters disappear once media has loaded
+        https://bugs.webkit.org/show_bug.cgi?id=147045
+
+        Reviewed by Simon Fraser.
+
+        * compositing/video/poster-expected.html: Added.
+        * compositing/video/poster.html: Added.
+
+2015-07-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Integrate automatic microtask draining into JSC framework and re-enable Promise
+        https://bugs.webkit.org/show_bug.cgi?id=146828
+
+        Reviewed by Sam Weinig.
+
+        Add Promise tests mainly focusing on microtasks.
+        They can be executed in JSC shell. So they are locate in js/ directory (not js/dom).
+
+        * js/promise-nested-microtasks-expected.txt: Added.
+        * js/promise-nested-microtasks.html: Added.
+        * js/promise-resolve-in-non-dom-expected.txt: Added.
+        * js/promise-resolve-in-non-dom.html: Added.
+        * js/script-tests/promise-nested-microtasks.js: Added.
+        (Promise.resolve.then):
+        * js/script-tests/promise-resolve-non-dom.js: Added.
+        (value.then):
+        * resources/standalone-post.js:
+
+2015-07-17  Saam barati  <saambarati1@gmail.com>
+
+        Function parameters should be parsed in the same parser arena as the function body
+        https://bugs.webkit.org/show_bug.cgi?id=145995
+
+        Reviewed by Yusuke Suzuki.
+
+        * fast/profiler/anonymous-event-handler-expected.txt:
+        * fast/profiler/anonymous-function-called-from-different-contexts-expected.txt:
+        * fast/profiler/anonymous-function-calls-built-in-functions-expected.txt:
+        * fast/profiler/anonymous-function-calls-eval-expected.txt:
+        * fast/profiler/anonymous-functions-with-display-names-expected.txt:
+        * fast/profiler/apply-expected.txt:
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt:
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt:
+        * fast/profiler/call-expected.txt:
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope-expected.txt:
+        * fast/profiler/compare-multiple-profiles-expected.txt:
+        * fast/profiler/constructor-expected.txt:
+        * fast/profiler/dead-time-expected.txt:
+        * fast/profiler/document-dot-write-expected.txt:
+        * fast/profiler/event-handler-expected.txt:
+        * fast/profiler/execution-context-and-eval-on-same-line-expected.txt:
+        * fast/profiler/inline-event-handler-expected.txt:
+        * fast/profiler/many-calls-in-the-same-scope-expected.txt:
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls-expected.txt:
+        * fast/profiler/multiple-and-different-scoped-function-calls-expected.txt:
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function-expected.txt:
+        * fast/profiler/multiple-frames-expected.txt:
+        * fast/profiler/named-functions-with-display-names-expected.txt:
+        * fast/profiler/nested-anonymous-functon-expected.txt:
+        * fast/profiler/nested-start-and-stop-profiler-expected.txt:
+        * fast/profiler/one-execution-context-expected.txt:
+        * fast/profiler/profile-calls-in-included-file-expected.txt:
+        * fast/profiler/profile-with-no-title-expected.txt:
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting-expected.txt:
+        * fast/profiler/profiling-from-a-nested-location-expected.txt:
+        * fast/profiler/simple-event-call-expected.txt:
+        * fast/profiler/simple-no-level-change-expected.txt:
+        * fast/profiler/start-and-stop-profiler-multiple-times-expected.txt:
+        * fast/profiler/start-and-stop-profiling-in-the-same-function-expected.txt:
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt:
+        * fast/profiler/stop-then-function-call-expected.txt:
+        * fast/profiler/two-execution-contexts-expected.txt:
+        * fast/profiler/user-defined-function-calls-built-in-functions-expected.txt:
+        * fast/profiler/window-dot-eval-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt:
+
+2015-07-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] CSS-display-none rules are not working properly
+        https://bugs.webkit.org/show_bug.cgi?id=147024
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged.html: Added.
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged.html.json: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged.html: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged.html.json: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource-expected.txt: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource.html: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource.html.json: Added.
+
+2015-07-16  Mark Lam  <mark.lam@apple.com>
+
+        Remove leak of objects between isolated worlds on custom events, message events, and pop state events.
+        https://bugs.webkit.org/show_bug.cgi?id=118884
+
+        Reviewed by Filip Pizlo and Mark Lam.
+        Patch by Keith Miller  <keith_miller@apple.com>.
+
+        These tests ensure ensure objects are not leaked across isolated worlds and that those properties are not prematurely
+        garbage collected.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt: Added.
+        * fast/events/event-leak-objects.html: Added.
+        * fast/events/event-properties-gc-expected.txt: Added.
+        * fast/events/event-properties-gc.html: Added.
+
+2015-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix disappearing position:fixed elements in fixed layout mode
+        https://bugs.webkit.org/show_bug.cgi?id=147019
+
+        Reviewed by Tim Horton.
+        
+        Test with four fixed elements in fixed layout mode.
+
+        * compositing/fixed-with-fixed-layout-expected.txt: Added.
+        * compositing/fixed-with-fixed-layout.html: Added.
+
+2015-07-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/186903. It broke the build.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt:
+        * fast/events/event-leak-objects.html:
+        * fast/events/event-properties-gc-expected.txt:
+        * fast/events/event-properties-gc.html:
+
+2015-07-16  Tim Horton  <timothy_horton@apple.com>
+
+        Rebaseline test for Windows.
+
+        * platform/win/fast/shrink-wrap: Added.
+        * platform/win/fast/shrink-wrap/rect-shrink-wrap-expected.txt: Added.
+
+2015-07-16  Keith Miller  <keith_miller@apple.com>
+
+        Remove leak of objects between isolated worlds on custom events, message events, and pop state events.
+        https://bugs.webkit.org/show_bug.cgi?id=118884
+
+        Reviewed by Filip Pizlo.
+
+        These tests ensure ensure objects are not leaked across isolated worlds and that those properties are not prematurely
+        garbage collected.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt: Added.
+        * fast/events/event-leak-objects.html: Added.
+        * fast/events/event-properties-gc-expected.txt: Added.
+        * fast/events/event-properties-gc.html: Added.
+
 2015-07-16  David Kilzer  <ddkilzer@apple.com>
 
         Mark fast/canvas/canvas-too-large-to-draw.html as crashing on El Capitan

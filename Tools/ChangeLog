@@ -1,3 +1,121 @@
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForResponse): Only log the message about attachments if the custom policy delegate is enabled.
+        This matches the behavior of DumpRenderTree.
+
+2015-07-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] Term::isUniversalTransition() incorrectly expects the end-of-line assertion in character sets
+        https://bugs.webkit.org/show_bug.cgi?id=147032
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        Test that the useless terms are eliminated by counting
+        the number of NFA nodes generated.
+
+2015-07-17  Dan Bernstein  <mitz@apple.com>
+
+        Tests for <rdar://problem/21803781> The external URL policy is not reported correctly in navigation actions that create new windows
+        https://bugs.webkit.org/show_bug.cgi?id=147040
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ShouldOpenExternalURLsInNewWindowActions.mm: Added.
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:didFinishNavigation:]):
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+
+2015-07-16  Dean Johnson  <dean_johnson@apple.com>
+
+        webkit-patch uses incorrect credentials from keychain to login until account lockout
+        https://bugs.webkit.org/show_bug.cgi?id=146923
+
+        Reviewed by Daniel Bates.
+
+        When `webkit-patch upload` asks for login credentials for bugs.webkit.org, if you
+        provide incorrect credentials then ask for them to be saved to the keychain
+        webkit-patch will then use those incorrect credentials until 5 total attempts
+        have been made to log in. This will lock the user out of Bugzilla for a
+        half hour.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.authenticate): Added argument to read_credentials() that
+        passes in whether or not to use stored credentials.
+        * Scripts/webkitpy/common/net/credentials.py:
+        (Credentials.read_credentials): Added optional argument 'use_stored_credentials'
+        that specifies whether or not to use credentials stored on the system. If it
+        does, we do not auto-fill credentials since either the credentials caused
+        the failure, or they weren't used in the first place so there is no reason
+        to try and use them again if a failure happened.
+        * Scripts/webkitpy/common/net/credentials_unittest.py: Added unit test for newly added
+        use_stored_credentials argument.
+        (test_do_not_use_stored_credentials): Added unit test to make sure functions that
+        retrieve username/password information from the local system (environment, Git, keychain,
+        keyring) are never called. It also tests that we get back our mocked username and password.
+        (test_do_not_use_stored_credentials.MockKeyring): Mock keyring
+        (test_do_not_use_stored_credentials.MockKeyring.get_password): Assert this is never called.
+        (test_do_not_use_stored_credentials.FakeCredentials): Mock credentials
+        (test_do_not_use_stored_credentials.FakeCredentials._credentials_from_keychain): Assert this
+        is never called.
+        (test_do_not_use_stored_credentials.FakeCredentials._credentials_from_environment): Ditto
+        (test_do_not_use_stored_credentials.FakeCredentials._offer_to_store_credentials_in_keyring): Ditto
+        (test_do_not_use_stored_credentials.FakeUser): Mock the User class
+        (test_do_not_use_stored_credentials.FakeUser.prompt): Returns a username to assert against.
+        (test_do_not_use_stored_credentials.FakeUser.prompt_password): Returns a password to assert
+        against.
+
+2015-07-16  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, remove my redundant email information.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Unreviewed. Add Hyungwook Lee as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Added myself to the list of contributors.
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Cache domain actions
+        https://bugs.webkit.org/show_bug.cgi?id=146817
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Test if-domain and unless-domain with multiple load types.
+
+2015-07-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content extensions] Combine suffixes when generating NFAs
+        https://bugs.webkit.org/show_bug.cgi?id=146961
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::compareContents):
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+
 2015-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Input method filter is always enabled when the view is focused

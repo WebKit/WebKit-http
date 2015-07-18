@@ -3333,7 +3333,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         else if (originatingFrame)
             sourceFrameInfo = API::FrameInfo::create(*originatingFrame, originatingFrameSecurityOrigin.securityOrigin());
 
-        bool shouldOpenAppLinks = (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
 
         auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks);
 
@@ -3341,6 +3341,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     } else
         m_policyClient->decidePolicyForNavigationAction(*this, frame, navigationActionData, originatingFrame, originalRequest, request, WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
+    m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
     m_inDecidePolicyForNavigationAction = false;
 
     // Check if we received a policy decision already. If we did, we can just pass it back.
@@ -3366,7 +3367,8 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
         if (frame)
             sourceFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
 
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), true);
+        bool shouldOpenAppLinks = !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), shouldOpenAppLinks);
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -3524,6 +3526,8 @@ void WebPageProxy::createNewPage(uint64_t frameID, const SecurityOriginData& sec
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    auto mainFrameURL = m_mainFrame->url();
+
     RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, frame, securityOriginData, request, windowFeatures, navigationActionData);
     if (!newPage) {
         newPageID = 0;
@@ -3534,6 +3538,7 @@ void WebPageProxy::createNewPage(uint64_t frameID, const SecurityOriginData& sec
     newPageParameters = newPage->creationParameters();
 
     WebsiteDataStore::cloneSessionData(*this, *newPage);
+    newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = protocolHostAndPortAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
 }
     
 void WebPageProxy::showPage()
@@ -3877,14 +3882,6 @@ void WebPageProxy::handleMediaEvent(MediaEventType eventType)
         return;
     
     m_process->send(Messages::WebPage::HandleMediaEvent(eventType), m_pageID);
-}
-
-void WebPageProxy::handleMediaSessionInterruptionEvent(MediaSessionInterruptionEvent event, MediaSessionInterruptingCategory category)
-{
-    if (!isValid())
-        return;
-
-    m_process->send(Messages::WebPage::HandleMediaSessionInterruptionEvent(event, category), m_pageID);
 }
 #endif
 

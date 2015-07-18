@@ -519,6 +519,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
         scaleView(parameters.viewScaleFactor);
 
     m_page->setUserContentExtensionsEnabled(parameters.userContentExtensionsEnabled);
+
+#if PLATFORM(IOS)
+    m_page->settings().setContentDispositionAttachmentSandboxEnabled(true);
+#endif
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -4042,11 +4046,6 @@ void WebPage::setMuted(bool muted)
 void WebPage::handleMediaEvent(uint32_t eventType)
 {
     m_page->handleMediaEvent(static_cast<MediaEventType>(eventType));
-}
-
-void WebPage::handleMediaSessionInterruptionEvent(uint32_t event, uint32_t category)
-{
-    m_page->handleMediaSessionInterruptionEvent(static_cast<MediaSessionInterruptionEvent>(event), static_cast<MediaSessionInterruptingCategory>(category));
 }
 #endif
 
