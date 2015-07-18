@@ -836,8 +836,10 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
     for (auto& pendingStyleSheet : m_pendingNamedContentExtensionStyleSheets)
         styleSheetCollection.maybeAddContentExtensionSheet(pendingStyleSheet.key, *pendingStyleSheet.value);
-    for (auto& pendingSelector : m_pendingContentExtensionDisplayNoneSelectors)
-        styleSheetCollection.addDisplayNoneSelector(pendingSelector.key, pendingSelector.value.first, pendingSelector.value.second);
+    for (auto& pendingSelectorEntry : m_pendingContentExtensionDisplayNoneSelectors) {
+        for (const auto& pendingSelector : pendingSelectorEntry.value)
+            styleSheetCollection.addDisplayNoneSelector(pendingSelectorEntry.key, pendingSelector.first, pendingSelector.second);
+    }
 
     m_pendingNamedContentExtensionStyleSheets.clear();
     m_pendingContentExtensionDisplayNoneSelectors.clear();
@@ -899,14 +901,19 @@ void DocumentLoader::checkLoadComplete()
     m_frame->document()->domWindow()->finishedLoading();
 }
 
-void DocumentLoader::setFrame(Frame* frame)
+void DocumentLoader::attachToFrame(Frame& frame)
 {
-    if (m_frame == frame)
+    if (m_frame == &frame)
         return;
-    ASSERT(frame && !m_frame);
-    m_frame = frame;
-    m_writer.setFrame(frame);
+
+    ASSERT(!m_frame);
+    m_frame = &frame;
+    m_writer.setFrame(&frame);
     attachToFrame();
+
+#ifndef NDEBUG
+    m_hasEverBeenAttached = true;
+#endif
 }
 
 void DocumentLoader::attachToFrame()
@@ -916,7 +923,12 @@ void DocumentLoader::attachToFrame()
 
 void DocumentLoader::detachFromFrame()
 {
-    ASSERT(m_frame);
+#ifndef NDEBUG
+    if (m_hasEverBeenAttached)
+        ASSERT_WITH_MESSAGE(m_frame, "detachFromFrame() is being called on a DocumentLoader twice without an attachToFrame() inbetween");
+    else
+        ASSERT_WITH_MESSAGE(m_frame, "detachFromFrame() is being called on a DocumentLoader that has never attached to any Frame");
+#endif
     RefPtr<Frame> protectFrame(m_frame);
     Ref<DocumentLoader> protectLoader(*this);
 
@@ -930,7 +942,14 @@ void DocumentLoader::detachFromFrame()
 #endif
 
     m_applicationCacheHost->setDOMApplicationCache(nullptr);
-    InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
+
+    // Even though we ASSERT at the top of this method that we have an m_frame, we're seeing crashes where m_frame is null.
+    // This means either that a DocumentLoader is detaching twice, or is detaching before ever having attached.
+    // Until we figure out how that is happening, null check m_frame before dereferencing it here.
+    // <rdar://problem/21293082> and https://bugs.webkit.org/show_bug.cgi?id=146786
+    if (m_frame)
+        InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
+
     m_frame = nullptr;
     // The call to stopLoading() above should have canceled any pending content policy check.
     ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback needs a valid frame.");
@@ -1571,7 +1590,8 @@ void DocumentLoader::addPendingContentExtensionSheet(const String& identifier, S
 void DocumentLoader::addPendingContentExtensionDisplayNoneSelector(const String& identifier, const String& selector, uint32_t selectorID)
 {
     ASSERT(!m_gotFirstByte);
-    m_pendingContentExtensionDisplayNoneSelectors.set(identifier, std::make_pair(selector, selectorID));
+    auto addResult = m_pendingContentExtensionDisplayNoneSelectors.add(identifier, Vector<std::pair<String, uint32_t>>());
+    addResult.iterator->value.append(std::make_pair(selector, selectorID));
 }
 #endif
 

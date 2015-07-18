@@ -54,6 +54,8 @@ static inline size_t jumpSizeInBytes(DFABytecodeJumpSize jumpSize)
         return sizeof(int8_t);
     case Int16:
         return sizeof(int16_t);
+    case Int24:
+        return sizeof(uint16_t) + sizeof(int8_t);
     case Int32:
         return sizeof(int32_t);
     default:
@@ -64,7 +66,7 @@ static inline size_t jumpSizeInBytes(DFABytecodeJumpSize jumpSize)
 static inline DFABytecodeJumpSize getJumpSize(const DFABytecode* bytecode, uint32_t bytecodeLength, uint32_t index)
 {
     DFABytecodeJumpSize jumpSize = static_cast<DFABytecodeJumpSize>(getBits<uint8_t>(bytecode, bytecodeLength, index) & DFABytecodeJumpSizeMask);
-    ASSERT(jumpSize == DFABytecodeJumpSize::Int32 || jumpSize == DFABytecodeJumpSize::Int16 || jumpSize == DFABytecodeJumpSize::Int8);
+    ASSERT(jumpSize == DFABytecodeJumpSize::Int32 || jumpSize == DFABytecodeJumpSize::Int24 || jumpSize == DFABytecodeJumpSize::Int16 || jumpSize == DFABytecodeJumpSize::Int8);
     return jumpSize;
 }
 
@@ -75,6 +77,8 @@ static inline int32_t getJumpDistance(const DFABytecode* bytecode, uint32_t byte
         return getBits<int8_t>(bytecode, bytecodeLength, index);
     case Int16:
         return getBits<int16_t>(bytecode, bytecodeLength, index);
+    case Int24:
+        return getBits<uint16_t>(bytecode, bytecodeLength, index) | (static_cast<int32_t>(getBits<int8_t>(bytecode, bytecodeLength, index + sizeof(uint16_t))) << 16);
     case Int32:
         return getBits<int32_t>(bytecode, bytecodeLength, index);
     default:
@@ -82,12 +86,22 @@ static inline int32_t getJumpDistance(const DFABytecode* bytecode, uint32_t byte
     }
 }
 
+static inline bool matchesDomain(uint64_t actionAndFlags, const DFABytecodeInterpreter::Actions& domainActions)
+{
+    bool ifDomain = actionAndFlags & IfDomainFlag;
+    bool domain = domainActions.contains(actionAndFlags);
+    return ifDomain == domain;
+}
+
 void DFABytecodeInterpreter::interpretAppendAction(uint32_t& programCounter, Actions& actions, bool ifDomain)
 {
     ASSERT(getInstruction(m_bytecode, m_bytecodeLength, programCounter) == DFABytecodeInstruction::AppendAction
         || getInstruction(m_bytecode, m_bytecodeLength, programCounter) == DFABytecodeInstruction::AppendActionWithIfDomain
         || getInstruction(m_bytecode, m_bytecodeLength, programCounter) == DFABytecodeInstruction::AppendActionDefaultStylesheet);
-    actions.add((ifDomain ? IfDomainFlag : 0) | static_cast<uint64_t>(getBits<uint32_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecodeInstruction))));
+    uint64_t action = (ifDomain ? IfDomainFlag : 0) | static_cast<uint64_t>(getBits<uint32_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecodeInstruction)));
+    if (!m_domainActions || matchesDomain(action, *m_domainActions))
+        actions.add(action);
+    
     programCounter += instructionSizeWithArguments(DFABytecodeInstruction::AppendAction);
     ASSERT(instructionSizeWithArguments(DFABytecodeInstruction::AppendAction) == instructionSizeWithArguments(DFABytecodeInstruction::AppendActionWithIfDomain));
     ASSERT(instructionSizeWithArguments(DFABytecodeInstruction::AppendAction) == instructionSizeWithArguments(DFABytecodeInstruction::AppendActionDefaultStylesheet));
@@ -100,13 +114,16 @@ void DFABytecodeInterpreter::interpretTestFlagsAndAppendAction(uint32_t& program
     uint16_t flagsToCheck = getBits<uint16_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecodeInstruction));
 
     uint16_t loadTypeFlags = flagsToCheck & LoadTypeMask;
-    uint16_t ressourceTypeFlags = flagsToCheck & ResourceTypeMask;
+    uint16_t resourceTypeFlags = flagsToCheck & ResourceTypeMask;
     
     bool loadTypeMatches = loadTypeFlags ? (loadTypeFlags & flags) : true;
-    bool ressourceTypeMatches = ressourceTypeFlags ? (ressourceTypeFlags & flags) : true;
+    bool resourceTypeMatches = resourceTypeFlags ? (resourceTypeFlags & flags) : true;
     
-    if (loadTypeMatches && ressourceTypeMatches)
-        actions.add((ifDomain ? IfDomainFlag : 0) | static_cast<uint64_t>(getBits<uint32_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecodeInstruction) + sizeof(uint16_t))));
+    if (loadTypeMatches && resourceTypeMatches) {
+        uint64_t actionAndFlags = (ifDomain ? IfDomainFlag : 0) | (static_cast<uint64_t>(flagsToCheck) << 32) | static_cast<uint64_t>(getBits<uint32_t>(m_bytecode, m_bytecodeLength, programCounter + sizeof(DFABytecodeInstruction) + sizeof(uint16_t)));
+        if (!m_domainActions || matchesDomain(actionAndFlags, *m_domainActions))
+            actions.add(actionAndFlags);
+    }
     programCounter += instructionSizeWithArguments(DFABytecodeInstruction::TestFlagsAndAppendAction);
     ASSERT(instructionSizeWithArguments(DFABytecodeInstruction::TestFlagsAndAppendAction) == instructionSizeWithArguments(DFABytecodeInstruction::TestFlagsAndAppendActionWithIfDomain));
 }
@@ -138,6 +155,15 @@ DFABytecodeInterpreter::Actions DFABytecodeInterpreter::actionsForDefaultStylesh
     return actions;
 }
     
+DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpretWithDomains(const CString& urlCString, uint16_t flags, const DFABytecodeInterpreter::Actions& domainActions)
+{
+    ASSERT(!m_domainActions);
+    m_domainActions = &domainActions;
+    DFABytecodeInterpreter::Actions actions = interpret(urlCString, flags);
+    m_domainActions = nullptr;
+    return actions;
+}
+
 DFABytecodeInterpreter::Actions DFABytecodeInterpreter::interpret(const CString& urlCString, uint16_t flags)
 {
     const char* url = urlCString.data();

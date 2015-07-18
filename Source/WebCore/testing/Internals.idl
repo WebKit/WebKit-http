@@ -311,6 +311,8 @@ enum ResourceLoadPriority {
     SerializedScriptValue deserializeBuffer(ArrayBuffer buffer);
     ArrayBuffer serializeObject(SerializedScriptValue obj);
 
+    boolean isFromCurrentWorld(any obj);
+
     void setUsesOverlayScrollbars(boolean enabled);
 
     void forceReload(boolean endToEnd);
@@ -375,4 +377,6 @@ enum ResourceLoadPriority {
 #if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
     [RaisesException] DOMString scrollSnapOffsets(Element element);
 #endif
+
+    [RaisesException] DOMPath pathWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
 };

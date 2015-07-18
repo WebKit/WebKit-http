@@ -70,6 +70,9 @@ extern "C" {
 - (void)setFencePort:(mach_port_t)port;
 - (void)setFencePort:(mach_port_t)port commitHandler:(void(^)(void))block;
 #endif
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+@property BOOL colorMatchUntaggedContent;
+#endif
 @property (readonly) uint32_t contextId;
 @property (strong) CALayer *layer;
 @property CGColorSpaceRef colorSpace;
@@ -93,6 +96,12 @@ extern "C" {
 - (void)displayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
 - (void)setNeedsDisplayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
 @end
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+@interface CAOpenGLLayer (Details)
+@property CGColorSpaceRef colorspace;
+@end
+#endif
 
 struct CAColorMatrix {
     float m11, m12, m13, m14, m15;
@@ -135,6 +144,14 @@ EXTERN_C void CARenderServerCaptureLayerWithTransform(mach_port_t serverPort, ui
 #if USE(IOSURFACE)
 EXTERN_C void CARenderServerRenderLayerWithTransform(mach_port_t server_port, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix);
 #endif
+
+
+// FIXME: Move this into the APPLE_INTERNAL_SDK block once it's in an SDK.
+@interface CAContext (AdditionalDetails)
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+- (void)invalidateFences;
+#endif
+@end
 
 EXTERN_C NSString * const kCATiledLayerRemoveImmediately;
 

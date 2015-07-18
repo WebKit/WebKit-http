@@ -181,7 +181,7 @@ void PageClientImpl::scrollView(const IntRect& scrollRect, const IntSize& scroll
     ASSERT_NOT_REACHED();
 }
 
-void PageClientImpl::requestScroll(const FloatPoint& scrollPosition, bool isProgrammaticScroll)
+void PageClientImpl::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
 {
     ASSERT_NOT_REACHED();
 }
@@ -835,6 +835,16 @@ WebCore::WebMediaSessionManager& PageClientImpl::mediaSessionManager()
     return WebMediaSessionManagerMac::singleton();
 }
 #endif
+
+void PageClientImpl::refView()
+{
+    CFRetain(m_wkView);
+}
+
+void PageClientImpl::derefView()
+{
+    CFRelease(m_wkView);
+}
 
 } // namespace WebKit
 

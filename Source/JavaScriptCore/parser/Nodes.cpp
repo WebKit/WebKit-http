@@ -94,9 +94,10 @@ ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocat
 {
 }
 
-ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, const SourceCode& source, SourceElements* children, VarStack& varStack, FunctionStack& funcStack, IdentifierSet& capturedVariables, CodeFeatures features, int numConstants)
+ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, const SourceCode& source, SourceElements* children, VariableEnvironment& varEnvironment, FunctionStack& funcStack, VariableEnvironment& lexicalVariables, CodeFeatures features, int numConstants)
     : StatementNode(endLocation)
     , ParserArenaRoot(parserArena)
+    , VariableEnvironmentNode(lexicalVariables)
     , m_startLineNumber(startLocation.line)
     , m_startStartOffset(startLocation.startOffset)
     , m_startLineStartOffset(startLocation.lineStartOffset)
@@ -105,9 +106,8 @@ ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocat
     , m_numConstants(numConstants)
     , m_statements(children)
 {
-    m_varStack.swap(varStack);
+    m_varDeclarations.swap(varEnvironment);
     m_functionStack.swap(funcStack);
-    m_capturedVariables.swap(capturedVariables);
 }
 
 StatementNode* ScopeNode::singleStatement() const
@@ -117,8 +117,8 @@ StatementNode* ScopeNode::singleStatement() const
 
 // ------------------------------ ProgramNode -----------------------------
 
-ProgramNode::ProgramNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, SourceElements* children, VarStack& varStack, FunctionStack& funcStack, IdentifierSet& capturedVariables, const SourceCode& source, CodeFeatures features, int numConstants)
-    : ScopeNode(parserArena, startLocation, endLocation, source, children, varStack, funcStack, capturedVariables, features, numConstants)
+ProgramNode::ProgramNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, SourceElements* children, VariableEnvironment& varEnvironment, FunctionStack& funcStack, VariableEnvironment& lexicalVariables, FunctionParameters*, const SourceCode& source, CodeFeatures features, int numConstants)
+    : ScopeNode(parserArena, startLocation, endLocation, source, children, varEnvironment, funcStack, lexicalVariables, features, numConstants)
     , m_startColumn(startColumn)
     , m_endColumn(endColumn)
 {
@@ -131,47 +131,19 @@ void ProgramNode::setClosedVariables(Vector<RefPtr<UniquedStringImpl>>&& closedV
 
 // ------------------------------ EvalNode -----------------------------
 
-EvalNode::EvalNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned, unsigned endColumn, SourceElements* children, VarStack& varStack, FunctionStack& funcStack, IdentifierSet& capturedVariables, const SourceCode& source, CodeFeatures features, int numConstants)
-    : ScopeNode(parserArena, startLocation, endLocation, source, children, varStack, funcStack, capturedVariables, features, numConstants)
+EvalNode::EvalNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned, unsigned endColumn, SourceElements* children, VariableEnvironment& varEnvironment, FunctionStack& funcStack, VariableEnvironment& lexicalVariables, FunctionParameters*, const SourceCode& source, CodeFeatures features, int numConstants)
+    : ScopeNode(parserArena, startLocation, endLocation, source, children, varEnvironment, funcStack, lexicalVariables, features, numConstants)
     , m_endColumn(endColumn)
 {
 }
 
 // ------------------------------ FunctionBodyNode -----------------------------
 
-Ref<FunctionParameters> FunctionParameters::create(ParameterNode* firstParameter)
-{
-    unsigned parameterCount = 0;
-    for (ParameterNode* parameter = firstParameter; parameter; parameter = parameter->nextParam())
-        ++parameterCount;
-
-    size_t objectSize = sizeof(FunctionParameters) - sizeof(void*) + sizeof(DestructuringPatternNode*) * parameterCount;
-    void* slot = fastMalloc(objectSize);
-    return adoptRef(*new (slot) FunctionParameters(firstParameter, parameterCount));
-}
-
-FunctionParameters::FunctionParameters(ParameterNode* firstParameter, unsigned size)
-    : m_size(size)
-{
-    unsigned i = 0;
-    for (ParameterNode* parameter = firstParameter; parameter; parameter = parameter->nextParam()) {
-        auto pattern = parameter->pattern();
-        pattern->ref();
-        patterns()[i++] = pattern;
-    }
-}
-
-FunctionParameters::~FunctionParameters()
-{
-    for (unsigned i = 0; i < m_size; ++i)
-        patterns()[i]->deref();
-}
-
 FunctionBodyNode::FunctionBodyNode(
     ParserArena&, const JSTokenLocation& startLocation, 
     const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, 
-    int functionKeywordStart, int functionNameStart, int parametersStart,
-    bool isInStrictContext, ConstructorKind constructorKind)
+    int functionKeywordStart, int functionNameStart, int parametersStart, bool isInStrictContext, 
+    ConstructorKind constructorKind, unsigned parameterCount, FunctionParseMode mode)
         : StatementNode(endLocation)
         , m_startColumn(startColumn)
         , m_endColumn(endColumn)
@@ -179,16 +151,17 @@ FunctionBodyNode::FunctionBodyNode(
         , m_functionNameStart(functionNameStart)
         , m_parametersStart(parametersStart)
         , m_startStartOffset(startLocation.startOffset)
+        , m_parameterCount(parameterCount)
+        , m_parseMode(mode)
         , m_isInStrictContext(isInStrictContext)
         , m_constructorKind(static_cast<unsigned>(constructorKind))
 {
     ASSERT(m_constructorKind == static_cast<unsigned>(constructorKind));
 }
 
-void FunctionBodyNode::finishParsing(const SourceCode& source, ParameterNode* firstParameter, const Identifier& ident, enum FunctionMode functionMode)
+void FunctionBodyNode::finishParsing(const SourceCode& source, const Identifier& ident, enum FunctionMode functionMode)
 {
     m_source = source;
-    m_parameters = FunctionParameters::create(firstParameter);
     m_ident = ident;
     m_functionMode = functionMode;
 }
@@ -201,19 +174,24 @@ void FunctionBodyNode::setEndPosition(JSTextPosition position)
 
 // ------------------------------ FunctionNode -----------------------------
 
-FunctionNode::FunctionNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, SourceElements* children, VarStack& varStack, FunctionStack& funcStack, IdentifierSet& capturedVariables, const SourceCode& sourceCode, CodeFeatures features, int numConstants)
-    : ScopeNode(parserArena, startLocation, endLocation, sourceCode, children, varStack, funcStack, capturedVariables, features, numConstants)
+FunctionNode::FunctionNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, SourceElements* children, VariableEnvironment& varEnvironment, FunctionStack& funcStack, VariableEnvironment& lexicalVariables, FunctionParameters* parameters, const SourceCode& sourceCode, CodeFeatures features, int numConstants)
+    : ScopeNode(parserArena, startLocation, endLocation, sourceCode, children, varEnvironment, funcStack, lexicalVariables, features, numConstants)
+    , m_parameters(parameters)
     , m_startColumn(startColumn)
     , m_endColumn(endColumn)
 {
 }
 
-void FunctionNode::finishParsing(PassRefPtr<FunctionParameters> parameters, const Identifier& ident, enum FunctionMode functionMode)
+void FunctionNode::finishParsing(const Identifier& ident, enum FunctionMode functionMode)
 {
     ASSERT(!source().isNull());
-    m_parameters = parameters;
     m_ident = ident;
     m_functionMode = functionMode;
+}
+
+VariableEnvironmentNode::VariableEnvironmentNode(VariableEnvironment& lexicalVariables)
+{
+    m_lexicalVariables.swap(lexicalVariables);
 }
 
 } // namespace JSC

@@ -124,11 +124,13 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
+#include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/PageGroup.h>
+#include <WebCore/PathUtilities.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/PlatformWheelEvent.h>
@@ -2593,6 +2595,8 @@ HRESULT STDMETHODCALLTYPE WebView::QueryInterface(REFIID riid, void** ppvObject)
         *ppvObject = static_cast<IWebView*>(this);
     else if (IsEqualGUID(riid, IID_IWebViewPrivate))
         *ppvObject = static_cast<IWebViewPrivate*>(this);
+    else if (IsEqualGUID(riid, IID_IWebViewPrivate2))
+        *ppvObject = static_cast<IWebViewPrivate2*>(this);
     else if (IsEqualGUID(riid, IID_IWebIBActions))
         *ppvObject = static_cast<IWebIBActions*>(this);
     else if (IsEqualGUID(riid, IID_IWebViewCSS))
@@ -2815,6 +2819,8 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
         WebKitInitializeWebDatabasesIfNecessary();
         WebKitSetApplicationCachePathIfNecessary();
+
+        MemoryPressureHandler::singleton().install();
 
         didOneTimeInitialization = true;
      }
@@ -4856,7 +4862,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setShouldDisplayTextDescriptions(enabled);
 #endif
 
-    COMPtr<IWebPreferencesPrivate> prefsPrivate(Query, preferences);
+    COMPtr<IWebPreferencesPrivate2> prefsPrivate(Query, preferences);
     if (prefsPrivate) {
         hr = prefsPrivate->localStorageDatabasePath(&str);
         if (FAILED(hr))
@@ -6675,6 +6681,11 @@ HRESULT WebView::unused4()
 HRESULT WebView::unused5()
 {
     ASSERT_NOT_REACHED();
+
+    // The following line works around a linker issue in MSVC. unused5 should never be called,
+    // and this code does nothing more than force the symbol to be included in WebKit dll.
+    (void)WebCore::PathUtilities::pathWithShrinkWrappedRects(Vector<FloatRect>(), 0);
+
     return E_FAIL;
 }
 
@@ -7138,6 +7149,7 @@ HRESULT STDMETHODCALLTYPE WebView::selectedRangeForTesting(/* [out] */ UINT* loc
     return S_OK;
 }
 
+// IWebViewPrivate2
 HRESULT WebView::setLoadResourcesSerially(BOOL serialize)
 {
     WebPlatformStrategies::initialize();

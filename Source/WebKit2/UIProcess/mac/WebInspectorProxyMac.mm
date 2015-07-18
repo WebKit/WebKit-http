@@ -151,18 +151,8 @@ static const unsigned webViewCloseTimeout = 60;
     static_cast<WebInspectorProxy*>(_inspectorProxy)->windowFullScreenDidChange();
 }
 
-- (void)ignoreNextInspectedViewFrameDidChange
-{
-    _ignoreNextInspectedViewFrameDidChange = YES;
-}
-
 - (void)inspectedViewFrameDidChange:(NSNotification *)notification
 {
-    if (_ignoreNextInspectedViewFrameDidChange) {
-        _ignoreNextInspectedViewFrameDidChange = NO;
-        return;
-    }
-
     // Resizing the views while inside this notification can lead to bad results when entering
     // or exiting full screen. To avoid that we need to perform the work after a delay. We only
     // depend on this for enforcing the height constraints, so a small delay isn't terrible. Most
@@ -234,8 +224,7 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
 
     WKRetain(listener);
 
-    // If the inspector is detached, then openPanel will be window-modal; otherwise, openPanel is opened in a new window.
-    [openPanel beginSheetModalForWindow:webInspectorProxy->inspectorWindow() completionHandler:^(NSInteger result) {
+    auto completionHandler = ^(NSInteger result) {
         if (result == NSFileHandlingPanelOKButton) {
             WKMutableArrayRef fileURLs = WKMutableArrayCreate();
 
@@ -252,7 +241,12 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
             WKOpenPanelResultListenerCancel(listener);
 
         WKRelease(listener);
-    }];
+    };
+
+    if (webInspectorProxy->inspectorWindow())
+        [openPanel beginSheetModalForWindow:webInspectorProxy->inspectorWindow() completionHandler:completionHandler];
+    else
+        completionHandler([openPanel runModal]);
 }
 
 void WebInspectorProxy::attachmentViewDidChange(NSView *oldView, NSView *newView)
@@ -490,7 +484,7 @@ bool WebInspectorProxy::platformCanAttach(bool webProcessCanAttach)
 
     static const float minimumAttachedHeight = 250;
     static const float maximumAttachedHeightRatio = 0.75;
-    static const float minimumAttachedWidth = 750;
+    static const float minimumAttachedWidth = 500;
 
     NSRect inspectedViewFrame = inspectedView.frame;
 
@@ -618,12 +612,17 @@ void WebInspectorProxy::platformSave(const String& suggestedURL, const String& c
     panel.nameFieldStringValue = platformURL.lastPathComponent;
     panel.directoryURL = [platformURL URLByDeletingLastPathComponent];
 
-    [panel beginSheetModalForWindow:m_inspectorWindow.get() completionHandler:^(NSInteger result) {
+    auto completionHandler = ^(NSInteger result) {
         if (result == NSFileHandlingPanelCancelButton)
             return;
         ASSERT(result == NSFileHandlingPanelOKButton);
         saveToURL(panel.URL);
-    }];
+    };
+
+    if (m_inspectorWindow)
+        [panel beginSheetModalForWindow:m_inspectorWindow.get() completionHandler:completionHandler];
+    else
+        completionHandler([panel runModal]);
 }
 
 void WebInspectorProxy::platformAppend(const String& suggestedURL, const String& content)
@@ -720,8 +719,6 @@ void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)
 
     if (NSEqualRects([m_inspectorView frame], inspectorFrame) && NSEqualRects([inspectedView frame], inspectedViewFrame))
         return;
-
-    [m_inspectorProxyObjCAdapter ignoreNextInspectedViewFrameDidChange];
 
     // Disable screen updates to make sure the layers for both views resize in sync.
     [[m_inspectorView window] disableScreenUpdatesUntilFlush];

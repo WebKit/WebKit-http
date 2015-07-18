@@ -20,6 +20,7 @@
 #include "config.h"
 #include "InputMethodFilter.h"
 
+#include "NativeWebKeyboardEvent.h"
 #include "WebPageProxy.h"
 #include <WebCore/Color.h>
 #include <WebCore/CompositionResults.h>
@@ -85,16 +86,21 @@ void InputMethodFilter::setEnabled(bool enabled)
 {
     ASSERT(m_page);
 
+    // Notify focus out before changing the m_enabled.
+    if (!enabled)
+        notifyFocusedOut();
     m_enabled = enabled;
     if (enabled)
-        gtk_im_context_focus_in(m_context.get());
-    else
-        gtk_im_context_focus_out(m_context.get());
+        notifyFocusedIn();
 }
 
 void InputMethodFilter::setCursorRect(const IntRect& cursorRect)
 {
     ASSERT(m_page);
+
+    if (!m_enabled)
+        return;
+
     // Don't move the window unless the cursor actually moves more than 10
     // pixels. This prevents us from making the window flash during minor
     // cursor adjustments.
@@ -122,9 +128,11 @@ void InputMethodFilter::handleKeyboardEvent(GdkEventKey* event, const String& si
     }
 #endif
 
-    ASSERT(m_filterKeyEventCompletionHandler);
-    m_filterKeyEventCompletionHandler(CompositionResults(simpleString), faked);
-    m_filterKeyEventCompletionHandler = nullptr;
+    if (m_filterKeyEventCompletionHandler) {
+        m_filterKeyEventCompletionHandler(CompositionResults(simpleString), faked);
+        m_filterKeyEventCompletionHandler = nullptr;
+    } else
+        m_page->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event), CompositionResults(simpleString), faked, Vector<String>()));
 }
 
 void InputMethodFilter::handleKeyboardEventWithCompositionResults(GdkEventKey* event, ResultsToSend resultsToSend, EventFakedForComposition faked)
@@ -136,10 +144,11 @@ void InputMethodFilter::handleKeyboardEventWithCompositionResults(GdkEventKey* e
     }
 #endif
 
-    ASSERT(m_filterKeyEventCompletionHandler);
-    m_filterKeyEventCompletionHandler(CompositionResults(CompositionResults::WillSendCompositionResultsSoon), faked);
-    m_filterKeyEventCompletionHandler = nullptr;
-
+    if (m_filterKeyEventCompletionHandler) {
+        m_filterKeyEventCompletionHandler(CompositionResults(CompositionResults::WillSendCompositionResultsSoon), faked);
+        m_filterKeyEventCompletionHandler = nullptr;
+    } else
+        m_page->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event), CompositionResults(CompositionResults::WillSendCompositionResultsSoon), faked, Vector<String>()));
     if (resultsToSend & Composition && !m_confirmedComposition.isNull())
         m_page->confirmComposition(m_confirmedComposition, -1, 0);
 
@@ -263,7 +272,9 @@ void InputMethodFilter::notifyFocusedIn()
 #else
     ASSERT(m_page);
 #endif
-    m_enabled = true;
+    if (!m_enabled)
+        return;
+
     gtk_im_context_focus_in(m_context.get());
 }
 
@@ -280,7 +291,6 @@ void InputMethodFilter::notifyFocusedOut()
     confirmCurrentComposition();
     cancelContextComposition();
     gtk_im_context_focus_out(m_context.get());
-    m_enabled = false;
 }
 
 void InputMethodFilter::notifyMouseButtonPress()

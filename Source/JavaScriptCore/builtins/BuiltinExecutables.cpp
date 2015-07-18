@@ -69,10 +69,9 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const S
     UnlinkedFunctionKind kind = isParsingDefaultConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
     RefPtr<SourceProvider> sourceOverride = isParsingDefaultConstructor ? source.provider() : nullptr;
     std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
-        &m_vm, source, 0, Identifier(), builtinMode, 
-        JSParserStrictMode::NotStrict, 
-        JSParserCodeType::Program,
-        error, &positionBeforeLastNewline, constructorKind);
+        &m_vm, source, Identifier(), builtinMode, 
+        JSParserStrictMode::NotStrict, JSParserCodeType::Program, error, 
+        &positionBeforeLastNewline, FunctionParseMode::NotAFunctionMode, constructorKind);
 
     if (!program) {
         dataLog("Fatal error compiling builtin function '", name.string(), "': ", error.message());
@@ -103,7 +102,8 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const S
             continue;
     }
     body->overrideName(name);
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, kind, WTF::move(sourceOverride));
+    VariableEnvironment dummyTDZVariables;
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, kind, dummyTDZVariables, WTF::move(sourceOverride));
     functionExecutable->m_nameValue.set(m_vm, functionExecutable, jsString(&m_vm, name.string()));
     return functionExecutable;
 }

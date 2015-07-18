@@ -193,8 +193,7 @@ ControllerIOS.prototype = {
             // Hide the scrubber on audio until the user starts playing.
             this.controls.timelineBox.classList.add(this.ClassNames.hidden);
         } else {
-            if (Controller.gSimulatePictureInPictureAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('picture-in-picture')))
-                this.controls.panel.appendChild(this.controls.pictureInPictureButton);
+            this.updatePictureInPictureButton();
             this.controls.panel.appendChild(this.controls.fullscreenButton);
         }
     },
@@ -573,6 +572,16 @@ ControllerIOS.prototype = {
         Controller.prototype.setShouldListenForPlaybackTargetAvailabilityEvent.call(this, shouldListen);
     },
 
+    updatePictureInPictureButton: function()
+    {
+        var shouldShowPictureInPictureButton = Controller.gSimulatePictureInPictureAvailable || ('webkitSupportsPresentationMode' in this.video && this.video.webkitSupportsPresentationMode('picture-in-picture'));
+        if (shouldShowPictureInPictureButton) {
+            this.controls.panel.appendChild(this.controls.pictureInPictureButton);
+            this.controls.pictureInPictureButton.classList.remove(this.ClassNames.hidden);
+        } else
+            this.controls.pictureInPictureButton.classList.add(this.ClassNames.hidden);
+    },
+
     handlePresentationModeChange: function(event)
     {
         var presentationMode = this.presentationMode();
@@ -628,6 +637,21 @@ ControllerIOS.prototype = {
             return true;
 
         return Controller.prototype.controlsAlwaysVisible.call(this);
+    },
+
+    // Due to the bad way we are faking inheritance here, in particular the extends method
+    // on Controller.prototype, we don't copy getters and setters from the prototype. This
+    // means we have to implement them again, here in the subclass.
+    // FIXME: Use ES6 classes!
+
+    get scrubbing()
+    {
+        return Object.getOwnPropertyDescriptor(Controller.prototype, "scrubbing").get.call(this);
+    },
+
+    set scrubbing(flag)
+    {
+        Object.getOwnPropertyDescriptor(Controller.prototype, "scrubbing").set.call(this, flag);
     },
 
     get pageScaleFactor()

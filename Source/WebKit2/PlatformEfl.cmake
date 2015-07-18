@@ -34,6 +34,8 @@ list(APPEND WebKit2_SOURCES
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
 
+    Shared/Plugins/unix/PluginSearchPath.cpp
+
     Shared/cairo/ShareableBitmapCairo.cpp
 
     Shared/efl/NativeContextMenuItemEfl.cpp
@@ -235,6 +237,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
+    "${WEBKIT2_DIR}/Shared/Plugins/unix"
     "${WEBKIT2_DIR}/Shared/efl"
     "${WEBKIT2_DIR}/Shared/soup"
     "${WEBKIT2_DIR}/Shared/unix"
@@ -476,7 +479,9 @@ set(WEBKIT2_EFL_TEST_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/
 add_definitions(-DTEST_RESOURCES_DIR=\"${TEST_RESOURCES_DIR}\"
     -DTEST_LIB_DIR=\"${CMAKE_LIBRARY_OUTPUT_DIRECTORY}\"
     -DGTEST_LINKED_AS_SHARED_LIBRARY=1
+    -DLIBDIR=\"${LIB_INSTALL_DIR}\"
     -DLIBEXECDIR=\"${EXEC_INSTALL_DIR}\"
+    -DDATADIR=\"${CMAKE_INSTALL_PREFIX}/share\"
     -DEXTENSIONMANAGERDIR=\"${CMAKE_INSTALL_PREFIX}/${EWEBKIT_EXTENSION_MANAGER_INSTALL_DIR}\"
     -DWEBPROCESSNAME=\"WebProcess\"
     -DPLUGINPROCESSNAME=\"PluginProcess\"

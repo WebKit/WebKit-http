@@ -871,9 +871,9 @@ void MediaPlayerPrivateAVFoundationCF::paint(GraphicsContext* context, const Flo
     m_videoFrameHasDrawn = true;
 }
 
-static HashSet<String> mimeTypeCache()
+static const HashSet<String>& mimeTypeCache()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
+    static NeverDestroyed<HashSet<String>> cache;
     static bool typeListInitialized = false;
 
     if (typeListInitialized)
@@ -888,7 +888,7 @@ static HashSet<String> mimeTypeCache()
 
     CFIndex typeCount = CFArrayGetCount(supportedTypes.get());
     for (CFIndex i = 0; i < typeCount; i++)
-        cache.add(static_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i)));
+        cache.get().add(static_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i)));
 
     return cache;
 } 
@@ -1616,7 +1616,11 @@ void AVFWrapper::createPlayerItem()
     AVCFPlayerItemOutputSetSuppressPlayerRendering(m_legibleOutput.get(), TRUE);
 
     AVCFPlayerItemLegibleOutputCallbacks callbackInfo;
+#if HAVE(AVCFPLAYERITEM_CALLBACK_VERSION_2)
+    callbackInfo.version = kAVCFPlayerItemLegibleOutput_CallbacksVersion_2;
+#else
     callbackInfo.version = kAVCFPlayerItemLegibleOutput_CallbacksVersion_1;
+#endif
     ASSERT(callbackContext());
     callbackInfo.context = callbackContext();
     callbackInfo.legibleOutputCallback = AVFWrapper::legibleOutputCallback;

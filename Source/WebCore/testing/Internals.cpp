@@ -39,6 +39,7 @@
 #include "ClientRectList.h"
 #include "ContentDistributor.h"
 #include "Cursor.h"
+#include "DOMPath.h"
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -87,6 +88,7 @@
 #include "Page.h"
 #include "PageCache.h"
 #include "PageOverlay.h"
+#include "PathUtilities.h"
 #include "PlatformMediaSessionManager.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -2355,6 +2357,16 @@ PassRefPtr<SerializedScriptValue> Internals::deserializeBuffer(PassRefPtr<ArrayB
     return SerializedScriptValue::adopt(bytes);
 }
 
+bool Internals::isFromCurrentWorld(Deprecated::ScriptValue value) const
+{
+    ASSERT(!value.hasNoValue());
+    
+    JSC::ExecState* exec = contextDocument()->vm().topCallFrame;
+    if (!value.isObject() || &worldForDOMObject(value.jsValue().getObject()) == &currentWorld(exec))
+        return true;
+    return false;
+}
+
 void Internals::setUsesOverlayScrollbars(bool enabled)
 {
     WebCore::Settings::setUsesOverlayScrollbars(enabled);
@@ -2885,29 +2897,40 @@ String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
         return String();
 
     RenderBox& box = *element->renderBox();
-    if (!box.canBeScrolledAndHasScrollableArea()) {
-        ec = INVALID_ACCESS_ERR;
-        return String();
+    ScrollableArea* scrollableArea;
+    
+    if (box.isBody()) {
+        FrameView* frameView = box.frame().mainFrame().view();
+        if (!frameView || !frameView->isScrollable()) {
+            ec = INVALID_ACCESS_ERR;
+            return String();
+        }
+        scrollableArea = frameView;
+        
+    } else {
+        if (!box.canBeScrolledAndHasScrollableArea()) {
+            ec = INVALID_ACCESS_ERR;
+            return String();
+        }
+        scrollableArea = box.layer();
     }
 
-    if (!box.layer())
+    if (!scrollableArea)
         return String();
-    
-    ScrollableArea& scrollableArea = *box.layer();
     
     StringBuilder result;
 
-    if (scrollableArea.horizontalSnapOffsets()) {
+    if (scrollableArea->horizontalSnapOffsets()) {
         result.append("horizontal = ");
-        appendOffsets(result, *scrollableArea.horizontalSnapOffsets());
+        appendOffsets(result, *scrollableArea->horizontalSnapOffsets());
     }
 
-    if (scrollableArea.verticalSnapOffsets()) {
+    if (scrollableArea->verticalSnapOffsets()) {
         if (result.length())
             result.append(", ");
 
         result.append("vertical = ");
-        appendOffsets(result, *scrollableArea.verticalSnapOffsets());
+        appendOffsets(result, *scrollableArea->verticalSnapOffsets());
     }
 
     return result.toString();
@@ -2917,6 +2940,29 @@ String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
 bool Internals::testPreloaderSettingViewport()
 {
     return testPreloadScannerViewportSupport(contextDocument());
+}
+
+PassRefPtr<DOMPath> Internals::pathWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode& ec)
+{
+    if (rectComponents.size() % 4) {
+        ec = INVALID_ACCESS_ERR;
+        return nullptr;
+    }
+
+    Vector<FloatRect> rects;
+    while (!rectComponents.isEmpty()) {
+        double height = rectComponents.takeLast();
+        double width = rectComponents.takeLast();
+        double y = rectComponents.takeLast();
+        double x = rectComponents.takeLast();
+
+        rects.append(FloatRect(x, y, width, height));
+    }
+
+    rects.reverse();
+
+    Path path = PathUtilities::pathWithShrinkWrappedRects(rects, radius);
+    return DOMPath::create(path);
 }
 
 }

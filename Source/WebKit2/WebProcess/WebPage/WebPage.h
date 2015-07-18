@@ -509,6 +509,7 @@ public:
     void selectPositionAtPoint(const WebCore::IntPoint&, uint64_t callbackID);
     void beginSelectionInDirection(uint32_t direction, uint64_t callbackID);
     void updateSelectionWithExtentPoint(const WebCore::IntPoint&, uint64_t callbackID);
+    void updateSelectionWithExtentPointAndBoundary(const WebCore::IntPoint&, uint32_t granularity, uint64_t callbackID);
 
     void elementDidFocus(WebCore::Node*);
     void elementDidBlur(WebCore::Node*);
@@ -895,6 +896,10 @@ public:
     void postMessage(const String& messageName, API::Object* messageBody);
     void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
 
+#if PLATFORM(GTK)
+    void setInputMethodState(bool);
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -927,7 +932,8 @@ private:
     void completeSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location);
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
     void resetTextAutosizingBeforeLayoutIfNeeded(const WebCore::FloatSize& oldSize, const WebCore::FloatSize& newSize);
-    WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(WebCore::Frame&, const WebCore::IntPoint&);
+    WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&);
+    PassRefPtr<WebCore::Range> rangeForGranularityAtPoint(const WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity);
     void volatilityTimerFired();
 #endif
 #if !PLATFORM(COCOA) && !PLATFORM(WPE)
@@ -1345,6 +1351,7 @@ private:
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     RefPtr<WebCore::Range> m_currentBlockSelection;
+    RefPtr<WebCore::Range> m_initialSelection;
     WebCore::IntSize m_blockSelectionDesiredSize;
     WebCore::FloatSize m_maximumUnobscuredSize;
     int32_t m_deviceOrientation;
@@ -1384,6 +1391,10 @@ private:
     bool m_mainFrameProgressCompleted;
     bool m_shouldDispatchFakeMouseMoveEvents;
     bool m_isEditorStateMissingPostLayoutData { false };
+
+#if PLATFORM(GTK)
+    bool m_inputMethodEnabled { false };
+#endif
 };
 
 } // namespace WebKit

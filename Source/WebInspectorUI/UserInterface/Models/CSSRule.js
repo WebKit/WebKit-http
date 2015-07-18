@@ -80,6 +80,7 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
         this._selectorText = selectorText;
         this._selectors = selectors;
         this._matchedSelectorIndices = matchedSelectorIndices;
+        this._mostSpecificSelector = null;
         this._style = style;
         this._mediaList = mediaList;
 
@@ -182,11 +183,51 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
         return Object.shallowEqual(this._id, rule.id);
     }
 
+    get mostSpecificSelector()
+    {
+        if (!this._mostSpecificSelector)
+            this._mostSpecificSelector = this._determineMostSpecificSelector();
+
+        return this._mostSpecificSelector;
+    }
+
+    selectorIsGreater(otherSelector)
+    {
+        var mostSpecificSelector = this.mostSpecificSelector;
+
+        if (!mostSpecificSelector)
+            return false;
+
+        return mostSpecificSelector.isGreaterThan(otherSelector);
+    }
+
     // Protected
 
     get nodeStyles()
     {
         return this._nodeStyles;
+    }
+
+    // Private
+
+    _determineMostSpecificSelector()
+    {
+        if (!this._selectors || !this._selectors.length)
+            return null;
+
+        var selectors = this.matchedSelectors;
+
+        if (!selectors.length)
+            selectors = this._selectors;
+
+        var specificSelector = selectors[0];
+
+        for (var selector of selectors) {
+            if (selector.isGreaterThan(specificSelector))
+                specificSelector = selector;
+        }
+
+        return specificSelector;
     }
 };
 

@@ -1,3 +1,441 @@
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForResponse): Only log the message about attachments if the custom policy delegate is enabled.
+        This matches the behavior of DumpRenderTree.
+
+2015-07-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] Term::isUniversalTransition() incorrectly expects the end-of-line assertion in character sets
+        https://bugs.webkit.org/show_bug.cgi?id=147032
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        Test that the useless terms are eliminated by counting
+        the number of NFA nodes generated.
+
+2015-07-17  Dan Bernstein  <mitz@apple.com>
+
+        Tests for <rdar://problem/21803781> The external URL policy is not reported correctly in navigation actions that create new windows
+        https://bugs.webkit.org/show_bug.cgi?id=147040
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ShouldOpenExternalURLsInNewWindowActions.mm: Added.
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:didFinishNavigation:]):
+        (-[ShouldOpenExternalURLsInNewWindowActionsController webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+
+2015-07-16  Dean Johnson  <dean_johnson@apple.com>
+
+        webkit-patch uses incorrect credentials from keychain to login until account lockout
+        https://bugs.webkit.org/show_bug.cgi?id=146923
+
+        Reviewed by Daniel Bates.
+
+        When `webkit-patch upload` asks for login credentials for bugs.webkit.org, if you
+        provide incorrect credentials then ask for them to be saved to the keychain
+        webkit-patch will then use those incorrect credentials until 5 total attempts
+        have been made to log in. This will lock the user out of Bugzilla for a
+        half hour.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.authenticate): Added argument to read_credentials() that
+        passes in whether or not to use stored credentials.
+        * Scripts/webkitpy/common/net/credentials.py:
+        (Credentials.read_credentials): Added optional argument 'use_stored_credentials'
+        that specifies whether or not to use credentials stored on the system. If it
+        does, we do not auto-fill credentials since either the credentials caused
+        the failure, or they weren't used in the first place so there is no reason
+        to try and use them again if a failure happened.
+        * Scripts/webkitpy/common/net/credentials_unittest.py: Added unit test for newly added
+        use_stored_credentials argument.
+        (test_do_not_use_stored_credentials): Added unit test to make sure functions that
+        retrieve username/password information from the local system (environment, Git, keychain,
+        keyring) are never called. It also tests that we get back our mocked username and password.
+        (test_do_not_use_stored_credentials.MockKeyring): Mock keyring
+        (test_do_not_use_stored_credentials.MockKeyring.get_password): Assert this is never called.
+        (test_do_not_use_stored_credentials.FakeCredentials): Mock credentials
+        (test_do_not_use_stored_credentials.FakeCredentials._credentials_from_keychain): Assert this
+        is never called.
+        (test_do_not_use_stored_credentials.FakeCredentials._credentials_from_environment): Ditto
+        (test_do_not_use_stored_credentials.FakeCredentials._offer_to_store_credentials_in_keyring): Ditto
+        (test_do_not_use_stored_credentials.FakeUser): Mock the User class
+        (test_do_not_use_stored_credentials.FakeUser.prompt): Returns a username to assert against.
+        (test_do_not_use_stored_credentials.FakeUser.prompt_password): Returns a password to assert
+        against.
+
+2015-07-16  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, remove my redundant email information.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Unreviewed. Add Hyungwook Lee as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Added myself to the list of contributors.
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-16  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Cache domain actions
+        https://bugs.webkit.org/show_bug.cgi?id=146817
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Test if-domain and unless-domain with multiple load types.
+
+2015-07-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content extensions] Combine suffixes when generating NFAs
+        https://bugs.webkit.org/show_bug.cgi?id=146961
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::compareContents):
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+
+2015-07-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Input method filter is always enabled when the view is focused
+        https://bugs.webkit.org/show_bug.cgi?id=146965
+
+        Reviewed by Martin Robinson.
+
+        Use setEnabled() instead of notifyFocusedIn() to enable input methods.
+
+        * TestWebKitAPI/Tests/WebKit2/gtk/InputMethodFilter.cpp:
+        (TestWebKitAPI::TestInputMethodFilter::TestInputMethodFilter):
+
+2015-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [EFL] Bump libseccomp version to 2.2.3
+        https://bugs.webkit.org/show_bug.cgi?id=146980
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2015-07-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Maintain consistent COM Interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=146983
+        <rdar://problem/21822278>
+
+        Reviewed by Dean Jackson.
+
+        Update DumpRenderTree and WinLauncher to use the properly
+        versioned COM interface objects.
+
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (AccessibilityController::rootElement):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        (resetWebViewToConsistentStateBeforeTesting):
+        (runTest):
+        (createWebViewAndOffscreenWindow):
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        (EditingDelegate::QueryInterface):
+        (EditingDelegate::shouldEndEditingInDOMRange):
+        (EditingDelegate::shouldInsertNode):
+        * DumpRenderTree/win/EditingDelegate.h:
+        * DumpRenderTree/win/EventSender.cpp:
+        (scalePageByCallback):
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::didCommitLoadForFrame):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::callShouldCloseOnWebView):
+        (TestRunner::applicationCacheDiskUsageForOrigin):
+        (TestRunner::clearApplicationCacheForOrigin):
+        (TestRunner::setDefersLoading):
+        (TestRunner::setDomainRelaxationForbiddenForURLScheme):
+        (TestRunner::setTabKeyCyclesThroughElements):
+        (TestRunner::setValueForUser):
+        (TestRunner::dispatchPendingLoadRequests):
+        (TestRunner::setWindowIsKey):
+        (TestRunner::execCommand):
+        (TestRunner::addOriginAccessWhitelistEntry):
+        (TestRunner::removeOriginAccessWhitelistEntry):
+        (TestRunner::addUserScript):
+        (TestRunner::addUserStyleSheet):
+        (TestRunner::showWebInspector):
+        (TestRunner::closeWebInspector):
+        (TestRunner::evaluateInWebInspector):
+        (TestRunner::setSerializeHTTPLoads):
+        * DumpRenderTree/win/TextInputControllerWin.cpp:
+        (TextInputController::setMarkedText):
+        (TextInputController::hasMarkedText):
+        (TextInputController::unmarkText):
+        (TextInputController::markedRange):
+        (TextInputController::insertText):
+        (TextInputController::firstRectForCharacterRange):
+        (TextInputController::selectedRange):
+        * DumpRenderTree/win/UIDelegate.h:
+        (UIDelegate::unused2):
+        (UIDelegate::unused3):
+        (UIDelegate::webViewScrolled):
+        (UIDelegate::webViewShouldInterruptJavaScript):
+        (UIDelegate::webViewReceivedFocus):
+        (UIDelegate::unused4): Deleted.
+        * TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp:
+        (TestWebKitAPI::WebViewDestructionWithHostWindow::SetUp):
+        * WinLauncher/PageLoadTestClient.cpp:
+        (PageLoadTestClient::didStartProvisionalLoad):
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::init):
+        * WinLauncher/WinLauncher.h:
+        * WinLauncher/WinLauncherWebHost.cpp:
+        (WinLauncherWebHost::didFinishLoadForFrame):
+        (WinLauncherWebHost::didFirstLayoutInFrame):
+        * WinLauncher/WinLauncherWebHost.h:
+
+2015-07-15  Dean Johnson  <dean_johnson@apple.com>
+
+        Many test failures in scm_unittest.py
+        https://bugs.webkit.org/show_bug.cgi?id=143967
+
+        Reviewed by Daniel Bates. 
+
+        * Scripts/webkitpy/common/checkout/scm/detection.py:
+        (SCMDetector.detect_scm_system): Paths with symlinks are now resolved to
+        absolute canonical file paths. Two mutually exclusive issues cause this
+        to be a problem.
+            1) Python's os.path.relpath() function does not return correct relative
+            paths between two filepaths that point to the same file, if symlinks are
+            involved.
+                On Mac, /tmp points to /private/tmp
+                ex. os.path.relpath('/tmp', '/private/tmp')
+                    returns '../../tmp'
+            What we want is actually just '.'
+            2) Git does not allow file paths to trace outside of
+            the Git repository. This means that if you have a repository in
+            /tmp and you refer to that repository when invoking a git command as
+            ../tmp, Git will produce errors about working outside of the repository.
+        * Scripts/webkitpy/common/checkout/scm/git.py: Over time Git has changed
+        its default behavior and such, needed to be updated.
+        (Git.changed_files): '--' was added into the command so that patch_directories
+        were taken as positional arguments.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py: Changed tests and setup 
+        in the GitSVNTest class to more closely emulate the version of Git that the tests
+        assumed a system had. Also fixed a small side-effect from the absolute canonical
+        path fix in SCMDetector.detect_scm_system
+        (SVNTestRepository.setup): A relative filepath was previously passed as the
+        checkout root to SCMDetector.detect_scm_system, but is now cleaned to
+        an absolute canonical path before being passed in. The failing test
+        was a "sanity check" that the svn.checkout_root and scm.checkout_root
+        were the same.
+        (GitSVNTest._setup_git_checkout):
+            1) Added "--prefix ''" option to `git clone` since Git changed its default
+            behavior in version 2.0.
+            2) The branch master was renamed to trunk to more closely emulate what
+            tests expected when they were written. 
+        (GitSVNTest.test_changed_files_local_plus_working_copy): Two of the three
+        original tests failed because the tests expected the trunk branch
+        to produce its parent's commit, whereas Git merely provides the HEAD commit
+        for a given branch (trunk in this case). Based on other tests written
+        in the same commit, it appears these tests were failing from the point they
+        were written.
+
+2015-07-14  Anders Carlsson  <andersca@apple.com>
+
+        Assertions.h should include ExportMacros.h
+        https://bugs.webkit.org/show_bug.cgi?id=146948
+
+        Reviewed by Tim Horton.
+
+        Remove now unneeded WTF_EXPORT_PRIVATE define.
+
+        * DumpRenderTree/cg/ImageDiffCG.cpp:
+
+2015-07-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [Wayland] Build by default the X11 and Wayland targets.
+        https://bugs.webkit.org/show_bug.cgi?id=146057
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/install-dependencies:
+
+2015-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Unable to dismiss context menu during test runs
+        https://bugs.webkit.org/show_bug.cgi?id=146836
+
+        Reviewed by Tim Horton.
+
+        Since Context Menus are modal, the test system would block on the displayed context menu,
+        causing tests to fail. Instead, we should do what WK1 was doing, which is to perform the
+        mouse click and generate the menu contents, but not ask AppKit to display it.
+
+        Drive-by fix: We did not handle 'escape' key presses. This is also fixed.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController keyDown:withModifiers:withLocation:]): Handle the 'escape' character.
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::mouseMoveTo): Keep track of the current mouse position.
+        (WTR::EventSendingController::contextClick): Don't emit an actual context menu invocation and then
+        copy the menu items. Instead, use WKBundlePageCopyContentMenuAtPointInWindow to do all the same
+        work without actually calling on AppKit to display the menu.
+        ask WebCore to do all the work EXCEPT displaying the menu.
+        * WebKitTestRunner/InjectedBundle/EventSendingController.h:
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::keyDown): Handle the 'escape' character.
+
+2015-07-09  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to run the OSR exit fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=146814
+
+        Reviewed by Mark Lam.
+        
+        This runs a test command to detect how many static OSR exit sites it had, and then for
+        each exit site, it triggers three exits (earliest opportunity, last opportunity, some
+        middle opportunity), plus a mode where the check always exits. This is an exhaustive
+        search, so in the future it'll be very appropriate for cases where we have a simple test
+        and we want to see what happens when you eventually exit in this test.
+        
+        Right now this isn't hooked into any specific tests, but I've done some spot checks on it
+        and it seems to do the right thing.
+
+        * Scripts/jsc-stress-test-helpers/js-osr-exit-fuzz: Added.
+        (fail):
+
+2015-07-10  Alex Christensen  <achristensen@webkit.org>
+
+        Add tests for r186649
+        https://bugs.webkit.org/show_bug.cgi?id=146821
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::compareContents):
+        (TestWebKitAPI::expectedIndex):
+        Add some larger tests to test large jumps.
+
+2015-07-09  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Quick fix for run_benchmark script that AppKit.NSRunningApplication does not work properly
+        https://bugs.webkit.org/show_bug.cgi?id=146820
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.close_browsers):
+        (OSXBrowserDriver._terminiate_processes):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver):
+        (OSXChromeCanaryDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver):
+        (OSXFirefoxNightlyDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+
+2015-07-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] pango should be included in the default jhbuild moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=146683
+
+        Reviewed by Martin Robinson.
+
+        Recent releases of pango 1.36 use functions that are only provided by fontconfig 2.12 when
+        compiled against sufficiently-new versions of fontconfig. Since we depend on both pango and
+        fontconfig, and pango depends on fontconfig, we must either add pango to our jhbuild
+        moduleset or else upgrade fontconfig to a recent unstable release (knowing that we will have
+        the same problem again the next time pango wants to use a new fontconfig feature), or remove
+        fontconfig (which would make it hard to keep tests working). On the balance, adding pango is
+        best.
+
+        * gtk/jhbuild-optional.modules: Remove pango
+        * gtk/jhbuild.modules: Add pango and update to latest 1.36.8
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed.  Added myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-09  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a way to set the default URL from Minibrowser UI
+        https://bugs.webkit.org/show_bug.cgi?id=146780
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate didChangeSettings]):
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController fetch:]):
+        (-[BrowserWindowController reload:]):
+        (-[BrowserWindowController forceRepaint:]):
+        (-[BrowserWindowController goBack:]):
+        (-[BrowserWindowController goForward:]):
+        (-[BrowserWindowController showHideWebView:]):
+        (-[BrowserWindowController removeReinsertWebView:]):
+        (-[BrowserWindowController zoomIn:]):
+        (-[BrowserWindowController zoomOut:]):
+        (-[BrowserWindowController resetZoom:]):
+        (-[BrowserWindowController canZoomIn]):
+        (-[BrowserWindowController canZoomOut]):
+        (-[BrowserWindowController canResetZoom]):
+        (-[BrowserWindowController toggleZoomMode:]):
+        (-[BrowserWindowController setScale:]):
+        (-[BrowserWindowController toggleShrinkToFit:]):
+        (-[BrowserWindowController dumpSourceToConsole:]):
+        (-[BrowserWindowController find:]):
+        (-[BrowserWindowController didChangeSettings]):
+        (-[BrowserWindowController currentURL]):
+        Get rid of the BrowserController protocol. It was a bad idea and confused
+        Interface Builder more than I thought possible.
+
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController setDefaultURLToCurrentURL:]):
+        If we have a BrowserWindowController, grab its URL and set the relevant default.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.h:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController currentURL]):
+        * MiniBrowser/mac/WK2BrowserWindowController.h:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController currentURL]):
+        Retrieve the current URL from the WKView/WebView.
+
+2015-07-09  Timothy Horton  <timothy_horton@apple.com>
+
+        Increase MiniBrowser location bar maximum width
+        https://bugs.webkit.org/show_bug.cgi?id=146779
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        Have an enormous maximum width on the location bar, so that it doesn't
+        stop expanding with the window at 800px.
+
 2015-07-08  Brady Eidson  <beidson@apple.com>
 
         Crash calling [WebView close] in didFinishLoadForFrame callback.

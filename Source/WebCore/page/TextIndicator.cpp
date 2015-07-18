@@ -27,6 +27,7 @@
 #include "TextIndicator.h"
 
 #include "Document.h"
+#include "Editor.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameSnapshotting.h"
@@ -40,74 +41,40 @@
 
 using namespace WebCore;
 
-// These should match the values in TextIndicatorWindow.
-// FIXME: Ideally these would only be in one place.
-#if ENABLE(LEGACY_TEXT_INDICATOR_STYLE)
-const float horizontalBorder = 3;
-const float verticalBorder = 1;
-const float dropShadowBlurRadius = 1.5;
-#else
-const float horizontalBorder = 2;
-const float verticalBorder = 1;
-const float dropShadowBlurRadius = 12;
-#endif
-
 namespace WebCore {
-
-static FloatRect outsetIndicatorRectIncludingShadow(const FloatRect rect)
-{
-    FloatRect outsetRect = rect;
-    outsetRect.inflateX(dropShadowBlurRadius + horizontalBorder);
-    outsetRect.inflateY(dropShadowBlurRadius + verticalBorder);
-    return outsetRect;
-}
-
-static bool textIndicatorsForTextRectsOverlap(const Vector<FloatRect>& textRects)
-{
-    size_t count = textRects.size();
-    if (count <= 1)
-        return false;
-
-    Vector<FloatRect> indicatorRects;
-    indicatorRects.reserveInitialCapacity(count);
-
-    for (size_t i = 0; i < count; ++i) {
-        FloatRect indicatorRect = outsetIndicatorRectIncludingShadow(textRects[i]);
-
-        for (size_t j = indicatorRects.size(); j; ) {
-            --j;
-            if (indicatorRect.intersects(indicatorRects[j]))
-                return true;
-        }
-
-        indicatorRects.uncheckedAppend(indicatorRect);
-    }
-
-    return false;
-}
 
 Ref<TextIndicator> TextIndicator::create(const TextIndicatorData& data)
 {
     return adoptRef(*new TextIndicator(data));
 }
 
-RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextIndicatorPresentationTransition presentationTransition)
+RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextIndicatorPresentationTransition presentationTransition, unsigned margin)
 {
     Frame* frame = range.startContainer()->document().frame();
 
     if (!frame)
         return nullptr;
 
+#if PLATFORM(IOS)
+    frame->editor().setIgnoreCompositionSelectionChange(true);
+    frame->selection().setUpdateAppearanceEnabled(true);
+#endif
+
     VisibleSelection oldSelection = frame->selection().selection();
     frame->selection().setSelection(range);
 
-    RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(*frame, presentationTransition);
+    RefPtr<TextIndicator> indicator = TextIndicator::createWithSelectionInFrame(*frame, presentationTransition, margin);
 
     frame->selection().setSelection(oldSelection);
 
     if (indicator)
         indicator->setWantsMargin(!areRangesEqual(&range, oldSelection.toNormalizedRange().get()));
-    
+
+#if PLATFORM(IOS)
+    frame->editor().setIgnoreCompositionSelectionChange(false);
+    frame->selection().setUpdateAppearanceEnabled(false);
+#endif
+
     return indicator.release();
 }
 
@@ -134,34 +101,33 @@ static RefPtr<Image> snapshotSelectionWithHighlight(Frame& frame)
     return snapshot->copyImage(CopyBackingStore, Unscaled);
 }
 
-RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, TextIndicatorPresentationTransition presentationTransition)
+RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, TextIndicatorPresentationTransition presentationTransition, unsigned margin)
 {
-    IntRect selectionRect = enclosingIntRect(frame.selection().selectionBounds());
-    std::unique_ptr<ImageBuffer> indicatorBuffer = snapshotSelection(frame, SnapshotOptionsForceBlackText);
-    if (!indicatorBuffer)
-        return nullptr;
-    RefPtr<Image> indicatorBitmap = indicatorBuffer->copyImage(CopyBackingStore, Unscaled);
-    if (!indicatorBitmap)
-        return nullptr;
-
-    RefPtr<Image> indicatorBitmapWithHighlight;
-    if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
-        indicatorBitmapWithHighlight = snapshotSelectionWithHighlight(frame);
-
-    // Store the selection rect in window coordinates, to be used subsequently
-    // to determine if the indicator and selection still precisely overlap.
-    IntRect selectionRectInRootViewCoordinates = frame.view()->contentsToRootView(selectionRect);
-
     Vector<FloatRect> textRects;
-    frame.selection().getClippedVisibleTextRectangles(textRects);
+
+    // On iOS, we don't need to expand the TextIndicator to cover the whole selection height.
+    // FIXME: Ideally, on Mac, there are times when we don't need to (if we don't have a selection),
+    // and using TextHeight would provide a more sensible appearance.
+#if PLATFORM(IOS)
+    FrameSelection::TextRectangleHeight textRectHeight = FrameSelection::TextRectangleHeight::TextHeight;
+#else
+    FrameSelection::TextRectangleHeight textRectHeight = FrameSelection::TextRectangleHeight::SelectionHeight;
+#endif
+    frame.selection().getClippedVisibleTextRectangles(textRects, textRectHeight);
 
     // The bounding rect of all the text rects can be different than the selection
     // rect when the selection spans multiple lines; the indicator doesn't actually
     // care where the selection highlight goes, just where the text actually is.
     FloatRect textBoundingRectInRootViewCoordinates;
+    FloatRect textBoundingRectInDocumentCoordinates;
     Vector<FloatRect> textRectsInRootViewCoordinates;
     for (const FloatRect& textRect : textRects) {
-        FloatRect textRectInRootViewCoordinates = frame.view()->contentsToRootView(enclosingIntRect(textRect));
+        FloatRect textRectInDocumentCoordinatesIncludingMargin = textRect;
+        textRectInDocumentCoordinatesIncludingMargin.inflate(margin);
+
+        textBoundingRectInDocumentCoordinates.unite(textRectInDocumentCoordinatesIncludingMargin);
+
+        FloatRect textRectInRootViewCoordinates = frame.view()->contentsToRootView(enclosingIntRect(textRectInDocumentCoordinatesIncludingMargin));
         textRectsInRootViewCoordinates.append(textRectInRootViewCoordinates);
         textBoundingRectInRootViewCoordinates.unite(textRectInRootViewCoordinates);
     }
@@ -172,8 +138,29 @@ RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, Te
         textRectsInBoundingRectCoordinates.append(rect);
     }
 
+    // FIXME: We should have TextIndicator options instead of this being platform-specific.
+#if PLATFORM(IOS)
+    SnapshotOptions snapshotOptions = SnapshotOptionsPaintSelectionAndBackgroundsOnly;
+#else
+    SnapshotOptions snapshotOptions = SnapshotOptionsForceBlackText | SnapshotOptionsPaintSelectionOnly;
+#endif
+
+    std::unique_ptr<ImageBuffer> indicatorBuffer = snapshotFrameRect(frame, enclosingIntRect(textBoundingRectInDocumentCoordinates), snapshotOptions);
+    if (!indicatorBuffer)
+        return nullptr;
+    RefPtr<Image> indicatorBitmap = indicatorBuffer->copyImage(CopyBackingStore, Unscaled);
+    if (!indicatorBitmap)
+        return nullptr;
+
+    RefPtr<Image> indicatorBitmapWithHighlight;
+    if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
+        indicatorBitmapWithHighlight = snapshotSelectionWithHighlight(frame);
+
     TextIndicatorData data;
-    data.selectionRectInRootViewCoordinates = selectionRectInRootViewCoordinates;
+
+    // Store the selection rect in window coordinates, to be used subsequently
+    // to determine if the indicator and selection still precisely overlap.
+    data.selectionRectInRootViewCoordinates = frame.view()->contentsToRootView(enclosingIntRect(frame.selection().selectionBounds()));
     data.textBoundingRectInRootViewCoordinates = textBoundingRectInRootViewCoordinates;
     data.textRectsInBoundingRectCoordinates = textRectsInBoundingRectCoordinates;
     data.contentImageScaleFactor = frame.page()->deviceScaleFactor();
@@ -188,12 +175,6 @@ RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, Te
 TextIndicator::TextIndicator(const TextIndicatorData& data)
     : m_data(data)
 {
-    ASSERT(m_data.contentImageScaleFactor != 1 || m_data.contentImage->size() == enclosingIntRect(m_data.selectionRectInRootViewCoordinates).size());
-
-    if (textIndicatorsForTextRectsOverlap(m_data.textRectsInBoundingRectCoordinates)) {
-        m_data.textRectsInBoundingRectCoordinates[0] = unionRect(m_data.textRectsInBoundingRectCoordinates);
-        m_data.textRectsInBoundingRectCoordinates.shrink(1);
-    }
 }
 
 TextIndicator::~TextIndicator()

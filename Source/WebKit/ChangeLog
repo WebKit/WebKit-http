@@ -1,3 +1,28 @@
+2015-07-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Move file into the
+        appropriate category in the project.
+
+2015-07-14  Lucas Forschler  <lforschler@apple.com>
+
+        Teach platformMac.cmake about El Capitan WKSI.
+        <rdar://problem/21822469>
+        
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+
+2015-07-09  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Add memory pressure handler.
+        https://bugs.webkit.org/show_bug.cgi?id=146685
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Link with process api library.
+
 2015-07-04  Chris Dumez  <cdumez@apple.com>
 
         Drop RefPtr::clear() method

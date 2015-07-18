@@ -557,7 +557,7 @@
 #define USE_WEB_THREAD 1
 #define USE_QUICK_LOOK 1
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+#if defined(TARGET_OS_IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 #define HAVE_APP_LINKS 1
 #endif
 
@@ -1155,6 +1155,11 @@
 
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 #define ENABLE_VIDEO_PRESENTATION_MODE 1
+#endif
+
+/* While 10.10 has support for fences, it is missing some API important for our integration of them. */
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#define HAVE_COREANIMATION_FENCES 1
 #endif
 
 #endif /* WTF_Platform_h */

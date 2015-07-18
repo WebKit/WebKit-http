@@ -23,9 +23,11 @@
 #ifndef JSCJSValue_h
 #define JSCJSValue_h
 
-#include <math.h>
+#include "JSExportMacros.h"
 #include "PureNaN.h"
-#include <stddef.h> // for size_t
+#include <functional>
+#include <math.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <wtf/Assertions.h>
 #include <wtf/Forward.h>
@@ -485,6 +487,11 @@ inline JSValue jsNull()
 inline JSValue jsUndefined()
 {
     return JSValue(JSValue::JSUndefined);
+}
+
+inline JSValue jsTDZValue()
+{
+    return JSValue();
 }
 
 inline JSValue jsBoolean(bool b)

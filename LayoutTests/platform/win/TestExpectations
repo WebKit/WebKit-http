@@ -1264,6 +1264,7 @@ accessibility/svg-element-press.html [ Skip ]
 
 # Missing cellForColumnAndRow implementation in DRT
 webkit.org/b/143081 accessibility/table-cell-display-block.html [ Skip ]
+accessibility/aria-table-with-presentational-elements.html [ Skip ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X (or Windows)
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
@@ -1657,6 +1658,10 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/updating-attribute-in-table-causes-crash.html [ Skip ] # Debug assertion
 
 [ Debug ] platform/win/accessibility/option-element-selection-and-focus-events.html [ Skip ] # Debug Assertion
+
+webkit.org/b/146903 accessibility/aria-table-hierarchy.html [ Skip ]
+webkit.org/b/146903 accessibility/roles-table-and-cell.html [ Skip ]
+
 ################################################################################
 #######################   End Accessibility Issues   ###########################
 ################################################################################
@@ -1740,6 +1745,7 @@ webkit.org/b/140759 canvas/philip/tests/2d.path.arcTo.collinear.3.html
 webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.blur.html
 webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.x.html
 webkit.org/b/140759 canvas/philip/tests/2d.shadow.enable.y.html
+webkit.org/b/146795 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Pass Failure ]
 
 fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
@@ -2124,7 +2130,7 @@ webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny.html 
 webkit.org/b/140703 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event.html [ Crash ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Crash Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-invalid.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict.html [ Failure ]
@@ -2370,6 +2376,7 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
 inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
 
+webkit.org/b/143548 inspector/console/command-line-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-table.html [ Skip ] # Timeout
 
@@ -3120,3 +3127,6 @@ fast/text/hangul-generic-font-families.html [ WontFix ]
 
 # New test for Bug 144830 (r186388) always fails.
 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Failure ]
+
+# <rdar://problem/21816197> large-js-program.php crashes (crashes slower on Debug)
+http/tests/misc/large-js-program.php [ Slow Crash ]

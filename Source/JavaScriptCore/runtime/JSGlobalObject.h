@@ -39,6 +39,7 @@
 #include "SymbolPrototype.h"
 #include "TemplateRegistry.h"
 #include "VM.h"
+#include "VariableEnvironment.h"
 #include "Watchpoint.h"
 #include <JavaScriptCore/JSBase.h>
 #include <array>
@@ -612,7 +613,9 @@ public:
 
     static Structure* createStructure(VM& vm, JSValue prototype)
     {
-        return Structure::create(vm, 0, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
+        Structure* result = Structure::create(vm, 0, prototype, TypeInfo(GlobalObjectType, StructureFlags), info());
+        result->setTransitionWatchpointIsLikelyToBeFired(true);
+        return result;
     }
 
     void registerWeakMap(OpaqueJSWeakObjectMap* map)
@@ -639,7 +642,7 @@ public:
     unsigned weakRandomInteger() { return m_weakRandom.getUint32(); }
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
-    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode);
+    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode, const VariableEnvironment*);
 
 protected:
     struct GlobalPropertyInfo {

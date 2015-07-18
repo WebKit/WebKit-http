@@ -31,6 +31,10 @@
 #include "IntPoint.h"
 #include <wtf/MathExtras.h>
 
+#if PLATFORM(MAC) && defined __OBJC__
+#import <Foundation/NSGeometry.h>
+#endif
+
 #if USE(CG)
 typedef struct CGPoint CGPoint;
 #endif
@@ -248,6 +252,11 @@ inline FloatSize toFloatSize(const FloatPoint& a)
 inline FloatPoint toFloatPoint(const FloatSize& a)
 {
     return FloatPoint(a.width(), a.height());
+}
+
+inline bool areEssentiallyEqual(const FloatPoint& a, const FloatPoint& b)
+{
+    return WTF::areEssentiallyEqual(a.x(), b.x()) && WTF::areEssentiallyEqual(a.y(), b.y());
 }
 
 }

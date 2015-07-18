@@ -44,6 +44,7 @@
 #include "FrameView.h"
 #include "HTMLAreaElement.h"
 #include "HTMLCanvasElement.h"
+#include "HTMLDetailsElement.h"
 #include "HTMLFieldSetElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLFrameElementBase.h"
@@ -798,6 +799,7 @@ bool AccessibilityNodeObject::supportsRequiredAttribute() const
     case CheckBoxRole:
     case ComboBoxRole:
     case GridRole:
+    case GridCellRole:
     case IncrementorRole:
     case ListBoxRole:
     case PopUpButtonRole:
@@ -1608,6 +1610,15 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     return level;
 }
 
+void AccessibilityNodeObject::setIsExpanded(bool expand)
+{
+    if (is<HTMLDetailsElement>(node())) {
+        auto& details = downcast<HTMLDetailsElement>(*node());
+        if (expand != details.isOpen())
+            details.toggleOpen();
+    }
+}
+    
 // When building the textUnderElement for an object, determine whether or not
 // we should include the inner text of this given descendant object or skip it.
 static bool shouldUseAccessibilityObjectInnerText(AccessibilityObject* obj, AccessibilityTextUnderElementMode mode)
@@ -2051,6 +2062,7 @@ bool AccessibilityNodeObject::canSetSelectedAttribute() const
     // Elements that can be selected
     switch (roleValue()) {
     case CellRole:
+    case GridCellRole:
     case RadioButtonRole:
     case RowHeaderRole:
     case RowRole:

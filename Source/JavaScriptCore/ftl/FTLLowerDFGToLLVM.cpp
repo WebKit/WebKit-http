@@ -3056,11 +3056,12 @@ private:
         LValue scope = lowCell(m_node->child1());
         SymbolTable* table = m_node->castOperand<SymbolTable*>();
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
-        
+        JSValue initializationValue = m_node->initializationValueForActivation();
+        ASSERT(initializationValue.isUndefined() || initializationValue == jsTDZValue());
         if (table->singletonScope()->isStillValid()) {
             LValue callResult = vmCall(
                 m_out.operation(operationCreateActivationDirect), m_callFrame, weakPointer(structure),
-                scope, weakPointer(table));
+                scope, weakPointer(table), m_out.constInt64(JSValue::encode(initializationValue)));
             setJSValue(callResult);
             return;
         }
@@ -3080,7 +3081,7 @@ private:
         
         for (unsigned i = 0; i < table->scopeSize(); ++i) {
             m_out.store64(
-                m_out.constInt64(JSValue::encode(jsUndefined())),
+                m_out.constInt64(JSValue::encode(initializationValue)),
                 fastObject, m_heaps.JSEnvironmentRecord_variables[i]);
         }
         
@@ -3090,7 +3091,7 @@ private:
         m_out.appendTo(slowPath, continuation);
         LValue callResult = vmCall(
             m_out.operation(operationCreateActivationDirect), m_callFrame, weakPointer(structure),
-            scope, weakPointer(table));
+            scope, weakPointer(table), m_out.constInt64(JSValue::encode(initializationValue)));
         ValueFromBlock slowResult = m_out.anchor(callResult);
         m_out.jump(continuation);
         
@@ -5287,12 +5288,7 @@ private:
         for (unsigned i = 0; i < data.m_properties.size(); ++i)
             values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
         
-        StructureSet set;
-        m_interpreter.phiChildren()->forAllTransitiveIncomingValues(
-            m_graph.varArgChild(m_node, 0).node(),
-            [&] (Node* incoming) {
-                set.add(incoming->castConstant<Structure*>());
-            });
+        const StructureSet& set = m_node->structureSet();
         
         Vector<LBasicBlock, 1> blocks(set.size());
         for (unsigned i = set.size(); i--;)
@@ -5391,10 +5387,11 @@ private:
 
         Vector<LValue, 8> values;
         for (unsigned i = 0; i < data.m_properties.size(); ++i)
-            values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
+            values.append(lowJSValue(m_graph.varArgChild(m_node, 2 + i)));
 
-        LValue scope = lowCell(m_graph.varArgChild(m_node, 0));
+        LValue scope = lowCell(m_graph.varArgChild(m_node, 1));
         SymbolTable* table = m_node->castOperand<SymbolTable*>();
+        ASSERT(table == m_graph.varArgChild(m_node, 0)->castConstant<SymbolTable*>());
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
 
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation slow path"));
@@ -5413,9 +5410,14 @@ private:
         m_out.jump(continuation);
 
         m_out.appendTo(slowPath, continuation);
+        // We ensure allocation sinking explictly sets bottom values for all field members. 
+        // Therefore, it doesn't matter what JSValue we pass in as the initialization value
+        // because all fields will be overwritten.
+        // FIXME: It may be worth creating an operation that calls a constructor on JSLexicalEnvironment that 
+        // doesn't initialize every slot because we are guaranteed to do that here.
         LValue callResult = vmCall(
             m_out.operation(operationCreateActivationDirect), m_callFrame, weakPointer(structure),
-            scope, weakPointer(table));
+            scope, weakPointer(table), m_out.constInt64(JSValue::encode(jsUndefined())));
         ValueFromBlock slowResult =  m_out.anchor(callResult);
         m_out.jump(continuation);
 
@@ -8167,7 +8169,7 @@ private:
                 dataLog("        Available recoveries: ", listDump(m_availableRecoveries), "\n");
         }
         
-        if (Options::enableOSRExitFuzz()) {
+        if (doOSRExitFuzzing()) {
             LValue numberOfFuzzChecks = m_out.add(
                 m_out.load32(m_out.absolute(&g_numberOfOSRExitFuzzChecks)),
                 m_out.int32One);

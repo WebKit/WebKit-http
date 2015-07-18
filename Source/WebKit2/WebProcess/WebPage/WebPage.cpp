@@ -519,6 +519,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
         scaleView(parameters.viewScaleFactor);
 
     m_page->setUserContentExtensionsEnabled(parameters.userContentExtensionsEnabled);
+
+#if PLATFORM(IOS)
+    m_page->settings().setContentDispositionAttachmentSandboxEnabled(true);
+#endif
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -1472,7 +1476,7 @@ void WebPage::scaleView(double scale)
 void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, uint64_t callbackID)
 {
     scaleView(scale);
-    m_drawingArea->updateGeometry(viewSize, IntSize(), false);
+    m_drawingArea->updateGeometry(viewSize, IntSize(), false, MachSendRight());
     m_drawingArea->replyWithFenceAfterNextFlush(callbackID);
 }
 #endif
@@ -2948,6 +2952,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
 {
     layerTransaction.setContentsSize(corePage()->mainFrame().view()->contentsSize());
+    layerTransaction.setScrollOrigin(corePage()->mainFrame().view()->scrollOrigin());
     layerTransaction.setPageScaleFactor(corePage()->pageScaleFactor());
     layerTransaction.setRenderTreeSize(corePage()->renderTreeSize());
     layerTransaction.setPageExtendedBackgroundColor(corePage()->pageExtendedBackgroundColor());
@@ -3507,7 +3512,7 @@ void WebPage::mainFrameDidLayout()
 #endif
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
-        IntSize newContentSize = frameView->contentsSize();
+        IntSize newContentSize = frameView->contentsSizeRespectingOverflow();
         if (m_viewportConfiguration.contentsSize() != newContentSize) {
             m_viewportConfiguration.setContentsSize(newContentSize);
             viewportConfigurationChanged();

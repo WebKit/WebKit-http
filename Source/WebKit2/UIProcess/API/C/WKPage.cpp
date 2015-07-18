@@ -81,7 +81,7 @@
 
 #if ENABLE(MEDIA_SESSION)
 #include "WebMediaSessionMetadata.h"
-#include <WebCore/MediaEventTypes.h>
+#include <WebCore/MediaSessionEvents.h>
 #endif
 
 using namespace WebCore;

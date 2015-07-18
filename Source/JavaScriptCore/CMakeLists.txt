@@ -110,6 +110,7 @@ set(JavaScriptCore_SOURCES
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
     bytecode/ToThisStatus.cpp
+    bytecode/TrackedReferences.cpp
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
@@ -160,7 +161,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGDesiredTransitions.cpp
     dfg/DFGDesiredWatchpoints.cpp
     dfg/DFGDesiredWeakReferences.cpp
-    dfg/DFGDesiredWriteBarriers.cpp
     dfg/DFGDisassembler.cpp
     dfg/DFGDoesGC.cpp
     dfg/DFGDominators.cpp
@@ -193,6 +193,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
     dfg/DFGMayExit.cpp
+    dfg/DFGMinifiedGraph.cpp
     dfg/DFGMinifiedNode.cpp
     dfg/DFGMovHintRemovalPhase.cpp
     dfg/DFGNaiveDominators.cpp
@@ -383,6 +384,7 @@ set(JavaScriptCore_SOURCES
     parser/SourceCode.cpp
     parser/SourceProvider.cpp
     parser/SourceProviderCache.cpp
+    parser/VariableEnvironment.cpp
 
     profiler/LegacyProfiler.cpp
     profiler/Profile.cpp

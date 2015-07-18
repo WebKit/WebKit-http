@@ -1,3 +1,814 @@
+2015-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r169105): Do not assign a renderer to multiple selection subtrees.
+        https://bugs.webkit.org/show_bug.cgi?id=147038
+        rdar://problem/21819351
+
+        Reviewed by David Kilzer.
+
+        A renderer should never be assigned to multiple selection subtrees. (Currently RenderObject maintains the last selection state.)
+        RenderView::applySubtreeSelection() loops from the start to the end of the selection to find renderers that are inside the selection.
+        However, in case of regions (when multiple selection roots are present) traversing the renderer tree by calling RenderObject::nextInPreOrder() could
+        end up going across selection roots.
+        This patch ensures that we assign renderers to a specific selection only when the current selection root and the renderer's selection root match.
+
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees2-expected.txt: Added.
+        * fast/regions/crash-when-renderer-is-in-multiple-selection-subtrees2.html: Added.
+
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/form-submission-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/http-equiv-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/http-equiv-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/plugins-disabled-expected.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/plugins-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/cross-origin-frames-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/form-submission-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/http-equiv-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/plugins-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/scripts-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/scripts-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/scripts-disabled.html: Added.
+
+2015-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        (display: block)input range's thumb disappears when moved.
+        https://bugs.webkit.org/show_bug.cgi?id=146896
+        <rdar://problem/21787807>
+
+        Reviewed by Simon Fraser.
+
+        Since the thumb is positioned after the layout for the input (shadow) subtree is finished, the repaint rects
+        issued during the layout will not cover the re-positioned thumb.
+        We need to issue a repaint soon after the thumb is re-positioned.
+
+        * fast/repaint/block-inputrange-repaint-expected.txt: Added.
+        * fast/repaint/block-inputrange-repaint.html: Added.
+
+2015-07-17  Tim Horton  <timothy_horton@apple.com>
+
+        Improve rect shrink-wrapping algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=147037
+        <rdar://problem/21643094>
+
+        Reviewed by Simon Fraser.
+
+        * fast/shrink-wrap/rect-shrink-wrap-expected.png:
+        * fast/shrink-wrap/rect-shrink-wrap.html:
+        Add a radius parameter to testRects, defaulting to 8.
+
+        Add an offset parameter to testRects, making it easier to slide
+        the rect sets around.
+
+        Add some more test cases.
+
+2015-07-17  Nan Wang  <n_wang@apple.com>
+
+        AX: iframe within table cell is inaccessible to VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=147001
+        <rdar://problem/21106945>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/iframe-within-cell-expected.txt: Added.
+        * accessibility/iframe-within-cell.html: Added.
+
+2015-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        style.fontFamily accessor crashes on unstyled node created from DOMParser().parseFromString()
+        https://bugs.webkit.org/show_bug.cgi?id=147026
+        <rdar://problem/21864487>
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/crash-font-family-parsed-expected.txt: Added.
+        * fast/text/crash-font-family-parsed.html: Added.
+
+2015-07-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, rename test file from promise-resolve-non-dom.js to promise-resolve-in-non-dom.js
+        https://bugs.webkit.org/show_bug.cgi?id=146828
+
+        This is the simple follow up patch.
+        When executing the JSC stress tests, script-tests's file name and the expectation file name should be equal.
+
+        * js/promise-resolve-in-non-dom.html:
+        * js/script-tests/promise-resolve-in-non-dom.js: Renamed from LayoutTests/js/script-tests/promise-resolve-non-dom.js.
+        (value.then):
+        * js/script-tests/promise-resolve-non-dom.js:
+        (value.then): Deleted.
+
+2015-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Video posters disappear once media has loaded
+        https://bugs.webkit.org/show_bug.cgi?id=147045
+
+        Reviewed by Simon Fraser.
+
+        * compositing/video/poster-expected.html: Added.
+        * compositing/video/poster.html: Added.
+
+2015-07-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Integrate automatic microtask draining into JSC framework and re-enable Promise
+        https://bugs.webkit.org/show_bug.cgi?id=146828
+
+        Reviewed by Sam Weinig.
+
+        Add Promise tests mainly focusing on microtasks.
+        They can be executed in JSC shell. So they are locate in js/ directory (not js/dom).
+
+        * js/promise-nested-microtasks-expected.txt: Added.
+        * js/promise-nested-microtasks.html: Added.
+        * js/promise-resolve-in-non-dom-expected.txt: Added.
+        * js/promise-resolve-in-non-dom.html: Added.
+        * js/script-tests/promise-nested-microtasks.js: Added.
+        (Promise.resolve.then):
+        * js/script-tests/promise-resolve-non-dom.js: Added.
+        (value.then):
+        * resources/standalone-post.js:
+
+2015-07-17  Saam barati  <saambarati1@gmail.com>
+
+        Function parameters should be parsed in the same parser arena as the function body
+        https://bugs.webkit.org/show_bug.cgi?id=145995
+
+        Reviewed by Yusuke Suzuki.
+
+        * fast/profiler/anonymous-event-handler-expected.txt:
+        * fast/profiler/anonymous-function-called-from-different-contexts-expected.txt:
+        * fast/profiler/anonymous-function-calls-built-in-functions-expected.txt:
+        * fast/profiler/anonymous-function-calls-eval-expected.txt:
+        * fast/profiler/anonymous-functions-with-display-names-expected.txt:
+        * fast/profiler/apply-expected.txt:
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt:
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt:
+        * fast/profiler/call-expected.txt:
+        * fast/profiler/calling-the-function-that-started-the-profiler-from-another-scope-expected.txt:
+        * fast/profiler/compare-multiple-profiles-expected.txt:
+        * fast/profiler/constructor-expected.txt:
+        * fast/profiler/dead-time-expected.txt:
+        * fast/profiler/document-dot-write-expected.txt:
+        * fast/profiler/event-handler-expected.txt:
+        * fast/profiler/execution-context-and-eval-on-same-line-expected.txt:
+        * fast/profiler/inline-event-handler-expected.txt:
+        * fast/profiler/many-calls-in-the-same-scope-expected.txt:
+        * fast/profiler/multiple-and-different-scoped-anonymous-function-calls-expected.txt:
+        * fast/profiler/multiple-and-different-scoped-function-calls-expected.txt:
+        * fast/profiler/multiple-anonymous-functions-called-from-the-same-function-expected.txt:
+        * fast/profiler/multiple-frames-expected.txt:
+        * fast/profiler/named-functions-with-display-names-expected.txt:
+        * fast/profiler/nested-anonymous-functon-expected.txt:
+        * fast/profiler/nested-start-and-stop-profiler-expected.txt:
+        * fast/profiler/one-execution-context-expected.txt:
+        * fast/profiler/profile-calls-in-included-file-expected.txt:
+        * fast/profiler/profile-with-no-title-expected.txt:
+        * fast/profiler/profiling-from-a-nested-location-but-stop-profiling-outside-the-nesting-expected.txt:
+        * fast/profiler/profiling-from-a-nested-location-expected.txt:
+        * fast/profiler/simple-event-call-expected.txt:
+        * fast/profiler/simple-no-level-change-expected.txt:
+        * fast/profiler/start-and-stop-profiler-multiple-times-expected.txt:
+        * fast/profiler/start-and-stop-profiling-in-the-same-function-expected.txt:
+        * fast/profiler/stop-profiling-after-setTimeout-expected.txt:
+        * fast/profiler/stop-then-function-call-expected.txt:
+        * fast/profiler/two-execution-contexts-expected.txt:
+        * fast/profiler/user-defined-function-calls-built-in-functions-expected.txt:
+        * fast/profiler/window-dot-eval-expected.txt:
+        * js/dom/script-start-end-locations-expected.txt:
+
+2015-07-17  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] CSS-display-none rules are not working properly
+        https://bugs.webkit.org/show_bug.cgi?id=147024
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged.html: Added.
+        * http/tests/contentextensions/css-display-none-with-different-case-sensitivity-are-not-merged.html.json: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged.html: Added.
+        * http/tests/contentextensions/css-display-none-with-different-triggers-are-not-merged.html.json: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource-expected.txt: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource.html: Added.
+        * http/tests/contentextensions/two-distinguishable-css-display-none-rules-on-main-resource.html.json: Added.
+
+2015-07-16  Mark Lam  <mark.lam@apple.com>
+
+        Remove leak of objects between isolated worlds on custom events, message events, and pop state events.
+        https://bugs.webkit.org/show_bug.cgi?id=118884
+
+        Reviewed by Filip Pizlo and Mark Lam.
+        Patch by Keith Miller  <keith_miller@apple.com>.
+
+        These tests ensure ensure objects are not leaked across isolated worlds and that those properties are not prematurely
+        garbage collected.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt: Added.
+        * fast/events/event-leak-objects.html: Added.
+        * fast/events/event-properties-gc-expected.txt: Added.
+        * fast/events/event-properties-gc.html: Added.
+
+2015-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix disappearing position:fixed elements in fixed layout mode
+        https://bugs.webkit.org/show_bug.cgi?id=147019
+
+        Reviewed by Tim Horton.
+        
+        Test with four fixed elements in fixed layout mode.
+
+        * compositing/fixed-with-fixed-layout-expected.txt: Added.
+        * compositing/fixed-with-fixed-layout.html: Added.
+
+2015-07-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/186903. It broke the build.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt:
+        * fast/events/event-leak-objects.html:
+        * fast/events/event-properties-gc-expected.txt:
+        * fast/events/event-properties-gc.html:
+
+2015-07-16  Tim Horton  <timothy_horton@apple.com>
+
+        Rebaseline test for Windows.
+
+        * platform/win/fast/shrink-wrap: Added.
+        * platform/win/fast/shrink-wrap/rect-shrink-wrap-expected.txt: Added.
+
+2015-07-16  Keith Miller  <keith_miller@apple.com>
+
+        Remove leak of objects between isolated worlds on custom events, message events, and pop state events.
+        https://bugs.webkit.org/show_bug.cgi?id=118884
+
+        Reviewed by Filip Pizlo.
+
+        These tests ensure ensure objects are not leaked across isolated worlds and that those properties are not prematurely
+        garbage collected.
+
+        * fast/events/constructors/custom-event-constructor-expected.txt:
+        * fast/events/constructors/custom-event-constructor.html:
+        * fast/events/event-leak-objects-expected.txt: Added.
+        * fast/events/event-leak-objects.html: Added.
+        * fast/events/event-properties-gc-expected.txt: Added.
+        * fast/events/event-properties-gc.html: Added.
+
+2015-07-16  David Kilzer  <ddkilzer@apple.com>
+
+        Mark fast/canvas/canvas-too-large-to-draw.html as crashing on El Capitan
+
+        Fix is tracked by <rdar://problem/21857102>.
+
+        * platform/mac/TestExpectations: Mark test as crashing:
+        - fast/canvas/canvas-too-large-to-draw.html
+
+2015-07-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: update $$() to return an Array
+        https://bugs.webkit.org/show_bug.cgi?id=146964
+
+        Reviewed by Brian Burg.
+
+        * inspector/console/command-line-api-expected.txt: Added.
+        * inspector/console/command-line-api.html: Added.
+        Add back a command line api test.
+
+        * platform/efl/inspector/console/command-line-api-expected.txt: Removed.
+        * platform/mac/inspector/console/command-line-api-expected.txt: Removed.
+        Remove old platform expected results for the old version of this test.
+
+        * platform/win/TestExpectations:
+        Speculatively skipping on Windows since other inspector/console tests are skipped.
+
+2015-07-15  Dean Jackson  <dino@apple.com>
+
+        Tag WebGL layers with sRGB colorspace
+        https://bugs.webkit.org/show_bug.cgi?id=146986
+        <rdar://problem/21758704>
+
+        Reviewed by Simon Fraser.
+
+        Add a test that embeds a WebGL canvas inside a solid div. Since both
+        have the same color, the canvas should seemlessly disappear into
+        the surrounding div.
+
+        * fast/canvas/webgl/match-page-color-space-expected.html: Added.
+        * fast/canvas/webgl/match-page-color-space.html: Added.
+        * platform/mac-mavericks/TestExpectations: Skip this test.
+        * platform/mac-yosemite/TestExpectations: Added. Skip this test.
+
+2015-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Scroll snapping to elements is broken for main frame scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=146957
+
+        Reviewed by Brent Fulgham.
+
+        Tests that basic scroll snap coordinates in the mainframe works.
+
+        * css3/scroll-snap/scroll-snap-coordinate-mainframe-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-coordinate-mainframe.html: Added.
+
+2015-07-15  Saam barati  <saambarati1@gmail.com>
+
+        [ES6] implement block scoping to enable 'let'
+        https://bugs.webkit.org/show_bug.cgi?id=142944
+
+        Reviewed by Filip Pizlo.
+
+        * js/dom/reserved-words-as-property-expected.txt:
+        * js/keywords-and-reserved_words-expected.txt:
+        * js/let-syntax-expected.txt: Added.
+        * js/let-syntax.html: Added.
+        * js/reserved-words-strict-expected.txt:
+        * js/script-tests/keywords-and-reserved_words.js:
+        * js/script-tests/let-syntax.js: Added.
+        (truth):
+        (assert):
+        (hasSyntaxError):
+        (shouldHaveSyntaxError):
+        (shouldNotHaveSyntaxError):
+        (shouldHaveSyntaxErrorStrictOnly):
+        * js/script-tests/reserved-words-strict.js:
+        * js/script-tests/statement-list-item-syntax-errors.js:
+        (testSyntax):
+        (runTests):
+        * js/statement-list-item-syntax-errors-expected.txt:
+
+2015-07-15  Tim Horton  <timothy_horton@apple.com>
+
+        Factor rect shrink-wrapping code out of RenderThemeMac for future reuse
+        https://bugs.webkit.org/show_bug.cgi?id=146973
+        <rdar://problem/21643094>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/shrink-wrap/rect-shrink-wrap-expected.png: Added.
+        * fast/shrink-wrap/rect-shrink-wrap-expected.txt: Added.
+        * fast/shrink-wrap/rect-shrink-wrap.html: Added.
+        Add a test of both working and broken (indicated by comments in the test)
+        shrink-wrapping cases.
+
+2015-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Negative scroll snap repeat values cause web process to hang indefinitely
+        https://bugs.webkit.org/show_bug.cgi?id=146953
+
+        Reviewed by Simon Fraser.
+
+        The first test case checks that setting -scroll-snap-points-x or -y to a negative value
+        will not cause the web process to hang. The second test case (in a similar vein) checks
+        that tiny subpixel snap repeats generate a reasonable number of snap offsets.
+
+        * css3/scroll-snap/scroll-snap-negative-repeat-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-negative-repeat.html: Added.
+        * css3/scroll-snap/scroll-snap-subpixel-repeat-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-subpixel-repeat.html: Added.
+
+2015-07-15  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/misc/large-js-program.php crashes slowly in Debug builds on Windows
+
+        Fix is tracked by <rdar://problem/21816197>.
+
+        After r186813, the test was found to also crash in Debug builds
+        on Windows; it just needed more time to do so:
+
+        <https://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fmisc%2Flarge-js-program.php>
+
+        * platform/win/TestExpectations: Mark test as slow and crashing:
+        - http/tests/misc/large-js-program.php
+
+2015-07-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r177876): store.apple.com profile and cart icons are missing
+        https://bugs.webkit.org/show_bug.cgi?id=146894
+
+        Reviewed by Myles C. Maxfield.
+
+        * fast/css/font-face-multiple-missing-glyphs-expected.html: Added.
+        * fast/css/font-face-multiple-missing-glyphs.html: Added.
+
+2015-07-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r186809.
+        https://bugs.webkit.org/show_bug.cgi?id=146943
+
+        Caused about 190 layout test failures. (Requested by mlam_ on
+        #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION (r177876): store.apple.com profile and cart icons
+        are missing"
+        https://bugs.webkit.org/show_bug.cgi?id=146894
+        http://trac.webkit.org/changeset/186809
+
+2015-07-14  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/misc/large-js-program.php crashes in Release, times out in Debug, on Windows
+
+        Fix is tracked by <rdar://problem/21816197>.
+
+        * platform/win/TestExpectations: Mark test as crashing in
+        Release and timing out on Debug:
+        - http/tests/misc/large-js-program.php
+
+2015-07-14  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r177876): store.apple.com profile and cart icons are missing
+        https://bugs.webkit.org/show_bug.cgi?id=146894
+
+        Reviewed by Myles C. Maxfield.
+
+        * fast/css/font-face-multiple-missing-glyphs-expected.html: Added.
+        * fast/css/font-face-multiple-missing-glyphs.html: Added.
+
+2015-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Fix if-domain and unless-domain when loading main documents.
+        https://bugs.webkit.org/show_bug.cgi?id=146868
+
+        Reviewed by Benjamin Poulain.
+
+        * http/tests/contentextensions/block-everything-if-domain-expected.txt: Added.
+        * http/tests/contentextensions/block-everything-if-domain.html: Added.
+        * http/tests/contentextensions/block-everything-if-domain.html.json: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-expected.txt: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-iframe-expected.txt: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-iframe.html: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-iframe.html.json: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-redirect-expected.txt: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-redirect.php: Added.
+        * http/tests/contentextensions/block-everything-unless-domain-redirect.php.json: Added.
+        * http/tests/contentextensions/block-everything-unless-domain.html: Added.
+        * http/tests/contentextensions/block-everything-unless-domain.html.json: Added.
+        * http/tests/contentextensions/main-resource-redirect-blocked-expected.txt:
+        * http/tests/contentextensions/resources/block-everything-unless-domain-helper.html: Added.
+        * http/tests/contentextensions/resources/should-load.html: Added.
+        * http/tests/contentextensions/resources/should-not-load.html: Added.
+
+2015-07-05  Sam Weinig  <sam@webkit.org>
+
+        DOM4: prepend, append, before, after & replace
+        https://bugs.webkit.org/show_bug.cgi?id=74648
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/ChildNode-after-expected.txt: Added.
+        * fast/dom/ChildNode-after.html: Added.
+        * fast/dom/ChildNode-before-expected.txt: Added.
+        * fast/dom/ChildNode-before.html: Added.
+        * fast/dom/ChildNode-replaceWith-expected.txt: Added.
+        * fast/dom/ChildNode-replaceWith.html: Added.
+        * fast/dom/ParentNode-append-expected.txt: Added.
+        * fast/dom/ParentNode-append.html: Added.
+        * fast/dom/ParentNode-prepend-expected.txt: Added.
+        * fast/dom/ParentNode-prepend.html: Added.
+
+2015-07-13  Basile Clement  <basile_clement@apple.com>
+
+        Object cycles should not prevent allocation elimination/sinking
+        https://bugs.webkit.org/show_bug.cgi?id=143073
+
+        Reviewed by Filip Pizlo.
+
+        Add a few microbenchmarks that show performance improvement when
+        sinking or elimininating object cycles.
+
+        * js/regress/elidable-new-object-cycle-expected.txt: Added.
+        * js/regress/elidable-new-object-cycle.html: Added.
+        * js/regress/script-tests/elidable-new-object-cycle.js: Added.
+        (sumOfArithSeries):
+        (foo):
+        * js/regress/script-tests/sinkable-closure-cycle.js: Added.
+        (factorial.f):
+        (factorial):
+        * js/regress/script-tests/sinkable-new-object-cycle.js: Added.
+        (sumOfArithSeries):
+        (verify):
+        (foo):
+        * js/regress/sinkable-closure-cycle-expected.txt: Added.
+        * js/regress/sinkable-closure-cycle.html: Added.
+        * js/regress/sinkable-new-object-cycle-expected.txt: Added.
+        * js/regress/sinkable-new-object-cycle.html: Added.
+
+2015-07-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip failing table-related AX tests
+        https://bugs.webkit.org/show_bug.cgi?id=146903
+
+        * platform/win/TestExpectations:
+
+2015-07-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WEB: VoiceOver for iOS does not read <iframe> elements during linear (swipe) navigation.
+        https://bugs.webkit.org/show_bug.cgi?id=146861
+
+        Reviewed by Darin Adler.
+
+        * platform/ios-simulator/accessibility/iframe-access-expected.txt: Added.
+        * platform/ios-simulator/accessibility/iframe-access.html: Added.
+
+2015-07-11  Gyuyoung Kim  <gyuyoung.kim@chromium.org>
+
+        [EFL] Unreviewed, EFL gardening on 12th Jul.
+
+        Mark some ax tests and editing tests to failure since r186694 and r185692.
+
+        * platform/efl/TestExpectations:
+
+2015-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r186689 and r186710.
+        https://bugs.webkit.org/show_bug.cgi?id=146880
+
+        May have caused a PLT regression and broken a layout test
+        (Requested by cdumez on #webkit).
+
+        Reverted changesets:
+
+        "[WK2] Increase the QoS of some of our WorkQueues to match the
+        one of our processes"
+        https://bugs.webkit.org/show_bug.cgi?id=146855
+        http://trac.webkit.org/changeset/186689
+
+        "REGRESSION (r186689?): fast/frames/frame-limit.html timeout
+        on Mavericks {Release,Debug} WK2 bots"
+        https://bugs.webkit.org/show_bug.cgi?id=146876
+        http://trac.webkit.org/changeset/186710
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html crashes on Windows
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-deny-meta-tag-parent-same-origin-deny.html>
+
+        * platform/win/TestExpectations: Mark tests as crashing:
+        - http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186689?): fast/frames/frame-limit.html timeout on Mavericks {Release,Debug} WK2 bots
+
+        Fix tracked by: <http://webkit.org/b/146876>
+
+        * platform/mac-wk2/TestExpectations: Mark test as timing out:
+        - fast/frames/frame-limit.html
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186697): Fix Yosemite, El Capitan test results for js/dom/global-constructors-attributes.html
+
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        - Move MediaStream results into alphabetical order to fix test
+          failures.
+
+2015-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Unskip some now-passing tests.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-07-10  Matthew Daiter  <mdaiter@apple.com>
+
+        Exposing webkitMediaStream as MediaStream
+        https://bugs.webkit.org/show_bug.cgi?id=146813
+        <rdar://problem/21754383>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        Changed attributes from webkitMediaStream to MediaStream
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        Ditto
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        Ditto
+
+2015-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r183133-r183138): Secondary clicking in whitespace selects preceding word
+        https://bugs.webkit.org/show_bug.cgi?id=146695
+        <rdar://problem/21441466>
+
+        Reviewed by Tim Horton.
+
+        Add a new test that checks for correct mac selection behavior for editable and read-only
+        text fields.
+
+        * platform/mac/editing/selection/context-menu-select-editability-expected.txt: Added.
+        * platform/mac/editing/selection/context-menu-select-editability.html: Added.
+
+2015-07-10  Nan Wang  <n_wang@apple.com>
+
+        Added tests for new role: table and cell.
+        https://bugs.webkit.org/show_bug.cgi?id=146011.
+
+        Reviewed by Chris Fleizach.
+
+        Added tests for table and cell role. Also modified other tests to fit the changes.
+
+        * accessibility/roles-computedRoleString-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+        * accessibilit/roles-table-and-cell-expected.txt: Added.
+        * accessibility/roles-table-and-cell.html: Added.
+        * platform/mac/accessibility/aria-table-hierarchy-expected.txt:
+        * platform/mac/accessibility/aria-tables-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2015-07-10  Daniel Bates  <dabates@apple.com>
+
+        Serialized declaration for background-size/-webkit-mask-size should preserve identical
+        values instead of coalescing them
+        https://bugs.webkit.org/show_bug.cgi?id=143191
+        <rdar://problem/21759393>
+
+        Reviewed by Darin Adler.
+
+        Inspired by Blink r172548:
+        <http://src.chromium.org/viewvc/blink?view=revision&revision=172548>
+
+        Update tests and test results to ensure we serialize background-size, -webkit-mask-size
+        correctly when identical values are present in their declarations.
+
+        * fast/backgrounds/size/parsing-background-size-values-expected.txt:
+        * fast/backgrounds/size/resources/parsing-background-size-values.js:
+        * fast/masking/parsing-mask-expected.txt:
+        * fast/masking/parsing-mask.html:
+
+2015-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Bidi-Isolate inlines break layout with collapsed whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=109624
+        <rdar://problem/21752834>
+
+        Reviewed by David Hyatt.
+
+        * fast/inline/crash-when-child-renderer-is-removed-and-line-stays-clean-expected.txt:
+        * fast/text/bidi-isolate-whitespace-collapse-expected.html: Added.
+        * fast/text/bidi-isolate-whitespace-collapse.html: Added.
+        * fast/text/international/embed-bidi-style-in-isolate-crash-expected.txt:
+        * fast/text/remove-text-node-linebox-not-dirty-crash-expected.txt:
+
+2015-07-10  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Grid item's auto-margins are not applied correctly
+        https://bugs.webkit.org/show_bug.cgi?id=146581
+
+        Reviewed by Darin Adler.
+
+        Tests to verify auto-margins alignment works as expected with grid items.
+
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment.html: Added.
+
+2015-07-10  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Fix typo in LayoutTests/platform/wk2/TestExpectation.
+        https://bugs.webkit.org/show_bug.cgi?id=146830
+
+        Unreviewed, WK2 gardening.
+
+        * platform/wk2/TestExpectations:
+
+2015-07-09  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Fix readable-stream-tee.html
+        https://bugs.webkit.org/show_bug.cgi?id=146803
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-tee.html:
+
+2015-07-09  Daniel Bates  <dabates@apple.com>
+
+        Fetching Content Security Policy report URL should respect same origin policy
+        https://bugs.webkit.org/show_bug.cgi?id=146754
+        <rdar://problem/18860259>
+
+        Reviewed by Brady Eidson.
+
+        Inspired by Blink r149791 (by Mike West <mkwst@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?revision=149791&view=revision>
+
+        Added additional tests for private browsing mode.
+
+        * http/tests/cookies/resources/setCookies.cgi:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/save-report.php:
+        * platform/wk2/TestExpectations: Skip private browsing mode tests in WebKit2 until we fix <https://bugs.webkit.org/show_bug.cgi?id=115274>.
+
+2015-07-09  Wenson Hsieh  <whsieh@berkeley.edu>
+
+        Rubber banding is broken when using a Mighty Mouse
+        https://bugs.webkit.org/show_bug.cgi?id=146693
+
+        Reviewed by Tim Horton.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/stateless-scrolling-no-rubber-band-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/scrolling/stateless-scrolling-no-rubber-band.html: Added.
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Fix shape-highlight layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=146080
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/shapes-test.js: Updated.
+
+2015-07-09  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r180248): Repro Crash: com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::createRangeError + 20
+        https://bugs.webkit.org/show_bug.cgi?id=146767
+
+        Reviewed by Geoffrey Garen.
+
+        New test that generates a call to a function that involves creating a huge
+        object literal that exceeds the available stack space.
+
+        * http/tests/misc/large-js-program-expected.txt: Added.
+        * http/tests/misc/large-js-program.php: Added.
+
+2015-07-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: <details> element should allow expand/close through AX API
+        https://bugs.webkit.org/show_bug.cgi?id=146549
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/details-summary-expected.txt:
+        * platform/mac/accessibility/details-summary.html:
+
+2015-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Prevent crashes with plugins.
+        https://bugs.webkit.org/show_bug.cgi?id=146705
+        rdar://problem/20855444
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/contentextensions/plugin-doesnt-crash-expected.txt: Copied from http/tests/plugins/get-url-expected.txt.
+        * http/tests/contentextensions/plugin-doesnt-crash.html: Copied from http/tests/plugins/get-url.html.
+        * http/tests/contentextensions/plugin-doesnt-crash.html.json: Added.
+        * http/tests/contentextensions/resources/load-me-1.txt: Copied from http/tests/plugins/resources/load-me-1.txt.
+
+2015-07-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Skip canvas/philip/tests/2d.text.draw.fontface.notinpage.html
+        https://bugs.webkit.org/show_bug.cgi?id=146795
+
+        * platform/win/TestExpectations:
+
+2015-07-09  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver cannot get to any content in Yahoo Mail messages table
+        https://bugs.webkit.org/show_bug.cgi?id=146674
+
+        Unreviewed. Skip a test on windows that needs more WKTR and DRT implementations.
+
+        * platform/win/TestExpectations:
+
+2015-07-09  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver cannot get to any content in Yahoo Mail messages table
+        https://bugs.webkit.org/show_bug.cgi?id=146674
+
+        Reviewed by Darin Adler.
+
+        * accessibility/aria-table-with-presentational-elements-expected.txt: Added.
+        * accessibility/aria-table-with-presentational-elements.html: Added.
+
 2015-07-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Fix grammar issue in TypeError attempting to change an unconfigurable property

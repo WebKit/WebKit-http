@@ -55,7 +55,7 @@
 #endif
 
 #if ENABLE(MEDIA_SESSION)
-#include "MediaEventTypes.h"
+#include "MediaSessionEvents.h"
 #endif
 
 namespace JSC {

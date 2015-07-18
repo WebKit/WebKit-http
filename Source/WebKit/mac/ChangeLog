@@ -1,3 +1,62 @@
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Enabled Content-Disposition: attachment sandbox on iOS.
+
+2015-07-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: [Mac] Save dialog not working when inspector is docked
+        https://bugs.webkit.org/show_bug.cgi?id=146991
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (-[WebInspectorWindowController webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+        When the window is nil (docked) use a non-window version of running the dialog.
+
+2015-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Expose contentsSizeRespectingOverflow() via WebView so UIWebView can use it
+        https://bugs.webkit.org/show_bug.cgi?id=146924
+        WebKit part of rdar://problem/21802456
+
+        Reviewed by Tim Horton.
+
+        Expose the FrameView's contentsSizeRespectingOverflow() via WebView, for use
+        by UIKit.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsSizeRespectingOverflow]):
+        * WebView/WebViewPrivate.h:
+
+2015-07-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove wkPopupMenu from WebCoreSystemInterface; it's not called from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=146945
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2015-07-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Inspector should be able to be docked to the bottom of a narrow window
+        https://bugs.webkit.org/show_bug.cgi?id=146871
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+
 2015-07-07  Brady Eidson  <beidson@apple.com>
 
         HTTP Auth cached after disabling private browsing/reset.

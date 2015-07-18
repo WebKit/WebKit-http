@@ -44,6 +44,7 @@ namespace WebCore {
 class AudioContext;
 class ClientRect;
 class ClientRectList;
+class DOMPath;
 class DOMStringList;
 class DOMWindow;
 class Document;
@@ -323,6 +324,8 @@ public:
     PassRefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
     PassRefPtr<SerializedScriptValue> deserializeBuffer(PassRefPtr<ArrayBuffer>) const;
 
+    bool isFromCurrentWorld(Deprecated::ScriptValue) const;
+
     void setUsesOverlayScrollbars(bool enabled);
 
     String getCurrentCursorInfo(ExceptionCode&);
@@ -413,6 +416,8 @@ public:
 #if ENABLE(CSS_SCROLL_SNAP)
     String scrollSnapOffsets(Element*, ExceptionCode&);
 #endif
+
+    PassRefPtr<DOMPath> pathWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode&);
 
 private:
     explicit Internals(Document*);

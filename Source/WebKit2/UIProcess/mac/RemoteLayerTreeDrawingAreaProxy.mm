@@ -35,6 +35,7 @@
 #import "WebProcessProxy.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/IOSurfacePool.h>
+#import <WebCore/MachSendRight.h>
 #import <WebCore/WebActionDisablingCALayerDelegate.h>
 
 using namespace IPC;
@@ -170,7 +171,7 @@ FloatRect RemoteLayerTreeDrawingAreaProxy::scaledExposedRect() const
 void RemoteLayerTreeDrawingAreaProxy::sendUpdateGeometry()
 {
     m_lastSentSize = m_size;
-    m_webPageProxy.process().send(Messages::DrawingArea::UpdateGeometry(m_size, IntSize(), false), m_webPageProxy.pageID());
+    m_webPageProxy.process().send(Messages::DrawingArea::UpdateGeometry(m_size, IntSize(), false, MachSendRight()), m_webPageProxy.pageID());
     m_isWaitingForDidUpdateGeometry = true;
 }
 
@@ -218,7 +219,7 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     // Handle requested scroll position updates from the scrolling tree transaction after didCommitLayerTree()
     // has updated the view size based on the content size.
     if (requestedScrollInfo.requestsScrollPositionUpdate)
-        m_webPageProxy.requestScroll(requestedScrollInfo.requestedScrollPosition, requestedScrollInfo.requestIsProgrammaticScroll);
+        m_webPageProxy.requestScroll(requestedScrollInfo.requestedScrollPosition, layerTreeTransaction.scrollOrigin(), requestedScrollInfo.requestIsProgrammaticScroll);
 #endif // ENABLE(ASYNC_SCROLLING)
 
     if (m_debugIndicatorLayerTreeHost) {

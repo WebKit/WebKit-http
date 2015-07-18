@@ -1914,8 +1914,10 @@ static void initializeRoleMap()
         { "contentinfo", LandmarkContentInfoRole },
         { "dialog", ApplicationDialogRole },
         { "directory", DirectoryRole },
-        { "grid", TableRole },
-        { "gridcell", CellRole },
+        { "grid", GridRole },
+        { "gridcell", GridCellRole },
+        { "table", TableRole },
+        { "cell", CellRole },
         { "columnheader", ColumnHeaderRole },
         { "combobox", ComboBoxRole },
         { "definition", DefinitionRole },
@@ -2040,6 +2042,8 @@ static bool nodeHasPresentationRole(Node* node)
 bool AccessibilityObject::supportsPressAction() const
 {
     if (isButton())
+        return true;
+    if (roleValue() == DetailsRole)
         return true;
     
     Element* actionElement = this->actionElement();

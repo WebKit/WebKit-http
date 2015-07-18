@@ -84,6 +84,7 @@ SymbolTableEntry::FatEntry* SymbolTableEntry::inflateSlow()
 SymbolTable::SymbolTable(VM& vm)
     : JSCell(vm, vm.symbolTableStructure.get())
     , m_usesNonStrictEval(false)
+    , m_correspondsToLexicalScope(false)
 {
 }
 
@@ -130,7 +131,10 @@ const SymbolTable::LocalToEntryVec& SymbolTable::localToEntry(const ConcurrentJI
 
 SymbolTableEntry* SymbolTable::entryFor(const ConcurrentJITLocker& locker, ScopeOffset offset)
 {
-    return localToEntry(locker)[offset.offset()];
+    auto& toEntryVector = localToEntry(locker);
+    if (offset.offset() >= toEntryVector.size())
+        return nullptr;
+    return toEntryVector[offset.offset()];
 }
 
 SymbolTable* SymbolTable::cloneScopePart(VM& vm)
@@ -138,6 +142,7 @@ SymbolTable* SymbolTable::cloneScopePart(VM& vm)
     SymbolTable* result = SymbolTable::create(vm);
     
     result->m_usesNonStrictEval = m_usesNonStrictEval;
+    result->m_correspondsToLexicalScope = m_correspondsToLexicalScope;
 
     for (auto iter = m_map.begin(), end = m_map.end(); iter != end; ++iter) {
         if (!iter->value.varOffset().isScope())

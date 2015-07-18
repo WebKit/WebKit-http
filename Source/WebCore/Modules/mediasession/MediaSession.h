@@ -45,6 +45,14 @@ public:
         Interrupted
     };
 
+    enum class Kind {
+        Default,
+        Content,
+        Transient,
+        TransientSolo,
+        Ambient
+    };
+
     static Ref<MediaSession> create(ScriptExecutionContext& context, const String& kind)
     {
         return adoptRef(*new MediaSession(context, kind));
@@ -55,16 +63,23 @@ public:
     ~MediaSession();
 
     String kind() const;
+    Kind kindEnum() const { return m_kind; }
     MediaRemoteControls* controls(bool& isNull);
 
     State currentState() const { return m_currentState; }
+    bool hasActiveMediaElements() const;
 
     void setMetadata(const Dictionary&);
 
     void releaseSession();
-    
+
     // Runs the media session invocation algorithm and returns true on success.
     bool invoke();
+
+    void handleDuckInterruption();
+    void handlePauseInterruption();
+    void handleUnduckInterruption();
+    void handleUnpauseInterruption();
 
     void togglePlayback();
     void skipToNextTrack();
@@ -73,23 +88,15 @@ public:
 private:
     friend class HTMLMediaElement;
 
-    enum class Kind {
-        Default,
-        Content,
-        Transient,
-        TransientSolo,
-        Ambient
-    };
-
     static Kind parseKind(const String&);
-    Kind kindEnum() const { return m_kind; }
 
     void addMediaElement(HTMLMediaElement&);
     void removeMediaElement(HTMLMediaElement&);
 
+    void safelyIterateActiveMediaElements(std::function<void(HTMLMediaElement*)>);
+    void changeActiveMediaElements(std::function<void(void)>);
     void addActiveMediaElement(HTMLMediaElement&);
     bool isMediaElementActive(HTMLMediaElement&);
-    bool hasActiveMediaElements();
 
     void releaseInternal();
 

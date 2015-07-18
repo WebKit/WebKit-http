@@ -55,7 +55,7 @@ void PageClientImpl::scrollView(const WebCore::IntRect&, const WebCore::IntSize&
 {
 }
 
-void PageClientImpl::requestScroll(const WebCore::FloatPoint&, bool)
+void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool)
 {
 }
 
@@ -252,6 +252,14 @@ void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigatio
 }
 
 void PageClientImpl::didChangeBackgroundColor()
+{
+}
+
+void PageClientImpl::refView()
+{
+}
+
+void PageClientImpl::derefView()
 {
 }
 

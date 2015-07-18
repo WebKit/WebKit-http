@@ -351,6 +351,7 @@
     <ClCompile Include="..\bytecode\StructureStubClearingWatchpoint.cpp" />
     <ClCompile Include="..\bytecode\StructureStubInfo.cpp" />
     <ClCompile Include="..\bytecode\ToThisStatus.cpp" />
+    <ClCompile Include="..\bytecode\TrackedReferences.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
@@ -398,7 +399,6 @@
     <ClCompile Include="..\dfg\DFGDesiredTransitions.cpp" />
     <ClCompile Include="..\dfg\DFGDesiredWatchpoints.cpp" />
     <ClCompile Include="..\dfg\DFGDesiredWeakReferences.cpp" />
-    <ClCompile Include="..\dfg\DFGDesiredWriteBarriers.cpp" />
     <ClCompile Include="..\dfg\DFGDisassembler.cpp" />
     <ClCompile Include="..\dfg\DFGDoesGC.cpp" />
     <ClCompile Include="..\dfg\DFGDominators.cpp" />
@@ -431,6 +431,7 @@
     <ClCompile Include="..\dfg\DFGLongLivedState.cpp" />
     <ClCompile Include="..\dfg\DFGLoopPreHeaderCreationPhase.cpp" />
     <ClCompile Include="..\dfg\DFGMayExit.cpp" />
+    <ClCompile Include="..\dfg\DFGMinifiedGraph.cpp" />
     <ClCompile Include="..\dfg\DFGMinifiedNode.cpp" />
     <ClCompile Include="..\dfg\DFGMovHintRemovalPhase.cpp" />
     <ClCompile Include="..\dfg\DFGNaiveDominators.cpp" />
@@ -658,6 +659,7 @@
     <ClCompile Include="..\parser\SourceCode.cpp" />
     <ClCompile Include="..\parser\SourceProvider.cpp" />
     <ClCompile Include="..\parser\SourceProviderCache.cpp" />
+    <ClCompile Include="..\parser\VariableEnvironment.cpp" />
     <ClCompile Include="..\profiler\LegacyProfiler.cpp" />
     <ClCompile Include="..\profiler\Profile.cpp" />
     <ClCompile Include="..\profiler\ProfileGenerator.cpp" />
@@ -1012,6 +1014,7 @@
     <ClInclude Include="..\bytecode\StructureStubClearingWatchpoint.h" />
     <ClInclude Include="..\bytecode\StructureStubInfo.h" />
     <ClInclude Include="..\bytecode\ToThisStatus.h" />
+    <ClInclude Include="..\bytecode\TrackedReferences.h" />
     <ClInclude Include="..\bytecode\TypeLocation.h" />
     <ClInclude Include="..\bytecode\UnlinkedCodeBlock.h" />
     <ClInclude Include="..\bytecode\UnlinkedInstructionStream.h" />
@@ -1082,7 +1085,6 @@
     <ClInclude Include="..\dfg\DFGDesiredTransitions.h" />
     <ClInclude Include="..\dfg\DFGDesiredWatchpoints.h" />
     <ClInclude Include="..\dfg\DFGDesiredWeakReferences.h" />
-    <ClInclude Include="..\dfg\DFGDesiredWriteBarriers.h" />
     <ClInclude Include="..\dfg\DFGDisassembler.h" />
     <ClInclude Include="..\dfg\DFGDoesGC.h" />
     <ClInclude Include="..\dfg\DFGDominators.h" />
@@ -1435,6 +1437,7 @@
     <ClInclude Include="..\parser\SourceProviderCache.h" />
     <ClInclude Include="..\parser\SourceProviderCacheItem.h" />
     <ClInclude Include="..\parser\SyntaxChecker.h" />
+    <ClInclude Include="..\parser\VariableEnvironment.h" />
     <ClInclude Include="..\profiler\CallIdentifier.h" />
     <ClInclude Include="..\profiler\LegacyProfiler.h" />
     <ClInclude Include="..\profiler\Profile.h" />

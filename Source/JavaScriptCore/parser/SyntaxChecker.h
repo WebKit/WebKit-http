@@ -69,7 +69,6 @@ public:
     {
     }
 
-    typedef SyntaxChecker FunctionBodyBuilder;
     enum { NoneExpr = 0,
         ResolveEvalExpr, ResolveExpr, IntegerExpr, DoubleExpr, StringExpr,
         ThisExpr, NullExpr, BoolExpr, RegExpExpr, ObjectLiteralExpr,
@@ -172,16 +171,15 @@ public:
     ExpressionType createNewExpr(const JSTokenLocation&, ExpressionType, int, int, int, int) { return NewExpr; }
     ExpressionType createNewExpr(const JSTokenLocation&, ExpressionType, int, int) { return NewExpr; }
     ExpressionType createConditionalExpr(const JSTokenLocation&, ExpressionType, ExpressionType, ExpressionType) { return ConditionalExpr; }
-    ExpressionType createAssignResolve(const JSTokenLocation&, const Identifier&, ExpressionType, int, int, int) { return AssignmentExpr; }
+    ExpressionType createAssignResolve(const JSTokenLocation&, const Identifier&, ExpressionType, int, int, int, AssignmentContext) { return AssignmentExpr; }
     ExpressionType createEmptyVarExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
+    ExpressionType createEmptyLetExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
 #if ENABLE(ES6_CLASS_SYNTAX)
     ClassExpression createClassExpr(const JSTokenLocation&, const Identifier&, ExpressionType, ExpressionType, PropertyList, PropertyList) { return ClassExpr; }
 #endif
     ExpressionType createFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
-    int createFunctionBody(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind) { return FunctionBodyResult; }
-#if ENABLE(ES6_ARROWFUNCTION_SYNTAX)
+    int createFunctionBody(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind, unsigned, int) { return FunctionBodyResult; }
     ExpressionType createArrowFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
-#endif 
     void setFunctionNameStart(int, int) { }
     int createArguments() { return ArgumentsResult; }
     int createArguments(int) { return ArgumentsResult; }
@@ -220,8 +218,8 @@ public:
     int createPropertyList(const JSTokenLocation&, Property, int) { return PropertyListResult; }
     int createElementList(int, int) { return ElementsListResult; }
     int createElementList(int, int, int) { return ElementsListResult; }
-    int createFormalParameterList(DestructuringPattern) { return FormalParameterListResult; }
-    int createFormalParameterList(int, DestructuringPattern) { return FormalParameterListResult; }
+    int createFormalParameterList() { return FormalParameterListResult; }
+    void appendParameter(int, DestructuringPattern) { }
     int createClause(int, int) { return ClauseResult; }
     int createClauseList(int) { return ClauseListResult; }
     int createClauseList(int, int) { return ClauseListResult; }
@@ -230,22 +228,23 @@ public:
     int createClassDeclStatement(const JSTokenLocation&, ClassExpression,
         const JSTextPosition&, const JSTextPosition&, int, int) { return StatementResult; }
 #endif
-    int createBlockStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
+    int createBlockStatement(const JSTokenLocation&, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createExprStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createIfStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }
     int createIfStatement(const JSTokenLocation&, int, int, int, int, int) { return StatementResult; }
-    int createForLoop(const JSTokenLocation&, int, int, int, int, int, int) { return StatementResult; }
-    int createForInLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int) { return StatementResult; }
-    int createForOfLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int) { return StatementResult; }
+    int createForLoop(const JSTokenLocation&, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
+    int createForInLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
+    int createForOfLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createEmptyStatement(const JSTokenLocation&) { return StatementResult; }
     int createVarStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
+    int createLetStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createReturnStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createBreakStatement(const JSTokenLocation&, int, int) { return StatementResult; }
     int createBreakStatement(const JSTokenLocation&, const Identifier*, int, int) { return StatementResult; }
     int createContinueStatement(const JSTokenLocation&, int, int) { return StatementResult; }
     int createContinueStatement(const JSTokenLocation&, const Identifier*, int, int) { return StatementResult; }
     int createTryStatement(const JSTokenLocation&, int, const Identifier*, int, int, int, int) { return StatementResult; }
-    int createSwitchStatement(const JSTokenLocation&, int, int, int, int, int, int) { return StatementResult; }
+    int createSwitchStatement(const JSTokenLocation&, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createWhileStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }
     int createWithStatement(const JSTokenLocation&, int, int, int, int, int, int) { return StatementResult; }
     int createDoWhileStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }
@@ -269,7 +268,6 @@ public:
     }
 
     void appendStatement(int, int) { }
-    void addVar(const Identifier*, bool) { }
     int combineCommaNodes(const JSTokenLocation&, int, int) { return CommaExpr; }
     int evalCount() const { return 0; }
     void appendBinaryExpressionInfo(int& operandStackDepth, int expr, int, int, int, bool)
@@ -328,7 +326,7 @@ public:
     void appendObjectPatternEntry(ArrayPattern, const JSTokenLocation&, bool, const Identifier&, DestructuringPattern, int)
     {
     }
-    DestructuringPattern createBindingLocation(const JSTokenLocation&, const Identifier&, const JSTextPosition&, const JSTextPosition&)
+    DestructuringPattern createBindingLocation(const JSTokenLocation&, const Identifier&, const JSTextPosition&, const JSTextPosition&, AssignmentContext)
     {
         return BindingDestructuring;
     }

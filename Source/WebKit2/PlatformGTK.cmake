@@ -15,8 +15,8 @@ configure_file(webkit2gtk-web-extension.pc.in ${WebKit2WebExtension_PKGCONFIG_FI
 
 add_definitions(-DBUILDING_WEBKIT)
 add_definitions(-DWEBKIT2_COMPILATION)
-add_definitions(-DLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
-add_definitions(-DPACKAGE_LOCALE_DIR="${CMAKE_INSTALL_FULL_LOCALEDIR}")
+add_definitions(-DPKGLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
+add_definitions(-DLOCALEDIR="${CMAKE_INSTALL_FULL_LOCALEDIR}")
 add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 
 set(WebKit2_USE_PREFIX_HEADER ON)
@@ -54,6 +54,8 @@ list(APPEND WebKit2_SOURCES
     Shared/Network/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+
+    Shared/Plugins/unix/PluginSearchPath.cpp
 
     Shared/cairo/ShareableBitmapCairo.cpp
 
@@ -470,6 +472,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/API/c/gtk"
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
+    "${WEBKIT2_DIR}/Shared/Plugins/unix"
     "${WEBKIT2_DIR}/Shared/gtk"
     "${WEBKIT2_DIR}/Shared/soup"
     "${WEBKIT2_DIR}/Shared/unix"

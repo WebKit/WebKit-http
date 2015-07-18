@@ -557,11 +557,6 @@ void CoordinatedGraphicsLayer::setNeedsDisplayInRect(const FloatRect& rect, Shou
     addRepaintRect(rect);
 }
 
-CoordinatedLayerID CoordinatedGraphicsLayer::id() const
-{
-    return m_id;
-}
-
 void CoordinatedGraphicsLayer::setScrollableArea(ScrollableArea* scrollableArea)
 {
     bool oldScrollable = isScrollable();
@@ -910,9 +905,8 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
 
 void CoordinatedGraphicsLayer::createBackingStore()
 {
-    m_mainBackingStore = std::make_unique<TiledBackingStore>(this);
+    m_mainBackingStore = std::make_unique<TiledBackingStore>(this, effectiveContentsScale());
     m_mainBackingStore->setSupportsAlpha(!contentsOpaque());
-    m_mainBackingStore->setContentsScale(effectiveContentsScale());
 }
 
 void CoordinatedGraphicsLayer::tiledBackingStorePaint(GraphicsContext* context, const IntRect& rect)
@@ -1039,6 +1033,7 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
     bool newBackingStore = false;
     if (!m_mainBackingStore) {
         createBackingStore();
+        m_pendingVisibleRectAdjustment = true;
         newBackingStore = true;
     }
 
