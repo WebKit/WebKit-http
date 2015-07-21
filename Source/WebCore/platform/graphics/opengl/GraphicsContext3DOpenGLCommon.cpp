@@ -88,17 +88,15 @@ static ShaderNameHash* currentNameHashMapForShader = nullptr;
 
 static uint64_t nameHashForShader(const char* name, size_t length)
 {
-    if (!length)
+    if (!currentNameHashMapForShader || !length)
         return 0;
 
     CString nameAsCString = CString(name);
 
     // Look up name in our local map.
-    if (currentNameHashMapForShader) {
-        ShaderNameHash::iterator result = currentNameHashMapForShader->find(nameAsCString);
-        if (result != currentNameHashMapForShader->end())
-            return result->value;
-    }
+    ShaderNameHash::iterator existingHash = currentNameHashMapForShader->find(nameAsCString);
+    if (existingHash != currentNameHashMapForShader->end())
+        return existingHash->value;
 
     unsigned hashValue = nameAsCString.hash();
 
