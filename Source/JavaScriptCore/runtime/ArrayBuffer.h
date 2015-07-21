@@ -52,9 +52,10 @@ public:
     unsigned sizeInBytes() { return m_sizeInBytes; }
 
 private:
-    ArrayBufferContents(void* data, unsigned sizeInBytes) 
+    ArrayBufferContents(void* data, unsigned sizeInBytes, bool freeWhenDone = true)
         : m_data(data)
         , m_sizeInBytes(sizeInBytes)
+        , m_freeWhenDone(freeWhenDone)
     { }
 
     friend class ArrayBuffer;
@@ -86,6 +87,7 @@ private:
 
     void* m_data;
     unsigned m_sizeInBytes;
+    bool m_freeWhenDone;
 };
 
 class ArrayBuffer : public GCIncomingRefCounted<ArrayBuffer> {
@@ -94,7 +96,7 @@ public:
     static inline PassRefPtr<ArrayBuffer> create(ArrayBuffer*);
     static inline PassRefPtr<ArrayBuffer> create(const void* source, unsigned byteLength);
     static inline PassRefPtr<ArrayBuffer> create(ArrayBufferContents&);
-    static inline PassRefPtr<ArrayBuffer> createAdopted(const void* data, unsigned byteLength);
+    static inline PassRefPtr<ArrayBuffer> createAdopted(const void* data, unsigned byteLength, bool freeWhenDone = true);
 
     // Only for use by Uint8ClampedArray::createUninitialized and SharedBuffer::createArrayBuffer.
     static inline PassRefPtr<ArrayBuffer> createUninitialized(unsigned numElements, unsigned elementByteSize);
@@ -170,9 +172,9 @@ PassRefPtr<ArrayBuffer> ArrayBuffer::create(ArrayBufferContents& contents)
     return adoptRef(new ArrayBuffer(contents));
 }
 
-PassRefPtr<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength)
+PassRefPtr<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength, bool freeWhenDone)
 {
-    ArrayBufferContents contents(const_cast<void*>(data), byteLength);
+    ArrayBufferContents contents(const_cast<void*>(data), byteLength, freeWhenDone);
     return create(contents);
 }
 
@@ -278,7 +280,8 @@ void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByte
 
 ArrayBufferContents::~ArrayBufferContents()
 {
-    WTF::fastFree(m_data);
+    if (LIKELY(m_freeWhenDone))
+        WTF::fastFree(m_data);
 }
 
 } // namespace JSC
