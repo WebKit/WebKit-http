@@ -1887,7 +1887,8 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
         pluginProcessSandboxPolicy = PluginProcessSandboxPolicyUnsandboxed;
         break;
 
-    case PluginModuleBlocked:
+    case PluginModuleBlockedForSecurity:
+    case PluginModuleBlockedForCompatibility:
         pluginProcessToken = 0;
         return;
     }
@@ -5016,6 +5017,9 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 
 #if ENABLE(GEOLOCATION)
     m_geolocationPermissionRequestManager.invalidateRequests();
+#endif
+#if ENABLE(MEDIA_STREAM)
+    m_userMediaPermissionRequestManager.invalidateRequests();
 #endif
 
     m_notificationPermissionRequestManager.invalidateRequests();

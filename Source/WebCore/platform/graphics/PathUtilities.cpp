@@ -31,6 +31,7 @@
 #include "FloatRect.h"
 #include "GeometryUtilities.h"
 #include <math.h>
+#include <wtf/MathExtras.h>
 
 namespace WebCore {
 
@@ -179,7 +180,7 @@ static FloatPointGraph::Polygon walkGraphAndExtractPolygon(FloatPointGraph::Node
             float crossZ = nextVec.x() * currentVec.y() - nextVec.y() * currentVec.x();
 
             if (crossZ < 0)
-                angle = (2 * M_PI) - angle;
+                angle = (2 * piFloat) - angle;
 
             if (!nextNode || angle > nextNodeAngle) {
                 nextNode = potentialNextNode;

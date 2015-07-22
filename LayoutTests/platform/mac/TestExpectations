@@ -748,6 +748,7 @@ inspector-protocol/debugger
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
 webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass Failure ]
+[ Debug Mavericks ] media/restore-from-page-cache.html [ Pass Failure ]
 
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
@@ -992,6 +993,7 @@ webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 webkit.org/b/140639 http/tests/media/video-play-waiting.html [ Pass Timeout ]
 
 # ENABLE(MEDIA_SESSION) is disabled
+media/session/content-interruptions.html
 media/session/controls-existence.html
 media/session/default-session.html
 

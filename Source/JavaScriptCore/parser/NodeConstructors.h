@@ -170,6 +170,11 @@ namespace JSC {
     {
     }
 
+    inline NewTargetNode::NewTargetNode(const JSTokenLocation& location)
+        : ExpressionNode(location)
+    {
+    }
+
     inline ResolveNode::ResolveNode(const JSTokenLocation& location, const Identifier& ident, const JSTextPosition& start)
         : ExpressionNode(location)
         , m_ident(ident)
@@ -700,12 +705,6 @@ namespace JSC {
     {
     }
 
-    inline ConstStatementNode::ConstStatementNode(const JSTokenLocation& location, ConstDeclNode* next)
-        : StatementNode(location)
-        , m_next(next)
-    {
-    }
-
     inline SourceElements::SourceElements()
         : m_head(nullptr)
         , m_tail(nullptr)
@@ -895,14 +894,6 @@ namespace JSC {
         , VariableEnvironmentNode(lexicalVariables)
         , m_expr(expr)
         , m_block(block)
-    {
-    }
-
-    inline ConstDeclNode::ConstDeclNode(const JSTokenLocation& location, const Identifier& ident, ExpressionNode* init)
-        : ExpressionNode(location)
-        , m_ident(ident)
-        , m_next(0)
-        , m_init(init)
     {
     }
 

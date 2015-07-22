@@ -1425,6 +1425,3 @@ macro notSupported()
         break
     end
 end
-
-_llint_op_init_global_const_nop:
-    dispatch(5)

@@ -66,7 +66,7 @@ public:
     Kind kindEnum() const { return m_kind; }
     MediaRemoteControls* controls(bool& isNull);
 
-    State currentState() const { return m_currentState; }
+    WEBCORE_EXPORT State currentState() const { return m_currentState; }
     bool hasActiveMediaElements() const;
 
     void setMetadata(const Dictionary&);
@@ -77,6 +77,7 @@ public:
     bool invoke();
 
     void handleDuckInterruption();
+    void handleIndefinitePauseInterruption();
     void handlePauseInterruption();
     void handleUnduckInterruption();
     void handleUnpauseInterruption();

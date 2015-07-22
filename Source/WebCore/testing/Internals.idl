@@ -45,6 +45,12 @@ enum ResourceLoadPriority {
     "ResourceLoadPriorityVeryHigh"
 };
 
+enum MediaSessionInterruptingCategory {
+    "content",
+    "transient",
+    "transient-solo"
+};
+
 [
     NoInterfaceObject,
 ] interface Internals {
@@ -247,6 +253,7 @@ enum ResourceLoadPriority {
 
     [RaisesException] void setPageScaleFactor(unrestricted float scaleFactor, long x, long y);
     [RaisesException] void setPageZoomFactor(unrestricted float zoomFactor);
+    [RaisesException] void setTextZoomFactor(unrestricted float zoomFactor);
 
     [RaisesException] void setUseFixedLayout(boolean useFixedLayout);
     [RaisesException] void setFixedLayoutSize(long width, long height);
@@ -351,6 +358,9 @@ enum ResourceLoadPriority {
 
     [Conditional=VIDEO] void beginMediaSessionInterruption();
     [Conditional=VIDEO] void endMediaSessionInterruption(DOMString flags);
+    [Conditional=MEDIA_SESSION] void sendMediaSessionStartOfInterruptionNotification(MediaSessionInterruptingCategory category);
+    [Conditional=MEDIA_SESSION] void sendMediaSessionEndOfInterruptionNotification(MediaSessionInterruptingCategory category);
+    [Conditional=MEDIA_SESSION] DOMString mediaSessionCurrentState(MediaSession session);
     [Conditional=VIDEO] void applicationWillEnterForeground();
     [Conditional=VIDEO] void applicationWillEnterBackground();
     [Conditional=VIDEO, RaisesException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
@@ -378,5 +388,5 @@ enum ResourceLoadPriority {
     [RaisesException] DOMString scrollSnapOffsets(Element element);
 #endif
 
-    [RaisesException] DOMPath pathWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
+    [RaisesException] DOMString pathStringWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
 };

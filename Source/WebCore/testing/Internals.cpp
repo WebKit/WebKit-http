@@ -190,6 +190,11 @@
 #include "AudioContext.h"
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+#include "MediaSession.h"
+#include "MediaSessionManager.h"
+#endif
+
 using JSC::CodeBlock;
 using JSC::FunctionExecutable;
 using JSC::JSFunction;
@@ -299,7 +304,9 @@ void Internals::resetToConsistentState(Page* page)
 
     page->setPageScaleFactor(1, IntPoint(0, 0));
     page->setPagination(Pagination());
-
+    
+    page->mainFrame().setTextZoomFactor(1.0f);
+    
     FrameView* mainFrameView = page->mainFrame().view();
     if (mainFrameView) {
         mainFrameView->setHeaderHeight(0);
@@ -2007,6 +2014,17 @@ void Internals::setPageZoomFactor(float zoomFactor, ExceptionCode& ec)
     frame->setPageZoomFactor(zoomFactor);
 }
 
+void Internals::setTextZoomFactor(float zoomFactor, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    Frame* frame = document->frame();
+    frame->setTextZoomFactor(zoomFactor);
+}
+
 void Internals::setUseFixedLayout(bool useFixedLayout, ExceptionCode& ec)
 {
     Document* document = contextDocument();
@@ -2758,6 +2776,41 @@ bool Internals::elementIsBlockingDisplaySleep(Element* element) const
 
 #endif // ENABLE(VIDEO)
 
+#if ENABLE(MEDIA_SESSION)
+static MediaSessionInterruptingCategory interruptingCategoryFromString(const String& interruptingCategoryString)
+{
+    if (interruptingCategoryString == "content")
+        return MediaSessionInterruptingCategory::Content;
+    if (interruptingCategoryString == "transient")
+        return MediaSessionInterruptingCategory::Transient;
+    if (interruptingCategoryString == "transient-solo")
+        return MediaSessionInterruptingCategory::TransientSolo;
+    ASSERT_NOT_REACHED();
+}
+
+void Internals::sendMediaSessionStartOfInterruptionNotification(const String& interruptingCategoryString)
+{
+    MediaSessionManager::singleton().didReceiveStartOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
+}
+
+void Internals::sendMediaSessionEndOfInterruptionNotification(const String& interruptingCategoryString)
+{
+    MediaSessionManager::singleton().didReceiveEndOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
+}
+
+String Internals::mediaSessionCurrentState(MediaSession* session) const
+{
+    switch (session->currentState()) {
+    case MediaSession::State::Active:
+        return "active";
+    case MediaSession::State::Interrupted:
+        return "interrupted";
+    case MediaSession::State::Idle:
+        return "idle";
+    }
+}
+#endif // ENABLE(MEDIA_SESSION)
+
 #if ENABLE(WEB_AUDIO)
 void Internals::setAudioContextRestrictions(AudioContext* context, const String &restrictionsString, ExceptionCode &ec)
 {
@@ -2942,11 +2995,11 @@ bool Internals::testPreloaderSettingViewport()
     return testPreloadScannerViewportSupport(contextDocument());
 }
 
-PassRefPtr<DOMPath> Internals::pathWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode& ec)
+String Internals::pathStringWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode& ec)
 {
     if (rectComponents.size() % 4) {
         ec = INVALID_ACCESS_ERR;
-        return nullptr;
+        return String();
     }
 
     Vector<FloatRect> rects;
@@ -2962,7 +3015,11 @@ PassRefPtr<DOMPath> Internals::pathWithShrinkWrappedRects(Vector<double> rectCom
     rects.reverse();
 
     Path path = PathUtilities::pathWithShrinkWrappedRects(rects, radius);
-    return DOMPath::create(path);
+
+    String pathString;
+    buildStringFromPath(path, pathString);
+
+    return pathString;
 }
 
 }

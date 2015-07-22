@@ -1,3 +1,65 @@
+2015-07-21  Daniel Bates  <dabates@apple.com>
+
+        WTFCrash() in WebKit::WebProcess::networkConnection()
+        https://bugs.webkit.org/show_bug.cgi?id=147112
+        <rdar://problem/18477459>
+
+        Reviewed by Gavin Barraclough.
+
+        Add explicit boolean conversion function and remove overload of operator! to support
+        checking whether an activity token is valid more directly than using the overloaded operator!.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter::Token::operator bool): Added.
+        (WTF::RefCounter::Token::operator!): Deleted.
+
+2015-07-20  Mark Lam  <mark.lam@apple.com>
+
+        Rollout r187020 and r187021: breaks JSC API tests on debug builds.
+        https://bugs.webkit.org/show_bug.cgi?id=147110
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack):
+
+2015-07-20  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect CMake build on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=147083
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/PlatformWin.cmake:
+
+2015-07-20  Per Arne Vollan  <peavo@outlook.com>
+
+        JavaScriptCore performance is very bad on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=146448
+
+        Reviewed by Mark Lam.
+
+        Updating the stack bounds is time consuming.
+        Only update the stack bounds when a new fiber is running.
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack):
+
+2015-07-20  Julien Brianceau  <julien.brianceau@gmail.com>
+
+        Use isnan from std namespace in Stopwatch.h.
+        https://bugs.webkit.org/show_bug.cgi?id=146911
+
+        Reviewed by Žan Doberšek.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::isActive):
+        (WTF::Stopwatch::start):
+        (WTF::Stopwatch::stop):
+        (WTF::Stopwatch::elapsedTime):
+
 2015-07-16  Benjamin Poulain  <bpoulain@apple.com>
 
         [Content extensions] Combine suffixes when generating NFAs

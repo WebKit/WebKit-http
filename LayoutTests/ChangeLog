@@ -1,3 +1,461 @@
+2015-07-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Update Mac test results for libxml2 v2.9.2.
+
+        These results will probably become cross-platform eventually, but for now it's just Mac.
+
+        * platform/mac-yosemite/fast/dom/adopt-attribute-crash-expected.txt: Copied from LayoutTests/fast/dom/adopt-attribute-crash-expected.txt.
+        * platform/mac-yosemite/fast/parser: Added.
+        * platform/mac-yosemite/fast/parser/xml-colon-entity-expected.txt: Copied from LayoutTests/fast/parser/xml-colon-entity-expected.txt.
+        * platform/mac-yosemite/fast/parser/xml-declaration-missing-ending-mark-expected.txt: Copied from LayoutTests/fast/parser/xml-declaration-missing-ending-mark-expected.txt.
+        * platform/mac-yosemite/fast/xsl: Added.
+        * platform/mac-yosemite/fast/xsl/xslt-extra-content-at-end-expected.png: Copied from LayoutTests/platform/mac/fast/xsl/xslt-extra-content-at-end-expected.png.
+        * platform/mac-yosemite/fast/xsl/xslt-extra-content-at-end-expected.txt: Copied from LayoutTests/platform/mac/fast/xsl/xslt-extra-content-at-end-expected.txt.
+        * platform/mac-yosemite/fast/xsl/xslt-missing-namespace-in-xslt-expected.png: Copied from LayoutTests/platform/mac/fast/xsl/xslt-missing-namespace-in-xslt-expected.png.
+        * platform/mac-yosemite/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt: Copied from LayoutTests/platform/mac/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt.
+        * platform/mac-yosemite/svg/custom: Added.
+        * platform/mac-yosemite/svg/custom/bug78807-expected.txt: Copied from LayoutTests/svg/custom/bug78807-expected.txt.
+        * platform/mac-yosemite/svg/custom/missing-xlink-expected.png: Copied from LayoutTests/platform/mac/svg/custom/missing-xlink-expected.png.
+        * platform/mac-yosemite/svg/custom/missing-xlink-expected.txt: Copied from LayoutTests/platform/mac/svg/custom/missing-xlink-expected.txt.
+        * platform/mac-yosemite/svg/custom/path-bad-data-expected.png: Copied from LayoutTests/platform/mac/svg/custom/path-bad-data-expected.png.
+        * platform/mac-yosemite/svg/custom/path-bad-data-expected.txt: Copied from LayoutTests/platform/mac/svg/custom/path-bad-data-expected.txt.
+        * platform/mac-yosemite/svg/custom/use-font-face-crash-expected.png: Copied from LayoutTests/platform/mac/svg/custom/use-font-face-crash-expected.png.
+        * platform/mac-yosemite/svg/custom/use-font-face-crash-expected.txt: Copied from LayoutTests/platform/mac/svg/custom/use-font-face-crash-expected.txt.
+        * platform/mac/fast/dom/adopt-attribute-crash-expected.txt: Added.
+        * platform/mac/fast/parser/xml-colon-entity-expected.txt: Added.
+        * platform/mac/fast/parser/xml-declaration-missing-ending-mark-expected.txt: Added.
+        * platform/mac/fast/xsl/xslt-extra-content-at-end-expected.png:
+        * platform/mac/fast/xsl/xslt-extra-content-at-end-expected.txt:
+        * platform/mac/fast/xsl/xslt-missing-namespace-in-xslt-expected.png:
+        * platform/mac/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt:
+        * platform/mac/svg/custom/bug78807-expected.txt: Added.
+        * platform/mac/svg/custom/missing-xlink-expected.png:
+        * platform/mac/svg/custom/missing-xlink-expected.txt:
+        * platform/mac/svg/custom/path-bad-data-expected.png:
+        * platform/mac/svg/custom/path-bad-data-expected.txt:
+        * platform/mac/svg/custom/use-font-face-crash-expected.png:
+        * platform/mac/svg/custom/use-font-face-crash-expected.txt:
+
+2015-07-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        [Content Extensions] Use a jump table when consecutive transitions have different targets
+        https://bugs.webkit.org/show_bug.cgi?id=147099
+
+        Reviewed by Alex Christensen.
+
+        Add some primitive testing to make sure the code is covered.
+
+        * http/tests/contentextensions/test-jump-table-bytecode-generation-expected.txt: Added.
+        * http/tests/contentextensions/test-jump-table-bytecode-generation.html: Added.
+        * http/tests/contentextensions/test-jump-table-bytecode-generation.html.json: Added.
+
+2015-07-21  Benjamin Poulain  <bpoulain@apple.com>
+
+        StyleSheetContents::wrapperInsertRule() can create rules that overflow RuleData's selector index
+        https://bugs.webkit.org/show_bug.cgi?id=147144
+
+        Reviewed by Alex Christensen.
+
+        This bug was affecting two parts of WebKit:
+        -In CSSOM, StyleSheet.insertRule() could create bogus rules.
+         The new test verifies that the call fails instead of creating undefined
+         behaviors.
+        -In ContentExtensions, large selectors are now working correctly. The tests
+         cover the case of a default stylesheet and an dynamic stylesheet.
+
+        * fast/css/insert-rule-overflow-rule-data-expected.txt: Added.
+        * fast/css/insert-rule-overflow-rule-data.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-1-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-1.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-1.html.json: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-2-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-2.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-2.html.json: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-3-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-3.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-3.html.json: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-4-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-4.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-4.html.json: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-5-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-5.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-5.html.json: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-6-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-6.html: Added.
+        * http/tests/contentextensions/css-display-none-overflows-rule-data-6.html.json: Added.
+
+2015-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [El Capitan] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=147059
+
+        * platform/mac-yosemite/fast/dom/52776-expected.png: Copied from LayoutTests/platform/mac/fast/dom/52776-expected.png.
+        * platform/mac-yosemite/fast/text/complex-text-opacity-expected.png: Copied from LayoutTests/platform/mac/fast/text/complex-text-opacity-expected.png.
+        * platform/mac-yosemite/fast/text/font-weights-expected.png: Copied from LayoutTests/platform/mac/fast/text/font-weights-expected.png.
+        * platform/mac-yosemite/fast/text/indic-expected.png: Copied from LayoutTests/platform/mac/fast/text/indic-expected.png.
+        * platform/mac-yosemite/fast/text/indic-expected.txt: Copied from LayoutTests/platform/mac/fast/text/indic-expected.txt.
+        * platform/mac-yosemite/fast/text/international/bidi-AN-after-L-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/bidi-AN-after-L-expected.png.
+        * platform/mac-yosemite/fast/text/international/bidi-mirror-he-ar-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/bidi-mirror-he-ar-expected.png.
+        * platform/mac-yosemite/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.png.
+        * platform/mac-yosemite/fast/text/international/bidi-neutral-run-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/bidi-neutral-run-expected.png.
+        * platform/mac-yosemite/fast/text/international/danda-space-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/danda-space-expected.png.
+        * platform/mac-yosemite/fast/text/international/danda-space-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/danda-space-expected.txt.
+        * platform/mac-yosemite/svg/W3C-SVG-1.1/text-intro-05-t-expected.png: Copied from LayoutTests/platform/mac/svg/W3C-SVG-1.1/text-intro-05-t-expected.png.
+        * platform/mac-yosemite/svg/text/text-intro-05-t-expected.png: Copied from LayoutTests/platform/mac/svg/text/text-intro-05-t-expected.png.
+        * platform/mac/fast/dom/52776-expected.png:
+        * platform/mac/fast/dom/52776-expected.txt:
+        * platform/mac/fast/text/arabic-times-new-roman-expected.png:
+        * platform/mac/fast/text/arabic-times-new-roman-expected.txt:
+        * platform/mac/fast/text/complex-text-opacity-expected.png:
+        * platform/mac/fast/text/complex-text-opacity-expected.txt:
+        * platform/mac/fast/text/font-weights-expected.png:
+        * platform/mac/fast/text/font-weights-expected.txt:
+        * platform/mac/fast/text/indic-expected.png:
+        * platform/mac/fast/text/indic-expected.txt:
+        * platform/mac/fast/text/international/bidi-AN-after-L-expected.png:
+        * platform/mac/fast/text/international/bidi-AN-after-L-expected.txt:
+        * platform/mac/fast/text/international/bidi-mirror-he-ar-expected.png:
+        * platform/mac/fast/text/international/bidi-mirror-he-ar-expected.txt:
+        * platform/mac/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.png:
+        * platform/mac/fast/text/international/bidi-neutral-directionality-paragraph-start-expected.txt:
+        * platform/mac/fast/text/international/bidi-neutral-run-expected.png:
+        * platform/mac/fast/text/international/bidi-neutral-run-expected.txt:
+        * platform/mac/fast/text/international/danda-space-expected.png:
+        * platform/mac/fast/text/international/danda-space-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.png:
+        * platform/mac/svg/W3C-SVG-1.1-SE/text-intro-05-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-05-t-expected.png:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-05-t-expected.txt:
+        * platform/mac/svg/text/text-intro-05-t-expected.png:
+        * platform/mac/svg/text/text-intro-05-t-expected.txt:
+
+2015-07-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Safari mis-applies "animation-fill-mode: forwards" when using fractional iteration count
+        https://bugs.webkit.org/show_bug.cgi?id=146996
+
+        Reviewed by Dean Jackson.
+        
+        Progressions, improved tests.
+
+        * animations/animation-direction-reverse-fill-mode-expected.txt: New results; this is a progression.
+        * animations/animation-direction-reverse-fill-mode.html: Use a shorter animation. Fixed results.
+        * animations/fill-mode-iteration-count-non-integer-expected.txt:
+        * animations/fill-mode-iteration-count-non-integer.html: Use iteration counts that are not multiplies
+        of 0.5, so the test can differentiation between forward and backwards states. Add a non-linear timing
+        function to check that fill-forwards consults the timing functions. Don't print exact succeeding
+        results because they may have floating point values.
+        * animations/fill-mode-reverse-expected.txt: New results; this is a progression.
+        * animations/fill-mode-reverse.html: Fixed results, use gray.
+
+2015-07-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r172417, r184065): Multiple rendering issues with fixed attached background-image
+        https://bugs.webkit.org/show_bug.cgi?id=147049
+        <rdar://problem/21110936>
+
+        Reviewed by Simon Fraser.
+        
+        fixedLayoutSize background-image rendering for root and non-root elements.
+
+        * platform/mac-wk2/tiled-drawing/fixed-layout-size-fixed-attachment-cover-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/fixed-layout-size-fixed-attachment-cover.html: Added.
+        * platform/mac-wk2/tiled-drawing/fixed-layout-size-fixed-attachment-local-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/fixed-layout-size-fixed-attachment-local.html: Added.
+
+2015-07-21  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Make PluginProxy::handleMouseEvent() asynchronous.
+        https://bugs.webkit.org/show_bug.cgi?id=146142
+
+        Reviewed by Anders Carlsson.
+
+        PluginProxy::handleMouseEvent() forwards the generated mouse event to PluginControllerProxy
+        using a synchronous message, but the recipient always reply immediately with the same value("true")
+        even before handling the received message. So I think PluginProxy::handleMouseEvent() is perfectly
+        OK to process its messages asynchronously.
+
+        platform/mac-wk2/plugins/mouse-events-expected.txt was introduced by webkit.org/b/116665 to avoid
+        flakey tests, but from now on we can share the common expectations.
+
+        * platform/mac-wk2/plugins/mouse-events-expected.txt: Removed.
+
+2015-07-21  David Hyatt  <hyatt@apple.com>
+
+        Need a way to ignore text-zoom in a Web page.
+        https://bugs.webkit.org/show_bug.cgi?id=27092
+        rdar://problem/7037987
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/text-zoom-reset-expected.html: Added.
+        * fast/text/text-zoom-reset.html: Added.
+
+2015-07-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Selection change as a result of focusing an element may cause Safari to crash
+        https://bugs.webkit.org/show_bug.cgi?id=147052
+        <rdar://problem/21778212>
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac/accessibility/focus-crash-expected.txt: Added.
+        * platform/mac/accessibility/focus-crash.html: Added.
+
+2015-07-20  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: start using Promises to handle asynchronous steps in protocol tests
+        https://bugs.webkit.org/show_bug.cgi?id=147096
+
+        Reviewed by Joseph Pecoraro.
+
+        Existing protocol tests use lots of reinvented wheels to run
+        multiple asynchronous tests. This patch begins consolidation of
+        these redundant wheels, using a tiny test framework based on
+        promises.
+
+        The first change is to introduce InspectorTest.awaitCommand,
+        which returns a promise that is fulfilled or rejected if the command
+        succeeds or fails. This is the building block for writing protocol
+        tests with promises.
+
+        The second change is the introduction of InspectorTest.AsyncTestSuite.
+        This properly chains together multiple asynchronous test methods
+        using the promise interface. A synchronous version is also added.
+
+        To demonstrate how async tests can be written using this new approach,
+        this patch converts existing protocol test. Test coverage for the
+        new frameworks also demonstrates their use.
+
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.sendCommand):
+        (InspectorTest.awaitCommand):
+        (InspectorTest.sendMessage):
+        (InspectorFrontendAPI.dispatchMessageAsync):
+        (InspectorTest.AsyncTestSuite): Add tests for this micro framework.
+        (InspectorTest.AsyncTestSuite.prototype.get passCount):
+        (InspectorTest.AsyncTestSuite.prototype.get skipCount):
+        (InspectorTest.AsyncTestSuite.prototype.addTestCase):
+        (InspectorTest.AsyncTestSuite.prototype.runTestCasesAndFinish.finish):
+        (InspectorTest.AsyncTestSuite.prototype.runTestCasesAndFinish):
+        (InspectorTest.AsyncTestSuite.prototype.runTestCases):
+        (InspectorTest.SyncTestSuite): Add tests for this micro framework.
+        (InspectorTest.SyncTestSuite.prototype.get passCount):
+        (InspectorTest.SyncTestSuite.prototype.get skipCount):
+        (InspectorTest.SyncTestSuite.prototype.addTestCase):
+        (InspectorTest.SyncTestSuite.prototype.runTestCasesAndFinish):
+        (InspectorTest.SyncTestSuite.prototype.runTestCases):
+        (InspectorTest.log):
+        (InspectorTest.assert):
+        * inspector-protocol/runtime/getProperties-expected.txt:
+        * inspector-protocol/runtime/getProperties.html: Rewrite.
+
+2015-07-20  Andreas Kling  <akling@apple.com>
+
+        Improve behavior of media elements in page cache.
+        <https://webkit.org/b/147020>
+        <rdar://problem/21712311>
+
+        Reviewed by Chris Dumez.
+
+        Add some coverage for suspend/resume of queued events on cached media elements.
+
+        * media/restore-from-page-cache-expected.txt:
+        * media/restore-from-page-cache.html:
+
+2015-07-19  Tim Horton  <timothy_horton@apple.com>
+
+        Make shrink-wrapping test a ref-test instead of pixel-test
+        https://bugs.webkit.org/show_bug.cgi?id=147081
+
+        Reviewed by Sam Weinig.
+
+        * fast/shrink-wrap/rect-shrink-wrap-expected.html: Added.
+        * fast/shrink-wrap/rect-shrink-wrap-expected.png: Removed.
+        * fast/shrink-wrap/rect-shrink-wrap-expected.txt: Removed.
+        * fast/shrink-wrap/rect-shrink-wrap.html:
+        SVG all the things.
+
+2015-07-19  Jordan Harband  <ljharb@gmail.com>
+
+        new Date(NaN).toJSON() must return null instead of throwing a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=141115
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/dom/JSON-stringify-expected.txt:
+        * js/resources/JSON-stringify.js:
+
+2015-07-19  Saam barati  <saambarati1@gmail.com>
+
+        Parser::parseFunctionInfo hits RELEASE_ASSERT for Arrow Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147090
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/arrowfunction-strict-mode-expected.txt: Added.
+        * js/arrowfunction-strict-mode.html: Added.
+        * js/script-tests/arrowfunction-strict-mode.js: Added.
+        (foo):
+
+2015-07-18  Saam barati  <saambarati1@gmail.com>
+
+        [ES6] Add support for block scope const
+        https://bugs.webkit.org/show_bug.cgi?id=31813
+
+        Reviewed by Filip Pizlo.
+
+        "const" variables do not live on the global object. They
+        are only available in the "Program" (read: JavaScript file or
+        script tag) that they're defined in. Tests have been updated
+        accordingly to switch the "const" variables assumed to be globals
+        into "var"s. "var" declared variables in the top level scope
+        of a program do live on the global object.
+
+        * fast/canvas/webgl/compressed-tex-image.html:
+        * fast/dom/event-handler-attributes.html:
+        * fast/forms/listbox-visible-size.html:
+        * js/arguments-expected.txt:
+        * js/arrowfunction-syntax-errors-expected.txt:
+        * js/const-expected.txt:
+        * js/const-without-initializer-expected.txt:
+        * js/constant-count-expected.txt:
+        * js/dom/inc-const-valueOf-expected.txt:
+        * js/dom/script-tests/inc-const-valueOf.js:
+        (testPreIncConstVarWithAssign):
+        * js/function-toString-parentheses-expected.txt:
+        * js/kde/const-expected.txt:
+        * js/kde/resources/const.js:
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/arguments.js:
+        (argumentsVarUndefined):
+        (argumentsConst):
+        (argumentCalleeInException):
+        (argumentsConstUndefined): Deleted.
+        * js/script-tests/class-syntax-declaration.js:
+        (A):
+        * js/script-tests/class-syntax-expression.js:
+        * js/script-tests/const-without-initializer.js:
+        * js/script-tests/const.js:
+        (shouldThrowInvalidConstAssignment):
+        (assert):
+        (f):
+        (tryCatch1):
+        (tryCatch2):
+        (with1):
+        (with2):
+        (.):
+        * js/script-tests/constant-count.js:
+        (f):
+        * js/script-tests/function-dot-arguments.js:
+        (assignConstInitTest2.g):
+        (assignConstInitTest2):
+        * js/script-tests/function-toString-parentheses.js:
+        * js/script-tests/parser-syntax-check.js:
+        * sputnik/Conformance/07_Lexical_Conventions/7.5_Tokens/7.5.3_Future_Reserved_Words/S7.5.3_A1.6-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A3.1_T7-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A3.1_T8-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A3.1_T9-expected.txt:
+        * sputnik/Conformance/08_Types/8.4_The_String_Type/S8.4_A13_T3-expected.txt:
+        * sputnik/Conformance/08_Types/8.4_The_String_Type/S8.4_A14_T3-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T1-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T2-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T3-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T4-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T6-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T7-expected.txt:
+        * sputnik/Conformance/12_Statement/12.2_Variable_Statement/S12.2_A8_T8-expected.txt:
+        * transforms/3d/hit-testing/composited-hit-test.html:
+        * transforms/3d/hit-testing/coplanar-with-camera.html:
+        * transforms/3d/hit-testing/hover-rotated-negative-z.html:
+        * transforms/3d/hit-testing/hover-rotated-with-children-negative-z.html:
+        * transforms/3d/hit-testing/negative-zoffset-hit-test.html:
+        * transforms/3d/hit-testing/overlapping-layers-hit-test.html:
+        * transforms/3d/hit-testing/perspective-clipped.html:
+        * transforms/3d/hit-testing/rotated-hit-test-with-child.html:
+        * transforms/3d/hit-testing/rotated-hit-test.html:
+        * transforms/3d/hit-testing/rotated-hit-test2.html:
+        * transitions/resources/transition-test-helpers.js:
+        (roundNumber):
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        inspector/console/command-line-api.html is slow on Debug Yosemite WK2
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=inspector%2Fconsole%2Fcommand-line-api.html>
+
+        * platform/mac-wk2/TestExpectations: Mark test as slow on Debug
+        Yosemite WK2:
+        - inspector/console/command-line-api.html
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/cache/disk-cache/disk-cache-disable.html is flaky on Release Yosemite WK2
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fcache%2Fdisk-cache%2Fdisk-cache-disable.html>
+
+        * platform/mac-wk2/TestExpectations: Mark test as flaky on
+        Release Yosemite WK2:
+        - http/tests/cache/disk-cache/disk-cache-disable.html
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        media/restore-from-page-cache.html is flaky on Debug Mavericks
+
+        <https://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=media%2Frestore-from-page-cache.html>
+
+        When the test fails, the computed width and height is
+        300px × 150px instead of the expected 320px × 240px.
+
+        * platform/mac/TestExpectations: Mark test as flaky on Debug Mavericks:
+        - media/restore-from-page-cache.html
+
+2015-07-18  Zalan Bujtas  <zalan@apple.com>
+
+        [Win] Skip input range repaint test.
+
+        * platform/win/TestExpectations:
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186981): fast/repaint/block-inputrange-repaint.html is starting out life as flaky
+
+        <https://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=fast%2Frepaint%2Fblock-inputrange-repaint.html>
+
+        * fast/repaint/block-inputrange-repaint.html:
+        - Use setTimeout() to give WebKit time to repaint.
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186905,r186992): Incorrect results for platform/{gtk,efl,win}/fast/shrink-wrap/rect-shrink-wrap-expected.txt
+
+        * platform/efl/fast/shrink-wrap/rect-shrink-wrap-expected.txt:
+        * platform/gtk/fast/shrink-wrap/rect-shrink-wrap-expected.txt:
+        * platform/win/fast/shrink-wrap/rect-shrink-wrap-expected.txt:
+        - Update to correct expected results.
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186858): GTK and EFL ports don't composite <canvas> elements
+
+        See also r186905 for Windows.
+
+        * platform/efl/fast/shrink-wrap/rect-shrink-wrap-expected.txt: Added.
+        * platform/gtk/fast/shrink-wrap/rect-shrink-wrap-expected.txt: Added.
+
+2015-07-18  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186982): http/tests/contentdispositionattachmentsandbox/form-submission-disabled.html and loader/meta-refresh-disabled.html fail
+
+        Part of:
+        <https://bugs.webkit.org/show_bug.cgi?id=147044>
+        <rdar://problem/21567820>
+
+        * http/tests/contentdispositionattachmentsandbox/form-submission-disabled-expected.txt:
+        - Fix line number of console message.
+        * loader/meta-refresh-disabled-expected.txt:
+        - Add newly expected console message.
+
 2015-07-17  Zalan Bujtas  <zalan@apple.com>
 
         REGRESSION (r169105): Do not assign a renderer to multiple selection subtrees.

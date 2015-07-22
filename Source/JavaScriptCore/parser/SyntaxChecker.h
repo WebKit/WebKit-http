@@ -74,7 +74,7 @@ public:
         ThisExpr, NullExpr, BoolExpr, RegExpExpr, ObjectLiteralExpr,
         FunctionExpr, ClassExpr, SuperExpr, BracketExpr, DotExpr, CallExpr,
         NewExpr, PreExpr, PostExpr, UnaryExpr, BinaryExpr,
-        ConditionalExpr, AssignmentExpr, TypeofExpr,
+        ConditionalExpr, AssignmentExpr, TypeofExpr, NewTargetExpr,
         DeleteExpr, ArrayLiteralExpr, BindingDestructuring,
         ArrayDestructuring, ObjectDestructuring, SourceElementsResult,
         FunctionBodyResult, SpreadExpr, ArgumentsResult,
@@ -127,7 +127,6 @@ public:
     typedef int Statement;
     typedef int ClauseList;
     typedef int Clause;
-    typedef int ConstDeclList;
     typedef int BinaryOperand;
     typedef int DestructuringPattern;
     typedef DestructuringPattern ArrayPattern;
@@ -155,6 +154,7 @@ public:
     ExpressionType createVoid(const JSTokenLocation&, ExpressionType) { return UnaryExpr; }
     ExpressionType thisExpr(const JSTokenLocation&, ThisTDZMode) { return ThisExpr; }
     ExpressionType superExpr(const JSTokenLocation&) { return SuperExpr; }
+    ExpressionType newTargetExpr(const JSTokenLocation&) { return NewTargetExpr; }
     ExpressionType createResolve(const JSTokenLocation&, const Identifier*, int) { return ResolveExpr; }
     ExpressionType createObjectLiteral(const JSTokenLocation&) { return ObjectLiteralExpr; }
     ExpressionType createObjectLiteral(const JSTokenLocation&, int) { return ObjectLiteralExpr; }
@@ -236,8 +236,7 @@ public:
     int createForInLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createForOfLoop(const JSTokenLocation&, int, int, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createEmptyStatement(const JSTokenLocation&) { return StatementResult; }
-    int createVarStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
-    int createLetStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
+    int createDeclarationStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createReturnStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createBreakStatement(const JSTokenLocation&, int, int) { return StatementResult; }
     int createBreakStatement(const JSTokenLocation&, const Identifier*, int, int) { return StatementResult; }

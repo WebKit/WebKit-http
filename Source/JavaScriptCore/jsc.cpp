@@ -1248,11 +1248,10 @@ int main(int argc, char** argv)
     ecore_init();
 #endif
 
-    // Initialize JSC before getting VM.
-#if ENABLE(SAMPLING_REGIONS)
-    WTF::initializeMainThread();
-#endif
-    JSC::initializeThreading();
+    // Need to initialize WTF threading before we start any threads. Cannot initialize JSC
+    // threading yet, since that would do somethings that we'd like to defer until after we
+    // have a chance to parse options.
+    WTF::initializeThreading();
 
     if (char* timeoutString = getenv("JSC_timeout")) {
         if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
@@ -1430,6 +1429,8 @@ static NO_RETURN void printUsageStatement(bool help = false)
 
 void CommandLine::parseArguments(int argc, char** argv)
 {
+    Options::initialize();
+    
     int i = 1;
     bool needToDumpOptions = false;
     bool needToExit = false;
@@ -1494,8 +1495,7 @@ void CommandLine::parseArguments(int argc, char** argv)
         }
 
         // See if the -- option is a JSC VM option.
-        // NOTE: At this point, we know that the arg starts with "--". Skip it.
-        if (JSC::Options::setOption(&arg[2])) {
+        if (strstr(arg, "--") == arg && JSC::Options::setOption(&arg[2])) {
             // The arg was recognized as a VM option and has been parsed.
             continue; // Just continue with the next arg. 
         }
@@ -1523,6 +1523,13 @@ int jscmain(int argc, char** argv)
     // Note that the options parsing can affect VM creation, and thus
     // comes first.
     CommandLine options(argc, argv);
+
+    // Initialize JSC before getting VM.
+#if ENABLE(SAMPLING_REGIONS)
+    WTF::initializeMainThread();
+#endif
+    JSC::initializeThreading();
+
     VM* vm = &VM::create(LargeHeap).leakRef();
     int result;
     {
