@@ -90,7 +90,11 @@ namespace JSC {
         SwitchType switchType;
     };
 
-    enum class AssignmentContext { DeclarationStatement, AssignmentExpression };
+    enum class AssignmentContext { 
+        DeclarationStatement, 
+        ConstDeclarationStatement, 
+        AssignmentExpression 
+    };
 
     class ParserArenaFreeable {
     public:
@@ -540,6 +544,14 @@ namespace JSC {
 
     private:
         virtual bool isSuperNode() const override { return true; }
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+    };
+
+    class NewTargetNode final : public ExpressionNode {
+    public:
+        NewTargetNode(const JSTokenLocation&);
+
+    private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
     };
 
@@ -1254,36 +1266,6 @@ namespace JSC {
         CommaNode* m_next;
     };
     
-    class ConstDeclNode : public ExpressionNode {
-    public:
-        ConstDeclNode(const JSTokenLocation&, const Identifier&, ExpressionNode*);
-
-        bool hasInitializer() const { return m_init; }
-        const Identifier& ident() { return m_ident; }
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
-        virtual RegisterID* emitCodeSingle(BytecodeGenerator&);
-
-        const Identifier& m_ident;
-
-    public:
-        ConstDeclNode* m_next;
-
-    private:
-        ExpressionNode* m_init;
-    };
-
-    class ConstStatementNode : public StatementNode {
-    public:
-        ConstStatementNode(const JSTokenLocation&, ConstDeclNode* next);
-
-    private:
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
-
-        ConstDeclNode* m_next;
-    };
-
     class SourceElements final : public ParserArenaFreeable {
     public:
         SourceElements();
@@ -1765,7 +1747,7 @@ namespace JSC {
     };
 #endif
 
-    class DestructuringPatternNode : public ParserArenaDeletable {
+    class DestructuringPatternNode : public ParserArenaFreeable {
     public:
         virtual ~DestructuringPatternNode() { }
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const = 0;
@@ -1779,8 +1761,10 @@ namespace JSC {
         DestructuringPatternNode();
     };
 
-    class ArrayPatternNode : public DestructuringPatternNode, public ThrowableExpressionData {
+    class ArrayPatternNode : public DestructuringPatternNode, public ThrowableExpressionData, public ParserArenaDeletable {
     public:
+        using ParserArenaDeletable::operator new;
+
         ArrayPatternNode();
         enum class BindingType {
             Elision,
@@ -1807,20 +1791,22 @@ namespace JSC {
         Vector<Entry> m_targetPatterns;
     };
     
-    class ObjectPatternNode : public DestructuringPatternNode {
+    class ObjectPatternNode : public DestructuringPatternNode, public ParserArenaDeletable {
     public:
+        using ParserArenaDeletable::operator new;
+        
         ObjectPatternNode();
         void appendEntry(const JSTokenLocation&, const Identifier& identifier, bool wasString, DestructuringPatternNode* pattern, ExpressionNode* defaultValue)
         {
             m_targetPatterns.append(Entry{ identifier, wasString, pattern, defaultValue });
         }
-        
+
     private:
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const override;
         virtual void bindValue(BytecodeGenerator&, RegisterID*) const override;
         virtual void toString(StringBuilder&) const override;
         struct Entry {
-            Identifier propertyName;
+            const Identifier& propertyName;
             bool wasString;
             DestructuringPatternNode* pattern;
             ExpressionNode* defaultValue;
@@ -1845,17 +1831,15 @@ namespace JSC {
 
         JSTextPosition m_divotStart;
         JSTextPosition m_divotEnd;
-        Identifier m_boundProperty;
+        const Identifier& m_boundProperty;
         AssignmentContext m_bindingContext;
     };
 
-    class DestructuringAssignmentNode : public ExpressionNode, public ParserArenaDeletable {
+    class DestructuringAssignmentNode : public ExpressionNode {
     public:
         DestructuringAssignmentNode(const JSTokenLocation&, DestructuringPatternNode*, ExpressionNode*);
         DestructuringPatternNode* bindings() { return m_bindings; }
         
-        using ParserArenaDeletable::operator new;
-
     private:
         virtual bool isAssignmentLocation() const override { return true; }
         virtual bool isDestructuringNode() const override { return true; }
@@ -1956,11 +1940,6 @@ namespace JSC {
     struct ArgumentList {
         ArgumentListNode* head;
         ArgumentListNode* tail;
-    };
-
-    struct ConstDeclList {
-        ConstDeclNode* head;
-        ConstDeclNode* tail;
     };
 
     struct ClauseList {

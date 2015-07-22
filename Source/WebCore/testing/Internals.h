@@ -56,6 +56,7 @@ class InspectorFrontendChannelDummy;
 class InspectorFrontendClientDummy;
 class InternalSettings;
 class MallocStatistics;
+class MediaSession;
 class MemoryInfo;
 class Node;
 class Page;
@@ -278,6 +279,7 @@ public:
 
     void setPageScaleFactor(float scaleFactor, int x, int y, ExceptionCode&);
     void setPageZoomFactor(float zoomFactor, ExceptionCode&);
+    void setTextZoomFactor(float zoomFactor, ExceptionCode&);
 
     void setUseFixedLayout(bool useFixedLayout, ExceptionCode&);
     void setFixedLayoutSize(int width, int height, ExceptionCode&);
@@ -392,6 +394,12 @@ public:
     bool elementIsBlockingDisplaySleep(Element*) const;
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+    void sendMediaSessionStartOfInterruptionNotification(const String&);
+    void sendMediaSessionEndOfInterruptionNotification(const String&);
+    String mediaSessionCurrentState(MediaSession*) const;
+#endif
+
 #if ENABLE(WEB_AUDIO)
     void setAudioContextRestrictions(AudioContext*, const String& restrictions, ExceptionCode&);
 #endif
@@ -417,7 +425,7 @@ public:
     String scrollSnapOffsets(Element*, ExceptionCode&);
 #endif
 
-    PassRefPtr<DOMPath> pathWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode&);
+    String pathStringWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode&);
 
 private:
     explicit Internals(Document*);

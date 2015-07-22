@@ -56,6 +56,7 @@ video:-webkit-full-page-media::-webkit-media-controls-panel.no-video {
     -webkit-align-items: stretch;
     -webkit-justify-content: flex-end;
     -webkit-flex-direction: column;
+    font: -webkit-small-control;
     white-space: nowrap;
     -webkit-font-smoothing: subpixel-antialiased;
 }
@@ -87,6 +88,8 @@ audio::-webkit-media-controls-panel {
     direction: ltr;
 
     transition: opacity 0.25s linear;
+    
+    -webkit-text-zoom: reset
 }
 
 video::-webkit-media-controls-panel {

@@ -1,3 +1,683 @@
+2015-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add newTarget accessor to JS constructor written in C++
+        https://bugs.webkit.org/show_bug.cgi?id=147160
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds `ExecState#newTarget()` which returns `new.target` defined in ECMA262 6th.
+        It enables some C++ constructors (like Intl.XXX constructors) to leverage this to complete
+        its implementation.
+
+        When the constructor is called, |this| in the arguments is used for storing new.target instead.
+        So by adding the accessor for |this|, JS constructor written in C++ can access new.target.
+
+        And at the same time, this patch extends the existing `construct` to accept new.target value.
+        It is corresponding to the spec's Construct abstract operation.
+
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::newTarget):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeConstruct):
+        * interpreter/Interpreter.h:
+        * runtime/ConstructData.cpp:
+        (JSC::construct):
+        * runtime/ConstructData.h:
+        (JSC::construct):
+
+2015-07-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix a lot of tests. Need to initialize WTF threading sooner.
+
+        * jsc.cpp:
+        (main):
+
+2015-07-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Fixed VM pool allocation should have a reserve for allocations that cannot fail
+        https://bugs.webkit.org/show_bug.cgi?id=147154
+        rdar://problem/21847618
+
+        Reviewed by Geoffrey Garen.
+        
+        This adds the notion of a JIT pool reserve fraction. Some fraction, currently 1/4, of
+        the JIT pool is reserved for allocations that cannot fail. It makes sense to make this
+        a fraction rather than a constant because each allocation that can fail may cause some
+        number of allocations that cannot fail (for example, the OSR exit thunks that we
+        compile when we exit from some CodeBlock cannot fail).
+        
+        I've tested this by adding a test mode where we artificially limit the JIT pool size.
+        Prior to the fix, we had >20 failures. Now we have none.
+
+        * heap/GCLogging.cpp:
+        (WTF::printInternal): I needed a dump method on Options members when debugging this.
+        * heap/GCLogging.h:
+        * jit/ExecutableAllocator.h: Raise the ARM64 limit to 32MB because 16MB is cutting it too close.
+        * jit/ExecutableAllocatorFixedVMPool.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator): Add the ability to artificially limit JIT pool size for testing.
+        (JSC::ExecutableAllocator::memoryPressureMultiplier): Implement the reserve when computing memory pressure for JIT tier-up heuristics.
+        (JSC::ExecutableAllocator::allocate): Implement the reserve when allocating can-fail things.
+        * jsc.cpp: Rewire some options parsing so that CommandLine happens before we create the JIT pool.
+        (main):
+        (CommandLine::parseArguments):
+        (jscmain):
+        * runtime/Options.cpp: 
+        (JSC::OptionRange::dump): I needed a dump method on Options members when debugging this.
+        (JSC::Options::initialize): This can now be called more than once.
+        * runtime/Options.h:
+
+2015-07-21  Saam barati  <saambarati1@gmail.com>
+
+        ObjectPatternNode's entry should use "const Identifier&" instead of "Identifier"
+        https://bugs.webkit.org/show_bug.cgi?id=147156
+
+        Reviewed by Andreas Kling.
+
+        * parser/Nodes.h:
+
+2015-07-21  Basile Clement  <basile_clement@apple.com>
+
+        Object allocation sinking phase is performing needless HashMap copies
+        https://bugs.webkit.org/show_bug.cgi?id=147159
+
+        Reviewed by Geoffrey Garen.
+
+        The points-to analyzer in the object allocation sinking phase is
+        currently performing copies of its allocation and pointers tables in
+        several places. While this is not a huge problem since those tables are
+        usually small and we are in the FTL path anyway, we still shouldn't be
+        doing such useless copying.
+
+        This patch also removes the DFGInsertOSRHintsForUpdate files that are
+        no longer needed with the new object sinking phase and should have been
+        removed in r186795.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGInsertOSRHintsForUpdate.cpp: Removed.
+        (JSC::DFG::insertOSRHintsForUpdate): Deleted.
+        * dfg/DFGInsertOSRHintsForUpdate.h: Removed.
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2015-07-21  Saam barati  <saambarati1@gmail.com>
+
+        DestructuringPatternNode and DestructuringAssignmentNode should be ParserArenaFreeable
+        https://bugs.webkit.org/show_bug.cgi?id=147140
+
+        Reviewed by Geoffrey Garen.
+
+        The descendants of DestructuringPatternNode that need destruction also
+        inherit from ParserArenaDeletable.
+
+        * parser/Nodes.h:
+        (JSC::DestructuringPatternNode::~DestructuringPatternNode):
+        (JSC::ObjectPatternNode::appendEntry):
+        (JSC::DestructuringAssignmentNode::bindings):
+
+2015-07-21  Keith Miller  <keith_miller@apple.com>
+
+        Add support for the new.target syntax.
+        https://bugs.webkit.org/show_bug.cgi?id=147051
+
+        Reviewed by Yusuke Suzuki.
+
+        Add support for new.target. Essentially the implementation is, before constructor calls,
+        the target of a "new" is placed where "this" noramlly goes in the calling convention.
+        Then in the constructor before object is initialized we move the target of the "new"
+        into a local variable.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::NewTargetNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::newTargetExpr):
+        * parser/NodeConstructors.h:
+        (JSC::NewTargetNode::NewTargetNode):
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::newTargetExpr):
+        * runtime/CommonIdentifiers.h:
+        * tests/stress/new-target.js: Added.
+        (test):
+        (call):
+        (Constructor.subCall):
+        (Constructor.SubConstructor):
+        (Constructor):
+        (noAssign):
+        (doWeirdThings):
+        (SuperClass):
+        (SubClass):
+
+2015-07-20  Saam barati  <saambarati1@gmail.com>
+
+        "let" scoping introduced incoherent story about symbol table cloning
+        https://bugs.webkit.org/show_bug.cgi?id=147046
+
+        Reviewed by Filip Pizlo.
+
+        This patch now establishes a clear set of rules for how SymbolTables
+        are owned by CodeBlock. Every SymbolTable that is used by a bytecode
+        instruction must live in CodeBlock's constant register pool. When CodeBlock
+        is being linked, it ensures that every SymbolTable in the constant pool is cloned. 
+        This leaves no room for an un-cloned symbol table to be used by a bytecode instruction. 
+        Some instructions may refer to SymbolTable's indirectly through a JSLexicalEnvironment. 
+        This is fine, all JSLexicalEnvironment's are allocated with references to cloned symbol tables.
+
+        Another goal of this patch is to remove the notion that a SymbolTable is 1 to 1 
+        with a CodeBlock. With lexical scoping, this view of the world is no longer
+        correct. This patch begins to remove this assumption by making CodeBlock's
+        symbolTable() getter method private. There is still one place where we need
+        to purge our codebase of this assumption and that is the type profiler. It 
+        has not been updated for lexical scoping. After it is updated in 
+        https://bugs.webkit.org/show_bug.cgi?id=145438
+        we will be able to remove CodeBlock's symbolTable() getter entirely.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::nameForRegister):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addStringSwitchJumpTable):
+        (JSC::CodeBlock::stringSwitchJumpTable):
+        (JSC::CodeBlock::evalCodeCache):
+        (JSC::CodeBlock::symbolTable):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedFunctionExecutable::visitChildren):
+        (JSC::UnlinkedFunctionExecutable::link):
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addExceptionHandler):
+        (JSC::UnlinkedCodeBlock::exceptionHandler):
+        (JSC::UnlinkedCodeBlock::setSymbolTableConstantIndex):
+        (JSC::UnlinkedCodeBlock::symbolTableConstantIndex):
+        (JSC::UnlinkedCodeBlock::symbolTable): Deleted.
+        (JSC::UnlinkedCodeBlock::setSymbolTable): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::pushLexicalScope):
+        (JSC::BytecodeGenerator::variableForLocalEntry):
+        (JSC::BytecodeGenerator::createVariable):
+        (JSC::BytecodeGenerator::resolveType):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::thisRegister):
+        (JSC::BytecodeGenerator::instructions):
+        (JSC::BytecodeGenerator::symbolTable): Deleted.
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::baselineCodeBlockFor):
+        (JSC::DFG::Graph::isStrictModeFor):
+        (JSC::DFG::Graph::symbolTableFor): Deleted.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::baselineCodeBlock):
+        (JSC::AssemblyHelpers::argumentsStart):
+        (JSC::AssemblyHelpers::symbolTableFor): Deleted.
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/Executable.cpp:
+        (JSC::FunctionExecutable::visitChildren):
+        (JSC::FunctionExecutable::clearUnlinkedCodeForRecompilation):
+        (JSC::FunctionExecutable::symbolTable): Deleted.
+        * runtime/Executable.h:
+
+2015-07-18  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(186691): OSR entry is broken on loop headers that have no live variables
+        https://bugs.webkit.org/show_bug.cgi?id=147074
+        rdar://problem/21869970
+
+        Reviewed by Michael Saboff.
+        
+        The OSR entry must-handle block/value widening introduced in r186691 would cause the
+        CFA to reexecute if it caused any live local variables to change value. But this fails
+        if the must-handle block has no live local variables, and the entry block otherwise
+        appears to be unreachable.
+        
+        This fixes the bug by having the change detection include whether the block hadn't been
+        visited in addition to whether any local variable values got widened.
+        
+        This is a ~4% speed-up on SunSpider in browser.
+
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::run):
+
+2015-07-20  Mark Lam  <mark.lam@apple.com>
+
+        Rollout r187020 and r187021: breaks JSC API tests on debug builds.
+        https://bugs.webkit.org/show_bug.cgi?id=147110
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::addCurrentThread):
+        * runtime/JSLock.cpp:
+        (JSC::JSLockHolder::~JSLockHolder):
+        (JSC::JSLock::JSLock):
+        (JSC::JSLock::willDestroyVM):
+        (JSC::JSLock::setExclusiveThread):
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        (JSC::JSLock::dropAllLocks):
+        * runtime/JSLock.h:
+        (JSC::JSLock::vm):
+        (JSC::JSLock::hasExclusiveThread):
+        (JSC::JSLock::exclusiveThread):
+        * runtime/VM.h:
+        (JSC::VM::hasExclusiveThread):
+        (JSC::VM::exclusiveThread):
+        (JSC::VM::setExclusiveThread):
+
+2015-07-20  Per Arne Vollan  <peavo@outlook.com>
+
+        Unreviewed debug build fix after r187020.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::addCurrentThread):
+        VM::exclusiveThread() has changed return type to ThreadIdentifier.
+
+2015-07-20  Per Arne Vollan  <peavo@outlook.com>
+
+        JavaScriptCore performance is very bad on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=146448
+
+        Reviewed by Mark Lam.
+
+        Profiling shows that std::this_thread::get_id() is slow on Windows.
+        Use WTF::currentThread() instead, which calls GetCurrentThreadId().
+        This is faster on Windows. The issue has been reported to Microsoft,
+        https://connect.microsoft.com/VisualStudio/feedback/details/1558211.
+
+        * runtime/JSLock.cpp:
+        (JSC::JSLockHolder::~JSLockHolder):
+        (JSC::JSLock::JSLock):
+        (JSC::JSLock::willDestroyVM):
+        (JSC::JSLock::setExclusiveThread):
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/JSLock.h:
+        (JSC::JSLock::vm):
+        (JSC::JSLock::hasExclusiveThread):
+        (JSC::JSLock::exclusiveThread):
+        * runtime/VM.h:
+        (JSC::VM::hasExclusiveThread):
+        (JSC::VM::exclusiveThread):
+        (JSC::VM::setExclusiveThread):
+
+2015-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        In strict mode, `Object.keys(arguments)` includes "length"
+        https://bugs.webkit.org/show_bug.cgi?id=147071
+
+        Reviewed by Darin Adler.
+
+        ClonedAguments didn't set the "length" with DontEnum.
+
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createWithInlineFrame):
+        (JSC::ClonedArguments::createByCopyingFrom):
+        * tests/stress/arguments-length-always-dont-enum.js: Added.
+        (shouldBe):
+        (argsSloppy):
+        (argsStrict):
+
+2015-07-19  Jordan Harband  <ljharb@gmail.com>
+
+        new Date(NaN).toJSON() must return null instead of throwing a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=141115
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/DatePrototype.cpp:
+        (JSC::dateProtoFuncToJSON):
+
+2015-07-19  Saam barati  <saambarati1@gmail.com>
+
+        Parser::parseFunctionInfo hits RELEASE_ASSERT for Arrow Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147090
+
+        Reviewed by Yusuke Suzuki.
+
+        ArrowFunction's have there ParserFunctionInfo "name" field to 
+        be a non-null pointer. This is obviously allowed and valid except we 
+        had a RELEASE_ASSERT that claimed otherwise. This is a mistake. 
+
+        Note: ArrowFunction's will never actually have a function name;
+        there ParserFunctionInfo "name" field will be the empty string. 
+        This is not be mistaken with the name field being a null pointer.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2015-07-18  Saam barati  <saambarati1@gmail.com>
+
+        [ES6] Add support for block scope const
+        https://bugs.webkit.org/show_bug.cgi?id=31813
+
+        Reviewed by Filip Pizlo.
+
+        'const' is now implemented in an ES6 spec compliant manner.
+        'const' variables are always block scoped and always live
+        either on the stack or in a JSLexicalEnvironment. 'const'
+        variables never live on the global object.
+
+        Inside the BytecodeGenerator, when assigning to a stack
+        'const' variable or a LocalClosureVar 'const' variable,
+        we will emit code that just throws a type error.
+        When assigning to a ClosureVar const variable, CodeBlock linking
+        will ensure that we perform a dynamic lookup of that variable so
+        that put_to_scope's slow path throws a type error.
+
+        The old 'const' implementation has been removed in this patch.
+
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::CodeBlock):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::pushLexicalScope):
+        (JSC::BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration):
+        (JSC::BytecodeGenerator::variable):
+        (JSC::BytecodeGenerator::variableForLocalEntry):
+        (JSC::BytecodeGenerator::createVariable):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitInstanceOf):
+        (JSC::BytecodeGenerator::emitGetById):
+        (JSC::BytecodeGenerator::isArgumentNumber):
+        (JSC::BytecodeGenerator::emitReadOnlyExceptionIfNeeded):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::variablePerSymbolTable): Deleted.
+        (JSC::BytecodeGenerator::emitInitGlobalConst): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::Variable::Variable):
+        (JSC::Variable::isReadOnly):
+        (JSC::Variable::isSpecial):
+        (JSC::Variable::isConst):
+        (JSC::BytecodeGenerator::thisRegister):
+        (JSC::BytecodeGenerator::emitTypeOf):
+        (JSC::BytecodeGenerator::emitIn):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PostfixNode::emitResolve):
+        (JSC::PrefixNode::emitResolve):
+        (JSC::ReadModifyResolveNode::emitBytecode):
+        (JSC::AssignResolveNode::emitBytecode):
+        (JSC::CommaNode::emitBytecode):
+        (JSC::BindingNode::bindValue):
+        (JSC::ConstDeclNode::emitCodeSingle): Deleted.
+        (JSC::ConstDeclNode::emitBytecode): Deleted.
+        (JSC::ConstStatementNode::emitBytecode): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_put_to_arguments):
+        (JSC::JIT::emit_op_init_global_const): Deleted.
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_put_to_arguments):
+        (JSC::JIT::emit_op_init_global_const): Deleted.
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createDeclarationStatement):
+        (JSC::ASTBuilder::createEmptyVarExpression):
+        (JSC::ASTBuilder::createDebugger):
+        (JSC::ASTBuilder::appendStatement):
+        (JSC::ASTBuilder::createVarStatement): Deleted.
+        (JSC::ASTBuilder::createLetStatement): Deleted.
+        (JSC::ASTBuilder::createConstStatement): Deleted.
+        (JSC::ASTBuilder::appendConstDecl): Deleted.
+        * parser/NodeConstructors.h:
+        (JSC::CommaNode::CommaNode):
+        (JSC::SourceElements::SourceElements):
+        (JSC::SwitchNode::SwitchNode):
+        (JSC::BlockNode::BlockNode):
+        (JSC::ConstStatementNode::ConstStatementNode): Deleted.
+        (JSC::ConstDeclNode::ConstDeclNode): Deleted.
+        * parser/Nodes.h:
+        (JSC::ConstDeclNode::hasInitializer): Deleted.
+        (JSC::ConstDeclNode::ident): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parseVariableDeclaration):
+        (JSC::Parser<LexerType>::parseWhileStatement):
+        (JSC::Parser<LexerType>::parseVariableDeclarationList):
+        (JSC::Parser<LexerType>::createBindingPattern):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseDefaultValueForDestructuringPattern):
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseTryStatement):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseConstDeclaration): Deleted.
+        (JSC::Parser<LexerType>::parseConstDeclarationList): Deleted.
+        * parser/Parser.h:
+        (JSC::isEvalNode):
+        (JSC::isEvalNode<EvalNode>):
+        (JSC::isArguments):
+        (JSC::isEval):
+        (JSC::isEvalOrArgumentsIdentifier):
+        (JSC::Scope::Scope):
+        (JSC::Scope::declareCallee):
+        (JSC::Scope::declareVariable):
+        (JSC::Scope::declareLexicalVariable):
+        (JSC::Scope::hasDeclaredVariable):
+        (JSC::Scope::allowsVarDeclarations):
+        (JSC::Scope::allowsLexicalDeclarations):
+        (JSC::Scope::declareParameter):
+        (JSC::Scope::declareBoundParameter):
+        (JSC::Parser::destructuringKindFromDeclarationType):
+        (JSC::Parser::assignmentContextFromDeclarationType):
+        (JSC::Parser::isEvalOrArguments):
+        (JSC::Parser::currentScope):
+        (JSC::Parser::popScope):
+        (JSC::Parser::declareVariable):
+        (JSC::Parser::hasDeclaredVariable):
+        (JSC::Parser::setStrictMode):
+        (JSC::Parser::strictMode):
+        (JSC::Parser::isValidStrictMode):
+        (JSC::Parser::declareParameter):
+        (JSC::Parser::declareBoundParameter):
+        (JSC::Parser::breakIsValid):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createForInLoop):
+        (JSC::SyntaxChecker::createForOfLoop):
+        (JSC::SyntaxChecker::createEmptyStatement):
+        (JSC::SyntaxChecker::createDeclarationStatement):
+        (JSC::SyntaxChecker::createReturnStatement):
+        (JSC::SyntaxChecker::createBreakStatement):
+        (JSC::SyntaxChecker::createVarStatement): Deleted.
+        (JSC::SyntaxChecker::createLetStatement): Deleted.
+        * parser/VariableEnvironment.h:
+        (JSC::VariableEnvironmentEntry::isCaptured):
+        (JSC::VariableEnvironmentEntry::isConst):
+        (JSC::VariableEnvironmentEntry::isVar):
+        (JSC::VariableEnvironmentEntry::isLet):
+        (JSC::VariableEnvironmentEntry::setIsCaptured):
+        (JSC::VariableEnvironmentEntry::setIsConst):
+        (JSC::VariableEnvironmentEntry::setIsVar):
+        (JSC::VariableEnvironmentEntry::setIsLet):
+        (JSC::VariableEnvironmentEntry::isConstant): Deleted.
+        (JSC::VariableEnvironmentEntry::setIsConstant): Deleted.
+        * runtime/Executable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::defineOwnProperty):
+        (JSC::JSGlobalObject::addGlobalVar):
+        (JSC::JSGlobalObject::addFunction):
+        (JSC::lastInPrototypeChain):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::finishCreation):
+        (JSC::JSGlobalObject::addVar):
+        (JSC::JSGlobalObject::addConst): Deleted.
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::symbolTablePut):
+        * tests/stress/const-and-with-statement.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (.):
+        * tests/stress/const-exception-handling.js: Added.
+        (truth):
+        (assert):
+        (.):
+        * tests/stress/const-loop-semantics.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (.):
+        * tests/stress/const-not-strict-mode.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowTDZ):
+        (.):
+        * tests/stress/const-semantics.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (.):
+        * tests/stress/const-tdz.js: Added.
+        (truth):
+        (assert):
+        (shouldThrowTDZ):
+        (.):
+
+2015-07-18  Saam barati  <saambarati1@gmail.com>
+
+        lexical scoping is broken with respect to "break" and "continue"
+        https://bugs.webkit.org/show_bug.cgi?id=147063
+
+        Reviewed by Filip Pizlo.
+
+        Bug #142944 which introduced "let" and lexical scoping
+        didn't properly hook into the bytecode generator's machinery
+        for calculating scope depth deltas for "break" and "continue". This
+        resulted in the bytecode generator popping an incorrect number
+        of scopes when lexical scopes were involved.
+
+        This patch fixes this problem and generalizes this machinery a bit.
+        This patch also renames old functions in a sensible way that is more
+        coherent in a world with lexical scoping.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::newLabelScope):
+        (JSC::BytecodeGenerator::emitProfileType):
+        (JSC::BytecodeGenerator::pushLexicalScope):
+        (JSC::BytecodeGenerator::popLexicalScope):
+        (JSC::BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration):
+        (JSC::BytecodeGenerator::resolveType):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitGetFromScope):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        (JSC::BytecodeGenerator::emitPushWithScope):
+        (JSC::BytecodeGenerator::emitGetParentScope):
+        (JSC::BytecodeGenerator::emitPopScope):
+        (JSC::BytecodeGenerator::emitPopWithOrCatchScope):
+        (JSC::BytecodeGenerator::emitPopScopes):
+        (JSC::BytecodeGenerator::calculateTargetScopeDepthForExceptionHandler):
+        (JSC::BytecodeGenerator::localScopeDepth):
+        (JSC::BytecodeGenerator::labelScopeDepth):
+        (JSC::BytecodeGenerator::emitThrowReferenceError):
+        (JSC::BytecodeGenerator::emitPushFunctionNameScope):
+        (JSC::BytecodeGenerator::pushScopedControlFlowContext):
+        (JSC::BytecodeGenerator::popScopedControlFlowContext):
+        (JSC::BytecodeGenerator::emitPushCatchScope):
+        (JSC::BytecodeGenerator::currentScopeDepth): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::hasFinaliser):
+        (JSC::BytecodeGenerator::scopeDepth): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ContinueNode::trivialTarget):
+        (JSC::BreakNode::trivialTarget):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::WithNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+        * tests/stress/lexical-scoping-break-continue.js: Added.
+        (assert):
+        (.):
+
+2015-07-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r186996.
+        https://bugs.webkit.org/show_bug.cgi?id=147070
+
+        Broke JSC tests (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "lexical scoping is broken with respect to "break" and
+        "continue""
+        https://bugs.webkit.org/show_bug.cgi?id=147063
+        http://trac.webkit.org/changeset/186996
+
+2015-07-18  Saam barati  <saambarati1@gmail.com>
+
+        lexical scoping is broken with respect to "break" and "continue"
+        https://bugs.webkit.org/show_bug.cgi?id=147063
+
+        Reviewed by Filip Pizlo.
+
+        Bug #142944 which introduced "let" and lexical scoping
+        didn't properly hook into the bytecode generator's machinery
+        for calculating scope depth deltas for "break" and "continue". This
+        resulted in the bytecode generator popping an incorrect number
+        of scopes when lexical scopes were involved.
+
+        This patch fixes this problem and generalizes this machinery a bit.
+        This patch also renames old functions in a sensible way that is more
+        coherent in a world with lexical scoping.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::newLabelScope):
+        (JSC::BytecodeGenerator::emitProfileType):
+        (JSC::BytecodeGenerator::pushLexicalScope):
+        (JSC::BytecodeGenerator::popLexicalScope):
+        (JSC::BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration):
+        (JSC::BytecodeGenerator::resolveType):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitGetFromScope):
+        (JSC::BytecodeGenerator::emitPutToScope):
+        (JSC::BytecodeGenerator::emitPushWithScope):
+        (JSC::BytecodeGenerator::emitGetParentScope):
+        (JSC::BytecodeGenerator::emitPopScope):
+        (JSC::BytecodeGenerator::emitPopWithOrCatchScope):
+        (JSC::BytecodeGenerator::emitPopScopes):
+        (JSC::BytecodeGenerator::calculateTargetScopeDepthForExceptionHandler):
+        (JSC::BytecodeGenerator::localScopeDepth):
+        (JSC::BytecodeGenerator::labelScopeDepth):
+        (JSC::BytecodeGenerator::emitThrowReferenceError):
+        (JSC::BytecodeGenerator::emitPushFunctionNameScope):
+        (JSC::BytecodeGenerator::pushScopedControlFlowContext):
+        (JSC::BytecodeGenerator::popScopedControlFlowContext):
+        (JSC::BytecodeGenerator::emitPushCatchScope):
+        (JSC::BytecodeGenerator::currentScopeDepth): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::hasFinaliser):
+        (JSC::BytecodeGenerator::scopeDepth): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ContinueNode::trivialTarget):
+        (JSC::BreakNode::trivialTarget):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::WithNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+        * tests/stress/lexical-scoping-break-continue.js: Added.
+        (assert):
+        (.):
+
 2015-07-17  Filip Pizlo  <fpizlo@apple.com>
 
         DFG should have some obvious mitigations against watching structures that are unprofitable to watch

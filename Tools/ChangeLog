@@ -1,3 +1,114 @@
+2015-07-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Fixed VM pool allocation should have a reserve for allocations that cannot fail
+        https://bugs.webkit.org/show_bug.cgi?id=147154
+        rdar://problem/21847618
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a new test mode where we artificially limit JIT memory to 50KB. If our JIT OOM
+        mitigations work, these should all pass. Prior to this patch there were >20 failures.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-07-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to be notified about editor state changes
+        https://bugs.webkit.org/show_bug.cgi?id=145875
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Update the typing attributes toggle buttons state according to the
+        editor state in MiniBrowser, and add a test case to the
+        WebViewEditor unit tests.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowEditingCommandToggleButtonSetActive):
+        (typingAttributesChanged):
+        (browserWindowSetupEditorToolbar):
+        (browserWindowConstructed):
+        (browser_window_init):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebViewEditor.cpp:
+        (testWebViewEditorEditorStateTypingAttributes):
+        (beforeAll):
+
+2015-07-20  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Add selection-changed signal to the WebKit2 API
+        https://bugs.webkit.org/show_bug.cgi?id=137116
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a new WebProcess test TestEditor that is testing the WebKitWebEditor
+        (namely the selection-changed signal).
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/EditorTest.cpp: Added.
+        (WebKitWebEditorTest::create):
+        (WebKitWebEditorTest::selectionChangedCallback):
+        (WebKitWebEditorTest::testSelectionSelectAll):
+        (WebKitWebEditorTest::testSelectionCollapse):
+        (WebKitWebEditorTest::testSelectionModifyMove):
+        (WebKitWebEditorTest::testSelectionModifyExtend):
+        (WebKitWebEditorTest::testSelectionUnselect):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestEditor.cpp: Added.
+        (testWebKitWebEditorSelectionChanged):
+        (beforeAll):
+        (afterAll):
+
+2015-07-20  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect CMake build on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=147083
+
+        Reviewed by Gyuyoung Kim.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake: Added.
+        * WinLauncher/CMakeLists.txt:
+
+2015-07-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Enable seccomp filter API tests
+        https://bugs.webkit.org/show_bug.cgi?id=140071
+
+        Reviewed by Žan Doberšek.
+
+        These tests will now be run by the run-gtk-tests script.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2015-07-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Add seccomp filters support
+        https://bugs.webkit.org/show_bug.cgi?id=110014
+
+        Reviewed by Žan Doberšek.
+
+        Add libseccomp to jhbuild modulesets.
+
+        * gtk/jhbuild.modules:
+
+2015-07-18  Simon Fraser  <simon.fraser@apple.com>
+
+        MiniBrowser window title is just "Window" when page has no <title>
+        https://bugs.webkit.org/show_bug.cgi?id=147076
+
+        Reviewed by Tim Horton.
+        
+        Make MiniBrowser windows show the filename from the URL if we never get a title changed
+        notification.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController updateTitle:]):
+        (-[WK1BrowserWindowController webView:didCommitLoadForFrame:]):
+        (-[WK1BrowserWindowController webView:didReceiveTitle:forFrame:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController updateTitle:]):
+        (-[WK2BrowserWindowController observeValueForKeyPath:ofObject:change:context:]):
+        (-[WK2BrowserWindowController webView:didCommitNavigation:]):
+
 2015-07-17  Andy Estes  <aestes@apple.com>
 
         [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment

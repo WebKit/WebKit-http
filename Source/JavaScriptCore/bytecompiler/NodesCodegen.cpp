@@ -185,6 +185,16 @@ static RegisterID* emitSuperBaseForCallee(BytecodeGenerator& generator)
     return generator.emitGetById(generator.newTemporary(), homeObject.get(), generator.propertyNames().underscoreProto);
 }
 
+// ------------------------------ NewTargetNode ----------------------------------
+
+RegisterID* NewTargetNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    if (dst == generator.ignoredResult())
+        return nullptr;
+
+    return generator.moveToDestinationIfNeeded(dst, generator.newTarget());
+}
+
 // ------------------------------ ResolveNode ----------------------------------
 
 bool ResolveNode::isPure(BytecodeGenerator& generator) const
@@ -1065,7 +1075,7 @@ RegisterID* PostfixNode::emitResolve(BytecodeGenerator& generator, RegisterID* d
         generator.emitTDZCheckIfNecessary(var, local, nullptr);
         RefPtr<RegisterID> localReg = local;
         if (var.isReadOnly()) {
-            generator.emitReadOnlyExceptionIfNeeded();
+            generator.emitReadOnlyExceptionIfNeeded(var);
             localReg = generator.emitMove(generator.tempDestination(dst), local);
         } else if (generator.vm()->typeProfiler()) {
             RefPtr<RegisterID> tempDst = generator.finalDestination(dst);
@@ -1086,6 +1096,11 @@ RegisterID* PostfixNode::emitResolve(BytecodeGenerator& generator, RegisterID* d
     RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, var);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), var, ThrowIfNotFound);
     generator.emitTDZCheckIfNecessary(var, value.get(), nullptr);
+    if (var.isReadOnly()) {
+        bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+        if (threwException)
+            return value.get();
+    }
     RefPtr<RegisterID> oldValue = emitPostIncOrDec(generator, generator.finalDestination(dst), value.get(), m_operator);
     generator.emitPutToScope(scope.get(), var, value.get(), ThrowIfNotFound);
     if (generator.vm()->typeProfiler()) {
@@ -1269,7 +1284,7 @@ RegisterID* PrefixNode::emitResolve(BytecodeGenerator& generator, RegisterID* ds
         generator.emitTDZCheckIfNecessary(var, local, nullptr);
         RefPtr<RegisterID> localReg = local;
         if (var.isReadOnly()) {
-            generator.emitReadOnlyExceptionIfNeeded();
+            generator.emitReadOnlyExceptionIfNeeded(var);
             localReg = generator.emitMove(generator.tempDestination(dst), localReg.get());
         } else if (generator.vm()->typeProfiler()) {
             RefPtr<RegisterID> tempDst = generator.tempDestination(dst);
@@ -1288,6 +1303,11 @@ RegisterID* PrefixNode::emitResolve(BytecodeGenerator& generator, RegisterID* ds
     RefPtr<RegisterID> scope = generator.emitResolveScope(dst, var);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), var, ThrowIfNotFound);
     generator.emitTDZCheckIfNecessary(var, value.get(), nullptr);
+    if (var.isReadOnly()) {
+        bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+        if (threwException)
+            return value.get();
+    }
 
     emitIncOrDec(generator, value.get(), m_operator);
     generator.emitPutToScope(scope.get(), var, value.get(), ThrowIfNotFound);
@@ -1788,7 +1808,7 @@ RegisterID* ReadModifyResolveNode::emitBytecode(BytecodeGenerator& generator, Re
     if (RegisterID* local = var.local()) {
         generator.emitTDZCheckIfNecessary(var, local, nullptr);
         if (var.isReadOnly()) {
-            generator.emitReadOnlyExceptionIfNeeded();
+            generator.emitReadOnlyExceptionIfNeeded(var);
             return emitReadModifyAssignment(generator, generator.finalDestination(dst), local, m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()));
         }
         
@@ -1813,6 +1833,11 @@ RegisterID* ReadModifyResolveNode::emitBytecode(BytecodeGenerator& generator, Re
     RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, var);
     RefPtr<RegisterID> value = generator.emitGetFromScope(generator.newTemporary(), scope.get(), var, ThrowIfNotFound);
     generator.emitTDZCheckIfNecessary(var, value.get(), nullptr);
+    if (var.isReadOnly()) {
+        bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+        if (threwException)
+            return value.get();
+    }
     RefPtr<RegisterID> result = emitReadModifyAssignment(generator, generator.finalDestination(dst, value.get()), value.get(), m_right, m_operator, OperandTypes(ResultType::unknownType(), m_right->resultDescriptor()), this);
     RegisterID* returnResult = generator.emitPutToScope(scope.get(), var, result.get(), ThrowIfNotFound);
     if (generator.vm()->typeProfiler()) {
@@ -1831,8 +1856,9 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
         RegisterID* result = nullptr;
         if (m_assignmentContext == AssignmentContext::AssignmentExpression)
             generator.emitTDZCheckIfNecessary(var, local, nullptr);
-        if (var.isReadOnly()) {
-            generator.emitReadOnlyExceptionIfNeeded();
+
+        if (var.isReadOnly() && m_assignmentContext != AssignmentContext::ConstDeclarationStatement) {
+            generator.emitReadOnlyExceptionIfNeeded(var);
             result = generator.emitNode(dst, m_right);
         } else if (var.isSpecial() || generator.vm()->typeProfiler()) {
             RefPtr<RegisterID> tempDst = generator.tempDestination(dst);
@@ -1848,7 +1874,7 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
             result = generator.moveToDestinationIfNeeded(dst, right);
         }
 
-        if (m_assignmentContext == AssignmentContext::DeclarationStatement)
+        if (m_assignmentContext == AssignmentContext::DeclarationStatement || m_assignmentContext == AssignmentContext::ConstDeclarationStatement)
             generator.liftTDZCheckIfPossible(var);
         return result;
     }
@@ -1861,6 +1887,11 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
     if (dst == generator.ignoredResult())
         dst = 0;
     RefPtr<RegisterID> result = generator.emitNode(dst, m_right);
+    if (var.isReadOnly() && m_assignmentContext != AssignmentContext::ConstDeclarationStatement) {
+        bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+        if (threwException)
+            return generator.emitNode(dst, m_right);
+    }
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     RegisterID* returnResult = generator.emitPutToScope(scope.get(), var, result.get(), generator.isStrictMode() ? ThrowIfNotFound : DoNotThrowIfNotFound);
     if (generator.vm()->typeProfiler()) {
@@ -1868,7 +1899,7 @@ RegisterID* AssignResolveNode::emitBytecode(BytecodeGenerator& generator, Regist
         generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());
     }
 
-    if (m_assignmentContext == AssignmentContext::DeclarationStatement)
+    if (m_assignmentContext == AssignmentContext::DeclarationStatement || m_assignmentContext == AssignmentContext::ConstDeclarationStatement)
         generator.liftTDZCheckIfPossible(var);
     return returnResult;
 }
@@ -1969,68 +2000,6 @@ RegisterID* CommaNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
     for (; node && node->next(); node = node->next())
         generator.emitNode(generator.ignoredResult(), node->m_expr);
     return generator.emitNode(dst, node->m_expr);
-}
-
-// ------------------------------ ConstDeclNode ------------------------------------
-
-RegisterID* ConstDeclNode::emitCodeSingle(BytecodeGenerator& generator)
-{
-    // FIXME: This code does not match the behavior of const in Firefox.
-    Variable var = generator.variable(m_ident);
-    if (RegisterID* local = var.local()) {
-        if (!m_init)
-            return local;
-
-        // FIXME: Maybe call emitExpressionInfo here.
-        if (var.isSpecial() || generator.vm()->typeProfiler()) {
-            RefPtr<RegisterID> tempDst = generator.newTemporary();
-            generator.emitNode(tempDst.get(), m_init);
-            return generator.emitMove(local, tempDst.get());
-        }
-        
-        return generator.emitNode(local, m_init);
-    }
-
-    RefPtr<RegisterID> value = m_init ? generator.emitNode(m_init) : generator.emitLoad(0, jsUndefined());
-
-    if (generator.codeType() == GlobalCode)
-        return generator.emitInitGlobalConst(m_ident, value.get());
-
-    if (generator.codeType() != EvalCode) {
-        // Do a special kind of resolution. If anything fails, then don't perform the assignment. This is
-        // pretty shady - particularly how negligent it is with inteleaving scopes - but it's the
-        // behavior that JSC has had for a long time.
-        
-        ASSERT(generator.codeType() == FunctionCode);
-        
-        var = generator.variablePerSymbolTable(m_ident);
-        if (!var.isResolved())
-            return value.get();
-        
-        RefPtr<RegisterID> scope = generator.emitResolveScope(generator.newTemporary(), var);
-        return generator.emitPutToScope(scope.get(), var, value.get(), DoNotThrowIfNotFound);
-    }
-
-    // FIXME: This will result in incorrect assignment if m_ident exists in an intervening with scope.
-    RefPtr<RegisterID> scope = generator.emitResolveScope(nullptr, var);
-    return generator.emitPutToScope(scope.get(), var, value.get(), DoNotThrowIfNotFound);
-}
-
-RegisterID* ConstDeclNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
-{
-    RegisterID* result = 0;
-    for (ConstDeclNode* n = this; n; n = n->m_next)
-        result = n->emitCodeSingle(generator);
-
-    return result;
-}
-
-// ------------------------------ ConstStatementNode -----------------------------
-
-void ConstStatementNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
-{
-    generator.emitDebugHook(WillExecuteStatement, firstLine(), startOffset(), lineStartOffset());
-    generator.emitNode(m_next);
 }
 
 // ------------------------------ SourceElements -------------------------------
@@ -2627,7 +2596,7 @@ Label* ContinueNode::trivialTarget(BytecodeGenerator& generator)
     LabelScopePtr scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
-    if (generator.scopeDepth() != scope->scopeDepth())
+    if (generator.labelScopeDepth() != scope->scopeDepth())
         return 0;
 
     return scope->continueTarget();
@@ -2656,7 +2625,7 @@ Label* BreakNode::trivialTarget(BytecodeGenerator& generator)
     LabelScopePtr scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
-    if (generator.scopeDepth() != scope->scopeDepth())
+    if (generator.labelScopeDepth() != scope->scopeDepth())
         return 0;
 
     return scope->breakTarget();
@@ -2690,7 +2659,7 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         generator.emitProfileType(returnRegister.get(), ProfileTypeBytecodeFunctionReturnStatement, nullptr);
         generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());
     }
-    if (generator.scopeDepth()) {
+    if (generator.labelScopeDepth()) {
         returnRegister = generator.emitMove(generator.newTemporary(), returnRegister.get());
         generator.emitPopScopes(generator.scopeRegister(), 0);
     }
@@ -2714,7 +2683,7 @@ void WithNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     generator.emitExpressionInfo(m_divot, m_divot - m_expressionLength, m_divot);
     generator.emitPushWithScope(generator.scopeRegister(), scope.get());
     generator.emitNode(dst, m_statement);
-    generator.emitPopScope(generator.scopeRegister());
+    generator.emitPopWithOrCatchScope(generator.scopeRegister());
 }
 
 // ------------------------------ CaseClauseNode --------------------------------
@@ -2967,7 +2936,7 @@ void TryNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
         generator.emitPushCatchScope(generator.scopeRegister(), m_thrownValueIdent, thrownValueRegister.get(), DontDelete);
         generator.emitProfileControlFlow(m_tryBlock->endOffset() + 1);
         generator.emitNode(dst, m_catchBlock);
-        generator.emitPopScope(generator.scopeRegister());
+        generator.emitPopWithOrCatchScope(generator.scopeRegister());
         generator.emitLabel(catchEndLabel.get());
     }
 
@@ -3391,14 +3360,15 @@ void BindingNode::bindValue(BytecodeGenerator& generator, RegisterID* value) con
     if (RegisterID* local = var.local()) {
         if (m_bindingContext == AssignmentContext::AssignmentExpression)
             generator.emitTDZCheckIfNecessary(var, local, nullptr);
-        if (var.isReadOnly()) {
-            generator.emitReadOnlyExceptionIfNeeded();
-            return;
+        if (var.isReadOnly() && m_bindingContext != AssignmentContext::ConstDeclarationStatement) {
+            bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+            if (threwException)
+                return;
         }
         generator.emitMove(local, value);
         if (generator.vm()->typeProfiler())
             generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());
-        if (m_bindingContext == AssignmentContext::DeclarationStatement)
+        if (m_bindingContext == AssignmentContext::DeclarationStatement || m_bindingContext == AssignmentContext::ConstDeclarationStatement)
             generator.liftTDZCheckIfPossible(var);
         return;
     }
@@ -3408,12 +3378,17 @@ void BindingNode::bindValue(BytecodeGenerator& generator, RegisterID* value) con
     generator.emitExpressionInfo(divotEnd(), divotStart(), divotEnd());
     if (m_bindingContext == AssignmentContext::AssignmentExpression)
         generator.emitTDZCheckIfNecessary(var, nullptr, scope);
+    if (var.isReadOnly() && m_bindingContext != AssignmentContext::ConstDeclarationStatement) {
+        bool threwException = generator.emitReadOnlyExceptionIfNeeded(var);
+        if (threwException)
+            return;
+    }
     generator.emitPutToScope(scope, var, value, generator.isStrictMode() ? ThrowIfNotFound : DoNotThrowIfNotFound);
     if (generator.vm()->typeProfiler()) {
         generator.emitProfileType(value, var.isResolved() ? ProfileTypeBytecodePutToLocalScope : ProfileTypeBytecodePutToScope, &m_boundProperty);
         generator.emitTypeProfilerExpressionInfo(divotStart(), divotEnd());
     }
-    if (m_bindingContext == AssignmentContext::DeclarationStatement)
+    if (m_bindingContext == AssignmentContext::DeclarationStatement || m_bindingContext == AssignmentContext::ConstDeclarationStatement)
         generator.liftTDZCheckIfPossible(var);
     return;
 }

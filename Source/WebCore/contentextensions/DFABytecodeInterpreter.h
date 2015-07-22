@@ -51,11 +51,15 @@ public:
     
     Actions interpret(const CString&, uint16_t flags);
     Actions interpretWithDomains(const CString&, uint16_t flags, const DFABytecodeInterpreter::Actions& domainActions);
-    Actions actionsForDefaultStylesheetFromDFARoot();
+    Actions actionsMatchingEverything();
 
 private:
     void interpretAppendAction(unsigned& programCounter, Actions&, bool ifDomain);
     void interpretTestFlagsAndAppendAction(unsigned& programCounter, uint16_t flags, Actions&, bool ifDomain);
+
+    template<bool caseSensitive>
+    void interpetJumpTable(const char* url, uint32_t& urlIndex, uint32_t& programCounter, bool& urlIndexIsAfterEndOfString);
+
     const DFABytecode* m_bytecode;
     const unsigned m_bytecodeLength;
     const DFABytecodeInterpreter::Actions* m_domainActions { nullptr };
