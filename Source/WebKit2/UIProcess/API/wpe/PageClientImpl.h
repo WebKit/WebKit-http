@@ -80,8 +80,8 @@ private:
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
 
-    virtual PassRefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
-    virtual PassRefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
+    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
+    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
 
     virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime) override;
     virtual void clearTextIndicator(WebCore::TextIndicatorDismissalAnimation) override;
