@@ -92,7 +92,7 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProx
 void TextureMapperPlatformLayerProxy::scheduleReleaseUnusedBuffers()
 {
     if (m_releaseUnusedBuffersTimer.isActive())
-        m_releaseUnusedBuffersTimer.stop();
+        return;
 
     m_releaseUnusedBuffersTimer.startOneShot(s_releaseUnusedBuffersTimerInterval);
 }
