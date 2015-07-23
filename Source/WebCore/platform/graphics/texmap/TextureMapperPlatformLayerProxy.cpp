@@ -77,15 +77,6 @@ bool TextureMapperPlatformLayerProxy::hasTargetLayer()
     return !!m_targetLayer;
 }
 
-void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer, PushOnThread pushOnThread)
-{
-    MutexLocker locker(m_pushMutex);
-    m_pendingBuffer = WTF::move(newBuffer);
-
-    if (m_compositor)
-        m_compositor->onNewBufferAvailable();
-}
-
 void TextureMapperPlatformLayerProxy::pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
 {
     m_pendingBuffer = WTF::move(newBuffer);

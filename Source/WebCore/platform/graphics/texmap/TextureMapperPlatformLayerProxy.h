@@ -59,11 +59,6 @@ public:
     TextureMapperPlatformLayerProxy();
     virtual ~TextureMapperPlatformLayerProxy();
 
-    enum PushOnThread {
-        PushOnCompositionThread,
-        PushOnNonCompositionThread
-    };
-    void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>, PushOnThread = PushOnNonCompositionThread);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
 
     Mutex& mutex() { return m_pushMutex; }
