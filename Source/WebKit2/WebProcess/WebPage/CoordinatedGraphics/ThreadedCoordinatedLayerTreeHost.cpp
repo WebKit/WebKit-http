@@ -271,6 +271,7 @@ void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
     m_coordinator->renderNextFrame();
+    m_layerFlushTimer.cancel();
     performScheduledLayerFlush();
 }
 
