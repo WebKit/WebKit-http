@@ -29,6 +29,8 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/RefCounted.h>
 
+using namespace std;
+
 namespace WTF {
 
 class Stopwatch : public RefCounted<Stopwatch> {

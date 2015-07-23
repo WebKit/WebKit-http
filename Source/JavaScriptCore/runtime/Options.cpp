@@ -46,6 +46,8 @@
 #define USE_OPTIONS_FILE 0
 #define OPTIONS_FILENAME "/tmp/jsc.options"
 
+using namespace std;
+
 namespace JSC {
 
 static bool parse(const char* string, bool& value)
