@@ -101,15 +101,24 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProx
 {
     MutexLocker locker(m_pushMutex);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> availableBuffer;
-    for (auto& buffer : m_usedBuffers) {
-        if (buffer && buffer->canReuseWithoutReset(size, internalFormat)) {
+
+    auto buffers = WTF::move(m_usedBuffers);
+
+    for (auto& buffer : buffers) {
+        if (!buffer)
+            continue;
+
+        if (!availableBuffer && buffer->canReuseWithoutReset(size, internalFormat)) {
             availableBuffer = WTF::move(buffer);
             availableBuffer->markUsed();
-            break;
+            continue;
         }
+
+        m_usedBuffers.append(WTF::move(buffer));
     }
 
-    scheduleReleaseUnusedBuffers();
+    if (!m_usedBuffers.isEmpty())
+        scheduleReleaseUnusedBuffers();
     return availableBuffer;
 }
 
@@ -127,10 +136,13 @@ void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
     if (m_usedBuffers.isEmpty())
         return;
 
+    auto buffers = WTF::move(m_usedBuffers);
     double minUsedTime = monotonicallyIncreasingTime() - s_releaseUnusedSecondsTolerance;
-    m_usedBuffers.removeAllMatching([minUsedTime] (const std::unique_ptr<TextureMapperPlatformLayerBuffer>& current) {
-        return !current || current->lastUsedTime() < minUsedTime;
-    });
+
+    for (auto& buffer : buffers) {
+        if (buffer && buffer->lastUsedTime() >= minUsedTime)
+            m_usedBuffers.append(WTF::move(buffer));
+    }
 }
 
 void TextureMapperPlatformLayerProxy::swapBuffer()
