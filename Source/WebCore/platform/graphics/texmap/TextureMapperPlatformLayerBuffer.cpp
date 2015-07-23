@@ -49,7 +49,7 @@ TextureMapperPlatformLayerBuffer::~TextureMapperPlatformLayerBuffer()
 
 bool TextureMapperPlatformLayerBuffer::canReuseWithoutReset(const IntSize& size, GC3Dint internalFormat)
 {
-    return m_texture->canReuseWith(size) && (static_cast<BitmapTextureGL*>(m_texture.get())->internalFormat() == internalFormat || internalFormat == GraphicsContext3D::DONT_CARE);
+    return m_texture && m_texture->canReuseWith(size) && (static_cast<BitmapTextureGL*>(m_texture.get())->internalFormat() == internalFormat || internalFormat == GraphicsContext3D::DONT_CARE);
 }
 
 void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity)
