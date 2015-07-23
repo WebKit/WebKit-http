@@ -55,7 +55,7 @@ public:
 private:
 
     RefPtr<BitmapTexture> m_texture;
-    double m_timeLastUsed;
+    double m_timeLastUsed { 0 };
 
     GLuint m_textureID;
     IntSize m_size;
