@@ -88,9 +88,8 @@ void TextureMapperPlatformLayerProxy::requestUpdate(MutexLocker&)
         m_compositor->onNewBufferAvailable();
 }
 
-std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(const IntSize& size, GC3Dint internalFormat)
+std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(MutexLocker&, const IntSize& size, GC3Dint internalFormat)
 {
-    MutexLocker locker(m_pushMutex);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> availableBuffer;
 
     auto buffers = WTF::move(m_usedBuffers);
