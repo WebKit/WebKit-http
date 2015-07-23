@@ -244,6 +244,7 @@ void WTFGetBacktrace(void** stack, int* size)
     else
         *size = 0;
 #else
+    UNUSED_PARAM(stack);
     *size = 0;
 #endif
 }
