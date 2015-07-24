@@ -442,6 +442,23 @@ public:
         return 2 * sizeof(void*);
     }
 
+    void emitFunctionPrologue()
+    {
+        m_assembler.addiu(stackPointerRegister, stackPointerRegister, -8);
+        m_assembler.sw(returnAddressRegister, stackPointerRegister, 4);
+        m_assembler.sw(framePointerRegister, stackPointerRegister, 0);
+        move(stackPointerRegister, framePointerRegister);
+    }
+
+    void emitFunctionEpilogue()
+    {
+        move(framePointerRegister, stackPointerRegister);
+        m_assembler.lw(framePointerRegister, stackPointerRegister, 0);
+        m_assembler.lw(returnAddressRegister, stackPointerRegister, 4);
+        m_assembler.addiu(stackPointerRegister, stackPointerRegister, 8);
+    }
+
+
     ALWAYS_INLINE void preserveReturnAddressAfterCall(RegisterID reg)
     {
         move(returnAddressRegister, reg);
