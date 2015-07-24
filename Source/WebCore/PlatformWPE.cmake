@@ -335,4 +335,11 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
         platform/graphics/gstreamer/WebKitCommonEncryptionDecryptorGStreamer.cpp
         platform/graphics/gstreamer/WebKitMediaAesCtr.c
     )
+
+    if (ENABLE_ENCRYPTED_MEDIA_V2 AND ENABLE_DXDRM)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/CDMPRSessionGStreamer.cpp
+            platform/graphics/gstreamer/WebKitPlayReadyDecryptorGStreamer.cpp
+        )
+    endif ()
 endif ()
