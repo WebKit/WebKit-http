@@ -77,6 +77,7 @@ void* OSAllocator::reserveUncommitted(size_t bytes, Usage usage, bool writable, 
             // 2nd half is good, release 1st half.
             if (munmap(result, bytes))
                 CRASH();
+            result = reinterpret_cast<int8_t*>(result) + bytes;
         } else
             ASSERT_NOT_REACHED();
     }
