@@ -378,6 +378,7 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (auto* platformLayerProxy = m_platformLayerProxies.get(layer.get())) {
         MutexLocker locker(platformLayerProxy->mutex());
+        platformLayerProxy->setCompositor(locker, nullptr);
         platformLayerProxy->setTargetLayer(locker, nullptr);
     }
     m_platformLayerProxies.remove(layer.get());
