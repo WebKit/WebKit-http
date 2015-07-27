@@ -51,35 +51,32 @@ TextureMapperPlatformLayerProxy::~TextureMapperPlatformLayerProxy()
         m_targetLayer->setContentsLayer(nullptr);
 }
 
-void TextureMapperPlatformLayerProxy::setCompositor(Compositor* compositor)
+void TextureMapperPlatformLayerProxy::setCompositor(MutexLocker&, Compositor* compositor)
 {
 #ifndef NDEBUG
     m_compositorThreadID = WTF::currentThread();
 #endif
     ASSERT(compositor);
-    MutexLocker locker(m_pushMutex);
     m_compositor = compositor;
     m_pushCondition.signal();
 }
 
-void TextureMapperPlatformLayerProxy::setTargetLayer(TextureMapperLayer* layer)
+void TextureMapperPlatformLayerProxy::setTargetLayer(MutexLocker&, TextureMapperLayer* layer)
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
     m_targetLayer = layer;
 }
 
-void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
+void TextureMapperPlatformLayerProxy::pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
 {
-    MutexLocker locker(m_pushMutex);
     m_pendingBuffer = WTF::move(newBuffer);
 
     if (m_compositor)
         m_compositor->onNewBufferAvailable();
 }
 
-std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(const IntSize& size, GC3Dint internalFormat)
+std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(MutexLocker&, const IntSize& size, GC3Dint internalFormat)
 {
-    MutexLocker locker(m_pushMutex);
     std::unique_ptr<TextureMapperPlatformLayerBuffer> availableBuffer;
     for (auto& buffer : m_usedBuffers) {
         if (buffer && buffer->canReuseWithoutReset(size, internalFormat)) {

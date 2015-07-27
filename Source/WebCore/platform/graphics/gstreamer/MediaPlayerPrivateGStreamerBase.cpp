@@ -512,7 +512,8 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
-    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size);
+    MutexLocker locker(m_platformLayerProxy->mutex());
+    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(locker, size);
     if (UNLIKELY(!buffer)) {
         if (UNLIKELY(!m_context3D))
             m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr);
@@ -523,7 +524,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
     }
 
     updateTexture(buffer->textureGL(), videoInfo);
-    m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
+    m_platformLayerProxy->pushNextBuffer(locker, WTF::move(buffer));
     return;
 #endif
 

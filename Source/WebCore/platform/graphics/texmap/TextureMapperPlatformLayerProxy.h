@@ -58,11 +58,12 @@ public:
     TextureMapperPlatformLayerProxy();
     virtual ~TextureMapperPlatformLayerProxy();
 
-    void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
+    Mutex& mutex() { return m_pushMutex; }
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(MutexLocker&, const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
+    void pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
 
-    void setCompositor(Compositor*);
-    void setTargetLayer(TextureMapperLayer*);
+    void setCompositor(MutexLocker&, Compositor*);
+    void setTargetLayer(MutexLocker&, TextureMapperLayer*);
 
     void swapBuffer();
 
