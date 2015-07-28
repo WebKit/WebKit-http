@@ -44,17 +44,17 @@ typedef struct _WebKitMediaSrc WebKitMediaSrc;
 namespace WebCore {
 
 class SourceBufferPrivateGStreamer;
-class MediaSourceClientGStreamer;
-class MediaPlayerPrivateGStreamer;
+class MediaSourceClientGStreamerMSE;
+class MediaPlayerPrivateGStreamerMSE;
 class PlatformTimeRanges;
 
 // FIXME: Should this be called MediaSourcePrivateGStreamer?
 class MediaSourceGStreamer : public MediaSourcePrivate {
 public:
-    static void open(MediaSourcePrivateClient*, WebKitMediaSrc*, MediaPlayerPrivateGStreamer*);
+    static void open(MediaSourcePrivateClient*, MediaPlayerPrivateGStreamerMSE*);
     virtual ~MediaSourceGStreamer();
 
-    MediaSourceClientGStreamer& client() const { return *m_client; }
+    MediaSourceClientGStreamerMSE& client() const { return *m_client; }
     virtual AddStatus addSourceBuffer(const ContentType&, RefPtr<SourceBufferPrivate>&);
     void removeSourceBuffer(SourceBufferPrivate*);
 
@@ -73,13 +73,13 @@ public:
     std::unique_ptr<PlatformTimeRanges> buffered();
 
 private:
-    MediaSourceGStreamer(MediaSourcePrivateClient*, WebKitMediaSrc*);
+    MediaSourceGStreamer(MediaSourcePrivateClient*, MediaPlayerPrivateGStreamerMSE* playerPrivate);
 
     HashSet<SourceBufferPrivateGStreamer*> m_sourceBuffers;
     HashSet<SourceBufferPrivateGStreamer*> m_activeSourceBuffers;
-    RefPtr<MediaSourceClientGStreamer> m_client;
+    RefPtr<MediaSourceClientGStreamerMSE> m_client;
     MediaSourcePrivateClient* m_mediaSource;
-    MediaPlayerPrivateGStreamer* m_playerPrivate;
+    MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
 };
 
 }

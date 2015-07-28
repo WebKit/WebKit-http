@@ -34,6 +34,7 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "MediaPlayer.h"
+#include "SourceBufferPrivateClient.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -49,6 +50,7 @@ public:
     virtual void setClient(SourceBufferPrivateClient*) = 0;
 
     virtual void append(const unsigned char* data, unsigned length) = 0;
+    virtual void appendComplete(SourceBufferPrivateClient::AppendResult) { };
     virtual void abort() = 0;
     virtual void removedFromMediaSource() = 0;
 

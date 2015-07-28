@@ -166,6 +166,14 @@ public:
     void keyAdded();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+    virtual void dispatchDecryptionKey(GstBuffer*);
+#endif
+#if USE(DXDRM)
+    DiscretixSession* dxdrmSession() const;
+    virtual void emitSession();
+#endif
+
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
 
@@ -233,11 +241,6 @@ public:
 #endif
 
 private:
-
-#if USE(DXDRM)
-    DiscretixSession* dxdrmSession() const;
-    void emitSession();
-#endif
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
     DiscretixSession* m_dxdrmSession;

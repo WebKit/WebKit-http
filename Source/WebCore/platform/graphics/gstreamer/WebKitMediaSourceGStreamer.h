@@ -34,7 +34,9 @@
 
 namespace WebCore {
 
-class MediaPlayerPrivateGStreamer;
+class MediaPlayerPrivateGStreamerMSE;
+
+enum MediaSourceStreamTypeGStreamer { Invalid, Unknown, Audio, Video, Text };
 
 }
 
@@ -45,8 +47,6 @@ G_BEGIN_DECLS
 #define WEBKIT_MEDIA_SRC_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), WEBKIT_TYPE_MEDIA_SRC, WebKitMediaSrcClass))
 #define WEBKIT_IS_MEDIA_SRC(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), WEBKIT_TYPE_MEDIA_SRC))
 #define WEBKIT_IS_MEDIA_SRC_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), WEBKIT_TYPE_MEDIA_SRC))
-
-typedef enum _StreamType {STREAM_TYPE_UNKNOWN, STREAM_TYPE_AUDIO, STREAM_TYPE_VIDEO, STREAM_TYPE_TEXT} StreamType;
 
 typedef struct _WebKitMediaSrc        WebKitMediaSrc;
 typedef struct _WebKitMediaSrcClass   WebKitMediaSrcClass;
@@ -69,14 +69,9 @@ struct _WebKitMediaSrcClass {
 
 GType webkit_media_src_get_type(void);
 
-GstPad* webkit_media_src_get_audio_pad(WebKitMediaSrc* src, guint i);
-GstPad* webkit_media_src_get_video_pad(WebKitMediaSrc* src, guint i);
-GstPad* webkit_media_src_get_text_pad(WebKitMediaSrc* src, guint i);
-void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::MediaPlayerPrivateGStreamer* player);
+void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::MediaPlayerPrivateGStreamerMSE* player);
 
-void webkit_media_src_set_seek_time(WebKitMediaSrc*, const MediaTime&);
-void webkit_media_src_segment_needed(WebKitMediaSrc*, StreamType);
-gboolean webkit_media_src_is_appending(WebKitMediaSrc*);
+void webkit_media_src_prepare_seek(WebKitMediaSrc*, const MediaTime&);
 
 G_END_DECLS
 
@@ -92,32 +87,31 @@ class ContentType;
 class SourceBufferPrivateGStreamer;
 class MediaSourceGStreamer;
 
-class MediaSourceClientGStreamer: public RefCounted<MediaSourceClientGStreamer> {
+class PlaybackPipeline: public RefCounted<PlaybackPipeline> {
     public:
-        static PassRefPtr<MediaSourceClientGStreamer> create(WebKitMediaSrc*);
-        virtual ~MediaSourceClientGStreamer();
+        static PassRefPtr<PlaybackPipeline> create();
+        virtual ~PlaybackPipeline();
+
+        void setWebKitMediaSrc(WebKitMediaSrc*);
+        WebKitMediaSrc* webKitMediaSrc();
+
+        MediaSourcePrivate::AddStatus addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>);
+        void removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>);
+        void attachTrack(RefPtr<SourceBufferPrivateGStreamer>, RefPtr<TrackPrivateBase>, GstCaps*);
+        void reattachTrack(RefPtr<SourceBufferPrivateGStreamer>, RefPtr<TrackPrivateBase>, GstCaps*);
+        void notifyDurationChanged();
 
         // From MediaSourceGStreamer
-        MediaSourcePrivate::AddStatus addSourceBuffer(PassRefPtr<SourceBufferPrivateGStreamer>, const ContentType&);
-        void durationChanged(const MediaTime&);
         void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
         // From SourceBufferPrivateGStreamer
-        bool append(PassRefPtr<SourceBufferPrivateGStreamer>, const unsigned char*, unsigned);
-        void removedFromMediaSource(PassRefPtr<SourceBufferPrivateGStreamer>);
-        void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> > samples, AtomicString trackIDString);
-        void enqueueSample(PassRefPtr<MediaSample> sample, AtomicString trackIDString);
+        void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> >);
+        void enqueueSample(PassRefPtr<MediaSample>);
 
-        // From our WebKitMediaSrc
-#if ENABLE(VIDEO_TRACK)
-        void didReceiveInitializationSegment(SourceBufferPrivateGStreamer*, const SourceBufferPrivateClient::InitializationSegment&);
-        void didReceiveSample(SourceBufferPrivateGStreamer* sourceBuffer, PassRefPtr<MediaSample> sample);
-        void didReceiveAllPendingSamples(SourceBufferPrivateGStreamer* sourceBuffer);
-#endif
-
+        GstElement* pipeline();
     private:
-        MediaSourceClientGStreamer(WebKitMediaSrc*);
-        GRefPtr<WebKitMediaSrc> m_src;
+        PlaybackPipeline();
+        GRefPtr<WebKitMediaSrc> m_webKitMediaSrc;
 };
 
 };

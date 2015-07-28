@@ -495,6 +495,9 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
                 gst_sample_unref(priv->previousSample);
             priv->previousSample = nullptr;
         }
+
+        LOG_MEDIA_MESSAGE("Drain query, emitting DRAIN signal and releasing EGL samples");
+
         GST_OBJECT_LOCK (sink);
         g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
         GST_OBJECT_UNLOCK (sink);

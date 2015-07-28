@@ -188,6 +188,7 @@ void MediaSource::seekToTime(const MediaTime& time)
 
     m_pendingSeekTime = time;
 
+    LOG(MediaSource, "MediaSource::seekToTime(%p, %f): %lu active source buffers", this, time.toDouble(), m_activeSourceBuffers->length());
     // Run the following steps as part of the "Wait until the user agent has established whether or not the
     // media data for the new playback position is available, and, if it is, until it has decoded enough data
     // to play back that position" step of the seek algorithm:
@@ -206,7 +207,8 @@ void MediaSource::seekToTime(const MediaTime& time)
             LOG(MediaSource, "MediaSource::seekToTime(%p) - waitForSeekCompleted()", this);
             m_private->waitForSeekCompleted();
             return;
-        }
+        } else
+            LOG(MediaSource, "MediaSource::seekToTime(%p) - seek time buffered already.", this);
         // ↳ Otherwise
         // Continue
     }

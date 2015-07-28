@@ -37,6 +37,7 @@
 
 #include "ContentType.h"
 #include "MediaPlayerPrivateGStreamer.h"
+#include "MediaPlayerPrivateGStreamerMSE.h"
 #include "NotImplemented.h"
 #include "SourceBufferPrivateGStreamer.h"
 #include "WebKitMediaSourceGStreamer.h"
@@ -47,19 +48,19 @@
 
 namespace WebCore {
 
-void MediaSourceGStreamer::open(MediaSourcePrivateClient* mediaSource, WebKitMediaSrc* src, MediaPlayerPrivateGStreamer* playerPrivate)
+void MediaSourceGStreamer::open(MediaSourcePrivateClient* mediaSource, MediaPlayerPrivateGStreamerMSE* playerPrivate)
 {
     ASSERT(mediaSource);
-    RefPtr<MediaSourceGStreamer> mediaSourcePrivate = adoptRef(new MediaSourceGStreamer(mediaSource, src));
+    RefPtr<MediaSourceGStreamer> mediaSourcePrivate = adoptRef(new MediaSourceGStreamer(mediaSource, playerPrivate));
     mediaSourcePrivate->m_playerPrivate = playerPrivate;
     mediaSource->setPrivateAndOpen(mediaSourcePrivate.releaseNonNull());
 }
 
-MediaSourceGStreamer::MediaSourceGStreamer(MediaSourcePrivateClient* mediaSource, WebKitMediaSrc* src)
+MediaSourceGStreamer::MediaSourceGStreamer(MediaSourcePrivateClient* mediaSource, MediaPlayerPrivateGStreamerMSE* playerPrivate)
     : MediaSourcePrivate()
     , m_mediaSource(mediaSource)
 {
-    m_client = MediaSourceClientGStreamer::create(src);
+    m_client = MediaSourceClientGStreamerMSE::create(playerPrivate);
 }
 
 MediaSourceGStreamer::~MediaSourceGStreamer()
@@ -120,12 +121,12 @@ void MediaSourceGStreamer::setReadyState(MediaPlayer::ReadyState state)
 
 void MediaSourceGStreamer::waitForSeekCompleted()
 {
-    notImplemented();
+    m_playerPrivate->waitForSeekCompleted();
 }
 
 void MediaSourceGStreamer::seekCompleted()
 {
-    notImplemented();
+    m_playerPrivate->seekCompleted();
 }
 
 void MediaSourceGStreamer::sourceBufferPrivateDidChangeActiveState(SourceBufferPrivateGStreamer* buffer, bool isActive)
@@ -137,7 +138,8 @@ void MediaSourceGStreamer::sourceBufferPrivateDidChangeActiveState(SourceBufferP
         m_activeSourceBuffers.remove(buffer);
 }
 
-std::unique_ptr<PlatformTimeRanges> MediaSourceGStreamer::buffered() {
+std::unique_ptr<PlatformTimeRanges> MediaSourceGStreamer::buffered()
+{
     return m_mediaSource->buffered();
 }
 

@@ -36,6 +36,8 @@
 #if ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
 
 #include "ContentType.h"
+#include "GStreamerUtilities.h"
+#include "MediaPlayerPrivateGStreamerMSE.h"
 #include "MediaSample.h"
 #include "MediaSourceGStreamer.h"
 #include "NotImplemented.h"
@@ -43,17 +45,16 @@
 
 namespace WebCore {
 
-PassRefPtr<SourceBufferPrivateGStreamer> SourceBufferPrivateGStreamer::create(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamer> client, const ContentType& contentType)
+PassRefPtr<SourceBufferPrivateGStreamer> SourceBufferPrivateGStreamer::create(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamerMSE> client, const ContentType& contentType)
 {
     return adoptRef(new SourceBufferPrivateGStreamer(mediaSource, client, contentType));
 }
 
-SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamer> client, const ContentType& contentType)
+SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer* mediaSource, PassRefPtr<MediaSourceClientGStreamerMSE> client, const ContentType& contentType)
     : SourceBufferPrivate()
     , m_mediaSource(mediaSource)
     , m_type(contentType)
     , m_client(client)
-    , m_aborted(false)
 {
 }
 
@@ -77,8 +78,8 @@ void SourceBufferPrivateGStreamer::append(const unsigned char* data, unsigned le
 
 void SourceBufferPrivateGStreamer::abort()
 {
-    // This is a hint for the lower layers (WebKitMediaSrc) to force a reset when the next data is appended
-    m_aborted = true;
+    if (m_client)
+        m_client->abort(this);
 }
 
 void SourceBufferPrivateGStreamer::removedFromMediaSource()
@@ -101,14 +102,17 @@ void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
 
 void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample> > samples, AtomicString trackIDString)
 {
+    UNUSED_PARAM(trackIDString);
     if (m_client)
-        m_client->flushAndEnqueueNonDisplayingSamples(samples, trackIDString);
+        m_client->flushAndEnqueueNonDisplayingSamples(samples);
 }
 
-void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> sample, AtomicString trackIDString)
+void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString trackIDString)
 {
+    RefPtr<MediaSample> sample = prpSample;
+    UNUSED_PARAM(trackIDString);
     if (m_client)
-        m_client->enqueueSample(sample, trackIDString);
+        m_client->enqueueSample(sample);
 }
 
 bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(AtomicString)
@@ -139,8 +143,9 @@ void SourceBufferPrivateGStreamer::didReceiveInitializationSegment(const SourceB
         m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveInitializationSegment(this, initializationSegment);
 }
 
-void SourceBufferPrivateGStreamer::didReceiveSample(PassRefPtr<MediaSample> sample)
+void SourceBufferPrivateGStreamer::didReceiveSample(PassRefPtr<MediaSample> prpSample)
 {
+    RefPtr<MediaSample> sample = prpSample;
     if (m_sourceBufferPrivateClient)
         m_sourceBufferPrivateClient->sourceBufferPrivateDidReceiveSample(this, sample);
 }

@@ -117,6 +117,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
     platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
+    platform/graphics/gstreamer/MediaPlayerPrivateGStreamerMSE.cpp
     platform/graphics/gstreamer/MediaSourceGStreamer.cpp
     platform/graphics/gstreamer/SourceBufferPrivateGStreamer.cpp
     platform/graphics/gstreamer/TextCombinerGStreamer.cpp
