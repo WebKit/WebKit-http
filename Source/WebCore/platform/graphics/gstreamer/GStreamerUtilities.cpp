@@ -170,6 +170,40 @@ GstClockTime toGstClockTime(float time)
     return GST_TIMEVAL_TO_TIME(timeValue);
 }
 
+#if GST_CHECK_VERSION(1, 5, 3)
+GstElement* createGstDecryptor(const gchar* protectionSystem)
+{
+    GstElement* decryptor = nullptr;
+    GList *decryptors = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECRYPTOR,
+                                                              GST_RANK_MARGINAL);
+
+    for (GList* walk = decryptors; !decryptor && walk; walk = g_list_next(walk)) {
+        GstElementFactory* factory = reinterpret_cast<GstElementFactory*>(walk->data);
+        const GList *tmpl = gst_element_factory_get_static_pad_templates(factory);
+
+        for (const GList* current = tmpl; current && !decryptor; current = g_list_next(current)) {
+            GstStaticPadTemplate* templ = static_cast<GstStaticPadTemplate*>(current->data);
+            GstCaps* caps = gst_static_pad_template_get_caps(templ);
+            guint leng = gst_caps_get_size(caps);
+
+            for (guint i = 0; !decryptor && i < leng; ++i) {
+                GstStructure* st = gst_caps_get_structure(caps, i);
+                if (gst_structure_has_field_typed(st, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD, G_TYPE_STRING)) {
+                    const gchar* sys_id = gst_structure_get_string(st, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
+                    if (!g_ascii_strcasecmp(protectionSystem, sys_id)) {
+                        decryptor = gst_element_factory_create(factory, nullptr);
+                        break;
+                    }
+                }
+            }
+            gst_caps_unref (caps);
+        }
+    }
+    gst_plugin_feature_list_free(decryptors);
+    return decryptor;
+}
+#endif
+
 }
 
 #endif // USE(GSTREAMER)
