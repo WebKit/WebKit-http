@@ -65,7 +65,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
-    , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 40)
+    , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 30)
     , m_layerFlushSchedulingEnabled(true)
 {
     m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
