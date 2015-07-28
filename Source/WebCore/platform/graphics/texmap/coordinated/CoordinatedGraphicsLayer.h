@@ -166,8 +166,8 @@ private:
 #endif
     void syncPlatformLayer();
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    void platformLayerWillBeDestroyed();
-    void setPlatformLayerNeedsDisplay();
+    virtual void platformLayerWillBeDestroyed() override;
+    virtual void setPlatformLayerNeedsDisplay() override;
 #endif
 
     virtual void setDebugBorder(const Color&, float width) override;
