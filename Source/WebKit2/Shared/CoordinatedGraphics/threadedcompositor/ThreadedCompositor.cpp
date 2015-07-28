@@ -140,6 +140,9 @@ Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client)
 ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
     , m_threadIdentifier(0)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor))
+#endif
 {
     createCompositingThread();
 }
@@ -392,10 +395,41 @@ const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
         wl_callback_destroy(callback);
 
         auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
-        threadedCompositor.m_client->frameComplete();
+        threadedCompositor.m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
         threadedCompositor.m_compositingRunLoop->updateCompleted();
     }
 };
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
+{
+    return m_displayRefreshMonitor;
+}
+
+ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor()
+    : WebCore::DisplayRefreshMonitor(0)
+    , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
+{
+}
+
+bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
+{
+    setIsScheduled(true);
+    return true;
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
+{
+    if (isScheduled())
+        m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
+{
+    setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
+    DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+}
+#endif
 
 }
 #endif // USE(COORDINATED_GRAPHICS_THREADED)
