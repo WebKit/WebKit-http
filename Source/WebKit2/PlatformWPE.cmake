@@ -197,29 +197,6 @@ list(APPEND WebKit2_LIBRARIES
     WPE
 )
 
-if (ENABLE_WESTON_SHELL)
-set(WPEWestonShell_SOURCES
-    UIProcess/wpe/WestonShell/Environment.cpp
-    UIProcess/wpe/WestonShell/Module.cpp
-    UIProcess/wpe/WestonShell/Shell.cpp
-)
-
-set(WPEWestonShell_INCLUDE_DIRECTORIES
-    "${WEBKIT2_DIR}/Shared/wpe"
-    ${WESTON_INCLUDE_DIRS}
-)
-
-set(WPEWestonShell_LIBRARIES
-    WebKit2
-    ${WESTON_LIBRARIES}
-)
-
-add_library(WPEWestonShell SHARED ${WPEWestonShell_SOURCES})
-target_link_libraries(WPEWestonShell ${WPEWestonShell_LIBRARIES})
-target_include_directories(WPEWestonShell PUBLIC ${WPEWestonShell_INCLUDE_DIRECTORIES})
-install(TARGETS WPEWestonShell DESTINATION "${LIB_INSTALL_DIR}")
-endif () # ENABLE_WESTON_SHELL
-
 if (ENABLE_ATHOL_SHELL)
 set(WPEAtholShell_SOURCES
     UIProcess/wpe/AtholShell/AtholShell.cpp

@@ -1,6 +1,6 @@
-#include "config.h"
 #include "Environment.h"
 
+#include <cassert>
 #include <cstdlib>
 
 namespace WPE {
@@ -82,7 +82,7 @@ Environment::Environment(struct weston_compositor* compositor)
     wl_global_create(m_compositor->wl_display,
         &wl_wpe_interface, wl_wpe_interface.version, this,
         [](struct wl_client* client, void* data, uint32_t version, uint32_t id) {
-            ASSERT(version == wl_wpe_interface.version);
+            assert(version == wl_wpe_interface.version);
             auto* environment = static_cast<Environment*>(data);
             struct wl_resource* resource = wl_resource_create(client, &wl_wpe_interface, version, id);
             wl_resource_set_implementation(resource, &m_wpeInterface, environment, nullptr);

@@ -23,8 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include "Environment.h"
 #include "Shell.h"
 #include <cstdio>
