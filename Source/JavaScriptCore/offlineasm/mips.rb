@@ -522,6 +522,11 @@ def mipsLowerMisplacedImmediates(list)
                 end
             when /^(addi|subi)/
                 newList << node.riscLowerMalformedImmediatesRecurse(newList, -0x7fff..0x7fff)
+            when /^(andp|andi|orp|ori|xorp|xori)/
+                # immediate to these instructions is zero-extended over the
+                # lower 16 bits, which doesn't work for negative values or
+                # values above 0xffff
+                newList << node.riscLowerMalformedImmediatesRecurse(newList, 0x0..0xffff)
             else
                 newList << node
             end
