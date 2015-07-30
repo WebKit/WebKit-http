@@ -108,6 +108,7 @@ private:
     friend class Holder;
 
     JSValue toJSON(JSValue, const PropertyNameForFunctionCall&);
+    JSValue toJSONImpl(JSValue, const PropertyNameForFunctionCall&);
 
     enum StringifyResult { StringifyFailed, StringifySucceeded, StringifyFailedDueToUndefinedValue };
     StringifyResult appendStringifiedValue(StringBuilder&, JSValue, JSObject* holder, const PropertyNameForFunctionCall&);
@@ -205,7 +206,7 @@ Stringifier::Stringifier(ExecState* exec, const Local<Unknown>& replacer, const 
     : m_exec(exec)
     , m_replacer(replacer)
     , m_usingArrayReplacer(false)
-    , m_arrayReplacerPropertyNames(exec)
+    , m_arrayReplacerPropertyNames(exec, PropertyNameMode::Strings)
     , m_replacerCallType(CallTypeNone)
     , m_gap(gap(exec, space.get()))
 {
@@ -253,12 +254,16 @@ Local<Unknown> Stringifier::stringify(Handle<Unknown> value)
     return Local<Unknown>(m_exec->vm(), jsString(m_exec, result.toString()));
 }
 
-inline JSValue Stringifier::toJSON(JSValue value, const PropertyNameForFunctionCall& propertyName)
+ALWAYS_INLINE JSValue Stringifier::toJSON(JSValue value, const PropertyNameForFunctionCall& propertyName)
 {
     ASSERT(!m_exec->hadException());
     if (!value.isObject() || !asObject(value)->hasProperty(m_exec, m_exec->vm().propertyNames->toJSON))
         return value;
+    return toJSONImpl(value, propertyName);
+}
 
+JSValue Stringifier::toJSONImpl(JSValue value, const PropertyNameForFunctionCall& propertyName)
+{
     JSValue toJSONFunction = asObject(value)->get(m_exec, m_exec->vm().propertyNames->toJSON);
     if (m_exec->hadException())
         return jsNull();
@@ -427,7 +432,7 @@ bool Stringifier::Holder::appendNextProperty(Stringifier& stringifier, StringBui
             if (stringifier.m_usingArrayReplacer)
                 m_propertyNames = stringifier.m_arrayReplacerPropertyNames.data();
             else {
-                PropertyNameArray objectPropertyNames(exec);
+                PropertyNameArray objectPropertyNames(exec, PropertyNameMode::Strings);
                 m_object->methodTable()->getOwnPropertyNames(m_object.get(), exec, objectPropertyNames, EnumerationMode());
                 m_propertyNames = objectPropertyNames.releaseData();
             }
@@ -644,7 +649,7 @@ NEVER_INLINE JSValue Walker::walk(JSValue unfiltered)
                 JSObject* object = asObject(inValue);
                 objectStack.push(object);
                 indexStack.append(0);
-                propertyStack.append(PropertyNameArray(m_exec));
+                propertyStack.append(PropertyNameArray(m_exec, PropertyNameMode::Strings));
                 object->methodTable()->getOwnPropertyNames(object, m_exec, propertyStack.last(), EnumerationMode());
             }
             objectStartVisitMember:

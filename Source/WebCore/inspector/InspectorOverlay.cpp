@@ -41,6 +41,7 @@
 #include "Page.h"
 #include "PageConfiguration.h"
 #include "PolygonShape.h"
+#include "PseudoElement.h"
 #include "RectangleShape.h"
 #include "RenderBoxModelObject.h"
 #include "RenderElement.h"
@@ -609,26 +610,26 @@ static void appendPathCommandAndPoints(PathApplyInfo& info, const String& comman
 }
 
 // Used as a functor for Shape::apply, which has not been cleaned up to use modern C++.
-static void appendPathSegment(void* info, const PathElement* pathElement)
+static void appendPathSegment(void* info, const PathElement& pathElement)
 {
     PathApplyInfo& pathApplyInfo = *static_cast<PathApplyInfo*>(info);
     FloatPoint point;
-    switch (pathElement->type) {
+    switch (pathElement.type) {
     // The points member will contain 1 value.
     case PathElementMoveToPoint:
-        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("M"), pathElement->points, 1);
+        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("M"), pathElement.points, 1);
         break;
     // The points member will contain 1 value.
     case PathElementAddLineToPoint:
-        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("L"), pathElement->points, 1);
+        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("L"), pathElement.points, 1);
         break;
     // The points member will contain 3 values.
     case PathElementAddCurveToPoint:
-        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("C"), pathElement->points, 3);
+        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("C"), pathElement.points, 3);
         break;
     // The points member will contain 2 values.
     case PathElementAddQuadCurveToPoint:
-        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("Q"), pathElement->points, 2);
+        appendPathCommandAndPoints(pathApplyInfo, ASCIILiteral("Q"), pathElement.points, 2);
         break;
     // The points member will contain no values.
     case PathElementCloseSubpath:
@@ -686,17 +687,24 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
     if (!is<Element>(node) || !node->document().frame())
         return nullptr;
 
-    Element& element = downcast<Element>(*node);
-    bool isXHTML = element.document().isXHTMLDocument();
+    Element* effectiveElement = downcast<Element>(node);
+    if (node->isPseudoElement()) {
+        Element* hostElement = downcast<PseudoElement>(*node).hostElement();
+        if (!hostElement)
+            return nullptr;
+        effectiveElement = hostElement;
+    }
 
+    Element& element = *effectiveElement;
+    bool isXHTML = element.document().isXHTMLDocument();
     auto elementData = Inspector::Protocol::OverlayTypes::ElementData::create()
         .setTagName(isXHTML ? element.nodeName() : element.nodeName().lower())
         .setIdValue(element.getIdAttribute())
         .release();
 
-    HashSet<AtomicString> usedClassNames;
+    StringBuilder classNames;
     if (element.hasClass() && is<StyledElement>(element)) {
-        StringBuilder classNames;
+        HashSet<AtomicString> usedClassNames;
         const SpaceSplitString& classNamesString = downcast<StyledElement>(element).classNames();
         size_t classNameCount = classNamesString.size();
         for (size_t i = 0; i < classNameCount; ++i) {
@@ -707,8 +715,15 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
             classNames.append('.');
             classNames.append(className);
         }
-        elementData->setClassName(classNames.toString());
     }
+    if (node->isPseudoElement()) {
+        if (node->pseudoId() == BEFORE)
+            classNames.appendLiteral("::before");
+        else if (node->pseudoId() == AFTER)
+            classNames.appendLiteral("::after");
+    }
+    if (!classNames.isEmpty())
+        elementData->setClassName(classNames.toString());
 
     RenderElement* renderer = element.renderer();
     if (!renderer)

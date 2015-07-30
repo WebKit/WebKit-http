@@ -216,6 +216,10 @@
 #include "CoordinatedLayerTreeHostMessages.h"
 #endif
 
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+#include <WebCore/MediaPlayerRequestInstallMissingPluginsCallback.h>
+#endif
+
 using namespace JSC;
 using namespace WebCore;
 
@@ -961,6 +965,13 @@ void WebPage::close()
     if (m_printOperation) {
         m_printOperation->disconnectFromPage();
         m_printOperation = nullptr;
+    }
+#endif
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    if (m_installMediaPluginsCallback) {
+        m_installMediaPluginsCallback->invalidate();
+        m_installMediaPluginsCallback = nullptr;
     }
 #endif
 
@@ -2147,9 +2158,9 @@ void WebPage::validateCommand(const String& commandName, uint64_t callbackID)
     send(Messages::WebPageProxy::ValidateCommandCallback(commandName, isEnabled, state, callbackID));
 }
 
-void WebPage::executeEditCommand(const String& commandName)
+void WebPage::executeEditCommand(const String& commandName, const String& argument)
 {
-    executeEditingCommand(commandName, String());
+    executeEditingCommand(commandName, argument);
 }
 
 void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
@@ -3009,6 +3020,11 @@ WebVideoFullscreenManager* WebPage::videoFullscreenManager()
         m_videoFullscreenManager = WebVideoFullscreenManager::create(this);
     return m_videoFullscreenManager.get();
 }
+
+void WebPage::setAllowsMediaDocumentInlinePlayback(bool allows)
+{
+    m_page->setAllowsMediaDocumentInlinePlayback(allows);
+}
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -3356,9 +3372,9 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 }
 
 #if ENABLE(MEDIA_STREAM)
-void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed)
+void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& deviceUIDVideo, const String& deviceUIDAudio)
 {
-    m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed);
+    m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed, deviceUIDVideo, deviceUIDAudio);
 }
 #endif
 
@@ -5025,5 +5041,12 @@ void WebPage::setUserContentExtensionsEnabled(bool userContentExtensionsEnabled)
 
     m_page->setUserContentExtensionsEnabled(userContentExtensionsEnabled);
 }
+
+#if ENABLE(VIDEO)
+void WebPage::mediaDocumentNaturalSizeChanged(const IntSize& newSize)
+{
+    send(Messages::WebPageProxy::MediaDocumentNaturalSizeChanged(newSize));
+}
+#endif
 
 } // namespace WebKit

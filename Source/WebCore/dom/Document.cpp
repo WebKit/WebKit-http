@@ -634,7 +634,8 @@ Document::~Document()
         m_cachedResourceLoader->setDocument(nullptr);
 
 #if ENABLE(VIDEO)
-    PlatformMediaSessionManager::sharedManager().stopAllMediaPlaybackForDocument(this);
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->stopAllMediaPlaybackForDocument(this);
 #endif
     
     // We must call clearRareData() here since a Document class inherits TreeScope
@@ -1613,6 +1614,25 @@ bool Document::hidden() const
 {
     return pageVisibilityState() != PageVisibilityStateVisible;
 }
+
+
+#if ENABLE(VIDEO)
+void Document::registerForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement& element)
+{
+    m_allowsMediaDocumentInlinePlaybackElements.add(&element);
+}
+
+void Document::unregisterForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement& element)
+{
+    m_allowsMediaDocumentInlinePlaybackElements.remove(&element);
+}
+
+void Document::allowsMediaDocumentInlinePlaybackChanged()
+{
+    for (auto* element : m_allowsMediaDocumentInlinePlaybackElements)
+        element->allowsMediaDocumentInlinePlaybackChanged();
+}
+#endif
 
 #if ENABLE(CSP_NEXT)
 DOMSecurityPolicy& Document::securityPolicy()

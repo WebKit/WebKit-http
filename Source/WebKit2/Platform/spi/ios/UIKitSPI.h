@@ -74,6 +74,12 @@
 #import <UIKit/_UINavigationInteractiveTransition.h>
 #import <UIKit/_UINavigationParallaxTransition.h>
 
+#import <WebKitAdditions/LinkPreviewDefines.h>
+
+#if HAVE(LINK_PREVIEW)
+#import <UIKit/UIPreviewItemController.h>
+#endif
+
 // FIXME: Unconditionally include this file when a new SDK is available. <rdar://problem/20150072>
 #if defined(__has_include) && __has_include(<UIKit/UIDocumentMenuViewController_Private.h>)
 #import <UIKit/UIDocumentMenuViewController_Private.h>
@@ -95,6 +101,7 @@
 - (UIInterfaceOrientation)interfaceOrientation;
 - (void)_cancelAllTouches;
 - (CGFloat)statusBarHeight;
+- (BOOL)isSuspendedUnderLock;
 @end
 
 typedef NS_ENUM(NSInteger, UIDatePickerPrivateMode)  {
@@ -244,6 +251,11 @@ typedef enum {
 
 @interface UIResponder (Details)
 - (void)_handleKeyUIEvent:(UIEvent *)event;
+@end
+
+@class CADisplay;
+@interface UIScreen (Details)
+- (CADisplay *)_display;
 @end
 
 @interface UIScrollView (Details)

@@ -142,8 +142,9 @@
 }
 
 .popover .debugger-popover-content > .title {
-    font-weight: bold;
-    padding-left: 10px;
+    font-family: -apple-system, sans-serif;
+    font-weight: 500;
+    padding: 2px 0 4px 10px;
 
     text-overflow: ellipsis;
     overflow: hidden;
@@ -159,10 +160,9 @@
 }
 
 .popover .debugger-popover-content > .body {
-    border-top: 1px solid hsl(60, 27%, 66%);
+    border-top: 1px solid hsla(0, 0%, 0%, 0.3);
     overflow: auto;
-    margin-top: 5px;
-    padding-top: 5px;
+    padding-top: 2px;
 }
 
 .popover .debugger-popover-content.function > .body {
@@ -182,4 +182,10 @@
     content: -webkit-image-set(url(../Images/ColorIcon.png) 1x, url(../Images/ColorIcon@2x.png) 2x);
 
     -webkit-transform: translateY(1px);
+}
+
+@media (-webkit-min-device-pixel-ratio: 2) {
+    .popover .debugger-popover-content > .body {
+        border-width: 0.5px;
+    }
 }

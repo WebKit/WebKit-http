@@ -1,3 +1,364 @@
+2015-07-29  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement basic types for ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=146926
+
+        Reviewed by Benjamin Poulain.
+
+        Enable flag now that the basic objects are in place.
+
+        * Scripts/webkitperl/FeatureList.pm: Enabled INTL
+
+2015-07-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to set the maximum number of web processes per WebKitWebContext
+        https://bugs.webkit.org/show_bug.cgi?id=147108
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add test case to check the web process limit.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestMultiprocess.cpp:
+        (testWebProcessLimit):
+        (beforeAll):
+
+2015-07-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Missing casts in BrowserWindow.c
+        https://bugs.webkit.org/show_bug.cgi?id=147395
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowSetupEditorToolbar):
+
+2015-07-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add ENABLE_ES6_MODULES compile time flag with the default value "false"
+        https://bugs.webkit.org/show_bug.cgi?id=147350
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-07-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [Freetype] Always allow font matching for strong aliases
+        https://bugs.webkit.org/show_bug.cgi?id=147057
+
+        Reviewed by Martin Robinson.
+
+        Create family aliases needed for the new layout tests.
+
+        * WebKitTestRunner/gtk/fonts/fonts.conf:
+
+2015-07-28  Alexey Proskuryakov  <ap@apple.com>
+
+        webkitbot and WKR unnecessarily rely on webkit-queues.appspot.com
+        https://bugs.webkit.org/show_bug.cgi?id=147359
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/tool/commands/newcommitbot.py:
+        (NewCommitBot.begin_work_queue):
+        * Scripts/webkitpy/tool/commands/sheriffbot.py:
+        (SheriffBot.begin_work_queue):
+
+2015-07-27  Alex Christensen  <achristensen@webkit.org>
+
+        Use Ninja on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=147228
+
+        Reviewed by Martin Robinson.
+
+        * WinLauncher/CMakeLists.txt:
+        WinLauncherLib must make WinLauncher.dll, not WinLauncherLib.dll.
+        * Scripts/build-webkit:
+        Use Ninja to build WinCairo by default, but fall back to Visual Studio if Ninja is not on the system.
+
+2015-07-24  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Test for bug #147164 "[iOS] Keyboard bold/italic/underline keys don't
+        highlight after being tapped to style a selection"
+        https://bugs.webkit.org/show_bug.cgi?id=147278
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+        * TestWebKitAPI/Tests/mac/WordBoundaryTypingAttributes.mm: Added.
+        (-[WordBoundaryTypingAttributesController webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+        Load a page with the string "Hello, world!", then select "world" and
+        underline it. Test that the typing attributes for the current selection
+        include the underline attribute.
+
+2015-07-24  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Unreviewed, updated my nick name in contributors.json
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-24  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: scrollable elements do not allow 3-finger swipe
+        https://bugs.webkit.org/show_bug.cgi?id=141893
+
+        Reviewed by Mario Sanchez Prada.
+
+        Support global notification listeners for iOS code.
+        Fix an issue in DRT where the dictionary of data was not being passed back to the layout test for the notication callback.
+        Implement scrollUp/Down/Left/Right.
+
+        * DumpRenderTree/AccessibilityController.h:
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (increaseTextSelectionCallback):
+        (scrollPageUpCallback):
+        (scrollPageDownCallback):
+        (scrollPageLeftCallback):
+        (scrollPageRightCallback):
+        (decreaseTextSelectionCallback):
+        (getElementTextLengthCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityControllerIOS.mm:
+        (AccessibilityController::~AccessibilityController):
+        (AccessibilityController::elementAtPoint):
+        (AccessibilityController::addNotificationListener):
+        (AccessibilityController::platformResetToConsistentState):
+        (AccessibilityController::removeNotificationListener):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::AccessibilityUIElement):
+        (AccessibilityUIElement::subrole):
+        (AccessibilityUIElement::scrollPageUp):
+        (AccessibilityUIElement::scrollPageDown):
+        (AccessibilityUIElement::scrollPageLeft):
+        (AccessibilityUIElement::scrollPageRight):
+        (AccessibilityUIElement::roleDescription):
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.h:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::linkedElement):
+        (WTR::AccessibilityUIElement::headerElementAtIndex):
+        (WTR::AccessibilityUIElement::assistiveTechnologySimulatedFocus):
+        (WTR::AccessibilityUIElement::scrollPageUp):
+        (WTR::AccessibilityUIElement::scrollPageDown):
+        (WTR::AccessibilityUIElement::scrollPageLeft):
+        (WTR::AccessibilityUIElement::scrollPageRight):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityControllerIOS.mm:
+        (WTR::AccessibilityController::addNotificationListener):
+        (WTR::AccessibilityController::removeNotificationListener):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::AccessibilityUIElement):
+        (WTR::AccessibilityUIElement::assistiveTechnologySimulatedFocus):
+        (WTR::AccessibilityUIElement::scrollPageUp):
+        (WTR::AccessibilityUIElement::scrollPageDown):
+        (WTR::AccessibilityUIElement::scrollPageLeft):
+        (WTR::AccessibilityUIElement::scrollPageRight):
+        (WTR::AccessibilityUIElement::increaseTextSelection):
+
+2015-07-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Activate CSP_NEXT and Connect UserScript and UserStyleSheet through WebView.
+        https://bugs.webkit.org/show_bug.cgi?id=147279
+        <rdar://problem/21990767>
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::addUserScript):
+        (TestRunner::addUserStyleSheet):
+        (TestRunner::setDeveloperExtrasEnabled):
+
+2015-07-24  Basile Clement  <basile_clement@apple.com>
+
+        Call fixChangeLogPatch when generating patches from webkit-patch
+        https://bugs.webkit.org/show_bug.cgi?id=147248
+
+        Reviewed by Geoffrey Garen.
+
+        When two consecutive patches are from the same author, diff tools
+        create wrong-looking diffs for ChangeLog files where the apparent added
+        author is actually the previous patch's author line, making it awkward
+        to read - and things only get worse when committing a patch and a
+        followup fix for the same bug shortly after.
+
+        We have a perl function in VCSUtils.pm, fixChangeLogPatch, to corrects
+        this, which we use in perl scripts (svn-create-patch et al). But it is
+        not used by webkit-patch, which is a python script, and thus creates
+        "bad" diffs.
+
+        In the long term, we should probably port fixChangeLogPatch to python -
+        but in the short term, let's make webkit-patch call perl to run
+        fixChangeLogPatch. We are already making various external calls there
+        anyway.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.create_patch):
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.fix_changelog_patch):
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.create_patch):
+
+2015-07-24  Dean Johnson  <dean_johnson@apple.com>
+
+        commit-queue flags in webkit-patch are confusing
+        https://bugs.webkit.org/show_bug.cgi?id=88694
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Scripts/webkitpy/tool/steps/options.py:
+        (Options): Updated help string to be more descriptive.
+
+2015-07-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement proper High DPI support features
+        https://bugs.webkit.org/show_bug.cgi?id=146335
+        <rdar://problem/21558269>
+
+        Reviewed by Alex Christensen.
+
+        Update WinLauncher to take device scaling factor into account.
+
+        * WinLauncher/Common.cpp:
+        (resizeSubViews): Make sure toolbars and URL bar are properly sized and using
+        a valid font.
+        (computeFullDesktopFrame): Handle high DPI desktops.
+        (WndProc): Make comments more precise.
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::init): Determine device scale factor at launch.
+        (WinLauncher::updateDeviceScaleFactor): Added.
+        * WinLauncher/WinLauncher.h:
+        * WinLauncher/WinLauncherWebHost.h: Use C++11 initialization.
+        * WinLauncher/WinMain.cpp: Size interface based on scaling factor.
+        (wWinMain): Ditto.
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (wWinMain): Tell Windows we understand high DPI.
+
+2015-07-23  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] Unreviewed build fix after r187169.
+
+        * Scripts/build-webkit:
+        Correctly find WebKit.sln.
+
+2015-07-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to allow executing editing commands that require an argument
+        https://bugs.webkit.org/show_bug.cgi?id=146781
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add buttons to insert image/link to the MiniBrowser edit toolbar,
+        and test cases for insert image/link commands too.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (insertImageCommandCallback):
+        (insertLinkCommandCallback):
+        (browserWindowSetupEditorToolbar):
+        (browserWindowConstructed):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebViewEditor.cpp:
+        (testWebViewEditorInsertImage):
+        (testWebViewEditorCreateLink):
+        (beforeAll):
+
+2015-07-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unregistering and re-registering a user message handler does not work
+        https://bugs.webkit.org/show_bug.cgi?id=138142
+
+        Reviewed by Martin Robinson.
+
+        This has probably been fixed in r184846, enable the test case
+        blocked on it.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitUserContentManager.cpp:
+        (testUserContentManagerScriptMessageReceived):
+
+2015-07-22  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Add ENABLE_WEBASSEMBLY feature flag for WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=147212
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-07-22  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Add --ios-simulator to run-api-tests --help.
+
+        Rubber-stamped by Dan Bates.
+
+        * Scripts/run-api-tests:
+
+2015-07-22  Jason Marcell  <jmarcell@apple.com>
+
+        Remove hardcoded "internal" from Buildbot.prototype._normalizeQueueInfo.
+        https://bugs.webkit.org/show_bug.cgi?id=147043
+
+        Reviewed by Daniel Bates and Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype._normalizeQueueInfo):
+        The _normalizeQueueInfo method now calls the defaultBranches getter instead of using hardcoded values
+        in cases where the queue.branch property is not set and the queue is not a combined queue.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView):
+        Ensuring uniformity of repository branches within a combined queue.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot.prototype.get defaultBranches):
+        Added; provides a WebKit-specific implementation that sets the queue.branches dictionary to have a
+        single entry for "openSource" as the default set of branches. Note that we intentionally omitted a
+        base class implementation of the defaultBranches getter so as to cause a JavaScript TypeError when a
+        sub-queue of a combined queue does not specify property branch and the derived Buildbot class does not
+        implement defaultBranches so that a person can either update the definition of the sub-queue or
+        implement defaultBranches in the derived Buildbot class they are using.
+
+2015-07-22  Alex Christensen  <achristensen@webkit.org>
+
+        Switch WinCairo build to use CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=147169
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (determineConfiguration):
+        (determineArchitecture):
+        (determinePassedConfiguration):
+        (passedConfiguration):
+        (jhbuildWrapperPrefixIfNeeded):
+        (generateBuildSystemFromCMakeProject):
+        It's CMake time!  We now use the CMake files to generate a solution in WebKitBuild/Release/WebKit.sln and build that.
+
+2015-07-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix quirks in CMake build on Mac and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147174
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+        Don't build DumpRenderTree with CMake for now (until we get that working).
+        * WinLauncher/CMakeLists.txt:
+        Renamed WinLauncherLauncher to WinLauncher and WinLauncher to WinLauncherLib to match the Visual Studio build.
+
+2015-07-22  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [check-webkit-style] .lut.h files shouldn't raise a sorting issue
+        https://bugs.webkit.org/show_bug.cgi?id=147146
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_include_line): Avoid checking previous lines if it it is a lut.h include.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (OrderOfIncludesTest.test_check_alphabetical_include_order): Added test.
+
 2015-07-21  Filip Pizlo  <fpizlo@apple.com>
 
         Fixed VM pool allocation should have a reserve for allocations that cannot fail

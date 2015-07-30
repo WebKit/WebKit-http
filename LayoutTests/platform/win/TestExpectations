@@ -1599,7 +1599,6 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/aria-help.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-crash.html [ Skip ] # Crashing
-[ Debug ] accessibility/aria-hidden-hides-all-elements.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-update.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-updates-alldescendants.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-inherits-presentational.html [ Skip ] # Crashing
@@ -1614,7 +1613,6 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/paragraph-with-linebreaks.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/aria-presentational-role.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-roles.html [ Skip ] # Crashing
-[ Debug ] accessibility/aria-table-hierarchy.html [ Skip ] # Crashing
 [ Debug ] accessibility/iframe-bastardization.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/ignore-spacer-elements.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/image-link-inline-cont.html [ Skip ] # Debug assertion
@@ -2359,6 +2357,8 @@ inspector/dom/content-node-region-info.html [ Crash Pass Failure Timeout ]
 inspector/css/selector-specificity.html [ Skip ]
 inspector/css/pseudo-element-matches.html [ Skip ]
 
+webkit.org/b/147017 inspector/css/get-system-fonts.html [ Skip ]
+
 # Inspector Protocol
 webkit.org/b/140510 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]  # Crashing
 inspector-protocol/debugger/pause-on-assert.html [ Skip ]
@@ -2379,6 +2379,8 @@ inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Fla
 webkit.org/b/143548 inspector/console/command-line-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-table.html [ Skip ] # Timeout
+
+webkit.org/b/147229 inspector/css/modify-rule-selector.html [ Skip ] # Timeout
 
 ################################################################################
 #################        End Inspector Issues               ####################
@@ -2598,7 +2600,6 @@ webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe.htm
 [ Debug ] fast/regions/hover-content-inside-iframe-in-region.html [ Skip ] # Debug Assertion
 [ Debug ] fast/repaint/4774354.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/repaint/fixed-in-page-scale.html [ Skip ] # Debug assertion
-[ Debug ] fast/repaint/fixed-move-after-keyboard-scroll.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/fixed-move-after-scroll.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/fixed-position-transparency-with-overflow.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/text-selection-rect-in-overflow-2.html [ Skip ] # Causes later tests to fail
@@ -3108,7 +3109,8 @@ http/tests/contentfiltering [ Skip ]
 loader/meta-refresh-disabled.html [ Skip ]
 
 # Started failing recently.
-webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
+[ Debug ] accessibility/aria-hidden-hides-all-elements.html [ Skip ] # Crashing
+webkit.org/b/143275 [ Release ] accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
 
 webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
 
@@ -3133,3 +3135,5 @@ http/tests/misc/large-js-program.php [ Slow Crash ]
 
 # Slider thumb widget painting
 fast/repaint/block-inputrange-repaint.html [ Pass Failure ]
+
+fast/inline/padding-ellipsis-right.html [ Failure ]

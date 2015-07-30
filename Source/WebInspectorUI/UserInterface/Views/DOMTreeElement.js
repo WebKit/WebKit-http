@@ -35,7 +35,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         super("", node);
 
         this._elementCloseTag = elementCloseTag;
-        this.hasChildren = !elementCloseTag && node.hasChildNodes() && !this._showInlineText(node);
+        this.hasChildren = !elementCloseTag && this._hasVisibleChildren();
 
         if (this.representedObject.nodeType() === Node.ELEMENT_NODE && !elementCloseTag)
             this._canAddAttributes = true;
@@ -120,8 +120,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         {
             switch (entry.type) {
                 case "added":
-                    if (entry.node.parentElement)
-                        entry.node.parentElement.removeChild(entry.node);
+                    entry.node.remove();
                     break;
                 case "changed":
                     entry.node.textContent = entry.oldText;
@@ -159,7 +158,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     get editable()
     {
-        if (this.representedObject.isInShadowTree())
+        var node = this.representedObject;
+        if (node.isInShadowTree())
+            return false;
+        if (node.isPseudoElement())
             return false;
 
         return this.treeOutline.editable;
@@ -190,19 +192,22 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         return count;
     }
 
-    showChild(index)
+    showChildNode(node)
     {
         console.assert(!this._elementCloseTag);
         if (this._elementCloseTag)
-            return false;
+            return null;
+
+        var index = this._visibleChildren().indexOf(node);
+        if (index === -1)
+            return null;
 
         if (index >= this.expandedChildrenLimit) {
             this._expandedChildrenLimit = index + 1;
             this._updateChildren(true);
         }
 
-        // Whether index-th child is visible in the children tree
-        return this.expandedChildCount > index;
+        return this.children[index];
     }
 
     _createTooltipForNode()
@@ -285,7 +290,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     onpopulate()
     {
-        if (this.children.length || this._showInlineText(this.representedObject) || this._elementCloseTag)
+        if (this.children.length || !this._hasVisibleChildren() || this._elementCloseTag)
             return;
 
         this.updateChildren();
@@ -300,6 +305,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     {
         if (this._elementCloseTag)
             return;
+
         this.representedObject.getChildNodes(this._updateChildren.bind(this, fullRefresh));
     }
 
@@ -326,78 +332,85 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             return;
 
         this._updateChildrenInProgress = true;
+
+        var node = this.representedObject;
         var selectedNode = this.treeOutline.selectedDOMNode();
         var originalScrollTop = 0;
-        if (fullRefresh) {
+
+        var hasVisibleChildren = this._hasVisibleChildren();
+
+        if (fullRefresh || !hasVisibleChildren) {
             var treeOutlineContainerElement = this.treeOutline.element.parentNode;
             originalScrollTop = treeOutlineContainerElement.scrollTop;
             var selectedTreeElement = this.treeOutline.selectedTreeElement;
             if (selectedTreeElement && selectedTreeElement.hasAncestor(this))
                 this.select();
             this.removeChildren();
-        }
 
-        var treeElement = this;
-        var treeChildIndex = 0;
-        var elementToSelect;
-
-        function updateChildrenOfNode(node)
-        {
-            var treeOutline = treeElement.treeOutline;
-            var child = node.firstChild;
-            while (child) {
-                var currentTreeElement = treeElement.children[treeChildIndex];
-                if (!currentTreeElement || currentTreeElement.representedObject !== child) {
-                    // Find any existing element that is later in the children list.
-                    var existingTreeElement = null;
-                    for (var i = (treeChildIndex + 1), size = treeElement.expandedChildCount; i < size; ++i) {
-                        if (treeElement.children[i].representedObject === child) {
-                            existingTreeElement = treeElement.children[i];
-                            break;
-                        }
-                    }
-
-                    if (existingTreeElement && existingTreeElement.parent === treeElement) {
-                        // If an existing element was found and it has the same parent, just move it.
-                        treeElement.moveChild(existingTreeElement, treeChildIndex);
-                    } else {
-                        // No existing element found, insert a new element.
-                        if (treeChildIndex < treeElement.expandedChildrenLimit) {
-                            var newElement = treeElement.insertChildElement(child, treeChildIndex);
-                            if (child === selectedNode)
-                                elementToSelect = newElement;
-                            if (treeElement.expandedChildCount > treeElement.expandedChildrenLimit)
-                                treeElement.expandedChildrenLimit++;
-                        }
-                    }
-                }
-
-                child = child.nextSibling;
-                ++treeChildIndex;
+            // No longer have children.
+            if (!hasVisibleChildren) {
+                this.hasChildren = false;
+                this.updateTitle();
+                this._updateChildrenInProgress = false;
+                return;
             }
         }
 
-        // Remove any tree elements that no longer have this node (or this node's contentDocument) as their parent.
-        for (var i = (this.children.length - 1); i >= 0; --i) {
-            var currentChild = this.children[i];
-            var currentNode = currentChild.representedObject;
-            var currentParentNode = currentNode.parentNode;
+        // We now have children.
+        if (!this.hasChildren) {
+            this.hasChildren = true;
+            this.updateTitle();
+        }
 
-            if (currentParentNode === this.representedObject)
+        // Remove any tree elements that no longer have this node (or this node's contentDocument) as their parent.
+        // Keep a list of existing tree elements for nodes that we can use later.
+        var existingChildTreeElements = new Map;
+        for (var i = (this.children.length - 1); i >= 0; --i) {
+            var currentChildTreeElement = this.children[i];
+            var currentNode = currentChildTreeElement.representedObject;
+            var currentParentNode = currentNode.parentNode;
+            if (currentParentNode === node) {
+                existingChildTreeElements.set(currentNode, currentChildTreeElement);
                 continue;
+            }
 
             var selectedTreeElement = this.treeOutline.selectedTreeElement;
-            if (selectedTreeElement && (selectedTreeElement === currentChild || selectedTreeElement.hasAncestor(currentChild)))
+            if (selectedTreeElement && (selectedTreeElement === currentChildTreeElement || selectedTreeElement.hasAncestor(currentChildTreeElement)))
                 this.select();
 
             this.removeChildAtIndex(i);
         }
 
-        updateChildrenOfNode(this.representedObject);
+        // Move / create TreeElements for our visible children.
+        var childIndex = 0;
+        var elementToSelect = null;
+        var visibleChildren = this._visibleChildren();
+        for (var i = 0; i < visibleChildren.length && i < this.expandedChildrenLimit; ++i) {
+            var childNode = visibleChildren[i];
+
+            // Already have a tree element for this child, just move it.
+            var existingChildTreeElement = existingChildTreeElements.get(childNode);
+            if (existingChildTreeElement) {
+                this.moveChild(existingChildTreeElement, i);
+                continue;
+            }
+
+            // No existing tree element for this child. Insert a new element.
+            var newChildTreeElement = this.insertChildElement(childNode, i);
+
+            // Update state.
+            if (childNode === selectedNode)
+                elementToSelect = newChildTreeElement;
+            if (this.expandedChildCount > this.expandedChildrenLimit)
+                this.expandedChildrenLimit++;
+        }
+
+        // Update expand all children button.
         this.adjustCollapsedRange();
 
+        // Insert closing tag tree element.
         var lastChild = this.children.lastValue;
-        if (this.representedObject.nodeType() === Node.ELEMENT_NODE && (!lastChild || !lastChild._elementCloseTag))
+        if (node.nodeType() === Node.ELEMENT_NODE && (!lastChild || !lastChild._elementCloseTag))
             this.insertChildElement(this.representedObject, this.children.length, true);
 
         // We want to restore the original selection and tree scroll position after a full refresh, if possible.
@@ -418,16 +431,18 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             this.removeChild(this.expandAllButtonElement.__treeElement);
 
         var node = this.representedObject;
-        if (!node.children)
+        if (!this._hasVisibleChildren())
             return;
-        var childNodeCount = node.children.length;
+
+        var visibleChildren = this._visibleChildren();
+        var totalChildrenCount = visibleChildren.length;
 
         // In case some nodes from the expanded range were removed, pull some nodes from the collapsed range into the expanded range at the bottom.
-        for (var i = this.expandedChildCount, limit = Math.min(this.expandedChildrenLimit, childNodeCount); i < limit; ++i)
-            this.insertChildElement(node.children[i], i);
+        for (var i = this.expandedChildCount, limit = Math.min(this.expandedChildrenLimit, totalChildrenCount); i < limit; ++i)
+            this.insertChildElement(totalChildrenCount[i], i);
 
         var expandedChildCount = this.expandedChildCount;
-        if (childNodeCount > this.expandedChildCount) {
+        if (totalChildrenCount > this.expandedChildCount) {
             var targetButtonIndex = expandedChildCount;
             if (!this.expandAllButtonElement) {
                 var button = document.createElement("button");
@@ -445,14 +460,16 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             } else if (!this.expandAllButtonElement.__treeElement.parent)
                 this.insertChild(this.expandAllButtonElement.__treeElement, targetButtonIndex);
 
-            this.expandAllButtonElement.textContent = WebInspector.UIString("Show All Nodes (%d More)").format(childNodeCount - expandedChildCount);
+            this.expandAllButtonElement.textContent = WebInspector.UIString("Show All Nodes (%d More)").format(totalChildrenCount - expandedChildCount);
         } else if (this.expandAllButtonElement)
             this.expandAllButtonElement = null;
     }
 
     handleLoadAllChildren()
     {
-        this.expandedChildrenLimit = Math.max(this.representedObject.childNodeCount, this.expandedChildrenLimit + WebInspector.DOMTreeElement.InitialChildrenLimit);
+        var visibleChildren = this._visibleChildren();
+        var totalChildrenCount = visibleChildren.length;
+        this.expandedChildrenLimit = Math.max(visibleChildren.length, this.expandedChildrenLimit + WebInspector.DOMTreeElement.InitialChildrenLimit);
     }
 
     onexpand()
@@ -562,9 +579,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         else {
             var nodeName = tag.textContent.match(/^<(.*?)>$/)[1];
             tag.textContent = "";
-            tag.appendChild(document.createTextNode("<" + nodeName));
-            tag.appendChild(node);
-            tag.appendChild(document.createTextNode(">"));
+            tag.append("<" + nodeName, node, ">");
         }
 
         this.updateSelection();
@@ -575,7 +590,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (this.treeOutline.selectedDOMNode() !== this.representedObject)
             return false;
 
-        if (this.representedObject.isInShadowTree())
+        if (this.representedObject.isInShadowTree() || this.representedObject.isPseudoElement())
             return false;
 
         if (this.representedObject.nodeType() !== Node.ELEMENT_NODE && this.representedObject.nodeType() !== Node.TEXT_NODE)
@@ -1045,7 +1060,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         attrNameElement.textContent = name;
 
         if (hasText)
-            attrSpanElement.appendChild(document.createTextNode("=\u200B\""));
+            attrSpanElement.append("=\u200B\"");
 
         if (name === "src" || name === "href") {
             var baseURL = node.ownerDocument ? node.ownerDocument.documentURL : null;
@@ -1073,7 +1088,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         if (hasText)
-            attrSpanElement.appendChild(document.createTextNode("\""));
+            attrSpanElement.append("\"");
     }
 
     _buildTagDOM(parentElement, tagName, isClosingTag, isDistinctTreeElement)
@@ -1085,19 +1100,19 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (node.isInShadowTree())
             classes.push("shadow");
         var tagElement = parentElement.createChild("span", classes.join(" "));
-        tagElement.appendChild(document.createTextNode("<"));
+        tagElement.append("<");
         var tagNameElement = tagElement.createChild("span", isClosingTag ? "" : "html-tag-name");
         tagNameElement.textContent = (isClosingTag ? "/" : "") + tagName;
         if (!isClosingTag && node.hasAttributes()) {
             var attributes = node.attributes();
             for (var i = 0; i < attributes.length; ++i) {
                 var attr = attributes[i];
-                tagElement.appendChild(document.createTextNode(" "));
+                tagElement.append(" ");
                 this._buildAttributeDOM(tagElement, attr.name, attr.value, node);
             }
         }
-        tagElement.appendChild(document.createTextNode(">"));
-        parentElement.appendChild(document.createTextNode("\u200B"));
+        tagElement.append(">");
+        parentElement.append("\u200B");
     }
 
     _nodeTitleInfo()
@@ -1114,7 +1129,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
         switch (node.nodeType()) {
             case Node.DOCUMENT_FRAGMENT_NODE:
-                var fragmentElement = info.titleDOM.createChild("span", "webkit-html-fragment");
+                var fragmentElement = info.titleDOM.createChild("span", "html-fragment");
                 if (node.isInShadowTree()) {
                     fragmentElement.textContent = WebInspector.UIString("Shadow Content");
                     fragmentElement.classList.add("shadow");
@@ -1128,6 +1143,14 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 break;
 
             case Node.ELEMENT_NODE:
+                if (node.isPseudoElement()) {
+                    var pseudoElement = info.titleDOM.createChild("span", "html-pseudo-element");
+                    pseudoElement.textContent = "::" + node.pseudoType();
+                    info.titleDOM.appendChild(document.createTextNode("\u200B"));
+                    info.hasChildren = false;
+                    break;
+                }
+
                 var tagName = node.nodeNameInCorrectCase();
                 if (this._elementCloseTag) {
                     this._buildTagDOM(info.titleDOM, tagName, true, true);
@@ -1144,7 +1167,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                     if (this.hasChildren) {
                         var textNodeElement = info.titleDOM.createChild("span", "html-text-node");
                         textNodeElement.textContent = "\u2026";
-                        info.titleDOM.appendChild(document.createTextNode("\u200B"));
+                        info.titleDOM.append("\u200B");
                     }
                     this._buildTagDOM(info.titleDOM, tagName, true, false);
                 }
@@ -1163,7 +1186,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                     else
                         textNodeElement.textContent = textChild.nodeValue();
 
-                    info.titleDOM.appendChild(document.createTextNode("\u200B"));
+                    info.titleDOM.append("\u200B");
 
                     this._buildTagDOM(info.titleDOM, tagName, true, false);
                     info.hasChildren = false;
@@ -1178,37 +1201,37 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                     var newNode = info.titleDOM.createChild("span", "html-text-node large");
                     newNode.appendChild(WebInspector.syntaxHighlightStringAsDocumentFragment(trimedNodeValue(), "text/css"));
                 } else {
-                    info.titleDOM.appendChild(document.createTextNode("\""));
+                    info.titleDOM.append("\"");
                     var textNodeElement = info.titleDOM.createChild("span", "html-text-node");
                     textNodeElement.textContent = node.nodeValue();
-                    info.titleDOM.appendChild(document.createTextNode("\""));
+                    info.titleDOM.append("\"");
                 }
                 break;
 
             case Node.COMMENT_NODE:
                 var commentElement = info.titleDOM.createChild("span", "html-comment");
-                commentElement.appendChild(document.createTextNode("<!--" + node.nodeValue() + "-->"));
+                commentElement.append("<!--" + node.nodeValue() + "-->");
                 break;
 
             case Node.DOCUMENT_TYPE_NODE:
                 var docTypeElement = info.titleDOM.createChild("span", "html-doctype");
-                docTypeElement.appendChild(document.createTextNode("<!DOCTYPE " + node.nodeName()));
+                docTypeElement.append("<!DOCTYPE " + node.nodeName());
                 if (node.publicId) {
-                    docTypeElement.appendChild(document.createTextNode(" PUBLIC \"" + node.publicId + "\""));
+                    docTypeElement.append(" PUBLIC \"" + node.publicId + "\"");
                     if (node.systemId)
-                        docTypeElement.appendChild(document.createTextNode(" \"" + node.systemId + "\""));
+                        docTypeElement.append(" \"" + node.systemId + "\"");
                 } else if (node.systemId)
-                    docTypeElement.appendChild(document.createTextNode(" SYSTEM \"" + node.systemId + "\""));
+                    docTypeElement.append(" SYSTEM \"" + node.systemId + "\"");
 
                 if (node.internalSubset)
-                    docTypeElement.appendChild(document.createTextNode(" [" + node.internalSubset + "]"));
+                    docTypeElement.append(" [" + node.internalSubset + "]");
 
-                docTypeElement.appendChild(document.createTextNode(">"));
+                docTypeElement.append(">");
                 break;
 
             case Node.CDATA_SECTION_NODE:
                 var cdataElement = info.titleDOM.createChild("span", "html-text-node");
-                cdataElement.appendChild(document.createTextNode("<![CDATA[" + node.nodeValue() + "]]>"));
+                cdataElement.append("<![CDATA[" + node.nodeValue() + "]]>");
                 break;
 
             case Node.PROCESSING_INSTRUCTION_NODE:
@@ -1216,11 +1239,11 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 var data = node.nodeValue();
                 var dataString = data.length ? " " + data : "";
                 var title = "<?" + node.nodeNameInCorrectCase() + dataString + "?>";
-                processingInstructionElement.appendChild(document.createTextNode(title));
+                processingInstructionElement.append(title);
                 break;
 
             default:
-                var defaultElement = info.titleDOM.appendChild(document.createTextNode(node.nodeNameInCorrectCase().collapseWhitespace()));
+                info.titleDOM.append(node.nodeNameInCorrectCase().collapseWhitespace());
         }
 
         return info;
@@ -1237,6 +1260,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
         if (node.hasShadowRoots())
             return null;
+        if (node.templateContent())
+            return null;
+        if (node.hasPseudoElements())
+            return null;
 
         var sibling = firstChild.nextSibling;
         return sibling ? null : firstChild;
@@ -1250,6 +1277,47 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 return true;
         }
         return false;
+    }
+
+    _hasVisibleChildren()
+    {
+        var node = this.representedObject;
+
+        if (this._showInlineText(node))
+            return false;
+
+        if (node.hasChildNodes())
+            return true;
+        if (node.templateContent())
+            return true;
+        if (node.hasPseudoElements())
+            return true;
+
+        return false;
+    }
+
+    _visibleChildren()
+    {
+        var node = this.representedObject;
+
+        var visibleChildren = [];
+
+        var templateContent = node.templateContent();
+        if (templateContent)
+            visibleChildren.push(templateContent);
+
+        var beforePseudoElement = node.beforePseudoElement();
+        if (beforePseudoElement)
+            visibleChildren.push(beforePseudoElement);
+
+        if (node.childNodeCount)
+            visibleChildren = visibleChildren.concat(node.children);
+
+        var afterPseudoElement = node.afterPseudoElement();
+        if (afterPseudoElement)
+            visibleChildren.push(afterPseudoElement);
+
+        return visibleChildren;
     }
 
     remove()

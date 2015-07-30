@@ -61,7 +61,6 @@ SOFT_LINK_CLASS(AVKit, AVPlayerController)
 SOFT_LINK_CLASS(AVKit, AVPlayerViewController)
 SOFT_LINK_CLASS(AVKit, AVValueTiming)
 SOFT_LINK_CLASS(AVKit, AVPlayerLayerView)
-SOFT_LINK_CLASS(AVKit, AVPictureInPicturePlayerLayerView)
 
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
@@ -127,6 +126,7 @@ static const char* boolString(bool val)
 @property (getter=isExternalPlaybackActive) BOOL externalPlaybackActive;
 @property AVPlayerControllerExternalPlaybackType externalPlaybackType;
 @property (retain) NSString *externalPlaybackAirPlayDeviceLocalizedName;
+@property BOOL allowsExternalPlayback;
 
 - (BOOL)playerViewController:(AVPlayerViewController *)playerViewController shouldExitFullScreenWithReason:(AVPlayerViewControllerExitFullScreenReason)reason;
 @end
@@ -683,10 +683,11 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
     
     [CATransaction begin];
     [CATransaction setAnimationDuration:0];
+    [CATransaction setDisableActions:YES];
     
-    [(UIView *)[_videoSublayer delegate] setTransform:CGAffineTransformIdentity];
     self.modelVideoLayerFrame = [self bounds];
     [_avPlayerController delegate]->setVideoLayerFrame(self.modelVideoLayerFrame);
+    [(UIView *)[_videoSublayer delegate] setTransform:CGAffineTransformIdentity];
     
     [CATransaction commit];
 }
@@ -735,7 +736,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 
 @end
 
-@interface WebAVPictureInPicturePlayerLayerView : AVPictureInPicturePlayerLayerView
+@interface WebAVPictureInPicturePlayerLayerView : UIView
 @end
 
 static CALayer* WebAVPictureInPicturePlayerLayerView_layerClass(id, SEL)
@@ -748,7 +749,7 @@ static Class getWebAVPictureInPicturePlayerLayerViewClass()
     static Class theClass = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        theClass = objc_allocateClassPair(getAVPictureInPicturePlayerLayerViewClass(), "WebAVPictureInPicturePlayerLayerView", 0);
+        theClass = objc_allocateClassPair(getUIViewClass(), "WebAVPictureInPicturePlayerLayerView", 0);
         objc_registerClassPair(theClass);
         Class metaClass = objc_getMetaClass("WebAVPictureInPicturePlayerLayerView");
         class_addMethod(metaClass, @selector(layerClass), (IMP)WebAVPictureInPicturePlayerLayerView_layerClass, "@@:");
@@ -761,12 +762,12 @@ static Class getWebAVPictureInPicturePlayerLayerViewClass()
 @property (retain) UIView* videoView;
 @end
 
-static CALayer* WebAVPlayerLayerView_layerClass(id, SEL)
+static CALayer *WebAVPlayerLayerView_layerClass(id, SEL)
 {
     return [WebAVPlayerLayer class];
 }
 
-static AVPlayerController* WebAVPlayerLayerView_playerController(id aSelf, SEL)
+static AVPlayerController *WebAVPlayerLayerView_playerController(id aSelf, SEL)
 {
     AVPlayerLayerView *playerLayer = aSelf;
     WebAVPlayerLayer *webAVPlayerLayer = (WebAVPlayerLayer *)[playerLayer playerLayer];
@@ -780,7 +781,7 @@ static void WebAVPlayerLayerView_setPlayerController(id aSelf, SEL, AVPlayerCont
     [webAVPlayerLayer setPlayerController: playerController];
 }
 
-static UIView* WebAVPlayerLayerView_videoView(id aSelf, SEL)
+static UIView *WebAVPlayerLayerView_videoView(id aSelf, SEL)
 {
     AVPlayerLayerView *playerLayer = aSelf;
     WebAVPlayerLayer *webAVPlayerLayer = (WebAVPlayerLayer *)[playerLayer playerLayer];
@@ -801,10 +802,10 @@ static void WebAVPlayerLayerView_setVideoView(id aSelf, SEL, UIView *videoView)
 static void WebAVPlayerLayerView_startRoutingVideoToPictureInPicturePlayerLayerView(id aSelf, SEL)
 {
     WebAVPlayerLayerView *playerLayerView = aSelf;
-    AVPictureInPicturePlayerLayerView *pipView = [playerLayerView pictureInPicturePlayerLayerView];
+    WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[playerLayerView pictureInPicturePlayerLayerView];
 
     WebAVPlayerLayer *playerLayer = (WebAVPlayerLayer *)[playerLayerView playerLayer];
-    WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView playerLayer];
+    WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
     [playerLayer setVideoGravity:getAVLayerVideoGravityResizeAspect()];
     [pipPlayerLayer setVideoSublayer:playerLayer.videoSublayer];
     [pipPlayerLayer setVideoDimensions:playerLayer.videoDimensions];
@@ -820,7 +821,7 @@ static void WebAVPlayerLayerView_stopRoutingVideoToPictureInPicturePlayerLayerVi
     [playerLayerView addSubview:playerLayerView.videoView];
 }
 
-static AVPictureInPicturePlayerLayerView *WebAVPlayerLayerView_pictureInPicturePlayerLayerView(id aSelf, SEL)
+static WebAVPictureInPicturePlayerLayerView *WebAVPlayerLayerView_pictureInPicturePlayerLayerView(id aSelf, SEL)
 {
     WebAVPlayerLayerView *playerLayerView = aSelf;
     WebAVPictureInPicturePlayerLayerView *pipView = [playerLayerView valueForKey:@"_pictureInPicturePlayerLayerView"];
@@ -1016,6 +1017,16 @@ void WebVideoFullscreenInterfaceAVKit::setExternalPlayback(bool enabled, Externa
     playerController.externalPlaybackType = externalPlaybackType;
     playerController.externalPlaybackActive = enabled;
     [m_playerLayerView setHidden:enabled];
+}
+
+void WebVideoFullscreenInterfaceAVKit::setWirelessVideoPlaybackDisabled(bool disabled)
+{
+    [m_playerController setAllowsExternalPlayback:!disabled];
+}
+
+bool WebVideoFullscreenInterfaceAVKit::wirelessVideoPlaybackDisabled() const
+{
+    return [m_playerController allowsExternalPlayback];
 }
 
 @interface UIWindow ()

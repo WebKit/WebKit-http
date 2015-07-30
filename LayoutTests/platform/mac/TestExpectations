@@ -748,7 +748,8 @@ inspector-protocol/debugger
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
 webkit.org/b/124321 [ Mavericks ] animations/resume-after-page-cache.html [ Pass Failure ]
-[ Debug Mavericks ] media/restore-from-page-cache.html [ Pass Failure ]
+
+webkit.org/b/147254 media/restore-from-page-cache.html [ Pass Failure ]
 
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
@@ -996,6 +997,8 @@ webkit.org/b/140639 http/tests/media/video-play-waiting.html [ Pass Timeout ]
 media/session/content-interruptions.html
 media/session/controls-existence.html
 media/session/default-session.html
+media/session/transient-interruptions.html
+media/session/transient-solo-interruptions.html
 
 # This test requires generation of progress events during loading
 webkit.org/b/100984 media/progress-events-generated-correctly.html [ Failure ]
@@ -1297,3 +1300,24 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
 # <rdar://problem/21857102>
 [ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
+
+webkit.org/b/147299 platform/mac/accessibility/aria-liveregions-notifications-always-sent.html [ Pass Failure ]
+webkit.org/b/147299 platform/mac/accessibility/aria-liveregions-notifications.html [ Pass Failure ]
+
+# rdar://problem/22014672
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.destination-atop.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.destination-in.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.source-in.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.source-out.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.destination-atop.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.destination-in.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.source-in.html [ Pass Failure ]
+[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.source-out.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.destination-in.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.destination-atop.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.source-out.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.destination-atop.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.destination-in.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.source-in.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.source-out.html [ Pass Failure ]
+[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.source-in.html [ Pass Failure ]

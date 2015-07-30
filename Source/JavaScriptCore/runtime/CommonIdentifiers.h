@@ -33,7 +33,9 @@
     macro(ArrayIterator) \
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
+    macro(Collator) \
     macro(Date) \
+    macro(DateTimeFormat) \
     macro(Error) \
     macro(EvalError) \
     macro(Function) \
@@ -45,10 +47,12 @@
     macro(Math) \
     macro(NaN) \
     macro(Number) \
+    macro(NumberFormat) \
     macro(Object) \
     macro(Promise) \
     macro(RangeError) \
     macro(ReferenceError) \
+    macro(Reflect) \
     macro(RegExp) \
     macro(Set)\
     macro(SetIterator)\
@@ -253,7 +257,6 @@
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
-    macro(symbolIterator) \
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
@@ -271,9 +274,7 @@
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
-    macro(objectKeys) \
-    macro(objectGetOwnPropertyDescriptor) \
-    macro(objectGetOwnPropertySymbols) \
+    macro(ownEnumerablePropertyKeys) \
     macro(Number) \
     macro(Array) \
     macro(String) \

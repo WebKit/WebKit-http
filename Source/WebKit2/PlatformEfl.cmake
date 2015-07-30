@@ -1,4 +1,6 @@
 list(APPEND WebKit2_SOURCES
+    DatabaseProcess/efl/DatabaseProcessMainEfl.cpp
+
     NetworkProcess/efl/NetworkProcessMainEfl.cpp
 
     NetworkProcess/soup/NetworkProcessSoup.cpp
@@ -45,6 +47,9 @@ list(APPEND WebKit2_SOURCES
     Shared/efl/ProcessExecutablePathEfl.cpp
     Shared/efl/WebEventFactory.cpp
 
+    Shared/glib/KeyedDecoder.cpp
+    Shared/glib/KeyedEncoder.cpp
+
     Shared/linux/WebMemorySamplerLinux.cpp
 
     Shared/linux/SeccompFilters/OpenSyscall.cpp
@@ -54,6 +59,7 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/SeccompFilters/SigprocmaskSyscall.cpp
     Shared/linux/SeccompFilters/Syscall.cpp
     Shared/linux/SeccompFilters/SyscallPolicy.cpp
+    Shared/linux/SeccompFilters/XDGBaseDirectoryGLib.cpp
 
     Shared/soup/WebCoreArgumentCodersSoup.cpp
 
@@ -123,6 +129,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/CoordinatedGraphics/WebView.cpp
     UIProcess/CoordinatedGraphics/WebViewClient.cpp
 
+    UIProcess/Databases/efl/DatabaseProcessProxyEfl.cpp
+
     UIProcess/InspectorServer/efl/WebInspectorServerEfl.cpp
 
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
@@ -175,6 +183,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/WebUIPopupMenuClient.cpp
     UIProcess/efl/WebViewEfl.cpp
 
+    UIProcess/gstreamer/WebPageProxyGStreamer.cpp
+
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
 
@@ -208,6 +218,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebPage/efl/WebInspectorUIEfl.cpp
     WebProcess/WebPage/efl/WebPageEfl.cpp
 
+    WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
+
     WebProcess/efl/ExtensionManagerEfl.cpp
     WebProcess/efl/SeccompFiltersWebProcessEfl.cpp
     WebProcess/efl/WebProcessMainEfl.cpp
@@ -230,6 +242,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
+    "${WEBKIT2_DIR}/DatabaseProcess/unix"
     "${WEBKIT2_DIR}/NetworkProcess/efl"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/efl"
@@ -260,6 +273,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WTF_DIR}/wtf/efl"
     "${WTF_DIR}/wtf/glib"
+    "${WTF_DIR}"
+    "${WEBKIT2_DIR}"
 )
 
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
@@ -275,6 +290,7 @@ list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${EO_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
+    ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
@@ -314,6 +330,10 @@ list(APPEND WebProcess_SOURCES
 
 list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
+)
+
+list(APPEND DatabaseProcess_SOURCES
+    DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
 )
 
 list(APPEND WebProcess_LIBRARIES

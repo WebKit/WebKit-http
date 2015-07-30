@@ -48,9 +48,10 @@ WebInspector.CSSStyleDeclarationSection = function(delegate, style)
     this._selectorElement = document.createElement("span");
     this._selectorElement.className = "selector";
     this._selectorElement.setAttribute("spellcheck", "false");
-    this._selectorElement.addEventListener("mouseover", this._highlightNodesWithSelector.bind(this));
-    this._selectorElement.addEventListener("mouseout", this._hideHighlightOnNodesWithSelector.bind(this));
+    this._selectorElement.addEventListener("mouseover", this._handleMouseOver.bind(this));
+    this._selectorElement.addEventListener("mouseout", this._handleMouseOut.bind(this));
     this._selectorElement.addEventListener("keydown", this._handleKeyDown.bind(this));
+    this._selectorElement.addEventListener("keyup", this._handleKeyUp.bind(this));
     this._headerElement.appendChild(this._selectorElement);
 
     this._originElement = document.createElement("span");
@@ -105,6 +106,7 @@ WebInspector.CSSStyleDeclarationSection = function(delegate, style)
     if (!style.editable)
         this._element.classList.add(WebInspector.CSSStyleDeclarationSection.LockedStyleClassName);
     else if (style.ownerRule) {
+        this._style.ownerRule.addEventListener(WebInspector.CSSRule.Event.SelectorChanged, this._markSelector.bind(this));
         this._commitSelectorKeyboardShortcut = new WebInspector.KeyboardShortcut(null, WebInspector.KeyboardShortcut.Key.Enter, this._commitSelector.bind(this), this._selectorElement);
         this._selectorElement.addEventListener("blur", this._commitSelector.bind(this));
     } else
@@ -124,6 +126,7 @@ WebInspector.CSSStyleDeclarationSection = function(delegate, style)
 
 WebInspector.CSSStyleDeclarationSection.LockedStyleClassName = "locked";
 WebInspector.CSSStyleDeclarationSection.SelectorLockedStyleClassName = "selector-locked";
+WebInspector.CSSStyleDeclarationSection.SelectorInvalidClassName = "invalid-selector";
 WebInspector.CSSStyleDeclarationSection.LastInGroupStyleClassName = "last-in-group";
 WebInspector.CSSStyleDeclarationSection.MatchedSelectorElementStyleClassName = "matched";
 
@@ -178,7 +181,7 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
         this._originElement.removeChildren();
         this._selectorElements = [];
 
-        this._originElement.appendChild(document.createTextNode(" \u2014 "));
+        this._originElement.append(" \u2014 ");
 
         function appendSelector(selector, matched)
         {
@@ -231,7 +234,7 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
                 for (var i = 0; i < selectors.length; ++i) {
                     appendSelector.call(this, selectors[i], alwaysMatch || matchedSelectorIndices.includes(i));
                     if (i < selectors.length - 1)
-                        this._selectorElement.appendChild(document.createTextNode(", "));
+                        this._selectorElement.append(", ");
                 }
             } else
                 appendSelectorTextKnownToMatch.call(this, this._style.ownerRule.selectorText);
@@ -261,19 +264,19 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
 
                 console.assert(originString);
                 if (originString)
-                    this._originElement.appendChild(document.createTextNode(originString));
+                    this._originElement.append(originString);
             }
 
             break;
 
         case WebInspector.CSSStyleDeclaration.Type.Inline:
             appendSelectorTextKnownToMatch.call(this, WebInspector.displayNameForNode(this._style.node));
-            this._originElement.appendChild(document.createTextNode(WebInspector.UIString("Style Attribute")));
+            this._originElement.append(WebInspector.UIString("Style Attribute"));
             break;
 
         case WebInspector.CSSStyleDeclaration.Type.Attribute:
             appendSelectorTextKnownToMatch.call(this, WebInspector.displayNameForNode(this._style.node));
-            this._originElement.appendChild(document.createTextNode(WebInspector.UIString("HTML Attributes")));
+            this._originElement.append(WebInspector.UIString("HTML Attributes"));
             break;
         }
     },
@@ -384,6 +387,18 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
 
     // Private
 
+    get _currentSelectorText()
+    {
+        if (!this._style.ownerRule)
+            return;
+
+        var selectorText = this._selectorElement.textContent;
+        if (!selectorText || !selectorText.length)
+            selectorText = this._style.ownerRule.selectorText;
+
+        return selectorText.trim();
+    },
+
     _handleContextMenuEvent: function(event)
     {
         if (window.getSelection().toString().length)
@@ -437,6 +452,9 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
 
     _toggleRuleOnOff: function()
     {
+        if (this._hasInvalidSelector)
+            return;
+
         this._ruleDisabled = this._ruleDisabled ? !this._propertiesTextEditor.uncommentAllProperties() : this._propertiesTextEditor.commentAllProperties();
         this._iconElement.title = this._ruleDisabled ? WebInspector.UIString("Uncomment All Properties") : WebInspector.UIString("Comment All Properties");
         this._element.classList.toggle("rule-disabled", this._ruleDisabled);
@@ -444,33 +462,35 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
 
     _highlightNodesWithSelector: function()
     {
-        var highlightConfig = {
-            borderColor: {r: 255, g: 229, b: 153, a: 0.66},
-            contentColor: {r: 111, g: 168, b: 220, a: 0.66},
-            marginColor: {r: 246, g: 178, b: 107, a: 0.66},
-            paddingColor: {r: 147, g: 196, b: 125, a: 0.66},
-            showInfo: true
-        };
-
         if (!this._style.ownerRule) {
-            // COMPATIBILITY (iOS 6): Order of parameters changed in iOS 7.
-            DOMAgent.highlightNode.invoke({nodeId: this._style.node.id, highlightConfig});
+            WebInspector.domTreeManager.highlightDOMNode(this._style.node.id);
             return;
         }
 
-        if (DOMAgent.highlightSelector)
-            DOMAgent.highlightSelector(highlightConfig, this._style.ownerRule.selectorText, this._style.node.ownerDocument.frameIdentifier);
+        WebInspector.domTreeManager.highlightSelector(this._currentSelectorText, this._style.node.ownerDocument.frameIdentifier);
     },
 
-    _hideHighlightOnNodesWithSelector: function()
+    _hideDOMNodeHighlight: function()
     {
-        DOMAgent.hideHighlight();
+        WebInspector.domTreeManager.hideDOMNodeHighlight();
+    },
+
+    _handleMouseOver: function(event)
+    {
+        this._highlightNodesWithSelector();
+    },
+
+    _handleMouseOut: function(event)
+    {
+        this._hideDOMNodeHighlight();
     },
 
     _handleKeyDown: function(event)
     {
-        if (event.keyCode !== 9)
+        if (event.keyCode !== 9) {
+            this._highlightNodesWithSelector();
             return;
+        }
 
         if (event.shiftKey && this._delegate && typeof this._delegate.cssStyleDeclarationSectionEditorPreviousRule === "function") {
             event.preventDefault();
@@ -484,6 +504,11 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
             this._propertiesTextEditor.selectFirstProperty();
             return;
         }
+    },
+
+    _handleKeyUp: function(event)
+    {
+        this._highlightNodesWithSelector();
     },
 
     _commitSelector: function(mutations)
@@ -500,6 +525,28 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
         }
 
         this._style.ownerRule.selectorText = newSelectorText;
+    },
+
+    _markSelector: function(event)
+    {
+        var valid = event && event.data && event.data.valid;
+        this._element.classList.toggle(WebInspector.CSSStyleDeclarationSection.SelectorInvalidClassName, !valid);
+        if (valid) {
+            this._iconElement.title = this._ruleDisabled ? WebInspector.UIString("Uncomment All Properties") : WebInspector.UIString("Comment All Properties");
+            this._selectorElement.title = null;
+            this.refresh();
+            return;
+        }
+
+        this._iconElement.title = WebInspector.UIString("The selector '%s' is invalid.").format(this._selectorElement.textContent.trim());
+        this._selectorElement.title = WebInspector.UIString("Using the previous selector '%s'.").format(this._style.ownerRule.selectorText);
+        for (var i = 0; i < this._selectorElement.children.length; ++i)
+            this._selectorElement.children[i].title = null;
+    },
+
+    get _hasInvalidSelector()
+    {
+        return this._element.classList.contains(WebInspector.CSSStyleDeclarationSection.SelectorInvalidClassName);
     }
 };
 

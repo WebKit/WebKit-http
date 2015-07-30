@@ -1,3 +1,777 @@
+2015-07-29  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement basic types for ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=146926
+
+        Reviewed by Benjamin Poulain.
+
+        Add tests for Intl.Collator, Intl.NumberFormat, and Intl.DateTimeFormat
+
+        * TestExpectations: Enabled intl tests.
+        * js/intl-collator-expected.txt: Added.
+        * js/intl-collator.html: Added.
+        * js/intl-datetimeformat-expected.txt: Added.
+        * js/intl-datetimeformat.html: Added.
+        * js/intl-expected.txt: Updated.
+        * js/intl-numberformat-expected.txt: Added.
+        * js/intl-numberformat.html: Added.
+        * js/script-tests/intl-collator.js: Added.
+        * js/script-tests/intl-datetimeformat.js: Added.
+        * js/script-tests/intl-numberformat.js: Added.
+        * js/script-tests/intl.js: Added tests for Collator, NumberFormat, and DateTimeFormat.
+
+2015-07-29  Zalan Bujtas  <zalan@apple.com>
+
+        Remove the spanner placeholder from m_spannerMap when the placeholder object
+        gets transferred to a descendant flow.
+        https://bugs.webkit.org/show_bug.cgi?id=147380
+        rdar://problem/21981078
+
+        Reviewed by David Hyatt.
+
+        Before r180328, the spanner placeholder was removed from m_spannerMap through
+        RenderMultiColumnFlowThread::removeFlowChildInfo() by calling flowThreadRelativeWillBeRemoved()
+        when the placeholder renderer got transferred to the descendant flow.
+        Now we just remove it from the map when the renderer is being detached.
+
+        * fast/multicol/newmulticol/spanner-crash-with-embedded-columns-expected.txt: Added.
+        * fast/multicol/newmulticol/spanner-crash-with-embedded-columns.html: Added.
+
+2015-07-29  Brady Eidson  <beidson@apple.com>
+
+        Crash calling webSocket.close() from onError handler for blocked web socket.
+        <rdar://problem/21771620> and https://bugs.webkit.org/show_bug.cgi?id=147411
+
+        Reviewed by Tim Horton.
+
+        * http/tests/security/mixedContent/resources/frame-with-insecure-websocket.html: Add a call to webSocket.close() inside the onError handler.
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-iframe-expected.txt:
+        * http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame-expected.txt:
+
+2015-07-19  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: test 'Transient Solo' interruptions
+        https://bugs.webkit.org/show_bug.cgi?id=147091
+
+        Reviewed by Eric Carlson.
+
+        * media/session/transient-solo-interruptions-expected.txt: Added.
+        * media/session/transient-solo-interruptions.html: Added.
+        * platform/mac/TestExpectations: Media Session support is disabled by default.
+
+2015-07-29  Basile Clement  <basile_clement@apple.com>
+
+        Unreviewed, remove a .orig file.
+        https://bugs.webkit.org/show_bug.cgi?id=113610
+
+        * fast/css-intrinsic-dimensions/height-property-value.html.orig: Removed.
+
+2015-07-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        Speed up the Stringifier::toJSON() fast case
+        https://bugs.webkit.org/show_bug.cgi?id=147383
+
+        Reviewed by Andreas Kling.
+
+        Make the fast case of Stringifier::toJSON() inline and the uncommon
+        case out-of-line.
+
+        * js/dom/JSON-stringify-string-object-with-tojson-expected.txt: Added.
+        * js/dom/JSON-stringify-string-object-with-tojson.html: Added.
+        * js/resources/JSON-stringify-string-object-with-tojson.js: Added.
+        (stringObject.toJSON):
+        (String.prototype.toJSON):
+
+2015-07-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Animations sometimes fail to start
+        https://bugs.webkit.org/show_bug.cgi?id=147394
+        rdar://problem/21852603
+
+        Reviewed by Dean Jackson.
+        
+        Test that starts an accelerated and non-accelerated animation, then removes
+        the node for the accelerated one.
+
+        * animations/remove-syncing-animation-expected.txt: Added.
+        * animations/remove-syncing-animation.html: Added.
+
+2015-07-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [Freetype] Always allow font matching for strong aliases
+        https://bugs.webkit.org/show_bug.cgi?id=147057
+
+        Reviewed by Martin Robinson.
+
+        * platform/gtk/fonts/font-family-fallback-ignores-weak-aliases-expected.html: Added.
+        * platform/gtk/fonts/font-family-fallback-ignores-weak-aliases.html: Added.
+        * platform/gtk/fonts/font-family-fallback-respects-strong-aliases-expected.html: Added.
+        * platform/gtk/fonts/font-family-fallback-respects-strong-aliases.html: Added.
+
+2015-07-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Crash when encountering characters whose natural font is one we can't look up
+        https://bugs.webkit.org/show_bug.cgi?id=147377
+        <rdar://problem/22022011>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/crash-complex-unknown-font-expected.html: Added.
+        * fast/text/crash-complex-unknown-font.html: Added.
+
+2015-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Tests introduced in r187489 are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147327
+
+        Rubber-stamped by Benjamin Poulain.
+
+        Tests introduced in r187489 are flaky, they sometimes print the console
+        message, sometimes not. The reason is that we sometimes use a cached
+        parsed stylesheet and we do not print the warning in this case. To fix
+        the flakiness, we now clear the memory cache at the beginning of each
+        test to make sure we download and parse the stylesheets.
+
+        * http/tests/security/cross-origin-css-1.html:
+        * http/tests/security/cross-origin-css-2.html:
+        * http/tests/security/cross-origin-css-3.html:
+        * http/tests/security/cross-origin-css-4.html:
+        * http/tests/security/cross-origin-css-5.html:
+        * http/tests/security/cross-origin-css-6.html:
+        * http/tests/security/cross-origin-css-7.html:
+        * http/tests/security/cross-origin-css-8.html:
+        * http/tests/security/cross-origin-css-in-quirks-1.html:
+        * http/tests/security/cross-origin-css-in-quirks-2.html:
+        * http/tests/security/cross-origin-css-in-quirks-3.html:
+        * http/tests/security/cross-origin-css-in-quirks-4.html:
+        * http/tests/security/cross-origin-css-in-quirks-5.html:
+        * http/tests/security/cross-origin-css-in-quirks-6.html:
+        * http/tests/security/cross-origin-css-in-quirks-7.html:
+        * http/tests/security/cross-origin-css-in-quirks-8.html:
+        * http/tests/security/same-origin-css-1.html:
+        * http/tests/security/same-origin-css-2.html:
+        * http/tests/security/same-origin-css-3.html:
+        * http/tests/security/same-origin-css-4.html:
+        * http/tests/security/same-origin-css-5.html:
+        * http/tests/security/same-origin-css-6.html:
+        * http/tests/security/same-origin-css-7.html:
+        * http/tests/security/same-origin-css-8.html:
+        * http/tests/security/same-origin-css-in-quirks.html:
+
+2015-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix wrong test baseline landed in r187489.
+
+        * http/tests/security/same-origin-css-4-expected.txt:
+
+2015-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include <template> node content in DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=147335
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/dom/template-content-expected.txt: Added.
+        * inspector/dom/template-content.html: Added.
+
+2015-07-28  Basile Clement  <basile_clement@apple.com>
+
+        Misleading error message: "At least one digit must occur after a decimal point"
+        https://bugs.webkit.org/show_bug.cgi?id=146238
+
+        Reviewed by Geoffrey Garen.
+
+        The expected error message in this test has changed.
+
+        * js/basic-strict-mode-expected.txt:
+
+2015-07-28  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Crash happens when calling removeEventListener for an SVG element which has an instance inside a <defs> element of shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=147290
+
+        Reviewed by Daniel Bates.
+
+        Make sure we do not crash when when calling removeEventListener() for an
+        element which is cloned under a disallowed parent inside the shadow tree
+        of another <use> element.
+
+        * svg/custom/remove-event-listener-shadow-disallowed-element-expected.txt: Added.
+        * svg/custom/remove-event-listener-shadow-disallowed-element.svg: Added.
+
+2015-07-27  David Hyatt  <hyatt@apple.com>
+
+        ASSERTION FAILED: !currBox->needsLayout() loading bing maps (and apple.com/music and nytimes)
+        https://bugs.webkit.org/show_bug.cgi?id=93891
+
+        Reviewed by Simon Fraser.
+
+        * fast/dynamic/position-fixed-to-absolute-with-positioned-child-crash-expected.txt: Added.
+        * fast/dynamic/position-fixed-to-absolute-with-positioned-child-crash.html: Added.
+
+2015-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Pseudo Elements in DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=139612
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/css/pseudo-element-matches-for-pseudo-element-node-expected.txt: Added.
+        * inspector/css/pseudo-element-matches-for-pseudo-element-node.html: Added.
+        * inspector/dom/pseudo-element-dynamic-expected.txt: Added.
+        * inspector/dom/pseudo-element-dynamic.html: Added.
+        * inspector/dom/pseudo-element-static-expected.txt: Added.
+        * inspector/dom/pseudo-element-static.html: Added.
+
+2015-07-28  Chris Dumez  <cdumez@apple.com>
+
+        Allow lax MIME type parsing for same-origin CSS in quirks mode.
+        https://bugs.webkit.org/show_bug.cgi?id=147327
+        <rdar://problem/22010303>
+
+        Reviewed by Zalan Bujtas.
+
+        Add layout test coverage for MIME type parsing for same-origin CSS in
+        quirks mode and not.
+
+        * http/tests/inspector/css/bad-mime-type-expected.txt:
+        * http/tests/mime/standard-mode-does-not-load-stylesheet-with-text-plain-and-css-extension-expected.txt:
+        * http/tests/mime/standard-mode-does-not-load-stylesheet-with-text-plain-expected.txt:
+        * http/tests/misc/css-accept-any-type-expected.txt: Removed.
+        * http/tests/misc/css-accept-any-type.html: Removed.
+        * http/tests/misc/css-reject-any-type-in-strict-mode-expected.txt:
+        * http/tests/security/cross-origin-css-1-expected.txt:
+        * http/tests/security/cross-origin-css-2-expected.txt:
+        * http/tests/security/cross-origin-css-4-expected.txt:
+        * http/tests/security/cross-origin-css-5-expected.txt:
+        * http/tests/security/cross-origin-css-7-expected.txt:
+        * http/tests/security/cross-origin-css-in-quirks-1-expected.txt: Copied from LayoutTests/http/tests/security/cross-origin-css-1-expected.txt.
+        * http/tests/security/cross-origin-css-in-quirks-1.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-2-expected.txt: Copied from LayoutTests/http/tests/security/cross-origin-css-2-expected.txt.
+        * http/tests/security/cross-origin-css-in-quirks-2.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-3-expected.txt: Added.
+        * http/tests/security/cross-origin-css-in-quirks-3.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-4-expected.txt: Added.
+        * http/tests/security/cross-origin-css-in-quirks-4.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-5-expected.txt: Copied from LayoutTests/http/tests/security/cross-origin-css-5-expected.txt.
+        * http/tests/security/cross-origin-css-in-quirks-5.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-6-expected.txt: Added.
+        * http/tests/security/cross-origin-css-in-quirks-6.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-7-expected.txt: Added.
+        * http/tests/security/cross-origin-css-in-quirks-7.html: Added.
+        * http/tests/security/cross-origin-css-in-quirks-8-expected.txt: Added.
+        * http/tests/security/cross-origin-css-in-quirks-8.html: Added.
+        * http/tests/security/same-origin-css-1-expected.txt: Added.
+        * http/tests/security/same-origin-css-1.html: Added.
+        * http/tests/security/same-origin-css-2-expected.txt: Added.
+        * http/tests/security/same-origin-css-2.html: Added.
+        * http/tests/security/same-origin-css-3-expected.txt: Added.
+        * http/tests/security/same-origin-css-3.html: Added.
+        * http/tests/security/same-origin-css-4-expected.txt: Added.
+        * http/tests/security/same-origin-css-4.html: Added.
+        * http/tests/security/same-origin-css-5-expected.txt: Added.
+        * http/tests/security/same-origin-css-5.html: Added.
+        * http/tests/security/same-origin-css-6-expected.txt: Added.
+        * http/tests/security/same-origin-css-6.html: Added.
+        * http/tests/security/same-origin-css-7-expected.txt: Copied from LayoutTests/http/tests/security/cross-origin-css-7-expected.txt.
+        * http/tests/security/same-origin-css-7.html: Added.
+        * http/tests/security/same-origin-css-8-expected.txt: Added.
+        * http/tests/security/same-origin-css-8.html: Added.
+        * http/tests/security/same-origin-css-in-quirks-expected.txt: Added.
+        * http/tests/security/same-origin-css-in-quirks.html: Added.
+        * platform/mac/http/tests/misc/acid3-expected.txt:
+
+2015-07-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Rolling out r187463, because it caused memory corruption on multiple tests.
+
+        Original bug:
+        Crash happens when calling removeEventListener for an SVG element which has an instance inside a <defs> element of shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=147290
+
+        * svg/custom/remove-event-listener-shadow-disallowed-element-expected.txt: Removed.
+        * svg/custom/remove-event-listener-shadow-disallowed-element.svg: Removed.
+
+2015-07-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        SparseValueMap check is skipped when the butterfly's vectorLength is larger than the access-requested index
+        https://bugs.webkit.org/show_bug.cgi?id=147265
+
+        Reviewed by Geoffrey Garen.
+
+        The previous test "basic-computed-property-name.js" has the issue[1] and
+        the issue is fixed by this patch.
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=142943
+
+        * js/basic-computed-property-name-expected.txt:
+        * js/script-tests/basic-computed-property-name.js:
+
+2015-07-27  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Crash happens when calling removeEventListener for an SVG element which has an instance inside a <defs> element of shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=147290
+
+        Reviewed by Simon Fraser.
+
+        Make sure we do not crash when when calling removeEventListener() for an
+        element which is cloned under a disallowed parent inside the shadow tree
+        of another <use> element.
+
+        * svg/custom/remove-event-listener-shadow-disallowed-element-expected.txt: Added.
+        * svg/custom/remove-event-listener-shadow-disallowed-element.svg: Added.
+
+2015-07-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening after r187380.
+        https://bugs.webkit.org/show_bug.cgi?id=121902
+
+        Unreviewed.
+
+        * platform/win/TestExpectations:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-center-expected.png:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-left-expected.png:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-left-expected.txt:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-right-expected.png:
+        * platform/win/fast/css/text-overflow-ellipsis-text-align-right-expected.txt:
+        * platform/win/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.png:
+        * platform/win/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/win/fast/css/vertical-text-overflow-ellipsis-text-align-right-expected.png:
+        * platform/win/fast/css/vertical-text-overflow-ellipsis-text-align-right-expected.txt:
+
+2015-07-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Test result gardening for El Capitan.
+
+        * platform/mac-yosemite/fast/text/international/bold-bengali-expected.png: Copied from LayoutTests/platform/mac/fast/text/international/bold-bengali-expected.png.
+        * platform/mac-yosemite/fast/text/international/bold-bengali-expected.txt: Copied from LayoutTests/platform/mac/fast/text/international/bold-bengali-expected.txt.
+        * platform/mac/fast/text/font-weights-zh-expected.txt:
+        * platform/mac/fast/text/international/bold-bengali-expected.png:
+        * platform/mac/fast/text/international/bold-bengali-expected.txt:
+        * platform/mac/fast/text/international/danda-space-expected.png:
+        * platform/mac/fast/text/international/danda-space-expected.txt:
+
+2015-07-27  Alexey Proskuryakov  <ap@apple.com>
+
+        More test expectations for rdar://problem/22014672
+
+        * platform/mac/TestExpectations:
+
+2015-07-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Add test expectations for rdar://problem/22014672
+
+        * platform/mac/TestExpectations:
+
+2015-07-27  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Strategy tests need sync with the reference
+        https://bugs.webkit.org/show_bug.cgi?id=147267
+
+        Reviewed by Sam Weinig.
+
+        The reference accepted a two new tests for the constructor and another for the size method for both strategies
+        that we need to bring to WebKit to ensure compliance. Expectations updated accordingly.
+
+        * streams/reference-implementation/byte-length-queuing-strategy-expected.txt:
+        * streams/reference-implementation/byte-length-queuing-strategy.html:
+        * streams/reference-implementation/count-queuing-strategy-expected.txt:
+        * streams/reference-implementation/count-queuing-strategy.html:
+
+2015-07-25  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r186569): media/restore-from-page-cache.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147254
+
+        * platform/mac/TestExpectations: Updated the expectations, because the problem is
+        not limited to Debug Mavericks.
+
+2015-07-25  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION?: Frame scrollability tests are very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147300
+
+        * platform/mac-wk2/TestExpectations: Marking them as such.
+
+2015-07-25  Alexey Proskuryakov  <ap@apple.com>
+
+        inspector/css/modify-rule-selector.html times out (flakily on some platforms, and
+        every time on others).
+        https://bugs.webkit.org/show_bug.cgi?id=147229
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+        Added expectations.
+
+2015-07-25  Alexey Proskuryakov  <ap@apple.com>
+
+        aria-liveregions-notifications tests are very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147299
+
+        * platform/mac/TestExpectations: Marked them as such.
+
+2015-07-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Test results gardening.
+
+        * platform/win/TestExpectations:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-07-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        text-overflow: ellipsis is broken by text-align: right and padding-left
+        https://bugs.webkit.org/show_bug.cgi?id=121902
+
+        Reviewed by Zalan Bujtas.
+
+        Updating expected results.
+
+        * fast/inline/padding-ellipsis-right-expected.html: Added.
+        * fast/inline/padding-ellipsis-right.html: Added.
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-center-expected.png:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-left-expected.png:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-left-expected.txt:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-right-expected.png:
+        * platform/mac/fast/css/text-overflow-ellipsis-text-align-right-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.png:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-center-expected.txt:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-left-expected.png:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-right-expected.png:
+        * platform/mac/fast/css/vertical-text-overflow-ellipsis-text-align-right-expected.txt:
+
+2015-07-24  Sajid Anwar  <sajidanwar94@gmail.com>
+
+        [MSE] Incorrect sample timestamps when using "sequence" mode
+        https://bugs.webkit.org/show_bug.cgi?id=147252
+
+        Reviewed by Jer Noble.
+
+        * media/media-source/media-source-sequence-timestamps-expected.txt: Added.
+        * media/media-source/media-source-sequence-timestamps.html: Added.
+
+2015-07-24  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: scrollable elements do not allow 3-finger swipe
+        https://bugs.webkit.org/show_bug.cgi?id=141893
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/ios-simulator/accessibility/scroll-in-overflow-div-expected.txt: Added.
+        * platform/ios-simulator/accessibility/scroll-in-overflow-div.html: Added.
+
+2015-07-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Object.getOwnPropertySymbols on large list takes very long
+        https://bugs.webkit.org/show_bug.cgi?id=146137
+
+        Reviewed by Mark Lam.
+
+        * js/regress/object-get-own-property-symbols-on-large-array-expected.txt: Added.
+        * js/regress/object-get-own-property-symbols-on-large-array.html: Added.
+        * js/regress/script-tests/object-get-own-property-symbols-on-large-array.js: Added.
+        (trial):
+
+2015-07-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Editing non-inspector-stylesheet rule selectors fails after the first change
+        https://bugs.webkit.org/show_bug.cgi?id=147229
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/css/modify-rule-selector-expected.txt: Added.
+        * inspector/css/modify-rule-selector.html: Added.
+
+2015-07-24  Saam barati  <saambarati1@gmail.com>
+
+        [ES6] Add support for default parameters
+        https://bugs.webkit.org/show_bug.cgi?id=38409
+
+        Reviewed by Filip Pizlo.
+
+        * js/destructuring-assignment-default-values-expected.txt:
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/destructuring-assignment-default-values.js:
+        (shouldThrow): Deleted.
+        * js/script-tests/parser-syntax-check.js:
+
+2015-07-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CSS "content" property is missing in getComputedStyles
+        https://bugs.webkit.org/show_bug.cgi?id=147255
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2015-07-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] many fast tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145835
+
+        Unreviewed gardening. These tests aren't flakey now, let's unskip them.
+
+        * platform/efl/TestExpectations:
+
+2015-07-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Multi-column tests have been failed since r167808
+        https://bugs.webkit.org/show_bug.cgi?id=141496
+
+        Unreviewed gardening, updated expected results.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/fast/multicol/client-rects-expected.png:
+        * platform/efl/fast/multicol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/client-rects-spanners-complex-expected.png: Added.
+        * platform/efl/fast/multicol/client-rects-spanners-complex-expected.txt:
+        * platform/efl/fast/multicol/client-rects-spanners-expected.png: Added.
+        * platform/efl/fast/multicol/client-rects-spanners-expected.txt:
+        * platform/efl/fast/multicol/layers-split-across-columns-expected.png:
+        * platform/efl/fast/multicol/layers-split-across-columns-expected.txt:
+        * platform/efl/fast/multicol/newmulticol/client-rects-expected.png: Added.
+        * platform/efl/fast/multicol/newmulticol/client-rects-expected.txt:
+        * platform/efl/fast/multicol/pagination/LeftToRight-tb-hittest-expected.png: Added.
+        * platform/efl/fast/multicol/pagination/LeftToRight-tb-hittest-expected.txt: Added.
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-hittest-expected.png: Added.
+        * platform/efl/fast/multicol/pagination/RightToLeft-rl-hittest-expected.txt: Added.
+
+2015-07-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Unreviewed gardening, unskip now passing tests.
+
+        * platform/efl/TestExpectations:
+
+2015-07-24  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Unreviewed gardening. Updated since MEDIA_STREAM is enabled.
+
+        * platform/efl/js/dom/constructor-length-expected.txt:
+
+2015-07-23  Nan Wang  <n_wang@apple.com>
+
+        AX: AccessibilityNodeObject::childrenChanged() generates too many AXLiveRegionChanged notifications
+        https://bugs.webkit.org/show_bug.cgi?id=147211
+        <rdar://problem/19908029>
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac/accessibility/aria-liveregions-notifications-always-sent-expected.txt:
+        * platform/mac/accessibility/aria-liveregions-notifications-always-sent.html:
+        * platform/mac/accessibility/aria-liveregions-notifications-expected.txt:
+        * platform/mac/accessibility/aria-liveregions-notifications.html:
+        * platform/mac/accessibility/aria-multiple-liveregions-notification-expected.txt: Added.
+        * platform/mac/accessibility/aria-multiple-liveregions-notification.html: Added.
+
+2015-07-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Layer z-ordering is incorrect when scrolling on page witih position:fixed
+        https://bugs.webkit.org/show_bug.cgi?id=147220
+        rdar://problem/15849697&21929247
+
+        Reviewed by Dean Jackson.
+
+        Tests that reveal the overlap area by creating lots of small layers, and dumping
+        the layer tree.
+
+        * compositing/layer-creation/fixed-overlap-extent-expected.txt: Added.
+        * compositing/layer-creation/fixed-overlap-extent-rtl-expected.txt: Added.
+        * compositing/layer-creation/fixed-overlap-extent-rtl.html: Added.
+        * compositing/layer-creation/fixed-overlap-extent.html: Added.
+
+2015-07-23  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: rewrite inspector-protocol/console tests to use new testing patterns
+        https://bugs.webkit.org/show_bug.cgi?id=147231
+
+        Reviewed by Joseph Pecoraro.
+
+        Restructure existing protocol tests for Console.messageAdded to use Promises and
+        modern event listener test interfaces. Add some new functionality to make it easier
+        install multiple protocol event listeners without clobbering.
+
+        This test also splits warnings-errors.html into two tests, one to cover CSS parser
+        warnings and one for JavaScript parser and runtime errors.
+
+        * http/tests/inspector-protocol/resources/InspectorTest.js:
+        (InspectorTest.sendCommand): Support arguments packaged in an object. This style is preferable
+        in tests because it is very explicit about what functionality and messages are covered.
+
+        (InspectorTest.awaitEvent): Added. This is a single-shot event listener that resolves a
+        promise when the desired protocol event is dispatched.
+
+        (InspectorTest.addEventListener): Reimplemented, based on code from WebInspector.Object.
+        Allows multiple listeners to be registered for a single protocol event.
+
+        (InspectorTest.AsyncTestSuite.prototype.runTestCases):
+        (InspectorTest.AsyncTestSuite):
+        (InspectorTest.SyncTestSuite.prototype.runTestCases):
+        (InspectorTest.SyncTestSuite):
+        (InspectorTest.log): Improve the formatting of test suite/test case output.
+
+        (InspectorFrontendAPI.dispatchMessageAsync): Dispatch to an array of listeners if available.
+        (InspectorTest.importScript): Clarify that this method performs a synchronous load.
+        (.InspectorTest.eventHandler.eventName): Deleted.
+        * inspector-protocol/async-test-suite-expected.txt: Rebaseline whitespace.
+        * inspector-protocol/sync-test-suite-expected.txt: Rebaseline whitespace.
+        * inspector-protocol/console/console-message-expected.txt:
+        * inspector-protocol/console/console-message.html:
+        * inspector-protocol/console/css-source-locations-expected.txt: Added.
+        * inspector-protocol/console/css-source-locations.html: Added.
+        * inspector-protocol/console/js-source-locations-expected.txt: Added.
+        * inspector-protocol/console/js-source-locations.html: Added.
+        * inspector-protocol/console/warnings-errors-expected.txt: Removed.
+        * inspector-protocol/console/warnings-errors.html: Removed.
+        * inspector-protocol/runtime/getProperties-expected.txt: Rebaseline whitespace.
+
+
+2015-07-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Windows test result gardening after Mac libxml changes.
+
+        * platform/win/fast/dom/adopt-attribute-crash-expected.txt: Added.
+        * platform/win/fast/parser/xml-colon-entity-expected.txt: Added.
+        * platform/win/fast/parser/xml-declaration-missing-ending-mark-expected.txt: Added.
+        * platform/win/svg/custom/bug78807-expected.txt: Added.
+
+2015-07-19  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: add support for ducking media elements
+        https://bugs.webkit.org/show_bug.cgi?id=147089
+
+        Reviewed by Eric Carlson.
+
+        * media/session/transient-interruptions-expected.txt: Added.
+        * media/session/transient-interruptions.html: Added.
+        * platform/mac/TestExpectations: Media Session support is disabled by default.
+
+2015-07-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add a function to CSSCompletions to get a list of supported system fonts
+        https://bugs.webkit.org/show_bug.cgi?id=147009
+
+        Reviewed by Joseph Pecoraro.
+
+        Skip the get-system-fonts test until it is implemented.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+        Added the get-system-fonts test that returns the list of system fonts.
+        * inspector/css/get-system-fonts-expected.html:
+        * inspector/css/get-system-fonts.html:
+
+2015-07-23  Brady Eidson  <beidson@apple.com>
+
+        Crash in WebPlatformStrategies::createPingHandle - Deref a null NetworkingContext.
+        <rdar://problem/21949735> and https://bugs.webkit.org/show_bug.cgi?id=147227
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/security/contentSecurityPolicy/user-style-sheet-font-crasher-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/user-style-sheet-font-crasher.html: Added.
+
+2015-07-23  Michael Saboff  <msaboff@apple.com>
+
+        Application cache abort() tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=87633
+
+        These AppCache tests are flakey:
+        http/tests/appcache/deferred-events-delete-while-raising-timer.html
+        http/tests/appcache/deferred-events-delete-while-raising.html
+        http/tests/appcache/deferred-events.html
+        http/tests/appcache/fail-on-update-2.html
+
+        * TestExpectations:
+
+2015-07-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should immediately start moving play head when starting a new recording
+        https://bugs.webkit.org/show_bug.cgi?id=147210
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/timeline/recording-start-stop-timestamps-expected.txt: Added.
+        * inspector/timeline/recording-start-stop-timestamps.html: Added.
+        Add a test for Timeline.recordingStarted and Timeline.recordingStopped events.
+
+2015-07-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Coordinates-based snap offsets don't update correctly when container is scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=147215
+
+        Reviewed by Brent Fulgham.
+
+        Tests that snap offsets update properly on scrolled containers.
+
+        * css3/scroll-snap/scroll-snap-coordinate-overflow-resize-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-coordinate-overflow-resize.html: Added.
+
+2015-07-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [El Capitan] Test Gardening
+
+        Unreviewed.
+
+        * platform/mac/fast/text/ligature-subdivision-expected.txt:
+
+2015-07-22  Dean Jackson  <dino@apple.com>
+
+        Out of bounds in WebGLRenderingContext::simulateVertexAttrib0
+        https://bugs.webkit.org/show_bug.cgi?id=147176
+        <rdar://problem/21567767>
+
+        Reviewed by Oliver Hunt.
+
+        * fast/canvas/webgl/out-of-bounds-simulated-vertexAttrib0-drawArrays-expected.txt: Added.
+        * fast/canvas/webgl/out-of-bounds-simulated-vertexAttrib0-drawArrays.html: Added.
+
+2015-07-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: AppCache manifest 404 doesn't produce errors in console, manifest resource request always loading indicator
+        https://bugs.webkit.org/show_bug.cgi?id=147135
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/appcache/404-manifest-expected.txt:
+        * http/tests/appcache/abort-cache-ondownloading-manifest-404-expected.txt:
+        * http/tests/appcache/deferred-events-delete-while-raising-expected.txt:
+        * http/tests/appcache/deferred-events-delete-while-raising-timer-expected.txt:
+        * http/tests/appcache/deferred-events-expected.txt:
+        * http/tests/appcache/fail-on-update-2-expected.txt:
+        * http/tests/appcache/fail-on-update-expected.txt:
+        * http/tests/appcache/remove-cache-expected.txt:
+        Update with new Console errors about manifest 404s.
+
+2015-07-22  Jinyoung Hur  <hur.ims@navercorp.com>
+
+        [WinCairo] SVG path not rendered with all-zero dasharray
+        https://bugs.webkit.org/show_bug.cgi?id=146997
+
+        Reviewed by Martin Robinson.
+
+        Canvas 2D context and SVG stroke tests with all-zero dash array are added.
+
+        * fast/canvas/canvas-lineDash-expected.txt:
+        * fast/canvas/script-tests/canvas-lineDash.js:
+        * svg/custom/zero-dasharray.html: Added
+        * svg/custom/zero-dasharray-expected.html: Added
+
+2015-07-22  Mark Dittmer  <mark.s.dittmer@gmail.com>
+
+        New test: Object.create(window).location will trigger a crash when toJSDOMWindow() returns NULL on an object that have the JS DOM Window in its prototype chain.
+        https://bugs.webkit.org/show_bug.cgi?id=146785
+
+        Reviewed by Mark Lam.
+
+        * js/property-of-window-as-prototype-expected.txt:
+        * js/property-of-window-as-prototype.html:
+
 2015-07-21  Alexey Proskuryakov  <ap@apple.com>
 
         Update Mac test results for libxml2 v2.9.2.

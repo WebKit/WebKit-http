@@ -967,10 +967,11 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             WebCore::FloatRect oldUnobscuredContentRect = _page->unobscuredContentRect();
             if (!oldUnobscuredContentRect.isEmpty() && oldUnobscuredContentRect.y() < 1) {
                 CGFloat relativeHorizontalPosition = oldUnobscuredContentRect.x() / oldUnobscuredContentRect.width();
-                CGPoint newTopLeft = [self _adjustedContentOffset: { relativeHorizontalPosition * newContentSize.width, 0 }];
+                CGPoint newTopLeft = { relativeHorizontalPosition * newContentSize.width, 0 };
                 CGSize scrollViewSize = [_scrollView bounds].size;
-                CGSize rectToZoomSize = CGSizeMake(scrollViewSize.width * newPageScaleFactor, scrollViewSize.height * newPageScaleFactor);
+                CGSize rectToZoomSize = CGSizeMake(scrollViewSize.width / newPageScaleFactor, scrollViewSize.height / newPageScaleFactor);
                 [_scrollView zoomToRect: { newTopLeft, rectToZoomSize } animated:NO];
+                ASSERT(areEssentiallyEqualAsFloat(newPageScaleFactor, contentZoomScale(self)));
             } else
                 [_scrollView setZoomScale:newPageScaleFactor];
         }
@@ -1881,6 +1882,15 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 }
 #endif // PLATFORM(MAC)
 
+#if ENABLE(VIDEO)
+- (void)_mediaDocumentNaturalSizeChanged:(NSSize)newSize
+{
+    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([self UIDelegate]);
+    if ([uiDelegate respondsToSelector:@selector(_webView:mediaDocumentNaturalSizeChanged:)])
+        [uiDelegate _webView:self mediaDocumentNaturalSizeChanged:newSize];
+}
+#endif
+
 @end
 
 @implementation WKWebView (WKPrivate)
@@ -2465,6 +2475,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return NO;
 }
 
+- (BOOL)_isDisplayingStandaloneMediaDocument
+{
+    if (auto* mainFrame = _page->mainFrame())
+        return mainFrame->isDisplayingStandaloneMediaDocument();
+    return NO;
+}
+
 - (BOOL)_isShowingNavigationGestureSnapshot
 {
     return _page->isShowingNavigationGestureSnapshot();
@@ -2581,6 +2598,24 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return scrollPerfData->data();
 #endif
     return nil;
+}
+
+#pragma mark media playback restrictions
+
+- (BOOL)_allowsMediaDocumentInlinePlayback
+{
+#if PLATFORM(IOS)
+    return _page->allowsMediaDocumentInlinePlayback();
+#else
+    return NO;
+#endif
+}
+
+- (void)_setAllowsMediaDocumentInlinePlayback:(BOOL)flag
+{
+#if PLATFORM(IOS)
+    _page->setAllowsMediaDocumentInlinePlayback(flag);
+#endif
 }
 
 #pragma mark iOS-specific methods
@@ -2885,14 +2920,21 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 #if USE(IOSURFACE)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+    if (CADisplay *display = self.window.screen._display) {
+#else
     if (self.window) {
+#endif
         auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::ColorSpaceDeviceRGB);
         CGFloat imageScaleInViewCoordinates = imageWidth / rectInViewCoordinates.size.width;
         CATransform3D transform = CATransform3DMakeScale(imageScaleInViewCoordinates, imageScaleInViewCoordinates, 1);
         transform = CATransform3DTranslate(transform, -rectInViewCoordinates.origin.x, -rectInViewCoordinates.origin.y, 0);
-        CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+        CARenderServerRenderDisplayLayerWithTransformAndTimeOffset(MACH_PORT_NULL, (CFStringRef)display.name, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform, 0);
+#else
+        CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform); 
+#endif
         completionHandler(surface->createImage().get());
-
         return;
     }
 #endif
@@ -2998,12 +3040,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _allowsLinkPreview = allowsLinkPreview;
-#if HAVE(LINK_PREVIEW)
-    if (_allowsLinkPreview)
-        [_contentView _registerPreviewInWindow:[_contentView window]];
-    else
-        [_contentView _unregisterPreviewInWindow:[_contentView window]];
-#endif
 }
 
 #else

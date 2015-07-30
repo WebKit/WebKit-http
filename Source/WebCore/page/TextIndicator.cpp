@@ -71,7 +71,7 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
         indicator->setWantsMargin(!areRangesEqual(&range, oldSelection.toNormalizedRange().get()));
 
 #if PLATFORM(IOS)
-    frame->editor().setIgnoreCompositionSelectionChange(false);
+    frame->editor().setIgnoreCompositionSelectionChange(false, Editor::RevealSelection::No);
     frame->selection().setUpdateAppearanceEnabled(false);
 #endif
 
@@ -163,7 +163,7 @@ RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, Te
     data.selectionRectInRootViewCoordinates = frame.view()->contentsToRootView(enclosingIntRect(frame.selection().selectionBounds()));
     data.textBoundingRectInRootViewCoordinates = textBoundingRectInRootViewCoordinates;
     data.textRectsInBoundingRectCoordinates = textRectsInBoundingRectCoordinates;
-    data.contentImageScaleFactor = frame.page()->deviceScaleFactor();
+    data.contentImageScaleFactor = indicatorBuffer->resolutionScale();
     data.contentImage = indicatorBitmap;
     data.contentImageWithHighlight = indicatorBitmapWithHighlight;
     data.presentationTransition = presentationTransition;

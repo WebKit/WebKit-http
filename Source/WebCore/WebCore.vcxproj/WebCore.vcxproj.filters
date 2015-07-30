@@ -5722,6 +5722,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSScreen.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSecurityPolicyViolationEvent.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -7268,6 +7271,12 @@
     </ClCompile>
     <ClCompile Include="..\platform\graphics\PathUtilities.cpp">
       <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\win\GDIUtilities.cpp">
+      <Filter>platform\graphics\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\DOMSecurityPolicy.cpp">
+      <Filter>page</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -15257,6 +15266,12 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\PathUtilities.h">
       <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\win\GDIUtilities.h">
+      <Filter>platform\graphics\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\DOMSecurityPolicy.h">
+      <Filter>page</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1996,7 +1996,7 @@ void WebPage::applyAutocorrection(const String& correction, const String& origin
 
 void WebPage::executeEditCommandWithCallback(const String& commandName, uint64_t callbackID)
 {
-    executeEditCommand(commandName);
+    executeEditCommand(commandName, String());
     if (commandName == "toggleBold" || commandName == "toggleItalic" || commandName == "toggleUnderline")
         send(Messages::WebPageProxy::EditorStateChanged(editorState()));
     send(Messages::WebPageProxy::VoidCallback(callbackID));
@@ -2221,16 +2221,19 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                 } else if (element->renderer() && element->renderer()->isRenderImage()) {
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
-                        info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
                         if (Image* image = renderImage.cachedImage()->imageForRenderer(&renderImage)) {
-                            FloatSize screenSizeInPixels = screenSize();
-                            screenSizeInPixels.scale(corePage()->deviceScaleFactor());
-                            FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
-                            FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
-                            if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
-                                auto graphicsContext = sharedBitmap->createGraphicsContext();
-                                graphicsContext->drawImage(image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
-                                info.image = sharedBitmap;
+                            if (image->width() > 1 && image->height() > 1) {
+                                info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
+                                info.isAnimatedImage = image->isAnimated();
+                                FloatSize screenSizeInPixels = screenSize();
+                                screenSizeInPixels.scale(corePage()->deviceScaleFactor());
+                                FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
+                                FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
+                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
+                                    auto graphicsContext = sharedBitmap->createGraphicsContext();
+                                    graphicsContext->drawImage(image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
+                                    info.image = sharedBitmap;
+                                }
                             }
                         }
                     }
@@ -2249,6 +2252,11 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                     info.bounds = downcast<RenderImage>(*renderer).absoluteContentQuad().enclosingBoundingBox();
                 else
                     info.bounds = renderer->absoluteBoundingBoxRect();
+
+                if (!renderer->document().frame()->isMainFrame()) {
+                    FrameView *view = renderer->document().frame()->view();
+                    info.bounds = view->contentsToRootView(info.bounds);
+                }
             }
         }
     }
@@ -2529,10 +2537,11 @@ void WebPage::elementDidBlur(WebCore::Node* node)
 {
     if (m_assistedNode == node) {
         m_hasPendingBlurNotification = true;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (m_hasPendingBlurNotification)
-                send(Messages::WebPageProxy::StopAssistingNode());
-            m_hasPendingBlurNotification = false;
+        RefPtr<WebPage> protectedThis(this);
+        dispatch_async(dispatch_get_main_queue(), [protectedThis] {
+            if (protectedThis->m_hasPendingBlurNotification)
+                protectedThis->send(Messages::WebPageProxy::StopAssistingNode());
+            protectedThis->m_hasPendingBlurNotification = false;
         });
         m_hasFocusedDueToUserInteraction = false;
         m_assistedNode = nullptr;
@@ -2837,8 +2846,10 @@ void WebPage::volatilityTimerFired()
     m_volatilityTimer.stop();
 }
 
-void WebPage::applicationDidEnterBackground()
+void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
+    [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
+
     setLayerTreeStateIsFrozen(true);
     if (markLayersVolatileImmediatelyIfPossible())
         return;

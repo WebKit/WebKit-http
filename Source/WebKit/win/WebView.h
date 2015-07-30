@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2012, 2014-2015 Apple Inc.  All rights reserved.
  * Copyright (C) 2009, 2010, 2011 Appcelerator, Inc. All rights reserved.
  * Copyright (C) 2011 Brent Fulgham. All rights reserved.
  *
@@ -31,7 +31,6 @@
 #include "WebKit.h"
 #include "WebFrame.h"
 #include "WebPreferences.h"
-#include <WebCore/CACFLayerTreeHostClient.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/GraphicsLayer.h>
@@ -42,6 +41,10 @@
 #include <WebCore/WindowMessageListener.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
+
+#if USE(CA)
+#include <WebCore/CACFLayerTreeHostClient.h>
+#endif
 
 #if ENABLE(FULLSCREEN_API)
 #include <WebCore/FullScreenControllerClient.h>
@@ -89,7 +92,9 @@ class WebView
     , public IDropTarget
     , WebCore::WindowMessageListener
     , WebCore::GraphicsLayerClient
+#if USE(CA)
     , WebCore::CACFLayerTreeHostClient
+#endif
 #if ENABLE(FULLSCREEN_API)
     , WebCore::FullScreenControllerClient
 #endif
@@ -846,6 +851,10 @@ public:
     HRESULT STDMETHODCALLTYPE dispatchPendingLoadRequests();
     virtual HRESULT STDMETHODCALLTYPE setCustomBackingScaleFactor(double);
     virtual HRESULT STDMETHODCALLTYPE backingScaleFactor(double*);
+    virtual HRESULT STDMETHODCALLTYPE addUserScriptToGroup(BSTR groupName, IWebScriptWorld*, BSTR source, BSTR url,
+        unsigned whitelistCount, BSTR* whitelist, unsigned blacklistCount, BSTR* blacklist, WebUserScriptInjectionTime, WebUserContentInjectedFrames);
+    virtual HRESULT STDMETHODCALLTYPE addUserStyleSheetToGroup(BSTR groupName, IWebScriptWorld*, BSTR source, BSTR url,
+        unsigned whitelistCount, BSTR* whitelist, unsigned blacklistCount, BSTR* blacklist, WebUserContentInjectedFrames);
 
     // WebView
     bool shouldUseEmbeddedView(const WTF::String& mimeType) const;
@@ -988,6 +997,9 @@ public:
     /* [out, retval] */ RECT* resultRect);
 
     HRESULT STDMETHODCALLTYPE selectedRangeForTesting(/* [out] */ UINT* location, /* [out] */ UINT* length);
+
+    float deviceScaleFactor() const;
+
 private:
     void setZoomMultiplier(float multiplier, bool isTextOnly);
     float zoomMultiplier(bool isTextOnly);
@@ -1000,6 +1012,7 @@ private:
     bool active();
 
     void sizeChanged(const WebCore::IntSize&);
+    bool dpiChanged(float, const WebCore::IntSize&);
 
     enum WindowsToPaint { PaintWebViewOnly, PaintWebViewAndChildren };
     void paintIntoBackingStore(WebCore::FrameView*, HDC bitmapDC, const WebCore::IntRect& dirtyRect, WindowsToPaint);
@@ -1025,8 +1038,6 @@ private:
 
     bool m_shouldInvertColors;
     void setShouldInvertColors(bool);
-
-    float deviceScaleFactor() const;
 
 protected:
     static bool registerWebViewWindowClass();

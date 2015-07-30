@@ -35,7 +35,7 @@ elseif ("${PORT}" STREQUAL "WPE")
 endif ()
 
 if (WIN32)
-    add_subdirectory(DumpRenderTree)
+    # FIXME: Get DumpRenderTree working with CMake.
     add_subdirectory(WinLauncher)
 endif ()
 

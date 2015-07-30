@@ -293,12 +293,6 @@ sub determineConfiguration
     } else {
         $configuration = "Release";
     }
-
-    if ($configuration && isWinCairo()) {
-        unless ($configuration =~ /_WinCairo$/) {
-            $configuration .= "_WinCairo";
-        }
-    }
 }
 
 sub determineArchitecture
@@ -716,8 +710,6 @@ sub determinePassedConfiguration
     } elsif (checkForArgumentAndRemoveFromARGV("--profile") || checkForArgumentAndRemoveFromARGV("--profiling")) {
         $passedConfiguration = "Profiling";
     }
-
-    $passedConfiguration .= "_WinCairo" if (defined($passedConfiguration) && isWinCairo());
 }
 
 sub passedConfiguration
@@ -1743,6 +1735,9 @@ sub isCachedArgumentfileOutOfDate($@)
 
 sub jhbuildWrapperPrefixIfNeeded()
 {
+    if (isWindows()) {
+        return ();
+    }
     if (-e getJhbuildPath()) {
         my @prefix = (File::Spec->catfile(sourceDir(), "Tools", "jhbuild", "jhbuild-wrapper"));
         if (isEfl()) {
@@ -1883,7 +1878,7 @@ sub generateBuildSystemFromCMakeProject
     # Compiler options to keep floating point values consistent
     # between 32-bit and 64-bit architectures.
     determineArchitecture();
-    if ($architecture ne "x86_64" && !isARM() && !isCrossCompilation()) {
+    if ($architecture ne "x86_64" && !isARM() && !isCrossCompilation() && !isWindows()) {
         $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
     }
 

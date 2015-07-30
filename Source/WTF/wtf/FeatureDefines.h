@@ -156,6 +156,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_VIEW_MODE_CSS_MEDIA 0
 #endif
 
+#if !defined(ENABLE_WEBASSEMBLY)
+#define ENABLE_WEBASSEMBLY 0
+#endif
+
 #if !defined(ENABLE_WEBGL)
 #define ENABLE_WEBGL 1
 #endif
@@ -359,6 +363,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_ES6_CLASS_SYNTAX)
 #define ENABLE_ES6_CLASS_SYNTAX 1
+#endif
+
+#if !defined(ENABLE_ES6_MODULES)
+#define ENABLE_ES6_MODULES 0
 #endif
 
 #if !defined(ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX)
@@ -651,10 +659,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_POINTER_LOCK)
 #define ENABLE_POINTER_LOCK 0
-#endif
-
-#if !defined(ENABLE_PROMISES)
-#define ENABLE_PROMISES 0
 #endif
 
 #if !defined(ENABLE_PROXIMITY_EVENTS)

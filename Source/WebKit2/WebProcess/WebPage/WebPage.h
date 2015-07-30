@@ -139,6 +139,10 @@ struct Highlight;
 struct KeypressCommand;
 struct MediaPlaybackTargetContext;
 struct TextCheckingResult;
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+class MediaPlayerRequestInstallMissingPluginsCallback;
+#endif
 }
 
 namespace WebKit {
@@ -236,6 +240,8 @@ public:
 
 #if PLATFORM(IOS)
     WebVideoFullscreenManager* videoFullscreenManager();
+    void setAllowsMediaDocumentInlinePlayback(bool);
+    bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -798,7 +804,7 @@ public:
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
-    void applicationDidEnterBackground();
+    void applicationDidEnterBackground(bool isSuspendedUnderLock);
     void applicationWillEnterForeground();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
@@ -900,6 +906,13 @@ public:
     void setInputMethodState(bool);
 #endif
 
+#if ENABLE(VIDEO)
+    void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
+#if USE(GSTREAMER)
+    void requestInstallMissingMediaPlugins(const String& details, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
+#endif
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -970,7 +983,7 @@ private:
     void updateIsInWindow(bool isInitialState = false);
     void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
-    void executeEditCommand(const String&);
+    void executeEditCommand(const String&, const String&);
     void setEditable(bool);
 
     void updateUserActivity();
@@ -1090,7 +1103,7 @@ private:
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
 #if ENABLE(MEDIA_STREAM)
-    WK_EXPORT void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed);
+    WK_EXPORT void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& deviceUIDVideo, const String& deviceUIDAudio);
 #endif
 
     void advanceToNextMisspelling(bool startBeforeSelection);
@@ -1146,6 +1159,10 @@ private:
     void setUserContentExtensionsEnabled(bool);
 
     void pageStoppedScrolling();
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    void didEndRequestInstallMissingMediaPlugins(uint32_t result);
+#endif
 
     uint64_t m_pageID;
 
@@ -1258,6 +1275,7 @@ private:
     RefPtr<WebInspectorUI> m_inspectorUI;
 #if PLATFORM(IOS)
     RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+    bool m_allowsMediaDocumentInlinePlayback { false };
 #endif
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManager> m_fullScreenManager;
@@ -1394,6 +1412,10 @@ private:
 
 #if PLATFORM(GTK)
     bool m_inputMethodEnabled { false };
+#endif
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    RefPtr<WebCore::MediaPlayerRequestInstallMissingPluginsCallback> m_installMediaPluginsCallback;
 #endif
 };
 
