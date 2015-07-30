@@ -26,13 +26,16 @@ elseif ("${PORT}" STREQUAL "GTK")
         add_subdirectory(MiniBrowser/gtk)
     endif ()
 elseif ("${PORT}" STREQUAL "WPE")
+    if (ENABLE_WESTON_SHELL)
+        add_subdirectory(WPEWestonShell)
+    endif ()
     if (DEVELOPER_MODE)
         add_subdirectory(WebKitTestRunner)
     endif ()
 endif ()
 
 if (WIN32)
-    add_subdirectory(DumpRenderTree)
+    # FIXME: Get DumpRenderTree working with CMake.
     add_subdirectory(WinLauncher)
 endif ()
 

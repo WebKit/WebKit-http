@@ -30,6 +30,12 @@
 #include "WebNotificationCenter.h"
 #include "WebPreferenceKeysPrivate.h"
 
+#if USE(CG)
+#include <CoreGraphics/CoreGraphics.h>
+#include <WebCore/CACFLayerTreeHost.h>
+#include <WebKitSystemInterface/WebKitSystemInterface.h>
+#endif
+
 #include <CoreFoundation/CoreFoundation.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/FileSystem.h>
@@ -44,12 +50,6 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
-
-#if USE(CG)
-#include <CoreGraphics/CoreGraphics.h>
-#include <WebCore/CACFLayerTreeHost.h>
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
-#endif
 
 using namespace WebCore;
 using std::numeric_limits;
@@ -194,7 +194,7 @@ void WebPreferences::initializeDefaultSettings()
 
     CFMutableDictionaryRef defaults = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-    CFDictionaryAddValue(defaults, CFSTR(WebKitStandardFontPreferenceKey), CFSTR("Segoe UI"));
+    CFDictionaryAddValue(defaults, CFSTR(WebKitStandardFontPreferenceKey), CFSTR("Times New Roman"));
     CFDictionaryAddValue(defaults, CFSTR(WebKitFixedFontPreferenceKey), CFSTR("Courier New"));
     CFDictionaryAddValue(defaults, CFSTR(WebKitSerifFontPreferenceKey), CFSTR("Times New Roman"));
     CFDictionaryAddValue(defaults, CFSTR(WebKitSansSerifFontPreferenceKey), CFSTR("Arial"));

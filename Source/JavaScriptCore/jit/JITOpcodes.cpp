@@ -497,11 +497,6 @@ void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
     emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
-    if (currentInstruction[4].u.operand == JSNameScope::CatchScope) {
-        callOperation(operationPushCatchScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT0);
-        return;
-    }
-
     RELEASE_ASSERT(currentInstruction[4].u.operand == JSNameScope::FunctionNameScope);
     callOperation(operationPushFunctionNameScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT0);
 }
@@ -1243,6 +1238,8 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     emitGetVirtualRegister(valueToProfile, regT0);
 
     JumpList jumpToEnd;
+
+    jumpToEnd.append(branchTest64(Zero, regT0));
 
     // Compile in a predictive type check, if possible, to see if we can skip writing to the log.
     // These typechecks are inlined to match those of the 64-bit JSValue type checks.

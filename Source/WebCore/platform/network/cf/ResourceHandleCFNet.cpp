@@ -219,7 +219,7 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
     CFRelease(streamProperties);
 
 #if PLATFORM(COCOA)
-    if (client() && client()->usesAsyncCallbacks())
+    if (d->m_usesAsyncCallbacks)
         d->m_connectionDelegate = adoptRef(new ResourceHandleCFURLConnectionDelegateWithOperationQueue(this));
     else
         d->m_connectionDelegate = adoptRef(new SynchronousResourceHandleCFURLConnectionDelegate(this));
@@ -304,7 +304,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     }
 
     Ref<ResourceHandle> protect(*this);
-    if (client()->usesAsyncCallbacks())
+    if (d->m_usesAsyncCallbacks)
         client()->willSendRequestAsync(this, request, redirectResponse);
     else {
         client()->willSendRequest(this, request, redirectResponse);
@@ -322,7 +322,7 @@ bool ResourceHandle::shouldUseCredentialStorage()
 {
     LOG(Network, "CFNet - shouldUseCredentialStorage()");
     if (ResourceHandleClient* client = this->client()) {
-        ASSERT(!client->usesAsyncCallbacks());
+        ASSERT(!d->m_usesAsyncCallbacks);
         return client->shouldUseCredentialStorage(this);
     }
     return false;
@@ -347,6 +347,24 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
     }
 #endif
 
+    if (tryHandlePasswordBasedAuthentication(challenge))
+        return;
+
+    d->m_currentWebChallenge = challenge;
+    
+    if (client())
+        client()->didReceiveAuthenticationChallenge(this, d->m_currentWebChallenge);
+    else {
+        clearAuthentication();
+        CFURLConnectionPerformDefaultHandlingForChallenge(d->m_connection.get(), challenge.cfURLAuthChallengeRef());
+    }
+}
+
+bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationChallenge& challenge)
+{
+    if (!challenge.protectionSpace().isPasswordBased())
+        return false;
+
     if (!d->m_user.isNull() && !d->m_pass.isNull()) {
         RetainPtr<CFURLCredentialRef> cfCredential = adoptCF(CFURLCredentialCreate(kCFAllocatorDefault, d->m_user.createCFString().get(), d->m_pass.createCFString().get(), 0, kCFURLCredentialPersistenceNone));
 #if PLATFORM(COCOA)
@@ -364,7 +382,7 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
         d->m_user = String();
         d->m_pass = String();
         // FIXME: Per the specification, the user shouldn't be asked for credentials if there were incorrect ones provided explicitly.
-        return;
+        return true;
     }
 
     if (!client() || client()->shouldUseCredentialStorage(this)) {
@@ -389,27 +407,27 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
                 RetainPtr<CFURLCredentialRef> cfCredential = adoptCF(createCF(credential));
                 CFURLConnectionUseCredential(d->m_connection.get(), cfCredential.get(), challenge.cfURLAuthChallengeRef());
 #endif
-                return;
+                return true;
             }
         }
     }
 
-    d->m_currentWebChallenge = challenge;
-    
-    if (client())
-        client()->didReceiveAuthenticationChallenge(this, d->m_currentWebChallenge);
+    return false;
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 bool ResourceHandle::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
 {
-    if (ResourceHandleClient* client = this->client()) {
-        if (client->usesAsyncCallbacks())
+    ResourceHandleClient* client = this->client();
+    if (d->m_usesAsyncCallbacks) {
+        if (client)
             client->canAuthenticateAgainstProtectionSpaceAsync(this, protectionSpace);
         else
-            return client->canAuthenticateAgainstProtectionSpace(this, protectionSpace);
+            continueCanAuthenticateAgainstProtectionSpace(false);
+        return false; // Ignored by caller.
     }
-    return false;
+
+    return client && client->canAuthenticateAgainstProtectionSpace(this, protectionSpace);
 }
 #endif
 

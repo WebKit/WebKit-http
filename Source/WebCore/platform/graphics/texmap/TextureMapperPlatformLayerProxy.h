@@ -64,9 +64,9 @@ public:
     void pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     void requestUpdate(MutexLocker&);
 
-    void setCompositor(Compositor*);
-    void setTargetLayer(TextureMapperLayer*);
-    bool hasTargetLayer();
+    void setCompositor(MutexLocker&, Compositor*);
+    void setTargetLayer(MutexLocker&, TextureMapperLayer*);
+    bool hasTargetLayer(MutexLocker&);
 
     void swapBuffer();
 

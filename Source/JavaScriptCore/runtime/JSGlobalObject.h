@@ -90,14 +90,12 @@ struct HashTable;
 
 #define DEFINE_STANDARD_BUILTIN(macro, upperName, lowerName) macro(upperName, lowerName, lowerName, JS ## upperName, upperName)
 
-#define FOR_EACH_EXPERIMENTAL_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
-    macro(Symbol, symbol, symbolObject, SymbolObject, Symbol) \
-
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     macro(Set, set, set, JSSet, Set) \
     macro(Map, map, map, JSMap, Map) \
     macro(Date, date, date, DateInstance, Date) \
     macro(String, string, stringObject, StringObject, String) \
+    macro(Symbol, symbol, symbolObject, SymbolObject, Symbol) \
     macro(Boolean, boolean, booleanObject, BooleanObject, Boolean) \
     macro(Number, number, numberObject, NumberObject, Number) \
     macro(Error, error, error, ErrorInstance, Error) \
@@ -117,7 +115,6 @@ struct HashTable;
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE(macro) \
     FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
-    FOR_EACH_EXPERIMENTAL_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
 
 #define DECLARE_SIMPLE_BUILTIN_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
     class JS ## capitalName; \
@@ -186,9 +183,7 @@ protected:
     WriteBarrier<NativeErrorConstructor> m_syntaxErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_URIErrorConstructor;
-#if ENABLE(PROMISES)
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
-#endif
     WriteBarrier<ObjectConstructor> m_objectConstructor;
 
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
@@ -201,10 +196,8 @@ protected:
     WriteBarrier<JSFunction> m_applyFunction;
     WriteBarrier<JSFunction> m_definePropertyFunction;
     WriteBarrier<JSFunction> m_arrayProtoValuesFunction;
-#if ENABLE(PROMISES)
     WriteBarrier<JSFunction> m_initializePromiseFunction;
     WriteBarrier<JSFunction> m_newPromiseDeferredFunction;
-#endif
     WriteBarrier<GetterSetter> m_throwTypeErrorGetterSetter;
 
     WriteBarrier<ObjectPrototype> m_objectPrototype;
@@ -212,15 +205,12 @@ protected:
     WriteBarrier<ArrayPrototype> m_arrayPrototype;
     WriteBarrier<RegExpPrototype> m_regExpPrototype;
     WriteBarrier<IteratorPrototype> m_iteratorPrototype;
-#if ENABLE(PROMISES)
     WriteBarrier<JSPromisePrototype> m_promisePrototype;
-#endif
 
     WriteBarrier<Structure> m_debuggerScopeStructure;
     WriteBarrier<Structure> m_withScopeStructure;
     WriteBarrier<Structure> m_strictEvalActivationStructure;
     WriteBarrier<Structure> m_lexicalEnvironmentStructure;
-    WriteBarrier<Structure> m_catchScopeStructure;
     WriteBarrier<Structure> m_functionNameScopeStructure;
     WriteBarrier<Structure> m_directArgumentsStructure;
     WriteBarrier<Structure> m_scopedArgumentsStructure;
@@ -234,6 +224,7 @@ protected:
     WriteBarrier<Structure> m_callbackConstructorStructure;
     WriteBarrier<Structure> m_callbackFunctionStructure;
     WriteBarrier<Structure> m_callbackObjectStructure;
+    WriteBarrier<Structure> m_propertyNameIteratorStructure;
 #if JSC_OBJC_API_ENABLED
     WriteBarrier<Structure> m_objcCallbackFunctionStructure;
     WriteBarrier<Structure> m_objcWrapperObjectStructure;
@@ -249,14 +240,9 @@ protected:
     WriteBarrier<Structure> m_consoleStructure;
     WriteBarrier<Structure> m_dollarVMStructure;
     WriteBarrier<Structure> m_internalFunctionStructure;
-    
     WriteBarrier<Structure> m_iteratorResultStructure;
-
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
-
-#if ENABLE(PROMISES)
     WriteBarrier<Structure> m_promiseStructure;
-#endif // ENABLE(PROMISES)
 
 #define DEFINE_STORAGE_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
     WriteBarrier<capitalName ## Prototype> m_ ## lowerName ## Prototype; \
@@ -321,9 +307,9 @@ public:
     typedef JSSegmentedVariableObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
 
-    static JSGlobalObject* create(VM& vm, Structure* structure, const GlobalObjectMethodTable* globalObjectMethodTable = nullptr)
+    static JSGlobalObject* create(VM& vm, Structure* structure)
     {
-        JSGlobalObject* globalObject = new (NotNull, allocateCell<JSGlobalObject>(vm.heap)) JSGlobalObject(vm, structure, globalObjectMethodTable);
+        JSGlobalObject* globalObject = new (NotNull, allocateCell<JSGlobalObject>(vm.heap)) JSGlobalObject(vm, structure);
         globalObject->finishCreation(vm);
         vm.heap.addFinalizer(globalObject, destroy);
         return globalObject;
@@ -398,9 +384,7 @@ public:
     NativeErrorConstructor* syntaxErrorConstructor() const { return m_syntaxErrorConstructor.get(); }
     NativeErrorConstructor* typeErrorConstructor() const { return m_typeErrorConstructor.get(); }
     NativeErrorConstructor* URIErrorConstructor() const { return m_URIErrorConstructor.get(); }
-#if ENABLE(PROMISES)
     JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
-#endif
 
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
     NullSetterFunction* nullSetterFunction() const { return m_nullSetterFunction.get(); }
@@ -412,10 +396,8 @@ public:
     JSFunction* applyFunction() const { return m_applyFunction.get(); }
     JSFunction* definePropertyFunction() const { return m_definePropertyFunction.get(); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(); }
-#if ENABLE(PROMISES)
     JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(); }
     JSFunction* newPromiseDeferredFunction() const { return m_newPromiseDeferredFunction.get(); }
-#endif
     GetterSetter* throwTypeErrorGetterSetter(VM& vm)
     {
         if (!m_throwTypeErrorGetterSetter)
@@ -434,15 +416,12 @@ public:
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
     ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
-#if ENABLE(PROMISES)
     JSPromisePrototype* promisePrototype() const { return m_promisePrototype.get(); }
-#endif
 
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
     Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
     Structure* activationStructure() const { return m_lexicalEnvironmentStructure.get(); }
-    Structure* catchScopeStructure() const { return m_catchScopeStructure.get(); }
     Structure* functionNameScopeStructure() const { return m_functionNameScopeStructure.get(); }
     Structure* directArgumentsStructure() const { return m_directArgumentsStructure.get(); }
     Structure* scopedArgumentsStructure() const { return m_scopedArgumentsStructure.get(); }
@@ -471,6 +450,7 @@ public:
     Structure* callbackConstructorStructure() const { return m_callbackConstructorStructure.get(); }
     Structure* callbackFunctionStructure() const { return m_callbackFunctionStructure.get(); }
     Structure* callbackObjectStructure() const { return m_callbackObjectStructure.get(); }
+    Structure* propertyNameIteratorStructure() const { return m_propertyNameIteratorStructure.get(); }
 #if JSC_OBJC_API_ENABLED
     Structure* objcCallbackFunctionStructure() const { return m_objcCallbackFunctionStructure.get(); }
     Structure* objcWrapperObjectStructure() const { return m_objcWrapperObjectStructure.get(); }
@@ -494,10 +474,7 @@ public:
     Structure* iteratorResultStructure() const { return m_iteratorResultStructure.get(); }
     static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
-
-#if ENABLE(PROMISES)
     Structure* promiseStructure() const { return m_promiseStructure.get(); }
-#endif // ENABLE(PROMISES)
 
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
     JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;

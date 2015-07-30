@@ -219,7 +219,7 @@ public:
     int createElementList(int, int) { return ElementsListResult; }
     int createElementList(int, int, int) { return ElementsListResult; }
     int createFormalParameterList() { return FormalParameterListResult; }
-    void appendParameter(int, DestructuringPattern) { }
+    void appendParameter(int, DestructuringPattern, int) { }
     int createClause(int, int) { return ClauseResult; }
     int createClauseList(int) { return ClauseListResult; }
     int createClauseList(int, int) { return ClauseListResult; }
@@ -242,7 +242,7 @@ public:
     int createBreakStatement(const JSTokenLocation&, const Identifier*, int, int) { return StatementResult; }
     int createContinueStatement(const JSTokenLocation&, int, int) { return StatementResult; }
     int createContinueStatement(const JSTokenLocation&, const Identifier*, int, int) { return StatementResult; }
-    int createTryStatement(const JSTokenLocation&, int, const Identifier*, int, int, int, int) { return StatementResult; }
+    int createTryStatement(const JSTokenLocation&, int, const Identifier*, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createSwitchStatement(const JSTokenLocation&, int, int, int, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createWhileStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }
     int createWithStatement(const JSTokenLocation&, int, int, int, int, int, int) { return StatementResult; }

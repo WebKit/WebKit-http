@@ -420,11 +420,15 @@ public:
     void mediaLoadingFailedFatally(MediaPlayerEnums::NetworkState);
 
 #if ENABLE(MEDIA_SESSION)
+    WEBCORE_EXPORT double playerVolume() const;
+
     const String& kind() const { return m_kind; }
     void setKind(const String& kind) { m_kind = kind; }
 
     MediaSession* session() const;
     void setSession(MediaSession*);
+
+    void setShouldDuck(bool);
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -447,6 +451,8 @@ public:
     virtual MediaProducer::MediaStateFlags mediaState() const override;
 
     void layoutSizeChanged();
+
+    void allowsMediaDocumentInlinePlaybackChanged();
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool);
@@ -603,6 +609,10 @@ private:
 
     virtual double mediaPlayerRequestedPlaybackRate() const override final;
     virtual VideoFullscreenMode mediaPlayerFullscreenMode() const override final { return fullscreenMode(); }
+
+#if USE(GSTREAMER)
+    virtual void requestInstallMissingPlugins(const String&, MediaPlayerRequestInstallMissingPluginsCallback&) override final;
+#endif
 
     void pendingActionTimerFired();
     void progressEventTimerFired();
@@ -818,6 +828,7 @@ private:
 #if ENABLE(MEDIA_SESSION)
     String m_kind;
     RefPtr<MediaSession> m_session;
+    bool m_shouldDuck { false };
 #endif
 
 #if ENABLE(MEDIA_SOURCE)

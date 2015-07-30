@@ -255,6 +255,12 @@ void PageClientImpl::didChangeBackgroundColor()
 {
 }
 
+#if ENABLE(VIDEO)
+void PageClientImpl::mediaDocumentNaturalSizeChanged(const WebCore::IntSize&)
+{
+}
+#endif
+
 void PageClientImpl::refView()
 {
 }
@@ -262,5 +268,12 @@ void PageClientImpl::refView()
 void PageClientImpl::derefView()
 {
 }
+
+#if USE(GSTREAMER)
+GUniquePtr<GstInstallPluginsContext> PageClientImpl::createGstInstallPluginsContext()
+{
+    return nullptr;
+}
+#endif
 
 } // namespace WebKit

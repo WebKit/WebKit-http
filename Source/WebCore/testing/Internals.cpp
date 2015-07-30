@@ -2633,6 +2633,12 @@ Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer* buffer, const 
 
     return buffer->bufferedSamplesForTrackID(trackID);
 }
+    
+void Internals::setShouldGenerateTimestamps(SourceBuffer* buffer, bool flag)
+{
+    if (buffer)
+        buffer->setShouldGenerateTimestamps(flag);
+}
 #endif
 
 #if ENABLE(VIDEO)
@@ -2808,6 +2814,12 @@ String Internals::mediaSessionCurrentState(MediaSession* session) const
     case MediaSession::State::Idle:
         return "idle";
     }
+}
+
+double Internals::mediaElementPlayerVolume(HTMLMediaElement* element) const
+{
+    ASSERT_ARG(element, element);
+    return element->playerVolume();
 }
 #endif // ENABLE(MEDIA_SESSION)
 

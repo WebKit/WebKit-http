@@ -41,6 +41,12 @@ all : \
     DateConstructor.lut.h \
     DatePrototype.lut.h \
     ErrorPrototype.lut.h \
+    IntlCollatorConstructor.lut.h \
+    IntlCollatorPrototype.lut.h \
+    IntlDateTimeFormatConstructor.lut.h \
+    IntlDateTimeFormatPrototype.lut.h \
+    IntlNumberFormatConstructor.lut.h \
+    IntlNumberFormatPrototype.lut.h \
     JSDataViewPrototype.lut.h \
     JSONObject.lut.h \
     JSGlobalObject.lut.h \
@@ -51,6 +57,7 @@ all : \
     NumberConstructor.lut.h \
     NumberPrototype.lut.h \
     ObjectConstructor.lut.h \
+    ReflectObject.lut.h \
     RegExpConstructor.lut.h \
     RegExpPrototype.lut.h \
     RegExpJitTables.h \

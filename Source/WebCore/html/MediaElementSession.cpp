@@ -78,6 +78,13 @@ static String restrictionName(MediaElementSession::BehaviorRestrictions restrict
 }
 #endif
 
+static bool pageExplicitlyAllowsElementToAutoplayInline(const HTMLMediaElement& element)
+{
+    Document& document = element.document();
+    Page* page = document.page();
+    return document.isMediaDocument() && !document.ownerElement() && page && page->allowsMediaDocumentInlinePlayback();
+}
+
 MediaElementSession::MediaElementSession(PlatformMediaSessionClient& client)
     : PlatformMediaSession(client)
     , m_restrictions(NoRestrictions)
@@ -119,6 +126,9 @@ void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restric
 
 bool MediaElementSession::playbackPermitted(const HTMLMediaElement& element) const
 {
+    if (pageExplicitlyAllowsElementToAutoplayInline(element))
+        return true;
+
     if (m_restrictions & RequireUserGestureForRateChange && !ScriptController::processingUserGesture()) {
         LOG(Media, "MediaElementSession::playbackPermitted - returning FALSE");
         return false;
@@ -331,6 +341,9 @@ MediaPlayer::Preload MediaElementSession::effectivePreloadForElement(const HTMLM
     PlatformMediaSessionManager::SessionRestrictions restrictions = PlatformMediaSessionManager::sharedManager().restrictions(mediaType());
     MediaPlayer::Preload preload = element.preloadValue();
 
+    if (pageExplicitlyAllowsElementToAutoplayInline(element))
+        return preload;
+
     if ((restrictions & PlatformMediaSessionManager::MetadataPreloadingNotPermitted) == PlatformMediaSessionManager::MetadataPreloadingNotPermitted)
         return MediaPlayer::None;
 
@@ -344,6 +357,9 @@ MediaPlayer::Preload MediaElementSession::effectivePreloadForElement(const HTMLM
 
 bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElement& element) const
 {
+    if (pageExplicitlyAllowsElementToAutoplayInline(element))
+        return false;
+
     if (!PlatformMediaSessionManager::sharedManager().sessionRestrictsInlineVideoPlayback(*this))
         return false;
 
@@ -360,6 +376,18 @@ bool MediaElementSession::requiresFullscreenForVideoPlayback(const HTMLMediaElem
 #endif
 
     return true;
+}
+
+bool MediaElementSession::allowsAutomaticMediaDataLoading(const HTMLMediaElement& element) const
+{
+    if (pageExplicitlyAllowsElementToAutoplayInline(element))
+        return true;
+
+    Settings* settings = element.document().settings();
+    if (settings && settings->mediaDataLoadsAutomatically())
+        return true;
+
+    return false;
 }
 
 void MediaElementSession::mediaEngineUpdated(const HTMLMediaElement& element)
@@ -384,6 +412,13 @@ bool MediaElementSession::allowsPictureInPicture(const HTMLMediaElement& element
     Settings* settings = element.document().settings();
     return settings && settings->allowsPictureInPictureMediaPlayback() && !element.webkitCurrentPlaybackTargetIsWireless();
 }
+
+#if PLATFORM(IOS)
+bool MediaElementSession::requiresPlaybackTargetRouteMonitoring() const
+{
+    return m_hasPlaybackTargetAvailabilityListeners && !client().elementIsHidden();
+}
+#endif
 
 #if ENABLE(MEDIA_SOURCE)
 const unsigned fiveMinutesOf1080PVideo = 290 * 1024 * 1024; // 290 MB is approximately 5 minutes of 8Mbps (1080p) content.

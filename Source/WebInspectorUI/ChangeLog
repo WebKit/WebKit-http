@@ -1,3 +1,684 @@
+2015-07-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Improve styles of debugger popovers
+        https://bugs.webkit.org/show_bug.cgi?id=147437
+
+        Reviewed by Timothy Hatcher.
+
+        Use non-monospace font and improve spacing.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content > .title):
+        (.popover .debugger-popover-content > .body):
+
+2015-07-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Border line in the debug popover should be semi-transparent black, not dark yellow
+        https://bugs.webkit.org/show_bug.cgi?id=147435
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content > .body):
+        (@media (-webkit-min-device-pixel-ratio: 2)): Use hairline borders on retina.
+
+2015-07-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: " = $0" text in the Elements panel should anti-aliased
+        https://bugs.webkit.org/show_bug.cgi?id=147432
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.selected > span::after):
+        (.dom-tree-outline:focus li.selected > span::after):
+        Decrease the opacity just slightly to make " = $0" more distinct from DOM nodes.
+
+2015-07-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Allow record filtering by frame duration in Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=147419
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New scope bar item labels.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        New scope bar for frame duration filtering.
+        (WebInspector.RenderingFrameTimelineView.displayNameForDurationFilter):
+        (WebInspector.RenderingFrameTimelineView.prototype.matchTreeElementAgainstCustomFilters):
+        Overridden for view specific filtering. Filtering applies to RenderingFrameTimelineRecords only.
+        (WebInspector.RenderingFrameTimelineView.prototype._scopeBarSelectionDidChange):
+        Force sidebar filtering when duration filter changes.
+
+2015-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.groupEnd causes negative indent when no group is active
+        https://bugs.webkit.org/show_bug.cgi?id=147375
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+
+2015-07-28  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: Convert NavigationItem subclasses to ES6
+        https://bugs.webkit.org/show_bug.cgi?id=147364
+
+        Reviewed by Timothy Hatcher.
+
+        Convert remaining NavigationItem subclasses to use ES6 class.
+
+        Also promote the _additionalClassNames to be a protected getter,
+        and inline the style class names that are only used in one place.
+
+        Mechanical changes are elided from the changelog.
+
+        * UserInterface/Views/ActivateButtonNavigationItem.js:
+        (WebInspector.ActivateButtonNavigationItem):
+        (WebInspector.ActivateButtonNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/ActivateButtonToolbarItem.js:
+        (WebInspector.ActivateButtonToolbarItem):
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WebInspector.ButtonNavigationItem):
+        (WebInspector.ButtonNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/ButtonToolbarItem.js:
+        (WebInspector.ButtonToolbarItem):
+        * UserInterface/Views/ControlToolbarItem.js:
+        (WebInspector.ControlToolbarItem):
+        (WebInspector.ControlToolbarItem.prototype.get additionalClassNames):
+        * UserInterface/Views/DividerNavigationItem.js:
+        (WebInspector.DividerNavigationItem):
+        (WebInspector.DividerNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/FlexibleSpaceNavigationItem.js:
+        (WebInspector.FlexibleSpaceNavigationItem):
+        (WebInspector.FlexibleSpaceNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WebInspector.HierarchicalPathNavigationItem.prototype.get additionalClassNames):
+        (WebInspector.HierarchicalPathNavigationItem.prototype.get _additionalClassNames): Deleted.
+        * UserInterface/Views/NavigationItem.js:
+        (WebInspector.NavigationItem):
+        (WebInspector.NavigationItem.prototype.get _classNames):
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WebInspector.RadioButtonNavigationItem):
+        (WebInspector.RadioButtonNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/ToggleButtonNavigationItem.js:
+        (WebInspector.ToggleButtonNavigationItem):
+        (WebInspector.ToggleButtonNavigationItem.prototype.get additionalClassNames):
+        * UserInterface/Views/ToggleControlToolbarItem.js:
+        (WebInspector.ToggleControlToolbarItem):
+        (WebInspector.ToggleControlToolbarItem.prototype.get additionalClassNames):
+
+2015-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include <template> node content in DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=147335
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._unbind):
+        Cleanup templateContent when DOMNodes get removed.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.templateContent):
+        Create a DOMNode from the payload's templateContent.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._singleTextChild):
+        (WebInspector.DOMTreeElement.prototype._hasVisibleChildren):
+        (WebInspector.DOMTreeElement.prototype._visibleChildren):
+        A DOMTreeElement has children if the DOMNode has template content.
+
+2015-07-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Invalid selectors can be applied to the stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=147230
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.set selectorText):
+        Fires an event with data stating if the newly applied selector was valid or not.
+        (WebInspector.CSSRule.prototype._selectorRejected):
+        (WebInspector.CSSRule.prototype._selectorResolved):
+        (WebInspector.CSSRule):
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.changeRuleSelector.ruleSelectorChanged):
+        (WebInspector.DOMNodeStyles.prototype.changeRuleSelector):
+        Now returns a promise that will reject if CSSAgent.setRuleSelector has an
+        error, such as if the selector is invalid, and resolve otherwise.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:not(.invalid-selector) > .header > .icon.toggle-able:hover):
+        (.style-declaration-section:not(.invalid-selector).rule-disabled > .header > .icon):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+        (.style-declaration-section.invalid-selector > .header > .selector > *):
+        (.style-declaration-section > .header > .icon.toggle-able:hover): Deleted.
+        (.style-declaration-section.rule-disabled > .header > .icon): Deleted.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype._toggleRuleOnOff):
+        Only allow rule toggling if the selector is valid.
+        (WebInspector.CSSStyleDeclarationSection.prototype._markSelector):
+        If the new selector is valid, refresh the section. Otherwise, apply a class
+        to the section element that marks the selector as being invalid.
+        (WebInspector.CSSStyleDeclarationSection.prototype.get _hasInvalidSelector):
+
+2015-07-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Pseudo Elements in DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=139612
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._pseudoElementAdded):
+        Hook up the new pseudo element DOMNode to the parent.
+
+        (WebInspector.DOMTreeManager.prototype._pseudoElementRemoved):
+        Unhook the pseudo element from its parent.
+
+        (WebInspector.DOMTreeManager.prototype._unbind):
+        When unbinding, unbind any pseudo element children we may have had.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.isPseudoElement):
+        (WebInspector.DOMNode.prototype.pseudoType):
+        (WebInspector.DOMNode.prototype.hasPseudoElements):
+        (WebInspector.DOMNode.prototype.pseudoElements):
+        New state of a DOMNode may include pseudo elements.
+
+        (WebInspector.DOMNode.prototype.appropriateSelectorFor):
+        A selector for this node includes the selector for the node above it.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WebInspector.DOMObserver.prototype.pseudoElementAdded):
+        (WebInspector.DOMObserver.prototype.pseudoElementRemoved):
+        Pass the message on to DOMTreeManager.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.get editable):
+        Pseudo element nodes are not editable.
+
+        (WebInspector.DOMTreeElement.prototype.showChildNode):
+        (WebInspector.DOMTreeElement.prototype.onpopulate):
+        (WebInspector.DOMTreeElement.prototype.updateChildren):
+        (WebInspector.DOMTreeElement.prototype._nodeTitleInfo):
+        (WebInspector.DOMTreeElement.prototype._singleTextChild):
+        (WebInspector.DOMTreeElement.prototype._hasVisibleChildren):
+        (WebInspector.DOMTreeElement.prototype._visibleChildren):
+        (WebInspector.DOMTreeElement.prototype._updateChildren):
+        (WebInspector.DOMTreeElement.prototype.adjustCollapsedRange):
+        (WebInspector.DOMTreeElement.prototype.handleLoadAllChildren):
+        A DOMTreeElement's children are no longer 1-to-1 to DOMNode's children.
+        Instead a DOMNode may have a before/after pseudo element child that
+        are not included in the children list. Update parts of DOMTreeElement
+        to respect this list of visible children.
+
+        * UserInterface/Views/DOMTreeElementPathComponent.js:
+        (WebInspector.DOMTreeElementPathComponent):
+        * UserInterface/Views/PathComponentIcons.css:
+        (.dom-pseudo-element-icon .icon):
+        Styling for the path component when a pseudo element is selected.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline .html-pseudo-element):
+        (.dom-tree-outline .html-fragment.shadow):
+        (.webkit-html-fragment.shadow): Deleted.
+        Styles for pseudo elements in the DOM tree.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._hideElement):
+        Make the hide element selector hide the host element.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.addEventListeners):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.removeEventListeners):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._forcedPseudoClassCheckboxChanged):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._updatePseudoClassCheckboxes):
+        Pseudo class changes won't happen on pseudo elements, but will
+        happen on their host element, so listen to and make pseudo class
+        changes to the host element.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules > *:first-child:matches(.new-rule)):
+        Since a pseudo element does not have a style attribute,
+        give some margin in the style sidebar above the "New Rule"
+        button so it looks better.
+
+2015-07-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Record button in Timelines view is clipped on non-retina. Hovering over the dot draws it correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=147346
+
+        Reviewed by Joseph Pecoraro.
+
+        Since the hovered button isn't clipped (-webkit-filter is applied in that case), add a filter that
+        doesn't alter the button's appearance to the non-hovered selector.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph):
+        Added brightness 100% filter to non-hovered selector.
+
+2015-07-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clicking a frame in the Rendering Frames timeline should select the corresponding grid row
+        https://bugs.webkit.org/show_bug.cgi?id=147013
+
+        Reviewed by Timothy Hatcher.
+
+        Added ability to select (or highlight) a particular frame by clicking in the overview graph. A tick mark
+        appears above the selected frame inside the ruler, and the frame element's background color changes to a light
+        blue vertical highlight. Frame selection is synced across the timeline view's data grid, overview graph, and
+        navigation bar path components.
+
+        A few behaviors:
+           - Clicking a frame outside the current ruler selection selects the frame.
+           - Clicking the selected frame will deselect it.
+           - Resizing the ruler selection to exclude the selected frame will deselect it.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.select):
+        No need to generate two SelectedNodeChanged events when selecting a node causes
+        the currently selected node to be deselected.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph):
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        (WebInspector.NetworkTimelineOverviewGraph):
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph): Set TimelineOverview during construction.
+        Set TimelineOverview during construction.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .frame-marker):
+        (body.window-inactive .timeline-overview-graph.rendering-frame > .frame-marker):
+        Added styles for selected frame marker.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph):
+        Set TimelineOverview during construction.
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._mouseClicked):
+        Added frame marker element and frame selection via mouse click.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.treeElementDeselected):
+        Deselect grid node when frame is deselected from the overview graph.
+        (WebInspector.RenderingFrameTimelineView.prototype.filterDidChange): Deleted.
+        Removed unnecessary override.
+
+        * UserInterface/Views/TimelineOverview.js:
+        Added selectRecord method and RecordSelected event.
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype._timelineRulerMouseDown):
+        (WebInspector.TimelineOverview.prototype._timelineRulerMouseClicked):
+        Since timeline ruler specifies pointer-events: all, click events must be forwarded to the
+        underlying overview graph. Click events following changes to the ruler's selection are ignored.
+
+        (WebInspector.TimelineOverview.prototype._timeRangeSelectionChanged):
+        (WebInspector.TimelineOverview.prototype._recordSelected):
+        Forward RecordSelected events from child graphs to clients of the overview.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        Added RecordSelected event.
+        (WebInspector.TimelineOverviewGraph):
+        (WebInspector.TimelineOverviewGraph.prototype.get visible):
+        (WebInspector.TimelineOverviewGraph.prototype.get selectedRecord):
+        (WebInspector.TimelineOverviewGraph.prototype.set selectedRecord):
+        Added property for selecting a record in the graph. Derived graph types can implement record selection
+        and choose how to style the selected record.
+        (WebInspector.TimelineOverviewGraph.prototype.updateLayout):
+        (WebInspector.TimelineOverviewGraph.prototype.needsLayout):
+        Update frame marker during an animation frame.
+        (WebInspector.TimelineOverviewGraph.prototype.dispatchSelectedRecordChangedEvent):
+        Dispatch wrapper to simplify things.
+        (WebInspector.TimelineOverviewGraph.prototype.updateSelectedRecord):
+        (WebInspector.TimelineOverviewGraph.prototype._needsSelectedRecordLayout.update):
+        (WebInspector.TimelineOverviewGraph.prototype._needsSelectedRecordLayout):
+        Inform derived overview graph to optionally style the selected record.
+        (WebInspector.TimelineOverviewGraph.prototype.set timelineOverview): Deleted.
+        No longer needed. TimelineOverview set during construction.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame):
+        (.timeline-record-frame.tall):
+        Limit the "fade out" effect to frames that are >= 95% of the graph height, otherwise the
+        gradient mask is noticeable when selecting a shorter frame.
+        (.timeline-record-frame.selected):
+        (body.window-inactive .timeline-record-frame.selected):
+        (.timeline-record-frame.selected > .frame):
+        Added highlight (and dimmed inactive highlight) for selected frame element.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype.get selected):
+        (WebInspector.TimelineRecordFrame.prototype.set selected):
+        Added property for setting selected style.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype._contentViewSelectionPathComponentDidChange):
+        Select record in overview in response to changing navigation path.
+        (WebInspector.TimelineRecordingContentView.prototype._recordSelected.get console):
+        (WebInspector.TimelineRecordingContentView.prototype._recordSelected):
+        Update selected tree element in response to changing record selection in the overview graph.
+
+2015-07-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Revert change to DOMTreeElement.prototype.remove
+        https://bugs.webkit.org/show_bug.cgi?id=147336
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.remove.removeNodeCallback):
+        This change was accidental, and just resulted in the function calling
+        itself again. It didn't infinite loops because another path would have
+        removed the DOMTreeElement, but lets correct this code.
+
+2015-07-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support live editing of rule selectors
+        https://bugs.webkit.org/show_bug.cgi?id=139153
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.highlightSelector):
+        Moved from CSSStyleDeclarationSection.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.get _currentSelectorText):
+        Returns the current selector text, either from the style ownerRule or the selector element text.
+        (WebInspector.CSSStyleDeclarationSection.prototype._highlightNodesWithSelector):
+        Now highlights all nodes matching the current selector instead of the ownerRule's selector.
+        (WebInspector.CSSStyleDeclarationSection.prototype._hideDOMNodeHighlight):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleMouseOver):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleMouseOut):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleKeyDown):
+        If the character is not a tab, highlight all nodes matching the current selector text.
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleKeyUp):
+        (WebInspector.CSSStyleDeclarationSection.prototype._hideHighlightOnNodesWithSelector): Deleted.
+
+2015-07-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: " = $0" in Elements panel can cause a jerk by pushing nodes below it
+        https://bugs.webkit.org/show_bug.cgi?id=147318
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.selected > span::after):
+
+2015-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Start using Node.prototype.remove
+        https://bugs.webkit.org/show_bug.cgi?id=147304
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.elementDragStart):
+        (WebInspector.elementDragEnd):
+        (WebInspector.revertDomChanges):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._updateSearchHighlight.updateEntryHide):
+        (WebInspector.DOMTreeElement.prototype._updateSearchHighlight):
+        (WebInspector.DOMTreeElement.prototype.remove.removeNodeCallback):
+        (WebInspector.DOMTreeElement.prototype.remove):
+        * UserInterface/Views/Resizer.js:
+        (WebInspector.Resizer.prototype._resizerMouseDown):
+        (WebInspector.Resizer.prototype._resizerMouseUp):
+        (WebInspector.Resizer):
+
+2015-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fix color declaration for not-executed comments
+        https://bugs.webkit.org/show_bug.cgi?id=147305
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .basic-block-has-not-executed.cm-comment):
+        This was an RGB color mispelled as HSL. Replace "hsl" with "rgb"
+        and convert it to HSL.
+
+2015-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Start using Node.prototype.replaceWith
+        https://bugs.webkit.org/show_bug.cgi?id=147303
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype._update):
+
+2015-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Start using Node.prototype.append
+        https://bugs.webkit.org/show_bug.cgi?id=147301
+
+        Convert all instances of element.appendChild(document.createTextNode(aString))
+        to element.append(aString).
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/DOMUtilities.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.linkifyLocation):
+        (WebInspector.linkifyStringAsFragmentWithCustomLinkifier):
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype._editBreakpointPopoverContentElement):
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WebInspector.BoxModelDetailsSectionRow.prototype._updateMetrics):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegendItem):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        (WebInspector.ConsoleMessageView.prototype._appendFormattedArguments):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility.accessibilityPropertiesCallback):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._insertInLastAttributePosition):
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        (WebInspector.DOMTreeElement.prototype._buildTagDOM):
+        (WebInspector.DOMTreeElement.prototype._nodeTitleInfo):
+        defaultElement variable is unused, remove it.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode.prototype.createCell.get if):
+        (WebInspector.DataGridNode.prototype.createCell):
+        * UserInterface/Views/DebuggerDashboardView.js:
+        (WebInspector.DebuggerDashboardView.prototype._rebuildLocation):
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup.prototype._functionTextOrLink):
+        (WebInspector.EventListenerSectionGroup):
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createLinkifiedElementString):
+        (WebInspector.FormattedValue.createElementForNodePreview):
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestDataSection):
+        (WebInspector.ResourceDetailsSidebarPanel):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.addNewRuleButton):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.truncateAndHighlightTitle):
+        * UserInterface/Views/SyntaxHighlightingSupport.js:
+        (.appendText):
+        (WebInspector.syntaxHighlightStringAsDocumentFragment):
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WebInspector.TimelineDataGridNode.prototype.createCellContent):
+
+2015-07-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add custom parameter lists for new DOM append/prepend/before/after/replaceWith methods
+        https://bugs.webkit.org/show_bug.cgi?id=147257
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2015-07-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: jittery cursor when adjusting time interval using timeline grabbers
+        https://bugs.webkit.org/show_bug.cgi?id=147095
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler.resizing-selection > .selection-drag):
+        Override selection-drag element's cursor when "resizing-selection" selector is applied.
+        (.timeline-ruler.allows-time-range-selection.creating-selection): Deleted.
+        Renamed "creating-selection" selector to "resizing-selection" to reflect its new role.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._handleMouseMove):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseDown):
+        (WebInspector.TimelineRuler.prototype._handleSelectionHandleMouseUp):
+        Toggle cursor styles.
+
+2015-07-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add a function to CSSCompletions to get a list of supported system fonts
+        https://bugs.webkit.org/show_bug.cgi?id=147009
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.activateExtraDomains):
+        * UserInterface/Base/Test.js:
+        (WebInspector.loaded):
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.requestCSSCompletions.fontFamilyNamesCallback):
+        (WebInspector.CSSCompletions.requestCSSCompletions):
+        Now also grabs the list of system font family names and adds that list to the existing completion
+        list for both font and font-family in CSSKeywordCompletions.
+        (WebInspector.CSSCompletions.requestCSSNameCompletions): Deleted.
+
+2015-07-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: wrong cursor shown when selecting time interval from timeline overview
+        https://bugs.webkit.org/show_bug.cgi?id=147094
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler.allows-time-range-selection.creating-selection):
+        New cursor style for entire ruler element.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._handleMouseMove):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        Toggle cursor style when dragging to create a new selection in the overview.
+
+2015-07-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should immediately start moving play head when starting a new recording
+        https://bugs.webkit.org/show_bug.cgi?id=147210
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/TimelineObserver.js:
+        (WebInspector.TimelineObserver.prototype.recordingStarted):
+        (WebInspector.TimelineObserver.prototype.recordingStopped):
+        Pass on the new timestamps.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.capturingStarted):
+        (WebInspector.TimelineManager.prototype.capturingStopped):
+        Pass on the new timestamps in the events.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._capturingStarted):
+        Pass on the new timestamp from the event as it can be used to update the currentTime.
+
+        (WebInspector.TimelineRecordingContentView.prototype._startUpdatingCurrentTime):
+        If provided a startTime we can use that as the new currentTime. Otherwise fallback
+        to determining a good currentTime from the next incoming record for legacy backends.
+
+        (WebInspector.TimelineRecordingContentView.prototype._recordingTimesUpdated):
+        Update the comment, as there is now a solution but this is required for legacy backends.
+
+2015-07-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline's Current Time does not jump forward to new start time when starting a new recording, causes timeline to appear delayed and broken
+        https://bugs.webkit.org/show_bug.cgi?id=147204
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._recordingTimesUpdated):
+        We were skipping a timeline, but it might have a new event record with
+        a new start time. This ensures we get an updated current time which makes
+        sense, and we jump forward to that time in the main timeline.
+
+2015-07-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineRuler shouldn't dispatch selection changed event unless it actually changes
+        https://bugs.webkit.org/show_bug.cgi?id=147219
+
+        Reviewed by Timothy Hatcher.
+
+        Moved to a "suppress next" model for suppressing dispatch of TimelineRuler's selection changed event. The
+        ruler's _timeRangeSelectionChanged flag is now reset only when an event is finally dispatched.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler):
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        (WebInspector.TimelineRuler.prototype._dispatchTimeRangeSelectionChangedEvent):
+        Check for this._timeRangeSelectionChanged moved into dispatch function.
+        (WebInspector.TimelineRuler.prototype._handleMouseDown):
+        (WebInspector.TimelineRuler.prototype._handleMouseMove):
+        (WebInspector.TimelineRuler.prototype._handleMouseUp):
+        We now suppress the next dispatch only, rather than a toggle.
+
+2015-07-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (Safari 7): Pseudo element rules are not labelled with media queries in Styles panel
+        https://bugs.webkit.org/show_bug.cgi?id=147207
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertAllMatchingPseudoStyles):
+        Now inserts pseudo-styles based on whether their selector specificity is greater than
+        the previous style's selector specificity.
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+
+2015-07-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Change syntax highlighting color for regular expressions to make them more readable
+        https://bugs.webkit.org/show_bug.cgi?id=146956
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-regexp):
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted :matches(.css-string, .javascript-string, .html-attribute-value)):
+        (.syntax-highlighted .javascript-regexp):
+        (.syntax-highlighted :matches(.css-string, .javascript-string, .javascript-regexp, .html-attribute-value)): Deleted.
+
 2015-07-21  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: console.log("%d", 0) or console.log("%d", "str") show nothing, expected Number or NaN

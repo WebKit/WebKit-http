@@ -381,6 +381,7 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     WEBCORE_TESTSUPPORT_EXPORT void initializeMockMediaSource();
     Vector<String> bufferedSamplesForTrackID(SourceBuffer*, const AtomicString&);
+    void setShouldGenerateTimestamps(SourceBuffer*, bool);
 #endif
 
 #if ENABLE(VIDEO)
@@ -398,6 +399,7 @@ public:
     void sendMediaSessionStartOfInterruptionNotification(const String&);
     void sendMediaSessionEndOfInterruptionNotification(const String&);
     String mediaSessionCurrentState(MediaSession*) const;
+    double mediaElementPlayerVolume(HTMLMediaElement*) const;
 #endif
 
 #if ENABLE(WEB_AUDIO)

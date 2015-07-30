@@ -62,9 +62,9 @@ list(APPEND WebKit2_SOURCES
 
     Shared/cairo/ShareableBitmapCairo.cpp
 
+    Shared/glib/KeyedDecoder.cpp
+    Shared/glib/KeyedEncoder.cpp
     Shared/gtk/ArgumentCodersGtk.cpp
-    Shared/gtk/KeyedDecoder.cpp
-    Shared/gtk/KeyedEncoder.cpp
     Shared/gtk/NativeContextMenuItemGtk.cpp
     Shared/gtk/NativeWebKeyboardEventGtk.cpp
     Shared/gtk/NativeWebMouseEventGtk.cpp
@@ -83,6 +83,7 @@ list(APPEND WebKit2_SOURCES
     Shared/linux/SeccompFilters/SigprocmaskSyscall.cpp
     Shared/linux/SeccompFilters/Syscall.cpp
     Shared/linux/SeccompFilters/SyscallPolicy.cpp
+    Shared/linux/SeccompFilters/XDGBaseDirectoryGLib.cpp
 
     Shared/soup/WebCoreArgumentCodersSoup.cpp
 
@@ -289,6 +290,8 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/cairo/BackingStoreCairo.cpp
 
+    UIProcess/gstreamer/WebPageProxyGStreamer.cpp
+
     UIProcess/gtk/DragAndDropHandler.cpp
     UIProcess/gtk/ExperimentalFeatures.cpp
     UIProcess/gtk/GestureController.cpp
@@ -339,6 +342,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebPage/DrawingAreaImpl.cpp
 
     WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
+
+    WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
 
     WebProcess/WebPage/gtk/PrinterListGtk.cpp
     WebProcess/WebPage/gtk/WebInspectorUIGtk.cpp
@@ -482,6 +487,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/Plugins/unix"
+    "${WEBKIT2_DIR}/Shared/glib"
     "${WEBKIT2_DIR}/Shared/gtk"
     "${WEBKIT2_DIR}/Shared/linux"
     "${WEBKIT2_DIR}/Shared/linux/SeccompFilters"
@@ -513,6 +519,7 @@ list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
     ${GEOCLUE_INCLUDE_DIRS}
+    ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )

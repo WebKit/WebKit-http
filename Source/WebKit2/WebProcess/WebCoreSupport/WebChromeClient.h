@@ -323,6 +323,13 @@ private:
     virtual void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags) override;
 #endif
 
+#if ENABLE(VIDEO)
+    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override;
+#if USE(GSTREAMER)
+    virtual void requestInstallMissingMediaPlugins(const String&, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&) override;
+#endif
+#endif
+
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;
     mutable bool m_cachedMainFrameHasHorizontalScrollbar;

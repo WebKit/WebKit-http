@@ -131,6 +131,8 @@ public:
     bool waitingForStartTime() const { return m_animationState == AnimationState::StartWaitResponse; }
     bool waitingForStyleAvailable() const { return m_animationState == AnimationState::StartWaitStyleAvailable; }
 
+    bool isAccelerated() const { return m_isAccelerated; }
+
     virtual double timeToNextService();
 
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
@@ -185,8 +187,7 @@ public:
         return false;
     }
 
-    // FIXME: rename this using the "lists match" terminology.
-    bool isTransformFunctionListValid() const { return m_transformFunctionListValid; }
+    bool transformFunctionListsMatch() const { return m_transformFunctionListsMatch; }
     bool filterFunctionListsMatch() const { return m_filterFunctionListsMatch; }
 #if ENABLE(FILTERS_LEVEL_2)
     bool backdropFilterFunctionListsMatch() const { return m_backdropFilterFunctionListsMatch; }
@@ -231,7 +232,6 @@ protected:
 
     void goIntoEndingOrLoopingState();
 
-    bool isAccelerated() const { return m_isAccelerated; }
     AnimationState state() const { return m_animationState; }
 
     static void setNeedsStyleRecalc(Element*);
@@ -256,7 +256,7 @@ protected:
 
     AnimationState m_animationState { AnimationState::New };
     bool m_isAccelerated { false };
-    bool m_transformFunctionListValid { false };
+    bool m_transformFunctionListsMatch { false };
     bool m_filterFunctionListsMatch { false };
 #if ENABLE(FILTERS_LEVEL_2)
     bool m_backdropFilterFunctionListsMatch { false };

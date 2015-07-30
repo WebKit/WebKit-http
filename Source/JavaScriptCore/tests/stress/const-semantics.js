@@ -24,7 +24,7 @@ noInline(shouldThrowInvalidConstAssignment);
 
 // ========== tests below ===========
 
-const NUM_LOOPS = 10000;
+const NUM_LOOPS = 1000;
 
 
 ;(function() {
@@ -188,17 +188,29 @@ const NUM_LOOPS = 10000;
     function taz() {
         const x = 20;
         shouldThrowInvalidConstAssignment(function() { x = 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x += 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x -= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x *= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x /= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x >>= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x <<= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x ^= 20; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x++; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { x--; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { ++x; });
+        assert(x === 20);
         shouldThrowInvalidConstAssignment(function() { --x; });
+        assert(x === 20);
     }
     function jaz() {
         const x = 20;

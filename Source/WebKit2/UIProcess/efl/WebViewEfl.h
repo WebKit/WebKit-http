@@ -90,8 +90,16 @@ private:
     virtual void didFinishLoadForMainFrame() override final { }
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override final { }
 
+#if ENABLE(VIDEO)
+    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override final { }
+#endif
+
     virtual void refView() override final { }
     virtual void derefView() override final { }
+
+#if USE(GSTREAMER)
+    virtual GUniquePtr<GstInstallPluginsContext> createGstInstallPluginsContext() override final { return nullptr; };
+#endif
 
 private:
     EwkView* m_ewkView;

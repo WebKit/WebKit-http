@@ -34,6 +34,10 @@
 #include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 
+#if USE(GSTREAMER)
+#include <WebCore/GUniquePtrGStreamer.h>
+#endif
+
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
 
@@ -329,8 +333,16 @@ public:
     virtual WebCore::WebMediaSessionManager& mediaSessionManager() = 0;
 #endif
 
+#if ENABLE(VIDEO)
+    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) = 0;
+#endif
+
     virtual void refView() = 0;
     virtual void derefView() = 0;
+
+#if USE(GSTREAMER)
+    virtual GUniquePtr<GstInstallPluginsContext> createGstInstallPluginsContext() = 0;
+#endif
 };
 
 } // namespace WebKit

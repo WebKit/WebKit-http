@@ -33,6 +33,11 @@
     pointer-events: all;
 }
 
+.timeline-ruler.resizing-selection,
+.timeline-ruler.resizing-selection > .selection-drag {
+    cursor: col-resize;
+}
+
 .timeline-ruler > * {
     pointer-events: none;
 }

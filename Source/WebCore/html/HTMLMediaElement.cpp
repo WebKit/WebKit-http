@@ -518,6 +518,8 @@ void HTMLMediaElement::registerWithDocument(Document& document)
     document.registerForPageCacheSuspensionCallbacks(this);
 #endif
 
+    document.registerForAllowsMediaDocumentInlinePlaybackChangedCallbacks(*this);
+
     document.addAudioProducer(this);
     addElementToDocumentMap(*this, document);
 }
@@ -549,6 +551,8 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     document.unregisterForPageCacheSuspensionCallbacks(this);
 #endif
+
+    document.unregisterForAllowsMediaDocumentInlinePlaybackChangedCallbacks(*this);
 
     document.removeAudioProducer(this);
     removeElementFromDocumentMap(*this, document);
@@ -1038,8 +1042,7 @@ void HTMLMediaElement::prepareForLoad()
         setShouldDelayLoadEvent(true);
 
 #if PLATFORM(IOS)
-    Settings* settings = document().settings();
-    if (effectivePreload != MediaPlayer::None && settings && settings->mediaDataLoadsAutomatically())
+    if (effectivePreload != MediaPlayer::None && m_mediaSession->allowsAutomaticMediaDataLoading(*this))
         prepareToPlay();
 #endif
 
@@ -2111,6 +2114,9 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             mediaControls()->loadedMetadata();
         if (renderer())
             renderer()->updateFromElement();
+
+        if (is<MediaDocument>(document()))
+            downcast<MediaDocument>(document()).mediaElementNaturalSizeChanged(expandedIntSize(m_player->naturalSize()));
 
         logMediaLoadRequest(document().page(), m_player->engineDescription(), String(), true);
     }
@@ -3882,7 +3888,7 @@ void HTMLMediaElement::layoutSizeChanged()
     m_resizeTaskQueue.enqueueTask(task);
 #endif
 }
-    
+
 void HTMLMediaElement::setSelectedTextTrack(TextTrack* trackToSelect)
 {
     TextTrackList* trackList = textTracks();
@@ -4383,6 +4389,9 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerSizeChanged(%p)", this);
 
+    if (is<MediaDocument>(document()) && m_player)
+        downcast<MediaDocument>(document()).mediaElementNaturalSizeChanged(expandedIntSize(m_player->naturalSize()));
+
     beginProcessingMediaPlayerCallback();
     if (renderer())
         renderer()->updateFromElement();
@@ -4647,6 +4656,11 @@ void HTMLMediaElement::updateVolume()
             volumeMultiplier *= m_mediaController->volume();
             shouldMute = m_mediaController->muted() || (page && page->isMuted());
         }
+
+#if ENABLE(MEDIA_SESSION)
+        if (m_shouldDuck)
+            volumeMultiplier *= 0.25;
+#endif
 
         m_player->setMuted(shouldMute);
         m_player->setVolume(m_volume * volumeMultiplier);
@@ -6052,6 +6066,16 @@ double HTMLMediaElement::mediaPlayerRequestedPlaybackRate() const
     return potentiallyPlaying() ? requestedPlaybackRate() : 0;
 }
 
+#if USE(GSTREAMER)
+void HTMLMediaElement::requestInstallMissingPlugins(const String& details, MediaPlayerRequestInstallMissingPluginsCallback& callback)
+{
+    if (!document().page())
+        return;
+
+    document().page()->chrome().client().requestInstallMissingMediaPlugins(details, callback);
+}
+#endif
+
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
 {
     MediaElementSession::BehaviorRestrictions restrictionsToRemove = MediaElementSession::RequireUserGestureForLoad
@@ -6475,6 +6499,10 @@ bool HTMLMediaElement::canSaveMediaData() const
 }
 
 #if ENABLE(MEDIA_SESSION)
+double HTMLMediaElement::playerVolume() const
+{
+    return m_player ? m_player->volume() : 0;
+}
 
 MediaSession* HTMLMediaElement::session() const
 {
@@ -6526,7 +6554,22 @@ void HTMLMediaElement::setSessionInternal(MediaSession& session)
     m_kind = session.kind();
 }
 
+void HTMLMediaElement::setShouldDuck(bool duck)
+{
+    if (m_shouldDuck == duck)
+        return;
+
+    m_shouldDuck = duck;
+    updateVolume();
+}
+
 #endif
+
+void HTMLMediaElement::allowsMediaDocumentInlinePlaybackChanged()
+{
+    if (potentiallyPlaying() && m_mediaSession->requiresFullscreenForVideoPlayback(*this) && !isFullscreen())
+        enterFullscreen();
+}
 
 }
 

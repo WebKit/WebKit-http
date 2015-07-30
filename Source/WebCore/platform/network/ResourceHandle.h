@@ -118,6 +118,10 @@ public:
     virtual void receivedChallengeRejection(const AuthenticationChallenge&) override;
 #endif
 
+#if PLATFORM(COCOA) || USE(CFNETWORK)
+    bool tryHandlePasswordBasedAuthentication(const AuthenticationChallenge&);
+#endif
+
 #if PLATFORM(COCOA) && USE(PROTECTION_SPACE_AUTH_CALLBACK)
     bool canAuthenticateAgainstProtectionSpace(const ProtectionSpace&);
 #endif
@@ -196,7 +200,7 @@ public:
 
     // The client may be 0, in which case no callbacks will be made.
     ResourceHandleClient* client() const;
-    WEBCORE_EXPORT void setClient(ResourceHandleClient*);
+    WEBCORE_EXPORT void clearClient();
 
     // Called in response to ResourceHandleClient::willSendRequestAsync().
     WEBCORE_EXPORT void continueWillSendRequest(const ResourceRequest&);
@@ -245,6 +249,8 @@ public:
 
 protected:
     ResourceHandle(NetworkingContext*, const ResourceRequest&, ResourceHandleClient*, bool defersLoading, bool shouldContentSniff);
+
+    bool usesAsyncCallbacks() const;
 
 private:
     enum FailureType {

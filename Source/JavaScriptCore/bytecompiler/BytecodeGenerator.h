@@ -252,11 +252,8 @@ namespace JSC {
     };
 
     enum ProfileTypeBytecodeFlag {
-        ProfileTypeBytecodePutToScope,
-        ProfileTypeBytecodeGetFromScope,
-        ProfileTypeBytecodePutToLocalScope,
-        ProfileTypeBytecodeGetFromLocalScope,
-        ProfileTypeBytecodeHasGlobalID,
+        ProfileTypeBytecodeClosureVar,
+        ProfileTypeBytecodeLocallyResolved,
         ProfileTypeBytecodeDoesNotHaveGlobalID,
         ProfileTypeBytecodeFunctionArgument,
         ProfileTypeBytecodeFunctionReturnStatement
@@ -447,8 +444,18 @@ namespace JSC {
             return emitNode(n);
         }
 
+    private:
         void emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot);
-        void emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag, const Identifier*);
+    public:
+
+        // This doesn't emit expression info. If using this, make sure you shouldn't be emitting text offset.
+        void emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag); 
+        // These variables are associated with variables in a program. They could be Locals, LocalClosureVar, or ClosureVar.
+        void emitProfileType(RegisterID* registerToProfile, const Variable&, const JSTextPosition& startDivot, const JSTextPosition& endDivot);
+
+        void emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag, const JSTextPosition& startDivot, const JSTextPosition& endDivot);
+        // These are not associated with variables and don't have a global id.
+        void emitProfileType(RegisterID* registerToProfile, const JSTextPosition& startDivot, const JSTextPosition& endDivot);
 
         void emitProfileControlFlow(int);
 
@@ -581,12 +588,13 @@ namespace JSC {
         void emitThrowTypeError(const String& message);
 
         void emitPushFunctionNameScope(RegisterID* dst, const Identifier& property, RegisterID* value, unsigned attributes);
-        void emitPushCatchScope(RegisterID* dst, const Identifier& property, RegisterID* value, unsigned attributes);
+        void emitPushCatchScope(const Identifier& property, RegisterID* exceptionValue, VariableEnvironment&);
+        void emitPopCatchScope(VariableEnvironment&);
 
         void emitGetScope();
         RegisterID* emitPushWithScope(RegisterID* dst, RegisterID* scope);
         void emitPopScope(RegisterID* dst, RegisterID* scope);
-        void emitPopWithOrCatchScope(RegisterID* srcDst);
+        void emitPopWithScope(RegisterID* srcDst);
         RegisterID* emitGetParentScope(RegisterID* dst, RegisterID* scope);
 
         void emitDebugHook(DebugHookID, unsigned line, unsigned charOffset, unsigned lineStart);
@@ -621,6 +629,12 @@ namespace JSC {
 
         OpcodeID lastOpcodeID() const { return m_lastOpcodeID; }
 
+    private:
+        enum class TDZRequirement { UnderTDZ, NotUnderTDZ };
+        enum class ScopeType { CatchScope, LetConstScope };
+        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType);
+        void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
+    public:
         void pushLexicalScope(VariableEnvironmentNode*, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult = nullptr);
         void popLexicalScope(VariableEnvironmentNode*);
         void prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode*, RegisterID* loopSymbolTable);
@@ -701,13 +715,22 @@ namespace JSC {
         {
             VariableEnvironment variablesUnderTDZ;
             getVariablesUnderTDZ(variablesUnderTDZ);
-            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), body, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, variablesUnderTDZ);
+
+            FunctionParseMode parseMode = body->parseMode();
+            ConstructAbility constructAbility = ConstructAbility::CanConstruct;
+            if (parseMode == GetterMode || parseMode == SetterMode || parseMode == ArrowFunctionMode || (parseMode == MethodMode && body->constructorKind() == ConstructorKind::None))
+                constructAbility = ConstructAbility::CannotConstruct;
+
+            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), body, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, variablesUnderTDZ);
         }
 
         void getVariablesUnderTDZ(VariableEnvironment&);
 
         RegisterID* emitConstructVarargs(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
         RegisterID* emitCallVarargs(OpcodeID, RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, RegisterID* profileHookRegister, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd);
+
+        void initializeVarLexicalEnvironment(int symbolTableConstantIndex);
+        void initializeDefaultParameterValuesAndSetupFunctionScopeStack(FunctionParameters&, FunctionNode*, SymbolTable*, int symbolTableConstantIndex, const std::function<bool (UniquedStringImpl*)>& captures);
 
     public:
         JSString* addStringConstant(const Identifier&);
@@ -726,7 +749,7 @@ namespace JSC {
         struct SymbolTableStackEntry {
             Strong<SymbolTable> m_symbolTable;
             RegisterID* m_scope;
-            bool m_isWithOrCatch;
+            bool m_isWithScope;
             int m_symbolTableConstantIndex;
         };
         Vector<SymbolTableStackEntry> m_symbolTableStack;
@@ -767,7 +790,6 @@ namespace JSC {
         Vector<SwitchInfo> m_switchContextStack;
         Vector<std::unique_ptr<ForInContext>> m_forInContextStack;
         Vector<TryContext> m_tryContextStack;
-        Vector<std::pair<RefPtr<RegisterID>, const DestructuringPatternNode*>> m_destructuringParameters;
         enum FunctionVariableType : uint8_t { NormalFunctionVariable, GlobalFunctionVariable };
         Vector<std::pair<FunctionBodyNode*, FunctionVariableType>> m_functionsToInitialize;
         bool m_needToInitializeArguments { false };

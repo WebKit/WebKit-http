@@ -259,16 +259,27 @@ for my $dir (@projects) {
         }
         $result = buildXCodeProject($projectPath, $clean, @local_options, @ARGV);
     } elsif (isAppleWinWebKit() || isWinCairo()) {
-        if ($project eq "WebKit") {
-            my $webkitSolutionPath = "WebKit.vcxproj/WebKit.sln";
-            $result = buildVisualStudioProject($webkitSolutionPath, $clean);
-            my $vsConfiguration = configuration();
-            if (usingVisualStudioExpress()) {
-                # Visual Studio Express is so lame it can't stdout build failures.
-                # So we find its logs and dump them to the console ourselves.
-                open(my $OUTPUT_HANDLE, '<', "$baseProductDir/$vsConfiguration/BuildOutput.htm") or die "Could not open build log file at $baseProductDir/$vsConfiguration/BuildOutput.htm";
-                print while (<$OUTPUT_HANDLE>);
+        chdirWebKit();
+        if (isWinCairo()) {
+            if (exitStatus(generateBuildSystemFromCMakeProject("WinCairo"))) {
+                die "Run \"C:/Program Files (x86)/Microsoft Visual Studio 12.0/VC/vcvarsall.bat\" before build-webkit when using ninja";
             }
+            if (canUseNinja()) {
+                chdir "WebKitBuild/" . configuration();
+                $result = system("ninja");
+            } else {
+                $result = buildVisualStudioProject("WebKitBuild/" . configuration() . "/WebKit.sln", $clean);
+            }
+        } else {
+            my $webkitSolutionPath = "Source/WebKit/WebKit.vcxproj/WebKit.sln";
+            $result = buildVisualStudioProject($webkitSolutionPath, $clean);
+        }
+        if (usingVisualStudioExpress()) {
+            # Visual Studio Express is so lame it can't stdout build failures.
+            # So we find its logs and dump them to the console ourselves.
+            my $vsConfiguration = configuration();
+            open(my $OUTPUT_HANDLE, '<', "$baseProductDir/$vsConfiguration/BuildOutput.htm") or die "Could not open build log file at $baseProductDir/$vsConfiguration/BuildOutput.htm";
+            print while (<$OUTPUT_HANDLE>);
         }
     }
     # Various build* calls above may change the CWD.

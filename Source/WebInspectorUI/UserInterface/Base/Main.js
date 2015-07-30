@@ -90,7 +90,7 @@ WebInspector.loaded = function()
         InspectorAgent.enable();
 
     // Perform one-time tasks.
-    WebInspector.CSSCompletions.requestCSSNameCompletions();
+    WebInspector.CSSCompletions.requestCSSCompletions();
     this._generateDisclosureTriangleImages();
 
     // Listen for the ProvisionalLoadStarted event before registering for events so our code gets called before any managers or sidebars.
@@ -501,7 +501,7 @@ WebInspector.activateExtraDomains = function(domains)
 
     this.notifications.dispatchEventToListeners(WebInspector.Notification.ExtraDomainsActivated, {"domains": domains});
 
-    WebInspector.CSSCompletions.requestCSSNameCompletions();
+    WebInspector.CSSCompletions.requestCSSCompletions();
 
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
@@ -1703,7 +1703,7 @@ WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, e
     if (element) {
         // Install glass pane
         if (WebInspector._elementDraggingGlassPane)
-            WebInspector._elementDraggingGlassPane.parentElement.removeChild(WebInspector._elementDraggingGlassPane);
+            WebInspector._elementDraggingGlassPane.remove();
 
         var glassPane = document.createElement("div");
         glassPane.style.cssText = "position:absolute;top:0;bottom:0;left:0;right:0;opacity:0;z-index:1";
@@ -1734,7 +1734,7 @@ WebInspector.elementDragEnd = function(event)
     event.target.ownerDocument.body.style.removeProperty("cursor");
 
     if (WebInspector._elementDraggingGlassPane)
-        WebInspector._elementDraggingGlassPane.parentElement.removeChild(WebInspector._elementDraggingGlassPane);
+        WebInspector._elementDraggingGlassPane.remove();
 
     delete WebInspector._elementDraggingGlassPane;
     delete WebInspector._elementDraggingEventTarget;
@@ -1814,7 +1814,7 @@ WebInspector.linkifyLocation = function(url, lineNumber, columnNumber, className
         anchor.lineNumber = lineNumber;
         if (className)
             anchor.className = className;
-        anchor.appendChild(document.createTextNode(WebInspector.displayNameForURL(url) + ":" + lineNumber));
+        anchor.append(WebInspector.displayNameForURL(url) + ":" + lineNumber);
         return anchor;
     }
 
@@ -1883,7 +1883,7 @@ WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linki
         linkString = linkString[0];
         var linkIndex = string.indexOf(linkString);
         var nonLink = string.substring(0, linkIndex);
-        container.appendChild(document.createTextNode(nonLink));
+        container.append(nonLink);
 
         var title = linkString;
         var realURL = (linkString.startsWith("www.") ? "http://" + linkString : linkString);
@@ -1897,7 +1897,7 @@ WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linki
     }
 
     if (string)
-        container.appendChild(document.createTextNode(string));
+        container.append(string);
 
     return container;
 };
@@ -2027,8 +2027,7 @@ WebInspector.revertDomChanges = function(domChanges)
         var entry = domChanges[i];
         switch (entry.type) {
         case "added":
-            if (entry.node.parentElement)
-                entry.node.parentElement.removeChild(entry.node);
+            entry.node.remove();
             break;
         case "changed":
             entry.node.textContent = entry.oldText;

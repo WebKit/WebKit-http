@@ -80,6 +80,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
     UIProcess/Storage/StorageManager.cpp
     UIProcess/cairo/BackingStoreCairo.cpp
+    UIProcess/gstreamer/WebPageProxyGStreamer.cpp
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
     UIProcess/wpe/TextCheckerWPE.cpp
@@ -98,6 +99,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
     WebProcess/WebPage/DrawingAreaImpl.cpp
+    WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
@@ -184,6 +186,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
+    ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${WPE_DIR}
@@ -192,33 +195,11 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 list(APPEND WebKit2_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${GLIB_LIBRARIES}
+    ${GSTREAMER_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     WPE
 )
-
-if (ENABLE_WESTON_SHELL)
-set(WPEWestonShell_SOURCES
-    UIProcess/wpe/WestonShell/Environment.cpp
-    UIProcess/wpe/WestonShell/Module.cpp
-    UIProcess/wpe/WestonShell/Shell.cpp
-)
-
-set(WPEWestonShell_INCLUDE_DIRECTORIES
-    "${WEBKIT2_DIR}/Shared/wpe"
-    ${WESTON_INCLUDE_DIRS}
-)
-
-set(WPEWestonShell_LIBRARIES
-    WebKit2
-    ${WESTON_LIBRARIES}
-)
-
-add_library(WPEWestonShell SHARED ${WPEWestonShell_SOURCES})
-target_link_libraries(WPEWestonShell ${WPEWestonShell_LIBRARIES})
-target_include_directories(WPEWestonShell PUBLIC ${WPEWestonShell_INCLUDE_DIRECTORIES})
-install(TARGETS WPEWestonShell DESTINATION "${LIB_INSTALL_DIR}")
-endif () # ENABLE_WESTON_SHELL
 
 if (ENABLE_ATHOL_SHELL)
 set(WPEAtholShell_SOURCES

@@ -1513,7 +1513,7 @@ namespace JSC {
 
     class TryNode : public StatementNode {
     public:
-        TryNode(const JSTokenLocation&, StatementNode* tryBlock, const Identifier& exceptionIdent, StatementNode* catchBlock, StatementNode* finallyBlock);
+        TryNode(const JSTokenLocation&, StatementNode* tryBlock, const Identifier& exceptionIdent, StatementNode* catchBlock, VariableEnvironment& catchEnvironment, StatementNode* finallyBlock);
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
@@ -1522,6 +1522,7 @@ namespace JSC {
         const Identifier& m_thrownValueIdent;
         StatementNode* m_catchBlock;
         StatementNode* m_finallyBlock;
+        VariableEnvironment m_catchEnvironment;
     };
 
     class ScopeNode : public StatementNode, public ParserArenaRoot, public VariableEnvironmentNode {
@@ -1625,12 +1626,20 @@ namespace JSC {
     public:
         FunctionParameters();
         ALWAYS_INLINE unsigned size() const { return m_patterns.size(); }
-        ALWAYS_INLINE DestructuringPatternNode* at(unsigned index) { return m_patterns[index]; }
-        ALWAYS_INLINE void append(DestructuringPatternNode* pattern) { ASSERT(pattern); m_patterns.append(pattern); }
+        ALWAYS_INLINE std::pair<DestructuringPatternNode*, ExpressionNode*> at(unsigned index) { return m_patterns[index]; }
+        bool hasDefaultParameterValues() const { return m_hasDefaultParameterValues; }
+        ALWAYS_INLINE void append(DestructuringPatternNode* pattern, ExpressionNode* defaultValue) 
+        { 
+            ASSERT(pattern); 
+            m_patterns.append(std::make_pair(pattern, defaultValue));
+            if (defaultValue)
+                m_hasDefaultParameterValues = true;
+        }
 
     private:
 
-        Vector<DestructuringPatternNode*, 3> m_patterns;
+        Vector<std::pair<DestructuringPatternNode*, ExpressionNode*>, 3> m_patterns;
+        bool m_hasDefaultParameterValues { false };
     };
 
     class FunctionBodyNode final : public StatementNode, public ParserArenaDeletable {

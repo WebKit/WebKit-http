@@ -418,7 +418,10 @@ public:
     ElementNode* createElementList(ElementNode* elems, int elisions, ExpressionNode* expr) { return new (m_parserArena) ElementNode(elems, elisions, expr); }
 
     FormalParameterList createFormalParameterList() { return new (m_parserArena) FunctionParameters(); }
-    void appendParameter(FormalParameterList list, DestructuringPattern pattern) { list->append(pattern); }
+    void appendParameter(FormalParameterList list, DestructuringPattern pattern, ExpressionNode* defaultValue) 
+    { 
+        list->append(pattern, defaultValue); 
+    }
 
     CaseClauseNode* createClause(ExpressionNode* expr, JSC::SourceElements* statements) { return new (m_parserArena) CaseClauseNode(expr, statements); }
     ClauseListNode* createClauseList(CaseClauseNode* clause) { return new (m_parserArena) ClauseListNode(clause); }
@@ -552,9 +555,9 @@ public:
         return result;
     }
 
-    StatementNode* createTryStatement(const JSTokenLocation& location, StatementNode* tryBlock, const Identifier* ident, StatementNode* catchBlock, StatementNode* finallyBlock, int startLine, int endLine)
+    StatementNode* createTryStatement(const JSTokenLocation& location, StatementNode* tryBlock, const Identifier* ident, StatementNode* catchBlock, StatementNode* finallyBlock, int startLine, int endLine, VariableEnvironment& catchEnvironment)
     {
-        TryNode* result = new (m_parserArena) TryNode(location, tryBlock, *ident, catchBlock, finallyBlock);
+        TryNode* result = new (m_parserArena) TryNode(location, tryBlock, *ident, catchBlock, catchEnvironment, finallyBlock);
         if (catchBlock)
             usesCatch();
         result->setLoc(startLine, endLine, location.startOffset, location.lineStartOffset);

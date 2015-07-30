@@ -63,18 +63,13 @@ void Label::setLocation(unsigned location)
 ParserError BytecodeGenerator::generate()
 {
     SamplingRegion samplingRegion("Bytecode Generation");
-    
+
     m_codeBlock->setThisRegister(m_thisRegister.virtualRegister());
     
     // If we have declared a variable named "arguments" and we are using arguments then we should
     // perform that assignment now.
     if (m_needToInitializeArguments)
         initializeVariable(variable(propertyNames().arguments), m_argumentsRegister);
-
-    for (size_t i = 0; i < m_destructuringParameters.size(); i++) {
-        auto& entry = m_destructuringParameters[i];
-        entry.second->bindValue(*this, entry.first.get());
-    }
 
     pushLexicalScope(m_scopeNode, true);
 
@@ -212,16 +207,17 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     SymbolTable* functionSymbolTable = SymbolTable::create(*m_vm);
     functionSymbolTable->setUsesNonStrictEval(m_usesNonStrictEval);
     int symbolTableConstantIndex = addConstantValue(functionSymbolTable)->index();
-    m_codeBlock->setSymbolTableConstantIndex(symbolTableConstantIndex);
 
     Vector<Identifier> boundParameterProperties;
-    FunctionParameters& parameters = *functionNode->parameters();
-    for (size_t i = 0; i < parameters.size(); i++) {
-        auto pattern = parameters.at(i);
-        if (pattern->isBindingNode())
-            continue;
-        pattern->collectBoundIdentifiers(boundParameterProperties);
-        continue;
+    FunctionParameters& parameters = *functionNode->parameters(); 
+    if (!parameters.hasDefaultParameterValues()) { 
+        // If we do have default parameters, they will be allocated in a separate scope.
+        for (size_t i = 0; i < parameters.size(); i++) {
+            auto pattern = parameters.at(i).first;
+            if (pattern->isBindingNode())
+                continue;
+            pattern->collectBoundIdentifiers(boundParameterProperties);
+        }
     }
 
     bool shouldCaptureSomeOfTheThings = m_shouldEmitDebugHooks || m_codeBlock->needsFullScopeChain();
@@ -265,45 +261,36 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     
     if (shouldCaptureSomeOfTheThings) {
         m_lexicalEnvironmentRegister = addVar();
-        m_codeBlock->setActivationRegister(m_lexicalEnvironmentRegister->virtualRegister());
-        emitOpcode(op_create_lexical_environment);
-        instructions().append(m_lexicalEnvironmentRegister->index());
-        instructions().append(scopeRegister()->index());
-        instructions().append(symbolTableConstantIndex);
-        instructions().append(addConstantValue(jsUndefined())->index());
-
-        emitOpcode(op_mov);
-        instructions().append(scopeRegister()->index());
-        instructions().append(m_lexicalEnvironmentRegister->index());
+        // We can allocate the "var" environment if we don't have default parameter expressions. If we have
+        // default parameter expressions, we have to hold off on allocating the "var" environment because
+        // the parent scope of the "var" environment is the parameter environment.
+        if (!parameters.hasDefaultParameterValues())
+            initializeVarLexicalEnvironment(symbolTableConstantIndex);
     }
 
     // Make sure the code block knows about all of our parameters, and make sure that parameters
     // needing destructuring are noted.
     m_parameters.grow(parameters.size() + 1); // reserve space for "this"
     m_thisRegister.setIndex(initializeNextParameter()->index()); // this
-    for (unsigned i = 0; i < parameters.size(); ++i) {
-        auto pattern = parameters.at(i);
-        RegisterID* reg = initializeNextParameter();
-        if (!pattern->isBindingNode())
-            m_destructuringParameters.append(std::make_pair(reg, pattern));
-    }
+    for (unsigned i = 0; i < parameters.size(); ++i)
+        initializeNextParameter();
     
     // Figure out some interesting facts about our arguments.
     bool capturesAnyArgumentByName = false;
     if (functionNode->hasCapturedVariables()) {
         FunctionParameters& parameters = *functionNode->parameters();
         for (size_t i = 0; i < parameters.size(); ++i) {
-            auto pattern = parameters.at(i);
+            auto pattern = parameters.at(i).first;
             if (!pattern->isBindingNode())
                 continue;
             const Identifier& ident = static_cast<const BindingNode*>(pattern)->boundProperty();
             capturesAnyArgumentByName |= captures(ident.impl());
         }
     }
-
+    
     if (capturesAnyArgumentByName)
         ASSERT(m_lexicalEnvironmentRegister);
-    
+
     // Need to know what our functions are called. Parameters have some goofy behaviors when it
     // comes to functions of the same name.
     for (FunctionBodyNode* function : functionNode->functionStack())
@@ -320,7 +307,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         m_argumentsRegister->ref();
     }
     
-    if (needsArguments && !codeBlock->isStrictMode()) {
+    if (needsArguments && !codeBlock->isStrictMode() && !parameters.hasDefaultParameterValues()) {
         // If we captured any formal parameter by name, then we use ScopedArguments. Otherwise we
         // use DirectArguments. With ScopedArguments, we lift all of our arguments into the
         // activation.
@@ -335,7 +322,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             for (unsigned i = 0; i < parameters.size(); ++i) {
                 ScopeOffset offset = functionSymbolTable->takeNextScopeOffset();
                 functionSymbolTable->setArgumentOffset(vm, i, offset);
-                if (UniquedStringImpl* name = visibleNameForParameter(parameters.at(i))) {
+                if (UniquedStringImpl* name = visibleNameForParameter(parameters.at(i).first)) {
                     VarOffset varOffset(offset);
                     SymbolTableEntry entry(varOffset);
                     // Stores to these variables via the ScopedArguments object will not do
@@ -363,18 +350,20 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             // We're going to put all parameters into the DirectArguments object. First ensure
             // that the symbol table knows that this is happening.
             for (unsigned i = 0; i < parameters.size(); ++i) {
-                if (UniquedStringImpl* name = visibleNameForParameter(parameters.at(i)))
+                if (UniquedStringImpl* name = visibleNameForParameter(parameters.at(i).first))
                     functionSymbolTable->set(name, SymbolTableEntry(VarOffset(DirectArgumentsOffset(i))));
             }
             
             emitOpcode(op_create_direct_arguments);
             instructions().append(m_argumentsRegister->index());
         }
-    } else {
+    } else if (!parameters.hasDefaultParameterValues()) {
         // Create the formal parameters the normal way. Any of them could be captured, or not. If
-        // captured, lift them into the scope.
+        // captured, lift them into the scope. We can not do this if we have default parameter expressions
+        // because when default parameter expressions exist, they belong in their own lexical environment
+        // separate from the "var" lexical environment.
         for (unsigned i = 0; i < parameters.size(); ++i) {
-            UniquedStringImpl* name = visibleNameForParameter(parameters.at(i));
+            UniquedStringImpl* name = visibleNameForParameter(parameters.at(i).first);
             if (!name)
                 continue;
             
@@ -387,7 +376,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             
             ScopeOffset offset = functionSymbolTable->takeNextScopeOffset();
             const Identifier& ident =
-                static_cast<const BindingNode*>(parameters.at(i))->boundProperty();
+                static_cast<const BindingNode*>(parameters.at(i).first)->boundProperty();
             functionSymbolTable->set(name, SymbolTableEntry(VarOffset(offset)));
             
             emitOpcode(op_put_to_scope);
@@ -400,15 +389,17 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         }
     }
     
-    if (needsArguments && codeBlock->isStrictMode()) {
+    if (needsArguments && (codeBlock->isStrictMode() || parameters.hasDefaultParameterValues())) {
         // Allocate an out-of-bands arguments object.
         emitOpcode(op_create_out_of_band_arguments);
         instructions().append(m_argumentsRegister->index());
     }
     
     // Now declare all variables.
-    for (const Identifier& ident : boundParameterProperties)
+    for (const Identifier& ident : boundParameterProperties) {
+        ASSERT(!parameters.hasDefaultParameterValues());
         createVariable(ident, varKind(ident.impl()), functionSymbolTable);
+    }
     for (FunctionBodyNode* function : functionNode->functionStack()) {
         const Identifier& ident = function->ident();
         createVariable(ident, varKind(ident.impl()), functionSymbolTable);
@@ -421,7 +412,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         // Variables named "arguments" are never const.
         createVariable(Identifier::fromUid(m_vm, entry.key.get()), varKind(entry.key.get()), functionSymbolTable, IgnoreExisting);
     }
-    
+
     // There are some variables that need to be preinitialized to something other than Undefined:
     //
     // - "arguments": unless it's used as a function or parameter, this should refer to the
@@ -486,7 +477,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         
         bool haveParameterNamedArguments = false;
         for (unsigned i = 0; i < parameters.size(); ++i) {
-            UniquedStringImpl* name = visibleNameForParameter(parameters.at(i));
+            UniquedStringImpl* name = visibleNameForParameter(parameters.at(i).first);
             if (name == propertyNames().arguments.impl()) {
                 haveParameterNamedArguments = true;
                 break;
@@ -499,7 +490,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             m_needToInitializeArguments = true;
         }
     }
-    
+
     m_newTargetRegister = addVar();
     if (isConstructor()) {
         emitMove(m_newTargetRegister, &m_thisRegister);
@@ -517,10 +508,10 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         instructions().append(0);
     }
 
-    if (m_lexicalEnvironmentRegister)
-        pushScopedControlFlowContext();
-    m_symbolTableStack.append(SymbolTableStackEntry{ Strong<SymbolTable>(*m_vm, functionSymbolTable), m_lexicalEnvironmentRegister, false, symbolTableConstantIndex });
+    // All "addVar()"s needs to happen before "initializeDefaultParameterValuesAndSetupFunctionScopeStack()" is called
+    // because a function's default parameter ExpressionNodes will use temporary registers.
     m_TDZStack.append(std::make_pair(*parentScopeTDZVariables, false));
+    initializeDefaultParameterValuesAndSetupFunctionScopeStack(parameters, functionNode, functionSymbolTable, symbolTableConstantIndex, captures);
 }
 
 BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCodeBlock* codeBlock, DebuggerMode debuggerMode, ProfilerMode profilerMode, const VariableEnvironment* parentScopeTDZVariables)
@@ -564,6 +555,98 @@ BytecodeGenerator::~BytecodeGenerator()
 {
 }
 
+void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeStack(
+    FunctionParameters& parameters, FunctionNode* functionNode, SymbolTable* functionSymbolTable, 
+    int symbolTableConstantIndex, const std::function<bool (UniquedStringImpl*)>& captures)
+{
+    Vector<std::pair<Identifier, RefPtr<RegisterID>>> valuesToMoveIntoVars;
+    if (parameters.hasDefaultParameterValues()) {
+        // Refer to the ES6 spec section 9.2.12: http://www.ecma-international.org/ecma-262/6.0/index.html#sec-functiondeclarationinstantiation
+        // This implements step 21.
+        VariableEnvironment environment;
+        Vector<Identifier> allParameterNames; 
+        for (unsigned i = 0; i < parameters.size(); i++)
+            parameters.at(i).first->collectBoundIdentifiers(allParameterNames);
+        IdentifierSet parameterSet;
+        for (auto& ident : allParameterNames) {
+            parameterSet.add(ident.impl());
+            auto addResult = environment.add(ident);
+            addResult.iterator->value.setIsLet(); // When we have default parameter expressions, parameters act like "let" variables.
+            if (captures(ident.impl()))
+                addResult.iterator->value.setIsCaptured();
+        }
+        
+        // This implements step 25 of section 9.2.12.
+        pushLexicalScopeInternal(environment, true, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope);
+
+        RefPtr<RegisterID> temp = newTemporary();
+        for (unsigned i = 0; i < parameters.size(); i++) {
+            std::pair<DestructuringPatternNode*, ExpressionNode*> parameter = parameters.at(i);
+            RefPtr<RegisterID> parameterValue = &registerFor(virtualRegisterForArgument(1 + i));
+            emitMove(temp.get(), parameterValue.get());
+            if (parameter.second) {
+                RefPtr<RegisterID> condition = emitIsUndefined(newTemporary(), parameterValue.get());
+                RefPtr<Label> skipDefaultParameterBecauseNotUndefined = newLabel();
+                emitJumpIfFalse(condition.get(), skipDefaultParameterBecauseNotUndefined.get());
+                emitNode(temp.get(), parameter.second);
+                emitLabel(skipDefaultParameterBecauseNotUndefined.get());
+            }
+
+            parameter.first->bindValue(*this, temp.get());
+        }
+
+        // Final act of weirdness for default parameters. If a "var" also
+        // has the same name as a parameter, it should start out as the
+        // value of that parameter. Note, though, that they will be distinct
+        // bindings.
+        // This is step 28 of section 9.2.12. 
+        for (auto& entry : functionNode->varDeclarations()) {
+            if (!entry.value.isVar()) // This is either a parameter or callee.
+                continue;
+
+            if (parameterSet.contains(entry.key)) {
+                Identifier ident = Identifier::fromUid(m_vm, entry.key.get());
+                Variable var = variable(ident);
+                RegisterID* scope = emitResolveScope(nullptr, var);
+                RefPtr<RegisterID> value = emitGetFromScope(newTemporary(), scope, var, DoNotThrowIfNotFound);
+                valuesToMoveIntoVars.append(std::make_pair(ident, value));
+            }
+        }
+
+        // Functions with default parameter expressions must have a separate environment
+        // record for parameters and "var"s. The "var" environment record must have the
+        // parameter environment record as its parent.
+        // See step 28 of section 9.2.12.
+        if (m_lexicalEnvironmentRegister)
+            initializeVarLexicalEnvironment(symbolTableConstantIndex);
+    }
+
+    if (m_lexicalEnvironmentRegister)
+        pushScopedControlFlowContext();
+    m_symbolTableStack.append(SymbolTableStackEntry{ Strong<SymbolTable>(*m_vm, functionSymbolTable), m_lexicalEnvironmentRegister, false, symbolTableConstantIndex });
+
+    // This completes step 28 of section 9.2.12.
+    for (unsigned i = 0; i < valuesToMoveIntoVars.size(); i++) {
+        ASSERT(parameters.hasDefaultParameterValues());
+        Variable var = variable(valuesToMoveIntoVars[i].first);
+        RegisterID* scope = emitResolveScope(nullptr, var);
+        emitPutToScope(scope, var, valuesToMoveIntoVars[i].second.get(), DoNotThrowIfNotFound);
+    }
+
+    if (!parameters.hasDefaultParameterValues()) {
+        ASSERT(!valuesToMoveIntoVars.size());
+        // Initialize destructuring parameters the old way as if we don't have any default parameter values.
+        // If we have default parameter values, we handle this case above.
+        for (unsigned i = 0; i < parameters.size(); i++) {
+            DestructuringPatternNode* pattern = parameters.at(i).first;
+            if (!pattern->isBindingNode()) {
+                RefPtr<RegisterID> parameterValue = &registerFor(virtualRegisterForArgument(1 + i));
+                pattern->bindValue(*this, parameterValue.get());
+            }
+        }
+    }
+}
+
 RegisterID* BytecodeGenerator::initializeNextParameter()
 {
     VirtualRegister reg = virtualRegisterForArgument(m_codeBlock->numParameters());
@@ -571,6 +654,21 @@ RegisterID* BytecodeGenerator::initializeNextParameter()
     parameter.setIndex(reg.offset());
     m_codeBlock->addParameter();
     return &parameter;
+}
+
+void BytecodeGenerator::initializeVarLexicalEnvironment(int symbolTableConstantIndex)
+{
+    RELEASE_ASSERT(m_lexicalEnvironmentRegister);
+    m_codeBlock->setActivationRegister(m_lexicalEnvironmentRegister->virtualRegister());
+    emitOpcode(op_create_lexical_environment);
+    instructions().append(m_lexicalEnvironmentRegister->index());
+    instructions().append(scopeRegister()->index());
+    instructions().append(symbolTableConstantIndex);
+    instructions().append(addConstantValue(jsUndefined())->index());
+
+    emitOpcode(op_mov);
+    instructions().append(scopeRegister()->index());
+    instructions().append(m_lexicalEnvironmentRegister->index());
 }
 
 UniquedStringImpl* BytecodeGenerator::visibleNameForParameter(DestructuringPatternNode* pattern)
@@ -1081,9 +1179,6 @@ RegisterID* BytecodeGenerator::emitMove(RegisterID* dst, RegisterID* src)
     instructions().append(dst->index());
     instructions().append(src->index());
 
-    if (!dst->isTemporary() && vm()->typeProfiler())
-        emitProfileType(dst, ProfileTypeBytecodeHasGlobalID, nullptr);
-
     return dst;
 }
 
@@ -1190,24 +1285,85 @@ RegisterID* BytecodeGenerator::emitEqualityOp(OpcodeID opcodeID, RegisterID* dst
 
 void BytecodeGenerator::emitTypeProfilerExpressionInfo(const JSTextPosition& startDivot, const JSTextPosition& endDivot)
 {
+    ASSERT(vm()->typeProfiler());
+
     unsigned start = startDivot.offset; // Ranges are inclusive of their endpoints, AND 0 indexed.
     unsigned end = endDivot.offset - 1; // End Ranges already go one past the inclusive range, so subtract 1.
     unsigned instructionOffset = instructions().size() - 1;
     m_codeBlock->addTypeProfilerExpressionInfo(instructionOffset, start, end);
 }
 
-void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag flag, const Identifier* identifier)
+void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag flag)
 {
-    if (flag == ProfileTypeBytecodeGetFromScope || flag == ProfileTypeBytecodePutToScope)
-        RELEASE_ASSERT(identifier);
+    if (!vm()->typeProfiler())
+        return;
+
+    if (!registerToProfile)
+        return;
+
+    emitOpcode(op_profile_type);
+    instructions().append(registerToProfile->index());
+    instructions().append(0);
+    instructions().append(flag);
+    instructions().append(0);
+    instructions().append(resolveType());
+
+    // Don't emit expression info for this version of profile type. This generally means
+    // we're profiling information for something that isn't in the actual text of a JavaScript
+    // program. For example, implicit return undefined from a function call.
+}
+
+void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, const JSTextPosition& startDivot, const JSTextPosition& endDivot)
+{
+    emitProfileType(registerToProfile, ProfileTypeBytecodeDoesNotHaveGlobalID, startDivot, endDivot);
+}
+
+void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, ProfileTypeBytecodeFlag flag, const JSTextPosition& startDivot, const JSTextPosition& endDivot)
+{
+    if (!vm()->typeProfiler())
+        return;
+
+    if (!registerToProfile)
+        return;
 
     // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
     emitOpcode(op_profile_type);
     instructions().append(registerToProfile->index());
-    instructions().append(localScopeDepth());
+    instructions().append(0);
     instructions().append(flag);
-    instructions().append(identifier ? addConstant(*identifier) : 0);
+    instructions().append(0);
     instructions().append(resolveType());
+
+    emitTypeProfilerExpressionInfo(startDivot, endDivot);
+}
+
+void BytecodeGenerator::emitProfileType(RegisterID* registerToProfile, const Variable& var, const JSTextPosition& startDivot, const JSTextPosition& endDivot)
+{
+    if (!vm()->typeProfiler())
+        return;
+
+    if (!registerToProfile)
+        return;
+
+    ProfileTypeBytecodeFlag flag;
+    int symbolTableOrScopeDepth;
+    if (var.local() || var.offset().isScope()) {
+        flag = ProfileTypeBytecodeLocallyResolved;
+        symbolTableOrScopeDepth = var.symbolTableConstantIndex();
+    } else {
+        flag = ProfileTypeBytecodeClosureVar;
+        symbolTableOrScopeDepth = localScopeDepth();
+    }
+
+    // The format of this instruction is: op_profile_type regToProfile, TypeLocation*, flag, identifier?, resolveType?
+    emitOpcode(op_profile_type);
+    instructions().append(registerToProfile->index());
+    instructions().append(symbolTableOrScopeDepth);
+    instructions().append(flag);
+    instructions().append(addConstant(var.ident()));
+    instructions().append(resolveType());
+
+    emitTypeProfilerExpressionInfo(startDivot, endDivot);
 }
 
 void BytecodeGenerator::emitProfileControlFlow(int textOffset)
@@ -1261,6 +1417,11 @@ RegisterID* BytecodeGenerator::emitLoadGlobalObject(RegisterID* dst)
 void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult)
 {
     VariableEnvironment& environment = node->lexicalVariables();
+    pushLexicalScopeInternal(environment, canOptimizeTDZChecks, constantSymbolTableResult, TDZRequirement::UnderTDZ, ScopeType::LetConstScope);
+}
+
+void BytecodeGenerator::pushLexicalScopeInternal(VariableEnvironment& environment, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement tdzRequirement, ScopeType scopeType)
+{
     if (!environment.size())
         return;
 
@@ -1268,11 +1429,19 @@ void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool can
         environment.markAllVariablesAsCaptured();
 
     Strong<SymbolTable> symbolTable(*m_vm, SymbolTable::create(*m_vm));
-    symbolTable->setDoesCorrespondToLexicalScope();
+    switch (scopeType) {
+    case ScopeType::CatchScope:
+        symbolTable->setScopeType(SymbolTable::ScopeType::CatchScope);
+        break;
+    case ScopeType::LetConstScope:
+        symbolTable->setScopeType(SymbolTable::ScopeType::LexicalScope);
+        break;
+    }
+
     bool hasCapturedVariables = false;
     {
         ConcurrentJITLocker locker(symbolTable->m_lock);
-        for (auto entry : environment) {
+        for (auto& entry : environment) {
             ASSERT(entry.value.isLet() || entry.value.isConst());
             ASSERT(!entry.value.isVar());
             SymbolTableEntry symbolTableEntry = symbolTable->get(locker, entry.key.get());
@@ -1296,13 +1465,20 @@ void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool can
     }
 
     RegisterID* newScope = nullptr;
+    RegisterID* constantSymbolTable = nullptr;
     int symbolTableConstantIndex = 0;
+    if (vm()->typeProfiler()) {
+        constantSymbolTable = addConstantValue(symbolTable.get());
+        symbolTableConstantIndex = constantSymbolTable->index();
+    }
     if (hasCapturedVariables) {
         newScope = newBlockScopeVariable();
         newScope->ref();
-
-        RegisterID* constantSymbolTable = addConstantValue(!m_codeBlock->vm()->typeProfiler() ? symbolTable->cloneScopePart(*m_vm) : symbolTable.get());
-        symbolTableConstantIndex = constantSymbolTable->index();
+        if (!constantSymbolTable) {
+            ASSERT(!vm()->typeProfiler());
+            constantSymbolTable = addConstantValue(symbolTable->cloneScopePart(*m_vm));
+            symbolTableConstantIndex = constantSymbolTable->index();
+        }
         if (constantSymbolTableResult)
             *constantSymbolTableResult = constantSymbolTable;
 
@@ -1310,7 +1486,7 @@ void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool can
         instructions().append(newScope->index());
         instructions().append(scopeRegister()->index());
         instructions().append(constantSymbolTable->index());
-        instructions().append(addConstantValue(jsTDZValue())->index());
+        instructions().append(addConstantValue(tdzRequirement == TDZRequirement::UnderTDZ ? jsTDZValue() : jsUndefined())->index());
 
         emitMove(scopeRegister(), newScope);
 
@@ -1318,25 +1494,34 @@ void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool can
     }
 
     m_symbolTableStack.append(SymbolTableStackEntry{ symbolTable, newScope, false, symbolTableConstantIndex });
-    m_TDZStack.append(std::make_pair(environment, canOptimizeTDZChecks));
-    // Prefill stack variables with the TDZ empty value.
-    // Scope variables will be initialized to the TDZ empty value when JSLexicalEnvironment is allocated.
-    for (auto entry : environment) {
-        SymbolTableEntry symbolTableEntry = symbolTable->get(entry.key.get());
-        ASSERT(!symbolTableEntry.isNull());
-        VarOffset offset = symbolTableEntry.varOffset();
-        if (offset.isScope()) {
-            ASSERT(newScope);
-            continue;
+    if (tdzRequirement == TDZRequirement::UnderTDZ)
+        m_TDZStack.append(std::make_pair(environment, canOptimizeTDZChecks));
+
+    if (tdzRequirement == TDZRequirement::UnderTDZ) {
+        // Prefill stack variables with the TDZ empty value.
+        // Scope variables will be initialized to the TDZ empty value when JSLexicalEnvironment is allocated.
+        for (auto& entry : environment) {
+            SymbolTableEntry symbolTableEntry = symbolTable->get(entry.key.get());
+            ASSERT(!symbolTableEntry.isNull());
+            VarOffset offset = symbolTableEntry.varOffset();
+            if (offset.isScope()) {
+                ASSERT(newScope);
+                continue;
+            }
+            ASSERT(offset.isStack());
+            emitMoveEmptyValue(&registerFor(offset.stackOffset()));
         }
-        ASSERT(offset.isStack());
-        emitMoveEmptyValue(&registerFor(offset.stackOffset()));
     }
 }
 
 void BytecodeGenerator::popLexicalScope(VariableEnvironmentNode* node)
 {
     VariableEnvironment& environment = node->lexicalVariables();
+    popLexicalScopeInternal(environment, TDZRequirement::UnderTDZ);
+}
+
+void BytecodeGenerator::popLexicalScopeInternal(VariableEnvironment& environment, TDZRequirement tdzRequirement)
+{
     if (!environment.size())
         return;
 
@@ -1347,7 +1532,7 @@ void BytecodeGenerator::popLexicalScope(VariableEnvironmentNode* node)
     Strong<SymbolTable> symbolTable = stackEntry.m_symbolTable;
     ConcurrentJITLocker locker(symbolTable->m_lock);
     bool hasCapturedVariables = false;
-    for (auto entry : environment) {
+    for (auto& entry : environment) {
         if (entry.value.isCaptured()) {
             hasCapturedVariables = true;
             continue;
@@ -1367,7 +1552,8 @@ void BytecodeGenerator::popLexicalScope(VariableEnvironmentNode* node)
         stackEntry.m_scope->deref();
     }
 
-    m_TDZStack.removeLast();
+    if (tdzRequirement == TDZRequirement::UnderTDZ)
+        m_TDZStack.removeLast();
 }
 
 void BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode* node, RegisterID* loopSymbolTable)
@@ -1472,14 +1658,14 @@ Variable BytecodeGenerator::variable(const Identifier& property)
     // }
     for (unsigned i = m_symbolTableStack.size(); i--; ) {
         SymbolTableStackEntry& stackEntry = m_symbolTableStack[i];
-        if (stackEntry.m_isWithOrCatch)
+        if (stackEntry.m_isWithScope)
             return Variable(property);
         Strong<SymbolTable>& symbolTable = stackEntry.m_symbolTable;
         SymbolTableEntry symbolTableEntry = symbolTable->get(property.impl());
         if (symbolTableEntry.isNull())
             continue;
         
-        return variableForLocalEntry(property, symbolTableEntry, stackEntry.m_symbolTableConstantIndex, symbolTable->correspondsToLexicalScope());
+        return variableForLocalEntry(property, symbolTableEntry, stackEntry.m_symbolTableConstantIndex, symbolTable->scopeType() == SymbolTable::ScopeType::LexicalScope);
     }
 
     return Variable(property);
@@ -1557,7 +1743,7 @@ void BytecodeGenerator::emitCheckHasInstance(RegisterID* dst, RegisterID* value,
 ResolveType BytecodeGenerator::resolveType()
 {
     for (unsigned i = m_symbolTableStack.size(); i--; ) {
-        if (m_symbolTableStack[i].m_isWithOrCatch)
+        if (m_symbolTableStack[i].m_isWithScope)
             return Dynamic;
     }
 
@@ -1584,9 +1770,9 @@ RegisterID* BytecodeGenerator::emitResolveScope(RegisterID* dst, const Variable&
         // that code sensible and obviate the need for us to do bad things.
         for (unsigned i = m_symbolTableStack.size(); i--; ) {
             SymbolTableStackEntry& stackEntry = m_symbolTableStack[i];
-            // We should not resolve a variable to VarKind::Scope if a "with" or "catch" scope lies in between the current
+            // We should not resolve a variable to VarKind::Scope if a "with" scope lies in between the current
             // scope and the resolved scope.
-            RELEASE_ASSERT(!stackEntry.m_isWithOrCatch);
+            RELEASE_ASSERT(!stackEntry.m_isWithScope);
 
             if (stackEntry.m_symbolTable->get(variable.ident().impl()).isNull())
                 continue;
@@ -2463,12 +2649,12 @@ void BytecodeGenerator::emitPopScope(RegisterID* dst, RegisterID* scope)
     emitMove(dst, parentScope.get());
 }
 
-void BytecodeGenerator::emitPopWithOrCatchScope(RegisterID* srcDst)
+void BytecodeGenerator::emitPopWithScope(RegisterID* srcDst)
 {
     emitPopScope(srcDst, srcDst);
     popScopedControlFlowContext();
     SymbolTableStackEntry stackEntry = m_symbolTableStack.takeLast();
-    RELEASE_ASSERT(stackEntry.m_isWithOrCatch);
+    RELEASE_ASSERT(stackEntry.m_isWithScope);
 }
 
 void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, unsigned line, unsigned charOffset, unsigned lineStart)
@@ -2903,17 +3089,19 @@ void BytecodeGenerator::popScopedControlFlowContext()
     m_localScopeDepth--;
 }
 
-void BytecodeGenerator::emitPushCatchScope(RegisterID* dst, const Identifier& property, RegisterID* value, unsigned attributes)
+void BytecodeGenerator::emitPushCatchScope(const Identifier& property, RegisterID* exceptionValue, VariableEnvironment& environment)
 {
-    pushScopedControlFlowContext();
+    RELEASE_ASSERT(environment.contains(property.impl()));
+    pushLexicalScopeInternal(environment, true, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::CatchScope);
+    Variable exceptionVar = variable(property);
+    RELEASE_ASSERT(exceptionVar.isResolved());
+    RefPtr<RegisterID> scope = emitResolveScope(nullptr, exceptionVar);
+    emitPutToScope(scope.get(), exceptionVar, exceptionValue, ThrowIfNotFound);
+}
 
-    emitOpcode(op_push_name_scope);
-    instructions().append(dst->index());
-    instructions().append(value->index());
-    instructions().append(addConstantValue(SymbolTable::createNameScopeTable(*vm(), property, attributes))->index());
-    instructions().append(JSNameScope::CatchScope);
-
-    m_symbolTableStack.append(SymbolTableStackEntry{ Strong<SymbolTable>(), nullptr, true, 0 });
+void BytecodeGenerator::emitPopCatchScope(VariableEnvironment& environment) 
+{
+    popLexicalScopeInternal(environment, TDZRequirement::NotUnderTDZ);
 }
 
 void BytecodeGenerator::beginSwitch(RegisterID* scrutineeRegister, SwitchInfo::SwitchType type)

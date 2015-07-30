@@ -98,7 +98,8 @@ public:
     virtual void scheduleAnimation() override;
 #endif
 
-    void setViewOverlayRootLayer(WebCore::GraphicsLayer*);
+    virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) override;
+
     static PassRefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
 protected:
@@ -129,7 +130,7 @@ private:
     virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+    virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 #endif
 
     LayerTreeContext m_layerTreeContext;

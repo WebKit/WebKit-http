@@ -1330,10 +1330,8 @@ void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
         m_viewState |= ViewState::IsVisible;
     if (flagsToUpdate & ViewState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
         m_viewState |= ViewState::IsVisibleOrOccluded;
-    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow()) {
+    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow())
         m_viewState |= ViewState::IsInWindow;
-        m_viewWasEverInWindow = true;
-    }
     if (flagsToUpdate & ViewState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
         m_viewState |= ViewState::IsVisuallyIdle;
 }
@@ -1401,8 +1399,9 @@ void WebPageProxy::dispatchViewStateChange()
     updateViewState(m_potentiallyChangedViewStateFlags);
     ViewState::Flags changed = m_viewState ^ previousViewState;
 
+    bool isNowInWindow = (changed & ViewState::IsInWindow) && isInWindow();
     // We always want to wait for the Web process to reply if we've been in-window before and are coming back in-window.
-    if (m_viewWasEverInWindow && (changed & ViewState::IsInWindow) && isInWindow() && m_drawingArea->hasVisibleContent())
+    if (m_viewWasEverInWindow && isNowInWindow && m_drawingArea->hasVisibleContent())
         m_viewStateChangeWantsSynchronousReply = true;
 
     // Don't wait synchronously if the view state is not visible. (This matters in particular on iOS, where a hidden page may be suspended.)
@@ -1437,6 +1436,7 @@ void WebPageProxy::dispatchViewStateChange()
 
     m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
     m_viewStateChangeWantsSynchronousReply = false;
+    m_viewWasEverInWindow |= isNowInWindow;
 }
 
 void WebPageProxy::updateActivityToken()
@@ -1547,7 +1547,7 @@ void WebPageProxy::setMaintainsInactiveSelection(bool newValue)
     m_maintainsInactiveSelection = newValue;
 }
     
-void WebPageProxy::executeEditCommand(const String& commandName)
+void WebPageProxy::executeEditCommand(const String& commandName, const String& argument)
 {
     static NeverDestroyed<String> ignoreSpellingCommandName(ASCIILiteral("ignoreSpelling"));
 
@@ -1557,7 +1557,7 @@ void WebPageProxy::executeEditCommand(const String& commandName)
     if (commandName == ignoreSpellingCommandName)
         ++m_pendingLearnOrIgnoreWordMessageCount;
 
-    m_process->send(Messages::WebPage::ExecuteEditCommand(commandName), m_pageID);
+    m_process->send(Messages::WebPage::ExecuteEditCommand(commandName, argument), m_pageID);
 }
 
 void WebPageProxy::setEditable(bool editable)
@@ -3983,6 +3983,20 @@ RefPtr<WebVideoFullscreenManagerProxy> WebPageProxy::videoFullscreenManager()
 {
     return m_videoFullscreenManager;
 }
+
+bool WebPageProxy::allowsMediaDocumentInlinePlayback() const
+{
+    return m_allowsMediaDocumentInlinePlayback;
+}
+
+void WebPageProxy::setAllowsMediaDocumentInlinePlayback(bool allows)
+{
+    if (m_allowsMediaDocumentInlinePlayback == allows)
+        return;
+    m_allowsMediaDocumentInlinePlayback = allows;
+
+    m_process->send(Messages::WebPage::SetAllowsMediaDocumentInlinePlayback(allows), m_pageID);
+}
 #endif
 
 // BackForwardList
@@ -5299,13 +5313,13 @@ void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, 
     request->deny();
 }
 
-void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video)
+void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video, const Vector<String>& deviceUIDsVideo, const Vector<String>& deviceUIDsAudio)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
     RefPtr<API::SecurityOrigin> origin = API::SecurityOrigin::create(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
-    RefPtr<UserMediaPermissionRequestProxy> request = m_userMediaPermissionRequestManager.createRequest(userMediaID, audio, video);
+    RefPtr<UserMediaPermissionRequestProxy> request = m_userMediaPermissionRequestManager.createRequest(userMediaID, audio, video, deviceUIDsVideo, deviceUIDsAudio);
 
     if (!m_uiClient->decidePolicyForUserMediaPermissionRequest(*this, *frame, *origin.get(), *request.get()))
         request->deny();
@@ -5997,6 +6011,13 @@ void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHand
     }, m_process->throttler().backgroundActivityToken());
     uint64_t callbackID = m_callbacks.put(voidCallback.release());
     m_nextViewStateChangeCallbacks.append(callbackID);
+}
+#endif
+
+#if ENABLE(VIDEO)
+void WebPageProxy::mediaDocumentNaturalSizeChanged(const WebCore::IntSize& newSize)
+{
+    m_uiClient->mediaDocumentNaturalSizeChanged(newSize);
 }
 #endif
 
