@@ -65,7 +65,6 @@ void TextureMapperPlatformLayerProxy::setCompositor(MutexLocker&, Compositor* co
 void TextureMapperPlatformLayerProxy::setTargetLayer(MutexLocker&, TextureMapperLayer* layer)
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
-    MutexLocker locker(m_pushMutex);
     m_targetLayer = layer;
     m_pushCondition.signal();
 }
