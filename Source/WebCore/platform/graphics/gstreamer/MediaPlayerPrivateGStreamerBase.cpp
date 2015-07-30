@@ -657,14 +657,14 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
             return;
         }
 
-        if (!m_platformLayerProxy->hasTargetLayer()) {
+        MutexLocker locker(m_platformLayerProxy->mutex());
+        if (!m_platformLayerProxy->hasTargetLayer(locker)) {
             g_cond_signal(&m_updateCondition);
             return;
         }
 
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
-        MutexLocker locker(m_platformLayerProxy->mutex());
         unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(locker, size);
         if (UNLIKELY(!buffer)) {
             if (UNLIKELY(!m_context3D))

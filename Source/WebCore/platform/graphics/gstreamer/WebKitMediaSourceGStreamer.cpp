@@ -166,6 +166,8 @@ public:
     size_t sizeInBytes() const { return m_size; }
     GstBuffer* buffer() const { return m_buffer; }
     FloatSize presentationSize() const { return m_presentationSize; }
+    void offsetTimestampsBy(const MediaTime&) { }
+    void setTimestamps(const MediaTime&, const MediaTime&) { }
     SampleFlags flags() const { return m_flags; }
     PlatformSample platformSample() { return PlatformSample(); }
     void dump(PrintStream&) const {}

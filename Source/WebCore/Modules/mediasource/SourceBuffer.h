@@ -117,6 +117,9 @@ public:
 
     Document& document() const;
 
+    bool shouldGenerateTimestamps() const { return m_shouldGenerateTimestamps; }
+    void setShouldGenerateTimestamps(bool flag) { m_shouldGenerateTimestamps = flag; }
+
     void invalidateBuffered();
 
     // ActiveDOMObject API.
@@ -243,6 +246,7 @@ private:
     bool m_receivedFirstInitializationSegment;
     bool m_active;
     bool m_bufferFull;
+    bool m_shouldGenerateTimestamps;
     mutable bool m_shouldRecalculateBuffered;
 };
 
