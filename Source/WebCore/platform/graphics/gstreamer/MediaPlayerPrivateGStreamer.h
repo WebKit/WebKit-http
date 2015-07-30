@@ -164,6 +164,12 @@ public:
     void notifyAppendComplete();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void needKey(RefPtr<Uint8Array> initData);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+#endif
+
 private:
     static void getSupportedTypes(HashSet<String>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
@@ -172,6 +178,12 @@ private:
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     GstElement* createAudioSink() override;
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&);
+    std::unique_ptr<CDMSession> createSession(const String&);
+    CDMSession* m_cdmSession;
+#endif
 
     float playbackPosition() const;
 

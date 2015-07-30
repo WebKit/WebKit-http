@@ -74,6 +74,10 @@ public:
         GstStructure* s = gst_caps_get_structure(m_caps, 0);
         const gchar* name = gst_structure_get_name(s);
 
+#if GST_CHECK_VERSION(1, 5, 3)
+        if (!g_strcmp0(name, "application/x-cenc"))
+            return g_str_has_prefix(gst_structure_get_string(s, "original-media-type"), "video/");
+#endif
         return g_str_has_prefix(name, "video/");
     }
 
@@ -82,6 +86,10 @@ public:
         GstStructure* s = gst_caps_get_structure(m_caps, 0);
         const gchar* name = gst_structure_get_name(s);
 
+#if GST_CHECK_VERSION(1, 5, 3)
+        if (!g_strcmp0(name, "application/x-cenc"))
+            return g_str_has_prefix(gst_structure_get_string(s, "original-media-type"), "audio/");
+#endif
         return g_str_has_prefix(name, "audio/");
     }
 
@@ -204,6 +212,8 @@ struct _Stream
     WebCore::FloatSize presentationSize;
     GList* pendingReceiveSample;
     bool initSegmentAlreadyProcessed;
+
+    GstPad* decryptorSrcPad;
 };
 
 struct _Source {
@@ -865,20 +875,53 @@ static void webKitMediaSrcUpdatePresentationSize(GstCaps* caps, Stream* stream)
     GstStructure* s = gst_caps_get_structure(caps, 0);
     const gchar* structureName = gst_structure_get_name(s);
     GstVideoInfo info;
-    if (g_str_has_prefix(structureName, "video/") && gst_video_info_from_caps(&info, caps)) {
-        float width, height;
+    bool sizeConfigured = false;
 
-        // TODO: correct?
-        width = info.width;
-        height = info.height * ((float) info.par_d / (float) info.par_n);
+#if GST_CHECK_VERSION(1, 5, 3)
+    if (gst_structure_has_name(s, "application/x-cenc")) {
+        const gchar* originalMediaType = gst_structure_get_string(s, "original-media-type");
+        if (g_str_has_prefix(originalMediaType, "video/")) {
+            int width = 0;
+            int height = 0;
+            float finalHeight = 0;
 
-        GST_OBJECT_LOCK(stream->parent->parent);
-        stream->presentationSize = WebCore::FloatSize(width, height);
-        GST_OBJECT_UNLOCK(stream->parent->parent);
-    } else {
-        GST_OBJECT_LOCK(stream->parent->parent);
-        stream->presentationSize = WebCore::FloatSize();
-        GST_OBJECT_UNLOCK(stream->parent->parent);
+            gst_structure_get_int(s, "width", &width);
+            if (gst_structure_get_int(s, "height", &height)) {
+                gint par_n = 1;
+                gint par_d = 1;
+
+                gst_structure_get_fraction(s, "pixel-aspect-ratio", &par_n, &par_d);
+                finalHeight = height * ((float) par_d / (float) par_n);
+            }
+
+            GST_OBJECT_LOCK(stream->parent->parent);
+            stream->presentationSize = WebCore::FloatSize(width, finalHeight);
+            GST_OBJECT_UNLOCK(stream->parent->parent);
+        } else {
+            GST_OBJECT_LOCK(stream->parent->parent);
+            stream->presentationSize = WebCore::FloatSize();
+            GST_OBJECT_UNLOCK(stream->parent->parent);
+        }
+        sizeConfigured = true;
+    }
+#endif
+
+    if (!sizeConfigured) {
+        if (g_str_has_prefix(structureName, "video/") && gst_video_info_from_caps(&info, caps)) {
+            float width, height;
+
+            // TODO: correct?
+            width = info.width;
+            height = info.height * ((float) info.par_d / (float) info.par_n);
+
+            GST_OBJECT_LOCK(stream->parent->parent);
+            stream->presentationSize = WebCore::FloatSize(width, height);
+            GST_OBJECT_UNLOCK(stream->parent->parent);
+        } else {
+            GST_OBJECT_LOCK(stream->parent->parent);
+            stream->presentationSize = WebCore::FloatSize();
+            GST_OBJECT_UNLOCK(stream->parent->parent);
+        }
     }
 
     gst_caps_ref(caps);
@@ -960,6 +1003,16 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
     Stream* stream = g_new0(Stream, 1);
     gchar *parserBinName;
     const gchar* demuxersrcpadtypename = gst_structure_get_name(s);
+    const gchar* mediaType = demuxersrcpadtypename;
+    bool capsNotifyHandlerConnected = false;
+
+#if GST_CHECK_VERSION(1, 5, 3)
+    GstElement* decryptor = nullptr;
+    if (gst_structure_has_name(s, "application/x-cenc"))
+        mediaType = gst_structure_get_string(s, "original-media-type");
+#endif
+
+    stream->decryptorSrcPad = nullptr;
 
     GST_OBJECT_LOCK(source->parent);
     stream->id = source->parent->priv->numberOfPads; // Just informative
@@ -973,10 +1026,28 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
 
     g_assert(demuxersrcpadcaps != 0);
 
-    if (gst_structure_has_name(s, "video/x-h264")) {
+    stream->parser = gst_bin_new(parserBinName);
+
+#if GST_CHECK_VERSION(1, 5, 3)
+    if (gst_structure_has_name(s, "application/x-cenc")) {
+        decryptor = WebCore::createGstDecryptor(gst_structure_get_string(s, "protection-system"));
+        if (!decryptor) {
+            GST_ERROR_OBJECT(source->parent, "decryptor not found for caps: %" GST_PTR_FORMAT, demuxersrcpadcaps);
+            gst_object_unref(GST_OBJECT(stream->parser));
+            return;
+        }
+
+        stream->decryptorSrcPad = gst_element_get_static_pad(decryptor, "src");
+        g_signal_connect(stream->decryptorSrcPad, "notify::caps", G_CALLBACK(webKitMediaSrcParserNotifyCaps), stream);
+        capsNotifyHandlerConnected = true;
+        gst_bin_add(GST_BIN(stream->parser), decryptor);
+    }
+#endif
+
+    if (!g_strcmp0(mediaType, "video/x-h264")) {
         GstElement* parser;
         GstElement* capsfilter;
-        GstPad* pad;
+        GstPad* pad = nullptr;
         GstCaps* filtercaps;
 
         filtercaps = gst_caps_new_simple("video/x-h264", "alignment", G_TYPE_STRING, "au", NULL);
@@ -985,21 +1056,27 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
         g_object_set(capsfilter, "caps", filtercaps, NULL);
         gst_caps_unref(filtercaps);
 
-        stream->parser = gst_bin_new(parserBinName);
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
+#if GST_CHECK_VERSION(1, 5, 3)
+        if (decryptor) {
+            gst_element_link_pads(decryptor, "src", parser, "sink");
+            pad = gst_element_get_static_pad(decryptor, "sink");
+        }
+#endif
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        pad = gst_element_get_static_pad(parser, "sink");
+        if (!pad)
+            pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
         pad = gst_element_get_static_pad(capsfilter, "src");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("src", pad));
         gst_object_unref(pad);
-    } else if (gst_structure_has_name(s, "video/x-h265")) {
+    } else if (!g_strcmp0(mediaType, "video/x-h265")) {
         GstElement* parser;
         GstElement* capsfilter;
-        GstPad* pad;
+        GstPad* pad = nullptr;
         GstCaps* filtercaps;
 
         filtercaps = gst_caps_new_simple("video/x-h265", "alignment", G_TYPE_STRING, "au", NULL);
@@ -1008,28 +1085,59 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
         g_object_set(capsfilter, "caps", filtercaps, NULL);
         gst_caps_unref(filtercaps);
 
-        stream->parser = gst_bin_new(parserBinName);
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
+
+#if GST_CHECK_VERSION(1, 5, 3)
+        if (decryptor) {
+            gst_element_link_pads(decryptor, "src", parser, "sink");
+            pad = gst_element_get_static_pad(decryptor, "sink");
+        }
+#endif
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        pad = gst_element_get_static_pad(parser, "sink");
+        if (!pad)
+            pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
         pad = gst_element_get_static_pad(capsfilter, "src");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("src", pad));
         gst_object_unref(pad);
-    } else if (gst_structure_has_name(s, "audio/mpeg")) {
+    } else if (!g_strcmp0(mediaType, "audio/mpeg")) {
         gint mpegversion = -1;
+        GstElement* parser;
+        GstPad* pad = nullptr;
 
         gst_structure_get_int(s, "mpegversion", &mpegversion);
         if (mpegversion == 1) {
-            stream->parser = gst_element_factory_make("mpegaudioparse", 0);
+            parser = gst_element_factory_make("mpegaudioparse", 0);
         } else if (mpegversion == 2 || mpegversion == 4) {
-            stream->parser = gst_element_factory_make("aacparse", 0);
+            parser = gst_element_factory_make("aacparse", 0);
         } else {
             g_assert_not_reached();
         }
+
+        gst_bin_add(GST_BIN(stream->parser), parser);
+
+#if GST_CHECK_VERSION(1, 5, 3)
+        if (decryptor) {
+            gst_element_link_pads(decryptor, "src", parser, "sink");
+            pad = gst_element_get_static_pad(decryptor, "sink");
+        }
+#endif
+
+        if (!pad)
+            pad = gst_element_get_static_pad(parser, "sink");
+        gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
+        gst_object_unref(pad);
+
+        pad = gst_element_get_static_pad(parser, "src");
+        gst_element_add_pad(stream->parser, gst_ghost_pad_new("src", pad));
+        gst_object_unref(pad);
+    } else {
+        GST_ERROR_OBJECT(source->parent, "Unsupported caps: %" GST_PTR_FORMAT, demuxersrcpadcaps);
+        gst_object_unref(GST_OBJECT(stream->parser));
+        return;
     }
 
     g_free(parserBinName);
@@ -1041,7 +1149,7 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
     GST_OBJECT_UNLOCK(source->parent);
 
     GstPad* sinkpad;
-    GstPad* srcpad;
+    GstPad* srcpad = nullptr;
 
     sinkpad = gst_element_get_request_pad(source->multiqueue, "sink_%u");
     gst_pad_link(demuxersrcpad, sinkpad);
@@ -1056,42 +1164,41 @@ static void webKitMediaSrcDemuxerPadAdded(GstElement*, GstPad* demuxersrcpad, So
 
     webKitMediaSrcUpdatePresentationSize(demuxersrcpadcaps, stream);
 
-    if (stream->parser) {
-        gst_bin_add(GST_BIN(source->parent), stream->parser);
-        gst_element_sync_state_with_parent(stream->parser);
-        sinkpad = gst_element_get_static_pad(stream->parser, "sink");
-        gst_pad_link(srcpad, sinkpad);
-        gst_object_unref(srcpad);
-        gst_object_unref(sinkpad);
-        srcpad = gst_element_get_static_pad(stream->parser, "src");
-    } else
-        webKitMediaSrcUpdatePresentationSize(demuxersrcpadcaps, stream);
+    ASSERT(stream->parser);
+    gst_bin_add(GST_BIN(source->parent), stream->parser);
+    gst_element_sync_state_with_parent(stream->parser);
+    sinkpad = gst_element_get_static_pad(stream->parser, "sink");
+    gst_pad_link(srcpad, sinkpad);
+    gst_object_unref(srcpad);
+    gst_object_unref(sinkpad);
 
     gst_caps_unref(demuxersrcpadcaps);
 
-    g_signal_connect(srcpad, "notify::caps", G_CALLBACK(webKitMediaSrcParserNotifyCaps), stream);
+
+    srcpad = gst_element_get_static_pad(stream->parser, "src");
+    if (!capsNotifyHandlerConnected)
+        g_signal_connect(srcpad, "notify::caps", G_CALLBACK(webKitMediaSrcParserNotifyCaps), stream);
     webKitMediaSrcLinkStreamToSrcPad(srcpad, stream);
 
-    if (g_str_has_prefix(demuxersrcpadtypename, "audio")) {
+    if (g_str_has_prefix(mediaType, "audio")) {
         GST_OBJECT_LOCK(source->parent);
         stream->type = STREAM_TYPE_AUDIO;
         source->parent->priv->nAudio++;
         GST_OBJECT_UNLOCK(source->parent);
         g_signal_emit(G_OBJECT(source->parent), webkit_media_src_signals[SIGNAL_AUDIO_CHANGED], 0, NULL);
-    } else if (g_str_has_prefix(demuxersrcpadtypename, "video")) {
+    } else if (g_str_has_prefix(mediaType, "video")) {
         GST_OBJECT_LOCK(source->parent);
         stream->type = STREAM_TYPE_VIDEO;
         source->parent->priv->nVideo++;
         GST_OBJECT_UNLOCK(source->parent);
         g_signal_emit(G_OBJECT(source->parent), webkit_media_src_signals[SIGNAL_VIDEO_CHANGED], 0, NULL);
-    } else if (g_str_has_prefix(demuxersrcpadtypename, "text")) {
+    } else if (g_str_has_prefix(mediaType, "text")) {
         GST_OBJECT_LOCK(source->parent);
         stream->type = STREAM_TYPE_TEXT;
         source->parent->priv->nText++;
         GST_OBJECT_UNLOCK(source->parent);
         g_signal_emit(G_OBJECT(source->parent), webkit_media_src_signals[SIGNAL_TEXT_CHANGED], 0, NULL);
     }
-
     gst_object_unref(srcpad);
 
     gst_debug_bin_to_dot_file(GST_BIN(GST_ELEMENT_PARENT(source->parent)), GST_DEBUG_GRAPH_SHOW_ALL, "demuxer-pad-added");
@@ -1166,6 +1273,10 @@ static void webKitMediaSrcDemuxerPadRemoved(GstElement*, GstPad* demuxersrcpad, 
 
         if (multiqueuesrcpad && bufferAfterMultiqueueProbeId)
             gst_pad_remove_probe(multiqueuesrcpad, bufferAfterMultiqueueProbeId);
+
+        gst_object_unref(stream->demuxersrcpad);
+        if (stream->decryptorSrcPad)
+            gst_object_unref(stream->decryptorSrcPad);
 
         GST_OBJECT_LOCK(source->parent);
         source->streams = g_list_remove(source->streams, stream);
@@ -1514,6 +1625,8 @@ static Stream* getStreamByDemuxerPad(WebKitMediaSrc* src, const GstPad* demuxers
         Source* source = static_cast<Source*>(sources->data);
         for (GList* streams = source->streams; streams; streams = streams->next) {
             Stream* stream = static_cast<Stream*>(streams->data);
+            if (stream->decryptorSrcPad && (stream->decryptorSrcPad == demuxersrcpad))
+                return stream;
             if (stream->demuxersrcpad == demuxersrcpad)
                 return stream;
         }
@@ -1875,7 +1988,7 @@ GstPad* webkit_media_src_get_audio_pad(WebKitMediaSrc* src, guint i)
             Stream* stream = (Stream*)streams->data;
             if (stream->type == STREAM_TYPE_AUDIO) {
                 if (n == i) {
-                    result = stream->demuxersrcpad;
+                    result = stream->decryptorSrcPad ? stream->decryptorSrcPad : stream->demuxersrcpad;
                     break;
                 } else
                     n++;
@@ -1900,7 +2013,7 @@ GstPad* webkit_media_src_get_video_pad(WebKitMediaSrc* src, guint i)
             Stream* stream = (Stream*)streams->data;
             if (stream->type == STREAM_TYPE_VIDEO) {
                 if (n == i) {
-                    result = stream->demuxersrcpad;
+                    result = stream->decryptorSrcPad ? stream->decryptorSrcPad : stream->demuxersrcpad;
                     break;
                 } else
                     n++;
