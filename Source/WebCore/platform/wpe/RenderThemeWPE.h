@@ -38,6 +38,11 @@ public:
         return adoptRef(new RenderThemeWPE);
     }
 
+#if ENABLE(VIDEO)
+    virtual String mediaControlsStyleSheet() override;
+    virtual String mediaControlsScript() override;
+#endif
+
 private:
     RenderThemeWPE() = default;
     virtual ~RenderThemeWPE() = default;
