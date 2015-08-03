@@ -41,6 +41,7 @@
 
 #if ENABLE(MEDIA_SOURCE)
 #include "MediaSourceGStreamer.h"
+#include "WebKitMediaSourceGStreamer.h"
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
@@ -295,7 +296,7 @@ private:
 #endif
 #if ENABLE(MEDIA_SOURCE)
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
-    bool isMediaSource() const { return m_mediaSource; }
+    bool isMediaSource() const { return m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get()); }
 #else
     bool isMediaSource() const { return false; }
 #endif

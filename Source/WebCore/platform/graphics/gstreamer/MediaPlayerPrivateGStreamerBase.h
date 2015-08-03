@@ -139,6 +139,8 @@ public:
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+    GstElement* pipeline() const { return m_pipeline.get(); }
+
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
     virtual GstElement* createVideoSink();

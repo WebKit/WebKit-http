@@ -68,7 +68,6 @@
 
 #if ENABLE(MEDIA_SOURCE)
 #include "MediaSource.h"
-#include "WebKitMediaSourceGStreamer.h"
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -813,7 +812,10 @@ bool MediaPlayerPrivateGStreamer::seeking() const
 
 void MediaPlayerPrivateGStreamer::videoChanged()
 {
-    m_videoTimerHandler.schedule();
+    if (isMainThread())
+        notifyPlayerOfVideo();
+    else
+        m_videoTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::videoCapsChanged()
@@ -823,30 +825,26 @@ void MediaPlayerPrivateGStreamer::videoCapsChanged()
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 {
-    gint numTracks = 0;
-#if ENABLE(MEDIA_SOURCE)
-    bool useMediaSource = false;
-#endif
-    if (m_pipeline) {
-#if ENABLE(MEDIA_SOURCE)
-        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
-            g_object_get(m_source.get(), "n-video", &numTracks, NULL);
-            useMediaSource = true;
-        } else
-#endif
-        g_object_get(m_pipeline.get(), "n-video", &numTracks, nullptr);
-    }
+    if (!m_pipeline || !m_source)
+        return;
 
+    gint numTracks = 0;
+    bool useMediaSource = isMediaSource();
+    GstElement* element = useMediaSource ? m_source.get() : m_pipeline.get();
+    g_object_get(element, "n-video", &numTracks, nullptr);
+
+    LOG_MEDIA_MESSAGE("Stream has %d video tracks", numTracks);
     m_hasVideo = numTracks > 0;
+
+    if (useMediaSource) {
+        LOG_MEDIA_MESSAGE("Tracks managed by source element. Bailing out now.");
+        m_player->client().mediaPlayerEngineUpdated(m_player);
+        return;
+    }
 
 #if ENABLE(VIDEO_TRACK)
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
-#if ENABLE(MEDIA_SOURCE)
-        if (useMediaSource)
-            pad = webkit_media_src_get_video_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
-        else
-#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-video-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
@@ -858,24 +856,8 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
         }
 
         RefPtr<VideoTrackPrivateGStreamer> track = VideoTrackPrivateGStreamer::create(m_pipeline, i, pad);
-        m_videoTracks.append(track);
-#if ENABLE(MEDIA_SOURCE)
-        if (isMediaSource()) {
-            // TODO: This will leak if the event gets freed without arriving in
-            // the source, e.g. when we go flushing here
-            RefPtr<VideoTrackPrivateGStreamer>* trackCopy = new RefPtr<VideoTrackPrivateGStreamer>(track);
-            GstStructure* videoEventStructure = gst_structure_new("webKitVideoTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
-            if (useMediaSource) {
-                // Using the stream->demuxersrcpad. The GstUriDecodeBin pad
-                // may not exist at this point. Using an alternate way to
-                // notify the upper layer.
-                webkit_media_src_track_added(WEBKIT_MEDIA_SRC(m_source.get()), pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, videoEventStructure));
-            } else {
-                // Using the GstUriDecodeBin source pad
-                gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, videoEventStructure));
-            }
-        }
-#endif
+
+        m_videoTracks.insert(i, track);
         m_player->addVideoTrack(track.release());
     }
 
@@ -898,35 +880,34 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps()
 
 void MediaPlayerPrivateGStreamer::audioChanged()
 {
-    m_audioTimerHandler.schedule();
+    if (isMainThread())
+        notifyPlayerOfAudio();
+    else
+        m_audioTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 {
-    gint numTracks = 0;
-#if ENABLE(MEDIA_SOURCE)
-    bool useMediaSource = false;
-#endif
-    if (m_pipeline) {
-#if ENABLE(MEDIA_SOURCE)
-        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
-            g_object_get(m_source.get(), "n-audio", &numTracks, NULL);
-            useMediaSource = true;
-        } else
-#endif
-            g_object_get(m_pipeline.get(), "n-audio", &numTracks, NULL);
-    }
+    if (!m_pipeline || !m_source)
+        return;
 
+    gint numTracks = 0;
+    bool useMediaSource = isMediaSource();
+    GstElement* element = useMediaSource ? m_source.get() : m_pipeline.get();
+    g_object_get(element, "n-audio", &numTracks, nullptr);
+
+    LOG_MEDIA_MESSAGE("Stream has %d audio tracks", numTracks);
     m_hasAudio = numTracks > 0;
+
+    if (useMediaSource) {
+        LOG_MEDIA_MESSAGE("Tracks managed by source element. Bailing out now.");
+        m_player->client().mediaPlayerEngineUpdated(m_player);
+        return;
+    }
 
 #if ENABLE(VIDEO_TRACK)
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
-#if ENABLE(MEDIA_SOURCE)
-        if (useMediaSource)
-            pad = webkit_media_src_get_audio_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
-        else
-#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-audio-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
@@ -938,27 +919,12 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
         }
 
         RefPtr<AudioTrackPrivateGStreamer> track = AudioTrackPrivateGStreamer::create(m_pipeline, i, pad);
+
         m_audioTracks.insert(i, track);
-#if ENABLE(MEDIA_SOURCE)
-        if (isMediaSource()) {
-            // TODO: This will leak if the event gets freed without arriving in
-            // the source, e.g. when we go flushing here
-            RefPtr<AudioTrackPrivateGStreamer>* trackCopy = new RefPtr<AudioTrackPrivateGStreamer>(track);
-            GstStructure* audioEventStructure = gst_structure_new("webKitAudioTrack", "track", G_TYPE_POINTER, trackCopy, nullptr);
-             if (useMediaSource) {
-                 // Using the stream->demuxersrcpad. The GstUriDecodeBin pad
-                 // may not exist at this point. Using an alternate way to
-                 // notify the upper layer.
-                 webkit_media_src_track_added(WEBKIT_MEDIA_SRC(m_source.get()), pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, audioEventStructure));
-             } else {
-                 // Using the GstUriDecodeBin source pad
-                 gst_pad_push_event(pad.get(), gst_event_new_custom(GST_EVENT_CUSTOM_UPSTREAM, audioEventStructure));
-             }
-        }
-#endif
         m_player->addAudioTrack(track.release());
     }
 
+    LOG_MEDIA_MESSAGE("%d tracks currently cached", static_cast<gint>(m_audioTracks.size()));
     while (static_cast<gint>(m_audioTracks.size()) > numTracks) {
         RefPtr<AudioTrackPrivateGStreamer> track = m_audioTracks.last();
         track->disconnect();
@@ -973,32 +939,29 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 #if ENABLE(VIDEO_TRACK)
 void MediaPlayerPrivateGStreamer::textChanged()
 {
-    m_textTimerHandler.schedule();
+    if (isMainThread())
+        notifyPlayerOfText();
+    else
+        m_textTimerHandler.schedule();
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
 {
+    if (!m_pipeline || !m_source)
+        return;
+
     gint numTracks = 0;
-#if ENABLE(MEDIA_SOURCE)
-    bool useMediaSource = false;
-#endif
-    if (m_pipeline) {
-#if ENABLE(MEDIA_SOURCE)
-        if (m_mediaSource && WEBKIT_IS_MEDIA_SRC(m_source.get())) {
-            g_object_get(m_source.get(), "n-text", &numTracks, NULL);
-            useMediaSource = true;
-        } else
-#endif
-        g_object_get(m_pipeline.get(), "n-text", &numTracks, nullptr);
+    bool useMediaSource = isMediaSource();
+    GstElement* element = useMediaSource ? m_source.get() : m_pipeline.get();
+    g_object_get(element, "n-text", &numTracks, nullptr);
+
+    if (useMediaSource) {
+        LOG_MEDIA_MESSAGE("Tracks managed by source element. Bailing out now.");
+        return;
     }
 
     for (gint i = 0; i < numTracks; ++i) {
         GRefPtr<GstPad> pad;
-#if ENABLE(MEDIA_SOURCE)
-        if (useMediaSource)
-            pad = webkit_media_src_get_text_pad(WEBKIT_MEDIA_SRC(m_source.get()), i);
-        else
-#endif
         g_signal_emit_by_name(m_pipeline.get(), "get-text-pad", i, &pad.outPtr(), nullptr);
         ASSERT(pad);
 
