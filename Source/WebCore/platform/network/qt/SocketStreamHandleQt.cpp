@@ -215,7 +215,8 @@ int SocketStreamHandle::platformSend(const char* data, int len)
 void SocketStreamHandle::platformClose()
 {
     LOG(Network, "SocketStreamHandle %p platformClose", this);
-    m_p->close();
+    if (m_p)
+        m_p->close();
 }
 
 void SocketStreamHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge&)
