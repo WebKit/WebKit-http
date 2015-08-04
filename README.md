@@ -8,7 +8,7 @@ To build:
 
 To run:
 
-    $ Tools/Scripts/run-launcher --wpe
-    $ Tools/Scripts/run-launcher --wpe --url http://www.webkit.org
+    $ Tools/Scripts/run-wpe
+    $ Tools/Scripts/run-wpe --url http://www.webkit.org
     # Arguments after -- are passed to Weston
-    $ Tools/Scripts/run-launcher --wpe -- --fullscreen
+    $ Tools/Scripts/run-wpe -- --fullscreen
