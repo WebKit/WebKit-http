@@ -137,7 +137,9 @@ void ImageBufferData::swapBuffersIfNeeded()
 #endif
 void ImageBufferData::createCairoGLSurface()
 {
+#if USE(COORDINATED_GRAPHICS_THREADED)
     MutexLocker locker(m_platformLayerProxy->mutex());
+#endif
 
     GLContext::sharingContext()->makeContextCurrent();
 

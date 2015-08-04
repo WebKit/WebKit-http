@@ -102,6 +102,10 @@
 #endif
 #endif // USE(GSTREAMER_GL)
 
+#if PLATFORM(WAYLAND)
+#include "PlatformDisplayWayland.h"
+#endif
+
 #include <condition_variable>
 #include <mutex>
 #include <wtf/MainThread.h>

@@ -177,6 +177,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #if USE(GSTREAMER_GL)
     g_cond_init(&m_drawCondition);
     g_mutex_init(&m_drawMutex);
+    m_videoFrame = adoptGRef(new GstVideoFrame());
+    m_videoInfo = adoptGRef(new GstVideoInfo());
+    gst_video_info_init(m_videoInfo.get());
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
@@ -213,6 +216,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if USE(GSTREAMER_GL)
     g_cond_clear(&m_drawCondition);
     g_mutex_clear(&m_drawMutex);
+    gst_video_frame_unmap(m_videoFrame.get());
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -282,7 +286,7 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 #if PLATFORM(X11)
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #elif PLATFORM(WAYLAND)
-        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
+        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).eglDisplay()));
 #endif
     }
 
@@ -630,6 +634,26 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
 {
     WTF::GMutexLocker<GMutex> lock(m_updateMutex);
 
+#if USE(GSTREAMER_GL)
+    {
+        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+        if (!GST_IS_SAMPLE(m_sample.get())) {
+            g_cond_signal(&m_updateCondition);
+            return;
+        }
+
+        unsigned textureID = *reinterpret_cast<unsigned*>(m_videoFrame->data[0]);
+        IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(m_videoInfo), GST_VIDEO_INFO_HEIGHT(m_videoInfo));
+
+        MutexLocker locker(m_platformLayerProxy->mutex());
+        if (!m_platformLayerProxy->hasTargetLayer(locker)) {
+            g_cond_signal(&m_updateCondition);
+            return;
+        }
+        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, size, GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo), false));
+        m_platformLayerProxy->requestUpdate(locker);
+    }
+#else
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
         GRefPtr<GstCaps> caps;
@@ -679,7 +703,7 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
         m_platformLayerProxy->pushNextBuffer(locker, WTF::move(buffer));
         m_platformLayerProxy->requestUpdate(locker);
     }
-
+#endif
     g_cond_signal(&m_updateCondition);
 }
 #endif
@@ -688,7 +712,25 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+
+#if USE(GSTREAMER_GL)
+        if (m_sample)
+            gst_video_frame_unmap(m_videoFrame.get());
+#endif
         m_sample = sample;
+
+#if USE(GSTREAMER_GL)
+        GstCaps* caps = gst_sample_get_caps(m_sample.get());
+        if (!caps)
+            return;
+
+        if (!gst_video_info_from_caps(m_videoInfo.get(), caps))
+            return;
+
+        GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
+        if (!gst_video_frame_map(m_videoFrame.get(), m_videoInfo.get(), buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
+            return;
+#endif
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -701,30 +743,24 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
     return;
 #endif
 
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #if USE(GSTREAMER_GL)
     {
-        ASSERT(!isMainThread());
-
         WTF::GMutexLocker<GMutex> lock(m_drawMutex);
-
-        m_drawTimerHandler.schedule("[WebKit] video render", [this] {
-            // Rendering should be done from the main thread
-            // because this is where the GL APIs were initialized.
-            WTF::GMutexLocker<GMutex> lock(m_drawMutex);
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
-            if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client())
-                client()->setPlatformLayerNeedsDisplay();
-            g_cond_signal(&m_drawCondition);
-#endif
-        });
+        callOnMainThread([this] {
+                WTF::GMutexLocker<GMutex> lock(m_drawMutex);
+                if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client())
+                    client()->setPlatformLayerNeedsDisplay();
+                g_cond_signal(&m_drawCondition);
+            });
         g_cond_wait(&m_drawCondition, &m_drawMutex);
     }
-
-#elif USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#else
     if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client()) {
         client()->setPlatformLayerNeedsDisplay();
-        return;
     }
+#endif
+    return;
 #endif
 
     m_player->repaint();
@@ -783,32 +819,18 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
     }
 
 #if USE(GSTREAMER_GL)
-    if (!GST_IS_SAMPLE(m_sample.get()))
-        return;
+    {
+        WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+        if (!GST_IS_SAMPLE(m_sample.get()))
+            return;
 
-    GstCaps* caps = gst_sample_get_caps(m_sample.get());
-    if (!caps)
-        return;
+        unsigned textureID = *reinterpret_cast<unsigned*>(m_videoFrame->data[0]);
+        TextureMapperGL::Flags flags = GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0;
 
-    GstVideoInfo videoInfo;
-    gst_video_info_init(&videoInfo);
-    if (!gst_video_info_from_caps(&videoInfo, caps))
-        return;
-
-    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
-    GstVideoFrame videoFrame;
-    if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
-        return;
-
-    unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
-    BitmapTexture::Flags flags = BitmapTexture::NoFlag;
-    if (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo))
-        flags |= BitmapTexture::SupportsAlpha;
-
-    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-    TextureMapperGL* textureMapperGL = reinterpret_cast<TextureMapperGL*>(textureMapper);
-    textureMapperGL->drawTexture(textureID, flags, size, targetRect, matrix, opacity);
-    gst_video_frame_unmap(&videoFrame);
+        IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(m_videoInfo), GST_VIDEO_INFO_HEIGHT(m_videoInfo));
+        TextureMapperGL* textureMapperGL = reinterpret_cast<TextureMapperGL*>(textureMapper);
+        textureMapperGL->drawTexture(textureID, flags, size, targetRect, modelViewMatrix, opacity);
+    }
 #endif
 }
 #endif

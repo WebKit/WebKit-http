@@ -40,6 +40,10 @@
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
+#if USE(GSTREAMER_GL)
+#include <gst/video/gstvideometa.h>
+#endif
+
 typedef struct _GstSample GstSample;
 typedef struct _GstElement GstElement;
 typedef struct _GstGLContext GstGLContext;
@@ -161,9 +165,10 @@ protected:
     GSourceWrap::Static m_volumeTimerHandler;
     GSourceWrap::Static m_muteTimerHandler;
 #if USE(GSTREAMER_GL)
-    GThreadSafeMainLoopSource m_drawTimerHandler;
     GCond m_drawCondition;
     GMutex m_drawMutex;
+    GRefPtr<GstVideoFrame> m_videoFrame;
+    GRefPtr<GstVideoInfo> m_videoInfo;
 #endif
     unsigned long m_repaintHandler;
     unsigned long m_volumeSignalHandler;
