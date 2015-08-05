@@ -5,6 +5,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
     "${WEBCORE_DIR}/platform/graphics/freetype"
+    "${WEBCORE_DIR}/platform/graphics/gbm"
     "${WEBCORE_DIR}/platform/graphics/gstreamer"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
@@ -67,6 +68,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
+    platform/graphics/gbm/GBMSurface.cpp
+    platform/graphics/gbm/PlatformDisplayGBM.cpp
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
@@ -179,9 +182,11 @@ set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/wpe/RenderTh
 
 list(APPEND WebCore_LIBRARIES
     ${CAIRO_LIBRARIES}
+    ${DRM_LIBRARIES}
     ${EGL_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
     ${FREETYPE2_LIBRARIES}
+    ${GBM_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
@@ -208,9 +213,11 @@ list(APPEND WebCore_LIBRARIES
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
+    ${DRM_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIRS}
     ${FREETYPE2_INCLUDE_DIRS}
+    ${GBM_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_BASE_INCLUDE_DIRS}
