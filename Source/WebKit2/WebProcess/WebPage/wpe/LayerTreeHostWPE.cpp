@@ -27,7 +27,7 @@
 #include "config.h"
 #include "LayerTreeHostWPE.h"
 
-#include "DrawingAreaImpl.h"
+#include "DrawingAreaWPE.h"
 #include "TextureMapperGL.h"
 #include "WebPage.h"
 #include "WebProcess.h"
@@ -305,7 +305,7 @@ void LayerTreeHostWPE::flushAndRenderLayers()
 
     if (m_notifyAfterScheduledLayerFlush) {
         // Let the drawing area know that we've done a flush of the layer changes.
-        static_cast<DrawingAreaImpl*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+        static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
         m_notifyAfterScheduledLayerFlush = false;
     }
 }

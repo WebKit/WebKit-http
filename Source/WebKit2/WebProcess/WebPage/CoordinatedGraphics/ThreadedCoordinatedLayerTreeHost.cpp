@@ -182,7 +182,7 @@ void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers()
 {
-    static_cast<DrawingAreaImpl*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+    // static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
 }
 
 void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)

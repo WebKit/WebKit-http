@@ -64,11 +64,11 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
     UIProcess/API/C/wpe/WKView.cpp
+    UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
-    UIProcess/DrawingAreaProxyImpl.cpp
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
@@ -98,8 +98,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
-    WebProcess/WebPage/DrawingAreaImpl.cpp
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
+    WebProcess/WebPage/wpe/DrawingAreaWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp

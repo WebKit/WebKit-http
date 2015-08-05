@@ -26,7 +26,7 @@
 #include "config.h"
 #include "PageClientImpl.h"
 
-#include "DrawingAreaProxyImpl.h"
+#include "DrawingAreaProxyWPE.h"
 #include "WPEView.h"
 #include "WebContextMenuProxy.h"
 #include <WebCore/NotImplemented.h>
@@ -40,7 +40,7 @@ PageClientImpl::PageClientImpl(WKWPE::View& view)
 
 std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
 {
-    return std::make_unique<DrawingAreaProxyImpl>(m_view.page());
+    return std::make_unique<DrawingAreaProxyWPE>(m_view.page());
 }
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::IntRect&)
