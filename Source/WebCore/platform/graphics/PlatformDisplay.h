@@ -48,6 +48,9 @@ public:
 #if PLATFORM(WAYLAND)
         Wayland,
 #endif
+#if PLATFORM(GBM)
+        GBM,
+#endif
 #if PLATFORM(WIN)
         Windows,
 #endif
