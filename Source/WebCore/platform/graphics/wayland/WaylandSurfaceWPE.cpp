@@ -58,7 +58,8 @@ void WaylandSurface::resize(const IntSize& size)
 
 std::unique_ptr<GLContextEGL> WaylandSurface::createGLContext() const
 {
-    return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
+    // return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
+    return nullptr;
 }
 
 } // namespace WebCore
