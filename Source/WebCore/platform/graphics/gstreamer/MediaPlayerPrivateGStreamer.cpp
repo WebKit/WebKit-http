@@ -1199,53 +1199,7 @@ static StreamType getStreamType(GstElement* element)
 
 void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 {
-    // FIXME: Use proper formatting across USE(GSTREAMER_GL) and ENABLE(ENCRYPTED_MEDIA_V2).
     switch (GST_MESSAGE_TYPE(message)) {
-#if USE(GSTREAMER_GL)
-    case GST_MESSAGE_NEED_CONTEXT: {
-        const gchar* contextType;
-        gst_message_parse_context_type(message, &contextType);
-
-        if (!m_glDisplay) {
-#if PLATFORM(X11)
-            Display* display = GLContext::sharedX11Display();
-            GstGLDisplayX11* gstGLDisplay = gst_gl_display_x11_new_with_display(display);
-#elif PLATFORM(WAYLAND)
-            EGLDisplay display = WaylandDisplay::instance()->eglDisplay();
-            GstGLDisplayEGL* gstGLDisplay = gst_gl_display_egl_new_with_egl_display(display);
-#else
-            return;
-#endif
-
-            m_glDisplay = reinterpret_cast<GstGLDisplay*>(gstGLDisplay);
-            GLContext* webkitContext = GLContext::sharingContext();
-#if USE(GLX)
-            GLXContext* glxSharingContext = reinterpret_cast<GLXContext*>(webkitContext->platformContext());
-            if (glxSharingContext && !m_glContext)
-                m_glContext = gst_gl_context_new_wrapped(GST_GL_DISPLAY(gstGLDisplay), reinterpret_cast<guintptr>(glxSharingContext), GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL);
-#elif USE(EGL)
-            EGLContext* eglSharingContext = reinterpret_cast<EGLContext*>(webkitContext->platformContext());
-            if (eglSharingContext && !m_glContext)
-                m_glContext = gst_gl_context_new_wrapped(GST_GL_DISPLAY(gstGLDisplay), reinterpret_cast<guintptr>(eglSharingContext), GST_GL_PLATFORM_EGL, GST_GL_API_GLES2);
-#endif
-        }
-
-        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-            GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-            gst_context_set_gl_display(displayContext, m_glDisplay);
-            gst_element_set_context(GST_ELEMENT(message->src), displayContext);
-            return;
-        }
-        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-            GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
-            GstStructure* structure = gst_context_writable_structure(appContext);
-            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext, nullptr);
-            gst_element_set_context(GST_ELEMENT(message->src), appContext);
-            return;
-        }
-        break;
-    }
-#endif // USE(GSTREAMER_GL)
         case GST_MESSAGE_ELEMENT:
         {
 #if ENABLE(ENCRYPTED_MEDIA)
