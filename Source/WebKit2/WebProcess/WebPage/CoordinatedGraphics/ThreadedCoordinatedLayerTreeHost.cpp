@@ -31,10 +31,12 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "DrawingAreaImpl.h"
+#include "DrawingAreaProxyMessages.h"
+#include "DrawingAreaWPE.h"
 #include "NotImplemented.h"
 #include "ThreadSafeCoordinatedSurface.h"
 #include "WebPage.h"
+#include "WebProcess.h"
 #include <WebCore/CoordinatedGraphicsLayer.h>
 #include <WebCore/CoordinatedGraphicsState.h>
 #include <WebCore/Frame.h>
@@ -277,6 +279,11 @@ void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const IntSize& offset)
 {
     m_coordinator->commitScrollOffset(layerID, offset);
+}
+
+void ThreadedCoordinatedLayerTreeHost::commitPrimeFD(int fd)
+{
+    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeFD(fd));
 }
 
 void ThreadedCoordinatedLayerTreeHost::notifyFlushRequired()

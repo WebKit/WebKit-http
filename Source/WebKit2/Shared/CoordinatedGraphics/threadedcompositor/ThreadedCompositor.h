@@ -63,6 +63,7 @@ public:
         virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
+        virtual void commitPrimeFD(int) = 0;
     };
 
     static Ref<ThreadedCompositor> create(Client*);

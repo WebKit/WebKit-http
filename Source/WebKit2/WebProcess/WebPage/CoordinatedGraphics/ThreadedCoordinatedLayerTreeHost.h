@@ -122,6 +122,7 @@ private:
     virtual void purgeBackingStores() override;
     virtual void renderNextFrame() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
+    virtual void commitPrimeFD(int) override;
 
     // CompositingCoordinator::Client
     virtual void didFlushRootLayer(const WebCore::FloatRect&) override { }
