@@ -79,9 +79,9 @@ public:
     // This method is called to paint the widget as a background of the RenderObject.  A widget's foreground, e.g., the
     // text of a button, is always rendered by the engine itself.  The boolean return value indicates
     // whether the CSS border/background should also be painted.
-    bool paint(const RenderObject&, ControlStates*, const PaintInfo&, const LayoutRect&);
-    bool paintBorderOnly(const RenderObject&, const PaintInfo&, const LayoutRect&);
-    bool paintDecorations(const RenderObject&, const PaintInfo&, const LayoutRect&);
+    bool paint(const RenderBox&, ControlStates&, const PaintInfo&, const LayoutRect&);
+    bool paintBorderOnly(const RenderBox&, const PaintInfo&, const LayoutRect&);
+    bool paintDecorations(const RenderBox&, const PaintInfo&, const LayoutRect&);
 
     // The remaining methods should be implemented by the platform-specific portion of the theme, e.g.,
     // RenderThemeMac.cpp for Mac OS X.
@@ -106,7 +106,7 @@ public:
     // A method to obtain the baseline position for a "leaf" control.  This will only be used if a baseline
     // position cannot be determined by examining child content. Checkboxes and radio buttons are examples of
     // controls that need to do this.
-    virtual int baselinePosition(const RenderObject&) const;
+    virtual int baselinePosition(const RenderBox&) const;
 
     // A method for asking if a control is a container or not.  Leaf controls have to have some special behavior (like
     // the baseline position API above).
@@ -379,7 +379,7 @@ protected:
 #endif
 
 public:
-    void updateControlStatesForRenderer(const RenderObject&, ControlStates*) const;
+    void updateControlStatesForRenderer(const RenderBox&, ControlStates&) const;
     ControlStates::States extractControlStatesForRenderer(const RenderObject&) const;
     bool isActive(const RenderObject&) const;
     bool isChecked(const RenderObject&) const;

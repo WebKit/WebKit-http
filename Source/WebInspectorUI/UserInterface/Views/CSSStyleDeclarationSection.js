@@ -52,6 +52,7 @@ WebInspector.CSSStyleDeclarationSection = function(delegate, style)
     this._selectorElement.addEventListener("mouseout", this._handleMouseOut.bind(this));
     this._selectorElement.addEventListener("keydown", this._handleKeyDown.bind(this));
     this._selectorElement.addEventListener("keyup", this._handleKeyUp.bind(this));
+    this._selectorElement.addEventListener("paste", this._handleSelectorPaste.bind(this));
     this._headerElement.appendChild(this._selectorElement);
 
     this._originElement = document.createElement("span");
@@ -61,7 +62,10 @@ WebInspector.CSSStyleDeclarationSection = function(delegate, style)
     this._propertiesElement = document.createElement("div");
     this._propertiesElement.className = "properties";
 
+    this._editorActive = false;
     this._propertiesTextEditor = new WebInspector.CSSStyleDeclarationTextEditor(this, style);
+    this._propertiesTextEditor.addEventListener(WebInspector.CSSStyleDeclarationTextEditor.Event.ContentChanged, this._editorContentChanged.bind(this));
+    this._propertiesTextEditor.addEventListener(WebInspector.CSSStyleDeclarationTextEditor.Event.Blurred, this._editorBlurred.bind(this));
     this._propertiesElement.appendChild(this._propertiesTextEditor.element);
 
     this._element.appendChild(this._headerElement);
@@ -385,6 +389,11 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
         return !this._style.editable;
     },
 
+    get editorActive()
+    {
+        return this._editorActive;
+    },
+
     // Private
 
     get _currentSelectorText()
@@ -397,6 +406,43 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
             selectorText = this._style.ownerRule.selectorText;
 
         return selectorText.trim();
+    },
+
+    _handleSelectorPaste: function(event)
+    {
+        if (this._style.type === WebInspector.CSSStyleDeclaration.Type.Inline || !this._style.ownerRule)
+            return;
+
+        if (!event || !event.clipboardData)
+            return;
+
+        var data = event.clipboardData.getData("text/plain");
+        if (!data)
+            return;
+
+        function parseTextForRule(text)
+        {
+            var containsBraces = /[\{\}]/;
+            if (!containsBraces.test(text))
+                return null;
+
+            var match = text.match(/([^{]+){(.*)}/);
+            if (!match)
+                return null;
+
+            // If the match "body" contains braces, parse that body as if it were a rule.
+            // This will usually happen if the user includes a media query in the copied text.
+            return containsBraces.test(match[2]) ? parseTextForRule(match[2]) : match;
+        }
+
+        var match = parseTextForRule(data);
+        if (!match)
+            return;
+
+        var selector = match[1].trim();
+        this._selectorElement.textContent = selector;
+        this._style.nodeStyles.changeRule(this._style.ownerRule, selector, match[2]);
+        event.preventDefault();
     },
 
     _handleContextMenuEvent: function(event)
@@ -547,7 +593,22 @@ WebInspector.CSSStyleDeclarationSection.prototype = {
     get _hasInvalidSelector()
     {
         return this._element.classList.contains(WebInspector.CSSStyleDeclarationSection.SelectorInvalidClassName);
+    },
+
+    _editorContentChanged: function(event)
+    {
+        this._editorActive = true;
+    },
+
+    _editorBlurred: function(event)
+    {
+        this._editorActive = false;
+        this.dispatchEventToListeners(WebInspector.CSSStyleDeclarationSection.Event.Blurred);
     }
+};
+
+WebInspector.CSSStyleDeclarationSection.Event = {
+    Blurred: "css-style-declaration-sections-blurred"
 };
 
 WebInspector.CSSStyleDeclarationSection.prototype.__proto__ = WebInspector.StyleDetailsPanel.prototype;

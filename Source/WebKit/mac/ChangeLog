@@ -1,3 +1,140 @@
+2015-08-04  Anders Carlsson  <andersca@apple.com>
+
+        Remove database thread pause code
+        https://bugs.webkit.org/show_bug.cgi?id=147669
+
+        Reviewed by Daniel Bates.
+
+        * Storage/WebDatabaseManager.mm:
+        (WebKitSetWebDatabasePaused): Deleted.
+        * Storage/WebDatabaseManagerInternal.h:
+
+2015-08-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the build.
+
+        * Plugins/WebNetscapePluginStream.h:
+
+2015-08-04  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of ReasonForCallingAllowPlugins since it's not used anywhere
+        https://bugs.webkit.org/show_bug.cgi?id=147648
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getPluginInfo):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+
+2015-08-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement NPAPI redirect handling
+        https://bugs.webkit.org/show_bug.cgi?id=138675
+        rdar://problem/15779101
+
+        Patch by Jeffrey Pfau, updated and tweaked by me.
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        (WebKit::HostedNetscapePluginStream::streamID):
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::didFinishLoading):
+        (WebKit::HostedNetscapePluginStream::willSendRequest):
+        (WebKit::HostedNetscapePluginStream::didReceiveResponse):
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::stop):
+        (WebNetscapePluginStream::willSendRequest):
+        (WebNetscapePluginStream::didReceiveResponse):
+
+2015-08-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unreviewed post-review feedback on r187797
+
+        The correct terminology is "registered" instead of "activated."
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateFontPanel]):
+
+2015-08-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Clean up casts between NSFont*s and CTFontRefs
+        https://bugs.webkit.org/show_bug.cgi?id=147618
+
+        Reviewed by Mitz Pettel
+
+        For toll free bridged types, it makes more sense to do a C-style cast, than jump
+        through hoops for older compilers.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateFontPanel]):
+
+2015-08-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix the Yosemite build after r187797
+
+        Unreviewed.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateFontPanel]):
+
+2015-08-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r184899): Crash when focusing an input element styled with a web font
+        https://bugs.webkit.org/show_bug.cgi?id=147616
+        <rdar://problem/21838271>
+
+        Reviewed by Dean Jackson.
+
+        NSFontManager can't handle web fonts. We used to pass null to NSFontManager in this case,
+        but r184899 changed that.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateFontPanel]):
+
+2015-07-31  Chris Dumez  <cdumez@apple.com>
+
+        Drop dummy Timer callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=147516
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop dummy Timer callbacks in the code base. A lot of Timer callbacks
+        do nothing else beside calling a particular method. In such case, we
+        can use the called method as Timer callback instead.
+
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::WebNetscapePluginStream):
+        (WebNetscapePluginStream::deliverDataTimerFired): Deleted.
+
+2015-07-31  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r174791): Returning a zombie NSImage from sharingService:transitionImageForShareItem:contentRect:
+        <rdar://problem/22060183> and https://bugs.webkit.org/show_bug.cgi?id=147497
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem): Don't return what is basically a temporary NSImage.
+          Instead do a [[retain] autorelease] on it while still valid.
+
+2015-07-29  Dean Jackson  <dino@apple.com>
+
+        Don't use (Details) when exposing SPI
+        https://bugs.webkit.org/show_bug.cgi?id=147426
+        <rdar://problem/22062407>
+
+        Reviewed by Dan Bernstein.
+
+        If we are declaring the interface without any implementation,
+        we should use class extensions.
+
+        * WebView/WebFrameView.mm:
+        * WebView/WebPDFView.mm:
+
 2015-07-29  Andy VanWagoner  <thetalecrafter@gmail.com>
 
         Implement basic types for ECMAScript Internationalization API

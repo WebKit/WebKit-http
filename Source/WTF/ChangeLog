@@ -1,3 +1,218 @@
+2015-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix quirks with CMake and VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147663
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        Build fix after r187908
+
+2015-08-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update Apple Windows build for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147653
+
+        Reviewed by Dean Jackson.
+
+        * WTF.vcxproj/WTF.vcxproj.filters: Drive-by-fix to place files in
+        proper project locations in the IDE.
+        * wtf/Platform.h: Don't define the _HAS_EXCEPTIONS macro when building with
+        Visual Studio 2015.
+
+2015-08-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r187815 and r187817.
+        https://bugs.webkit.org/show_bug.cgi?id=147644
+
+        Caused lots of Windows crashes (Requested by smfr on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Turn tryMakeString(), makeString() into variadic
+        templates"
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+        http://trac.webkit.org/changeset/187815
+
+        "Unreviewed build fix."
+        http://trac.webkit.org/changeset/187817
+
+2015-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Enable WebGL on Windows CMake build.
+        https://bugs.webkit.org/show_bug.cgi?id=143311
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/FeatureDefines.h:
+        Made the CMake feature defines the same as the non-CMake feature defines.
+
+2015-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Introduce COMPILER(GCC_OR_CLANG) guard and make COMPILER(GCC) true only for GCC
+        https://bugs.webkit.org/show_bug.cgi?id=146833
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h: Removed redundant COMPILER(CLANG) guard.
+        * wtf/Atomics.cpp:
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+        (WTF::compilerFence):
+        * wtf/Compiler.h:
+         - Renamed COMPILER(GCC) to COMPILER(GCC_OR_CLANG), because it is true for both compiler.
+         - Added COMPILER(GCC) which is true only for GCC.
+         - Moved all GCC related stuff to one block and removed redundant guards accordingly.
+         - Removed the unused default false definition of GCC_VERSION_AT_LEAST for non GCC compilers.
+        * wtf/ExportMacros.h:
+        * wtf/FastMalloc.h:
+        * wtf/Platform.h:
+        * wtf/StdLibExtras.h:
+        * wtf/Vector.h:
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
+2015-08-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix.
+
+        * wtf/text/StringConcatenate.h: Include <tuple> to avoid missing
+        std::tuple<> class definitions.
+
+2015-08-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Turn tryMakeString(), makeString() into variadic templates
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+
+        Reviewed by Sam Weinig.
+
+        Built upon the original work by Anders Carlsson, Mark Rowe and Sam Weinig.
+
+        Implement tryMakeString() and makeString() as variadic templates, replacing
+        the argument count-based overloads.
+
+        tryMakeString() now constructs a stack-based tuple of necessary StringTypeAdapter
+        objects and utilizes the StringAdapterTuple struct template to operate on that
+        tuple, recursively calling the necessary operations on each element in the tuple.
+        This effectively mimics the process of previous tryMakeString() implementation,
+        but makes it scalable to a tuple of elements that are to be concatenated.
+
+        StringAppend class template now stores two StringTypeAdapter objects for the
+        two passed-in string objects, packed in a tuple, calling
+        StringAdapterTuple<>::createString() directly when concatenating the two objects
+        into one String.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::StringTypeAdapter<char>::length):
+        (WTF::StringTypeAdapter<char>::is8Bit):
+        (WTF::StringAdapterTuple::sumWithOverflow):
+        (WTF::StringAdapterTuple::is8Bit):
+        (WTF::StringAdapterTuple::writeTo):
+        (WTF::StringAdapterTuple::createString):
+        (WTF::tryMakeString):
+        (WTF::makeString):
+        (WTF::sumWithOverflow): Deleted.
+        * wtf/text/StringOperators.h:
+        (WTF::StringAppend::StringAppend):
+        (WTF::StringAppend::operator String):
+        (WTF::StringAppend::is8Bit):
+        (WTF::StringAppend::writeTo):
+        (WTF::StringAppend::length):
+        (WTF::StringAppend::string1):
+        (WTF::StringAppend::string2):
+
+2015-08-03  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to use String::utf8() in the debugger
+        https://bugs.webkit.org/show_bug.cgi?id=147566
+
+        Reviewed by Tim Horton.
+
+        Add a new utf8() overload that doesn't take any parameters and just calls utf8(LenientConversion), since lldb doesn't support evaluating
+        function calls with default parameters at the moment.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::utf8):
+        * wtf/text/WTFString.h:
+
+2015-08-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Investigate HashTable::HashTable(const HashTable&) and HashTable::operator=(const HashTable&) performance for hash-based static analyses
+        https://bugs.webkit.org/show_bug.cgi?id=118455
+
+        Reviewed by Filip Pizlo.
+
+        Previously, when copying a HashTable, we would start from scratch
+        with an empty table and insert elements one by one, growing-rehashing
+        the table as needed.
+
+        With this patch, we have 2 improvements to remove most of the cost.
+
+        First, we compute a good size from the start. This removes all the
+        reallocations and rehashs.
+        This is where the biggest gain comes from.
+
+        The second part is a simpler version of add() when we know that
+        we cannot find a bucket with the same key and there cannot
+        be any deleted bucket.
+        This removes most branches from the hot loop, cutting another 25%
+        of the time.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::addUniqueForInitialization):
+        (WTF::KeyTraits>::HashTable):
+
+2015-08-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        HashTraits<AtomicString> can use SimpleClassHashTraits
+        https://bugs.webkit.org/show_bug.cgi?id=147528
+
+        Reviewed by Andreas Kling.
+
+        No point in duplicating the code inside SimpleClassHashTraits.
+
+        * wtf/text/AtomicStringHash.h:
+        (WTF::HashTraits<WTF::AtomicString>::constructDeletedValue): Deleted.
+        (WTF::HashTraits<WTF::AtomicString>::isDeletedValue): Deleted.
+
+2015-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix compile errors with VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147526
+
+        Reviewed by Myles Maxfield.
+
+        * wtf/StringExtras.h:
+        (snprintf):
+        (wtf_vsnprintf):
+        VS2015 has an implementation of snprintf.
+
+2015-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=146579
+
+        Reviewed by Jon Honeycutt.
+
+        * wtf/StdLibExtras.h:
+        (std::exchange):
+        Added preprocessor macros around functions implemented in VS2015's standard library.
+
+2015-07-30  Chris Dumez  <cdumez@apple.com>
+
+        Mark more classes as fast allocated
+        https://bugs.webkit.org/show_bug.cgi?id=147440
+
+        Reviewed by Sam Weinig.
+
+        Mark more classes as fast allocated for performance. We heap-allocate
+        objects of those types throughout the code base.
+
+        * wtf/Bag.h:
+        * wtf/SegmentedVector.h:
+        * wtf/SentinelLinkedList.h:
+
 2015-07-29  Basile Clement  <basile_clement@apple.com>
 
         Remove native call inlining

@@ -76,8 +76,6 @@ public:
 
     WEBCORE_EXPORT void closeAllDatabases();
 
-    void interruptAllDatabasesForContext(const DatabaseContext*);
-
 private:
     explicit DatabaseTracker(const String& databasePath);
 
@@ -113,8 +111,6 @@ public:
     
     WEBCORE_EXPORT static void emptyDatabaseFilesRemovalTaskWillBeScheduled();
     WEBCORE_EXPORT static void emptyDatabaseFilesRemovalTaskDidFinish();
-    
-    WEBCORE_EXPORT void setDatabasesPaused(bool);
 #endif
     
     void setClient(DatabaseManagerClient*);

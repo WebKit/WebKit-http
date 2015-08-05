@@ -669,6 +669,12 @@
     <ClCompile Include="..\accessibility\AccessibilityTableRow.cpp">
       <Filter>accessibility</Filter>
     </ClCompile>
+    <ClCompile Include="..\accessibility\AccessibilityTree.cpp">
+      <Filter>accessibility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\accessibility\AccessibilityTreeItem.cpp">
+      <Filter>accessibility</Filter>
+    </ClCompile>
     <ClCompile Include="..\accessibility\AXObjectCache.cpp">
       <Filter>accessibility</Filter>
     </ClCompile>
@@ -1725,9 +1731,6 @@
     <ClCompile Include="..\platform\graphics\ca\win\LayerChangesFlusher.cpp">
       <Filter>platform\graphics\ca\win</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\ca\win\LegacyCACFLayerTreeHost.cpp">
-      <Filter>platform\graphics\ca\win</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\graphics\ca\win\PlatformCAAnimationWin.cpp">
       <Filter>platform\graphics\ca\win</Filter>
     </ClCompile>
@@ -2227,9 +2230,6 @@
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\LengthFunctions.cpp">
-      <Filter>css</Filter>
-    </ClCompile>
-    <ClCompile Include="..\css\MediaAllInOne.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\MediaFeatureNames.cpp">
@@ -7670,6 +7670,12 @@
     <ClInclude Include="..\accessibility\AccessibilityTableRow.h">
       <Filter>accessibility</Filter>
     </ClInclude>
+    <ClInclude Include="..\accessibility\AccessibilityTree.h">
+      <Filter>accessibility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\accessibility\AccessibilityTreeItem.h">
+      <Filter>accessibility</Filter>
+    </ClInclude>
     <ClInclude Include="..\accessibility\AXObjectCache.h">
       <Filter>accessibility</Filter>
     </ClInclude>
@@ -8727,9 +8733,6 @@
       <Filter>platform\graphics\ca\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\ca\win\CACFLayerTreeHostClient.h">
-      <Filter>platform\graphics\ca\win</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\ca\win\LegacyCACFLayerTreeHost.h">
       <Filter>platform\graphics\ca\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\ca\win\PlatformCALayerWinInternal.h">

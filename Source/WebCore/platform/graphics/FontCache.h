@@ -71,15 +71,20 @@ struct FontDescriptionKey {
         : size(size)
         , weight(0)
         , flags(0)
+        , localeHash(0)
     { }
     FontDescriptionKey(const FontDescription& description)
         : size(description.computedPixelSize())
         , weight(description.weight())
         , flags(makeFlagKey(description))
+        , localeHash(description.locale().isNull() ? 0 : description.locale().impl()->existingHash())
     { }
     static unsigned makeFlagKey(const FontDescription& description)
     {
-        return static_cast<unsigned>(description.fontSynthesis()) << 6
+        static_assert(USCRIPT_CODE_LIMIT < 0x1000, "Script code must fit in an unsigned along with the other flags");
+        return static_cast<unsigned>(description.script()) << 9
+            | static_cast<unsigned>(description.smallCaps()) << 8
+            | static_cast<unsigned>(description.fontSynthesis()) << 6
             | static_cast<unsigned>(description.widthVariant()) << 4
             | static_cast<unsigned>(description.nonCJKGlyphOrientation()) << 3
             | static_cast<unsigned>(description.orientation()) << 2
@@ -88,7 +93,7 @@ struct FontDescriptionKey {
     }
     bool operator==(const FontDescriptionKey& other) const
     {
-        return size == other.size && weight == other.weight && flags == other.flags;
+        return size == other.size && weight == other.weight && flags == other.flags && localeHash == other.localeHash;
     }
     bool operator!=(const FontDescriptionKey& other) const
     {
@@ -101,6 +106,7 @@ struct FontDescriptionKey {
     unsigned size;
     unsigned weight;
     unsigned flags;
+    unsigned localeHash; // FIXME: Here, and every client of us, makes hashes of hashes.
 };
 
 class FontCache {
@@ -157,8 +163,6 @@ public:
 private:
     FontCache();
     ~FontCache() = delete;
-
-    void purgeTimerFired();
 
     WEBCORE_EXPORT void purgeInactiveFontDataIfNeeded();
 

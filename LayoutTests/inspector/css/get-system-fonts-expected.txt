@@ -1,4 +1,7 @@
-Has at least 5 fonts: true
-PASS: Includes Arial
-PASS: Includes Times
+This test ensures that the inspector can enumerate system font families, and checks for the existance of common fonts.
+
+Includes Arial
+Includes Times
+Missing DejaVu Sans
+Missing Liberation Serif
 

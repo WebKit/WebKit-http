@@ -77,6 +77,10 @@
 #include "ContentFilter.h"
 #endif
 
+#if HAVE(PARENTAL_CONTROLS)
+#include "ParentalControlsContentFilter.h"
+#endif
+
 namespace WebCore {
 
 static void cancelAll(const ResourceLoaderMap& loaders)
@@ -549,10 +553,23 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (!redirectResponse.isNull()) {
         // We checked application cache for initial URL, now we need to check it for redirected one.
         ASSERT(!m_substituteData.isValid());
-        m_applicationCacheHost->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
+
+        bool shouldTryApplicationCache = true;
+
+#if HAVE(PARENTAL_CONTROLS)
+        // There are poor interactions between the ApplicationCache and parental controls (<rdar://problem/22123707>)
+        // so, for now, don't use the AppCache for redirects if parental controls are enabled.
+        if (ParentalControlsContentFilter::enabled())
+            shouldTryApplicationCache = false;
+#endif
+
+        if (shouldTryApplicationCache)
+            m_applicationCacheHost->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
+
         if (m_substituteData.isValid()) {
             RELEASE_ASSERT(m_mainResource);
-            m_identifierForLoadWithoutResourceLoader = m_mainResource->identifierForLoadWithoutResourceLoader();
+            ResourceLoader* loader = m_mainResource->loader();
+            m_identifierForLoadWithoutResourceLoader = loader ? loader->identifier() : m_mainResource->identifierForLoadWithoutResourceLoader();
         }
     }
 
@@ -1352,20 +1369,20 @@ void DocumentLoader::removeSubresourceLoader(ResourceLoader* loader)
         frame->loader().checkLoadComplete();
 }
 
-void DocumentLoader::addPlugInStreamLoader(ResourceLoader* loader)
+void DocumentLoader::addPlugInStreamLoader(ResourceLoader& loader)
 {
-    ASSERT(loader->identifier());
-    ASSERT(!m_plugInStreamLoaders.contains(loader->identifier()));
+    ASSERT(loader.identifier());
+    ASSERT(!m_plugInStreamLoaders.contains(loader.identifier()));
 
-    m_plugInStreamLoaders.add(loader->identifier(), loader);
+    m_plugInStreamLoaders.add(loader.identifier(), &loader);
 }
 
-void DocumentLoader::removePlugInStreamLoader(ResourceLoader* loader)
+void DocumentLoader::removePlugInStreamLoader(ResourceLoader& loader)
 {
-    ASSERT(loader->identifier());
-    ASSERT(loader == m_plugInStreamLoaders.get(loader->identifier()));
+    ASSERT(loader.identifier());
+    ASSERT(&loader == m_plugInStreamLoaders.get(loader.identifier()));
 
-    m_plugInStreamLoaders.remove(loader->identifier());
+    m_plugInStreamLoaders.remove(loader.identifier());
     checkLoadComplete();
 }
 
@@ -1418,7 +1435,17 @@ void DocumentLoader::startLoadingMainResource()
     if (!m_frame || m_request.isNull())
         return;
 
-    m_applicationCacheHost->maybeLoadMainResource(m_request, m_substituteData);
+    bool shouldTryApplicationCache = true;
+
+#if HAVE(PARENTAL_CONTROLS)
+    // There are poor interactions between the ApplicationCache and parental controls (<rdar://problem/22123707>)
+    // so, for now, don't use the AppCache for redirects if parental controls are enabled.
+    if (ParentalControlsContentFilter::enabled())
+        shouldTryApplicationCache = false;
+#endif
+
+    if (shouldTryApplicationCache)
+        m_applicationCacheHost->maybeLoadMainResource(m_request, m_substituteData);
 
     if (m_substituteData.isValid()) {
         m_identifierForLoadWithoutResourceLoader = m_frame->page()->progress().createUniqueIdentifier();

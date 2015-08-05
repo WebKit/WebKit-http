@@ -1885,6 +1885,14 @@
             "mattbaker@apple.com"
          ]
       },
+      "Matt Daiter" : {
+         "emails" : [
+            "mdaiter@apple.com"
+         ],
+         "nicks" : [
+            "mdaiter"
+         ]
+      },
       "Matt Delaney" : {
          "emails" : [
             "mdelaney@apple.com"
@@ -2448,14 +2456,6 @@
          "expertise" : "The EFLWebKit Port",
          "nicks" : [
             "ryuan"
-         ]
-      },
-      "Saam Barati" : {
-         "emails" : [
-            "saambarati1@gmail.com"
-         ],
-         "nicks" : [
-            "saamyjoon"
          ]
       },
       "Sadrul Habib Chowdhury" : {
@@ -3360,14 +3360,6 @@
             "hmartin"
          ]
       },
-      "Matt Daiter" : {
-         "emails" : [
-            "mdaiter@apple.com"
-         ],
-         "nicks" : [
-            "mdaiter"
-         ]
-      },
       "Mihai Balan" : {
          "emails" : [
             "mibalan@adobe.com"
@@ -3805,7 +3797,6 @@
       },
       "Brian Burg" : {
          "emails" : [
-            "burg@cs.washington.edu",
             "bburg@apple.com"
          ],
          "expertise" : "Developer Tools, Web Inspector",
@@ -4661,6 +4652,14 @@
          "expertise" : "HTML DOM, Core DOM, DOM Bindings (JavaScript, Objective-C and COM), Security, DumpRenderTree",
          "nicks" : [
             "weinig"
+         ]
+      },
+      "Saam Barati" : {
+         "emails" : [
+            "saambarati1@gmail.com"
+         ],
+         "nicks" : [
+            "saamyjoon"
          ]
       },
       "Sergio Villar Senin" : {
