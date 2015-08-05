@@ -33,11 +33,14 @@
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
-#include <WebCore/WaylandSurfaceWPE.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Threading.h>
+
+#if PLATFORM(GBM)
+#include <WebCore/GBMSurface.h>
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
@@ -110,7 +113,7 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
-    std::unique_ptr<WebCore::WaylandSurface> m_waylandSurface;
+    std::unique_ptr<WebCore::GBMSurface> m_gbmSurface;
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
@@ -124,7 +127,9 @@ private:
     ThreadCondition m_terminateRunLoopCondition;
     Mutex m_terminateRunLoopConditionMutex;
 
+#if 0
     static const struct wl_callback_listener m_frameListener;
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {

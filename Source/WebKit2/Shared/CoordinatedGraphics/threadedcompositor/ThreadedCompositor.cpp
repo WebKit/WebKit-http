@@ -29,7 +29,7 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/PlatformDisplayWayland.h>
+#include <WebCore/PlatformDisplayGBM.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
@@ -250,14 +250,20 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
-    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
-    if (!m_waylandSurface)
-        return 0;
-    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
-    setNativeSurfaceHandleForCompositing(0);
+    RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
 
-    m_context = m_waylandSurface->createGLContext();
+    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
+    if (!m_gbmSurface)
+        return 0;
+
+    fprintf(stderr, "ThreadedCompositor::glContext(): surface %p\n", m_gbmSurface.get());
+/*
+    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
+
+*/
+    setNativeSurfaceHandleForCompositing(0);
+    m_context = m_gbmSurface->createGLContext();
+    fprintf(stderr, "ThreadedCompositor::glContext(): context %p\n", m_context.get());
     return m_context.get();
 }
 
@@ -275,8 +281,8 @@ void ThreadedCompositor::didChangeVisibleRect()
         protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
-    if (m_waylandSurface)
-        m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
+    // if (m_waylandSurface)
+    //     m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -297,8 +303,15 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
-    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
+    // wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
+    int primeFD = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
+    if (primeFD > 0) {
+        RefPtr<ThreadedCompositor> protector(this);
+        callOnMainThread([protector, primeFD] {
+            protector->m_client->commitPrimeFD(primeFD);
+        });
+    }
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
@@ -386,6 +399,7 @@ static void debugThreadedCompositorFPS()
     }
 }
 
+#if 0
 const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
     // frame
     [](void* data, struct wl_callback* callback, uint32_t) {
@@ -399,6 +413,7 @@ const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
         threadedCompositor.m_compositingRunLoop->updateCompleted();
     }
 };
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
