@@ -429,6 +429,9 @@ public:
     void setSession(MediaSession*);
 
     void setShouldDuck(bool);
+
+    static HTMLMediaElement* elementWithID(uint64_t);
+    uint64_t elementID() const { return m_elementID; }
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -511,6 +514,7 @@ private:
     void resume() override;
     void stop() override;
     void stopWithoutDestroyingMediaPlayer();
+    virtual void contextDestroyed() override;
     
     virtual void mediaVolumeDidChange() override;
 
@@ -829,6 +833,7 @@ private:
     String m_kind;
     RefPtr<MediaSession> m_session;
     bool m_shouldDuck { false };
+    uint64_t m_elementID;
 #endif
 
 #if ENABLE(MEDIA_SOURCE)

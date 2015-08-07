@@ -40,11 +40,6 @@ Ref<ThreadSafeCoordinatedSurface> ThreadSafeCoordinatedSurface::create(const Int
     return adoptRef(*new ThreadSafeCoordinatedSurface(size, flags, ImageBuffer::create(size)));
 }
 
-Ref<ThreadSafeCoordinatedSurface> ThreadSafeCoordinatedSurface::create(const IntSize& size, CoordinatedSurface::Flags flags, std::unique_ptr<ImageBuffer> buffer)
-{
-    return adoptRef(*new ThreadSafeCoordinatedSurface(size, flags, WTF::move(buffer)));
-}
-
 ThreadSafeCoordinatedSurface::ThreadSafeCoordinatedSurface(const IntSize& size, CoordinatedSurface::Flags flags, std::unique_ptr<ImageBuffer> buffer)
     : CoordinatedSurface(size, flags)
     , m_imageBuffer(WTF::move(buffer))

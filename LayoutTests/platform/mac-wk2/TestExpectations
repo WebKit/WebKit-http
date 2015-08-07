@@ -1,6 +1,16 @@
 # This file should contain entries for expectations that are specific
 # to the Apple Mac port running the WebKit2 variant (--webkit-test-runner)
 
+#//////////////////////////////////////////////////////////////////////////////////////////
+# Platform-specific directories. Skipped globally, then re-enabled here.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
+tiled-drawing [ Pass ]
+
+#//////////////////////////////////////////////////////////////////////////////////////////
+# End platform-specific directories.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
 ###### This file has seven sections. When adding new tests, make sure to
 ###### add to the correct section:
 
@@ -101,8 +111,8 @@ http/tests/local/drag-over-remote-content.html
 http/tests/misc/bubble-drag-events.html
 http/tests/security/drag-drop-same-unique-origin.html
 http/tests/security/drag-over-remote-content-iframe.html
-platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html
-platform/mac/editing/pasteboard/drag-selections-to-contenteditable.html
+editing/mac/pasteboard/dataTransfer-set-data-file-url.html
+editing/mac/pasteboard/drag-selections-to-contenteditable.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
 editing/pasteboard/drag-drop-paragraph-crasher.html
 
@@ -129,20 +139,20 @@ webkit.org/b/105616 editing/spelling/spelling-with-punctuation-selection.html
 webkit.org/b/105616 editing/spelling/spelling-with-whitespace-selection.html
 webkit.org/b/105616 editing/spelling/grammar.html
 webkit.org/b/105616 editing/spelling/markers.html
-webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-delete.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-removing-underline-after-paste.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-removing-underline.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-simple.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-with-multi-line-text.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/click-autocorrected-word.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/delete-autocorrected-word-1.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/delete-autocorrected-word-2.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/delete-into-autocorrected-word.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/editing-word-with-marker-1.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/forward-delete-into-autocorrected-word.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-autocorrected-word.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-beginning-of-autocorrected-word.html [ Failure ]
-webkit.org/b/105616 platform/mac/editing/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/autocorrection-delete.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/autocorrection-removing-underline-after-paste.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/autocorrection-removing-underline.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/autocorrection-simple.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/autocorrection-with-multi-line-text.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/click-autocorrected-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/delete-autocorrected-word-1.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/delete-autocorrected-word-2.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/delete-into-autocorrected-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/editing-word-with-marker-1.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/forward-delete-into-autocorrected-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/move-cursor-to-autocorrected-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/move-cursor-to-beginning-of-autocorrected-word.html [ Failure ]
+webkit.org/b/105616 editing/mac/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -158,15 +168,15 @@ webkit.org/b/81833 fast/events/drag-and-drop-link-into-focused-contenteditable.h
 
 # Missing functionality of textInputController
 # https://bugs.webkit.org/show_bug.cgi?id=89401
-platform/mac/editing/input/insert-dictated-text.html
-platform/mac/editing/input/crash-for-empty-text-alternative.html
-platform/mac/editing/input/edit-dictated-text-with-alternative.html
-platform/mac/editing/attributed-string/
+editing/mac/input/insert-dictated-text.html
+editing/mac/input/crash-for-empty-text-alternative.html
+editing/mac/input/edit-dictated-text-with-alternative.html
+editing/mac/attributed-string/
 
 # This test times out on Mac WK2 every time.
 webkit.org/b/89199 editing/spelling/grammar-edit-word.html [ Skip ]
 
-webkit.org/b/90156 platform/mac/editing/spelling/autocorrection-blockquote-crash.html [ Failure ]
+webkit.org/b/90156 editing/mac/spelling/autocorrection-blockquote-crash.html [ Failure ]
 
 webkit.org/b/95043 http/tests/security/local-user-CSS-from-remote.html [ Failure ]
 
@@ -225,15 +235,15 @@ webkit.org/b/122235 css3/masking/mask-repeat-space-border.html [ ImageOnlyFailur
 webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initialization-multiple.html [ Pass Failure ]
 
 # uiElementForSearchPredicate() is not returning an undefined object when the search returns no results
-webkit.org/b/125996 platform/mac/accessibility/search-when-element-starts-in-table.html [ Failure ]
+webkit.org/b/125996 accessibility/mac/search-when-element-starts-in-table.html [ Failure ]
 
 webkit.org/b/134550 [ Mavericks Yosemite ] http/tests/cache/iframe-304-crash.html [ Pass Failure ]
 
 # testRunner.setUseDeferredFrameLoading is not implemented.
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
 
-webkit.org/b/136554 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
-webkit.org/b/139901 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
+webkit.org/b/136554 tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
+webkit.org/b/139901 tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
 
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Timeout ]
 webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Timeout ]
@@ -244,10 +254,8 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 webkit.org/b/147075 [ Release Yosemite ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure ]
 
-webkit.org/b/143548 [ Debug Yosemite ] inspector/console/command-line-api.html [ Slow ]
-
-webkit.org/b/147300 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
-webkit.org/b/147300 platform/mac-wk2/tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
+webkit.org/b/147300 tiled-drawing/scrolling/frames/frameset-frame-scrollability.html [ Pass Failure ]
+webkit.org/b/147300 tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability.html [ Pass Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -286,7 +294,7 @@ svg/W3C-SVG-1.1/fonts-elem-04-b.svg [ Failure ]
 editing/secure-input/password-input-focusing-to-different-frame.html [ Failure ]
 
 # textInputController.hasMarkedText is implemented, but gives a wrong result for some reason.
-platform/mac/editing/input/unconfirmed-text-navigation-with-page-cache.html [ Failure ]
+editing/mac/input/unconfirmed-text-navigation-with-page-cache.html [ Failure ]
 
 # test results in DRT don't match in browser behavior, test seems broken
 fast/dom/Window/mozilla-focus-blur.html [ Pass Failure ]
@@ -515,8 +523,6 @@ webkit.org/b/141325 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abo
 webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Timeout ]
 
 webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout ]
-
-webkit.org/b/147229 [ Yosemite ] inspector/css/modify-rule-selector.html [ Pass Timeout ]
 
 ### END OF (7) New WebKit2-only failures in Yosemite
 ########################################

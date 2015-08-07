@@ -2,6 +2,17 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
+#//////////////////////////////////////////////////////////////////////////////////////////
+# Platform-specific directories. Skipped globally, then re-enabled here.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
+accessibility/mac [ Pass ]
+editing/mac [ Pass ]
+
+#//////////////////////////////////////////////////////////////////////////////////////////
+# End platform-specific directories.
+#//////////////////////////////////////////////////////////////////////////////////////////
+
 # <rdar://problem/5647952> fast/events/mouseout-on-window.html needs mac DRT to issue mouse out events
 fast/events/mouseout-on-window.html [ Failure ]
 
@@ -57,7 +68,7 @@ fast/events/touch
 # No button tracked
 fast/events/mouseover-button.html
 
-webkit.org/b/33923 platform/mac/accessibility/change-notification-on-scroll.html [ Skip ] # times out
+webkit.org/b/33923 accessibility/mac/change-notification-on-scroll.html [ Skip ] # times out
 
 # eventSender needs to propagate the event to the calling window, not the main frame always.
 http/tests/plugins/plugin-document-has-focus.html
@@ -359,7 +370,7 @@ fast/events/show-modal-dialog-onblur-onfocus.html [ Skip ]
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
 platform/mac/fast/overflow/overflow-scrollbar-hit-test.html [ Failure ]
 
-[ Mavericks ] platform/mac/accessibility/form-control-value-settable.html [ Failure ]
+[ Mavericks ] accessibility/mac/form-control-value-settable.html [ Failure ]
 platform/mac/fast/forms/input-appearance-spinbutton-up.html [ Failure ]
 platform/mac/fast/forms/input-appearance-spinbutton.html [ Failure ]
 platform/mac/fast/text/vertical-no-sideways.html [ Pass Failure ]
@@ -415,7 +426,8 @@ webkit.org/b/95027 fast/block/float/016.html [ Failure ]
 # https://bugs.webkit.org/show_bug.cgi?id=93878
 # Due to JSC::Bindings::Instance::createRuntimeObject(JSC::ExecState*) crashes:
 editing/pasteboard/paste-TIFF.html [ Skip ]
-platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html [ Skip ]
+editing/mac/pasteboard/dataTransfer-set-data-file-url.html [ Skip ]
+webkit.org/b/147674 editing/mac/pasteboard/5583362.html [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=94458
 # Assertion failure in MessagePort::contextDestroyed, usually attributed to later tests
@@ -477,9 +489,9 @@ webkit.org/b/96828 webgl/1.0.2/conformance/extensions/oes-vertex-array-object.ht
 
 http/tests/misc/willCacheResponse-delegate-callback.html [ Failure ]
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
-platform/mac/accessibility/selection-value-changes-for-aria-textbox.html [ Failure ]
+accessibility/mac/selection-value-changes-for-aria-textbox.html [ Failure ]
 
-platform/mac/accessibility/search-with-frames.html [ Pass Failure ]
+accessibility/mac/search-with-frames.html [ Pass Failure ]
 
 # --- Plugins ---
 # WebKit1 OOP plug-ins: Can't evaluate JavaScript from NPP_Destroy.
@@ -655,7 +667,7 @@ webkit.org/b/104954 http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyF
 
 webkit.org/b/104962 platform/mac/fast/loader/file-url-mimetypes-2.html [ Failure ]
 
-webkit.org/b/105777 platform/mac/editing/spelling/autocorrection-in-textarea.html [ Failure Pass ]
+webkit.org/b/105777 editing/mac/spelling/autocorrection-in-textarea.html [ Failure Pass ]
 
 # Enable when support drag-and-drop autoscrolling
 webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
@@ -757,7 +769,7 @@ webkit.org/b/73304 fast/forms/select/menulist-popup-crash.html [ Skip ]
 webkit.org/b/113220 fast/forms/select/popup-closes-on-blur.html [ Skip ]
 webkit.org/b/74384 fast/forms/select/menulist-onchange-fired-with-key-up-down.html [ WontFix ] # Additionally, this is not an expected behavior on Mac.
 
-webkit.org/b/123029 [ Debug ] platform/mac/editing/attributed-string [ Pass Crash ]
+webkit.org/b/123029 [ Debug ] editing/mac/attributed-string [ Pass Crash ]
 
 webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Failure ]
 
@@ -801,7 +813,7 @@ webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 webkit.org/b/129758 js/dom/create-lots-of-workers.html [ Skip ]
 
 # This test fails because the structure of mfenced/mo operators was changed in bug 124838.
-webkit.org/b/124836 platform/mac/accessibility/mathml-elements.html [ Failure ]
+webkit.org/b/124836 accessibility/mac/mathml-elements.html [ Failure ]
 
 webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
 
@@ -993,13 +1005,6 @@ webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 
 webkit.org/b/140639 http/tests/media/video-play-waiting.html [ Pass Timeout ]
 
-# ENABLE(MEDIA_SESSION) is disabled
-media/session/content-interruptions.html
-media/session/controls-existence.html
-media/session/default-session.html
-media/session/transient-interruptions.html
-media/session/transient-solo-interruptions.html
-
 # This test requires generation of progress events during loading
 webkit.org/b/100984 media/progress-events-generated-correctly.html [ Failure ]
 
@@ -1077,14 +1082,10 @@ webkit.org/b/139708 http/tests/media/video-buffered-range-contains-currentTime.h
 
 webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
-# Some inspector tests failing after r173992
-webkit.org/b/137157 [ Release ] inspector/page/main-frame-resource.html [ Pass Failure ]
-[ Debug ] inspector/page/main-frame-resource.html [ Pass Failure Slow ]
-
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass Timeout ]
 
 # FIXME: Needs bugzilla (<rdar://problem/15971968>)
-[ Yosemite+ ] platform/mac/accessibility/misspelled-attributed-string.html [ Pass Failure ]
+[ Yosemite+ ] accessibility/mac/misspelled-attributed-string.html [ Pass Failure ]
 
 # FIXME: Needs bugzilla (<rdar://problem/16040720>)
 [ Yosemite+ ] canvas/philip/tests/2d.drawImage.animated.poster.html [ Pass Failure ]
@@ -1148,7 +1149,7 @@ webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-multiple.html [ Pass ImageOn
 webkit.org/b/132766 [ Yosemite ] fast/hidpi/filters-reference.html [ Pass ImageOnlyFailure ]
 
 # FIXME: Needs bugzilla
-platform/mac/editing/input/undo-grouping-on-text-insertion.html [ Skip ]
+editing/mac/input/undo-grouping-on-text-insertion.html [ Skip ]
 
 # FIXME: Needs bugzilla (<rdar://problem/17890720>)
 [ Yosemite+ ] fast/dom/Geolocation/requestQueuingForHiddenPage.html [ Skip ]
@@ -1162,16 +1163,6 @@ webkit.org/b/136109 [ Yosemite+ ] fast/multicol/mixed-opacity-fixed-test.html  [
 
 # FIXME: Needs bugzilla (<rdar://problem/18273139>)
 [ Yosemite+ ] storage/websql/sql-error-codes.html [ Failure ]
-
-# Also, these tests are flaky in Debug/Release builds, <https://bugs.webkit.org/show_bug.cgi?id=138636>
-# and <https://bugs.webkit.org/show_bug.cgi?id=129817>.
-[ Yosemite+ ] inspector/css/matched-style-properties.html [ Pass Timeout ]
-[ Yosemite+ ] inspector/css/pseudo-element-matches.html [ Pass Timeout ]
-[ Yosemite+ ] inspector/css/selector-specificity.html [ Pass Timeout Crash ]
-[ Yosemite+ ] inspector/dom/content-flow-content-removal.html [ Skip ]
-[ Yosemite+ ] inspector/dom/content-flow-list.html [ Skip ]
-[ Yosemite+ ] inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
-[ Yosemite+ ] inspector/test-harness-trivially-works.html [ Skip ]
 
 # Specific to Yosemite's font fallback
 webkit.org/b/138328 [ Mavericks ] platform/mac/fast/text/font-cursive-italic-cjk.html [ Skip ]
@@ -1226,12 +1217,6 @@ webkit.org/b/137100 svg/text/text-vkern.svg [ Failure ]
 
 # Sometimes has an extra space at the end
 fast/forms/focus-selection-textarea.html [ Pass Failure ]
-
-# webkit.org/b/141252 [ Release Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Slow ]
-# webkit.org/b/141252 [ Debug Yosemite+ ] inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
-webkit.org/b/141118 inspector/css/selector-dynamic-specificity.html [ Skip ]
-
-webkit.org/b/141601 inspector/css/stylesheet-with-mutations.html [ Skip ]
 
 webkit.org/b/141534 [ Yosemite ] media/video-load-networkState.html [ Pass Crash ]
 
@@ -1300,9 +1285,6 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
 # <rdar://problem/21857102>
 [ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
-
-webkit.org/b/147299 platform/mac/accessibility/aria-liveregions-notifications-always-sent.html [ Pass Failure ]
-webkit.org/b/147299 platform/mac/accessibility/aria-liveregions-notifications.html [ Pass Failure ]
 
 # rdar://problem/22014672
 [ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.destination-atop.html [ Pass Failure ]

@@ -55,17 +55,17 @@ LengthSize ThemeWPE::controlSize(ControlPart part, const FontCascade& fontCascad
     return Theme::controlSize(part, fontCascade, zoomedSize, zoomFactor);
 }
 
-void ThemeWPE::paint(ControlPart part, ControlStates* states, GraphicsContext* context, const FloatRect& zoomedRect, float zoomFactor, ScrollView*, float, float)
+void ThemeWPE::paint(ControlPart part, ControlStates& states, GraphicsContext* context, const FloatRect& zoomedRect, float zoomFactor, ScrollView*, float, float)
 {
     switch (part) {
     case CheckboxPart:
-        paintCheckbox(*states, *context, zoomedRect, zoomFactor);
+        paintCheckbox(states, *context, zoomedRect, zoomFactor);
         break;
     case RadioPart:
-        paintRadio(*states, *context, zoomedRect, zoomFactor);
+        paintRadio(states, *context, zoomedRect, zoomFactor);
         break;
     case PushButtonPart:
-        paintButton(*states, *context, zoomedRect, zoomFactor);
+        paintButton(states, *context, zoomedRect, zoomFactor);
         break;
     default:
         break;

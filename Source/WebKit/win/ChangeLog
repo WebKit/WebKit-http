@@ -1,3 +1,57 @@
+2015-08-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Update Apple Windows build for VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147653
+
+        Reviewed by Dean Jackson.
+
+        * WebView.cpp:
+        (WebView::setCacheModel): Add explicit 'get' to satisfy compiler.
+
+2015-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r187886.
+
+        * Plugins/PluginStream.h:
+        Befriend PluginView.
+
+2015-08-04  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of ReasonForCallingAllowPlugins since it's not used anywhere
+        https://bugs.webkit.org/show_bug.cgi?id=147648
+
+        Reviewed by Andreas Kling.
+
+        * WebView.cpp:
+        (WebView::canShowMIMEType):
+
+2015-08-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Implement NPAPI redirect handling
+        https://bugs.webkit.org/show_bug.cgi?id=138675
+        rdar://problem/15779101
+
+        Patch by Jeffrey Pfau, updated and tweaked by me.
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/PluginStream.cpp:
+        (WebCore::PluginStream::sendJavaScriptStream):
+        (WebCore::PluginStream::willSendRequest):
+        (WebCore::PluginStream::didReceiveResponse):
+        * Plugins/PluginStream.h:
+
+2015-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Fix compile errors with VS2015
+        https://bugs.webkit.org/show_bug.cgi?id=147526
+
+        Reviewed by Myles Maxfield.
+
+        * WebKitDLL.cpp:
+        (shutDownWebKit):
+        (loadResourceIntoBuffer): Needs to be exported from WebKit.dll to link with CMake using VS2015.
+
 2015-07-27  Alex Christensen  <achristensen@webkit.org>
 
         Use Ninja on Windows.

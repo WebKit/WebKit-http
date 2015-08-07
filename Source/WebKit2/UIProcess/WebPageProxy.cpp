@@ -160,6 +160,7 @@
 #endif
 
 #if ENABLE(MEDIA_SESSION)
+#include "WebMediaSessionFocusManager.h"
 #include "WebMediaSessionMetadata.h"
 #include <WebCore/MediaSessionMetadata.h>
 #endif
@@ -1574,16 +1575,6 @@ void WebPageProxy::setEditable(bool editable)
 #if !PLATFORM(IOS)
 void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
 {
-}
-#endif
-
-#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-void WebPageProxy::commitPageTransitionViewport()
-{
-    if (!isValid())
-        return;
-
-    process().send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
 }
 #endif
 
@@ -3797,6 +3788,13 @@ void WebPageProxy::didRenderFrame(const WebCore::IntSize& contentsSize, const We
     m_pageClient.didRenderFrame(contentsSize, coveredRect);
 }
 
+void WebPageProxy::commitPageTransitionViewport()
+{
+    if (!isValid())
+        return;
+
+    process().send(Messages::WebPage::CommitPageTransitionViewport(), m_pageID);
+}
 #endif
 
 void WebPageProxy::didChangeViewportProperties(const ViewportAttributes& attr)
@@ -3883,6 +3881,19 @@ void WebPageProxy::handleMediaEvent(MediaEventType eventType)
         return;
     
     m_process->send(Messages::WebPage::HandleMediaEvent(eventType), m_pageID);
+}
+
+void WebPageProxy::isMediaElementPaused(uint64_t elementID, RefPtr<UnsignedCallback> callback)
+{
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    uint64_t callbackID = callback->callbackID();
+    m_callbacks.put(callback);
+
+    m_process->send(Messages::WebPage::IsMediaElementPaused(elementID, callbackID), m_pageID);
 }
 #endif
 
@@ -5963,6 +5974,13 @@ void WebPageProxy::mediaSessionMetadataDidChange(const WebCore::MediaSessionMeta
 {
     Ref<WebMediaSessionMetadata> webMetadata = WebMediaSessionMetadata::create(metadata);
     m_uiClient->mediaSessionMetadataDidChange(*this, webMetadata.ptr());
+}
+
+void WebPageProxy::focusedContentMediaElementDidChange(uint64_t elementID)
+{
+    WebMediaSessionFocusManager* focusManager = process().processPool().supplement<WebMediaSessionFocusManager>();
+    ASSERT(focusManager);
+    focusManager->setFocusedMediaElement(*this, elementID);
 }
 #endif
 

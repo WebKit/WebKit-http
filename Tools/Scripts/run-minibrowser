@@ -52,22 +52,6 @@ if (isGtk() || isEfl()) {
     @jhbuildWrapper = jhbuildWrapperPrefixIfNeeded();
     print "Starting MiniBrowser.\n";
     exec @jhbuildWrapper, $launcherPath, @ARGV or die;
-} elsif (isWPE()) {
-    # Check to see that all the frameworks are built.
-    checkFrameworks();
-
-    my $url = "http://www.webkitgtk.org";
-    GetOptions("url=s" => \$url);
-
-    $ENV{WEBKIT_EXEC_PATH} = catdir(productDir(), "bin");
-    $ENV{WPE_SHELL_URL} = $url;
-    $ENV{WPE_SHELL_MOUSE_CURSOR} = 1;
-
-    $launcherPath = catdir(productDir(), "bin", "WPELauncher");
-    die "Can't find $launcherPath" unless -x $launcherPath;
-    @jhbuildWrapper = jhbuildWrapperPrefixIfNeeded();
-    print "Starting WPELauncher.\n";
-    exec @jhbuildWrapper, $launcherPath, @ARGV or die;
 } elsif (isAppleMacWebKit()) {
     printHelpAndExitForRunAndDebugWebKitAppIfNeeded();
     exit exitStatus(runMiniBrowser());

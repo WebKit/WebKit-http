@@ -78,6 +78,10 @@ private:
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
 #endif
 
+#if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) override { };
+#endif
+
     // IPC message handlers.
     virtual void updateBackingStoreState(uint64_t backingStoreStateID, bool respondImmediately, float deviceScaleFactor, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset) override;
     virtual void didUpdate() override;

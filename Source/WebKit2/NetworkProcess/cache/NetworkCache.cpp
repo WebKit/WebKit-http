@@ -113,7 +113,7 @@ static Key makeCacheKey(const WebCore::ResourceRequest& request)
     // FIXME: This implements minimal Range header disk cache support. We don't parse
     // ranges so only the same exact range request will be served from the cache.
     String range = request.httpHeaderField(WebCore::HTTPHeaderName::Range);
-    return { request.httpMethod(), partition, range, request.url().string()  };
+    return { partition, range, request.url().string() };
 }
 
 static String headerValueForVary(const WebCore::ResourceRequest& request, const String& headerName)
@@ -482,7 +482,7 @@ void Cache::dumpContentsToFile()
     if (!m_storage)
         return;
     auto fd = WebCore::openFile(dumpFilePath(), WebCore::OpenForWrite);
-    if (!fd)
+    if (!WebCore::isHandleValid(fd))
         return;
     auto prologue = String("{\n\"entries\": [\n").utf8();
     WebCore::writeToFile(fd, prologue.data(), prologue.length());

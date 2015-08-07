@@ -288,6 +288,27 @@ HashSet<HTMLMediaElement*>& HTMLMediaElement::allMediaElements()
     return elements;
 }
 
+#if ENABLE(MEDIA_SESSION)
+typedef HashMap<uint64_t, HTMLMediaElement*> IDToElementMap;
+
+static IDToElementMap& elementIDsToElements()
+{
+    static NeverDestroyed<IDToElementMap> map;
+    return map;
+}
+
+HTMLMediaElement* HTMLMediaElement::elementWithID(uint64_t id)
+{
+    return elementIDsToElements().get(id);
+}
+
+static uint64_t nextElementID()
+{
+    static uint64_t elementID = 0;
+    return ++elementID;
+}
+#endif
+
 HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLElement(tagName, document)
     , ActiveDOMObject(&document)
@@ -416,6 +437,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #endif
 
 #if ENABLE(MEDIA_SESSION)
+    m_elementID = nextElementID();
+    elementIDsToElements().add(m_elementID, this);
+
     setSessionInternal(document.defaultMediaSession());
 #endif
 
@@ -920,7 +944,7 @@ void HTMLMediaElement::load()
     
     if (!m_mediaSession->dataLoadingPermitted(*this))
         return;
-    if (ScriptController::processingUserGesture())
+    if (ScriptController::processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
     prepareForLoad();
@@ -2119,6 +2143,10 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             downcast<MediaDocument>(document()).mediaElementNaturalSizeChanged(expandedIntSize(m_player->naturalSize()));
 
         logMediaLoadRequest(document().page(), m_player->engineDescription(), String(), true);
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+        updateMediaState(UpdateMediaState::Asynchronously);
+#endif
     }
 
     bool shouldUpdateDisplayState = false;
@@ -2839,7 +2867,7 @@ void HTMLMediaElement::play()
 
     if (!m_mediaSession->playbackPermitted(*this))
         return;
-    if (ScriptController::processingUserGesture())
+    if (ScriptController::processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
     playInternal();
@@ -2853,7 +2881,7 @@ void HTMLMediaElement::playInternal()
         LOG(Media, "  returning because of interruption");
         return;
     }
-    
+
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY)
         scheduleDelayedAction(LoadMediaResource);
@@ -2886,7 +2914,12 @@ void HTMLMediaElement::playInternal()
         if (m_readyState == HAVE_ENOUGH_DATA || m_readyState == HAVE_FUTURE_DATA) {
             if (m_session) {
                 m_session->addActiveMediaElement(*this);
-                
+
+                if (m_session->kindEnum() == MediaSession::Kind::Content) {
+                    if (Page* page = document().page())
+                        page->chrome().client().focusedContentMediaElementDidChange(m_elementID);
+                }
+
                 if (!m_session->invoke()) {
                     pause();
                     return;
@@ -2919,7 +2952,7 @@ void HTMLMediaElement::pauseInternal()
         LOG(Media, "  returning because of interruption");
         return;
     }
-    
+
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY) {
         // Unless the restriction on media requiring user action has been lifted
@@ -4908,6 +4941,15 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     updateSleepDisabling();
 }
 
+void HTMLMediaElement::contextDestroyed()
+{
+    m_seekTaskQueue.close();
+    m_resizeTaskQueue.close();
+    m_shadowDOMTaskQueue.close();
+
+    ActiveDOMObject::contextDestroyed();
+}
+
 void HTMLMediaElement::stop()
 {
     LOG(Media, "HTMLMediaElement::stop(%p)", this);
@@ -5537,6 +5579,9 @@ void HTMLMediaElement::configureTextTrackDisplay(TextTrackVisibilityCheckType ch
     ASSERT(m_textTracks);
 
     if (m_processingPreferenceChange)
+        return;
+
+    if (document().activeDOMObjectsAreStopped())
         return;
 
     bool haveVisibleTextTrack = false;
@@ -6425,7 +6470,7 @@ MediaProducer::MediaStateFlags HTMLMediaElement::mediaState() const
         state |= RequiresPlaybackTargetMonitoring;
 
     bool requireUserGesture = m_mediaSession->hasBehaviorRestriction(MediaElementSession::RequireUserGestureToAutoplayToExternalDevice);
-    if (hasActiveVideo && (!requireUserGesture || (hasAudio && !m_initiallyMuted && !loop())) && !m_failedToPlayToWirelessTarget)
+    if (m_readyState >= HAVE_METADATA && !requireUserGesture && !m_failedToPlayToWirelessTarget)
         state |= ExternalDeviceAutoPlayCandidate;
 
     if (hasActiveVideo && endedPlayback())

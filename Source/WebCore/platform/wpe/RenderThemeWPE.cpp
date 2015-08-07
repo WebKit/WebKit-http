@@ -26,6 +26,8 @@
 #include "config.h"
 #include "RenderThemeWPE.h"
 
+#include "UserAgentScripts.h"
+#include "UserAgentStyleSheets.h"
 #include "NotImplemented.h"
 
 namespace WebCore {
@@ -41,4 +43,18 @@ void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontDescripti
     notImplemented();
 }
 
+#if ENABLE(VIDEO)
+String RenderThemeWPE::mediaControlsStyleSheet()
+{
+    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
+}
+
+String RenderThemeWPE::mediaControlsScript()
+{
+    StringBuilder scriptBuilder;
+    scriptBuilder.append(mediaControlsLocalizedStringsJavaScript, sizeof(mediaControlsLocalizedStringsJavaScript));
+    scriptBuilder.append(mediaControlsBaseJavaScript, sizeof(mediaControlsBaseJavaScript));
+    return scriptBuilder.toString();
+}
+#endif
 } // namespace WebCore

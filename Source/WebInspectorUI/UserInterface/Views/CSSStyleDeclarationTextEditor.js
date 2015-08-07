@@ -474,11 +474,22 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _handleBeforeChange(codeMirror, change)
     {
-        if (change.origin !== "+delete" || (!change.to.line && !change.to.ch) || this._completionController.isShowingCompletions())
+        if (change.origin !== "+delete" || this._completionController.isShowingCompletions())
             return CodeMirror.Pass;
 
-        var marks = codeMirror.findMarksAt(change.to);
+        if (!change.to.line && !change.to.ch) {
+            if (codeMirror.lineCount() === 1)
+                return CodeMirror.Pass;
 
+            var line = codeMirror.getLine(change.to.line);
+            if (line && line.trim().length)
+                return CodeMirror.Pass;
+
+            codeMirror.execCommand("deleteLine");
+            return;
+        }
+
+        var marks = codeMirror.findMarksAt(change.to);
         if (!marks.length)
             return CodeMirror.Pass;
 
@@ -733,6 +744,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         // Reset the content on blur since we stop accepting external changes while the the editor is focused.
         // This causes us to pick up any change that was suppressed while the editor was focused.
         this._resetContent();
+        this.dispatchEventToListeners(WebInspector.CSSStyleDeclarationTextEditor.Event.Blurred);
     }
 
     _editorFocused(codeMirror)
@@ -768,6 +780,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         if (this._commitChangesTimeout)
             clearTimeout(this._commitChangesTimeout);
         this._commitChangesTimeout = setTimeout(this._commitChanges.bind(this), delay);
+
+        this.dispatchEventToListeners(WebInspector.CSSStyleDeclarationTextEditor.Event.ContentChanged);
     }
 
     _updateTextMarkers(nonatomic)
@@ -1456,8 +1470,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         var mapping = {original: [0], formatted: [0]};
         // FIXME: <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
         var indentString = "    ";
-        var builder = new FormatterContentBuilder(mapping, [], [], 0, 0, indentString);
-        var formatter = new Formatter(this._codeMirror, builder);
+        var builder = new WebInspector.FormatterContentBuilder(mapping, [], [], 0, 0, indentString);
+        var formatter = new WebInspector.Formatter(this._codeMirror, builder);
         var start = {line: 0, ch: 0};
         var end = {line: this._codeMirror.lineCount() - 1};
         formatter.format(start, end);
@@ -1658,6 +1672,11 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
     {
         this._tokenTrackingController.highlightRange(candidate.hoveredTokenRange);
     }
+};
+
+WebInspector.CSSStyleDeclarationTextEditor.Event = {
+    ContentChanged: "css-style-declaration-text-editor-content-changed",
+    Blurred: "css-style-declaration-text-editor-blurred"
 };
 
 WebInspector.CSSStyleDeclarationTextEditor.StyleClassName = "css-style-text-editor";

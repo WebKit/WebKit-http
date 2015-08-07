@@ -3211,6 +3211,9 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_registerPreview
 {
+    if (!_webView.allowsLinkPreview)
+        return;
+
     _previewItemController = adoptNS([[UIPreviewItemController alloc] initWithView:self]);
     [_previewItemController setDelegate:self];
     _previewGestureRecognizer = _previewItemController.get().presentationGestureRecognizer;
@@ -3361,18 +3364,22 @@ static bool isAssistableInputType(InputType type)
 
 }
 
-- (void)_previewItemController:(UIPreviewItemController *)controller willPresentPreview:(UIViewController *)viewController forPosition:(CGPoint)position inSourceView:(UIView *)sourceView
+- (void)_interactionStartedFromPreviewItemController:(UIPreviewItemController *)controller
 {
     [self _removeDefaultGestureRecognizers];
 
     [self _cancelInteraction];
 }
 
-- (void)_previewItemController:(UIPreviewItemController *)controller didDismissPreview:(UIViewController *)viewController committing:(BOOL)committing
+- (void)_interactionStoppedFromPreviewItemController:(UIPreviewItemController *)controller
 {
     [self _addDefaultGestureRecognizers];
-    _page->stopInteraction();
 
+    _page->stopInteraction();
+}
+
+- (void)_previewItemController:(UIPreviewItemController *)controller didDismissPreview:(UIViewController *)viewController committing:(BOOL)committing
+{
     id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     if ([uiDelegate respondsToSelector:@selector(_webView:didDismissPreviewViewController:committing:)])
         [uiDelegate _webView:_webView didDismissPreviewViewController:viewController committing:committing];

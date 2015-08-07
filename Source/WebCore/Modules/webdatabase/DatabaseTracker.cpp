@@ -325,31 +325,6 @@ void DatabaseTracker::closeAllDatabases()
         database->close();
 }
 
-void DatabaseTracker::interruptAllDatabasesForContext(const DatabaseContext* context)
-{
-    Vector<RefPtr<DatabaseBackendBase>> openDatabases;
-    {
-        MutexLocker openDatabaseMapLock(m_openDatabaseMapGuard);
-
-        if (!m_openDatabaseMap)
-            return;
-
-        DatabaseNameMap* nameMap = m_openDatabaseMap->get(context->securityOrigin());
-        if (!nameMap)
-            return;
-
-        for (auto& databaseSet : nameMap->values()) {
-            for (auto& database : *databaseSet) {
-                if (database->databaseContext() == context)
-                    openDatabases.append(database);
-            }
-        }
-    }
-
-    for (auto& openDatabase : openDatabases)
-        openDatabase->interrupt();
-}
-
 String DatabaseTracker::originPath(SecurityOrigin* origin) const
 {
     return SQLiteFileSystem::appendDatabaseFileNameToPath(m_databaseDirectoryPath.isolatedCopy(), origin->databaseIdentifier());
@@ -862,6 +837,8 @@ void DatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::ti
         if (!databaseNamesForOrigin(origin.get(), databaseNames))
             continue;
 
+        size_t deletedDatabases = 0;
+
         for (auto& databaseName : databaseNames) {
             auto fullPath = fullPathForDatabase(origin.get(), databaseName, false);
 
@@ -873,7 +850,11 @@ void DatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::ti
                 continue;
 
             deleteDatabase(origin.get(), databaseName);
+            ++deletedDatabases;
         }
+
+        if (deletedDatabases == databaseNames.size())
+            deleteOrigin(origin.get());
     }
 }
 
@@ -1340,22 +1321,6 @@ void DatabaseTracker::emptyDatabaseFilesRemovalTaskWillBeScheduled()
 void DatabaseTracker::emptyDatabaseFilesRemovalTaskDidFinish()
 {
     openDatabaseMutex().unlock();
-}
-
-void DatabaseTracker::setDatabasesPaused(bool paused)
-{
-    MutexLocker openDatabaseMapLock(m_openDatabaseMapGuard);
-    if (!m_openDatabaseMap)
-        return;
-
-    // This walking is - sadly - the only reliable way to get at each open database thread.
-    // This will be cleaner once <rdar://problem/5680441> or some other DB thread consolidation takes place.
-    for (auto& databaseNameMap : m_openDatabaseMap->values()) {
-        for (auto& databaseSet : databaseNameMap->values()) {
-            for (auto& database : *databaseSet)
-                database->databaseContext()->setPaused(paused);
-        }
-    }
 }
 
 #endif

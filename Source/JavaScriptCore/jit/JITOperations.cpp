@@ -1509,7 +1509,7 @@ EncodedJSValue JIT_OPERATION operationGetByValGeneric(ExecState* exec, EncodedJS
     return JSValue::encode(result);
 }
 
-EncodedJSValue JIT_OPERATION operationGetByValDefault(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ArrayProfile* arrayProfile)
+EncodedJSValue JIT_OPERATION operationGetByValOptimize(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ArrayProfile* arrayProfile)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
@@ -1643,8 +1643,12 @@ EncodedJSValue JIT_OPERATION operationGetByValString(ExecState* exec, EncodedJSV
             result = asString(baseValue)->getIndex(exec, i);
         else {
             result = baseValue.get(exec, i);
-            if (!isJSString(baseValue))
-                ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(operationGetByValDefault));
+            if (!isJSString(baseValue)) {
+                unsigned bytecodeOffset = exec->locationAsBytecodeOffset();
+                ASSERT(bytecodeOffset);
+                ByValInfo& byValInfo = exec->codeBlock()->getByValInfo(bytecodeOffset - 1);
+                ctiPatchCallByReturnAddress(exec->codeBlock(), ReturnAddressPtr(OUR_RETURN_ADDRESS), FunctionPtr(byValInfo.stubRoutine ? operationGetByValGeneric : operationGetByValOptimize));
+            }
         }
     } else {
         baseValue.requireObjectCoercible(exec);
@@ -1918,11 +1922,11 @@ void JIT_OPERATION operationVMHandleException(ExecState* exec)
 // testing.
 void JIT_OPERATION operationExceptionFuzz()
 {
-#if COMPILER(GCC)
+#if COMPILER(GCC_OR_CLANG)
     ExecState* exec = static_cast<ExecState*>(__builtin_frame_address(1));
     void* returnPC = __builtin_return_address(0);
     doExceptionFuzzing(exec, "JITOperations", returnPC);
-#endif // COMPILER(GCC)
+#endif // COMPILER(GCC_OR_CLANG)
 }
 
 EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, EncodedJSValue encodedBaseValue, JSCell* propertyName)
@@ -1988,7 +1992,7 @@ extern "C" EncodedJSValue HOST_CALL_RETURN_VALUE_OPTION getHostCallReturnValueWi
     return JSValue::encode(exec->vm().hostCallReturnValue);
 }
 
-#if COMPILER(GCC) && CPU(X86_64)
+#if COMPILER(GCC_OR_CLANG) && CPU(X86_64)
 asm (
 ".globl " SYMBOL_STRING(getHostCallReturnValue) "\n"
 HIDE_SYMBOL(getHostCallReturnValue) "\n"
@@ -1997,7 +2001,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     "jmp " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 
-#elif COMPILER(GCC) && CPU(X86)
+#elif COMPILER(GCC_OR_CLANG) && CPU(X86)
 asm (
 ".text" "\n" \
 ".globl " SYMBOL_STRING(getHostCallReturnValue) "\n"
@@ -2012,7 +2016,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     "ret\n"
 );
 
-#elif COMPILER(GCC) && CPU(ARM_THUMB2)
+#elif COMPILER(GCC_OR_CLANG) && CPU(ARM_THUMB2)
 asm (
 ".text" "\n"
 ".align 2" "\n"
@@ -2025,7 +2029,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 
-#elif COMPILER(GCC) && CPU(ARM_TRADITIONAL)
+#elif COMPILER(GCC_OR_CLANG) && CPU(ARM_TRADITIONAL)
 asm (
 ".text" "\n"
 ".align 2" "\n"
@@ -2048,7 +2052,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
      "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 
-#elif COMPILER(GCC) && CPU(MIPS)
+#elif COMPILER(GCC_OR_CLANG) && CPU(MIPS)
 
 #if WTF_MIPS_PIC
 #define LOAD_FUNCTION_TO_T9(function) \
@@ -2070,7 +2074,7 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 
-#elif COMPILER(GCC) && CPU(SH4)
+#elif COMPILER(GCC_OR_CLANG) && CPU(SH4)
 
 #define SH4_SCRATCH_REGISTER "r11"
 

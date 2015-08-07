@@ -539,7 +539,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
         else
             cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
     }
-    cacheDirectory = String(cfurlCacheDirectory);
+    cacheDirectory = String(cfurlCacheDirectory.get());
     CFIndex cacheMemoryCapacity = 0;
     CFIndex cacheDiskCapacity = 0;
 #elif USE(CURL)
@@ -2726,7 +2726,7 @@ HRESULT WebView::canShowMIMEType(/* [in] */ BSTR mimeType, /* [retval][out] */ B
 bool WebView::canShowMIMEType(const String& mimeType)
 {
     Frame* coreFrame = core(m_mainFrame);
-    bool allowPlugins = coreFrame && coreFrame->loader().subframeLoader().allowPlugins(NotAboutToInstantiatePlugin);
+    bool allowPlugins = coreFrame && coreFrame->loader().subframeLoader().allowPlugins();
 
     bool canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeType)
         || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)

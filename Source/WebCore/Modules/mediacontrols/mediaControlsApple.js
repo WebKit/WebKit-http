@@ -688,6 +688,7 @@ Controller.prototype = {
         this.updateCaptionButton();
         this.updateCaptionContainer();
         this.updateFullscreenButtons();
+        this.updateWirelessTargetAvailable();
         this.updateWirelessTargetPickerButton();
         this.updateProgress();
         this.updateControls();
@@ -1453,7 +1454,10 @@ Controller.prototype = {
         if (!this.controls || !this.controls.panel)
             return;
 
-        var visibleWidth = this.controls.panel.getBoundingClientRect().width * this._pageScaleFactor;
+        var visibleWidth = this.controls.panel.getBoundingClientRect().width;
+        if (this._pageScaleFactor > 1)
+            visibleWidth *= this._pageScaleFactor;
+
         if (visibleWidth <= 0 || visibleWidth == this.currentDisplayWidth)
             return;
 
@@ -1470,6 +1474,7 @@ Controller.prototype = {
 
         // Check if there is enough room for the scrubber.
         var shouldDropTimeline = (visibleWidth - visibleButtonWidth) < this.MinimumTimelineWidth;
+        this.controls.timeline.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
         this.controls.currentTime.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
         this.controls.thumbnailTrack.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
         this.controls.remainingTime.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
@@ -1866,9 +1871,6 @@ Controller.prototype = {
             this.controls.panel.classList.remove(this.ClassNames.noVideo);
         else
             this.controls.panel.classList.add(this.ClassNames.noVideo);
-
-        // The wireless target picker is only visible for files with video, force an update.
-        this.updateWirelessTargetAvailable();
     },
 
     updateVolume: function()
@@ -1982,7 +1984,7 @@ Controller.prototype = {
         if (this.wirelessPlaybackDisabled)
             wirelessPlaybackTargetsAvailable = false;
 
-        if (wirelessPlaybackTargetsAvailable && this.isPlayable() && this.hasVideo())
+        if (wirelessPlaybackTargetsAvailable && this.isPlayable())
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.hidden);
         else
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.hidden);

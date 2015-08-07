@@ -167,6 +167,17 @@ list(APPEND WebCore_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
 )
 
+list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
+)
+
+set(WebCore_USER_AGENT_SCRIPTS
+    ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
+    ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
+)
+
+set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/wpe/RenderThemeWPE.cpp)
+
 list(APPEND WebCore_LIBRARIES
     ${CAIRO_LIBRARIES}
     ${EGL_LIBRARIES}
