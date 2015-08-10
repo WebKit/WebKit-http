@@ -56,7 +56,6 @@ void TextureMapperPlatformLayerProxy::setCompositor(MutexLocker&, Compositor* co
 #ifndef NDEBUG
     m_compositorThreadID = WTF::currentThread();
 #endif
-    ASSERT(compositor);
     m_compositor = compositor;
     m_pushCondition.signal();
 }
