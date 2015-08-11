@@ -194,7 +194,7 @@ PassRefPtr<Uint8Array> CDMPRSessionGStreamer::generateKeyRequest(const String& m
         gDRMInitialisation.reportError(status);
         errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
     } else {
-        unsigned long challengeLength = MAX_CHALLENGE_LEN;
+        uint32_t challengeLength = MAX_CHALLENGE_LEN;
         unsigned char* challenge = static_cast<unsigned char*>(g_malloc0(challengeLength));
 
         // Get challenge
@@ -228,7 +228,7 @@ bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMess
 {
     GST_MEMDUMP("response received :", key->data(), key->byteLength());
 
-    unsigned long isAckRequired;
+    bool isAckRequired;
     HDxResponseResult responseResult = nullptr;
     EDxDrmStatus status = DX_ERROR_CONTENT_NOT_RECOGNIZED;
 
@@ -279,7 +279,7 @@ bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMess
         }
 
     } else if (m_state == PHASE_ACKNOWLEDGE) {
-        unsigned long challengeLength = MAX_CHALLENGE_LEN;
+        uint32_t challengeLength = MAX_CHALLENGE_LEN;
         unsigned char* challenge = static_cast<unsigned char*>(g_malloc0(challengeLength));
 
         status = DxDrmClient_GetLicenseAcq_GenerateAck(&responseResult, challenge, &challengeLength);
