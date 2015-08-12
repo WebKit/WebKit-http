@@ -212,7 +212,7 @@ void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
         registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
             getSupportedTypes, extendedSupportsType, 0, 0, 0, supportsKeySystem);
 #else
@@ -312,7 +312,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 {
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -405,7 +405,7 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 
     ASSERT(m_pipeline);
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -1202,7 +1202,7 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
     switch (GST_MESSAGE_TYPE(message)) {
         case GST_MESSAGE_ELEMENT:
         {
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
             const GstStructure* structure = gst_message_get_structure(message);
             // Here we receive the DRM init data from the pipeline: we will emit
             // the needkey event with that data and the browser might create a
@@ -1227,8 +1227,15 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
                 // Fire the need key event from main thread
                 callOnMainThreadAndWait([&] {
                     // FIXME: Provide a somehow valid sessionId.
-                    needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-                });
+#if ENABLE(ENCRYPTED_MEDIA)
+                        needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+                        RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+                        needKey(initData);
+#else
+                        ASSERT_NOT_REACHED();
+#endif
+                    });
                 // Wait for a potential license
                 GST_DEBUG("waiting for a license");
                 m_drmKeySemaphore.wait();
@@ -1696,7 +1703,7 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
 {
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     // Potentially unblock GStreamer thread for DRM license acquisition.
     m_drmKeySemaphore.signal();
 #endif
@@ -1977,7 +1984,7 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
         if (securityOrigin->canRequest(newUrl)) {
             INFO_MEDIA_MESSAGE("New media url: %s", newUrl.string().utf8().data());
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
             // Potentially unblock GStreamer thread for DRM license acquisition.
             m_drmKeySemaphore.signal();
 #endif
@@ -2280,7 +2287,9 @@ void MediaPlayerPrivateGStreamer::needKey(const String& keySystem, const String&
         m_drmKeySemaphore.signal();
     }
 }
+#endif
 
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 void MediaPlayerPrivateGStreamer::signalDRM()
 {
     GST_DEBUG("key/license was changed or failed, signal semaphore");
@@ -2290,7 +2299,7 @@ void MediaPlayerPrivateGStreamer::signalDRM()
 #endif
 
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(const MediaEngineSupportParameters& parameters)
 {
     // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
@@ -2311,7 +2320,9 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(cons
     // 2. Return "maybe" or "probably" as appropriate per the existing specification of canPlayType().
     return supportsType(parameters);
 }
+#endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
 void MediaPlayerPrivateGStreamer::needKey(RefPtr<Uint8Array> initData)
 {
     if (!m_player->keyNeeded(initData.get())) {

@@ -43,7 +43,7 @@
 #include "MediaSourceGStreamer.h"
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 #include <wtf/threads/BinarySemaphore.h>
 #endif
 
@@ -155,7 +155,8 @@ public:
     MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned);
     MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
     void needKey(const String&, const String&, const unsigned char*, unsigned);
-
+#endif
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     void signalDRM();
 #endif
 
@@ -179,8 +180,10 @@ private:
 
     GstElement* createAudioSink() override;
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
     static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&);
+#endif
+#if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&);
     CDMSession* m_cdmSession;
 #endif
@@ -292,7 +295,7 @@ private:
     GstGLContext* m_glContext;
     GstGLDisplay* m_glDisplay;
 #endif
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     BinarySemaphore m_drmKeySemaphore;
 #endif
     Mutex m_pendingAsyncOperationsLock;
