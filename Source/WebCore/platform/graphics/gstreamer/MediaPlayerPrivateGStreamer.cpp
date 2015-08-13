@@ -75,8 +75,12 @@
 #include "AudioSourceProviderGStreamer.h"
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(DXDRM)
+#if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+#if ENABLE(ENCRYPTED_MEDIA_V2)
 #include "CDMPRSessionGStreamer.h"
+#elif ENABLE(ENCRYPTED_MEDIA)
+#include "DiscretixSession.h"
+#endif
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 #endif
 
@@ -312,6 +316,9 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_requestedState(GST_STATE_VOID_PENDING)
     , m_pendingAsyncOperations(nullptr)
 {
+#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+    m_dxdrmSession = 0;
+#endif
 }
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
@@ -2263,6 +2270,28 @@ bool MediaPlayerPrivateGStreamer::supportsKeySystem(const String& keySystem, con
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* /* initData */, unsigned /* initDataLength */ , const String& sessionID)
 {
     LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
+
+#if USE(DXDRM)
+    if (keySystem == PLAYREADY_PROTECTION_SYSTEM_ID) {
+        RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
+        RefPtr<Uint8Array> nextMessage;
+        unsigned short errorCode;
+        unsigned long systemCode;
+
+        bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
+        if (errorCode || !result) {
+            LOG_MEDIA_MESSAGE("Error processing key: errorCode: %u, result: %d", errorCode, result);
+            m_drmKeySemaphore.signal();
+            return MediaPlayer::InvalidPlayerState;
+        }
+
+        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+            gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, m_dxdrmSession, nullptr)));
+        m_drmKeySemaphore.signal();
+        return MediaPlayer::NoError;
+    }
+#endif
+
     GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
@@ -2274,6 +2303,22 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
     LOG_MEDIA_MESSAGE("generateKeyRequest");
+#if USE(DXDRM)
+    if (!m_dxdrmSession)
+        m_dxdrmSession = new DiscretixSession(this);
+    unsigned short errorCode;
+    unsigned long systemCode;
+    RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
+    String destinationURL;
+    RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
+    if (errorCode)
+        return MediaPlayer::InvalidPlayerState;
+
+    URL url(URL(), destinationURL);
+    m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
+    return MediaPlayer::NoError;
+#endif
+
     m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
     return MediaPlayer::NoError;
 }
@@ -2357,8 +2402,9 @@ void MediaPlayerPrivateGStreamer::setCDMSession(CDMSession* session)
 void MediaPlayerPrivateGStreamer::keyAdded()
 {
 #if USE(DXDRM)
+    CDMPRSessionGStreamer* session = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-       gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, static_cast<CDMPRSessionGStreamer*>(m_cdmSession), nullptr)));
+       gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, static_cast<DiscretixSession*>(session), nullptr)));
 #endif
 }
 #endif

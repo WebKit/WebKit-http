@@ -31,29 +31,22 @@
 #if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(DXDRM)
 
 #include "CDMSession.h"
-#include <gst/gst.h>
-#include <wtf/RetainPtr.h>
+#include "DiscretixSession.h"
 
 namespace WebCore {
 
 class MediaPlayerPrivateGStreamer;
 
-class CDMPRSessionGStreamer : public CDMSession {
+class CDMPRSessionGStreamer : public CDMSession, public DiscretixSession {
 private:
     CDMPRSessionGStreamer();
     CDMPRSessionGStreamer(const CDMPRSessionGStreamer&);
-
-private:
-    enum SessionState {
-        PHASE_INITIAL,
-        PHASE_ACKNOWLEDGE,
-        PHASE_PROVISIONED
-    };
 
 public:
     CDMPRSessionGStreamer(MediaPlayerPrivateGStreamer* parent);
     virtual ~CDMPRSessionGStreamer() override;
 
+    // CDMSession interface.
     virtual CDMSessionType type() override;
     virtual void setClient(CDMSessionClient* client) override;
     virtual const String& sessionId() const override;
@@ -62,15 +55,9 @@ public:
     virtual bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode) override;
     virtual RefPtr<ArrayBuffer> cachedKeyForKeyID(const String&) const;
 
-    int decrypt(GstMapInfo& map, GstMapInfo& boxMap, const unsigned sampleIndex, const unsigned trackId);
-
 private:
-    MediaPlayerPrivateGStreamer* m_player;
     CDMSessionClient* m_client;
     String m_sessionId;
-    void* m_DxDrmStream;
-    RefPtr<ArrayBuffer> m_key;
-    SessionState m_state;
 };
 
 }

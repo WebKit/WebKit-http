@@ -59,6 +59,10 @@ class AudioSourceProvider;
 class AudioSourceProviderGStreamer;
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+class DiscretixSession;
+#endif
+
 class AudioTrackPrivateGStreamer;
 class InbandMetadataTextTrackPrivateGStreamer;
 class InbandTextTrackPrivateGStreamer;
@@ -186,6 +190,10 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&);
     CDMSession* m_cdmSession;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+    DiscretixSession* m_dxdrmSession;
 #endif
 
     float playbackPosition() const;

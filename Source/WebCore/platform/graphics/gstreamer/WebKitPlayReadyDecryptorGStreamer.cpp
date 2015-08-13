@@ -1,4 +1,4 @@
-/* GStreamer ClearKey common encryption decryptor
+/* GStreamer PlayReady decryptor
  *
  * Copyright (C) 2015 Igalia S.L
  * Copyright (C) 2015 Metrological
@@ -24,18 +24,23 @@
 #if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)) && USE(GSTREAMER) && USE(DXDRM)
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 
-#include "CDMPRSessionGStreamer.h"
+#include "DiscretixSession.h"
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/base/gstbytereader.h>
 
 struct _WebKitMediaPlayReadyDecrypt {
     GstBaseTransform parent;
-    WebCore::CDMPRSessionGStreamer* sessionMetaData;
+    WebCore::DiscretixSession* sessionMetaData;
     gboolean streamReceived;
 
     GMutex mutex;
     GCond condition;
+
+    GMutex decryptMutex;
+    GCond decryptCondition;
+    GstBuffer* currentBuffer;
+    GstFlowReturn decryptResult;
 };
 
 struct _WebKitMediaPlayReadyDecryptClass {
@@ -50,8 +55,6 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform*, G
 
 GST_DEBUG_CATEGORY(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
-
-#define PLAYREADY_PROTECTION_SYSTEM_ID "9a04f079-9840-4286-ab92-e65be0885f95"
 
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
@@ -105,6 +108,8 @@ static void webkit_media_playready_decrypt_init(WebKitMediaPlayReadyDecrypt* sel
 
     g_mutex_init(&self->mutex);
     g_cond_init(&self->condition);
+    g_mutex_init(&self->decryptMutex);
+    g_cond_init(&self->decryptCondition);
 }
 
 static void webkit_media_playready_decrypt_dispose(GObject* object)
@@ -113,6 +118,8 @@ static void webkit_media_playready_decrypt_dispose(GObject* object)
 
     g_mutex_clear(&self->mutex);
     g_cond_clear(&self->condition);
+    g_mutex_clear(&self->decryptMutex);
+    g_cond_clear(&self->decryptCondition);
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -144,7 +151,7 @@ static GstCaps* webkitMediaPlayReadyDecryptTransformCaps(GstBaseTransform* base,
     g_return_val_if_fail(direction != GST_PAD_UNKNOWN, nullptr);
     GstCaps* transformedCaps = gst_caps_new_empty();
 
-    GST_DEBUG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter:"
+    GST_LOG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter:"
         " %" GST_PTR_FORMAT, (direction == GST_PAD_SRC) ? "src" : "sink", caps, filter);
 
     unsigned size = gst_caps_get_size(caps);
@@ -204,36 +211,33 @@ static GstCaps* webkitMediaPlayReadyDecryptTransformCaps(GstBaseTransform* base,
     if (filter) {
         GstCaps* intersection;
 
-        GST_DEBUG_OBJECT(base, "Using filter caps %" GST_PTR_FORMAT, filter);
+        GST_LOG_OBJECT(base, "Using filter caps %" GST_PTR_FORMAT, filter);
         intersection = gst_caps_intersect_full(transformedCaps, filter, GST_CAPS_INTERSECT_FIRST);
         gst_caps_unref(transformedCaps);
         transformedCaps = intersection;
     }
 
-    GST_DEBUG_OBJECT(base, "returning %" GST_PTR_FORMAT, transformedCaps);
+    GST_LOG_OBJECT(base, "returning %" GST_PTR_FORMAT, transformedCaps);
     return transformedCaps;
 }
 
-static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
+gboolean performDecryption(gpointer userData)
 {
-    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(base);
+    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(userData);
     GstFlowReturn result = GST_FLOW_OK;
     GstMapInfo map;
     const GValue* value;
     guint sampleIndex = 0;
     int errorCode;
-    unsigned trackID = 0;
+    uint32_t trackID = 0;
     GstPad* pad;
     GstCaps* caps;
     GstMapInfo boxMap;
     GstBuffer* box = nullptr;
+    GstBuffer* buffer;
 
-    g_mutex_lock(&self->mutex);
-
-    // The key might not have been received yet. Wait for it.
-    if (!self->streamReceived)
-        g_cond_wait(&self->condition, &self->mutex);
-
+    g_mutex_lock(&self->decryptMutex);
+    buffer = self->currentBuffer;
     GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta || !buffer) {
         if (!protectionMeta)
@@ -282,7 +286,9 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     }
 
     GST_TRACE_OBJECT(self, "decrypt sample %u", sampleIndex);
-    if ((errorCode = self->sessionMetaData->decrypt(map, boxMap, sampleIndex, trackID))) {
+    GST_DEBUG_OBJECT(self, "session: %p", self->sessionMetaData);
+    if ((errorCode = self->sessionMetaData->decrypt(static_cast<void*>(map.data), static_cast<uint32_t>(map.size),
+        static_cast<void*>(boxMap.data), static_cast<uint32_t>(boxMap.size), static_cast<uint32_t>(sampleIndex), trackID))) {
         GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
         GST_MEMDUMP_OBJECT(self, "box", boxMap.data, boxMap.size);
         result = GST_FLOW_ERROR;
@@ -298,8 +304,31 @@ beach:
     if (protectionMeta)
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
 
+    self->decryptResult = result;
+    g_cond_signal(&self->decryptCondition);
+    g_mutex_unlock(&self->decryptMutex);
+    return G_SOURCE_REMOVE;
+}
+
+static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
+{
+    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(base);
+
+    g_mutex_lock(&self->mutex);
+
+    // The key might not have been received yet. Wait for it.
+    if (!self->streamReceived)
+        g_cond_wait(&self->condition, &self->mutex);
+
+    g_mutex_lock(&self->decryptMutex);
+    self->currentBuffer = buffer;
+    g_timeout_add(0, performDecryption, self);
+    g_cond_wait(&self->decryptCondition, &self->decryptMutex);
+    g_mutex_unlock(&self->decryptMutex);
+
     g_mutex_unlock(&self->mutex);
-    return result;
+    return self->decryptResult;
+
 }
 
 static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* trans, GstEvent* event)
@@ -343,7 +372,7 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
             GST_INFO_OBJECT(self, "received dxdrm session");
 
             const GValue* value = gst_structure_get_value(structure, "session");
-            self->sessionMetaData = reinterpret_cast<WebCore::CDMPRSessionGStreamer*>(g_value_get_pointer(value));
+            self->sessionMetaData = reinterpret_cast<WebCore::DiscretixSession*>(g_value_get_pointer(value));
             self->streamReceived = TRUE;
             g_cond_signal(&self->condition);
         }
