@@ -77,10 +77,6 @@
 #include "ContentFilter.h"
 #endif
 
-#if HAVE(PARENTAL_CONTROLS)
-#include "ParentalControlsContentFilter.h"
-#endif
-
 namespace WebCore {
 
 static void cancelAll(const ResourceLoaderMap& loaders)
@@ -493,6 +489,14 @@ void DocumentLoader::redirectReceived(CachedResource* resource, ResourceRequest&
     willSendRequest(request, redirectResponse);
 }
 
+void DocumentLoader::syntheticRedirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& redirectResponse, bool& shouldContinue)
+{
+    redirectReceived(resource, request, redirectResponse);
+
+    // If we will soon remove our reference to the CachedRawResource in favor of a SubstituteData load, we don't want to continue receiving synthetic CachedRawResource callbacks.
+    shouldContinue = !m_substituteData.isValid();
+}
+
 void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     // Note that there are no asserts here as there are for the other callbacks. This is due to the
@@ -553,19 +557,7 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
     if (!redirectResponse.isNull()) {
         // We checked application cache for initial URL, now we need to check it for redirected one.
         ASSERT(!m_substituteData.isValid());
-
-        bool shouldTryApplicationCache = true;
-
-#if HAVE(PARENTAL_CONTROLS)
-        // There are poor interactions between the ApplicationCache and parental controls (<rdar://problem/22123707>)
-        // so, for now, don't use the AppCache for redirects if parental controls are enabled.
-        if (ParentalControlsContentFilter::enabled())
-            shouldTryApplicationCache = false;
-#endif
-
-        if (shouldTryApplicationCache)
-            m_applicationCacheHost->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
-
+        m_applicationCacheHost->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
         if (m_substituteData.isValid()) {
             RELEASE_ASSERT(m_mainResource);
             ResourceLoader* loader = m_mainResource->loader();
@@ -1435,17 +1427,7 @@ void DocumentLoader::startLoadingMainResource()
     if (!m_frame || m_request.isNull())
         return;
 
-    bool shouldTryApplicationCache = true;
-
-#if HAVE(PARENTAL_CONTROLS)
-    // There are poor interactions between the ApplicationCache and parental controls (<rdar://problem/22123707>)
-    // so, for now, don't use the AppCache for redirects if parental controls are enabled.
-    if (ParentalControlsContentFilter::enabled())
-        shouldTryApplicationCache = false;
-#endif
-
-    if (shouldTryApplicationCache)
-        m_applicationCacheHost->maybeLoadMainResource(m_request, m_substituteData);
+    m_applicationCacheHost->maybeLoadMainResource(m_request, m_substituteData);
 
     if (m_substituteData.isValid()) {
         m_identifierForLoadWithoutResourceLoader = m_frame->page()->progress().createUniqueIdentifier();

@@ -41,6 +41,7 @@
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "DisplaySleepDisabler.h"
+#include "Document.h"
 #include "DocumentLoader.h"
 #include "ElementIterator.h"
 #include "EventNames.h"
@@ -299,6 +300,9 @@ static IDToElementMap& elementIDsToElements()
 
 HTMLMediaElement* HTMLMediaElement::elementWithID(uint64_t id)
 {
+    if (id == HTMLMediaElementInvalidID)
+        return nullptr;
+    
     return elementIDsToElements().get(id);
 }
 
@@ -507,6 +511,8 @@ HTMLMediaElement::~HTMLMediaElement()
         m_session->removeMediaElement(*this);
         m_session = nullptr;
     }
+
+    elementIDsToElements().remove(m_elementID);
 #endif
 
     m_seekTaskQueue.close();
@@ -2352,6 +2358,25 @@ void HTMLMediaElement::keyAdded()
 }
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+String HTMLMediaElement::mediaPlayerMediaDeviceIdentifierStorageDirectory() const
+{
+    Settings* settings = document().settings();
+    if (!settings)
+        return emptyString();
+
+    String storageDirectory = settings->mediaDeviceIdentifierStorageDirectory();
+    if (storageDirectory.isEmpty())
+        return emptyString();
+
+    SecurityOrigin* origin = document().securityOrigin();
+    if (!origin)
+        return emptyString();
+
+    return pathByAppendingComponent(storageDirectory, origin->databaseIdentifier());
+}
+#endif
+
 void HTMLMediaElement::progressEventTimerFired()
 {
     ASSERT(m_player);
@@ -3164,7 +3189,12 @@ void HTMLMediaElement::setMuted(bool muted)
             }
         }
         scheduleEvent(eventNames().volumechangeEvent);
+
+#if ENABLE(MEDIA_SESSION)
+        document().updateIsPlayingMedia(m_elementID);
+#else
         document().updateIsPlayingMedia();
+#endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         updateMediaState(UpdateMediaState::Asynchronously);
@@ -4528,7 +4558,11 @@ void HTMLMediaElement::mediaPlayerCharacteristicChanged(MediaPlayer*)
     if (isPlaying() && !m_mediaSession->playbackPermitted(*this))
         pauseInternal();
 
+#if ENABLE(MEDIA_SESSION)
+    document().updateIsPlayingMedia(m_elementID);
+#else
     document().updateIsPlayingMedia();
+#endif
 
     endProcessingMediaPlayerCallback();
 }
@@ -4788,7 +4822,12 @@ void HTMLMediaElement::setPlaying(bool playing)
         return;
 
     m_playing = playing;
+
+#if ENABLE(MEDIA_SESSION)
+    document().updateIsPlayingMedia(m_elementID);
+#else
     document().updateIsPlayingMedia();
+#endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     updateMediaState(UpdateMediaState::Asynchronously);
@@ -6112,12 +6151,12 @@ double HTMLMediaElement::mediaPlayerRequestedPlaybackRate() const
 }
 
 #if USE(GSTREAMER)
-void HTMLMediaElement::requestInstallMissingPlugins(const String& details, MediaPlayerRequestInstallMissingPluginsCallback& callback)
+void HTMLMediaElement::requestInstallMissingPlugins(const String& details, const String& description, MediaPlayerRequestInstallMissingPluginsCallback& callback)
 {
     if (!document().page())
         return;
 
-    document().page()->chrome().client().requestInstallMissingMediaPlugins(details, callback);
+    document().page()->chrome().client().requestInstallMissingMediaPlugins(details, description, callback);
 }
 #endif
 

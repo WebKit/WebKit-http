@@ -1031,7 +1031,6 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         break;
     case GST_MESSAGE_ELEMENT:
         if (gst_is_missing_plugin_message(message)) {
-            GUniquePtr<char> detail(gst_missing_plugin_message_get_installer_detail(message));
             if (gst_install_plugins_supported()) {
                 m_missingPluginsCallback = MediaPlayerRequestInstallMissingPluginsCallback::create([this](uint32_t result) {
                     m_missingPluginsCallback = nullptr;
@@ -1041,7 +1040,9 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                     changePipelineState(GST_STATE_READY);
                     changePipelineState(GST_STATE_PAUSED);
                 });
-                m_player->client().requestInstallMissingPlugins(String::fromUTF8(detail.get()), *m_missingPluginsCallback);
+                GUniquePtr<char> detail(gst_missing_plugin_message_get_installer_detail(message));
+                GUniquePtr<char> description(gst_missing_plugin_message_get_description(message));
+                m_player->client().requestInstallMissingPlugins(String::fromUTF8(detail.get()), String::fromUTF8(description.get()), *m_missingPluginsCallback);
             }
         }
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)

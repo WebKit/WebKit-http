@@ -219,6 +219,9 @@
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\UnlinkedFunctionExecutable.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -292,6 +295,9 @@
       <Filter>heap</Filter>
     </ClCompile>
     <ClCompile Include="..\heap\JITStubRoutineSet.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="..\heap\LiveObjectList.cpp">
       <Filter>heap</Filter>
     </ClCompile>
     <ClCompile Include="..\heap\MachineStackMarker.cpp">
@@ -450,7 +456,16 @@
     <ClCompile Include="..\parser\Lexer.cpp">
       <Filter>parser</Filter>
     </ClCompile>
+    <ClCompile Include="..\parser\ModuleAnalyzer.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\parser\ModuleRecord.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
     <ClCompile Include="..\parser\Nodes.cpp">
+      <Filter>parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\parser\NodesAnalyzeModule.cpp">
       <Filter>parser</Filter>
     </ClCompile>
     <ClCompile Include="..\parser\Parser.cpp">
@@ -708,9 +723,6 @@
     <ClCompile Include="..\runtime\JSMap.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\JSNameScope.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\runtime\JSNotAnObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -933,9 +945,6 @@
     <ClCompile Include="..\runtime\Watchdog.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\runtime\WatchdogNone.cpp">
-      <Filter>runtime</Filter>
-    </ClCompile>
     <ClCompile Include="..\tools\CodeProfile.cpp">
       <Filter>tools</Filter>
     </ClCompile>
@@ -992,9 +1001,6 @@
     </ClCompile>
     <ClCompile Include="..\parser\SourceCode.cpp">
       <Filter>parser</Filter>
-    </ClCompile>
-    <ClCompile Include="..\runtime\IntendedStructureChain.cpp">
-      <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\CommonSlowPathsExceptions.cpp">
       <Filter>runtime</Filter>
@@ -1689,9 +1695,6 @@
     <ClCompile Include="..\bytecode\ComplexGetStatus.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\ConstantStructureCheck.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
     <ClCompile Include="..\dfg\DFGDoesGC.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
@@ -1792,7 +1795,6 @@
     <ClCompile Include="..\dfg\DFGPutStackSinkingPhase.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallBase.cpp" />
     <ClCompile Include="..\ftl\FTLJSCallVarargs.cpp" />
-    <ClCompile Include="..\runtime\JSFunctionNameScope.cpp" />
     <ClCompile Include="..\jit\ExecutableAllocatorFixedVMPool.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -1831,6 +1833,12 @@
     <ClCompile Include="..\dfg\DFGMinifiedGraph.cpp" />
     <ClCompile Include="..\dfg\DFGOSRExitFuzz.cpp" />
     <ClCompile Include="..\dfg\DFGStoreBarrierInsertionPhase.cpp" />
+    <ClCompile Include="..\bytecode\ObjectPropertyCondition.cpp" />
+    <ClCompile Include="..\bytecode\ObjectPropertyConditionSet.cpp" />
+    <ClCompile Include="..\bytecode\PropertyCondition.cpp" />
+    <ClCompile Include="..\dfg\DFGAdaptiveInferredPropertyValueWatchpoint.cpp" />
+    <ClCompile Include="..\dfg\DFGAdaptiveStructureWatchpoint.cpp" />
+    <ClCompile Include="..\dfg\DFGMultiGetByOffsetData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICallbackFunction.h">
@@ -2241,6 +2249,12 @@
     <ClInclude Include="..\heap\ListableHandler.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\LiveObjectData.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\LiveObjectList.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\Local.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -2473,6 +2487,12 @@
       <Filter>parser</Filter>
     </ClInclude>
     <ClInclude Include="..\parser\Lexer.h">
+      <Filter>parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\parser\ModuleAnalyzer.h">
+      <Filter>parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\parser\ModuleRecord.h">
       <Filter>parser</Filter>
     </ClInclude>
     <ClInclude Include="..\parser\NodeConstructors.h">
@@ -2806,9 +2826,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSLock.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\JSNameScope.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSNotAnObject.h">
@@ -3218,9 +3235,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\VMEntryScope.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
-    <ClInclude Include="..\runtime\IntendedStructureChain.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\CommonSlowPathsExceptions.h">
@@ -4217,9 +4231,6 @@
     <ClInclude Include="..\bytecode\ComplexGetStatus.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\ConstantStructureCheck.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\dfg\DFGDoesGC.h">
       <Filter>dfg</Filter>
     </ClInclude>
@@ -4326,7 +4337,6 @@
     <ClInclude Include="..\dfg\DFGPutStackSinkingPhase.h" />
     <ClInclude Include="..\ftl\FTLJSCallBase.h" />
     <ClInclude Include="..\ftl\FTLJSCallVarargs.h" />
-    <ClInclude Include="..\runtime\JSFunctionNameScope.h" />
     <ClInclude Include="..\runtime\MathCommon.h" />
     <ClInclude Include="..\bytecode\BytecodeKills.h" />
     <ClInclude Include="..\bytecode\VariableWriteFireDetail.h" />
@@ -4356,6 +4366,9 @@
     <ClInclude Include="..\wasm\JSWASMModule.h">
       <Filter>wasm</Filter>
     </ClInclude>
+    <ClInclude Include="..\wasm\WASMFormat.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
     <ClInclude Include="..\wasm\WASMMagicNumber.h">
       <Filter>wasm</Filter>
     </ClInclude>
@@ -4371,6 +4384,12 @@
     <ClInclude Include="..\dfg\DFGIntegerRangeOptimizationPhase.h" />
     <ClInclude Include="..\dfg\DFGOSRExitFuzz.h" />
     <ClInclude Include="..\dfg\DFGStoreBarrierInsertionPhase.h" />
+    <ClInclude Include="..\bytecode\ObjectPropertyCondition.h" />
+    <ClInclude Include="..\bytecode\ObjectPropertyConditionSet.h" />
+    <ClInclude Include="..\bytecode\PropertyCondition.h" />
+    <ClInclude Include="..\dfg\DFGAdaptiveInferredPropertyValueWatchpoint.h" />
+    <ClInclude Include="..\dfg\DFGAdaptiveStructureWatchpoint.h" />
+    <ClInclude Include="..\dfg\DFGMultiGetByOffsetData.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JavaScriptCorePreLink.cmd" />

@@ -53,7 +53,7 @@ template <> struct VectorTraits<JSC::Scope> : SimpleClassVectorTraits {
 namespace JSC {
 
 class ExecState;
-class FunctionBodyNode;
+class FunctionMetadataNode;
 class FunctionParameters;
 class Identifier;
 class VM;
@@ -96,6 +96,11 @@ enum class DeclarationType {
     VarDeclaration, 
     LetDeclaration,
     ConstDeclaration
+};
+
+enum class DeclarationImportType {
+    Imported,
+    NotImported
 };
 
 enum DeclarationResult {
@@ -257,6 +262,7 @@ struct Scope {
     bool isLexicalScope() { return m_isLexicalScope; }
 
     VariableEnvironment& declaredVariables() { return m_declaredVariables; }
+    VariableEnvironment& lexicalVariables() { return m_lexicalVariables; }
     VariableEnvironment& finalizeLexicalEnvironment() 
     { 
         if (m_usesEval || m_needsFullActivation)
@@ -315,7 +321,7 @@ struct Scope {
         return result;
     }
 
-    DeclarationResultMask declareLexicalVariable(const Identifier* ident, bool isConstant)
+    DeclarationResultMask declareLexicalVariable(const Identifier* ident, bool isConstant, DeclarationImportType importType = DeclarationImportType::NotImported)
     {
         ASSERT(m_allowsLexicalDeclarations);
         DeclarationResultMask result = DeclarationResult::Valid;
@@ -326,6 +332,9 @@ struct Scope {
             addResult.iterator->value.setIsConst();
         else
             addResult.iterator->value.setIsLet();
+
+        if (importType == DeclarationImportType::Imported)
+            addResult.iterator->value.setIsImported();
 
         if (!addResult.isNewEntry)
             result |= DeclarationResult::InvalidDuplicateDeclaration;
@@ -611,7 +620,7 @@ public:
     ~Parser();
 
     template <class ParsedNode>
-    std::unique_ptr<ParsedNode> parse(ParserError&, const Identifier&, FunctionParseMode);
+    std::unique_ptr<ParsedNode> parse(ParserError&, const Identifier&, FunctionParseMode, ModuleParseMode);
 
     JSTextPosition positionBeforeLastNewline() const { return m_lexer->positionBeforeLastNewline(); }
     JSTokenLocation locationBeforeLastToken() const { return m_lexer->lastTokenLocation(); }
@@ -769,7 +778,7 @@ private:
         popScopeInternal(scope, shouldTrackClosedVariables);
     }
     
-    DeclarationResultMask declareVariable(const Identifier* ident, DeclarationType type = DeclarationType::VarDeclaration)
+    DeclarationResultMask declareVariable(const Identifier* ident, DeclarationType type = DeclarationType::VarDeclaration, DeclarationImportType importType = DeclarationImportType::NotImported)
     {
         unsigned i = m_scopeStack.size() - 1;
         ASSERT(i < m_scopeStack.size());
@@ -794,7 +803,7 @@ private:
             ASSERT(i < m_scopeStack.size());
         }
 
-        return m_scopeStack[i].declareLexicalVariable(ident, type == DeclarationType::ConstDeclaration);
+        return m_scopeStack[i].declareLexicalVariable(ident, type == DeclarationType::ConstDeclaration, importType);
     }
     
     NEVER_INLINE bool hasDeclaredVariable(const Identifier& ident)
@@ -825,6 +834,12 @@ private:
             m_scopeStack.last().declareWrite(ident);
     }
 
+    bool exportName(const Identifier& ident)
+    {
+        ASSERT(currentScope().index() == 0);
+        return currentScope()->moduleScopeData().exportName(ident);
+    }
+
     ScopeStack m_scopeStack;
     
     const SourceProviderCacheItem* findCachedFunctionInfo(int openBracePos) 
@@ -833,13 +848,13 @@ private:
     }
 
     Parser();
-    String parseInner(const Identifier&, FunctionParseMode);
+    String parseInner(const Identifier&, FunctionParseMode, ModuleParseMode);
 
     void didFinishParsing(SourceElements*, DeclarationStacks::FunctionStack&, VariableEnvironment&, CodeFeatures, int, const Vector<RefPtr<UniquedStringImpl>>&&);
 
     // Used to determine type of error to report.
-    bool isFunctionBodyNode(ScopeNode*) { return false; }
-    bool isFunctionBodyNode(FunctionBodyNode*) { return true; }
+    bool isFunctionMetadataNode(ScopeNode*) { return false; }
+    bool isFunctionMetadataNode(FunctionMetadataNode*) { return true; }
 
     ALWAYS_INLINE void next(unsigned lexerFlags = 0)
     {
@@ -1098,7 +1113,7 @@ private:
     template <class TreeBuilder> NEVER_INLINE TreeDestructuringPattern parseDestructuringPattern(TreeBuilder&, DestructuringKind, ExportType, const Identifier** duplicateIdentifier = nullptr, bool* hasDestructuringPattern = nullptr, AssignmentContext = AssignmentContext::DeclarationStatement, int depth = 0);
     template <class TreeBuilder> NEVER_INLINE TreeDestructuringPattern tryParseDestructuringPatternExpression(TreeBuilder&, AssignmentContext);
     template <class TreeBuilder> NEVER_INLINE TreeExpression parseDefaultValueForDestructuringPattern(TreeBuilder&);
-    template <class TreeBuilder> TreeSourceElements parseModuleSourceElements(TreeBuilder&);
+    template <class TreeBuilder> TreeSourceElements parseModuleSourceElements(TreeBuilder&, ModuleParseMode);
     enum class ImportSpecifierType { NamespaceImport, NamedImport, DefaultImport };
     template <class TreeBuilder> typename TreeBuilder::ImportSpecifier parseImportClauseItem(TreeBuilder&, ImportSpecifierType);
     template <class TreeBuilder> typename TreeBuilder::ModuleSpecifier parseModuleSpecifier(TreeBuilder&);
@@ -1255,7 +1270,7 @@ private:
 
 template <typename LexerType>
 template <class ParsedNode>
-std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const Identifier& calleeName, FunctionParseMode parseMode)
+std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const Identifier& calleeName, FunctionParseMode parseMode, ModuleParseMode moduleParseMode)
 {
     int errLine;
     String errMsg;
@@ -1272,7 +1287,7 @@ std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const I
     ASSERT(m_source->startColumn() > 0);
     unsigned startColumn = m_source->startColumn() - 1;
 
-    String parseError = parseInner(calleeName, parseMode);
+    String parseError = parseInner(calleeName, parseMode, moduleParseMode);
 
     int lineNumber = m_lexer->lineNumber();
     bool lexError = m_lexer->sawError();
@@ -1315,7 +1330,7 @@ std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const I
         // we ran out of stack while parsing. If we see an error while parsing eval or program
         // code we assume that it was a syntax error since running out of stack is much less
         // likely, and we are currently unable to distinguish between the two cases.
-        if (isFunctionBodyNode(static_cast<ParsedNode*>(0)) || m_hasStackOverflow)
+        if (isFunctionMetadataNode(static_cast<ParsedNode*>(0)) || m_hasStackOverflow)
             error = ParserError(ParserError::StackOverflow, ParserError::SyntaxErrorNone, m_token);
         else {
             ParserError::SyntaxErrorType errorType = ParserError::SyntaxErrorIrrecoverable;
@@ -1340,15 +1355,16 @@ std::unique_ptr<ParsedNode> parse(
     const Identifier& name, JSParserBuiltinMode builtinMode,
     JSParserStrictMode strictMode, JSParserCodeType codeType,
     ParserError& error, JSTextPosition* positionBeforeLastNewline = nullptr,
-    FunctionParseMode parseMode = NotAFunctionMode, ConstructorKind defaultConstructorKind = ConstructorKind::None, 
-    ThisTDZMode thisTDZMode = ThisTDZMode::CheckIfNeeded)
+    FunctionParseMode parseMode = NotAFunctionMode, ConstructorKind defaultConstructorKind = ConstructorKind::None,
+    ThisTDZMode thisTDZMode = ThisTDZMode::CheckIfNeeded,
+    ModuleParseMode moduleParseMode = ModuleParseMode::Analyze)
 {
     SamplingRegion samplingRegion("Parsing");
 
     ASSERT(!source.provider()->source().isNull());
     if (source.provider()->source().is8Bit()) {
         Parser<Lexer<LChar>> parser(vm, source, builtinMode, strictMode, codeType, defaultConstructorKind, thisTDZMode);
-        std::unique_ptr<ParsedNode> result = parser.parse<ParsedNode>(error, name, parseMode);
+        std::unique_ptr<ParsedNode> result = parser.parse<ParsedNode>(error, name, parseMode, moduleParseMode);
         if (positionBeforeLastNewline)
             *positionBeforeLastNewline = parser.positionBeforeLastNewline();
         if (builtinMode == JSParserBuiltinMode::Builtin) {
@@ -1361,7 +1377,7 @@ std::unique_ptr<ParsedNode> parse(
     }
     ASSERT_WITH_MESSAGE(defaultConstructorKind == ConstructorKind::None, "BuiltinExecutables::createDefaultConstructor should always use a 8-bit string");
     Parser<Lexer<UChar>> parser(vm, source, builtinMode, strictMode, codeType, defaultConstructorKind, thisTDZMode);
-    std::unique_ptr<ParsedNode> result = parser.parse<ParsedNode>(error, name, parseMode);
+    std::unique_ptr<ParsedNode> result = parser.parse<ParsedNode>(error, name, parseMode, moduleParseMode);
     if (positionBeforeLastNewline)
         *positionBeforeLastNewline = parser.positionBeforeLastNewline();
     return result;

@@ -335,7 +335,8 @@ void MachineThreads::removeThreadIfFound(PlatformThread platformThread)
         delete t;
     }
 }
-    
+
+SUPPRESS_ASAN
 void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackOrigin, void* stackTop, RegisterState& calleeSavedRegisters)
 {
     void* registersBegin = &calleeSavedRegisters;
@@ -519,6 +520,7 @@ std::pair<void*, size_t> MachineThreads::Thread::captureStack(void* stackTop)
     return std::make_pair(begin, static_cast<char*>(end) - static_cast<char*>(begin));
 }
 
+SUPPRESS_ASAN
 static void copyMemory(void* dst, const void* src, size_t size)
 {
     size_t dstAsSize = reinterpret_cast<size_t>(dst);
@@ -568,8 +570,8 @@ bool MachineThreads::tryCopyOtherThreadStacks(MutexLocker&, void* buffer, size_t
 {
     // Prevent two VMs from suspending each other's threads at the same time,
     // which can cause deadlock: <rdar://problem/20300842>.
-    static StaticSpinLock mutex;
-    std::lock_guard<StaticSpinLock> lock(mutex);
+    static StaticLock mutex;
+    std::lock_guard<StaticLock> lock(mutex);
 
     *size = 0;
 

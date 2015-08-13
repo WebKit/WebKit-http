@@ -464,7 +464,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
 
     // Notify the UIProcess.
 
-    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), documentLoader.response().certificateInfo(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), documentLoader.response().certificateInfo(), m_frame->coreFrame()->document()->isPluginDocument(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
     webPage->didCommitLoad(m_frame);
 }
 
@@ -703,7 +703,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     if (WebPage::synchronousMessagesShouldSpinRunLoop())
         syncSendFlags |= IPC::SpinRunLoopWhileWaitingForReply;
     if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForResponseSync(m_frame->frameID(), SecurityOriginData::fromFrame(m_frame), response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForResponseSync::Reply(receivedPolicyAction, policyAction, downloadID), std::chrono::milliseconds::max(), syncSendFlags)) {
-        function(PolicyIgnore);
+        m_frame->didReceivePolicyDecision(listenerID, PolicyIgnore, 0, 0);
         return;
     }
 
@@ -1712,6 +1712,11 @@ void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>
 {
 }
 #endif
+
+void WebFrameLoaderClient::prefetchDNS(const String& hostname)
+{
+    WebProcess::singleton().prefetchDNS(hostname);
+}
 
 bool WebFrameLoaderClient::shouldPaintBrokenImage(const WebCore::URL&) const
 {

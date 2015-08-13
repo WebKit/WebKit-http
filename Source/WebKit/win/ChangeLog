@@ -1,3 +1,119 @@
+2015-08-12  Anders Carlsson  <andersca@apple.com>
+
+        Use WTF::Optional in WindowFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=147956
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (createWindowFeaturesPropertyBag):
+
+2015-08-10  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Small repaint issues when device scale factor != 1.
+        https://bugs.webkit.org/show_bug.cgi?id=147825
+
+        Reviewed by Alex Christensen.
+
+        When scaling, we should scale a FloatRect, and then compute the enclosing IntRect.
+
+        * WebView.cpp:
+        (WebView::repaint):
+        (WebView::scrollBackingStore):
+        (WebView::paintIntoBackingStore):
+
+2015-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build more testing binaries with CMake on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147799
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitDLL.cpp:
+        (loadResourceIntoBuffer):
+        AppleWin doesn't like exporting a function without a separate declaration.
+
+2015-08-05  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the build
+
+        * WebIconDatabase.h:
+
+2015-08-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Allow display of mixed content on Windows by default
+        https://bugs.webkit.org/show_bug.cgi?id=147693
+        <rdar://problem/22059707>
+
+        Reviewed by Alex Christensen.
+
+        * Interfaces/IWebPreferencesPrivate.idl: Add preference accessor
+        to allow getting/setting use of insecure content.
+        * WebPreferenceKeysPrivate.h: Add new key for preference.
+        * WebPreferences.cpp: Implement preference accessor.
+        * WebPreferences.h:
+        * WebView.cpp: Set WebCore settings to match prefernces for
+        loading mixed content.
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/187972.
+
+        * Plugins/PluginMainThreadScheduler.cpp:
+        (WebCore::PluginMainThreadScheduler::scheduleCall):
+        (WebCore::PluginMainThreadScheduler::registerPlugin):
+        (WebCore::PluginMainThreadScheduler::unregisterPlugin):
+        (WebCore::PluginMainThreadScheduler::dispatchCallsForPlugin):
+        * Plugins/PluginMainThreadScheduler.h:
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::didRemoveAllIcons):
+        (WebIconDatabase::didImportIconURLForPageURL):
+        (WebIconDatabase::deliverNotifications):
+        * WebLocalizableStrings.cpp:
+        (mainBundleLocStrings):
+        (frameworkLocStringsMutex):
+        (findCachedString):
+        (cacheString):
+
+2015-08-05  Alex Christensen  <achristensen@webkit.org>
+
+        Build DumpRenderTree with CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=147519
+
+        Reviewed by Brent Fulgham.
+
+        * WebView.cpp:
+        Include JSScriptProfile.h to export toJS(ExecState*, JSDomGlobalObject*, JSC::Profile*) from WebKit.dll.
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix Windows build.
+
+        * WebIconDatabase.h:
+
+2015-08-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename Mutex to DeprecatedMutex
+        https://bugs.webkit.org/show_bug.cgi?id=147675
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/PluginMainThreadScheduler.cpp:
+        (WebCore::PluginMainThreadScheduler::scheduleCall):
+        (WebCore::PluginMainThreadScheduler::registerPlugin):
+        (WebCore::PluginMainThreadScheduler::unregisterPlugin):
+        (WebCore::PluginMainThreadScheduler::dispatchCallsForPlugin):
+        * Plugins/PluginMainThreadScheduler.h:
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::didRemoveAllIcons):
+        (WebIconDatabase::didImportIconURLForPageURL):
+        (WebIconDatabase::deliverNotifications):
+        * WebLocalizableStrings.cpp:
+        (mainBundleLocStrings):
+        (frameworkLocStringsMutex):
+        (findCachedString):
+        (cacheString):
+
 2015-08-04  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Update Apple Windows build for VS2015

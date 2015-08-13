@@ -50,11 +50,11 @@ void RenderMediaVolumeSliderContainer::layout()
     RenderBox& buttonBox = downcast<RenderBox>(*nextSibling());
     int absoluteOffsetTop = buttonBox.localToAbsolute(FloatPoint(0, -size().height())).y();
 
-    LayoutStateDisabler layoutStateDisabler(&view());
+    LayoutStateDisabler layoutStateDisabler(view());
 
     // If the slider would be rendered outside the page, it should be moved below the controls.
     if (UNLIKELY(absoluteOffsetTop < 0))
-        setY(buttonBox.offsetTop() + theme().volumeSliderOffsetFromMuteButton(&buttonBox, pixelSnappedSize()).y());
+        setY(buttonBox.offsetTop() + theme().volumeSliderOffsetFromMuteButton(buttonBox, pixelSnappedSize()).y());
 }
 
 // ----------------------------
@@ -72,7 +72,7 @@ void RenderMediaControlTimelineContainer::layout()
 {
     RenderFlexibleBox::layout();
 
-    LayoutStateDisabler layoutStateDisabler(&view());
+    LayoutStateDisabler layoutStateDisabler(view());
     MediaControlTimelineContainerElement* container = static_cast<MediaControlTimelineContainerElement*>(element());
     container->setTimeDisplaysHidden(width().toInt() < minWidthToDisplayTimeDisplays);
 }
@@ -94,7 +94,7 @@ void RenderTextTrackContainerElement::layout()
 
     ASSERT(mediaControlElementType(element()) == MediaTextTrackDisplayContainer);
 
-    LayoutStateDisabler layoutStateDisabler(&view());
+    LayoutStateDisabler layoutStateDisabler(view());
     static_cast<MediaControlTextTrackContainerElement*>(element())->updateSizes();
 }
 

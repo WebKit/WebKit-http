@@ -36,10 +36,33 @@
 extern "C" {
 #endif
 
+enum WKMediaSessionFocusManagerPlaybackAttribute {
+    IsPlaying                     = 1 << 0,
+    IsPreviousTrackControlEnabled = 1 << 1,
+    IsNextTrackControlEnabled     = 1 << 2,
+};
+typedef uint32_t WKMediaSessionFocusManagerPlaybackAttributes;
+
+// Media Session Focus Manager Client
+typedef void (*WKMediaSessionFocusManagerDidChangePlaybackAttribute)(WKMediaSessionFocusManagerRef manager, WKMediaSessionFocusManagerPlaybackAttribute playbackAttribute, bool value, const void *clientInfo);
+
+typedef struct WKMediaSessionFocusManagerClientBase {
+    int                                                  version;
+    const void *                                         clientInfo;
+} WKMediaSessionFocusManagerClientBase;
+
+typedef struct WKMediaSessionFocusManagerClientV0 {
+    WKMediaSessionFocusManagerClientBase                 base;
+
+    // Version 0.
+    WKMediaSessionFocusManagerDidChangePlaybackAttribute didChangePlaybackAttribute;
+} WKMediaSessionFocusManagerClientV0;
+
 WK_EXPORT WKTypeID WKMediaSessionFocusManagerGetTypeID();
 
-typedef void (*WKMediaSessionFocusManagerIsFocusedContentMediaElementPausedCallback)(bool, WKErrorRef, void*);
-WK_EXPORT void WKMediaSessionFocusManagerIsFocusedContentMediaElementPaused(WKMediaSessionFocusManagerRef manager, void* context, WKMediaSessionFocusManagerIsFocusedContentMediaElementPausedCallback callback);
+WK_EXPORT void WKMediaSessionFocusManagerSetClient(WKMediaSessionFocusManagerRef manager, const WKMediaSessionFocusManagerClientBase* client);
+
+WK_EXPORT bool WKMediaSessionFocusManagerValueForPlaybackAttribute(WKMediaSessionFocusManagerRef, WKMediaSessionFocusManagerPlaybackAttribute);
 
 #ifdef __cplusplus
 }

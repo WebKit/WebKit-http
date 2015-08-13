@@ -36,7 +36,6 @@
 #include "GetterSetter.h"
 #include "IndexingHeaderInlines.h"
 #include "JSFunction.h"
-#include "JSFunctionNameScope.h"
 #include "JSGlobalObject.h"
 #include "Lookup.h"
 #include "NativeErrorConstructor.h"
@@ -1601,11 +1600,6 @@ JSValue JSObject::toThis(JSCell* cell, ExecState*, ECMAMode)
     return jsCast<JSObject*>(cell);
 }
 
-bool JSObject::isFunctionNameScopeObject() const
-{
-    return inherits(JSFunctionNameScope::info());
-}
-
 void JSObject::seal(VM& vm)
 {
     if (isSealed(vm))
@@ -2047,9 +2041,9 @@ void JSObject::putByIndexBeyondVectorLength(ExecState* exec, unsigned i, JSValue
             break;
         }
         if (structure(vm)->needsSlowPutIndexing()) {
-            ArrayStorage* storage = createArrayStorage(vm, i + 1, getNewVectorLength(0, 0, i + 1));
-            storage->m_vector[i].set(vm, this, value);
-            storage->m_numValuesInVector++;
+            // Convert the indexing type to the SlowPutArrayStorage and retry.
+            createArrayStorage(vm, i + 1, getNewVectorLength(0, 0, i + 1));
+            putByIndex(this, exec, i, value, shouldThrow);
             break;
         }
         

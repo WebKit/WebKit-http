@@ -62,12 +62,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/FontCacheWin.cpp
     platform/graphics/win/FontPlatformDataWin.cpp
     platform/graphics/win/FontWin.cpp
+    platform/graphics/win/FullScreenController.cpp
     platform/graphics/win/GraphicsContextWin.cpp
     platform/graphics/win/IconWin.cpp
     platform/graphics/win/ImageWin.cpp
     platform/graphics/win/IntPointWin.cpp
     platform/graphics/win/IntRectWin.cpp
     platform/graphics/win/IntSizeWin.cpp
+    platform/graphics/win/MediaPlayerPrivateFullscreenWindow.cpp
     platform/graphics/win/SimpleFontDataWin.cpp
     platform/graphics/win/TransformationMatrixWin.cpp
     platform/graphics/win/UniscribeController.cpp
@@ -90,6 +92,7 @@ list(APPEND WebCore_SOURCES
     platform/win/DragImageWin.cpp
     platform/win/EventLoopWin.cpp
     platform/win/FileSystemWin.cpp
+    platform/win/GDIObjectCounter.cpp
     platform/win/GDIUtilities.cpp
     platform/win/KeyEventWin.cpp
     platform/win/LanguageWin.cpp
@@ -117,8 +120,6 @@ list(APPEND WebCore_SOURCES
     platform/win/WheelEventWin.cpp
     platform/win/WidgetWin.cpp
     platform/win/WindowMessageBroadcaster.cpp
-
-    rendering/RenderThemeWin.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -223,3 +224,11 @@ add_custom_command(
     WORKING_DIRECTORY "${DERIVED_SOURCES_WEBCORE_DIR}"
     COMMAND echo /* Identifying AVFoundation Support */ > WebCoreHeaderDetection.h
     VERBATIM)
+
+make_directory(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj)
+file(COPY
+    "${WEBCORE_DIR}/English.lproj/Localizable.strings"
+    "${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js"
+    DESTINATION
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj
+)

@@ -115,6 +115,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ToThisStatus.cpp
     bytecode/TrackedReferences.cpp
     bytecode/UnlinkedCodeBlock.cpp
+    bytecode/UnlinkedFunctionExecutable.cpp
     bytecode/UnlinkedInstructionStream.cpp
     bytecode/ValueRecovery.cpp
     bytecode/VariableWriteFireDetail.cpp
@@ -291,6 +292,7 @@ set(JavaScriptCore_SOURCES
     heap/HeapVerifier.cpp
     heap/IncrementalSweeper.cpp
     heap/JITStubRoutineSet.cpp
+    heap/LiveObjectList.cpp
     heap/MachineStackMarker.cpp
     heap/MarkStack.cpp
     heap/MarkedAllocator.cpp
@@ -383,7 +385,10 @@ set(JavaScriptCore_SOURCES
     jit/ThunkGenerators.cpp
 
     parser/Lexer.cpp
+    parser/ModuleAnalyzer.cpp
+    parser/ModuleRecord.cpp
     parser/Nodes.cpp
+    parser/NodesAnalyzeModule.cpp
     parser/Parser.cpp
     parser/ParserArena.cpp
     parser/SourceCode.cpp
@@ -511,7 +516,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSDateMath.cpp
     runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
-    runtime/JSFunctionNameScope.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
@@ -520,7 +524,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSLock.cpp
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
-    runtime/JSNameScope.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSONObject.cpp
     runtime/JSObject.cpp
@@ -617,7 +620,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/VMEntryScope.cpp
     runtime/VarOffset.cpp
     runtime/Watchdog.cpp
-    runtime/WatchdogNone.cpp
     runtime/WeakMapConstructor.cpp
     runtime/WeakMapData.cpp
     runtime/WeakMapPrototype.cpp

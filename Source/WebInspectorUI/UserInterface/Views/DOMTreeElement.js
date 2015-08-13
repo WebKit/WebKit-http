@@ -666,6 +666,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), this._copyHTML.bind(this));
         if (this.editable)
             contextMenu.appendItem(WebInspector.UIString("Delete Node"), this.remove.bind(this));
+
+        let node = this.representedObject;
+        if (node.nodeType() === Node.ELEMENT_NODE)
+            contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), this._scrollIntoView.bind(this));
     }
 
     _startEditing()
@@ -754,6 +758,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         removeZeroWidthSpaceRecursive(attribute);
 
         var config = new WebInspector.EditingConfig(this._attributeEditingCommitted.bind(this), this._editingCancelled.bind(this), attributeName);
+        config.setNumberCommitHandler(this._attributeNumberEditingCommitted.bind(this));
         this._editing = WebInspector.startEditing(attribute, config);
 
         window.getSelection().setBaseAndExtent(elementForSelection, 0, elementForSelection, 1);
@@ -874,6 +879,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _attributeEditingCommitted(element, newText, oldText, attributeName, moveDirection)
     {
+        if (newText === oldText)
+            return;
+
         this._editing = false;
 
         var treeOutline = this.treeOutline;
@@ -927,6 +935,14 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         this.representedObject.setAttribute(attributeName, newText, moveToNextAttributeIfNeeded.bind(this));
+    }
+
+    _attributeNumberEditingCommitted(element, newText, oldText, attributeName, moveDirection)
+    {
+        if (newText === oldText)
+            return;
+
+        this.representedObject.setAttribute(attributeName, newText);
     }
 
     _tagNameEditingCommitted(element, newText, oldText, tagName, moveDirection)
@@ -1340,6 +1356,26 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         this.representedObject.removeNode(removeNodeCallback);
+    }
+
+    _scrollIntoView()
+    {
+        function resolvedNode(object)
+        {
+            if (!object)
+                return;
+
+            function scrollIntoView()
+            {
+                this.scrollIntoViewIfNeeded(true);
+            }
+
+            object.callFunction(scrollIntoView, undefined, false, function() {});
+            object.release();
+        }
+
+        let node = this.representedObject;
+        WebInspector.RemoteObject.resolveNode(node, "", resolvedNode);
     }
 
     _editAsHTML()

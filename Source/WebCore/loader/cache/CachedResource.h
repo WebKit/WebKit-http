@@ -244,7 +244,9 @@ public:
     virtual void switchClientsToRevalidatedResource();
     void clearResourceToRevalidate();
     void updateResponseAfterRevalidation(const ResourceResponse& validatingResponse);
-    
+    bool validationInProgress() const { return m_proxyResource; }
+    bool validationCompleting() const { return m_proxyResource && m_proxyResource->m_switchingClientsToRevalidatedResource; }
+
     virtual void didSendData(unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
 
     void setLoadFinishTime(double finishTime) { m_loadFinishTime = finishTime; }

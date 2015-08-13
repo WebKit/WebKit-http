@@ -248,8 +248,6 @@ animations/fill-mode-transform.html [ Skip ]
 animations/pause-crash.html [ Skip ]
 animations/resume-after-page-cache.html [ Skip ]
 animations/stop-animation-on-suspend.html [ Skip ]
-compositing/animation/filling-animation-overlap-at-end.html
-compositing/animation/filling-animation-overlap.html
 compositing/animation/keyframe-order.html
 compositing/animation/layer-for-filling-animation.html
 compositing/animation/matrix-animation.html
@@ -289,10 +287,10 @@ fast/layers/no-clipping-overflow-hidden-added-after-transform.html
 # Animation tests that fail:
 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 animations/cross-fade-webkit-mask-box-image.html [ Failure ]
-animations/play-state-suspend.html [ Failure ]
-animations/suspend-resume-animation.html [ Failure ]
-animations/unprefixed-events-mixed-with-prefixed.html [ Failure ]
-animations/unprefixed-events.html [ Failure ]
+animations/play-state-suspend.html [ Pass Failure ]
+animations/suspend-resume-animation.html [ Pass Failure ]
+animations/unprefixed-events-mixed-with-prefixed.html [ Pass Failure ]
+animations/unprefixed-events.html [ Pass Failure ]
 
 # Animation tests that are flaky:
 animations/3d/matrix-transform-type-animation.html [ Skip ] # Pass, Timeout, Missing
@@ -557,7 +555,6 @@ css3/images/cross-fade-background-size.html [ Failure ]
 css3/masking/clip-path-reference-userSpaceOnUse.html [ ImageOnlyFailure ]
 css3/masking/mask-repeat-round-padding.html [ ImageOnlyFailure ]
 css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
-css3/masking/mask-svg-clipped-fragmentId.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-box/shape-outside-box-002.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-box/shape-outside-box-003.html [ ImageOnlyFailure ]
 css3/shapes/shape-outside/shape-box/shape-outside-box-004.html [ ImageOnlyFailure ]
@@ -1706,6 +1703,7 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/show-modal-dialog-onblur-onfocus.html [ Failure ]
 fast/events/tab-focus-link-in-canvas.html [ Failure ]
 fast/events/tabindex-focus-blur-all.html [ Failure ]
+
 fast/events/touch/basic-multi-touch-events-limited.html [ Failure ]
 fast/events/touch/basic-multi-touch-events.html [ Failure ]
 fast/events/touch/basic-single-touch-events.html [ Failure ]
@@ -1730,11 +1728,14 @@ fast/events/touch/touch-input-element-change-documents.html [ Failure ]
 fast/events/touch/touch-scaled-scrolled.html [ Failure ]
 fast/events/touch/touch-slider-no-js-touch-listener.html [ Failure ]
 fast/events/touch/touch-slider.html [ Failure ]
+fast/events/touch/zoomed-touch-event-pageXY.html [ Skip ]
+
 fast/events/wheelevent-basic.html [ Failure ]
 fast/events/wheelevent-direction-inverted-from-device.html [ Failure ]
 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Failure ]
 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure ]
 fast/events/wheelevent-mousewheel-interaction.html [ Failure ]
+
 fast/events/zoom-dblclick.html [ Failure ]
 fast/files/file-list-test.html [ Failure ]
 fast/filter-image/clipped-filter.html [ ImageOnlyFailure ]
@@ -1747,6 +1748,7 @@ fast/forms/button-with-float.html [ ImageOnlyFailure ]
 fast/forms/color/color-setrangetext.html [ Failure ]
 fast/forms/color/input-color-onchange-event.html [ Failure ]
 fast/forms/color/input-value-sanitization-color.html [ Failure ]
+
 fast/forms/datalist/datalist-fallback-content.html [ ImageOnlyFailure ]
 fast/forms/datalist/datalist-nonoption-child.html [ Failure ]
 fast/forms/datalist/datalist.html [ Failure ]
@@ -2653,7 +2655,6 @@ fast/dom/timer-increase-min-interval-repeating.html [ Timeout Pass ]
 fast/dom/timer-increase-min-interval.html [ Timeout Pass ]
 fast/dom/timer-increase-then-decrease-min-interval-repeating.html [ Timeout Pass ]
 fast/dom/timer-increase-then-decrease-min-interval.html [ Timeout Pass ]
-fast/dom/timer-throttle-on-scrolling-iframe-away.html [ Timeout Pass ]
 fast/events/dispatch-message-string-data.html [ Timeout Pass ]
 fast/events/dispatch-synthetic-mouseevent.html [ Timeout Pass ]
 fast/events/dispatch-to-function-with-handle-event.html [ Timeout Pass ]
@@ -2693,6 +2694,11 @@ fast/fixed-layout/fixed-layout.html [ Failure Crash Pass ]
 # Not implemented
 webkit.org/b/145617 compositing/layer-creation/zoomed-clip-intersection.html [ Skip ]
 
+fast/dom/timer-fire-after-page-pause.html [ Skip ]
+
 # This test depends on location, and it is impossible to mock the particular mechanism
 # this test uses to determine location.
 fast/text/softbank-emoji.html [ Failure Pass ]
+
+# This test hardcodes the result of the Mac font lookup algorithm.
+fast/text/fallback-language-han.html [ Skip ]

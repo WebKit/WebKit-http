@@ -568,8 +568,8 @@ public:
 
     RenderView& view() const { return *document().renderView(); };
 
-    // Returns true if this renderer is rooted, and optionally returns the hosting view (the root of the hierarchy).
-    bool isRooted(RenderView** = nullptr) const;
+    // Returns true if this renderer is rooted.
+    bool isRooted() const;
 
     Node* node() const { return isAnonymous() ? nullptr : &m_node; }
     Node* nonPseudoNode() const { return isPseudoElement() ? nullptr : node(); }
@@ -857,16 +857,12 @@ public:
 
     RespectImageOrientationEnum shouldRespectImageOrientation() const;
 
-    void drawLineForBoxSide(GraphicsContext*, float x1, float y1, float x2, float y2, BoxSide, Color, EBorderStyle, float adjbw1, float adjbw2, bool antialias = false) const;
 protected:
-    void paintFocusRing(PaintInfo&, const LayoutPoint&, RenderStyle*);
-    void paintOutline(PaintInfo&, const LayoutRect&);
     void addPDFURLRect(PaintInfo&, const LayoutPoint&);
     Node& nodeForNonAnonymous() const { ASSERT(!isAnonymous()); return m_node; }
 
     void adjustRectForOutlineAndShadow(LayoutRect&) const;
 
-    void clearLayoutRootIfNeeded() const;
     virtual void willBeDestroyed();
 
     virtual void insertedIntoTree();

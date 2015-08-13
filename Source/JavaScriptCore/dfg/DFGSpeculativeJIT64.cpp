@@ -44,6 +44,7 @@
 #include "SetupVarargsFrame.h"
 #include "SpillRegistersMode.h"
 #include "TypeProfilerLog.h"
+#include "Watchdog.h"
 
 namespace JSC { namespace DFG {
 
@@ -3849,6 +3850,10 @@ void SpeculativeJIT::compile(Node* node)
         noResult(node);
         break;
     }
+
+    case CheckIdent:
+        compileCheckIdent(node);
+        break;
 
     case GetExecutable: {
         SpeculateCellOperand function(this, node->child1());

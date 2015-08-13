@@ -956,10 +956,6 @@ void ArgumentCoder<WindowFeatures>::encode(ArgumentEncoder& encoder, const Windo
     encoder << windowFeatures.y;
     encoder << windowFeatures.width;
     encoder << windowFeatures.height;
-    encoder << windowFeatures.xSet;
-    encoder << windowFeatures.ySet;
-    encoder << windowFeatures.widthSet;
-    encoder << windowFeatures.heightSet;
     encoder << windowFeatures.menuBarVisible;
     encoder << windowFeatures.statusBarVisible;
     encoder << windowFeatures.toolBarVisible;
@@ -979,14 +975,6 @@ bool ArgumentCoder<WindowFeatures>::decode(ArgumentDecoder& decoder, WindowFeatu
     if (!decoder.decode(windowFeatures.width))
         return false;
     if (!decoder.decode(windowFeatures.height))
-        return false;
-    if (!decoder.decode(windowFeatures.xSet))
-        return false;
-    if (!decoder.decode(windowFeatures.ySet))
-        return false;
-    if (!decoder.decode(windowFeatures.widthSet))
-        return false;
-    if (!decoder.decode(windowFeatures.heightSet))
         return false;
     if (!decoder.decode(windowFeatures.menuBarVisible))
         return false;
@@ -2165,12 +2153,16 @@ bool ArgumentCoder<TextIndicatorData>::decode(ArgumentDecoder& decoder, TextIndi
     bool hasImage;
     if (!decoder.decode(hasImage))
         return false;
+    if (!hasImage)
+        textIndicatorData.contentImage = nullptr;
     if (hasImage && !decodeImage(decoder, textIndicatorData.contentImage))
         return false;
 
     bool hasImageWithHighlight;
     if (!decoder.decode(hasImageWithHighlight))
         return false;
+    if (!hasImageWithHighlight)
+        textIndicatorData.contentImageWithHighlight = nullptr;
     if (hasImageWithHighlight && !decodeImage(decoder, textIndicatorData.contentImageWithHighlight))
         return false;
 

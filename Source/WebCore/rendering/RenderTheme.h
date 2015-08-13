@@ -209,7 +209,7 @@ public:
     virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;
     
     // Returns the media volume slider container's offset from the mute button.
-    virtual IntPoint volumeSliderOffsetFromMuteButton(RenderBox*, const IntSize&) const;
+    virtual IntPoint volumeSliderOffsetFromMuteButton(const RenderBox&, const IntSize&) const;
 #endif
 
 #if ENABLE(METER_ELEMENT)
@@ -307,7 +307,7 @@ protected:
     virtual bool paintMenuListDecorations(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }
 
     virtual void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const;
-    virtual bool paintMenuListButtonDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) { return true; }
+    virtual bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) { return true; }
 
     virtual bool paintPushButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }
     virtual bool paintSquareButtonDecorations(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }

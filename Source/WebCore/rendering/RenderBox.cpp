@@ -53,7 +53,6 @@
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
-#include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h"
@@ -110,20 +109,9 @@ static bool skipBodyBackground(const RenderBox* bodyElementRenderer)
     // The <body> only paints its background if the root element has defined a background independent of the body,
     // or if the <body>'s parent is not the document element's renderer (e.g. inside SVG foreignObject).
     auto documentElementRenderer = bodyElementRenderer->document().documentElement()->renderer();
-
-    if (!documentElementRenderer)
-        return false;
-
-    if (documentElementRenderer->hasBackground())
-        return false;
-
-    if (documentElementRenderer != bodyElementRenderer->parent())
-        return false;
-
-    if (bodyElementRenderer->isComposited() && documentElementRenderer->isComposited())
-        return downcast<RenderLayerModelObject>(documentElementRenderer)->layer()->backing()->graphicsLayer()->drawsContent();
-
-    return true;
+    return documentElementRenderer
+        && !documentElementRenderer->hasBackground()
+        && (documentElementRenderer == bodyElementRenderer->parent());
 }
 
 RenderBox::RenderBox(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
@@ -324,6 +312,15 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle& newStyl
     } else if (isBody())
         view().repaintRootContents();
 
+#if ENABLE(CSS_SCROLL_SNAP)
+    if (!newStyle.scrollSnapCoordinates().isEmpty() || (oldStyle && !oldStyle->scrollSnapCoordinates().isEmpty())) {
+        if (newStyle.scrollSnapCoordinates().isEmpty())
+            view().unregisterBoxWithScrollSnapCoordinates(*this);
+        else
+            view().registerBoxWithScrollSnapCoordinates(*this);
+    }
+#endif
+
     RenderBoxModelObject::styleWillChange(diff, newStyle);
 }
 
@@ -440,6 +437,17 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
     updateGridAlignmentAfterStyleChange(oldStyle);
 #endif
 }
+
+void RenderBox::willBeRemovedFromTree()
+{
+#if ENABLE(CSS_SCROLL_SNAP)
+    if (hasInitializedStyle() && !style().scrollSnapCoordinates().isEmpty())
+        view().unregisterBoxWithScrollSnapCoordinates(*this);
+#endif
+    
+    RenderBoxModelObject::willBeRemovedFromTree();
+}
+    
 
 #if ENABLE(CSS_SHAPES)
 void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style, const RenderStyle* oldStyle)
@@ -1249,7 +1257,7 @@ void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
     const FillLayer* bgLayer = rootBackgroundRenderer.style().backgroundLayers();
     Color bgColor = rootBackgroundRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
 
-    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(this), BackgroundBleedNone, CompositeSourceOver, &rootBackgroundRenderer);
+    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(), BackgroundBleedNone, CompositeSourceOver, &rootBackgroundRenderer);
 }
 
 BackgroundBleedAvoidance RenderBox::determineBackgroundBleedAvoidance(GraphicsContext* context) const
@@ -2347,7 +2355,7 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
     }
 
     // If layout is limited to a subtree, the subtree root's logical width does not change.
-    if (element() && view().frameView().layoutRoot(true) == this)
+    if (element() && !view().frameView().layoutPending() && view().frameView().layoutRoot() == this)
         return;
 
     // The parent box is flexing us, so it has increased or decreased our

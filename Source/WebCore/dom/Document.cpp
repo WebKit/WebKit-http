@@ -3506,11 +3506,28 @@ void Document::removeAudioProducer(MediaProducer* audioProducer)
     updateIsPlayingMedia();
 }
 
-void Document::updateIsPlayingMedia()
+void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
     for (auto audioProducer : m_audioProducers)
         state |= audioProducer->mediaState();
+
+#if ENABLE(MEDIA_SESSION)
+    if (HTMLMediaElement* sourceElement = HTMLMediaElement::elementWithID(sourceElementID)) {
+        if (sourceElement->isPlaying())
+            state |= MediaProducer::IsSourceElementPlaying;
+
+        if (MediaSession* session = sourceElement->session()) {
+            bool isNull;
+            if (MediaRemoteControls* controls = session->controls(isNull)) {
+                if (controls->previousTrackEnabled())
+                    state |= MediaProducer::IsPreviousTrackControlEnabled;
+                if (controls->nextTrackEnabled())
+                    state |= MediaProducer::IsNextTrackControlEnabled;
+            }
+        }
+    }
+#endif
 
     if (state == m_mediaState)
         return;
@@ -3518,7 +3535,7 @@ void Document::updateIsPlayingMedia()
     m_mediaState = state;
 
     if (page())
-        page()->updateIsPlayingMedia();
+        page()->updateIsPlayingMedia(sourceElementID);
 }
 
 void Document::pageMutedStateDidChange()
@@ -4929,7 +4946,7 @@ void Document::initSecurityContext()
     enforceSandboxFlags(m_frame->loader().effectiveSandboxFlags());
 
     if (shouldEnforceContentDispositionAttachmentSandbox())
-        enforceSandboxFlags(SandboxAll);
+        applyContentDispositionAttachmentSandbox();
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
     setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
@@ -6716,6 +6733,16 @@ bool Document::shouldEnforceContentDispositionAttachmentSandbox() const
         responseIsAttachment = documentLoader->response().isAttachment();
 
     return contentDispositionAttachmentSandboxEnabled && responseIsAttachment;
+}
+
+void Document::applyContentDispositionAttachmentSandbox()
+{
+    ASSERT(shouldEnforceContentDispositionAttachmentSandbox());
+
+    if (!isMediaDocument())
+        enforceSandboxFlags(SandboxAll);
+    else
+        enforceSandboxFlags(SandboxOrigin);
 }
 
 } // namespace WebCore

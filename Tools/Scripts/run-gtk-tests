@@ -62,8 +62,8 @@ class TestRunner:
 
     SKIPPED = [
         SkippedTest("WebKit2Gtk/TestUIClient", "/webkit2/WebKitWebView/mouse-target", "Test times out after r150890", 117689),
-        SkippedTest("WebKit2Gtk/TestContextMenu", SkippedTest.ENTIRE_SUITE, "Test times out after r150890", 117689),
         SkippedTest("WebKit2Gtk/TestCookieManager", "/webkit2/WebKitCookieManager/persistent-storage", "Test is flaky", 134580),
+        SkippedTest("WebKit2Gtk/TestWebExtensions", "/webkit2/WebKitWebView/install-missing-plugins-permission-request", "Test times out", 147822),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.MouseMoveAfterCrash", "Test is flaky", 85066),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.NewFirstVisuallyNonEmptyLayoutForImages", "Test is flaky", 85066),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.NewFirstVisuallyNonEmptyLayoutFrames", "Test fails", 85037),
@@ -78,6 +78,10 @@ class TestRunner:
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.TerminateTwice", "Test causes crash on the next test", 121970),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.GeolocationTransitionToHighAccuracy", "Test causes crash on the next test", 125068),
         SkippedTest("WebKit2/TestWebKit2", "WebKit2.GeolocationTransitionToLowAccuracy", "Test causes crash on the next test", 125068),
+    ]
+
+    SLOW = [
+        "WTF_Lock.ContendedShortSection",
     ]
 
     def __init__(self, options, tests=[]):
@@ -340,14 +344,17 @@ class TestRunner:
 
     def _run_google_test(self, test_program, subtest):
         test_command = [test_program, '--gtest_filter=%s' % (subtest)]
-        return self._run_test_command(test_command, self._options.timeout)
+        timeout = self._options.timeout
+        if subtest in TestRunner.SLOW:
+            timeout *= 5
+        return self._run_test_command(test_command, timeout)
 
     def _run_google_test_suite(self, test_program):
+        retcode = 0
         for subtest in self._get_tests_from_google_test_suite(test_program):
-            retcode = self._run_google_test(test_program, subtest)
-            if retcode:
-                return retcode
-        return 0
+            if self._run_google_test(test_program, subtest):
+                retcode = 1
+        return retcode
 
     def _run_test(self, test_program):
         basedir = os.path.basename(os.path.dirname(test_program))

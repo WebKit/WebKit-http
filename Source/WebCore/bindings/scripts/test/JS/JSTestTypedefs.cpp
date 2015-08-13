@@ -170,8 +170,9 @@ void JSTestTypedefsConstructor::finishCreation(VM& vm, JSDOMGlobalObject* global
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestTypedefs::getPrototype(vm, globalObject), DontDelete | ReadOnly);
-    putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontDelete | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestTypedefs::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestTypedefs"))), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontEnum);
     reifyStaticProperties(vm, JSTestTypedefsConstructorTableValues, *this);
 }
 

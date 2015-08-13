@@ -483,12 +483,6 @@
     <ClCompile Include="..\Modules\webdatabase\DatabaseAuthorizer.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackend.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendBase.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\DatabaseContext.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
@@ -523,9 +517,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLStatement.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\SQLStatementBackend.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransaction.cpp">
@@ -4260,6 +4251,9 @@
     <ClCompile Include="..\bindings\js\JSCommandLineAPIHostCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
+    <ClCompile Include="..\bindings\js\JSCountQueuingStrategyCustom.cpp">
+      <Filter>bindings\js</Filter>
+    </ClCompile>
     <ClCompile Include="..\bindings\js\JSCSSRuleCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -5132,6 +5126,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCounter.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCountQueuingStrategy.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCrypto.cpp">
@@ -7448,12 +7445,6 @@
     <ClInclude Include="..\Modules\webdatabase\DatabaseAuthorizer.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackend.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendBase.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseBasicTypes.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
@@ -7503,9 +7494,6 @@
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLStatement.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\SQLStatementBackend.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLStatementCallback.h">
@@ -12210,6 +12198,9 @@
     <ClInclude Include="..\ForwardingHeaders\runtime\SymbolTable.h">
       <Filter>ForwardingHeaders\runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\ForwardingHeaders\runtime\Watchdog.h">
+      <Filter>ForwardingHeaders\runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\runtime\WeakGCMap.h">
       <Filter>ForwardingHeaders\runtime</Filter>
     </ClInclude>
@@ -12530,6 +12521,9 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCounter.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCountQueuingStrategy.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCrypto.h">
@@ -15222,6 +15216,9 @@
     </ClInclude>
     <ClInclude Include="..\platform\graphics\FontCascadeFonts.h">
       <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\streams\CountQueuingStrategy.h">
+      <Filter>Modules\streams</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\streams\ReadableStream.h">
       <Filter>Modules\streams</Filter>

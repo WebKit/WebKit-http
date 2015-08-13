@@ -37,6 +37,7 @@
 #include "APINavigationAction.h"
 #include "APINavigationClient.h"
 #include "APINavigationResponse.h"
+#include "APIPageConfiguration.h"
 #include "APIPolicyClient.h"
 #include "APISessionState.h"
 #include "APIUIClient.h"
@@ -125,6 +126,11 @@ WKContextRef WKPageGetContext(WKPageRef pageRef)
 WKPageGroupRef WKPageGetPageGroup(WKPageRef pageRef)
 {
     return toAPI(&toImpl(pageRef)->pageGroup());
+}
+
+WKPageConfigurationRef WKPageCopyPageConfiguration(WKPageRef pageRef)
+{
+    return toAPI(&toImpl(pageRef)->configuration().copy().leakRef());
 }
 
 void WKPageLoadURL(WKPageRef pageRef, WKURLRef URLRef)
@@ -1344,14 +1350,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 return 0;
 
             API::Dictionary::MapType map;
-            if (windowFeatures.xSet)
-                map.set("x", API::Double::create(windowFeatures.x));
-            if (windowFeatures.ySet)
-                map.set("y", API::Double::create(windowFeatures.y));
-            if (windowFeatures.widthSet)
-                map.set("width", API::Double::create(windowFeatures.width));
-            if (windowFeatures.heightSet)
-                map.set("height", API::Double::create(windowFeatures.height));
+            if (windowFeatures.x)
+                map.set("x", API::Double::create(*windowFeatures.x));
+            if (windowFeatures.y)
+                map.set("y", API::Double::create(*windowFeatures.y));
+            if (windowFeatures.width)
+                map.set("width", API::Double::create(*windowFeatures.width));
+            if (windowFeatures.height)
+                map.set("height", API::Double::create(*windowFeatures.height));
             map.set("menuBarVisible", API::Boolean::create(windowFeatures.menuBarVisible));
             map.set("statusBarVisible", API::Boolean::create(windowFeatures.statusBarVisible));
             map.set("toolBarVisible", API::Boolean::create(windowFeatures.toolBarVisible));
@@ -2180,6 +2186,7 @@ void WKPageHandleMediaEvent(WKPageRef page, WKMediaEventType wkEventType)
         break;
     default:
         ASSERT_NOT_REACHED();
+        return;
     }
 
     toImpl(page)->handleMediaEvent(eventType);

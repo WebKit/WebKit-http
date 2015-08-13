@@ -33,6 +33,7 @@
 #import "CoreTextSPI.h"
 #import "FontCascade.h"
 #import "RenderThemeIOS.h"
+#import <wtf/HashSet.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/CString.h>
@@ -80,10 +81,18 @@ PassRefPtr<Font> FontCache::getSystemFontFallbackForCharacters(const FontDescrip
     const FontPlatformData& platformData = originalFontData->platformData();
     CTFontRef ctFont = platformData.font();
 
+    RetainPtr<CFStringRef> localeString;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 90000
+    if (!description.locale().isNull())
+        localeString = description.locale().string().createCFString();
+#endif
+
     CFIndex coveredLength = 0;
-    RetainPtr<CTFontRef> substituteFont = adoptCF(CTFontCreatePhysicalFontForCharactersWithLanguage(ctFont, (const UTF16Char*)characters, (CFIndex)length, 0, &coveredLength));
+    RetainPtr<CTFontRef> substituteFont = adoptCF(CTFontCreatePhysicalFontForCharactersWithLanguage(ctFont, (const UTF16Char*)characters, (CFIndex)length, localeString.get(), &coveredLength));
     if (!substituteFont)
         return nullptr;
+
+    substituteFont = applyFontFeatureSettings(substituteFont.get(), description.featureSettings());
 
     CTFontSymbolicTraits originalTraits = CTFontGetSymbolicTraits(ctFont);
     CTFontSymbolicTraits actualTraits = 0;
@@ -464,8 +473,25 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
 
 Vector<String> FontCache::systemFontFamilies()
 {
-    // FIXME: <https://webkit.org/b/147033> Web Inspector: [iOS] Allow inspector to retrieve a list of system fonts
+    // FIXME: <rdar://problem/21890188>
     Vector<String> fontFamilies;
+    auto emptyFontDescriptor = adoptCF(CTFontDescriptorCreateWithAttributes((CFDictionaryRef) @{ }));
+    auto matchedDescriptors = adoptCF(CTFontDescriptorCreateMatchingFontDescriptors(emptyFontDescriptor.get(), nullptr));
+    if (!matchedDescriptors)
+        return fontFamilies;
+
+    CFIndex numMatches = CFArrayGetCount(matchedDescriptors.get());
+    if (!numMatches)
+        return fontFamilies;
+
+    HashSet<String> visited;
+    for (CFIndex i = 0; i < numMatches; ++i) {
+        auto fontDescriptor = static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(matchedDescriptors.get(), i));
+        if (auto familyName = adoptCF(static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontFamilyNameAttribute))))
+            visited.add(familyName.get());
+    }
+
+    copyToVector(visited, fontFamilies);
     return fontFamilies;
 }
 
@@ -677,13 +703,6 @@ static uint16_t toCTFontWeight(FontWeight fontWeight)
 
 std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
 {
-    // Special case for "Courier" font. We used to have only an oblique variant on iOS, so prior to
-    // iOS 6.0, we disallowed its use here. We'll fall back on "Courier New". <rdar://problem/5116477&10850227>
-    static NeverDestroyed<AtomicString> courier("Courier", AtomicString::ConstructFromLiteral);
-    static bool shouldDisallowCourier = !iosExecutableWasLinkedOnOrAfterVersion(wkIOSSystemVersion_6_0);
-    if (shouldDisallowCourier && equalIgnoringCase(family, courier))
-        return nullptr;
-
     CTFontSymbolicTraits traits = 0;
     if (fontDescription.italic())
         traits |= kCTFontTraitItalic;
@@ -698,6 +717,8 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
         ctFont = adoptCF(createCTFontWithFamilyNameAndWeight(family, traits, size, toCTFontWeight(fontDescription.weight())));
     if (!ctFont)
         return nullptr;
+
+    ctFont = applyFontFeatureSettings(ctFont.get(), fontDescription.featureSettings());
 
     CTFontSymbolicTraits actualTraits = 0;
     if (isFontWeightBold(fontDescription.weight()) || fontDescription.italic())

@@ -1,3 +1,48 @@
+2015-08-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct a typo in the explanatory text.
+
+        * demos/backdrop-filter/index.html:
+
+2015-08-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add an example of backdrop-filter.
+
+        * demos/backdrop-filter: Added.
+        * demos/backdrop-filter/dynamic_poster.jpg: Added.
+        * demos/backdrop-filter/dynamic_source.m4v: Added.
+        * demos/backdrop-filter/index.html: Added.
+        * demos/backdrop-filter/inverted_color.jpg: Added.
+        * demos/backdrop-filter/multiple.jpg: Added.
+        * demos/backdrop-filter/simple_blur.jpg: Added.
+
+2015-08-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add a poster image for the video.
+
+        * blog-files/backdrop-filters/dynamic_poster.jpg: Added.
+
+2015-08-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add more media control examples.
+
+        * blog-files/backdrop-filters/dynamic_backdrop.m4v: Added.
+        * blog-files/backdrop-filters/Media_Controls_Complete_2x.jpg: Added.
+        * blog-files/backdrop-filters/Media_Controls_Complete_2x.jpg: Added.
+
+2015-08-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Add two more files for a future blog post.
+
+        * blog-files/backdrop-filters/Media_Controls_1x.jpg: Added.
+        * blog-files/backdrop-filters/Media_Controls_2x.jpg: Added.
+
+2015-08-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix the twitter links on the status page
+
+        * status.html:
+
 2015-08-03  Benjamin Poulain  <benjamin@webkit.org>
 
         Prepare screenshots for a potential blog post

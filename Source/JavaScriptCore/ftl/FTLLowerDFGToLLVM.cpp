@@ -532,6 +532,9 @@ private:
         case CheckBadCell:
             compileCheckBadCell();
             break;
+        case CheckIdent:
+            compileCheckIdent();
+            break;
         case GetExecutable:
             compileGetExecutable();
             break;
@@ -2027,6 +2030,20 @@ private:
     void compileCheckNotEmpty()
     {
         speculate(TDZFailure, noValue(), nullptr, m_out.isZero64(lowJSValue(m_node->child1())));
+    }
+
+    void compileCheckIdent()
+    {
+        UniquedStringImpl* uid = m_node->uidOperand();
+        if (uid->isSymbol()) {
+            LValue symbol = lowSymbol(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        } else {
+            LValue string = lowStringIdent(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        }
     }
 
     void compileGetExecutable()
@@ -6047,19 +6064,6 @@ private:
             m_out.phi(m_out.intPtr, fastButterfly, slowButterfly));
     }
     
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode, LValue base)
-    {
-        JSArrayBufferView* view = m_graph.tryGetFoldableView(provenValue(baseEdge), arrayMode);
-        if (view)
-            return m_out.constInt32(view->length());
-        return m_out.load32NonNegative(base, m_heaps.JSArrayBufferView_length);
-    }
-    
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode)
-    {
-        return typedArrayLength(baseEdge, arrayMode, lowCell(baseEdge));
-    }
-    
     LValue boolify(Edge edge)
     {
         switch (edge.useKind()) {
@@ -7033,7 +7037,16 @@ private:
         speculateStringIdent(edge, string, stringImpl);
         return stringImpl;
     }
-    
+
+    LValue lowSymbol(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
+    {
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == SymbolUse);
+
+        LValue result = lowCell(edge, mode);
+        speculateSymbol(edge, result);
+        return result;
+    }
+
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
         ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == ObjectUse);
@@ -7430,6 +7443,9 @@ private:
         case StringIdentUse:
             speculateStringIdent(edge);
             break;
+        case SymbolUse:
+            speculateSymbol(edge);
+            break;
         case StringObjectUse:
             speculateStringObject(edge);
             break;
@@ -7526,7 +7542,16 @@ private:
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
     }
-    
+
+    LValue isNotSymbol(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, ~SpecSymbol))
+            return proven;
+        return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().symbolStructure->id()));
+    }
+
     LValue isArrayType(LValue cell, ArrayMode arrayMode)
     {
         switch (arrayMode.type()) {
@@ -7749,7 +7774,17 @@ private:
             NotStringObject, noValue(), 0,
             m_out.notEqual(structureID, weakStructureID(stringObjectStructure)));
     }
-    
+
+    void speculateSymbol(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol | ~SpecCell, isNotSymbol(cell));
+    }
+
+    void speculateSymbol(Edge edge)
+    {
+        speculateSymbol(edge, lowCell(edge));
+    }
+
     void speculateNonNullObject(Edge edge, LValue cell)
     {
         FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecObject, isNotObject(cell));

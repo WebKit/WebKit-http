@@ -8,6 +8,7 @@
 
 accessibility/mac [ Pass ]
 editing/mac [ Pass ]
+fast/scrolling/latching [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -63,7 +64,7 @@ fast/history/back-forward-reset-after-error-handling.html
 plugins/reloadplugins-and-pages.html
 
 # These tests require touch support
-fast/events/touch
+fast/events/touch [ Skip ]
 
 # No button tracked
 fast/events/mouseover-button.html
@@ -367,12 +368,12 @@ webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Pass Failure ]
 
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html [ Skip ]
-platform/mac/fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
+fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
 platform/mac/fast/overflow/overflow-scrollbar-hit-test.html [ Failure ]
 
 [ Mavericks ] accessibility/mac/form-control-value-settable.html [ Failure ]
-platform/mac/fast/forms/input-appearance-spinbutton-up.html [ Failure ]
-platform/mac/fast/forms/input-appearance-spinbutton.html [ Failure ]
+[ Mavericks ] fast/forms/input-appearance-spinbutton-up.html [ Failure ]
+[ Mavericks ] fast/forms/input-appearance-spinbutton.html [ Failure ]
 platform/mac/fast/text/vertical-no-sideways.html [ Pass Failure ]
 
 fast/css/resize-corner-tracking.html [ Pass Failure ]
@@ -678,7 +679,7 @@ webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
 
 webkit.org/b/119374 fast/workers/termination-early.html [ Pass Crash ]
 
-webkit.org/b/110186 inspector-protocol/page/javascriptDialogEvents.html [ Skip ]
+webkit.org/b/110186 inspector/page/javascriptDialogEvents.html [ Skip ]
 
 # Need support for ResourceHandle::didChangePriority and DRT support
 webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
@@ -755,7 +756,7 @@ webkit.org/b/123369 svg/css/parent-shadow-offscreen.svg [ Pass ImageOnlyFailure 
 webkit.org/b/123369 svg/css/root-shadow-offscreen.svg [ Pass ImageOnlyFailure ]
 
 # webkit.org/b/100846, webkit.org/b/136715
-inspector-protocol/debugger
+inspector/debugger
 
 webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
@@ -830,8 +831,6 @@ webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
 webkit.org/b/128255 compositing/columns/composited-lr-paginated-repaint.html [ Pass Failure ]
 webkit.org/b/128255 compositing/columns/composited-rl-paginated-repaint.html [ Pass Failure ]
 
-webkit.org/b/140183 compositing/backgrounds/background-image-with-negative-zindex.html [ ImageOnlyFailure ]
-
 webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Failure Timeout ]
 
 webkit.org/b/118153 compositing/repaint/positioned-movement.html [ Pass Failure ]
@@ -876,8 +875,6 @@ webkit.org/b/135015 plugins/quicktime-plugin-replacement.html [ Pass Failure ]
 webkit.org/b/131477 fast/repaint/obscured-background-no-repaint.html [ Pass Failure ]
 
 webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Pass Failure ]
-
-webkit.org/b/136718 fast/dynamic/layer-no-longer-paginated.html [ Skip ]
 
 webkit.org/b/137737 accessibility/table-cells-roles.html [ Skip ]
 
@@ -1165,7 +1162,7 @@ webkit.org/b/136109 [ Yosemite+ ] fast/multicol/mixed-opacity-fixed-test.html  [
 [ Yosemite+ ] storage/websql/sql-error-codes.html [ Failure ]
 
 # Specific to Yosemite's font fallback
-webkit.org/b/138328 [ Mavericks ] platform/mac/fast/text/font-cursive-italic-cjk.html [ Skip ]
+webkit.org/b/138328 [ Mavericks ] fast/text/font-cursive-italic-cjk.html [ Skip ]
 
 webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Timeout ]
 
@@ -1271,7 +1268,7 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 [ ElCapitan+ ] accessibility/deleting-iframe-destroys-axcache.html [ Pass Failure ]
 
 # <rdar://problem/20622665> WebKit media doesn't get a canplay event when load stalls
-[ ElCapitan+ ] http/tests/media/video-play-stall.html [ Failure ]
+[ ElCapitan+ ] http/tests/media/video-play-stall.html [ Pass Failure ]
 
 # <rdar://problem/21263363>
 http/tests/media/remove-while-loading.html [ Skip ]
@@ -1286,20 +1283,13 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 # <rdar://problem/21857102>
 [ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
 
-# rdar://problem/22014672
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.destination-atop.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.destination-in.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.source-in.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.fill.source-out.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.destination-atop.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.destination-in.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.source-in.html [ Pass Failure ]
-[ ElCapitan+ ] imported/w3c/canvas/2d.composite.uncovered.pattern.source-out.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.destination-in.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.destination-atop.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.source-out.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.destination-atop.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.destination-in.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.pattern.source-in.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.source-out.html [ Pass Failure ]
-[ ElCapitan+ ] canvas/philip/tests/2d.composite.uncovered.fill.source-in.html [ Pass Failure ]
+# WK1-only timeout.
+webkit.org/b/147683 fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html [ Skip ]
+
+webkit.org/b/147763 [ Mavericks Yosemite ] accessibility/mac/loaded-notification.html [ Skip ]
+
+# Language-specific font fallback is disabled on certain versions of OS X
+webkit.org/b/147390 [ Mavericks Yosemite ElCapitan ] fast/text/fallback-language-han.html [ ImageOnlyFailure ]
+
+# This test relies on iOS-specific font fallback.
+[ Mavericks Yosemite ElCapitan ] fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]

@@ -38,6 +38,7 @@
 
 namespace API {
 class Object;
+class PageConfiguration;
 }
 
 namespace IPC {
@@ -58,7 +59,6 @@ class ViewSnapshot;
 class WebProcessPool;
 struct ColorSpaceData;
 struct EditorState;
-struct WebPageConfiguration;
 }
 
 @class WKFullScreenWindowController;
@@ -69,7 +69,7 @@ struct WebPageConfiguration;
 
 @interface WKView ()
 #if WK_API_ENABLED
-- (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(WebKit::WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView;
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView;
 #endif
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
@@ -119,6 +119,7 @@ struct WebPageConfiguration;
 - (BOOL)_suppressVisibilityUpdates;
 
 - (void)_didFirstVisuallyNonEmptyLayoutForMainFrame;
+- (void)_didCommitLoadForMainFrame;
 - (void)_didFinishLoadForMainFrame;
 - (void)_didFailLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)type;

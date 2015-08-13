@@ -264,6 +264,8 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _allowsLinkPreview;
 
     RetainPtr<WKViewLayoutStrategy> _layoutStrategy;
+    WKLayoutMode _lastRequestedLayoutMode;
+    float _lastRequestedViewScale;
     CGSize _minimumViewSize;
 
     RetainPtr<CALayer> _rootLayer;
@@ -3742,7 +3744,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self addTrackingArea:trackingArea];
 }
 
-- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(WebPageConfiguration)webPageConfiguration webView:(WKWebView *)webView
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView
 {
     self = [super initWithFrame:frame];
     if (!self)
@@ -3764,7 +3766,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [self addTrackingArea:_data->_primaryTrackingArea.get()];
 
     _data->_pageClient = std::make_unique<PageClientImpl>(self, webView);
-    _data->_page = processPool.createWebPage(*_data->_pageClient, WTF::move(webPageConfiguration));
+    _data->_page = processPool.createWebPage(*_data->_pageClient, WTF::move(configuration));
     _data->_page->setAddsVisitedLinks(processPool.historyClient().addsVisitedLinks());
 
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
@@ -3776,6 +3778,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_clipsToVisibleRect = NO;
     _data->_useContentPreparationRectForVisibleRect = NO;
     _data->_windowOcclusionDetectionEnabled = YES;
+    _data->_lastRequestedLayoutMode = kWKLayoutModeViewSize;
+    _data->_lastRequestedViewScale = 1;
 
     _data->_windowVisibilityObserver = adoptNS([[WKWindowVisibilityObserver alloc] initWithView:self]);
 
@@ -3894,6 +3898,41 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         _data->_gestureController->didFirstVisuallyNonEmptyLayoutForMainFrame();
 }
 
+- (BOOL)_supportsArbitraryLayoutModes
+{
+    WebPageProxy* page = _data->_page.get();
+    if (!page)
+        return YES;
+    WebFrameProxy* frame = page->mainFrame();
+    if (!frame)
+        return YES;
+
+    // If we have a plugin document in the main frame, avoid using custom WKLayoutModes
+    // and fall back to the defaults, because there's a good chance that it won't work (e.g. with PDFPlugin).
+    if (frame->containsPluginDocument())
+        return NO;
+
+    return YES;
+}
+
+- (void)_didCommitLoadForMainFrame
+{
+    if (![self _supportsArbitraryLayoutModes]) {
+        WKLayoutMode oldRequestedLayoutMode = _data->_lastRequestedLayoutMode;
+        float oldRequestedViewScale = _data->_lastRequestedViewScale;
+        [self _setViewScale:1];
+        [self _setLayoutMode:kWKLayoutModeViewSize];
+
+        // The 'last requested' parameters will have been overwritten by setting them above, but we don't
+        // want this to count as a request (only changes from the client count), so reset them.
+        _data->_lastRequestedLayoutMode = oldRequestedLayoutMode;
+        _data->_lastRequestedViewScale = oldRequestedViewScale;
+    } else if (_data->_lastRequestedLayoutMode != [_data->_layoutStrategy layoutMode]) {
+        [self _setViewScale:_data->_lastRequestedViewScale];
+        [self _setLayoutMode:_data->_lastRequestedLayoutMode];
+    }
+}
+
 - (void)_didFinishLoadForMainFrame
 {
     if (_data->_gestureController)
@@ -3955,19 +3994,20 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
 {
-    WebPageConfiguration webPageConfiguration;
-    webPageConfiguration.pageGroup = toImpl(pageGroupRef);
-    webPageConfiguration.relatedPage = toImpl(relatedPage);
+    auto configuration = API::PageConfiguration::create();
+    configuration->setProcessPool(toImpl(contextRef));
+    configuration->setPageGroup(toImpl(pageGroupRef));
+    configuration->setRelatedPage(toImpl(relatedPage));
 
-    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:webPageConfiguration webView:nil];
+    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTF::move(configuration) webView:nil];
 }
 
-- (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configuration
+- (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configurationRef
 {
-    auto& processPool = *toImpl(configuration)->processPool();
-    auto webPageConfiguration = toImpl(configuration)->webPageConfiguration();
+    Ref<API::PageConfiguration> configuration = *toImpl(configurationRef);
+    auto& processPool = *configuration->processPool();
 
-    return [self initWithFrame:frame processPool:processPool configuration:webPageConfiguration webView:nil];
+    return [self initWithFrame:frame processPool:processPool configuration:WTF::move(configuration) webView:nil];
 }
 
 - (BOOL)wantsUpdateLayer
@@ -4302,6 +4342,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setLayoutMode:(WKLayoutMode)layoutMode
 {
+    _data->_lastRequestedLayoutMode = layoutMode;
+
+    if (![self _supportsArbitraryLayoutModes] && layoutMode != kWKLayoutModeViewSize)
+        return;
+
     if (layoutMode == [_data->_layoutStrategy layoutMode])
         return;
 
@@ -4326,6 +4371,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setViewScale:(CGFloat)viewScale
 {
+    _data->_lastRequestedViewScale = viewScale;
+
+    if (![self _supportsArbitraryLayoutModes] && viewScale != 1)
+        return;
+
     if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
         [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
 

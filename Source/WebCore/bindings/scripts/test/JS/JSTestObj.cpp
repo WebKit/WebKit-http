@@ -299,7 +299,6 @@ void setJSTestObjNullableStringValue(JSC::ExecState*, JSC::JSObject*, JSC::Encod
 JSC::EncodedJSValue jsTestObjAttribute(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 void setJSTestObjAttributeWithReservedEnumType(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
-JSC::EncodedJSValue jsTestObjTestPromiseAttr(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
 
 class JSTestObjPrototype : public JSC::JSNonFinalObject {
@@ -367,7 +366,7 @@ static const struct CompactHashIndex JSTestObjTableIndex[17] = {
     { 0, 16 },
     { -1, -1 },
     { 1, -1 },
-    { 6, -1 },
+    { -1, -1 },
     { -1, -1 },
     { -1, -1 },
     { 3, -1 },
@@ -394,10 +393,9 @@ static const HashTableValue JSTestObjTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 },
 #endif
     { "contentDocument", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
-    { "testPromiseAttr", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestPromiseAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) },
 };
 
-static const HashTable JSTestObjTable = { 7, 15, true, JSTestObjTableValues, 0, JSTestObjTableIndex };
+static const HashTable JSTestObjTable = { 6, 15, true, JSTestObjTableValues, 0, JSTestObjTableIndex };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
@@ -474,8 +472,9 @@ void JSTestObjConstructor::finishCreation(VM& vm, JSDOMGlobalObject* globalObjec
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestObj::getPrototype(vm, globalObject), DontDelete | ReadOnly);
-    putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontDelete | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestObj::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestObject"))), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
     reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
 }
 
@@ -598,6 +597,8 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "methodWithException", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithException), (intptr_t) (0) },
     { "customMethod", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethod), (intptr_t) (0) },
     { "customMethodWithArgs", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomMethodWithArgs), (intptr_t) (3) },
+    { "customBindingMethod", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomBindingMethod), (intptr_t) (0) },
+    { "customBindingMethodWithArgs", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCustomBindingMethodWithArgs), (intptr_t) (3) },
     { "addEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAddEventListener), (intptr_t) (2) },
     { "removeEventListener", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionRemoveEventListener), (intptr_t) (2) },
     { "withScriptStateVoid", JSC::Function, NoIntrinsic, (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionWithScriptStateVoid), (intptr_t) (0) },
@@ -1881,16 +1882,6 @@ EncodedJSValue jsTestObjAttributeWithReservedEnumType(ExecState* exec, JSObject*
     auto& impl = castedThis->impl();
     JSValue result = jsStringWithCache(exec, impl.attributeWithReservedEnumType());
     return JSValue::encode(result);
-}
-
-
-EncodedJSValue jsTestObjTestPromiseAttr(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
-{
-    UNUSED_PARAM(exec);
-    UNUSED_PARAM(slotBase);
-    UNUSED_PARAM(thisValue);
-    auto* castedThis = jsCast<JSTestObj*>(slotBase);
-    return JSValue::encode(castedThis->testPromiseAttr(exec));
 }
 
 
