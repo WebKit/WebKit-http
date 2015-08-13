@@ -113,8 +113,8 @@ private:
     virtual void refView() override;
     virtual void derefView() override;
 
-#if USE(GSTREAMER)
-    virtual GUniquePtr<GstInstallPluginsContext> createGstInstallPluginsContext() override;
+#if ENABLE(VIDEO)
+    virtual bool decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
 #endif
 
     WKWPE::View& m_view;

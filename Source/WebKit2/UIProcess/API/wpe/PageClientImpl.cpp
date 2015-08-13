@@ -269,10 +269,10 @@ void PageClientImpl::derefView()
 {
 }
 
-#if USE(GSTREAMER)
-GUniquePtr<GstInstallPluginsContext> PageClientImpl::createGstInstallPluginsContext()
+#if ENABLE(VIDEO)
+bool PageClientImpl::decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&)
 {
-    return nullptr;
+    return false;
 }
 #endif
 
