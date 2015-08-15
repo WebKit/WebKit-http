@@ -83,10 +83,6 @@ private:
     virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
     virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
 
-    virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime) override;
-    virtual void clearTextIndicator(WebCore::TextIndicatorDismissalAnimation) override;
-    virtual void setTextIndicatorAnimationProgress(float) override;
-
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
