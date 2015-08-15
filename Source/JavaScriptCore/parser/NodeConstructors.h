@@ -231,12 +231,12 @@ namespace JSC {
     {
     }
 
-    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType)
+    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType, SuperBinding superBinding = SuperBinding::NotNeeded)
         : m_name(0)
         , m_expression(name)
         , m_assign(assign)
         , m_type(type)
-        , m_needsSuperBinding(false)
+        , m_needsSuperBinding(superBinding == SuperBinding::Needed)
         , m_putType(putType)
     {
     }
@@ -738,7 +738,7 @@ namespace JSC {
     {
     }
 
-    inline ModuleSpecifierNode::ModuleSpecifierNode(const JSTokenLocation& location, const Identifier& moduleName)
+    inline ModuleNameNode::ModuleNameNode(const JSTokenLocation& location, const Identifier& moduleName)
         : Node(location)
         , m_moduleName(moduleName)
     {
@@ -751,16 +751,16 @@ namespace JSC {
     {
     }
 
-    inline ImportDeclarationNode::ImportDeclarationNode(const JSTokenLocation& location, ImportSpecifierListNode* importSpecifierList, ModuleSpecifierNode* moduleSpecifier)
+    inline ImportDeclarationNode::ImportDeclarationNode(const JSTokenLocation& location, ImportSpecifierListNode* importSpecifierList, ModuleNameNode* moduleName)
         : ModuleDeclarationNode(location)
         , m_specifierList(importSpecifierList)
-        , m_moduleSpecifier(moduleSpecifier)
+        , m_moduleName(moduleName)
     {
     }
 
-    inline ExportAllDeclarationNode::ExportAllDeclarationNode(const JSTokenLocation& location, ModuleSpecifierNode* moduleSpecifier)
+    inline ExportAllDeclarationNode::ExportAllDeclarationNode(const JSTokenLocation& location, ModuleNameNode* moduleName)
         : ModuleDeclarationNode(location)
-        , m_moduleSpecifier(moduleSpecifier)
+        , m_moduleName(moduleName)
     {
     }
 
@@ -777,10 +777,10 @@ namespace JSC {
     {
     }
 
-    inline ExportNamedDeclarationNode::ExportNamedDeclarationNode(const JSTokenLocation& location, ExportSpecifierListNode* exportSpecifierList, ModuleSpecifierNode* moduleSpecifier)
+    inline ExportNamedDeclarationNode::ExportNamedDeclarationNode(const JSTokenLocation& location, ExportSpecifierListNode* exportSpecifierList, ModuleNameNode* moduleName)
         : ModuleDeclarationNode(location)
         , m_specifierList(exportSpecifierList)
-        , m_moduleSpecifier(moduleSpecifier)
+        , m_moduleName(moduleName)
     {
     }
 
