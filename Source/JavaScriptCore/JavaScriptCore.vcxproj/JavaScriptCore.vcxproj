@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
       <Configuration>DebugSuffix</Configuration>
@@ -55,79 +55,80 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>JavaScriptCore2</RootNamespace>
     <ProjectName>JavaScriptCore</ProjectName>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -355,6 +356,7 @@
     <ClCompile Include="..\bytecode\ToThisStatus.cpp" />
     <ClCompile Include="..\bytecode\TrackedReferences.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedCodeBlock.cpp" />
+    <ClCompile Include="..\bytecode\UnlinkedFunctionExecutable.cpp" />
     <ClCompile Include="..\bytecode\UnlinkedInstructionStream.cpp" />
     <ClCompile Include="..\bytecode\ValueRecovery.cpp" />
     <ClCompile Include="..\bytecode\VariableWriteFireDetail.cpp" />
@@ -565,6 +567,7 @@
     <ClCompile Include="..\heap\HeapVerifier.cpp" />
     <ClCompile Include="..\heap\IncrementalSweeper.cpp" />
     <ClCompile Include="..\heap\JITStubRoutineSet.cpp" />
+    <ClCompile Include="..\heap\LiveObjectList.cpp" />
     <ClCompile Include="..\heap\MachineStackMarker.cpp" />
     <ClCompile Include="..\heap\MarkedAllocator.cpp" />
     <ClCompile Include="..\heap\MarkedBlock.cpp" />
@@ -657,7 +660,10 @@
     <ClCompile Include="..\llvm\InitializeLLVMWin.cpp" />
     <ClCompile Include="..\llvm\LLVMAPI.cpp" />
     <ClCompile Include="..\parser\Lexer.cpp" />
+    <ClCompile Include="..\parser\ModuleAnalyzer.cpp" />
+    <ClCompile Include="..\parser\ModuleRecord.cpp" />
     <ClCompile Include="..\parser\Nodes.cpp" />
+    <ClCompile Include="..\parser\NodesAnalyzeModule.cpp" />
     <ClCompile Include="..\parser\Parser.cpp" />
     <ClCompile Include="..\parser\ParserArena.cpp" />
     <ClCompile Include="..\parser\SourceCode.cpp" />
@@ -734,6 +740,7 @@
     <ClCompile Include="..\runtime\IndexingType.cpp" />
     <ClCompile Include="..\runtime\InferredValue.cpp" />
     <ClCompile Include="..\runtime\InitializeThreading.cpp" />
+    <ClCompile Include="..\runtime\InspectorInstrumentationObject.cpp" />
     <ClCompile Include="..\runtime\InternalFunction.cpp" />
     <ClCompile Include="..\runtime\IntlCollator.cpp" />
     <ClCompile Include="..\runtime\IntlCollatorConstructor.cpp" />
@@ -764,14 +771,12 @@
     <ClCompile Include="..\runtime\JSDataViewPrototype.cpp" />
     <ClCompile Include="..\runtime\JSDateMath.cpp" />
     <ClCompile Include="..\runtime\JSFunction.cpp" />
-    <ClCompile Include="..\runtime\JSFunctionNameScope.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObject.cpp" />
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp" />
     <ClCompile Include="..\runtime\JSJob.cpp" />
     <ClCompile Include="..\runtime\JSLock.cpp" />
     <ClCompile Include="..\runtime\JSMap.cpp" />
     <ClCompile Include="..\runtime\JSMapIterator.cpp" />
-    <ClCompile Include="..\runtime\JSNameScope.cpp" />
     <ClCompile Include="..\runtime\JSNotAnObject.cpp" />
     <ClCompile Include="..\runtime\JSONObject.cpp" />
     <ClCompile Include="..\runtime\JSObject.cpp" />
@@ -869,7 +874,6 @@
     <ClCompile Include="..\runtime\VMEntryScope.cpp" />
     <ClCompile Include="..\runtime\VarOffset.cpp" />
     <ClCompile Include="..\runtime\Watchdog.cpp" />
-    <ClCompile Include="..\runtime\WatchdogNone.cpp" />
     <ClCompile Include="..\runtime\WeakMapConstructor.cpp" />
     <ClCompile Include="..\runtime\WeakMapData.cpp" />
     <ClCompile Include="..\runtime\WeakMapPrototype.cpp" />
@@ -907,6 +911,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InjectedScriptSource.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorBackendDispatchers.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorFrontendDispatchers.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorInstrumentationObject.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSGlobalObject.lut.h" />
@@ -1323,6 +1328,8 @@
     <ClInclude Include="..\heap\IncrementalSweeper.h" />
     <ClInclude Include="..\heap\JITStubRoutineSet.h" />
     <ClInclude Include="..\heap\ListableHandler.h" />
+    <ClInclude Include="..\heap\LiveObjectData.h" />
+    <ClInclude Include="..\heap\LiveObjectList.h" />
     <ClInclude Include="..\heap\Local.h" />
     <ClInclude Include="..\heap\LocalScope.h" />
     <ClInclude Include="..\heap\MachineStackMarker.h" />
@@ -1446,6 +1453,8 @@
     <ClInclude Include="..\llvm\LLVMHeaders.h" />
     <ClInclude Include="..\parser\ASTBuilder.h" />
     <ClInclude Include="..\parser\Lexer.h" />
+    <ClInclude Include="..\parser\ModuleAnalyzer.h" />
+    <ClInclude Include="..\parser\ModuleRecord.h" />
     <ClInclude Include="..\parser\NodeConstructors.h" />
     <ClInclude Include="..\parser\Nodes.h" />
     <ClInclude Include="..\parser\Parser.h" />
@@ -1556,6 +1565,7 @@
     <ClInclude Include="..\runtime\Int32Array.h" />
     <ClInclude Include="..\runtime\Int8Array.h" />
     <ClInclude Include="..\runtime\InternalFunction.h" />
+    <ClInclude Include="..\runtime\InspectorInstrumentationObject.h" />
     <ClInclude Include="..\runtime\IntlCollator.h" />
     <ClInclude Include="..\runtime\IntlCollatorConstructor.h" />
     <ClInclude Include="..\runtime\IntlCollatorPrototype.h" />
@@ -1594,7 +1604,6 @@
     <ClInclude Include="..\runtime\JSFloat32Array.h" />
     <ClInclude Include="..\runtime\JSFloat64Array.h" />
     <ClInclude Include="..\runtime\JSFunction.h" />
-    <ClInclude Include="..\runtime\JSFunctionNameScope.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayView.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructor.h" />
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewConstructorInlines.h" />
@@ -1610,7 +1619,6 @@
     <ClInclude Include="..\runtime\JSLock.h" />
     <ClInclude Include="..\runtime\JSMap.h" />
     <ClInclude Include="..\runtime\JSMapIterator.h" />
-    <ClInclude Include="..\runtime\JSNameScope.h" />
     <ClInclude Include="..\runtime\JSNotAnObject.h" />
     <ClInclude Include="..\runtime\JSONObject.h" />
     <ClInclude Include="..\runtime\JSObject.h" />
@@ -1762,6 +1770,7 @@
     <ClInclude Include="..\tools\ProfileTreeNode.h" />
     <ClInclude Include="..\tools\TieredMMapArray.h" />
     <ClInclude Include="..\wasm\JSWASMModule.h" />
+    <ClInclude Include="..\wasm\WASMFormat.h" />
     <ClInclude Include="..\wasm\WASMMagicNumber.h" />
     <ClInclude Include="..\wasm\WASMModuleParser.h" />
     <ClInclude Include="..\wasm\WASMReader.h" />

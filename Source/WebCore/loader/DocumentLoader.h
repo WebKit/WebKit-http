@@ -70,6 +70,7 @@ namespace WebCore {
     class Page;
     class ResourceLoader;
     class SharedBuffer;
+    class SubresourceLoader;
     class SubstituteResource;
 
 #if ENABLE(CONTENT_FILTERING)
@@ -94,7 +95,7 @@ namespace WebCore {
         WEBCORE_EXPORT virtual void detachFromFrame();
 
         WEBCORE_EXPORT FrameLoader* frameLoader() const;
-        WEBCORE_EXPORT ResourceLoader* mainResourceLoader() const;
+        WEBCORE_EXPORT SubresourceLoader* mainResourceLoader() const;
         WEBCORE_EXPORT PassRefPtr<SharedBuffer> mainResourceData() const;
         
         DocumentWriter& writer() const { return m_writer; }
@@ -306,6 +307,7 @@ namespace WebCore {
         void finishedLoading(double finishTime);
         void mainReceivedError(const ResourceError&);
         WEBCORE_EXPORT virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
+        WEBCORE_EXPORT virtual void syntheticRedirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&, bool& /* shouldContinue */) override;
         WEBCORE_EXPORT virtual void responseReceived(CachedResource*, const ResourceResponse&) override;
         WEBCORE_EXPORT virtual void dataReceived(CachedResource*, const char* data, int length) override;
         WEBCORE_EXPORT virtual void notifyFinished(CachedResource*) override;

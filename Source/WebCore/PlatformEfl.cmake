@@ -24,6 +24,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/efl"
     "${WEBCORE_DIR}/plugins/efl"
+    "${WTF_DIR}/wtf/efl"
 )
 
 list(APPEND WebCore_SOURCES
@@ -105,6 +106,9 @@ list(APPEND WebCore_SOURCES
 
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
+
+    platform/glib/KeyedDecoderGlib.cpp
+    platform/glib/KeyedEncoderGlib.cpp
 
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp

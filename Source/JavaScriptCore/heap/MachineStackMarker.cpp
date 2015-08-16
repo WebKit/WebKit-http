@@ -103,18 +103,18 @@ public:
         }
 
     private:
-        MutexLocker m_locker;
+        LockHolder m_locker;
     };
 
     void add(MachineThreads* machineThreads)
     {
-        MutexLocker managerLock(m_lock);
+        LockHolder managerLock(m_lock);
         m_set.add(machineThreads);
     }
 
     void remove(MachineThreads* machineThreads)
     {
-        MutexLocker managerLock(m_lock);
+        LockHolder managerLock(m_lock);
         auto recordedMachineThreads = m_set.take(machineThreads);
         RELEASE_ASSERT(recordedMachineThreads = machineThreads);
     }
@@ -129,7 +129,7 @@ private:
 
     ActiveMachineThreadsManager() { }
     
-    Mutex m_lock;
+    Lock m_lock;
     MachineThreadsSet m_set;
 
     friend ActiveMachineThreadsManager& activeMachineThreadsManager();
@@ -263,7 +263,7 @@ MachineThreads::~MachineThreads()
     activeMachineThreadsManager().remove(this);
     threadSpecificKeyDelete(m_threadSpecific);
 
-    MutexLocker registeredThreadsLock(m_registeredThreadsMutex);
+    LockHolder registeredThreadsLock(m_registeredThreadsMutex);
     for (Thread* t = m_registeredThreads; t;) {
         Thread* next = t->next;
         delete t;
@@ -294,7 +294,7 @@ void MachineThreads::addCurrentThread()
     threadSpecificSet(m_threadSpecific, this);
     Thread* thread = Thread::createForCurrentThread();
 
-    MutexLocker lock(m_registeredThreadsMutex);
+    LockHolder lock(m_registeredThreadsMutex);
 
     thread->next = m_registeredThreads;
     m_registeredThreads = thread;
@@ -318,7 +318,7 @@ void MachineThreads::removeThread(void* p)
 template<typename PlatformThread>
 void MachineThreads::removeThreadIfFound(PlatformThread platformThread)
 {
-    MutexLocker lock(m_registeredThreadsMutex);
+    LockHolder lock(m_registeredThreadsMutex);
     Thread* t = m_registeredThreads;
     if (*t == platformThread) {
         m_registeredThreads = m_registeredThreads->next;
@@ -335,7 +335,8 @@ void MachineThreads::removeThreadIfFound(PlatformThread platformThread)
         delete t;
     }
 }
-    
+
+SUPPRESS_ASAN
 void MachineThreads::gatherFromCurrentThread(ConservativeRoots& conservativeRoots, JITStubRoutineSet& jitStubRoutines, CodeBlockSet& codeBlocks, void* stackOrigin, void* stackTop, RegisterState& calleeSavedRegisters)
 {
     void* registersBegin = &calleeSavedRegisters;
@@ -519,6 +520,7 @@ std::pair<void*, size_t> MachineThreads::Thread::captureStack(void* stackTop)
     return std::make_pair(begin, static_cast<char*>(end) - static_cast<char*>(begin));
 }
 
+SUPPRESS_ASAN
 static void copyMemory(void* dst, const void* src, size_t size)
 {
     size_t dstAsSize = reinterpret_cast<size_t>(dst);
@@ -564,12 +566,12 @@ void MachineThreads::tryCopyOtherThreadStack(Thread* thread, void* buffer, size_
     thread->freeRegisters(registers);
 }
 
-bool MachineThreads::tryCopyOtherThreadStacks(MutexLocker&, void* buffer, size_t capacity, size_t* size)
+bool MachineThreads::tryCopyOtherThreadStacks(LockHolder&, void* buffer, size_t capacity, size_t* size)
 {
     // Prevent two VMs from suspending each other's threads at the same time,
     // which can cause deadlock: <rdar://problem/20300842>.
-    static StaticSpinLock mutex;
-    std::lock_guard<StaticSpinLock> lock(mutex);
+    static StaticLock mutex;
+    std::lock_guard<StaticLock> lock(mutex);
 
     *size = 0;
 
@@ -658,7 +660,7 @@ void MachineThreads::gatherConservativeRoots(ConservativeRoots& conservativeRoot
     size_t size;
     size_t capacity = 0;
     void* buffer = nullptr;
-    MutexLocker lock(m_registeredThreadsMutex);
+    LockHolder lock(m_registeredThreadsMutex);
     while (!tryCopyOtherThreadStacks(lock, buffer, capacity, &size))
         growBuffer(size, &buffer, &capacity);
 

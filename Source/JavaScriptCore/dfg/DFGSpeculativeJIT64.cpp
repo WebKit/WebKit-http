@@ -44,6 +44,7 @@
 #include "SetupVarargsFrame.h"
 #include "SpillRegistersMode.h"
 #include "TypeProfilerLog.h"
+#include "Watchdog.h"
 
 namespace JSC { namespace DFG {
 
@@ -2460,6 +2461,22 @@ void SpeculativeJIT::compile(Node* node)
         case Array::ForceExit:
             DFG_CRASH(m_jit.graph(), node, "Bad array mode type");
             break;
+        case Array::Undecided: {
+            SpeculateStrictInt32Operand index(this, node->child2());
+            GPRTemporary result(this, Reuse, index);
+            GPRReg indexGPR = index.gpr();
+            GPRReg resultGPR = result.gpr();
+
+            use(node->child1());
+            index.use();
+
+            speculationCheck(OutOfBounds, JSValueRegs(), node,
+                m_jit.branch32(MacroAssembler::LessThan, indexGPR, MacroAssembler::TrustedImm32(0)));
+
+            m_jit.move(MacroAssembler::TrustedImm64(ValueUndefined), resultGPR);
+            jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
+            break;
+        }
         case Array::Generic: {
             JSValueOperand base(this, node->child1());
             JSValueOperand property(this, node->child2());
@@ -3849,6 +3866,10 @@ void SpeculativeJIT::compile(Node* node)
         noResult(node);
         break;
     }
+
+    case CheckIdent:
+        compileCheckIdent(node);
+        break;
 
     case GetExecutable: {
         SpeculateCellOperand function(this, node->child1());

@@ -48,7 +48,6 @@
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSLexicalEnvironment.h"
-#include "JSNameScope.h"
 #include "JSNotAnObject.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
@@ -72,6 +71,7 @@
 #include "Symbol.h"
 #include "VMEntryScope.h"
 #include "VirtualRegister.h"
+#include "Watchdog.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -706,21 +706,6 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VMEntryFrame*& vmEntryFrame, CallF
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->exceptionUnwind(callFrame);
 
-    // Unwind the scope chain within the exception handler's call frame.
-    int targetScopeDepth = handler->scopeDepth;
-    if (codeBlock->needsActivation() && callFrame->hasActivation())
-        ++targetScopeDepth;
-
-    int scopeRegisterOffset = codeBlock->scopeRegister().offset();
-    JSScope* scope = callFrame->scope(scopeRegisterOffset);
-    int scopeDelta = scope->depth() - targetScopeDepth;
-    RELEASE_ASSERT(scopeDelta >= 0);
-
-    while (scopeDelta--)
-        scope = scope->next();
-
-    callFrame->setScope(scopeRegisterOffset, scope);
-
     return handler;
 }
 
@@ -896,8 +881,6 @@ failedJSONP:
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
-        Watchdog::Scope watchdogScope(vm.watchdog.get());
-
         result = program->generatedJITCode()->execute(&vm, &protoCallFrame);
     }
 
@@ -958,7 +941,6 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get(), !isJSCall);
-        Watchdog::Scope watchdogScope(vm.watchdog.get());
 
         // Execute the code:
         if (isJSCall)
@@ -1029,7 +1011,6 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get(), !isJSConstruct);
-        Watchdog::Scope watchdogScope(vm.watchdog.get());
 
         // Execute the code.
         if (isJSConstruct)
@@ -1098,8 +1079,6 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
-        Watchdog::Scope watchdogScope(vm.watchdog.get());
-
         result = closure.functionExecutable->generatedJITCodeForCall()->execute(&vm, closure.protoCallFrame);
     }
 
@@ -1189,8 +1168,6 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     JSValue result;
     {
         SamplingTool::CallRecord callRecord(m_sampler.get());
-        Watchdog::Scope watchdogScope(vm.watchdog.get());
-
         result = eval->generatedJITCode()->execute(&vm, &protoCallFrame);
     }
 

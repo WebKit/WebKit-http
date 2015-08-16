@@ -91,7 +91,9 @@ inline JSObject* constructEmptyObject(ExecState* exec)
 }
 
 JSObject* objectConstructorFreeze(ExecState*, JSObject*);
+JSValue objectConstructorGetPrototypeOf(ExecState*, JSObject*);
 JSArray* ownPropertyKeys(ExecState*, JSObject*, PropertyNameMode, DontEnumPropertiesMode);
+bool toPropertyDescriptor(ExecState*, JSValue, PropertyDescriptor&);
 
 } // namespace JSC
 

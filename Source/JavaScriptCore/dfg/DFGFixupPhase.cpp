@@ -625,7 +625,6 @@ private:
             switch (arrayMode.type()) {
             case Array::SelectUsingPredictions:
             case Array::Unprofiled:
-            case Array::Undecided:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
             case Array::Generic:
@@ -686,6 +685,7 @@ private:
             
             switch (node->arrayMode().modeForPut().type()) {
             case Array::SelectUsingPredictions:
+            case Array::SelectUsingArguments:
             case Array::Unprofiled:
             case Array::Undecided:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -1010,6 +1010,15 @@ private:
         case CreateThis:
         case GetButterfly: {
             fixEdge<CellUse>(node->child1());
+            break;
+        }
+
+        case CheckIdent: {
+            UniquedStringImpl* uid = node->uidOperand();
+            if (uid->isSymbol())
+                fixEdge<SymbolUse>(node->child1());
+            else
+                fixEdge<StringIdentUse>(node->child1());
             break;
         }
             
@@ -1760,6 +1769,7 @@ private:
         case FunctionUse:
         case StringUse:
         case KnownStringUse:
+        case SymbolUse:
         case StringObjectUse:
         case StringOrStringObjectUse:
             if (alwaysUnboxSimplePrimitives()

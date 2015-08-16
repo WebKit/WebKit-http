@@ -1416,6 +1416,14 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
 #endif
     PluginView* pluginView = pluginViewForFrame(&m_page->mainFrame());
     if (pluginView && pluginView->handlesPageScaleFactor()) {
+        // If the main-frame plugin wants to handle the page scale factor, make sure to reset WebCore's page scale.
+        // Otherwise, we can end up with an immutable but non-1 page scale applied by WebCore on top of whatever the plugin does.
+        if (m_page->pageScaleFactor() != 1) {
+            m_page->setPageScaleFactor(1, origin);
+            for (auto* pluginView : m_pluginViews)
+                pluginView->pageScaleFactorDidChange();
+        }
+
         pluginView->setPageScaleFactor(totalScale, origin);
         return;
     }
@@ -2182,23 +2190,11 @@ static bool handleTouchEvent(const WebTouchEvent& touchEvent, Page* page)
 #if ENABLE(IOS_TOUCH_EVENTS)
 void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
 {
-    RefPtr<Frame> oldFocusedFrame = m_page->focusController().focusedFrame();
-    RefPtr<Element> oldFocusedElement = oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr;
     m_userIsInteracting = true;
 
     m_lastInteractionLocation = touchEvent.position();
     CurrentEvent currentEvent(touchEvent);
     handled = handleTouchEvent(touchEvent, m_page.get());
-
-    RefPtr<Frame> newFocusedFrame = m_page->focusController().focusedFrame();
-    RefPtr<Element> newFocusedElement = newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr;
-
-    // If the focus has not changed, we need to notify the client anyway, since it might be
-    // necessary to start assisting the node.
-    // If the node has been focused by JavaScript without user interaction, the
-    // keyboard is not on screen.
-    if (newFocusedElement && newFocusedElement == oldFocusedElement)
-        elementDidFocus(newFocusedElement.get());
 
     m_userIsInteracting = false;
 }
@@ -4068,12 +4064,6 @@ void WebPage::handleMediaEvent(uint32_t eventType)
 {
     m_page->handleMediaEvent(static_cast<MediaEventType>(eventType));
 }
-
-void WebPage::isMediaElementPaused(uint64_t elementID, uint64_t callbackID)
-{
-    bool paused = m_page->isMediaElementPaused(elementID);
-    send(Messages::WebPageProxy::UnsignedCallback(paused, callbackID));
-}
 #endif
 
 void WebPage::setMayStartMediaWhenInWindow(bool mayStartMedia)
@@ -4660,6 +4650,17 @@ void WebPage::didCommitLoad(WebFrame* frame)
     // Only restore the scale factor for standard frame loads (of the main frame).
     if (frame->coreFrame()->loader().loadType() == FrameLoadType::Standard) {
         Page* page = frame->coreFrame()->page();
+
+#if PLATFORM(MAC)
+        // As a very special case, we disable non-default layout modes in WKView for main-frame PluginDocuments.
+        // Ideally we would only worry about this in WKView or the WKViewLayoutStrategies, but if we allow
+        // a round-trip to the UI process, you'll see the wrong scale temporarily. So, we reset it here, and then
+        // again later from the UI process.
+        if (frame->coreFrame()->document()->isPluginDocument()) {
+            scaleView(1);
+            setUseFixedLayout(false);
+        }
+#endif
 
         if (page && page->pageScaleFactor() != 1)
             scalePage(1, IntPoint());

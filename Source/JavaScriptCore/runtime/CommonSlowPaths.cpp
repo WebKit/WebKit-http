@@ -44,7 +44,6 @@
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
-#include "JSNameScope.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSString.h"
 #include "JSWithScope.h"
@@ -648,6 +647,17 @@ SLOW_PATH_DECL(slow_path_create_lexical_environment)
     ASSERT(initialValue == jsUndefined() || initialValue == jsTDZValue());
     JSScope* newScope = JSLexicalEnvironment::create(vm, exec->lexicalGlobalObject(), currentScope, symbolTable, initialValue);
     RETURN(newScope);
+}
+
+SLOW_PATH_DECL(slow_path_push_with_scope)
+{
+    BEGIN();
+    JSObject* newScope = OP_C(2).jsValue().toObject(exec);
+    CHECK_EXCEPTION();
+
+    int scopeReg = pc[3].u.operand;
+    JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
+    RETURN(JSWithScope::create(exec, newScope, currentScope));
 }
 
 } // namespace JSC

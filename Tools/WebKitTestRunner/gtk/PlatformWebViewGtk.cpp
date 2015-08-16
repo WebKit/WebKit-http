@@ -35,7 +35,7 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef relatedPage, WKDictionaryRef options)
+PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef relatedPage, const ViewOptions& options)
     : m_view(WKViewCreate(context, pageGroup, relatedPage))
     , m_window(gtk_window_new(GTK_WINDOW_POPUP))
     , m_windowIsKey(true)
@@ -139,6 +139,11 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 
 void PlatformWebView::didInitializeClients()
 {
+}
+
+bool PlatformWebView::viewSupportsOptions(const ViewOptions&) const
+{
+    return true;
 }
 
 void PlatformWebView::dismissAllPopupMenus()

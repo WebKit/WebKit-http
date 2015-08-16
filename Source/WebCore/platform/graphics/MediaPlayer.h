@@ -229,6 +229,11 @@ public:
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
 #endif
     
+#if ENABLE(MEDIA_STREAM)
+    virtual String mediaPlayerMediaDeviceIdentifierStorageDirectory() const { return emptyString(); }
+#endif
+
+    
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) { };
 #endif
@@ -284,7 +289,7 @@ public:
     virtual Vector<String> mediaPlayerPreferredAudioCharacteristics() const { return Vector<String>(); }
 
 #if USE(GSTREAMER)
-    virtual void requestInstallMissingPlugins(const String&, MediaPlayerRequestInstallMissingPluginsCallback&) { };
+    virtual void requestInstallMissingPlugins(const String&, const String&, MediaPlayerRequestInstallMissingPluginsCallback&) { };
 #endif
 };
 

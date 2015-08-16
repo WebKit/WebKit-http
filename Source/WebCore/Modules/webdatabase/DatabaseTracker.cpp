@@ -32,7 +32,6 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Database.h"
-#include "DatabaseBackendBase.h"
 #include "DatabaseContext.h"
 #include "DatabaseManager.h"
 #include "DatabaseManagerClient.h"
@@ -50,6 +49,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
 #include "WebCoreThread.h"

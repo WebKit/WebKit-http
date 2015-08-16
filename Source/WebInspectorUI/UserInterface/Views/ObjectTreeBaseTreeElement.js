@@ -182,11 +182,20 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
 
     _contextMenuHandler(event)
     {
-        var resolvedValue = this.resolvedValue();
-        if (!resolvedValue)
-            return;
-
         var contextMenu = new WebInspector.ContextMenu(event);
+
+        if (typeof this.treeOutline.objectTreeElementAddContextMenuItems === "function") {
+            this.treeOutline.objectTreeElementAddContextMenuItems(this, contextMenu);
+            if (!contextMenu.isEmpty())
+                contextMenu.appendSeparator();
+        }             
+
+        var resolvedValue = this.resolvedValue();
+        if (!resolvedValue) {
+            if (!contextMenu.isEmpty())
+                contextMenu.show();
+            return;
+        }
 
         if (this._property && this._property.symbol)
             contextMenu.appendItem(WebInspector.UIString("Log Symbol"), this._logSymbolProperty.bind(this));
@@ -235,6 +244,11 @@ WebInspector.ObjectTreeBaseTreeElement = class ObjectTreeBaseTreeElement extends
                 resolvedValue.pushNodeToFrontend(function(nodeId) {
                     WebInspector.domTreeManager.nodeForId(nodeId).copyNode();
                 });
+            });
+
+            contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), function() {
+                function scrollIntoView() { this.scrollIntoViewIfNeeded(true); }
+                resolvedValue.callFunction(scrollIntoView, undefined, false, function() {});
             });
 
             contextMenu.appendSeparator();

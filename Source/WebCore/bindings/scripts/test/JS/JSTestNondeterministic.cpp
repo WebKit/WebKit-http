@@ -23,7 +23,6 @@
 
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
-#include "ScriptExecutionContext.h"
 #include "TestNondeterministic.h"
 #include "URL.h"
 #include <runtime/Error.h>
@@ -114,8 +113,9 @@ void JSTestNondeterministicConstructor::finishCreation(VM& vm, JSDOMGlobalObject
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->prototype, JSTestNondeterministic::getPrototype(vm, globalObject), DontDelete | ReadOnly);
-    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontDelete | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestNondeterministic::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestNondeterministic"))), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
 /* Hash table for prototype */

@@ -716,6 +716,9 @@ JITCompiler::JumpList SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGP
     case Array::Contiguous:
         return jumpSlowForUnwantedArrayMode(tempGPR, arrayMode, ContiguousShape);
 
+    case Array::Undecided:
+        return jumpSlowForUnwantedArrayMode(tempGPR, arrayMode, UndecidedShape);
+
     case Array::ArrayStorage:
     case Array::SlowPutArrayStorage: {
         ASSERT(!arrayMode.isJSArrayWithOriginalStructure());
@@ -781,6 +784,7 @@ void SpeculativeJIT::checkArray(Node* node)
     case Array::Int32:
     case Array::Double:
     case Array::Contiguous:
+    case Array::Undecided:
     case Array::ArrayStorage:
     case Array::SlowPutArrayStorage: {
         GPRTemporary temp(this);
@@ -4576,6 +4580,31 @@ void SpeculativeJIT::compileGetArrayLength(Node* node)
     } }
 }
 
+void SpeculativeJIT::compileCheckIdent(Node* node)
+{
+    SpeculateCellOperand operand(this, node->child1());
+    UniquedStringImpl* uid = node->uidOperand();
+    if (uid->isSymbol()) {
+        speculateSymbol(node->child1(), operand.gpr());
+        speculationCheck(
+            BadIdent, JSValueSource(), nullptr,
+            m_jit.branchPtr(
+                JITCompiler::NotEqual,
+                JITCompiler::Address(operand.gpr(), Symbol::offsetOfPrivateName()),
+                TrustedImmPtr(uid)));
+    } else {
+        speculateString(node->child1(), operand.gpr());
+        speculateStringIdent(node->child1(), operand.gpr());
+        speculationCheck(
+            BadIdent, JSValueSource(), nullptr,
+            m_jit.branchPtr(
+                JITCompiler::NotEqual,
+                JITCompiler::Address(operand.gpr(), JSString::offsetOfValue()),
+                TrustedImmPtr(uid)));
+    }
+    noResult(node);
+}
+
 void SpeculativeJIT::compileNewFunction(Node* node)
 {
     SpeculateCellOperand scope(this, node->child1());
@@ -5731,6 +5760,20 @@ void SpeculativeJIT::speculateNotStringVar(Edge edge)
     notCell.link(&m_jit);
 }
 
+void SpeculativeJIT::speculateSymbol(Edge edge, GPRReg cell)
+{
+    DFG_TYPE_CHECK(JSValueSource::unboxedCell(cell), edge, SpecSymbol, m_jit.branchIfNotSymbol(cell));
+}
+
+void SpeculativeJIT::speculateSymbol(Edge edge)
+{
+    if (!needsTypeCheck(edge, SpecSymbol))
+        return;
+
+    SpeculateCellOperand operand(this, edge);
+    speculateSymbol(edge, operand.gpr());
+}
+
 void SpeculativeJIT::speculateNotCell(Edge edge)
 {
     if (!needsTypeCheck(edge, ~SpecCell))
@@ -5841,6 +5884,9 @@ void SpeculativeJIT::speculate(Node*, Edge edge)
         break;
     case StringUse:
         speculateString(edge);
+        break;
+    case SymbolUse:
+        speculateSymbol(edge);
         break;
     case StringObjectUse:
         speculateStringObject(edge);

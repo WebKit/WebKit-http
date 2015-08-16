@@ -241,7 +241,9 @@ private:
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler) override;
 #endif
 
-    virtual bool shouldPaintBrokenImage(const WebCore::URL&) const override;
+    void prefetchDNS(const String&) override;
+
+    bool shouldPaintBrokenImage(const WebCore::URL&) const override;
 
     WebFrame* m_frame;
     RefPtr<PluginView> m_pluginView;

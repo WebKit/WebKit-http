@@ -499,18 +499,6 @@ LayoutUnit RenderBoxModelObject::offsetTop() const
     return adjustedPositionRelativeToOffsetParent(LayoutPoint()).y();
 }
 
-int RenderBoxModelObject::pixelSnappedOffsetWidth() const
-{
-    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
-    return roundToInt(offsetWidth());
-}
-
-int RenderBoxModelObject::pixelSnappedOffsetHeight() const
-{
-    // FIXME: This should use snappedIntSize() instead with absolute coordinates.
-    return roundToInt(offsetHeight());
-}
-
 LayoutUnit RenderBoxModelObject::computedCSSPadding(const Length& padding) const
 {
     LayoutUnit w = 0;
@@ -1479,9 +1467,7 @@ void RenderBoxModelObject::paintOneBorderSide(GraphicsContext* graphicsContext, 
             mitreAdjacentSide1 = false;
             mitreAdjacentSide2 = false;
         }
-        
-        drawLineForBoxSide(graphicsContext, sideRect.x(), sideRect.y(), sideRect.maxX(), sideRect.maxY(), side, colorToPaint, edgeToRender.style(),
-            mitreAdjacentSide1 ? adjacentEdge1.widthForPainting() : 0, mitreAdjacentSide2 ? adjacentEdge2.widthForPainting() : 0, antialias);
+        drawLineForBoxSide(*graphicsContext, sideRect, side, colorToPaint, edgeToRender.style(), mitreAdjacentSide1 ? adjacentEdge1.widthForPainting() : 0, mitreAdjacentSide2 ? adjacentEdge2.widthForPainting() : 0, antialias);
     }
 }
 

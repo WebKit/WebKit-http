@@ -187,18 +187,6 @@ RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*
     return nullptr;
 }
 
-void PageClientImpl::setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime)
-{
-}
-
-void PageClientImpl::clearTextIndicator(WebCore::TextIndicatorDismissalAnimation)
-{
-}
-
-void PageClientImpl::setTextIndicatorAnimationProgress(float)
-{
-}
-
 void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
 {
 }
@@ -269,10 +257,10 @@ void PageClientImpl::derefView()
 {
 }
 
-#if USE(GSTREAMER)
-GUniquePtr<GstInstallPluginsContext> PageClientImpl::createGstInstallPluginsContext()
+#if ENABLE(VIDEO)
+bool PageClientImpl::decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&)
 {
-    return nullptr;
+    return false;
 }
 #endif
 

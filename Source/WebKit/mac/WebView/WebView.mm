@@ -1376,7 +1376,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Discarding JIT'ed code.");
-    GCController::singleton().discardAllCompiledCode();
+    GCController::singleton().deleteAllCode();
 }
 
 + (BOOL)isCharacterSmartReplaceExempt:(unichar)character isPreviousCharacter:(BOOL)b
@@ -7838,25 +7838,15 @@ static WebFrameView *containingFrameView(NSView *view)
     }
     case WebCacheModelPrimaryWebBrowser: {
         // Page cache capacity (in pages)
-        // (Research indicates that value / page drops substantially after 3 pages.)
-        if (memSize >= 2048)
-            pageCacheSize = 5;
-        else if (memSize >= 1024)
-            pageCacheSize = 4;
-        else if (memSize >= 512)
+        // Research indicates that value / page drops substantially after 3 pages.
+        if (memSize >= 1024)
             pageCacheSize = 3;
-        else if (memSize >= 256)
+        else if (memSize >= 512)
             pageCacheSize = 2;
-        else
+        else if (memSize >= 256)
             pageCacheSize = 1;
-
-#if PLATFORM(IOS)
-        // Cache page less aggressively in iOS to reduce the chance of being jettisoned.
-        // FIXME (<rdar://problem/11779846>): Avoiding jettisoning should not have to require reducing the page cache capacity.
-        // Reducing the capacity by 1 reduces overall back-forward performance.
-        if (pageCacheSize > 0)
-            pageCacheSize -= 1;
-#endif
+        else
+            pageCacheSize = 0;
 
         // Object cache capacities (in bytes)
         // (Testing indicates that value / MB depends heavily on content and
@@ -8561,12 +8551,7 @@ bool LayerFlushController::flushLayers()
     if (!dictionaryPopupInfo.attributedString)
         return nil;
 
-    NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
-
-    // Convert to screen coordinates.
-    textBaselineOrigin = [self.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
-
-    if (canLoadLUTermOptionDisableSearchTermIndicator() && canLoadLUNotificationPopoverWillClose()) {
+    if (canLoadLUTermOptionDisableSearchTermIndicator() && canLoadLUNotificationPopoverWillClose() && dictionaryPopupInfo.textIndicator) {
         if (!_private->hasInitializedLookupObserver) {
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
             _private->hasInitializedLookupObserver = YES;
@@ -8576,9 +8561,17 @@ bool LayerFlushController::flushLayers()
         if (!mutableOptions)
             mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorLifetime::Permanent];
-        return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
+        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
+
+        if ([getLULookupDefinitionModuleClass() respondsToSelector:@selector(lookupAnimationControllerForTerm:relativeToRect:ofView:options:)]) {
+            FloatRect firstTextRectInViewCoordinates = dictionaryPopupInfo.textIndicator->textRectsInBoundingRectCoordinates()[0];
+            firstTextRectInViewCoordinates.moveBy(dictionaryPopupInfo.textIndicator->textBoundingRectInRootViewCoordinates().location());
+            return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() relativeToRect:[self _convertRectFromRootView:firstTextRectInViewCoordinates] ofView:self options:mutableOptions.get()];
+        }
     }
+
+    // Convert to screen coordinates.
+    NSPoint textBaselineOrigin = [self.window convertRectToScreen:NSMakeRect(dictionaryPopupInfo.origin.x, dictionaryPopupInfo.origin.y, 0, 0)].origin;
 
     return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
 }
@@ -8596,10 +8589,10 @@ bool LayerFlushController::flushLayers()
 
 - (void)_setTextIndicator:(TextIndicator&)textIndicator
 {
-    [self _setTextIndicator:textIndicator withLifetime:TextIndicatorLifetime::Permanent];
+    [self _setTextIndicator:textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
 }
 
-- (void)_setTextIndicator:(TextIndicator&)textIndicator withLifetime:(TextIndicatorLifetime)lifetime
+- (void)_setTextIndicator:(TextIndicator&)textIndicator withLifetime:(TextIndicatorWindowLifetime)lifetime
 {
     if (!_private->textIndicatorWindow)
         _private->textIndicatorWindow = std::make_unique<TextIndicatorWindow>(self);
@@ -8609,10 +8602,10 @@ bool LayerFlushController::flushLayers()
     _private->textIndicatorWindow->setTextIndicator(textIndicator, NSRectToCGRect(textBoundingRectInScreenCoordinates), lifetime);
 }
 
-- (void)_clearTextIndicatorWithAnimation:(TextIndicatorDismissalAnimation)animation
+- (void)_clearTextIndicatorWithAnimation:(TextIndicatorWindowDismissalAnimation)animation
 {
     if (_private->textIndicatorWindow)
-        _private->textIndicatorWindow->clearTextIndicator(TextIndicatorDismissalAnimation::FadeOut);
+        _private->textIndicatorWindow->clearTextIndicator(TextIndicatorWindowDismissalAnimation::FadeOut);
     _private->textIndicatorWindow = nullptr;
 }
 
@@ -8627,12 +8620,7 @@ bool LayerFlushController::flushLayers()
     if (!dictionaryPopupInfo.attributedString)
         return;
 
-    NSPoint textBaselineOrigin = dictionaryPopupInfo.origin;
-
-    // Convert to screen coordinates.
-    textBaselineOrigin = [self.window convertRectToScreen:NSMakeRect(textBaselineOrigin.x, textBaselineOrigin.y, 0, 0)].origin;
-
-    if (canLoadLUTermOptionDisableSearchTermIndicator() && canLoadLUNotificationPopoverWillClose()) {
+    if (canLoadLUTermOptionDisableSearchTermIndicator() && canLoadLUNotificationPopoverWillClose() && dictionaryPopupInfo.textIndicator) {
         if (!_private->hasInitializedLookupObserver) {
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_dictionaryLookupPopoverWillClose:) name:getLUNotificationPopoverWillClose() object:nil];
             _private->hasInitializedLookupObserver = YES;
@@ -8642,15 +8630,25 @@ bool LayerFlushController::flushLayers()
         if (!mutableOptions)
             mutableOptions = adoptNS([[NSMutableDictionary alloc] init]);
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
-        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorLifetime::Permanent];
-        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
-    } else
-        [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
+        [self _setTextIndicator:*dictionaryPopupInfo.textIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
+
+        if ([getLULookupDefinitionModuleClass() respondsToSelector:@selector(showDefinitionForTerm:relativeToRect:ofView:options:)]) {
+            FloatRect firstTextRectInViewCoordinates = dictionaryPopupInfo.textIndicator->textRectsInBoundingRectCoordinates()[0];
+            firstTextRectInViewCoordinates.moveBy(dictionaryPopupInfo.textIndicator->textBoundingRectInRootViewCoordinates().location());
+            [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() relativeToRect:[self _convertRectFromRootView:firstTextRectInViewCoordinates] ofView:self options:mutableOptions.get()];
+            return;
+        }
+    }
+
+    // Convert to screen coordinates.
+    NSPoint textBaselineOrigin = [self.window convertRectToScreen:NSMakeRect(dictionaryPopupInfo.origin.x, dictionaryPopupInfo.origin.y, 0, 0)].origin;
+
+    [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
 }
 
 - (void)_dictionaryLookupPopoverWillClose:(NSNotification *)notification
 {
-    [self _clearTextIndicatorWithAnimation:TextIndicatorDismissalAnimation::FadeOut];
+    [self _clearTextIndicatorWithAnimation:TextIndicatorWindowDismissalAnimation::FadeOut];
 }
 #endif // PLATFORM(MAC)
 

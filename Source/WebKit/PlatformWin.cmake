@@ -11,8 +11,10 @@ if (${WTF_PLATFORM_WIN_CAIRO})
         win/WebURLAuthenticationChallengeSenderCURL.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        libeay32.lib
-        ssleay32.lib
+        PRIVATE libeay32.lib
+        PRIVATE mfuuid.lib
+        PRIVATE ssleay32.lib
+        PRIVATE strmiids.lib
     )
 else ()
     list(APPEND WebKit_SOURCES_Classes
@@ -20,7 +22,7 @@ else ()
         win/WebURLAuthenticationChallengeSenderCFNet.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        WebKitSystemInterface
+        PRIVATE WebKitSystemInterface
     )
 endif ()
 
@@ -48,7 +50,9 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/win"
     "${WEBCORE_DIR}/rendering/line"
+    "${WEBCORE_DIR}/rendering/shapes"
     "${WEBCORE_DIR}/html/shadow"
+    "${WEBCORE_DIR}/html/track"
     "${WEBCORE_DIR}/modules/websockets"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
@@ -417,15 +421,15 @@ add_library(WebKitGUID STATIC
 set_target_properties(WebKitGUID PROPERTIES FOLDER "WebKit")
 
 list(APPEND WebKit_LIBRARIES
-    Comctl32
-    Comsupp
-    Crypt32
-    Iphlpapi
-    Rpcrt4
-    Shlwapi
-    Usp10
-    Version
-    WebKitGUID
+    PRIVATE Comctl32
+    PRIVATE Comsupp
+    PRIVATE Crypt32
+    PRIVATE Iphlpapi
+    PRIVATE Rpcrt4
+    PRIVATE Shlwapi
+    PRIVATE Usp10
+    PRIVATE Version
+    PRIVATE WebKitGUID
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
@@ -442,7 +446,11 @@ string(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 list(APPEND WebKit_LIBRARIES ${CXX_LIBS})
 set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
+if (${WTF_PLATFORM_WIN_CAIRO})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:LIBCMTD")
+else ()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
+endif ()
 
 # If this directory isn't created before midl runs and attempts to output WebKit.tlb,
 # It fails with an unusual error - midl failed - failed to save all changes

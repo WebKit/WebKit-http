@@ -57,15 +57,38 @@ void WebMediaSessionFocusManager::derefWebContextSupplement()
     API::Object::deref();
 }
 
-void WebMediaSessionFocusManager::isFocusedContentMediaElementPaused(std::function<void(bool, CallbackBase::Error)> callbackFunction)
+void WebMediaSessionFocusManager::initializeClient(const WKMediaSessionFocusManagerClientBase* client)
+{
+    m_client.initialize(client);
+}
+
+bool WebMediaSessionFocusManager::valueForPlaybackAttribute(WKMediaSessionFocusManagerPlaybackAttribute attribute) const
 {
     if (!m_focusedMediaElement)
-        return;
+        return false;
 
-    RefPtr<UnsignedCallback> callback = UnsignedCallback::create(callbackFunction);
-    WebPageProxy* proxy = m_focusedMediaElement->first;
-    uint64_t elementID = m_focusedMediaElement->second;
-    proxy->isMediaElementPaused(elementID, callback);
+    return m_playbackAttributes & attribute;
+}
+
+void WebMediaSessionFocusManager::updatePlaybackAttribute(WKMediaSessionFocusManagerPlaybackAttribute attribute, bool value)
+{
+    if (value)
+        m_playbackAttributes |= attribute;
+    else
+        m_playbackAttributes &= ~attribute;
+
+    m_client.didChangePlaybackAttribute(this, attribute, value);
+}
+
+void WebMediaSessionFocusManager::updatePlaybackAttributesFromMediaState(WebPageProxy* proxy, uint64_t elementID, WebCore::MediaProducer::MediaStateFlags flags)
+{
+    if (m_focusedMediaElement) {
+        if (proxy == m_focusedMediaElement->first && elementID == m_focusedMediaElement->second) {
+            updatePlaybackAttribute(IsPlaying, flags & WebCore::MediaProducer::IsSourceElementPlaying);
+            updatePlaybackAttribute(IsNextTrackControlEnabled, flags & WebCore::MediaProducer::IsNextTrackControlEnabled);
+            updatePlaybackAttribute(IsPreviousTrackControlEnabled, flags & WebCore::MediaProducer::IsPreviousTrackControlEnabled);
+        }
+    }
 }
 
 void WebMediaSessionFocusManager::setFocusedMediaElement(WebPageProxy& proxy, uint64_t elementID)

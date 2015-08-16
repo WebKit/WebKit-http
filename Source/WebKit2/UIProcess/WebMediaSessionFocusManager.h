@@ -29,8 +29,8 @@
 #if ENABLE(MEDIA_SESSION)
 
 #include "APIObject.h"
-#include "GenericCallback.h"
 #include "WebContextSupplement.h"
+#include "WebMediaSessionFocusManagerClient.h"
 #include "WebPageProxy.h"
 
 namespace WebKit {
@@ -43,7 +43,10 @@ public:
 
     static PassRefPtr<WebMediaSessionFocusManager> create(WebProcessPool*);
 
-    void isFocusedContentMediaElementPaused(std::function<void(bool, CallbackBase::Error)>);
+    void initializeClient(const WKMediaSessionFocusManagerClientBase*);
+
+    bool valueForPlaybackAttribute(WKMediaSessionFocusManagerPlaybackAttribute) const;
+    void updatePlaybackAttributesFromMediaState(WebPageProxy*, uint64_t, WebCore::MediaProducer::MediaStateFlags);
 
     void setFocusedMediaElement(WebPageProxy&, uint64_t);
     void clearFocusedMediaElement();
@@ -58,7 +61,11 @@ private:
     virtual void refWebContextSupplement() override;
     virtual void derefWebContextSupplement() override;
 
+    void updatePlaybackAttribute(WKMediaSessionFocusManagerPlaybackAttribute, bool);
+
     std::unique_ptr<FocusedMediaElement> m_focusedMediaElement;
+    WKMediaSessionFocusManagerPlaybackAttributes m_playbackAttributes { 0 };
+    WebMediaSessionFocusManagerClient m_client;
 };
 
 } // namespace WebKit

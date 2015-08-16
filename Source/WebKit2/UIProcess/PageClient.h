@@ -34,10 +34,6 @@
 #include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 
-#if USE(GSTREAMER)
-#include <WebCore/GUniquePtrGStreamer.h>
-#endif
-
 #if PLATFORM(COCOA)
 #include "PluginComplexTextInputState.h"
 
@@ -53,6 +49,8 @@ namespace WebCore {
 class Cursor;
 class TextIndicator;
 class WebMediaSessionManager;
+enum class TextIndicatorWindowLifetime : uint8_t;
+enum class TextIndicatorWindowDismissalAnimation : uint8_t;
 struct Highlight;
 struct ViewportAttributes;
 }
@@ -77,6 +75,10 @@ class WebColorPicker;
 
 #if ENABLE(FULLSCREEN_API)
 class WebFullScreenManagerProxyClient;
+#endif
+
+#if USE(GSTREAMER)
+class InstallMissingMediaPluginsPermissionRequest;
 #endif
 
 #if PLATFORM(COCOA)
@@ -224,9 +226,11 @@ public:
     virtual RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) = 0;
 #endif
 
-    virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorLifetime = WebCore::TextIndicatorLifetime::Permanent) = 0;
-    virtual void clearTextIndicator(WebCore::TextIndicatorDismissalAnimation = WebCore::TextIndicatorDismissalAnimation::FadeOut) = 0;
+#if PLATFORM(COCOA)
+    virtual void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) = 0;
+    virtual void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) = 0;
     virtual void setTextIndicatorAnimationProgress(float) = 0;
+#endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
@@ -341,7 +345,7 @@ public:
     virtual void derefView() = 0;
 
 #if USE(GSTREAMER)
-    virtual GUniquePtr<GstInstallPluginsContext> createGstInstallPluginsContext() = 0;
+    virtual bool decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) = 0;
 #endif
 };
 

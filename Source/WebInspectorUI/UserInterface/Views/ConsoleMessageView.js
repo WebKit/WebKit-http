@@ -185,12 +185,14 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
 
     toClipboardString(isPrefixOptional)
     {
-        var clipboardString = this._messageTextElement.innerText;
+        let clipboardString = this._messageTextElement.innerText.removeWordBreakCharacters();
+        if (this._message.savedResultIndex)
+            clipboardString = clipboardString.replace(/\s*=\s*(\$\d+)$/, " = $1");
 
         if (this._message.type === WebInspector.ConsoleMessage.MessageType.Trace)
             clipboardString = "console.trace()";
 
-        var hasStackTrace = this._shouldShowStackTrace();
+        let hasStackTrace = this._shouldShowStackTrace();
         if (hasStackTrace) {
             this._message.stackTrace.callFrames.forEach(function(frame) {
                 clipboardString += "\n\t" + (frame.functionName || WebInspector.UIString("(anonymous function)"));
@@ -198,10 +200,10 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
                     clipboardString += " (" + WebInspector.displayNameForURL(frame.url) + ", line " + frame.lineNumber + ")";
             });
         } else {
-            var repeatString = this.repeatCount > 1 ? "x" + this.repeatCount : "";
-            var urlLine = "";
+            let repeatString = this.repeatCount > 1 ? "x" + this.repeatCount : "";
+            let urlLine = "";
             if (this._message.url) {
-                var components = [WebInspector.displayNameForURL(this._message.url), "line " + this._message.line];
+                let components = [WebInspector.displayNameForURL(this._message.url), "line " + this._message.line];
                 if (repeatString)
                     components.push(repeatString);
                 urlLine = " (" + components.join(", ") + ")";
@@ -209,7 +211,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
                 urlLine = " (" + repeatString + ")";
 
             if (urlLine) {
-                var lines = clipboardString.split("\n");
+                let lines = clipboardString.split("\n");
                 lines[0] += urlLine;
                 clipboardString = lines.join("\n");
             }
@@ -319,7 +321,8 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         }
 
         if (callFrame) {
-            var locationElement = new WebInspector.CallFrameView(callFrame);
+            const showFunctionName = !!callFrame.functionName;
+            var locationElement = new WebInspector.CallFrameView(callFrame, showFunctionName);
             locationElement.classList.add("console-message-location");
             this._element.appendChild(locationElement);
 
@@ -377,18 +380,11 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         if (this._message.type === WebInspector.ConsoleMessage.MessageType.Trace)
             this.expand();
 
-        this._stackTraceElement = this._element.appendChild(document.createElement("ul"));
-        this._stackTraceElement.classList.add("console-message-stack-trace-container");
-        this._stackTraceElement.classList.add("console-message-text");
+        this._stackTraceElement = this._element.appendChild(document.createElement("div"));
+        this._stackTraceElement.classList.add("console-message-text", "console-message-stack-trace-container");
 
-        for (var callFrame of this._message.stackTrace.callFrames) {
-            var callFrameElement = this._stackTraceElement.appendChild(document.createElement("li"));
-            callFrameElement.classList.add("console-message-stack-trace-call-frame");
-            callFrameElement.textContent = callFrame.functionName || WebInspector.UIString("(anonymous function)");
-            var url = (callFrame.sourceCodeLocation && callFrame.sourceCodeLocation.sourceCode && callFrame.sourceCodeLocation.sourceCode.url) || "";
-            if (url && !this._shouldHideURL(url))
-                callFrameElement.appendChild(this._linkifyCallFrame(callFrame));
-        }
+        var callFramesElement = new WebInspector.StackTraceView(this._message.stackTrace).element;
+        this._stackTraceElement.appendChild(callFramesElement);
     }
 
     _createRemoteObjectIfNeeded(parameter)
@@ -486,7 +482,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
 
         var formatters = {
             "object": this._formatParameterAsObject,
-            "error": this._formatParameterAsObject,
+            "error": this._formatParameterAsError,
             "map": this._formatParameterAsObject,
             "set": this._formatParameterAsObject,
             "weakmap": this._formatParameterAsObject,
@@ -525,6 +521,12 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         // FIXME: Should have a better ObjectTreeView mode for classes (static methods and methods).
         this._objectTree = new WebInspector.ObjectTreeView(object, null, this._rootPropertyPathForObject(object), forceExpansion);
         element.appendChild(this._objectTree.element);
+    }
+
+    _formatParameterAsError(object, element)
+    {
+        var errorObjectView = new WebInspector.ErrorObjectView(object);
+        element.appendChild(errorObjectView.element);
     }
 
     _formatParameterAsArray(array, element)
@@ -646,30 +648,6 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
     _linkifyLocation(url, lineNumber, columnNumber)
     {
         return WebInspector.linkifyLocation(url, lineNumber, columnNumber, "console-message-url");
-    }
-
-    _linkifyCallFrameLocation(url, lineNumber, columnNumber)
-    {
-        // ConsoleMessage stack trace line numbers are one-based.
-        lineNumber = lineNumber ? lineNumber - 1 : 0;
-        columnNumber = columnNumber ? columnNumber - 1 : 0;
-        return this._linkifyLocation(url, lineNumber, columnNumber);
-    }
-
-    _linkifyCallFrame(callFrame)
-    {
-        var url = "";
-        var lineNumber = 0;
-        var columnNumber = 0;
-
-        var sourceCodeLocation = callFrame._sourceCodeLocation;
-        if (sourceCodeLocation) {
-            lineNumber = sourceCodeLocation.lineNumber;
-            columnNumber = sourceCodeLocation.columnNumber;
-            url = sourceCodeLocation.sourceCode && sourceCodeLocation.sourceCode.url || "";
-        }
-
-        return this._linkifyCallFrameLocation(url, lineNumber, columnNumber);
     }
 
     _userProvidedColumnNames(columnNamesArgument)

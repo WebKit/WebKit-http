@@ -3,7 +3,7 @@
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
 #//////////////////////////////////////////////////////////////////////////////////////////
-# Platform-specific directories. Skipped here, then re-enabled on the appropriate platform.
+# Platform-specific tests. Skipped here, then re-enabled on the appropriate platform.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 accessibility/ios-simulator [ Skip ]
@@ -14,8 +14,11 @@ editing/mac [ Skip ]
 editing/pasteboard/gtk [ Skip ]
 tiled-drawing [ Skip ]
 
+fast/forms/attributed-strings.html [ Skip ]
+fast/scrolling/latching [ Skip ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
-# End platform-specific directories.
+# End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -91,15 +94,16 @@ webkit.org/b/83618 fast/dom/inline-event-attributes-release.html [ Failure ]
 
 webkit.org/b/129057 media/controls-styling-strict.html [ Pass Failure ]
 
-webkit.org/b/133761 inspector-protocol/debugger/breakpoint-action-detach.html [ Skip ]
-webkit.org/b/129639 inspector-protocol/dom/dom-search-crash.html [ Skip ]
-webkit.org/b/127414 inspector-protocol/page/deny-X-FrameOption.html [ Pass Failure ]
+webkit.org/b/129639 inspector/dom/dom-search-crash.html [ Skip ]
 
+webkit.org/b/133761 inspector/debugger/breakpoint-action-detach.html [ Skip ]
 webkit.org/b/147502 inspector/debugger/break-on-uncaught-exception-throw-in-promise-rethrow-in-catch.html [ Skip ]
 webkit.org/b/147502 inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-with-catch.html [ Skip ]
 webkit.org/b/147502 inspector/debugger/break-on-uncaught-exception-throw-in-promise-then.html [ Skip ]
 webkit.org/b/147502 inspector/debugger/break-on-uncaught-exception-throw-in-promise-with-catch.html [ Skip ]
 webkit.org/b/147502 inspector/debugger/break-on-uncaught-exception-throw-in-promise.html [ Skip ]
+webkit.org/b/128736 inspector/debugger/setBreakpoint-dfg.html [ Failure Pass ]
+webkit.org/b/134982 inspector/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
 
 webkit.org/b/142208 inspector/timeline/debugger-paused-while-recording.html [ Skip ]
 webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-recording.html [ Skip ]
@@ -128,9 +132,6 @@ webkit.org/b/132791 svg/as-object/sizing/svg-in-object-placeholder-height-auto.h
 webkit.org/b/133057 fast/table/border-collapsing/collapsed-borders-adjoining-sections.html [ ImageOnlyFailure ]
 
 webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Failure ]
-
-webkit.org/b/128736 inspector-protocol/debugger/setBreakpoint-dfg.html [ Failure Pass ]
-webkit.org/b/134982 inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html [ Failure Pass ]
 
 # CSS Font Loading is not yet enabled on all platforms
 webkit.org/b/135390 fast/css/fontloader-download-error.html [ Skip ]
@@ -331,8 +332,6 @@ webkit.org/b/138676 imported/w3c/canvas/canvas_text_font_001.htm [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_complexshapes_arcto_001.htm [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_linestyles_linecap_001.htm [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_transformations_scale_001.htm [ Skip ]
-
-webkit.org/b/137316 fast/multicol/newmulticol/spanner-crash.html [ Skip ]
 
 webkit.org/b/139595 http/tests/xmlhttprequest/workers/abort-exception-assert.html [ Pass Failure Timeout ]
 
@@ -544,3 +543,8 @@ webkit.org/b/146434 fast/dom/HTMLImageElement/sizes [ Skip ]
 
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
+
+# Only iOS WK1 has testRunner.setPagePaused.
+fast/dom/timer-fire-after-page-pause.html [ Skip ]
+
+webkit.org/b/148026 [ Debug ] animations/restart-after-scroll.html [ Skip ]

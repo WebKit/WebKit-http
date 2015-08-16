@@ -118,6 +118,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckCell:
     case CheckBadCell:
     case CheckNotEmpty:
+    case CheckIdent:
     case StringCharCodeAt:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
@@ -262,6 +263,7 @@ inline CapabilityLevel canCompile(Node* node)
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::Undecided:
         case Array::DirectArguments:
         case Array::ScopedArguments:
             break;
@@ -415,6 +417,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case KnownStringUse:
                 case StringObjectUse:
                 case StringOrStringObjectUse:
+                case SymbolUse:
                 case FinalObjectUse:
                 case NotCellUse:
                 case OtherUse:

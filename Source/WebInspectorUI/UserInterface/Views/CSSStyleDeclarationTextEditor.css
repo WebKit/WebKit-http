@@ -25,7 +25,7 @@
 
 .css-style-text-editor {
     background-color: white;
-    padding: 2px 0;
+    padding: 2px 0 1px;
 }
 
 .css-style-text-editor > .CodeMirror {
@@ -45,7 +45,7 @@
 
 .css-style-text-editor > .CodeMirror pre {
     /* Compensate for the checkboxes so properties line up with readonly styles that do not have checkboxes. */
-    padding: 1px 5px 1px 25px;
+    padding: 0 5px 0 25px;
     text-indent: -21px;
 }
 
@@ -92,6 +92,23 @@
 
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker.clickable:hover {
     -webkit-filter: brightness(0.9);
+}
+
+.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker {
+    width: 11px;
+    height: 11px;
+    margin-right: 2px;
+    vertical-align: -2px;
+    content: url(../Images/CubicBezier.svg);
+    cursor: default;
+}
+
+.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:hover {
+    -webkit-filter: brightness(0.9);
+}
+
+.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:active {
+    -webkit-filter: brightness(0.8);
 }
 
 .computed .css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.implicit,

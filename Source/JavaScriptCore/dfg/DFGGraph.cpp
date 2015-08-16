@@ -1002,6 +1002,8 @@ JSValue Graph::tryGetConstantProperty(
     
     for (unsigned i = structureSet.size(); i--;) {
         Structure* structure = structureSet[i];
+        assertIsRegistered(structure);
+        
         WatchpointSet* set = structure->propertyReplacementWatchpointSet(offset);
         if (!set || !set->isStillValid())
             return JSValue();
@@ -1276,9 +1278,6 @@ void Graph::assertIsRegistered(Structure* structure)
 {
     // It's convenient to be able to call this with a maybe-null structure.
     if (!structure)
-        return;
-    
-    if (m_structureRegistrationState == HaveNotStartedRegistering)
         return;
     
     DFG_ASSERT(*this, nullptr, m_plan.weakReferences.contains(structure));

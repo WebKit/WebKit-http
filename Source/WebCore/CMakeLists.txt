@@ -289,6 +289,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/speech/SpeechSynthesisUtterance.idl
     Modules/speech/SpeechSynthesisVoice.idl
 
+    Modules/streams/CountQueuingStrategy.idl
     Modules/streams/ReadableStream.idl
     Modules/streams/ReadableStreamController.idl
     Modules/streams/ReadableStreamReader.idl
@@ -1003,8 +1004,6 @@ set(WebCore_SOURCES
     Modules/webdatabase/DOMWindowWebDatabase.cpp
     Modules/webdatabase/Database.cpp
     Modules/webdatabase/DatabaseAuthorizer.cpp
-    Modules/webdatabase/DatabaseBackend.cpp
-    Modules/webdatabase/DatabaseBackendBase.cpp
     Modules/webdatabase/DatabaseContext.cpp
     Modules/webdatabase/DatabaseManager.cpp
     Modules/webdatabase/DatabaseServer.cpp
@@ -1016,7 +1015,6 @@ set(WebCore_SOURCES
     Modules/webdatabase/SQLResultSet.cpp
     Modules/webdatabase/SQLResultSetRowList.cpp
     Modules/webdatabase/SQLStatement.cpp
-    Modules/webdatabase/SQLStatementBackend.cpp
     Modules/webdatabase/SQLTransaction.cpp
     Modules/webdatabase/SQLTransactionBackend.cpp
     Modules/webdatabase/SQLTransactionClient.cpp
@@ -1091,6 +1089,7 @@ set(WebCore_SOURCES
     bindings/js/JSCanvasRenderingContextCustom.cpp
     bindings/js/JSCharacterDataCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
+    bindings/js/JSCountQueuingStrategyCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
     bindings/js/JSCryptoCustom.cpp
@@ -1609,6 +1608,7 @@ set(WebCore_SOURCES
     html/FormAssociatedElement.cpp
     html/FormController.cpp
     html/FormDataList.cpp
+    html/GenericCachedHTMLCollection.cpp
     html/HTMLAllCollection.cpp
     html/HTMLAnchorElement.cpp
     html/HTMLAppletElement.cpp
@@ -2239,6 +2239,7 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
+    platform/mediastream/MediaDevicesPrivate.cpp
     platform/mediastream/MediaStreamPrivate.cpp
     platform/mediastream/MediaStreamTrackPrivate.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
@@ -2872,7 +2873,8 @@ if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
         Modules/encryptedmedia/MediaKeys.cpp
 
         html/MediaKeyEvent.cpp
-
+    )
+    list(APPEND WebCoreTestSupport_SOURCES
         testing/MockCDM.cpp
     )
     list(APPEND WebCore_IDL_FILES
@@ -3277,7 +3279,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/TypeConversions.idl
 )
 
-set(WebCoreTestSupport_SOURCES
+list(APPEND WebCoreTestSupport_SOURCES
     platform/mock/PlatformSpeechSynthesizerMock.cpp
 
     platform/mock/mediasource/MockBox.cpp
@@ -3297,7 +3299,6 @@ set(WebCoreTestSupport_SOURCES
 set(WebCoreTestSupport_LIBRARIES
     JavaScriptCore
     WTF
-    WebCore
 )
 
 # Modules that the bindings generator scripts may use
@@ -3645,6 +3646,7 @@ if (MSVC)
 endif ()
 
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})
+add_dependencies(WebCoreTestSupport WebCore)
 target_link_libraries(WebCoreTestSupport ${WebCoreTestSupport_LIBRARIES})
 set_target_properties(WebCoreTestSupport PROPERTIES FOLDER "WebCore")
 

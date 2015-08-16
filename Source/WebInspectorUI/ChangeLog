@@ -1,3 +1,1926 @@
+2015-08-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: NavigationBar.updateLayoutSoon should use requestAnimationFrame
+        https://bugs.webkit.org/show_bug.cgi?id=148010
+
+        Reviewed by Brian Burg.
+
+        NavigationBar.updateLayoutSoon now uses requestAnimationFrame instead of setTimeout.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar):
+        (WebInspector.NavigationBar.prototype.updateLayoutSoon.update):
+        (WebInspector.NavigationBar.prototype.updateLayoutSoon):
+        (WebInspector.NavigationBar.prototype.updateLayout):
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add VisualStyleDetailsPanel
+        https://bugs.webkit.org/show_bug.cgi?id=147570
+
+        Reviewed by Timothy Hatcher.
+
+        Added VisualStyleDetailsPanel and inclusions to forthcoming classes
+        that will be used in this visual sidebar panel.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Added files for all new classes used in the VisualStyleDetailsPanel.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection):
+        (WebInspector.DetailsSection.prototype.set collapsed):
+        (WebInspector.DetailsSection.prototype.get expandedByUser):
+        (WebInspector.DetailsSection.prototype._headerElementClicked):
+        Track whether or not the expanded state was caused by the user.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css: Added.
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .header):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .header > .visual-style-section-clear):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section:not(.modified) > .header > .visual-style-section-clear):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .header > span):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section.modified > .header > span::after):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row:last-child):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row.visual-style-separated-row):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row > .visual-style-property-container > .visual-style-property-title):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row > .visual-style-property-container:not(.layout-reversed):last-child):
+        (.sidebar > .panel.details.css-style .visual.disabled > .details-section:not(.visual-style-selector-section)):
+        (.sidebar > .panel.details.css-style .visual.disabled > .details-section:not(.visual-style-selector-section) input):
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js: Added.
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype.refresh):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection.replaceDashWithCapital):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection.createOptionsElement):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._prepareForChange):
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateSections):
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateAutocompleteCompatiblePropertyEditor):
+        (WebInspector.VisualStyleDetailsPanel.prototype._sectionModified):
+        (WebInspector.VisualStyleDetailsPanel.prototype._clearModifiedSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype.get _initialTextList):
+        (WebInspector.VisualStyleDetailsPanel.prototype._initialPropertyTextModified):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateDisplaySection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateMetricSectionRows):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populatePositionSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFloatSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.onEditorMouseover):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.onEditorMouseout):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateDimensionsSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateMarginSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populatePaddingSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFlexboxSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTextStyleSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFontSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTextSpacingSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTextShadowSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBackgroundStyleSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBorderSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateOutlineSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.noRemainingTreeItems):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.selectedBoxShadowItemValueChanged):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection.boxShadowItemSelected):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBoxShadowSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.noRemainingTreeItems):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.selectedtransitionItemValueChanged):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection.transitionItemSelected):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateTransitionSection):
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight DOM node attribute changes in parallel, not sequentially
+        https://bugs.webkit.org/show_bug.cgi?id=148019
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._markNodeChanged):
+        (WebInspector.DOMTreeElement.prototype._nodeChangedAnimationEnd):
+        Now removes the animated element from the updated list once the animation ends.
+
+2015-08-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Long delay when row selection changes in timeline data grids
+        https://bugs.webkit.org/show_bug.cgi?id=148005
+
+        Reviewed by Brian Burg.
+
+        Selecting a tree element in the Timelines sidebar generates multiple
+        WebInspector.ContentView.SelectionPathComponentsDidChange events, each of which
+        causes NavigationBar to update its layout (which is extremely expensive).
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._contentViewSelectionPathComponentDidChange):
+        Call updateLayoutSoon instead of updateLayout to coalesce layout requests.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._recordSelected):
+        When the selected record changes in the overview graph, make sure the record's tree element
+        isn't already selected. Reselecting the tree element results in an extra NavigationBar layout.
+
+2015-08-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r188396): Rendering Frames timeline ruler dividers are off by 1px
+        https://bugs.webkit.org/show_bug.cgi?id=148040
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.frames > .timeline-ruler > .markers > .divider):
+        (.timeline-overview.frames > .timeline-ruler > .header > .divider): Deleted.
+        All ruler dividers should be translated by the same amount.
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Style changes to Visual sidebar editors
+        https://bugs.webkit.org/show_bug.cgi?id=148021
+
+        Reviewed by Brian Burg.
+
+        Various style fixes and feature enhancements in some of the Visual style property editors.
+
+        * UserInterface/Views/VisualStyleColorPicker.css:
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > input):
+        (.visual-style-property-container.input-color-picker.multiple > .visual-style-property-value-container > .visual-style-multiple-property-placeholder):
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.css:
+        (.visual-style-property-container.keyword-checkbox.font-variant > .visual-style-property-value-container > input):
+        (.visual-style-property-container.keyword-checkbox.font-variant > .visual-style-property-value-container > input::before):
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > input): Deleted.
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > div): Deleted.
+        Replaced the SVG image before the checkbox with a :before pseudo-element with content.
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.js:
+        (WebInspector.VisualStyleKeywordCheckbox):
+        Removed the SVG image before the checkbox.
+
+        * UserInterface/Views/VisualStyleKeywordPicker.js:
+        (WebInspector.VisualStyleKeywordPicker.prototype.get value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set placeholder):
+        (WebInspector.VisualStyleKeywordPicker.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype._getValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype._setValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype._generateSynthesizedValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype._handleKeywordChanged):
+        Due to a current bug (https://webkit.org/b/147064), you cannot extend ES6 getters/setters.  In order to work
+        around this, a member function was added that performs the same action as the getter/setter, but can be extended.
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.css:
+        (.visual-style-property-editor-link.linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon):
+
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.js:
+        (WebInspector.VisualStyleRelativeNumberSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._resetSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._sliderChanged):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item > input[type="checkbox"]):
+        (.item.visual-style-selector-item.selected > input[type="checkbox"]::before):
+        (.item.visual-style-selector-item.modified > .icon):
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title:focus):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleMouseDown):
+        Added another context menu item to show the source location for the selected rule.
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147576
+
+        Added parent class for property editors in the Visual style
+        details panel in the CSS sidebar.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStylePropertyCombiner.js: Added.
+        (WebInspector.VisualStylePropertyCombiner):
+        (WebInspector.VisualStylePropertyCombiner.prototype.get style):
+        (WebInspector.VisualStylePropertyCombiner.prototype.get synthesizedValue):
+        (WebInspector.VisualStylePropertyCombiner.prototype.modifyPropertyText):
+        (WebInspector.VisualStylePropertyCombiner.prototype.update):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText.updateCompatibleEditor):
+        (WebInspector.VisualStylePropertyCombiner.prototype.updateValuesFromText):
+        (WebInspector.VisualStylePropertyCombiner.prototype.propertyMissing):
+        (WebInspector.VisualStylePropertyCombiner.prototype.resetEditorValues):
+        (WebInspector.VisualStylePropertyCombiner.prototype._markEditors):
+        (WebInspector.VisualStylePropertyCombiner.prototype._handlePropertyEditorValueChanged):
+
+        * UserInterface/Views/VisualStylePropertyEditor.css: Added.
+        (.visual-style-property-container):
+        (.visual-style-property-container > .visual-style-property-title):
+        (.visual-style-property-container > .visual-style-property-title > .property-reference-info):
+        (.visual-style-property-container.disabled > .visual-style-property-title > :not(.property-reference-info)):
+        (.visual-style-property-container > .visual-style-property-value-container):
+        (.visual-style-property-container.disabled > .visual-style-property-value-container):
+        (.visual-style-property-container > .visual-style-property-value-container select):
+        (.visual-style-property-container > .visual-style-property-value-container input):
+        (.visual-style-property-container.disabled > .visual-style-property-value-container input):
+        (.visual-style-property-container.layout-reversed > .visual-style-property-title):
+        (.visual-style-property-container > .visual-style-property-value-container > .visual-style-special-property-placeholder):
+        (.visual-style-property-info-popover):
+        (.visual-style-property-info-popover > h3):
+
+        * UserInterface/Views/VisualStylePropertyEditor.js: Added.
+        (WebInspector.VisualStylePropertyEditor.canonicalizeValues):
+        (WebInspector.VisualStylePropertyEditor):
+        (WebInspector.VisualStylePropertyEditor.prototype.get element):
+        (WebInspector.VisualStylePropertyEditor.prototype.get style):
+        (WebInspector.VisualStylePropertyEditor.prototype.get value):
+        (WebInspector.VisualStylePropertyEditor.prototype.set value):
+        (WebInspector.VisualStylePropertyEditor.prototype.get units):
+        (WebInspector.VisualStylePropertyEditor.prototype.set units):
+        (WebInspector.VisualStylePropertyEditor.prototype.get placeholder):
+        (WebInspector.VisualStylePropertyEditor.prototype.set placeholder):
+        (WebInspector.VisualStylePropertyEditor.prototype.get synthesizedValue):
+        (WebInspector.VisualStylePropertyEditor.prototype.set suppressStyleTextUpdate):
+        (WebInspector.VisualStylePropertyEditor.prototype.set masterProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.get masterProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.set optionalProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.get optionalProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.set colorProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.get colorProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.get propertyReferenceName):
+        (WebInspector.VisualStylePropertyEditor.prototype.set propertyReferenceName):
+        (WebInspector.VisualStylePropertyEditor.prototype.set disabled):
+        (WebInspector.VisualStylePropertyEditor.prototype.get disabled):
+        (WebInspector.VisualStylePropertyEditor.prototype.update):
+        (WebInspector.VisualStylePropertyEditor.prototype.updateEditorValues):
+        (WebInspector.VisualStylePropertyEditor.prototype.resetEditorValues):
+        (WebInspector.VisualStylePropertyEditor.prototype.modifyPropertyText):
+        (WebInspector.VisualStylePropertyEditor.prototype.getValuesFromText):
+        (WebInspector.VisualStylePropertyEditor.prototype.propertyMissing):
+        (WebInspector.VisualStylePropertyEditor.prototype.valueIsCompatible):
+        (WebInspector.VisualStylePropertyEditor.prototype.valueIsSupportedKeyword):
+        (WebInspector.VisualStylePropertyEditor.prototype.valueIsSupportedUnit):
+        (WebInspector.VisualStylePropertyEditor.prototype.get contentElement):
+        (WebInspector.VisualStylePropertyEditor.prototype.get specialPropertyPlaceholderElement):
+        (WebInspector.VisualStylePropertyEditor.prototype.parseValue):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueIsSupportedAdvancedKeyword):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueIsSupportedAdvancedUnit):
+        (WebInspector.VisualStylePropertyEditor.prototype._canonicalizedKeywordForKey):
+        (WebInspector.VisualStylePropertyEditor.prototype._keyForKeyword):
+        (WebInspector.VisualStylePropertyEditor.prototype._valueDidChange):
+        (WebInspector.VisualStylePropertyEditor.prototype._replaceShorthandPropertyWithLonghandProperties):
+        (WebInspector.VisualStylePropertyEditor.prototype._titleElementPrepareForClick):
+        (WebInspector.VisualStylePropertyEditor.prototype._titleElementMouseOver):
+        (WebInspector.VisualStylePropertyEditor.prototype._titleElementMouseOut):
+        (WebInspector.VisualStylePropertyEditor.prototype._titleElementClick):
+        (WebInspector.VisualStylePropertyEditor.prototype._hasMultipleConflictingValues):
+        (WebInspector.VisualStylePropertyEditor.prototype._showPropertyInfoPopover):
+        (WebInspector.VisualStylePropertyEditor.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleTabbedPropertiesRow.css: Added.
+        (.visual-style-tabbed-properties-row ~ :not(.visible)):
+        (.visual-style-tabbed-properties-row > .visual-style-tabbed-properties-row-container):
+        (.visual-style-tabbed-properties-row > .visual-style-tabbed-properties-row-container > button):
+        (.visual-style-tabbed-properties-row > .visual-style-tabbed-properties-row-container > button.selected):
+        (.visual-style-tabbed-properties-row > .visual-style-tabbed-properties-row-container > button:not(.selected):hover):
+
+        * UserInterface/Views/VisualStyleTabbedPropertiesRow.js: Added.
+        (WebInspector.VisualStyleTabbedPropertiesRow):
+        (WebInspector.VisualStyleTabbedPropertiesRow.prototype._handleButtonClicked):
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add Visual editors for CSS properties with comma separated values
+        https://bugs.webkit.org/show_bug.cgi?id=147578
+
+        Reviewed by Timothy Hatcher.
+
+        Displays comma separated CSS property values as a tree outline list.
+
+        * UserInterface/Images/Minus.svg: Added.
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype.get selectedTreeElementIndex):
+        (WebInspector.TreeOutline):
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.css: Added.
+        (.visual-style-property-container.comma-separated-keyword-editor):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item:nth-child(odd)):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.selected):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > :matches(button, img)):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.visual-style-font-family-list-item.selected:not(.editor-hidden) > .titles > *):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.visual-style-font-family-list-item > .visual-style-comma-separated-keyword-item-editor):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item.visual-style-font-family-list-item.editor-hidden > .visual-style-comma-separated-keyword-item-editor):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item > .titles > .subtitle):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-list > .visual-style-comma-separated-keyword-item:not(.no-value) > .titles > .subtitle):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-controls):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-controls > div):
+        (.visual-style-property-container.comma-separated-keyword-editor > .visual-style-property-value-container > .visual-style-comma-separated-keyword-controls > .visual-style-remove-comma-separated-keyword):
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js: Added.
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.set selectedTreeElementValue):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.get value):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.set value):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._treeElementSelected):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._treeItemIsEmpty):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._addEmptyCommaSeparatedKeyword):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._removeSelectedCommaSeparatedKeyword):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._removeEmptyCommaSeparatedKeywords):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._addCommaSeparatedKeyword):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._removeCommaSeparatedKeyword):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._createNewTreeElement):
+
+        * UserInterface/Views/VisualStyleFontFamilyListEditor.js: Added.
+        (WebInspector.VisualStyleFontFamilyListEditor):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype.visualStyleCompletionsControllerCustomizeCompletionElement):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype.get hasCompletions):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype.set completions):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._modifyCommaSeparatedKeyword):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._addCommaSeparatedKeyword):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._addEmptyCommaSeparatedKeyword):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._completionClicked):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._treeElementKeyDown):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._treeElementKeywordChanged):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._hideCompletions):
+        (WebInspector.VisualStyleFontFamilyListEditor.prototype._createNewTreeElement):
+
+        * UserInterface/Views/VisualStyleFontFamilyTreeElement.js: Added.
+        (WebInspector.VisualStyleFontFamilyTreeElement):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.editorBounds):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.updateMainTitle):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.showKeywordEditor):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.hideKeywordEditor):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.get keywordEditorHidden):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.onattach):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.ondeselect):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype._keywordEditorKeyDown):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype._keywordEditorKeyUp):
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype._keywordEditorBlurred):
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add autocomplete controller for Visual property editors
+        https://bugs.webkit.org/show_bug.cgi?id=147579
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/VisualStyleCompletionsController.js: Added.
+        (WebInspector.VisualStyleCompletionsController):
+        Takes in a CSSCompletions and displays a list of suggestions based on a given prefix in a popover.
+        (WebInspector.VisualStyleCompletionsController.prototype.get visible):
+        (WebInspector.VisualStyleCompletionsController.prototype.get hasCompletions):
+        (WebInspector.VisualStyleCompletionsController.prototype.get currentCompletion):
+        (WebInspector.VisualStyleCompletionsController.prototype.set completions):
+        (WebInspector.VisualStyleCompletionsController.prototype.completionSuggestionsViewCustomizeCompletionElement):
+        (WebInspector.VisualStyleCompletionsController.prototype.previous):
+        (WebInspector.VisualStyleCompletionsController.prototype.next):
+        (WebInspector.VisualStyleCompletionsController.prototype.update):
+        (WebInspector.VisualStyleCompletionsController.prototype.show):
+        (WebInspector.VisualStyleCompletionsController.prototype.hide):
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        Make sure that the cssNameCompletions exist before trying to add them.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WebInspector.CompletionSuggestionsView.prototype.update):
+        Allow the delegate to modify the newly created completion suggestion item.
+
+2015-08-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add a visual editor for timing functions
+        https://bugs.webkit.org/show_bug.cgi?id=148022
+
+        Reviewed by Timothy Hatcher.
+
+        Uses the existing bezier editor and the Visual keyword picker to make an editor for timing functions.
+
+        * UserInterface/Views/VisualStyleTimingEditor.css: Added.
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container):
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .keyword-picker-select):
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor):
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor:hover):
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor:active):
+
+        * UserInterface/Views/VisualStyleTimingEditor.js: Added.
+        (WebInspector.VisualStyleTimingEditor):
+        (WebInspector.VisualStyleTimingEditor.prototype.parseValue):
+        (WebInspector.VisualStyleTimingEditor.prototype.get bezierValue):
+        (WebInspector.VisualStyleTimingEditor.prototype.set bezierValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._getValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._setValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._generateSynthesizedValue):
+        (WebInspector.VisualStyleTimingEditor.prototype._bezierMarkerClicked):
+        (WebInspector.VisualStyleTimingEditor.prototype._handleKeywordChanged):
+
+2015-08-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Can't resize split console when window is too narrow
+        https://bugs.webkit.org/show_bug.cgi?id=147924
+
+        Make some items inside of the navigation bar click-through to incsease
+        the draggable area.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Main.css:
+        (#split-content-browser > .navigation-bar > :matches(.hierarchical-path, .log-search-bar, .log-scope-bar)):
+        (#split-content-browser > .navigation-bar > :matches(.log-search-bar, .log-scope-bar) > :matches(li, input)):
+
+2015-08-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Flash DOM node attribute on change
+        https://bugs.webkit.org/show_bug.cgi?id=147973
+
+        Reviewed by Timothy Hatcher.
+
+        Whenever an attribute on a DOM node changes, flash the attribute value.
+        If that value doesn't exist, flash the attribute name instead.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement):
+        (WebInspector.DOMTreeElement.prototype.nodeChanged):
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        If the node has been marked with a general change, mark the attribute element for animation.
+        (WebInspector.DOMTreeElement.prototype._markNodeChanged.animationEnd):
+        (WebInspector.DOMTreeElement.prototype._markNodeChanged):
+        Adds a class to the given element that applies a simple background flash animation.
+        (WebInspector.DOMTreeElement.prototype._fireDidChange):
+        Add the animation class once all building of the represented DOM object for that node is done.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (@keyframes node-state-changed):
+        Applies a semi-transparent background that fades to default.
+        (.node-state-changed):
+
+        * UserInterface/Views/DOMTreeUpdater.js:
+        (WebInspector.DOMTreeUpdater.prototype._attributesUpdated):
+        Now passes along the name of the modified attribute.
+        (WebInspector.DOMTreeUpdater.prototype._updateModifiedNodes):
+        If the modified node object has an attribute member, mark the node as being generally changed.
+
+2015-08-13  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r184000): Web Inspector: Stripped whitespace after editing CSS in Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=145679
+
+        Reviewed by Timothy Hatcher.
+
+        The formatter will now calculate the number of beginning spaces before the first line in a rule
+        and duplicate them in front of every other line.  If there is no new line at the beginning or are
+        no spaces, assume 4 spaces and a new line for each property.
+        Also cleaned up the code for _resetContent a bit.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.set get this):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update.get this):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent):
+
+2015-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Skip rendering frame records without children
+        https://bugs.webkit.org/show_bug.cgi?id=147993
+
+        Reviewed by Reviewed by Joseph Pecoraro.
+
+        This became an issue for frames which include an IndexedDB "success" event. This caused the
+        payload to pass the "has children" test, but resulted in model objects with no child records.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        Fixed record type check and moved rendering frame index assignment.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.setupFrameIndex):
+        Frame index is now set externally, and can only be set once.
+
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype._renderingFrameTimelineRecordAdded):
+        Added assertion.
+
+2015-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Watch Expressions
+        https://bugs.webkit.org/show_bug.cgi?id=147904
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        A RemoteObject's description string is optional, but we always
+        assume it exists and is a string, so default to the empty string.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow.evalCallback):
+        Include the object group in the DidEvaluate event.
+
+        (WebInspector.RemoteObject.fakeRemoteObject):
+        (WebInspector.RemoteObject.prototype.getDisplayablePropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.deprecatedGetDisplayableProperties.get return):
+        (WebInspector.RemoteObject.prototype.deprecatedGetDisplayableProperties):
+        (WebInspector.RemoteObject.prototype._isFakeObject):
+        (WebInspector.RemoteObject.prototype._getPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype._deprecatedGetProperties):
+        Support a fake RemoteObject. We use this fake RemoteObject to
+        back a ObjectTreeView where we add custom Properties which are of the form
+        "Expressions => RemoteObject" instead of "Object Property => RemoteObject".
+        Ensure a fake remote object is not used in unexpected ways.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype.update):
+        Default a popover update to animate, but allow not animating.
+
+        (WebInspector.Popover.prototype.handleEvent):
+        Vend a class that other content can use so that the Popover won't
+        dismiss if content with that class is scrolled. For example, a
+        completions list may be showing over a popover, if that scrolls
+        it should not dismiss the popover.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WebInspector.CompletionSuggestionsView):
+        Adopt the Popover ignore class so a popover won't dismiss if the
+        completion suggestions view is scrolled.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createGetterElement.get return):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.createGetterElement):
+        Allow modifying the context menu on an ObjectTreeView by looking for a delegate
+        on the TreeOutline.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css: Added.
+        (.details-section.watch-expressions .options > *):
+        (.details-section.watch-expressions .options > *:active):
+        (.details-section.watch-expressions .options > .watch-expression-add):
+        (.details-section.watch-expressions .options > .watch-expression-clear):
+        (.details-section.watch-expressions .options > .watch-expression-refresh):
+        (.popover .watch-expression):
+        (.watch-expression-editor):
+        (.watch-expression-editor > .CodeMirror):
+        (.watch-expression-editor > .CodeMirror-scroll):
+        Styles for the new Watch Expressions section, buttons, popover, and editor.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.inspect):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.refresh):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateWatchExpressionsSection):
+        Because we update the UI after a delay, to allow ObjectTreeView's to asynchronously
+        expand and fetch their list of properties, we convert updating the watch expression
+        and call frame sections asynchronously and return a promise. This lets us visually
+        update the UI after both sections have updated.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._removeWatchExpression):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._clearAllWatchExpressions):
+        Modify the saved list of watch expressions.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpressionButtonClicked.presentPopoverOverTargetElement):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpressionButtonClicked.this._codeMirror.addKeyMap):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._addWatchExpressionButtonClicked):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype.willDismissPopover):
+        Handle presenting and dismissing the add watch expression popover.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._refreshAllWatchExpressionsButtonClicked):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._clearAllWatchExpressionsButtonClicked):
+        Other button handlers.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._mainResourceDidChange):
+        Refresh the sidebar on navigation, as the watch expressions may change value (`location.href`).
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeElementAddContextMenuItems):
+        Add our own context menu items to watch expression ObjectTreeView tree elements to
+        allow removing a watch expression.
+
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._propertyPathIdentifierForTreeElement):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeAddHandler):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeExpandHandler):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeCollapseHandler):
+        Convert code to use `let`.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Misc. changes.
+
+2015-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: A {Map, WeakMap, Set, WeakSet} object contains itself will hang the console
+        https://bugs.webkit.org/show_bug.cgi?id=147966
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendEntryPreviews):
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        For empty overflow previews, don't show ", ..." if we didn't show any
+        values; just show "..." in these cases.
+
+2015-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Hide child rows for filtered tasks in the Rendering Frames data grid
+        https://bugs.webkit.org/show_bug.cgi?id=147960
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord.taskTypeForTimelineRecord):
+        New static method for mapping TimelineRecords to rendering frame tasks.
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask):
+        Refactored to use taskTypeForTimelineRecord.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Task filtering is applied to children of the frame record only. Parent frame
+        record is hidden by default, and visible by virtue of having unfiltered children.
+
+2015-08-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clearing frames timeline doesn't remove current time marker
+        https://bugs.webkit.org/show_bug.cgi?id=147650
+
+        Reviewed by Timothy Hatcher.
+
+        The rendering frames timeline offsets all markers by 1px to align them on frame
+        boundaries, which causes the current time marker to be visible even with left: 0px.
+        We can exclude the current time marker without it being noticable during recording.
+
+        * UserInterface/Views/TimelineOverview.css:
+
+2015-08-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r188325): Web Inspector: Fix vertical spacing in CodeMirror
+        https://bugs.webkit.org/show_bug.cgi?id=147971
+
+        r188325 inceased line-height by 2px. Remove top and bottom 1px padding
+        to compensate for line-height changes.
+
+        In the feature we may highlight the backgroud of text tokens (e.g. for the
+        heatmap profiler) so we would want to get rid of the gaps between the lines
+        (caused by the paddind) regardless of this regression.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror pre):
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Sometimes CSS resources don't update after editing via Styles panel
+        https://bugs.webkit.org/show_bug.cgi?id=143244
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/SourceCode.js:
+        (WebInspector.SourceCode.prototype._processContent):
+        This code is brittle and we should move off of putting the
+        possibly stale content in the Promise result.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._contentAvailable):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._contentAvailable):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestScriptSyntaxTree):
+        Use the current source code's content.
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Poor Class Names
+        https://bugs.webkit.org/show_bug.cgi?id=147958
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ClusterContentView.js:
+        * UserInterface/Views/ResourceContentView.js:
+
+2015-08-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Opening the Elements tab without a selected sidebar panel causes a crash
+        https://bugs.webkit.org/show_bug.cgi?id=147965
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        If the saved setting for the selectedPanel does not exist, default to the rules panel.
+
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._switchPanels):
+        Only save the new navigationItem info if the selectedPanel exists.
+
+2015-08-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove clamp and adopt Number.constrain
+        https://bugs.webkit.org/show_bug.cgi?id=147952
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Utilities.js:
+        Removed clamp function.
+
+        * UserInterface/Views/BezierEditor.js:
+        (WebInspector.BezierEditor.prototype._updateControlPointsForMouseEvent):
+        * UserInterface/Views/ProfileNodeDataGridNode.js:
+        (WebInspector.ProfileNodeDataGridNode.prototype.updateRangeTimes):
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.updateRangeTimes):
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Replaced instances of clamp with Number.constrain.
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Node should have context menu to scroll it into view on the inspected page
+        https://bugs.webkit.org/show_bug.cgi?id=147913
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._updateChildren.set continue):
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        Add a context menu item to scroll into view for element nodes.
+
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode.scrollIntoView):
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode):
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView):
+        Call scrollIntoViewIfNeeded on the real Node.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.populateContextMenu):
+        Remove unused parameter.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        Add context menu for Nodes in ObjectTrees.
+
+2015-08-12  Dan Bernstein  <mitz@apple.com>
+
+        Removed the executable bit from non-executable source.
+
+        * UserInterface/External/CodeMirror/LICENSE: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/clojure.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/closebrackets.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/codemirror.css: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/codemirror.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/coffeescript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/comment.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/css.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/htmlmixed.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/javascript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/livescript.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/matchbrackets.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/overlay.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/placeholder.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/runmode.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/sass.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/searchcursor.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/sql.js: Removed property svn:executable.
+        * UserInterface/External/CodeMirror/xml.js: Removed property svn:executable.
+
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineView data not cleared when recording is reset
+        https://bugs.webkit.org/show_bug.cgi?id=147916
+
+        Reviewed by Timothy Hatcher.
+
+        Each derived timeline view maintains a separate array of timeline records. These weren't
+        cleared on reset, so switching to a timeline view after clearing the recording caused
+        the view to populate its tree outline.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.set columns):
+        (WebInspector.LayoutTimelineView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.set columns):
+        (WebInspector.NetworkTimelineView):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.reset):
+        (WebInspector.OverviewTimelineView.prototype._processPendingRepresentedObjects):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView.prototype.reset):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.reset):
+
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Dragging a timeline ruler handle when both handles clamped is broken
+        https://bugs.webkit.org/show_bug.cgi?id=147912
+
+        Reviewed by Timothy Hatcher.
+
+        When clamped handles overlap, the handle nearest in time to the ruler's edge should be visible and
+        clickable, and the other should be hidden. This change ensures that clicking and dragging a ruler
+        handle to modify a selection outside the visible area works correctly.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.right):
+        Style adjustment for rendering frames, which offsets the right handle by 5px instead of 4px.
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.right):
+        Style adjustment for rendering frames, which offsets the right shaded area by 1px.
+        (.timeline-overview.frames > .timeline-ruler > .selection-handle.right): Deleted.
+        (.timeline-overview.frames > .timeline-ruler > .shaded-area.right): Deleted.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler.both-handles-clamped > .selection-handle):
+        Updated handle style when both are clamped.
+        (.timeline-ruler > .selection-handle.clamped.hidden):
+        Hide the clamped handle that is beneath the other clamped handle.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Disabling attribute styles should not be possible
+        https://bugs.webkit.org/show_bug.cgi?id=147922
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        Increases the specificity of the if statement that adds rule disable state toggling to the icon.
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Update to CodeMirror 5.5 or later
+        https://bugs.webkit.org/show_bug.cgi?id=147109
+
+        Reviewed by Timothy Hatcher.
+
+        Updated CodeMirror to version 5.5, as well as the extension files for CodeMirror
+        that are currently used in WebInspector.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * Tools/PrettyPrinting/FormatterDebug.js:
+        Added WebInspector namespace for formatters.
+
+        * Tools/PrettyPrinting/index.html:
+        Added WebInspector namespace for formatters.
+
+        * UserInterface/External/CodeMirror/LICENSE:
+        * UserInterface/External/CodeMirror/clojure.js:
+        * UserInterface/External/CodeMirror/closebrackets.js:
+        * UserInterface/External/CodeMirror/codemirror.css:
+        * UserInterface/External/CodeMirror/codemirror.js:
+        * UserInterface/External/CodeMirror/coffeescript.js:
+        * UserInterface/External/CodeMirror/comment.js:
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/External/CodeMirror/htmlmixed.js:
+        * UserInterface/External/CodeMirror/javascript.js:
+        * UserInterface/External/CodeMirror/livescript.js:
+        * UserInterface/External/CodeMirror/matchbrackets.js:
+        * UserInterface/External/CodeMirror/overlay.js:
+        * UserInterface/External/CodeMirror/sass.js:
+        * UserInterface/External/CodeMirror/searchcursor.js:
+        * UserInterface/External/CodeMirror/sql.js:
+        * UserInterface/External/CodeMirror/xml.js:
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Now uses the new token in CodeMirror for media query parenthesis.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror pre):
+        Removed the additional vertical padding.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseDown):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp):
+        Clicking on the end of a line in a style will now correctly insert a new line.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.details-section > .content > .group > .row .CodeMirror-code pre .go-to-arrow):
+        The go-to arrow now has the proper dimensions.
+
+        * UserInterface/Views/HoverMenu.css:
+        (.hover-menu > img):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.hover-menu.color > img):
+
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add the ability to filter out tasks in the Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=147389
+
+        Reviewed by Timothy Hatcher.
+
+        Added filtering by task type to the Rendering Frames timeline view. Legend item checkboxes
+        in the timeline sidebar toggle filtering for the corresponding task. The "Other" category
+        cannot be filtered, since all rendering frame records include some "other" time in addition to
+        child records from at least one additional task type.
+
+        A row is filtered (hidden) from the data grid when the corresponding rendering frame has no
+        unfiltered child records.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._windowFocused):
+        (WebInspector._windowBlurred):
+        Added inactive style for docked window.
+
+        * UserInterface/Views/ChartDetailsSectionRow.css:
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > .color-key):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]):
+        (body.window-inactive .details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]):
+        (.details-section > .content > .group > .row.chart > .defs-only):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > .label > .color-swatch): Deleted.
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > .label): Deleted.
+        Switched to label elements, added checkbox styles, and updated color swatch style for non-checkbox items.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow):
+        Added svg filter container and style sheet element.
+        (WebInspector.ChartDetailsSectionRow.prototype.set data):
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend.createGammaPrimitive):
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend.createCheckboxFilterElement):
+        Helper function to create an svg:filter to blend legend key color over the native checkbox element.
+        Filter assumes grayscale input, and each checkbox requires a separate filter.
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend):
+        Creates legend items, svg filters, and checkbox style sheet.
+        (WebInspector.ChartDetailsSectionRow.prototype._legendItemCheckboxValueChanged):
+        Repackage and forward checkbox changed event.
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegendItem): Deleted.
+        Logic moved to WebInspector.ChartDetailsSectionRow.prototype._createLegend.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Added set of rendering frame task types against which tree elements can be filtered.
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        If filter is not empty, check ancestor rendering frame record for unfiltered data.
+        (WebInspector.TimelineSidebarPanel.prototype._frameSelectionLegendItemChecked):
+        Update task filter in response when legend items are checked/unchecked.
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch Windows build to Visual Studio 2015
+        https://bugs.webkit.org/show_bug.cgi?id=147887
+        <rdar://problem/22235098>
+
+        Reviewed by Alex Christensen.
+
+        Update Visual Studio project file settings to use the current Visual
+        Studio and compiler. Continue targeting binaries to run on our minimum
+        supported configuration of Windows 7.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Agent commands do not actually return a promise when expected
+        https://bugs.webkit.org/show_bug.cgi?id=138665
+
+        Reviewed by Timothy Hatcher.
+
+        This patch unifies the handling of different invocation and dispatch modes in the
+        InspectorBackend protocol system. Command responses are dispatched to a provided
+        callback function; if no function was provided, then the command returns a promise.
+
+        Rather than awkwardly converting between promises and callbacks at invocation and
+        response dispatch time, the backend now stores the callback or promise thunks and
+        knows how to invoke each when the response comes. This mirrors how response handling
+        works in ProtocolTestStub.js. InspectorBackend includes more machinery to support Agent
+        objects and various debug flags.
+
+        Performanace impact is expected to be negligible, because there are relatively
+        few commands issued by the inspector frontend and returned promises are short-lived.
+
+        Remove all uses of Command.prototype.promise, since it is no longer necessary.
+
+        * UserInterface/Base/Test.js:
+        (InspectorTest.reloadPage):
+        * UserInterface/Controllers/ReplayManager.js:
+        (WebInspector.ReplayManager.prototype.getSession.get var):
+        (WebInspector.ReplayManager.getSegment.get var):
+        * UserInterface/Models/ReplaySession.js:
+        (WebInspector.ReplaySession.prototype.segmentsChanged):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.requestContentFromBackend):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestContentFromBackend):
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback.set this):
+        (InspectorBackendClass.set this):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackendClass.prototype._dispatchResponseToCallback):
+        (InspectorBackendClass.prototype._dispatchResponseToPromise):
+        (InspectorBackendClass.prototype._flushPendingScripts):
+        (InspectorBackend.Command.prototype.invoke):
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+        (InspectorBackendClass.prototype._willSendMessageToBackend.set return): Deleted.
+        (InspectorBackendClass._dispatchCallback.get if): Deleted.
+        (InspectorBackendClass.prototype._willSendMessageToBackend): Deleted.
+        (InspectorBackendClass.prototype._invokeCommand): Deleted.
+        (.callable): Deleted.
+        (InspectorBackend.Command.create): Deleted.
+        (InspectorBackend.Command.prototype.promise): Deleted.
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Hovering over an element in the Elements tab should highlight the whole line
+        https://bugs.webkit.org/show_bug.cgi?id=147855
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.hovered:not(.selected) .selection):
+        Removed the horizontal positioning and border radius.
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add numerical input and slider based Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147712
+
+        Reviewed by Brian Burg.
+
+        Added editors for CSS properties with numerical values for use in the Visual style
+        details panel in the CSS sidebar, in the form of a combined select and input or an
+        input range.  Also added optional visual linkages to sync values between multiple
+        editors of this type.
+
+        * UserInterface/Images/VisualStylePropertyLinked.svg: Added.
+        * UserInterface/Images/VisualStylePropertyUnlinked.svg: Added.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.css: Added.
+        (.visual-style-property-container > .visual-style-property-value-container.focused > .focus-ring):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-keyword-select):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container):
+        (.visual-style-property-container > .visual-style-property-value-container:not(.number-input-editable) > .number-input-container):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container > .number-input-value):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container > span):
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js: Added.
+        (WebInspector.VisualStyleNumberInputBox):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get placeholder):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set placeholder):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get numberInputEditable):
+        (WebInspector.VisualStyleNumberInputBox.prototype.updateValueFromText):
+        (WebInspector.VisualStyleNumberInputBox.prototype.parseValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown.shiftValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown):
+        (WebInspector.VisualStyleNumberInputBox.prototype._numberInputChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordSelectMouseDown):
+        (WebInspector.VisualStyleNumberInputBox.prototype._createValueOptions):
+        (WebInspector.VisualStyleNumberInputBox.prototype._createUnitOptions):
+        (WebInspector.VisualStyleNumberInputBox.prototype._addAdvancedUnits):
+        (WebInspector.VisualStyleNumberInputBox.prototype._removeAdvancedUnits):
+        (WebInspector.VisualStyleNumberInputBox.prototype._focusContentElement):
+        (WebInspector.VisualStyleNumberInputBox.prototype._blurContentElement):
+        (WebInspector.VisualStyleNumberInputBox.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.css: Added.
+        (.visual-style-property-editor-link):
+        (.visual-style-property-editor-link.disabled):
+        (.visual-style-property-editor-link.link-all):
+        (.visual-style-property-editor-link.link-all.linked):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-icon:hover + .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link.linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link:not(.link-all) > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link:not(.link-all).linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon svg .filled):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon svg .stroked):
+        (.visual-style-property-editor-link:not(.link-all) > .visual-style-property-editor-link-icon):
+        (.visual-style-property-editor-link.link-all > .visual-style-property-editor-link-icon):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.js: Added.
+        (WebInspector.VisualStylePropertyEditorLink):
+        (WebInspector.VisualStylePropertyEditorLink.prototype.get element):
+        (WebInspector.VisualStylePropertyEditorLink.prototype.set disabled):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._linkedPropertyValueChanged):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._updateLinkedEditors):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconMouseover):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconMouseout):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconClicked):
+
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.css: Added.
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-title):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-value-container):
+        (.visual-style-property-container.number-input-box.relative-number-slider.disabled > .relative-slider):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-value-container.no-values.no-units):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .relative-slider):
+
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.js: Added.
+        (WebInspector.VisualStyleRelativeNumberSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype.set scale):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype.updateEditorValues):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._resetSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._sliderChanged):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._numberInputChanged):
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add different types of non-numerical Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147711
+
+        Added editors for keyword based CSS properties for use in the Visual style
+        details panel in the CSS sidebar.  Also added images for keyword values that
+        are simple enough to be conveyed in an image.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/ClearBoth.svg: Added.
+        * UserInterface/Images/ClearLeft.svg: Added.
+        * UserInterface/Images/ClearRight.svg: Added.
+        * UserInterface/Images/FloatLeft.svg: Added.
+        * UserInterface/Images/FloatRight.svg: Added.
+        * UserInterface/Images/FontStyleItalic.svg: Added.
+        * UserInterface/Images/FontStyleNormal.svg: Added.
+        * UserInterface/Images/FontVariantSmallCaps.svg: Added.
+        * UserInterface/Images/TextAlignCenter.svg: Added.
+        * UserInterface/Images/TextAlignJustify.svg: Added.
+        * UserInterface/Images/TextAlignLeft.svg: Added.
+        * UserInterface/Images/TextAlignRight.svg: Added.
+        * UserInterface/Images/TextDecorationLineThrough.svg: Added.
+        * UserInterface/Images/TextDecorationOverline.svg: Added.
+        * UserInterface/Images/TextDecorationUnderline.svg: Added.
+        * UserInterface/Images/TextTransformCapitalize.svg: Added.
+        * UserInterface/Images/TextTransformLowercase.svg: Added.
+        * UserInterface/Images/TextTransformUppercase.svg: Added.
+        * UserInterface/Images/VisualStyleNone.svg: Added.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches):
+        Changed color swatch title.
+
+        * UserInterface/Views/Slider.js:
+        (WebInspector.Slider):
+        (WebInspector.Slider.prototype.set value):
+        (WebInspector.Slider.prototype.set knobX):
+        (WebInspector.Slider.prototype.get maxX):
+        If the given value is below 0, reset it to 0.
+        (WebInspector.Slider.prototype._handleMousedown):
+        (WebInspector.Slider.prototype._handleMousemove):
+        (WebInspector.Slider.prototype.get _maxX): Deleted.
+
+        * UserInterface/Views/VisualStyleColorPicker.css: Added.
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .visual-style-special-property-placeholder):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:hover):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:active):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch > span):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > input):
+        (.visual-style-property-container.input-color-picker.multiple > .visual-style-property-value-container > .visual-style-multiple-property-placeholder):
+
+        * UserInterface/Views/VisualStyleColorPicker.js: Added.
+        (WebInspector.VisualStyleColorPicker):
+        (WebInspector.VisualStyleColorPicker.prototype.get value):
+        (WebInspector.VisualStyleColorPicker.prototype.set value):
+        (WebInspector.VisualStyleColorPicker.prototype.get placeholder):
+        (WebInspector.VisualStyleColorPicker.prototype.set placeholder):
+        (WebInspector.VisualStyleColorPicker.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleColorPicker.prototype.get hasCompletions):
+        (WebInspector.VisualStyleColorPicker.prototype.set completions):
+        (WebInspector.VisualStyleColorPicker.prototype._updateColorSwatch):
+        (WebInspector.VisualStyleColorPicker.prototype._colorSwatchClicked):
+        (WebInspector.VisualStyleColorPicker.prototype._colorPickerColorDidChange):
+        (WebInspector.VisualStyleColorPicker.prototype._completionClicked):
+        (WebInspector.VisualStyleColorPicker.prototype._textInputKeyDown):
+        (WebInspector.VisualStyleColorPicker.prototype._textInputKeyUp):
+        (WebInspector.VisualStyleColorPicker.prototype._showCompletionsIfAble):
+        (WebInspector.VisualStyleColorPicker.prototype._hideCompletions):
+        (WebInspector.VisualStyleColorPicker.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.css: Added.
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container):
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > input):
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > div):
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.js: Added.
+        (WebInspector.VisualStyleKeywordCheckbox):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.get value):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.set value):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleKeywordIconList.css: Added.
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:first-child):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:last-child):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected)):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected svg .stroked):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected svg .filled):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected) + .keyword-icon):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon > div):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:not(.selected) > div):
+
+        * UserInterface/Views/VisualStyleKeywordIconList.js: Added.
+        (WebInspector.VisualStyleKeywordIconList.dashToCapital):
+        (WebInspector.VisualStyleKeywordIconList.createListItem):
+        (WebInspector.VisualStyleKeywordIconList):
+        (WebInspector.VisualStyleKeywordIconList.prototype.get value):
+        (WebInspector.VisualStyleKeywordIconList.prototype.set value):
+        (WebInspector.VisualStyleKeywordIconList.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordIconList.prototype._handleKeywordChanged):
+
+        * UserInterface/Views/VisualStyleKeywordPicker.js: Added.
+        (WebInspector.VisualStyleKeywordPicker):
+        (WebInspector.VisualStyleKeywordPicker.prototype.get value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set placeholder):
+        (WebInspector.VisualStyleKeywordPicker.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype.updateEditorValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._handleKeywordChanged):
+        (WebInspector.VisualStyleKeywordPicker.prototype._keywordSelectMouseDown):
+        (WebInspector.VisualStyleKeywordPicker.prototype._addValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._addAdvancedValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._removeAdvancedValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStylePropertyNameInput.js: Added.
+        (WebInspector.VisualStylePropertyNameInput):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get value):
+        (WebInspector.VisualStylePropertyNameInput.prototype.set value):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get synthesizedValue):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get hasCompletions):
+        (WebInspector.VisualStylePropertyNameInput.prototype.set completions):
+        (WebInspector.VisualStylePropertyNameInput.prototype._completionClicked):
+        (WebInspector.VisualStylePropertyNameInput.prototype._inputKeyDown):
+        (WebInspector.VisualStylePropertyNameInput.prototype._inputKeyUp):
+        (WebInspector.VisualStylePropertyNameInput.prototype._hideCompletions):
+        (WebInspector.VisualStylePropertyNameInput.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleURLInput.js: Added.
+        (WebInspector.VisualStyleURLInput):
+        (WebInspector.VisualStyleURLInput.prototype.set get value):
+        (WebInspector.VisualStyleURLInput.prototype.parseValue):
+
+        * UserInterface/Views/VisualStyleUnitSlider.css: Added.
+        (.visual-style-property-container.unit-slider > .visual-style-property-value-container > .slider):
+        (.visual-style-property-container.unit-slider > .visual-style-property-value-container > .slider > img):
+        (.visual-style-property-container.unit-slider.opacity > .visual-style-property-value-container > .slider):
+
+        * UserInterface/Views/VisualStyleUnitSlider.js: Added.
+        (WebInspector.VisualStyleUnitSlider):
+        (WebInspector.VisualStyleUnitSlider.prototype.set value):
+        (WebInspector.VisualStyleUnitSlider.prototype.get value):
+        (WebInspector.VisualStyleUnitSlider.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleUnitSlider.prototype.sliderValueDidChange):
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add VisualStyleSelectorSection
+        https://bugs.webkit.org/show_bug.cgi?id=147572
+
+        Reviewed by Brian Burg.
+
+        Adds a section to the new Visual style sidebar panel that contains the list of
+        styles for the currently selected node.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.get mediaText):
+        Returns a string containing the list of media queries.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration):
+        (WebInspector.CSSStyleDeclaration.prototype.set text):
+        (WebInspector.CSSStyleDeclaration.prototype.get modified):
+        (WebInspector.CSSStyleDeclaration.prototype.resetText):
+        (WebInspector.CSSStyleDeclaration.prototype.generateCSSRuleString):
+        Generates a formatted string of the style text.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleContextMenuEvent):
+        (WebInspector.CSSStyleDeclarationSection.prototype._generateCSSRuleString): Deleted.
+
+        * UserInterface/Views/VisualStyleSelectorSection.css: Added.
+        (.details-section.visual-style-selector-section > .header):
+        (.details-section.visual-style-selector-section:not(.collapsed) > .header):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.details-section.visual-style-selector-section > .header > .current-selector):
+        (.visual-style-selector-section.details-section:not(.collapsed) > .header > .current-selector):
+        (.details-section.visual-style-selector-section > .header > .current-selector > .icon):
+        (.details-section.visual-style-selector-section > .header > .current-selector > span):
+        (.details-section.visual-style-selector-section > .header > .controls):
+        (.details-section.visual-style-selector-section.collapsed > .header > .controls):
+        (.details-section.visual-style-selector-section > .header > .controls > .visual-style-selector-section-add-rule):
+        (.details-section.visual-style-selector-section > .content > .selectors):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .visual-style-selector-item:nth-child(odd)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .icon):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > :matches(.disclosure-button, .icon)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .titles > .title):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider ~ .visual-style-selector-item:nth-child(even)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider ~ .visual-style-selector-item:nth-child(odd)):
+
+        * UserInterface/Views/VisualStyleSelectorSection.js: Added.
+        (WebInspector.VisualStyleSelectorSection):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.createSelectorItem):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.uniqueOrderedRules):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.insertAllMatchingPseudoRules):
+        (WebInspector.VisualStyleSelectorSection.prototype.update):
+        (WebInspector.VisualStyleSelectorSection.prototype.currentStyle):
+        (WebInspector.VisualStyleSelectorSection.prototype._selectorChanged):
+        (WebInspector.VisualStyleSelectorSection.prototype._styleTextReset):
+        (WebInspector.VisualStyleSelectorSection.prototype._addNewRule):
+        (WebInspector.VisualStyleSelectorSection.prototype._treeElementCheckboxToggled):
+        (WebInspector.VisualStyleSelectorSection.prototype._handleMouseOver):
+        (WebInspector.VisualStyleSelectorSection.prototype._handleMouseOut):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item):
+        (.item.visual-style-selector-item.selected):
+        (.item.visual-style-selector-item > .disclosure-button):
+        (.item.visual-style-selector-item > input[type="checkbox"]):
+        (.item.visual-style-selector-item > .icon):
+        (.item.visual-style-selector-item.modified > .icon):
+        (.item.visual-style-selector-item.selector-invalid > .icon):
+        (.item.visual-style-selector-item.selector-invalid > .titles > .title):
+        (.item.visual-style-selector-item.selector-invalid > .titles > .title::before):
+        (.item.visual-style-selector-item > .titles):
+        (.item.visual-style-selector-item:not(.dom-element-icon) > .titles > .title):
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title):
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title:focus):
+        (.item.visual-style-selector-item > .titles > .subtitle::before):
+        (.item.visual-style-selector-item > .titles > .subtitle):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.get iconClassName):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.get selectorText):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.onattach):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.ondeselect):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._highlightNodesWithSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._hideDOMNodeHighlight):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleCheckboxChanged):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._updateCheckboxTitle):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleMouseDown):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleKeyDown):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._commitSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._styleTextModified):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._selectorChanged):
+
+2015-08-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TDZ in ProbeSetDataGrid construction
+        https://bugs.webkit.org/show_bug.cgi?id=147834
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WebInspector.ProbeSetDataGrid):
+        Do not use "this" before calling super.
+
+2015-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timeline ruler handle tooltip shows wrong value when handles overlap
+        https://bugs.webkit.org/show_bug.cgi?id=147652
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Now changes the title depending on whether the selection start/end is clamped.
+
+2015-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't show "No Filter Results" when timeline is empty
+        https://bugs.webkit.org/show_bug.cgi?id=147662
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.reset):
+        Now hides the empty content placeholder on timeline clear.
+
+2015-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Decrease the padding of each rule in the Rules sidebar to allow more content to show
+        https://bugs.webkit.org/show_bug.cgi?id=147360
+
+        Reviewed by Timothy Hatcher.
+
+        Generally tightened the padding around each section in the rules panel, as well as the
+        content inside each section. Also moved the new rule button to be next to the filter bar.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section):
+        (.style-declaration-section.last-in-group):
+        (.style-declaration-section.last-in-group + .style-declaration-section): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .pseudo-classes):
+        (.sidebar > .panel.details.css-style > .content + .options-container):
+        (.sidebar > .panel.details.css-style > .content:not(.supports-new-rule, .has-filter-bar) + .options-container):
+        (.sidebar > .panel.details.css-style > .content + .options-container > .new-rule):
+        (.sidebar > .panel.details.css-style > .content + .options-container > .filter-bar):
+        (.sidebar > .panel.details.css-style > .content:not(.has-filter-bar) + .options-container > .filter-bar):
+        (.sidebar > .panel.details.css-style > .content.has-filter-bar + .filter-bar): Deleted.
+        (.sidebar > .panel.details.css-style > .content:not(.has-filter-bar) + .filter-bar): Deleted.
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._switchPanels):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._newRuleButtonClicked):
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .label):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.addNewRuleButton): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype._newRuleClicked): Deleted.
+
+2015-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't include zero-width space into a copied text from the console
+        https://bugs.webkit.org/show_bug.cgi?id=147767
+
+        Reviewed by Timothy Hatcher.
+
+        Now removes work break characters in generated javascript text when copying
+        to the clipboard.  Also replaced var with let in the modified functions.
+
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WebInspector.ConsoleCommandView.prototype.toClipboardString):
+        (WebInspector.ConsoleCommandView):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype.toClipboardString):
+
+2015-08-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Simplify OS-specific CSS class names
+        https://bugs.webkit.org/show_bug.cgi?id=147794
+
+        Replace "body:not(.el-capitan)" with ".legacy-mac".
+        Replace "body.el-capitan" with ".latest-mac".
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/Toolbar.css:
+        (body.legacy-mac .toolbar .dashboard-container):
+        (body.legacy-mac .toolbar .search-bar > input[type="search"]):
+        (body.legacy-mac .toolbar .search-bar > input[type="search"]:focus):
+        (body.legacy-mac .toolbar .item.button:active):
+        (body.window-inactive.legacy-mac .toolbar .dashboard-container):
+        (body.latest-mac .toolbar .dashboard-container):
+        (body.latest-mac .toolbar .search-bar > input[type="search"]):
+        (body.latest-mac .toolbar .search-bar > input[type="search"]:focus):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (body.latest-mac .toolbar .item.button:active):
+        (body.latest-mac.window-inactive .toolbar .dashboard-container):
+        (body:not(.el-capitan) .toolbar .dashboard-container): Deleted.
+        (body:not(.el-capitan) .toolbar .search-bar > input[type="search"]): Deleted.
+        (body:not(.el-capitan) .toolbar .search-bar > input[type="search"]:focus): Deleted.
+        (body:not(.el-capitan) .toolbar .item.button:active): Deleted.
+        (body.window-inactive:not(.el-capitan) .toolbar .dashboard-container): Deleted.
+        (body.el-capitan .toolbar .dashboard-container): Deleted.
+        (body.el-capitan .toolbar .search-bar > input[type="search"]): Deleted.
+        (body.el-capitan .toolbar .search-bar > input[type="search"]:focus): Deleted.
+        (body.el-capitan .toolbar .item.button:active): Deleted.
+        (body.el-capitan.window-inactive .toolbar .dashboard-container): Deleted.
+
+2015-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Option+Up/Down arrow keys should increment/decrement numbers in HTML and SVG attributes
+        https://bugs.webkit.org/show_bug.cgi?id=147317
+
+        Reviewed by Timothy Hatcher.
+
+        If the value under the cursor in an HTML element attribute is a number, pressing alt and
+        up/down will increment/decrement the number value and apply that change to the element.
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WebInspector.BoxModelDetailsSectionRow.prototype._alteredFloatNumber):
+        (WebInspector.BoxModelDetailsSectionRow.prototype._handleKeyDown):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._startEditingAttribute):
+        (WebInspector.DOMTreeElement.prototype._attributeEditingCommitted):
+        (WebInspector.DOMTreeElement.prototype._attributeNumberEditingCommitted):
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.EditingConfig.prototype.setNumberCommitHandler):
+        (WebInspector.startEditing.defaultFinishHandler):
+        (WebInspector.startEditing.handleEditingResult):
+
+2015-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Move the Metrics style sidebar panel into Computed
+        https://bugs.webkit.org/show_bug.cgi?id=147715
+
+        Reviewed by Timothy Hatcher.
+
+        Deleted the Metrics sidebar panel and moved its contents into the Computed sidebar panel.
+        In addition, not hovering over the Metrics section will display the colors of each box.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/BoxModelDetailsSectionRow.css:
+        (.details-section .row.box-model :matches(.position, .margin, .border, .padding, .content)):
+        (.details-section .row.box-model .position):
+        (.details-section .row.box-model .margin):
+        (.details-section .row.box-model .border):
+        (.details-section .row.box-model .padding):
+        (.details-section .row.box-model :matches(.content span, .top, .right, .bottom, .left)):
+        (.details-section .row.box-model :matches(.right, .left)):
+        (.details-section .row.box-model .content): Deleted.
+        (.details-section .row.box-model .content span): Deleted.
+        (.details-section .row.box-model .left): Deleted.
+        (.details-section .row.box-model .right): Deleted.
+        (.details-section .row.box-model .top): Deleted.
+        (.details-section .row.box-model .bottom): Deleted.
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WebInspector.BoxModelDetailsSectionRow.prototype._highlightDOMNode):
+        If no metric box is hovered, apply a class to the entire section.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        Removed the usage of MetricsStyleDetailsPanel.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.details-section.style-box-model:not(.collapsed) > :matches(.header, .content)):
+        Give the metrics section in the Computed panel a white background.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel):
+        (WebInspector.ComputedStyleDetailsPanel.prototype.refresh):
+        Don't refresh the content unless the change is significant (without this, you cannot edit
+        metrics values using the arrow keys).
+
+        * UserInterface/Views/MetricsStyleDetailsPanel.js: Removed.
+
+2015-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Bezier curve visual editor
+        https://bugs.webkit.org/show_bug.cgi?id=134501
+
+        Reviewed by Timothy Hatcher.
+
+        Added a visual Cubic Bezier curve editor that is usable in both
+        the CSS sidebar and the resources panel.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/DOMUtilities.js:
+        (createSVGElement):
+        * UserInterface/Controllers/CodeMirrorBezierEditingController.js:
+        (WebInspector.CodeMirrorBezierEditingController):
+        (WebInspector.CodeMirrorBezierEditingController.prototype.get initialValue):
+        (WebInspector.CodeMirrorBezierEditingController.prototype.get cssClassName):
+        (WebInspector.CodeMirrorBezierEditingController.prototype.popoverWillPresent):
+        (WebInspector.CodeMirrorBezierEditingController.prototype.popoverDidPresent):
+        (WebInspector.CodeMirrorBezierEditingController.prototype._bezierEditorBezierChanged):
+        * UserInterface/Images/CubicBezier.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Models/Geometry.js:
+        (WebInspector.Point.prototype.distance):
+        (WebInspector.Point):
+        (WebInspector.CubicBezier):
+        (WebInspector.CubicBezier.fromPoints):
+        (WebInspector.CubicBezier.fromString):
+        (WebInspector.CubicBezier.prototype.get inPoint):
+        (WebInspector.CubicBezier.prototype.get outPoint):
+        (WebInspector.CubicBezier.prototype.copy):
+        (WebInspector.CubicBezier.prototype.toString):
+        (WebInspector.CubicBezier.prototype.solve):
+        (WebInspector.CubicBezier.prototype._sampleCurveX):
+        (WebInspector.CubicBezier.prototype._sampleCurveY):
+        (WebInspector.CubicBezier.prototype._sampleCurveDerivativeX):
+        (WebInspector.CubicBezier.prototype._solveCurveX):
+        * UserInterface/Models/TextMarker.js:
+        * UserInterface/Models/UnitBezier.js: Removed.
+        * UserInterface/Views/BezierEditor.css: Added.
+        (.bezier-editor):
+        (.bezier-editor > .bezier-preview):
+        (.bezier-editor > .bezier-preview > div):
+        (.bezier-editor > .bezier-preview-timing):
+        (.bezier-editor > .bezier-preview-timing.animate):
+        (.bezier-editor > .bezier-container):
+        (@keyframes bezierPreview):
+        (.bezier-editor > .bezier-container):
+        (.bezier-editor > .bezier-container .linear-curve):
+        (.bezier-editor > .bezier-container .bezier-curve):
+        (.bezier-editor > .bezier-container .control-line):
+        (.bezier-editor > .bezier-container .control-handle):
+        * UserInterface/Views/BezierEditor.js: Added.
+        (WebInspector.BezierEditor.createControl):
+        (WebInspector.BezierEditor):
+        (WebInspector.BezierEditor.prototype.get element):
+        (WebInspector.BezierEditor.prototype.set bezier):
+        (WebInspector.BezierEditor.prototype.get bezier):
+        (WebInspector.BezierEditor.prototype.handleEvent):
+        (WebInspector.BezierEditor.prototype._handleMousedown):
+        (WebInspector.BezierEditor.prototype._handleMousemove):
+        (WebInspector.BezierEditor.prototype._handleMouseup):
+        (WebInspector.BezierEditor.prototype._updateControlPointsForMouseEvent):
+        (WebInspector.BezierEditor.prototype._updateValue.round):
+        (WebInspector.BezierEditor.prototype._updateValue):
+        (WebInspector.BezierEditor.prototype._updateBezier):
+        (WebInspector.BezierEditor.prototype._updateControl):
+        (WebInspector.BezierEditor.prototype._triggerPreviewAnimation):
+        (WebInspector.BezierEditor.prototype._resetPreviewAnimation):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:hover):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:active):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.didDismissPopover):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._contentChanged):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateTextMarkers.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateTextMarkers):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createBezierEditors.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createBezierEditors):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._commentProperty.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._commentProperty):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._uncommentRange.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._uncommentRange):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked.updateCodeMirror.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked.updateCodeMirror):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._cubicBezierMarkerClicked):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent):
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/CodeMirrorTextMarkers.js: Added.
+        (createCodeMirrorTextMarkers):
+        (createCodeMirrorColorTextMarkers):
+        (createCodeMirrorGradientTextMarkers):
+        (createCodeMirrorCubicBezierTextMarkers):
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype._animateFrame):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._updateEditableMarkers):
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedMarkedExpression):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.createColorMarkers):
+        (WebInspector.TextEditor.prototype.createGradientMarkers):
+        (WebInspector.TextEditor.prototype.createCubicBezierMarkers):
+        (WebInspector.TextEditor.prototype.editingControllerForMarker):
+
+2015-08-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Logging error objects should have a better UI
+        https://bugs.webkit.org/show_bug.cgi?id=143853
+
+        Previously, an error object looked like any other object, which wasn't very useful.
+        Source links couldn't be clicked and stacktraces were unreadable.
+
+        Unify console.trace, caught and uncaught exceptions. The following examples use
+        the same StaceTraceView:
+        - ({}).x.y
+        - try { ({}).x.y } catch (e) { console.log(e); }
+        - console.trace()
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/CallFrame.js:
+        (WebInspector.CallFrame.fromPayload):
+        (WebInspector.CallFrame):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptorsAsObject):
+        * UserInterface/Test.html:
+        * UserInterface/Views/CallFrameView.css:
+        (.call-frame .separator):
+        (.call-frame .subtitle .source-link): Deleted.
+        (.call-frame:focus .subtitle .source-link): Deleted.
+        (.call-frame .subtitle:empty): Deleted.
+        (.call-frame .subtitle): Deleted.
+        * UserInterface/Views/CallFrameView.js:
+        (WebInspector.CallFrameView):
+        - Start usind CallFrameView in stacktraces.
+        - Introduce showFunctionName optional argument. In stacktraces anonymous functions
+        are shown as "(anonymous function)" but in console message location
+        links (the ones on the right side of a console message) we omit them.
+        - Dash was a pseudo-element and it couldn't be copied to the clipboard.
+        Make it an actual HTML element.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-location.call-frame):
+        (.console-message-location.call-frame > .title):
+        (.console-message-location.call-frame > .subtitle > .source-link):
+        Since .call-frame rules are now used in stacktraces, move console message
+        specific rules from CallFrameView.css to ConsoleMessageView.css.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendLocationLink):
+        (WebInspector.ConsoleMessageView.prototype._appendStackTrace):
+        (WebInspector.ConsoleMessageView.prototype._formatParameter):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsError): Added.
+        Format errors differently from other objects.
+
+        * UserInterface/Views/ErrorObjectView.css: Added.
+        (.error-object::before):
+        (.error-object.expanded::before):
+        (.error-object-link-container):
+        (.error-object.expanded > .formatted-error > .error-object-link-container):
+        (.error-object:not(.expanded) .error-object-outline):
+        (.error-object-outline):
+        * UserInterface/Views/ErrorObjectView.js: Added.
+        (WebInspector.ErrorObjectView):
+        (WebInspector.ErrorObjectView.parseStackTrace):
+        (WebInspector.ErrorObjectView.makeSourceLinkWithPrefix):
+        (WebInspector.ErrorObjectView.prototype.get object):
+        (WebInspector.ErrorObjectView.prototype.get element):
+        (WebInspector.ErrorObjectView.prototype.get treeOutline):
+        (WebInspector.ErrorObjectView.prototype.get expanded):
+        (WebInspector.ErrorObjectView.prototype.update):
+        (WebInspector.ErrorObjectView.prototype.expand):
+        (WebInspector.ErrorObjectView.prototype.collapse):
+        (WebInspector.ErrorObjectView.prototype._handlePreviewOrTitleElementClick):
+        (WebInspector.ErrorObjectView.prototype._buildStackTrace):
+        ErrorObjectView is used to log caught exceptions, e.g.:
+        try { i.dont.exist++ } catch (e) { console.log(e) }
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForError): Added.
+        Create error preview.
+
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+        Fix typo.
+
+        (WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject):
+        Format errors differently from other objects.
+
+2015-08-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r187634): Script time is missing from the frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=147654
+
+        Reviewed by Brian Burg.
+
+        Use the current stack entry's parent record when pushing a new stack entry, if no
+        TimelineRecord was generated from the parent record payload.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.eventRecorded):
+        Don't create a stack entry when record payload children array is empty.
+
+2015-08-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r187900): Breakpoint context menu is broken in Debugger tab
+        https://bugs.webkit.org/show_bug.cgi?id=147699
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        Skip only the separator and "Reveal in Debugger tab" menu items.
+
+2015-08-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use super calls in more places
+        https://bugs.webkit.org/show_bug.cgi?id=147696
+
+        Reviewed by Timothy Hatcher.
+
+        A few opportunities for super calls were overlooked when converting to classes.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.onattach):
+        (WebInspector.BreakpointTreeElement.prototype.ondetach):
+        * UserInterface/Views/CallFrameTreeElement.js:
+        (WebInspector.CallFrameTreeElement.prototype.onattach):
+        (WebInspector.CallFrameTreeElement):
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WebInspector.DebuggerTabContentView.prototype.showDetailsSidebarPanels):
+        * UserInterface/Views/ProfileNodeTreeElement.js:
+        (WebInspector.ProfileNodeTreeElement.prototype.onattach):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.shown):
+        (WebInspector.SourceCodeTextEditor.prototype.hidden):
+        (WebInspector.SourceCodeTextEditor.prototype.canBeFormatted):
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WebInspector.SourceCodeTreeElement.prototype.onattach):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement.prototype.onattach):
+        (WebInspector.TimelineRecordTreeElement):
+
+2015-08-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove unused Object.deprecatedAddConstructorFunctions
+        https://bugs.webkit.org/show_bug.cgi?id=147690
+
+        Reviewed by Timothy Hatcher.
+
+        This is no longer used following the conversion to ES6 classes.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object.deprecatedAddConstructorFunctions): Deleted.
+
+2015-08-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Convert miscellaneous view widgets to use ES6 classes
+        https://bugs.webkit.org/show_bug.cgi?id=147658
+
+        Reviewed by Joseph Pecoraro.
+
+        Along the way, inline a few style class names.
+
+        Elided mechanical changes from the Changelog.
+
+        * UserInterface/Base/Test.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        * UserInterface/Views/ConsolePrompt.js:
+        * UserInterface/Views/ContentBrowser.js:
+        * UserInterface/Views/ContentViewContainer.js:
+        * UserInterface/Views/DOMTreeDataGridNode.js:
+        * UserInterface/Views/IndeterminateProgressSpinner.js:
+        * UserInterface/Views/NavigationBar.js:
+        * UserInterface/Views/ProbeSetDataGridNode.js:
+        * UserInterface/Views/QuickConsoleNavigationBar.js:
+        * UserInterface/Views/Toolbar.js:
+
+2015-08-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Convert remaining ContentViews to use ES6 classes
+        https://bugs.webkit.org/show_bug.cgi?id=147534
+
+        Reviewed by Joseph Pecoraro.
+
+        Along the way, inline a few style class names.
+
+        Elided mechanical changes from the Changelog.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        * UserInterface/Views/ClusterContentView.js:
+        * UserInterface/Views/ConsoleTabContentView.js:
+        * UserInterface/Views/ContentBrowserTabContentView.js: Rearrange initialization
+        of the tab's content browser to comply with TDZ rules for using `this`.
+        * UserInterface/Views/ContentFlowDOMTreeContentView.js:
+        * UserInterface/Views/ContentView.js:
+        * UserInterface/Views/ContentViewContainer.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        * UserInterface/Views/DOMStorageContentView.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        * UserInterface/Views/DatabaseContentView.js:
+        * UserInterface/Views/DatabaseTableContentView.js:
+        * UserInterface/Views/DebuggerTabContentView.js:
+        * UserInterface/Views/ElementsTabContentView.js:
+        * UserInterface/Views/FontResourceContentView.js:
+        * UserInterface/Views/FrameDOMTreeContentView.js:
+        * UserInterface/Views/GenericResourceContentView.js:
+        * UserInterface/Views/ImageResourceContentView.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        * UserInterface/Views/LogContentView.js:
+        * UserInterface/Views/NetworkGridContentView.js:
+        * UserInterface/Views/NetworkTabContentView.js:
+        * UserInterface/Views/NewTabContentView.js:
+        * UserInterface/Views/ResourceClusterContentView.js:
+        * UserInterface/Views/ResourceContentView.js:
+        * UserInterface/Views/ResourcesTabContentView.js:
+        * UserInterface/Views/ScriptContentView.js:
+        * UserInterface/Views/SearchTabContentView.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        * UserInterface/Views/StorageTabContentView.js:
+        * UserInterface/Views/TabContentView.js:
+        * UserInterface/Views/TextContentView.js:
+        * UserInterface/Views/TextResourceContentView.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+
+2015-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Allow users to duplicate rules in the Rules sidebar panel
+        https://bugs.webkit.org/show_bug.cgi?id=147361
+
+        Reviewed by Timothy Hatcher.
+
+        Adds context menu option to non-inherited rules that, when clicked, creates
+        a new rule with the same selector and no properties, and then focuses it.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.addRuleWithSelector.addedRule):
+        (WebInspector.DOMNodeStyles.prototype.addRuleWithSelector):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.get _currentSelectorText):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleContextMenuEvent):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionFocusNextNewInspectorRule):
+
 2015-08-04  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Layout & Rendering timeline grid should show TimelineRecord parent/child relationships

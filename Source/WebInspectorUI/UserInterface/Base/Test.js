@@ -104,24 +104,16 @@ InspectorTest.dumpMessagesToConsole = false;
 
 // This is a workaround for the fact that it would be hard to set up a constructor,
 // prototype, and prototype chain for the singleton InspectorTest.
-InspectorTest.EventDispatcher = function()
+InspectorTest.EventDispatcher = class EventDispatcher extends WebInspector.Object
 {
-    // FIXME: Convert this to a WebInspector.Object subclass, and call super().
-    // WebInspector.Object.call(this);
+    dispatchEvent(event)
+    {
+        this.dispatchEventToListeners(event);
+    }
 };
 
 InspectorTest.EventDispatcher.Event = {
     TestPageDidLoad: "inspector-test-test-page-did-load"
-};
-
-InspectorTest.EventDispatcher.prototype = {
-    __proto__: WebInspector.Object.prototype,
-    constructor: InspectorTest.EventDispatcher,
-
-    dispatchEvent: function(event)
-    {
-        this.dispatchEventToListeners(event);
-    }
 };
 
 InspectorTest.eventDispatcher = new InspectorTest.EventDispatcher;
@@ -161,6 +153,16 @@ InspectorTest.debugLog = function(message)
         InspectorFrontendHost.unbufferedLog("debugLog: " + message);
 
     this.evaluateInPage("InspectorTestProxy.debugLog(unescape('" + escape(JSON.stringify(message)) + "'))");
+}
+
+// Appends a message in the test document if there was an error, and attempts to complete the test.
+InspectorTest.expectNoError = function(error)
+{
+    if (error) {
+        InspectorTest.log("PROTOCOL ERROR: " + error);
+        InspectorTest.completeTest();
+        throw "PROTOCOL ERROR";
+    }
 }
 
 InspectorTest.completeTest = function()
@@ -228,7 +230,7 @@ InspectorTest.reloadPage = function(shouldIgnoreCache)
 
     this._testPageIsReloading = true;
 
-    return PageAgent.reload.promise(!!shouldIgnoreCache)
+    return PageAgent.reload(!!shouldIgnoreCache)
         .then(function() {
             this._shouldResendResults = true;
             this._testPageReloadedOnce = true;

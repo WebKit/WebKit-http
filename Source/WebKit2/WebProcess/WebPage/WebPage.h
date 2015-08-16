@@ -750,7 +750,6 @@ public:
 
 #if ENABLE(MEDIA_SESSION)
     void handleMediaEvent(uint32_t /* WebCore::MediaEventType */);
-    void isMediaElementPaused(uint64_t, uint64_t);
 #endif
 
     void updateMainFrameScrollOffsetPinning();
@@ -910,7 +909,7 @@ public:
 #if ENABLE(VIDEO)
     void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
 #if USE(GSTREAMER)
-    void requestInstallMissingMediaPlugins(const String& details, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
+    void requestInstallMissingMediaPlugins(const String& details, const String& description, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
 #endif
 #endif
 

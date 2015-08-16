@@ -467,8 +467,8 @@ public:
     void putDirectAccessor(ExecState*, PropertyName, JSValue, unsigned attributes);
     JS_EXPORT_PRIVATE void putDirectCustomAccessor(VM&, PropertyName, JSValue, unsigned attributes);
 
-    void putGetter(ExecState*, PropertyName, JSValue);
-    void putSetter(ExecState*, PropertyName, JSValue);
+    void putGetter(ExecState*, PropertyName, JSValue, unsigned attributes);
+    void putSetter(ExecState*, PropertyName, JSValue, unsigned attributes);
 
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE bool hasProperty(ExecState*, unsigned propertyName) const;
@@ -601,7 +601,6 @@ public:
     bool isVariableObject() const;
     bool isStaticScopeObject() const;
     bool isNameScopeObject() const;
-    bool isFunctionNameScopeObject() const;
     bool isActivationObject() const;
     bool isErrorInstance() const;
     bool isWithScope() const;

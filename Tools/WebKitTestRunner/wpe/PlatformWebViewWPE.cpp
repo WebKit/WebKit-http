@@ -31,10 +31,11 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef, WKDictionaryRef)
+PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef, const ViewOptions& options)
     : m_view(WKViewCreate(context, pageGroup))
     , m_window(nullptr)
     , m_windowIsKey(true)
+    , m_options(options)
 {
 }
 

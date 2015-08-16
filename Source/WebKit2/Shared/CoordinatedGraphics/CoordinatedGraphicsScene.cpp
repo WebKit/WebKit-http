@@ -183,18 +183,26 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
     if (!state.platformLayerChanged)
         return;
 
-    if (state.platformLayerProxy) {
-        auto result = m_platformLayerProxies.add(layer, nullptr);
-        ASSERT(result.isNewEntry || result.iterator->value == state.platformLayerProxy);
-        if (!result.iterator->value) {
-            result.iterator->value = state.platformLayerProxy;
-
-            MutexLocker locker(state.platformLayerProxy->mutex());
-            state.platformLayerProxy->setCompositor(locker, this);
-            state.platformLayerProxy->setTargetLayer(locker, layer);
-        }
-    } else
+    if (!state.platformLayerProxy) {
         m_platformLayerProxies.remove(layer);
+        return;
+    }
+
+    auto result = m_platformLayerProxies.add(layer, nullptr);
+    auto& existingProxy = result.iterator->value;
+    if (existingProxy) {
+        MutexLocker locker(existingProxy->mutex());
+        existingProxy->setCompositor(locker, nullptr);
+        existingProxy->setTargetLayer(locker, nullptr);
+    }
+
+    auto& newProxy = state.platformLayerProxy;
+    result.iterator->value = newProxy;
+    {
+        MutexLocker locker(newProxy->mutex());
+        state.platformLayerProxy->setCompositor(locker, this);
+        state.platformLayerProxy->setTargetLayer(locker, layer);
+    }
 #else
     UNUSED_PARAM(layer);
     UNUSED_PARAM(state);

@@ -98,26 +98,28 @@ void computeUsesForBytecodeOffset(
     case op_put_by_id_transition_normal_out_of_line:
     case op_put_by_id_out_of_line:
     case op_put_by_id:
-    case op_put_getter_by_id:
-    case op_put_setter_by_id:
     case op_put_to_scope:
     case op_put_to_arguments: {
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
         return;
     }
+    case op_put_getter_by_id:
+    case op_put_setter_by_id: {
+        functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
+        functor(codeBlock, instruction, opcodeID, instruction[4].u.operand);
+        return;
+    }
     case op_put_getter_setter: {
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
-        functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[4].u.operand);
+        functor(codeBlock, instruction, opcodeID, instruction[5].u.operand);
         return;
     }
     case op_get_property_enumerator:
     case op_get_enumerable_length:
     case op_new_func_exp:
     case op_to_index_string:
-    case op_push_name_scope:
-    case op_push_with_scope:
     case op_create_lexical_environment:
     case op_resolve_scope:
     case op_get_from_scope:
@@ -178,6 +180,7 @@ void computeUsesForBytecodeOffset(
     case op_stricteq:
     case op_neq:
     case op_eq:
+    case op_push_with_scope:
     case op_del_by_val: {
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
@@ -294,7 +297,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_enumerator_structure_pname:
     case op_enumerator_generic_pname:
     case op_get_parent_scope:
-    case op_push_name_scope:
     case op_push_with_scope:
     case op_create_lexical_environment:
     case op_resolve_scope:

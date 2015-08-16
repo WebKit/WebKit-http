@@ -40,7 +40,6 @@ namespace WebCore {
 
 class AbstractDatabaseServer;
 class Database;
-class DatabaseBackendBase;
 class DatabaseCallback;
 class DatabaseContext;
 class DatabaseManagerClient;
@@ -129,7 +128,7 @@ private:
     // it already exist previously. Otherwise, it returns 0.
     RefPtr<DatabaseContext> existingDatabaseContextFor(ScriptExecutionContext*);
 
-    PassRefPtr<DatabaseBackendBase> openDatabaseBackend(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
+    PassRefPtr<Database> openDatabaseBackend(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
 
     void addProposedDatabase(ProposedDatabase*);
     void removeProposedDatabase(ProposedDatabase*);

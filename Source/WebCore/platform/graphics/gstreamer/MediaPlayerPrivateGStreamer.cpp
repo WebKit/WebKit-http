@@ -1031,7 +1031,6 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         break;
     case GST_MESSAGE_ELEMENT:
         if (gst_is_missing_plugin_message(message)) {
-            GUniquePtr<char> detail(gst_missing_plugin_message_get_installer_detail(message));
             if (gst_install_plugins_supported()) {
                 m_missingPluginsCallback = MediaPlayerRequestInstallMissingPluginsCallback::create([this](uint32_t result) {
                     m_missingPluginsCallback = nullptr;
@@ -1041,7 +1040,9 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                     changePipelineState(GST_STATE_READY);
                     changePipelineState(GST_STATE_PAUSED);
                 });
-                m_player->client().requestInstallMissingPlugins(String::fromUTF8(detail.get()), *m_missingPluginsCallback);
+                GUniquePtr<char> detail(gst_missing_plugin_message_get_installer_detail(message));
+                GUniquePtr<char> description(gst_missing_plugin_message_get_description(message));
+                m_player->client().requestInstallMissingPlugins(String::fromUTF8(detail.get()), String::fromUTF8(description.get()), *m_missingPluginsCallback);
             }
         }
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
@@ -1861,6 +1862,11 @@ void MediaPlayerPrivateGStreamer::setPreload(MediaPlayer::Preload preload)
 GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
 {
     m_autoAudioSink = gst_element_factory_make("autoaudiosink", 0);
+    if (!m_autoAudioSink) {
+        WARN_MEDIA_MESSAGE("GStreamer's autoaudiosink not found. Please check your gst-plugins-good installation");
+        return nullptr;
+    }
+
     g_signal_connect(m_autoAudioSink.get(), "child-added", G_CALLBACK(setAudioStreamPropertiesCallback), this);
 
     GstElement* audioSinkBin;
@@ -1880,7 +1886,7 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
     if (m_preservesPitch) {
         GstElement* scale = gst_element_factory_make("scaletempo", nullptr);
         if (!scale) {
-            GST_WARNING("Failed to create scaletempo");
+            WARN_MEDIA_MESSAGE("Failed to create scaletempo");
             return m_autoAudioSink.get();
         }
 
@@ -1898,7 +1904,7 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
         gst_bin_add_many(GST_BIN(audioSinkBin), convert, resample, m_autoAudioSink.get(), nullptr);
 
         if (!gst_element_link_many(scale, convert, resample, m_autoAudioSink.get(), nullptr)) {
-            GST_WARNING("Failed to link audio sink elements");
+            WARN_MEDIA_MESSAGE("Failed to link audio sink elements");
             gst_object_unref(audioSinkBin);
             return m_autoAudioSink.get();
         }
@@ -1912,7 +1918,7 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
     return audioSinkBin;
 #endif
     ASSERT_NOT_REACHED();
-    return 0;
+    return nullptr;
 }
 
 GstElement* MediaPlayerPrivateGStreamer::audioSink() const
@@ -1970,7 +1976,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         GstElement* scale = gst_element_factory_make("scaletempo", 0);
 
         if (!scale)
-            GST_WARNING("Failed to create scaletempo");
+            WARN_MEDIA_MESSAGE("Failed to create scaletempo");
         else
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
     }
