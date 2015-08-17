@@ -41,6 +41,10 @@ QtMIMETypeSniffer::QtMIMETypeSniffer(QNetworkReply* reply, const QString& advert
 
 bool QtMIMETypeSniffer::sniff()
 {
+    // reply may be closed if reply->close() or reply->abort() is called
+    if (!m_reply->isReadable())
+        return true;
+
     // See QNetworkReplyWrapper::setFinished().
     const bool isReplyFinished = m_reply->property("_q_isFinished").toBool();
 

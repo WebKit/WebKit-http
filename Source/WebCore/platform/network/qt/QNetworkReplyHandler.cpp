@@ -663,6 +663,10 @@ void QNetworkReplyHandler::forwardData()
 {
     ASSERT(m_replyWrapper && m_replyWrapper->reply() && !wasAborted() && !m_replyWrapper->wasRedirected());
 
+    // reply may be closed if reply->close() or reply->abort() is called
+    if (!m_replyWrapper->reply()->isReadable())
+        return;
+
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
