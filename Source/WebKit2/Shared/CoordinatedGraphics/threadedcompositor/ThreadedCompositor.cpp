@@ -166,7 +166,6 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
     });
 }
 
-
 void ThreadedCompositor::didChangeViewportSize(const IntSize& newSize)
 {
     RefPtr<ThreadedCompositor> protector(this);
@@ -256,14 +255,8 @@ GLContext* ThreadedCompositor::glContext()
     if (!m_gbmSurface)
         return 0;
 
-    fprintf(stderr, "ThreadedCompositor::glContext(): surface %p\n", m_gbmSurface.get());
-/*
-    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
-
-*/
     setNativeSurfaceHandleForCompositing(0);
     m_context = m_gbmSurface->createGLContext();
-    fprintf(stderr, "ThreadedCompositor::glContext(): context %p\n", m_context.get());
     return m_context.get();
 }
 
@@ -281,8 +274,6 @@ void ThreadedCompositor::didChangeVisibleRect()
         protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
-    // if (m_waylandSurface)
-    //     m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -303,7 +294,6 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
-    // wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
     int primeFD = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
     if (primeFD > 0) {
