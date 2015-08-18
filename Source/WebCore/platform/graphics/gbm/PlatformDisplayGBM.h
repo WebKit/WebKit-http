@@ -38,6 +38,8 @@ struct gbm_device;
 namespace WebCore {
 
 class GBMSurface;
+class GLContext;
+class GLContextEGL;
 class IntSize;
 
 class PlatformDisplayGBM final : public PlatformDisplay {
@@ -46,6 +48,8 @@ public:
     virtual ~PlatformDisplayGBM();
 
     std::unique_ptr<GBMSurface> createSurface(const IntSize&);
+    std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
+
     int lockFrontBuffer(GBMSurface&);
 
 private:

@@ -29,6 +29,7 @@
 #if PLATFORM(GBM)
 
 #include "GBMSurface.h"
+#include "GLContextEGL.h"
 #include "IntSize.h"
 #include <fcntl.h>
 #include <xf86drm.h>
@@ -92,6 +93,11 @@ std::unique_ptr<GBMSurface> PlatformDisplayGBM::createSurface(const IntSize& siz
 {
     struct gbm_surface* surface = gbm_surface_create(m_gbm.device, size.width(), size.height(), GBM_FORMAT_ARGB8888, 0);
     return std::make_unique<GBMSurface>(surface);
+}
+
+std::unique_ptr<GLContextEGL> PlatformDisplayGBM::createOffscreenContext(GLContext* sharingContext)
+{
+    return GLContextEGL::createWindowContext(gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0), sharingContext);
 }
 
 int PlatformDisplayGBM::lockFrontBuffer(GBMSurface& surface)
