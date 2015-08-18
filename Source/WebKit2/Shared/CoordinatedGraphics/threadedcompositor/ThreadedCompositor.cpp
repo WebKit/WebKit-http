@@ -285,6 +285,9 @@ void ThreadedCompositor::renderLayerTree()
     if (!ensureGLContext())
         return;
 
+    if (!downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).hasFreeBuffers(*m_gbmSurface))
+        return;
+
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;
@@ -295,13 +298,11 @@ void ThreadedCompositor::renderLayerTree()
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
     glContext()->swapBuffers();
-    int primeFD = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
-    if (primeFD > 0) {
-        RefPtr<ThreadedCompositor> protector(this);
-        callOnMainThread([protector, primeFD] {
-            protector->m_client->commitPrimeFD(primeFD);
-        });
-    }
+    auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
+    RefPtr<ThreadedCompositor> protector(this);
+    callOnMainThread([protector, bufferExport] {
+        protector->m_client->commitPrimeFD(bufferExport);
+    });
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
@@ -433,6 +434,25 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 {
     setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
     DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+}
+#endif
+
+#if PLATFORM(WPE)
+void ThreadedCompositor::releaseBuffer(uint32_t handle)
+{
+    RefPtr<ThreadedCompositor> protector(this);
+    callOnCompositingThread([protector, handle] {
+        downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*protector->m_gbmSurface, handle);
+    });
+}
+
+void ThreadedCompositor::frameComplete()
+{
+    RefPtr<ThreadedCompositor> protector(this);
+    callOnCompositingThread([protector] {
+        protector->m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+        protector->m_compositingRunLoop->updateCompleted();
+    });
 }
 #endif
 

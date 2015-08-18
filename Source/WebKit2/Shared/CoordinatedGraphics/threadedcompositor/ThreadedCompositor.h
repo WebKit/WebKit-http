@@ -40,6 +40,7 @@
 
 #if PLATFORM(GBM)
 #include <WebCore/GBMSurface.h>
+#include <WebCore/PlatformDisplayGBM.h>
 #endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -66,7 +67,7 @@ public:
         virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
-        virtual void commitPrimeFD(int) = 0;
+        virtual void commitPrimeFD(const WebCore::PlatformDisplayGBM::GBMBufferExport&) = 0;
     };
 
     static Ref<ThreadedCompositor> create(Client*);
@@ -85,6 +86,11 @@ public:
     void scrollBy(const WebCore::IntSize&);
 
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
+
+#if PLATFORM(WPE)
+    void releaseBuffer(uint32_t);
+    void frameComplete();
+#endif
 
 private:
     ThreadedCompositor(Client*);
