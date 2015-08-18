@@ -90,7 +90,7 @@ PlatformDisplayGBM::~PlatformDisplayGBM()
 
 std::unique_ptr<GBMSurface> PlatformDisplayGBM::createSurface(const IntSize& size)
 {
-    struct gbm_surface* surface = gbm_surface_create(m_gbm.device, size.width(), size.height(), GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
+    struct gbm_surface* surface = gbm_surface_create(m_gbm.device, size.width(), size.height(), GBM_FORMAT_ARGB8888, 0);
     return std::make_unique<GBMSurface>(surface);
 }
 
