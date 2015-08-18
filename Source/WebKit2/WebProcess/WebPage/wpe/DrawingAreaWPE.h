@@ -37,6 +37,8 @@ public:
     DrawingAreaWPE(WebPage&, const WebPageCreationParameters&);
     virtual ~DrawingAreaWPE();
 
+    void layerHostDidFlushLayers();
+
 private:
     // DrawingArea
     virtual void setNeedsDisplay() override;
@@ -66,6 +68,10 @@ private:
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
     void enterAcceleratedCompositingMode(WebCore::GraphicsLayer*);
+
+    // WPE::ViewBackend::Client
+    virtual void releaseBuffer(uint32_t) override;
+    virtual void frameComplete() override;
 
     // When true, we maintain the layer tree in its current state by not leaving accelerated compositing mode
     // and not scheduling layer flushes.

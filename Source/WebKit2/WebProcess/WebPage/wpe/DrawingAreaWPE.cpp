@@ -3,6 +3,7 @@
 #include "config.h"
 #include "DrawingAreaWPE.h"
 
+#include "DrawingAreaProxyMessages.h"
 #include "WebPage.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
@@ -18,14 +19,17 @@ namespace WebKit {
 DrawingAreaWPE::DrawingAreaWPE(WebPage& webPage, const WebPageCreationParameters&)
     : DrawingArea(DrawingAreaTypeWPE, webPage)
 {
-    fprintf(stderr, "DrawingAreaWPE: ctor\n");
     webPage.corePage()->settings().setForceCompositingMode(true);
     enterAcceleratedCompositingMode(0);
 }
 
 DrawingAreaWPE::~DrawingAreaWPE()
 {
-    fprintf(stderr, "DrawingAreaWPE: ctor\n");
+}
+
+void DrawingAreaWPE::layerHostDidFlushLayers()
+{
+    m_webPage.send(Messages::DrawingAreaProxy::EnterAcceleratedCompositingMode(0, m_layerTreeHost->layerTreeContext()));
 }
 
 void DrawingAreaWPE::setNeedsDisplay()
@@ -47,7 +51,6 @@ void DrawingAreaWPE::scroll(const IntRect&, const IntSize&)
 
 void DrawingAreaWPE::pageBackgroundTransparencyChanged()
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
     if (m_layerTreeHost)
         m_layerTreeHost->pageBackgroundTransparencyChanged();
 }
@@ -111,7 +114,6 @@ void DrawingAreaWPE::scheduleCompositingLayerFlushImmediately()
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> DrawingAreaWPE::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
     if (m_layerTreeHost)
         return m_layerTreeHost->createDisplayRefreshMonitor(displayID);
 
@@ -133,6 +135,18 @@ void DrawingAreaWPE::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLaye
     ASSERT(!m_layerTreeHost);
     m_layerTreeHost = LayerTreeHost::create(&m_webPage);
     m_layerTreeHost->setRootCompositingLayer(graphicsLayer);
+    m_layerTreeHost->setShouldNotifyAfterNextScheduledLayerFlush(true);
+    m_layerTreeHost->viewportSizeChanged(m_webPage.size());
+}
+
+void DrawingAreaWPE::releaseBuffer(uint32_t handle)
+{
+    m_layerTreeHost->releaseBuffer(handle);
+}
+
+void DrawingAreaWPE::frameComplete()
+{
+    m_layerTreeHost->frameComplete();
 }
 
 } // namespace WebKit

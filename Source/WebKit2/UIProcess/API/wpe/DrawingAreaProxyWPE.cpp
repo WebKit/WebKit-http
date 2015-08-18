@@ -26,11 +26,18 @@
 #include "config.h"
 #include "DrawingAreaProxyWPE.h"
 
+#include "DrawingAreaMessages.h"
+#include "WPEView.h"
+#include "WebPageProxy.h"
+#include "WebProcessProxy.h"
+
 namespace WebKit {
 
-DrawingAreaProxyWPE::DrawingAreaProxyWPE(WebPageProxy& webPageProxy)
-    : DrawingAreaProxy(DrawingAreaTypeWPE, webPageProxy)
+DrawingAreaProxyWPE::DrawingAreaProxyWPE(WKWPE::View& view)
+    : DrawingAreaProxy(DrawingAreaTypeWPE, view.page())
+    , m_viewBackend(view.viewBackend())
 {
+    m_viewBackend.setClient(this);
 }
 
 DrawingAreaProxyWPE::~DrawingAreaProxyWPE()
@@ -47,6 +54,16 @@ void DrawingAreaProxyWPE::sizeDidChange()
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
 }
 
+void DrawingAreaProxyWPE::releaseBuffer(uint32_t handle)
+{
+    m_webPageProxy.process().send(Messages::DrawingArea::ReleaseBuffer(handle), m_webPageProxy.pageID());
+}
+
+void DrawingAreaProxyWPE::frameComplete()
+{
+    m_webPageProxy.process().send(Messages::DrawingArea::FrameComplete(), m_webPageProxy.pageID());
+}
+
 void DrawingAreaProxyWPE::update(uint64_t backingStoreStateID, const UpdateInfo&)
 {
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
@@ -57,9 +74,13 @@ void DrawingAreaProxyWPE::didUpdateBackingStoreState(uint64_t backingStoreStateI
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
 }
 
-void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&)
+void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext& layerTreeContext)
 {
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    ASSERT(!backingStoreID);
+
+    m_layerTreeContext = layerTreeContext;
+    m_webPageProxy.enterAcceleratedCompositingMode(layerTreeContext);
 }
 
 void DrawingAreaProxyWPE::exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&)
@@ -72,9 +93,9 @@ void DrawingAreaProxyWPE::updateAcceleratedCompositingMode(uint64_t backingStore
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
 }
 
-void DrawingAreaProxyWPE::commitPrimeFD(int64_t fd)
+void DrawingAreaProxyWPE::commitPrimeFD(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s fd %d\n", __func__, fd);
+    m_viewBackend.commitPrimeFD(fd.fileDescriptor(), handle, width, height, stride, format);
 }
 
 } // namespace WebKit

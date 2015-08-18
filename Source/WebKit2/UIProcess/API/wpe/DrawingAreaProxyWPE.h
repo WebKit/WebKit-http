@@ -28,11 +28,15 @@
 
 #include "DrawingAreaProxy.h"
 
+#include "LayerTreeContext.h"
+#include <WPE/ViewBackend/ViewBackend.h>
+#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
+
 namespace WebKit {
 
-class DrawingAreaProxyWPE final : public DrawingAreaProxy {
+class DrawingAreaProxyWPE final : public DrawingAreaProxy, public WPE::ViewBackend::Client {
 public:
-    explicit DrawingAreaProxyWPE(WebPageProxy&);
+    explicit DrawingAreaProxyWPE(WKWPE::View&);
     virtual ~DrawingAreaProxyWPE();
 
 private:
@@ -40,13 +44,22 @@ private:
     void deviceScaleFactorDidChange() override;
     void sizeDidChange() override;
 
+    // WPE::ViewBackend::Client
+    void releaseBuffer(uint32_t) override;
+    void frameComplete() override;
+
     // IPC message handlers
     void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
     void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
     void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
     void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void commitPrimeFD(int64_t) override;
+    void commitPrimeFD(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) override;
+
+    WPE::ViewBackend::ViewBackendWayland& m_viewBackend;
+
+    // The current layer tree context.
+    LayerTreeContext m_layerTreeContext;
 };
 
 }
