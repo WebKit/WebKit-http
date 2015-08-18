@@ -48,7 +48,7 @@ GBMSurface::~GBMSurface()
 
 std::unique_ptr<GLContextEGL> GBMSurface::createGLContext() const
 {
-    return GLContextEGL::createWindowContext(m_surface, /* GLContext::sharingContext() */ nullptr);
+    return GLContextEGL::createWindowContext(m_surface, GLContext::sharingContext());
 }
 
 } // namespace WebCore

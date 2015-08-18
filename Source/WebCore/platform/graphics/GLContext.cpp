@@ -37,6 +37,10 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
+#if PLATFORM(GBM)
+#include "PlatformDisplayGBM.h"
+#endif
+
 using WTF::ThreadSpecific;
 
 namespace WebCore {
@@ -153,9 +157,12 @@ std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingC
 #if PLATFORM(WAYLAND)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         return downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
-#else
-    return createContextForWindow(0, sharingContext);
 #endif
+#if PLATFORM(GBM)
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::GBM)
+        return downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
+#endif
+    return createContextForWindow(0, sharingContext);
 }
 
 GLContext::~GLContext()
