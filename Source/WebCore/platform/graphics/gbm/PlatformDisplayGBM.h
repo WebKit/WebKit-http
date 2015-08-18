@@ -30,6 +30,9 @@
 
 #include "PlatformDisplay.h"
 
+#include <tuple>
+#include <wtf/HashMap.h>
+
 #include <gbm.h>
 #include <EGL/egl.h>
 
@@ -50,7 +53,10 @@ public:
     std::unique_ptr<GBMSurface> createSurface(const IntSize&);
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
-    int lockFrontBuffer(GBMSurface&);
+    using GBMBufferExport = std::tuple<int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int>;
+    bool hasFreeBuffers(GBMSurface&);
+    GBMBufferExport lockFrontBuffer(GBMSurface&);
+    void releaseBuffer(GBMSurface&, uint32_t);
 
 private:
     Type type() const override { return PlatformDisplay::Type::GBM; }
@@ -61,6 +67,9 @@ private:
     } m_gbm;
 
     EGLConfig m_eglConfig;
+
+    static void boDataDestroyCallback(struct gbm_bo*, void*);
+    HashMap<uint32_t, struct gbm_bo*> m_lockedBuffers;
 };
 
 } // namespace WebCore

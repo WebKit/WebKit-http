@@ -100,24 +100,54 @@ std::unique_ptr<GLContextEGL> PlatformDisplayGBM::createOffscreenContext(GLConte
     return GLContextEGL::createWindowContext(gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0), sharingContext);
 }
 
-int PlatformDisplayGBM::lockFrontBuffer(GBMSurface& surface)
+bool PlatformDisplayGBM::hasFreeBuffers(GBMSurface& surface)
+{
+    if (!gbm_surface_has_free_buffers(surface.native())) {
+        fprintf(stderr, "PlatformDisplayGBM: no free buffers for surface %p\n", surface.native());
+        return false;
+    }
+
+    return true;
+}
+
+PlatformDisplayGBM::GBMBufferExport PlatformDisplayGBM::lockFrontBuffer(GBMSurface& surface)
 {
     struct gbm_bo* bo = gbm_surface_lock_front_buffer(surface.native());
-    if (!bo) {
-        fprintf(stderr, "PlatformDisplayGBM: no front bo for surface %p\n", surface.native());
-        return -1;
-    }
+    ASSERT(bo);
 
-    int fd;
-    int r = drmPrimeHandleToFD(m_gbm.fd, gbm_bo_get_handle(bo).u32, 0, &fd);
-    if (r < 0) {
-        fprintf(stderr, "PlatformDisplayGBM: couldn't get prime fd for bo %p\n", bo);
-        return -1;
-    }
+    uint32_t handle = gbm_bo_get_handle(bo).u32;
+    auto result = m_lockedBuffers.add(handle, bo);
+    RELEASE_ASSERT(result.isNewEntry);
 
-    fprintf(stderr, "PlatformDisplayGBM: locked front bo %p, handle %u, related prime fd %d\n",
-        bo, gbm_bo_get_handle(bo).u32, fd);
-    return fd;
+    auto* data = static_cast<GBMBufferExport*>(gbm_bo_get_user_data(bo));
+    if (data)
+        return *data;
+
+    int fd = gbm_bo_get_fd(bo);
+    data = new GBMBufferExport{ -1, handle, gbm_bo_get_width(bo), gbm_bo_get_height(bo), gbm_bo_get_stride(bo), gbm_bo_get_format(bo), fd };
+    gbm_bo_set_user_data(bo, data, &boDataDestroyCallback);
+
+    auto bufferExport = *data;
+    std::get<0>(bufferExport) = dup(fd);
+    return bufferExport;
+}
+
+void PlatformDisplayGBM::releaseBuffer(GBMSurface& surface, uint32_t handle)
+{
+    RELEASE_ASSERT(m_lockedBuffers.contains(handle));
+    struct gbm_bo* bo = m_lockedBuffers.take(handle);
+    gbm_surface_release_buffer(surface.native(), bo);
+}
+
+void PlatformDisplayGBM::boDataDestroyCallback(struct gbm_bo*, void* data)
+{
+    fprintf(stderr, "PlatformDisplayGBM::boDataDestroyCallback()\n");
+    if (!data)
+        return;
+
+    auto* bufferExport = static_cast<GBMBufferExport*>(data);
+    close(std::get<6>(*bufferExport));
+    delete bufferExport;
 }
 
 } // namespace WebCore
