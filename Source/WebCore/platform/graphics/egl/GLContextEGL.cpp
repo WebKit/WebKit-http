@@ -277,7 +277,6 @@ bool GLContextEGL::makeContextCurrent()
 
 void GLContextEGL::swapBuffers()
 {
-    fprintf(stderr, "GLContextEGL: %s\n", __func__);
     ASSERT(m_surface);
     eglSwapBuffers(sharedEGLDisplay(), m_surface);
 }
