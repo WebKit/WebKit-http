@@ -8,7 +8,7 @@
 #include <WebKit/WKView.h>
 #include <glib.h>
 
-int main()
+int main(int argc, char* argv[])
 {
     GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
 
@@ -21,6 +21,9 @@ int main()
     WKViewResize(view.get(), WKSizeMake(800, 600));
 
     const char* url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
+    if (argc > 1)
+        url = argv[1];
+
     auto shellURL = adoptWK(WKURLCreateWithUTF8CString(url));
     WKPageLoadURL(WKViewGetPage(view.get()), shellURL.get());
 
