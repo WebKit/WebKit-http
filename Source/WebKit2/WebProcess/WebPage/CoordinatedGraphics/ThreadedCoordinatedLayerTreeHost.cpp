@@ -184,7 +184,7 @@ void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers()
 {
-    // static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+    static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
 }
 
 void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)
@@ -281,9 +281,15 @@ void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, cons
     m_coordinator->commitScrollOffset(layerID, offset);
 }
 
-void ThreadedCoordinatedLayerTreeHost::commitPrimeFD(int fd)
+void ThreadedCoordinatedLayerTreeHost::commitPrimeFD(const PlatformDisplayGBM::GBMBufferExport& bufferExport)
 {
-    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeFD(fd));
+    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeFD(
+        std::get<1>(bufferExport),
+        std::get<2>(bufferExport),
+        std::get<3>(bufferExport),
+        std::get<4>(bufferExport),
+        std::get<5>(bufferExport),
+        IPC::Attachment(std::get<0>(bufferExport))));
 }
 
 void ThreadedCoordinatedLayerTreeHost::notifyFlushRequired()
@@ -305,6 +311,18 @@ void ThreadedCoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, 
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCoordinatedLayerTreeHost::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
     return m_compositor->createDisplayRefreshMonitor(displayID);
+}
+#endif
+
+#if PLATFORM(WPE)
+void ThreadedCoordinatedLayerTreeHost::releaseBuffer(uint32_t handle)
+{
+    m_compositor->releaseBuffer(handle);
+}
+
+void ThreadedCoordinatedLayerTreeHost::frameComplete()
+{
+    m_compositor->frameComplete();
 }
 #endif
 

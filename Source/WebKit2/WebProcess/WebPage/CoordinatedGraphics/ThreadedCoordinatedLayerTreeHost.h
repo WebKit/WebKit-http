@@ -122,7 +122,7 @@ private:
     virtual void purgeBackingStores() override;
     virtual void renderNextFrame() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
-    virtual void commitPrimeFD(int) override;
+    virtual void commitPrimeFD(const WebCore::PlatformDisplayGBM::GBMBufferExport&) override;
 
     // CompositingCoordinator::Client
     virtual void didFlushRootLayer(const WebCore::FloatRect&) override { }
@@ -132,6 +132,11 @@ private:
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
+#endif
+
+#if PLATFORM(WPE)
+    virtual void releaseBuffer(uint32_t) override;
+    virtual void frameComplete() override;
 #endif
 
     LayerTreeContext m_layerTreeContext;
