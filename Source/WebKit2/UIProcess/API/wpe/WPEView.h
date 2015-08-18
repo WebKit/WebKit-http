@@ -30,6 +30,7 @@
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include <WPE/Input/Handling.h>
+#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
@@ -52,6 +53,8 @@ public:
         return *m_pageProxy;
     }
 
+    WPE::ViewBackend::ViewBackendWayland& viewBackend() { return *m_viewBackend; }
+
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
 
@@ -68,6 +71,7 @@ private:
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
+    std::unique_ptr<WPE::ViewBackend::ViewBackendWayland> m_viewBackend;
     WebCore::IntSize m_size;
 };
 
