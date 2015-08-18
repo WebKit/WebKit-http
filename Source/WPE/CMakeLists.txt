@@ -10,13 +10,17 @@ endif ()
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
+    ${DRM_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
+    ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
+    ${DRM_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
+    ${WAYLAND_LIBRARIES}
 )
 
 set(WPE_SOURCES
@@ -28,6 +32,11 @@ set(WPE_SOURCES
 
     Source/Input/XKB/KeyMappingXKB.cpp
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
+
+    Source/ViewBackend/Wayland/ViewBackendWayland.cpp
+    Source/ViewBackend/Wayland/WaylandDisplay.cpp
+    Source/ViewBackend/Wayland/wayland-drm-protocol.c
+    Source/ViewBackend/Wayland/xdg-shell-protocol.c
 )
 
 include_directories(${WPE_INCLUDE_DIRECTORIES})
