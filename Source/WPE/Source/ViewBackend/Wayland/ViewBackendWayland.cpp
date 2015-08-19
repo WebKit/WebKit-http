@@ -26,6 +26,8 @@
 #include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
 
 #include "WaylandDisplay.h"
+#include "xdg-shell-client-protocol.h"
+#include "wayland-drm-client-protocol.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
@@ -47,6 +49,17 @@ namespace WPE {
 
 namespace ViewBackend {
 
+static const struct xdg_surface_listener g_xdgSurfaceListener = {
+    // configure
+    [](void*, struct xdg_surface* surface, int32_t, int32_t, struct wl_array*, uint32_t serial)
+    {
+        xdg_surface_ack_configure(surface, serial);
+    },
+    // delete
+    [](void*, struct xdg_surface*) { },
+};
+
+
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
@@ -54,7 +67,7 @@ ViewBackendWayland::ViewBackendWayland()
     m_surface = wl_compositor_create_surface(WaylandDisplay::singleton().compositor());
 
     m_xdgSurface = xdg_shell_get_xdg_surface(m_display.xdg(), m_surface);
-    xdg_surface_add_listener(m_xdgSurface, &m_xdgSurfaceListener, this);
+    xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, this);
     xdg_surface_set_title(m_xdgSurface, "WPE");
 }
 
@@ -85,16 +98,6 @@ void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, 
     wl_surface_commit(m_surface);
     wl_display_flush(m_display.display());
 }
-
-const struct xdg_surface_listener ViewBackendWayland::m_xdgSurfaceListener = {
-    // configure
-    [](void*, struct xdg_surface* surface, int32_t, int32_t, struct wl_array*, uint32_t serial)
-    {
-        xdg_surface_ack_configure(surface, serial);
-    },
-    // delete
-    [](void*, struct xdg_surface*) { },
-};
 
 const struct wl_buffer_listener ViewBackendWayland::m_bufferListener = {
     // release

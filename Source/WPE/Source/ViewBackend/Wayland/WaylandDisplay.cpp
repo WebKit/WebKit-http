@@ -25,6 +25,8 @@
 
 #include "WaylandDisplay.h"
 
+#include "xdg-shell-client-protocol.h"
+#include "wayland-drm-client-protocol.h"
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
@@ -84,6 +86,14 @@ GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
+static const struct xdg_shell_listener g_xdgShellListener = {
+    // ping
+    [](void*, struct xdg_shell* shell, uint32_t serial)
+    {
+        xdg_shell_pong(shell, serial);
+    },
+};
+
 WaylandDisplay& WaylandDisplay::singleton()
 {
     static WaylandDisplay display;
@@ -131,20 +141,12 @@ const struct wl_registry_listener WaylandDisplay::m_registryListener = {
 
         if (!std::strcmp(interface, "xdg_shell")) {
             display.m_xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
-            xdg_shell_add_listener(display.m_xdg, &WaylandDisplay::m_xdgShellListener, &display);
+            xdg_shell_add_listener(display.m_xdg, &g_xdgShellListener, &display);
             xdg_shell_use_unstable_version(display.m_xdg, 5);
         }
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
-};
-
-const struct xdg_shell_listener WaylandDisplay::m_xdgShellListener = {
-    // ping
-    [](void*, struct xdg_shell* shell, uint32_t serial)
-    {
-        xdg_shell_pong(shell, serial);
-    },
 };
 
 } // namespace ViewBackend

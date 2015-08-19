@@ -31,7 +31,8 @@
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
-#include <WPE/ViewBackend/Wayland/xdg-shell-client-protocol.h>
+
+struct xdg_surface;
 
 namespace WPE {
 
@@ -48,7 +49,6 @@ public:
     void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format);
 
 private:
-    static const struct xdg_surface_listener m_xdgSurfaceListener;
     static const struct wl_buffer_listener m_bufferListener;
     static const struct wl_callback_listener m_callbackListener;
 

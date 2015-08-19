@@ -28,8 +28,9 @@
 
 #include <wayland-egl.h>
 #include <EGL/egl.h>
-#include <WPE/ViewBackend/Wayland/wayland-drm-client-protocol.h>
-#include <WPE/ViewBackend/Wayland/xdg-shell-client-protocol.h>
+
+struct xdg_shell;
+struct wl_drm;
 
 namespace WPE {
 
@@ -50,7 +51,6 @@ private:
     WaylandDisplay();
 
     static const struct wl_registry_listener m_registryListener;
-    static const struct xdg_shell_listener m_xdgShellListener;
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
