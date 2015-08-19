@@ -66,8 +66,6 @@ private:
         struct gbm_device* device;
     } m_gbm;
 
-    EGLConfig m_eglConfig;
-
     static void boDataDestroyCallback(struct gbm_bo*, void*);
     HashMap<uint32_t, struct gbm_bo*> m_lockedBuffers;
 };

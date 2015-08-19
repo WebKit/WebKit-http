@@ -59,22 +59,6 @@ PlatformDisplayGBM::PlatformDisplayGBM()
     }
 
     PlatformDisplay::initializeEGLDisplay();
-
-    static const EGLint configAttributes[] = {
-        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-        EGL_RED_SIZE, 1,
-        EGL_GREEN_SIZE, 1,
-        EGL_BLUE_SIZE, 1,
-        EGL_ALPHA_SIZE, 1,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_NONE
-    };
-
-    EGLint numberOfConfigs = 0;
-    if (!eglChooseConfig(m_eglDisplay, configAttributes, &m_eglConfig, 1, &numberOfConfigs) || numberOfConfigs != 1) {
-        fprintf(stderr, "PlatformDisplayGBM: cannot find the desired EGLConfig\n");
-        return;
-    }
 }
 
 PlatformDisplayGBM::~PlatformDisplayGBM()
