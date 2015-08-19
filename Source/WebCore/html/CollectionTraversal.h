@@ -60,8 +60,11 @@ inline ElementDescendantIterator CollectionTraversal<CollectionTraversalType::De
     auto descendants = elementDescendants(rootNode);
     auto end = descendants.end();
     for (auto it = descendants.begin(); it != end; ++it) {
-        if (collection.elementMatches(*it))
+        if (collection.elementMatches(*it)) {
+            // Drop iterator assertions because HTMLCollections / NodeList use a fine-grained invalidation scheme.
+            it.dropAssertions();
             return it;
+        }
     }
     return end;
 }
@@ -72,8 +75,11 @@ inline ElementDescendantIterator CollectionTraversal<CollectionTraversalType::De
     auto descendants = elementDescendants(rootNode);
     ElementDescendantIterator invalid;
     for (auto it = descendants.last(); it != invalid; --it) {
-        if (collection.elementMatches(*it))
+        if (collection.elementMatches(*it)) {
+            // Drop iterator assertions because HTMLCollections / NodeList use a fine-grained invalidation scheme.
+            it.dropAssertions();
             return it;
+        }
     }
     return invalid;
 }
@@ -131,8 +137,11 @@ inline ElementChildIterator<Element> CollectionTraversal<CollectionTraversalType
     auto children = childrenOfType<Element>(rootNode);
     auto end = children.end();
     for (auto it = children.begin(); it != end; ++it) {
-        if (collection.elementMatches(*it))
+        if (collection.elementMatches(*it)) {
+            // Drop iterator assertions because HTMLCollections / NodeList use a fine-grained invalidation scheme.
+            it.dropAssertions();
             return it;
+        }
     }
     return end;
 }
@@ -144,8 +153,11 @@ inline ElementChildIterator<Element> CollectionTraversal<CollectionTraversalType
     ElementChildIterator<Element> invalid(collection.rootNode());
     ElementChildIterator<Element> last(rootNode, children.last());
     for (auto it = last; it != invalid; --it) {
-        if (collection.elementMatches(*it))
+        if (collection.elementMatches(*it)) {
+            // Drop iterator assertions because HTMLCollections / NodeList use a fine-grained invalidation scheme.
+            it.dropAssertions();
             return it;
+        }
     }
     return invalid;
 }

@@ -10,6 +10,8 @@ accessibility/mac [ Pass ]
 editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 
+fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -1075,7 +1077,6 @@ webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Timeout ]
 webkit.org/b/122021 media/video-controls-fullscreen-volume.html [ Failure ]
 webkit.org/b/116266 media/video-controls-toggling.html [ Timeout ]
 
-webkit.org/b/139708 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Timeout ]
 # --- End media tests ---
 
 webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
@@ -1297,3 +1298,6 @@ webkit.org/b/147390 [ Mavericks Yosemite ElCapitan ] fast/text/fallback-language
 
 # Started to fail after r188390
 webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
+
+# This test tests a particular system font, which is only on iOS and El Capitan.
+webkit.org/b/148119 [ Mavericks Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]

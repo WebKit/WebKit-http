@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 2.8.12)
+include(WebKitCommon)
+
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
@@ -2508,6 +2511,7 @@ set(WebCore_SOURCES
     rendering/style/StyleSurroundData.cpp
     rendering/style/StyleTransformData.cpp
     rendering/style/StyleVisualData.cpp
+    rendering/style/WillChangeData.cpp
 
     rendering/svg/RenderSVGBlock.cpp
     rendering/svg/RenderSVGContainer.cpp
@@ -2857,8 +2861,8 @@ set(WebCore_PLUG_INS_RESOURCES
 
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
-    JavaScriptCore
-    WTF
+    JavaScriptCore${DEBUG_SUFFIX}
+    WTF${DEBUG_SUFFIX}
 )
 
 if (ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2)
@@ -3297,8 +3301,8 @@ list(APPEND WebCoreTestSupport_SOURCES
 )
 
 set(WebCoreTestSupport_LIBRARIES
-    JavaScriptCore
-    WTF
+    JavaScriptCore${DEBUG_SUFFIX}
+    WTF${DEBUG_SUFFIX}
 )
 
 # Modules that the bindings generator scripts may use

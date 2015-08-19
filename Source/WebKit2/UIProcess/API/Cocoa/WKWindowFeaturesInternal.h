@@ -27,14 +27,23 @@
 
 #if WK_API_ENABLED
 
-namespace WebCore {
-struct WindowFeatures;
+#import "APIWindowFeatures.h"
+#import "WKObject.h"
+
+namespace WebKit {
+
+inline WKWindowFeatures *wrapper(API::WindowFeatures& windowFeatures)
+{
+    ASSERT([windowFeatures.wrapper() isKindOfClass:[WKWindowFeatures class]]);
+
+    return (WKWindowFeatures *)windowFeatures.wrapper();
 }
 
-@interface WKWindowFeatures ()
-
-- (instancetype)_initWithWindowFeatures:(const WebCore::WindowFeatures&)windowFeatures;
-
+}
+@interface WKWindowFeatures () <WKObject> {
+@package
+    API::ObjectStorage<API::WindowFeatures> _windowFeatures;
+}
 @end
 
 #endif

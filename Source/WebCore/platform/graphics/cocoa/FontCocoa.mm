@@ -93,6 +93,7 @@ bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
 
 void Font::platformInit()
 {
+    // FIXME: Unify these two codepaths
 #if USE(APPKIT)
     m_syntheticBoldOffset = m_platformData.m_syntheticBold ? 1.0f : 0.f;
 
@@ -148,6 +149,8 @@ void Font::platformInit()
         m_platformData.setNSFont([NSFont systemFontOfSize:[m_platformData.nsFont() pointSize]]);
         LOG_ERROR("failed to set up font, using system font %s", m_platformData.font());
     }
+
+    m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_platformData.font())).get());
 
     // Work around <rdar://problem/19433490>
     CGGlyph dummyGlyphs[] = {0, 0};
@@ -215,7 +218,10 @@ void Font::platformInit()
     m_fontMetrics.setCapHeight(capHeight);
     m_fontMetrics.setLineGap(lineGap);
     m_fontMetrics.setXHeight(xHeight);
+
 #else
+
+    m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_platformData.font())).get());
     m_syntheticBoldOffset = m_platformData.m_syntheticBold ? ceilf(m_platformData.size()  / 24.0f) : 0.f;
     m_spaceGlyph = 0;
     m_spaceWidth = 0;
@@ -238,6 +244,7 @@ void Font::platformInit()
         unitsPerEm = fontService.unitsPerEm();
         familyName = adoptCF(CTFontCopyFamilyName(ctFont));
     } else {
+        // FIXME: This else block is dead code. Remove it.
         CGFontRef cgFont = m_platformData.cgFont();
 
         unitsPerEm = CGFontGetUnitsPerEm(cgFont);
@@ -272,8 +279,6 @@ void Font::platformInit()
         m_fontMetrics.setLineGap(thirdOfSize);
     }
 #endif
-
-    m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_platformData.font())).get());
 }
 
 void Font::platformCharWidthInit()
@@ -324,7 +329,7 @@ PassRefPtr<Font> Font::platformCreateScaledFont(const FontDescription&, float sc
 #if USE(APPKIT)
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    FontPlatformData scaledFontData(reinterpret_cast<CTFontRef>([[NSFontManager sharedFontManager] convertFont:m_platformData.nsFont() toSize:size]), size, false, false, m_platformData.orientation());
+    FontPlatformData scaledFontData(toCTFont([[NSFontManager sharedFontManager] convertFont:m_platformData.nsFont() toSize:size]), size, false, false, m_platformData.orientation());
 
     if (scaledFontData.font()) {
         NSFontManager *fontManager = [NSFontManager sharedFontManager];
@@ -457,13 +462,9 @@ static inline bool advanceForColorBitmapFont(const FontPlatformData& platformDat
 static inline bool canUseFastGlyphAdvanceGetter(const Font& font, Glyph glyph, CGSize& advance, bool& populatedAdvance)
 {
     const FontPlatformData& platformData = font.platformData();
-    // Fast getter doesn't take custom tracking into account
-    if (font.hasCustomTracking())
+    // Fast getter doesn't doesn't work for emoji, bitmap fonts, or take custom tracking into account
+    if (font.hasCustomTracking() || platformData.isEmoji() || platformData.textRenderingMode() == OptimizeLegibility)
         return false;
-    // Fast getter doesn't work for emoji
-    if (platformData.isEmoji())
-        return false;
-    // ... or for any bitmap fonts in general
     if (advanceForColorBitmapFont(platformData, glyph, advance)) {
         populatedAdvance = true;
         return false;
@@ -538,29 +539,5 @@ bool Font::canRenderCombiningCharacterSequence(const UChar* characters, size_t l
     addResult.iterator->value = true;
     return true;
 }
-
-#if USE(APPKIT)
-const Font* Font::compositeFontReferenceFont(NSFont *key) const
-{
-    if (!key || CFEqual(adoptCF(CTFontCopyPostScriptName(CTFontRef(key))).get(), CFSTR("LastResort")))
-        return nullptr;
-
-    if (!m_derivedFontData)
-        m_derivedFontData = std::make_unique<DerivedFontData>(isCustomFont());
-
-    auto addResult = m_derivedFontData->compositeFontReferences.add(key, nullptr);
-    if (addResult.isNewEntry) {
-        NSFont *substituteFont = [key printerFont];
-
-        CTFontSymbolicTraits traits = CTFontGetSymbolicTraits((CTFontRef)substituteFont);
-        bool syntheticBold = platformData().syntheticBold() && !(traits & kCTFontBoldTrait);
-        bool syntheticOblique = platformData().syntheticOblique() && !(traits & kCTFontItalicTrait);
-
-        FontPlatformData substitutePlatform(reinterpret_cast<CTFontRef>(substituteFont), platformData().size(), syntheticBold, syntheticOblique, platformData().orientation(), platformData().widthVariant());
-        addResult.iterator->value = Font::create(substitutePlatform, isCustomFont());
-    }
-    return addResult.iterator->value.get();
-}
-#endif
 
 } // namespace WebCore

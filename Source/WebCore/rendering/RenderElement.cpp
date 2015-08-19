@@ -284,6 +284,11 @@ StyleDifference RenderElement::adjustStyleDifference(StyleDifference diff, unsig
             diff = std::max(diff, StyleDifferenceRepaint);
     }
     
+    if (contextSensitiveProperties & ContextSensitivePropertyWillChange) {
+        if (style().willChange() && style().willChange()->canTriggerCompositing())
+            diff = std::max(diff, StyleDifferenceRecompositeLayer);
+    }
+    
     if ((contextSensitiveProperties & ContextSensitivePropertyFilter) && hasLayer()) {
         RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         if (!layer->isComposited() || layer->paintsWithFilters())
@@ -359,6 +364,22 @@ void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const Shap
 }
 #endif
 
+void RenderElement::computeMaxOutlineSize() const
+{
+    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
+    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
+    if (!m_style->outlineWidth())
+        return;
+    int maxOutlineSize = m_style->outlineSize();
+    if (m_style->outlineStyleIsAuto())
+        maxOutlineSize = std::max(theme().platformFocusRingMaxWidth(), maxOutlineSize);
+
+    if (maxOutlineSize < maximalOutlineSize(PaintPhaseOutline))
+        return;
+
+    view().setMaximalOutlineSize(maxOutlineSize);
+}
+
 void RenderElement::initializeStyle()
 {
     styleWillChange(StyleDifferenceNewStyle, style());
@@ -375,11 +396,8 @@ void RenderElement::initializeStyle()
     updateShapeImage(nullptr, m_style->shapeOutside());
 #endif
 
-    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
-    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
-    if (m_style->outlineWidth() > 0 && m_style->outlineSize() > maximalOutlineSize(PaintPhaseOutline))
-        view().setMaximalOutlineSize(std::max(theme().platformFocusRingMaxWidth(), static_cast<int>(m_style->outlineSize())));
-
+    computeMaxOutlineSize();
+    
     styleDidChange(StyleDifferenceNewStyle, nullptr);
 
     // We shouldn't have any text children that would need styleDidChange at this point.
@@ -429,10 +447,7 @@ void RenderElement::setStyle(Ref<RenderStyle>&& style, StyleDifference minimalSt
     updateShapeImage(oldStyle.get().shapeOutside(), m_style->shapeOutside());
 #endif
 
-    // We need to ensure that view->maximalOutlineSize() is valid for any repaints that happen
-    // during styleDidChange (it's used by clippedOverflowRectForRepaint()).
-    if (m_style->outlineWidth() > 0 && m_style->outlineSize() > maximalOutlineSize(PaintPhaseOutline))
-        view().setMaximalOutlineSize(std::max(theme().platformFocusRingMaxWidth(), static_cast<int>(m_style->outlineSize())));
+    computeMaxOutlineSize();
 
     bool doesNotNeedLayout = !parent();
 

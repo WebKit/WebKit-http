@@ -1,3 +1,614 @@
+2015-08-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r188581): Web Inspector: Console user command isn't visible after reloading the page
+        https://bugs.webkit.org/show_bug.cgi?id=148166
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.startNewSession):
+
+2015-08-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r188581): Web Inspector: Option-Enter no longer inserts a new line in the console
+        https://bugs.webkit.org/show_bug.cgi?id=148165
+
+        Make Option-Enter insert a new line, as it was before r188581.
+        Make Command-Enter keep executed command in the prompt.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt): Deleted.
+        (WebInspector.ConsolePrompt.prototype._handleCommandEnterKey):
+        (WebInspector.ConsolePrompt.prototype._handleOptionEnterKey): Deleted.
+        (WebInspector.ConsolePrompt.prototype._handleCommandOptionEnterKey): Deleted.
+
+2015-08-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Links for rules in <style> are incorrect, do not account for <style> offset in the document
+        https://bugs.webkit.org/show_bug.cgi?id=148141
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager):
+        (WebInspector.CSSStyleManager.prototype.get styleSheets):
+        (WebInspector.CSSStyleManager.prototype.fetchStyleSheetsIfNeeded):
+        (WebInspector.CSSStyleManager.prototype.styleSheetForIdentifier):
+        (WebInspector.CSSStyleManager.prototype._mainResourceDidChange):
+        Update more information about a StyleSheet when fetched.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.update):
+        Eliminate usage of `delete`.
+
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WebInspector.CSSStyleSheet):
+        (WebInspector.CSSStyleSheet.prototype.get startLineNumber):
+        (WebInspector.CSSStyleSheet.prototype.get startColumnNumber):
+        (WebInspector.CSSStyleSheet.prototype.hasInfo):
+        (WebInspector.CSSStyleSheet.prototype.isInlineStyleTag):
+        (WebInspector.CSSStyleSheet.prototype.updateInfo):
+        Include more information about this stylesheet.
+
+        (WebInspector.CSSStyleSheet.prototype.offsetSourceCodeLocation):
+        Include helper API to offset a source code location by the startLine/Column
+        of this stylesheet itself, if it was an inline style.
+
+        (WebInspector.CSSStyleSheet.prototype.isInlineStyleAttributeStyleSheet):
+        (WebInspector.CSSStyleSheet.prototype.markAsInlineStyleAttributeStyleSheet):
+        (WebInspector.CSSStyleSheet.isInlineStyle): Deleted.
+        (WebInspector.CSSStyleSheet.prototype.markAsInlineStyle): Deleted.
+        Rename for clarity.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh):
+        Fetch stylesheet header information eagerly, so we have them early on.
+
+        (WebInspector.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        (WebInspector.DOMNodeStyles.prototype._parseRulePayload):
+        Offset sourceCodeLocations for CSSRules based on the StyleSheet offset.
+
+        * UserInterface/Models/SourceCodeLocation.js:
+        (WebInspector.SourceCodeLocation.prototype.update):
+        Improve coding style.
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add proper formatting for editing styles in the Visual Panel
+        https://bugs.webkit.org/show_bug.cgi?id=148147
+
+        Reviewed by Timothy Hatcher.
+
+        Editing styles in the Visual styles panel now preserves whitespace in the related resource file.
+
+        * UserInterface/Views/VisualStylePropertyCombiner.js:
+        (WebInspector.VisualStylePropertyCombiner):
+        (WebInspector.VisualStylePropertyCombiner.prototype.modifyPropertyText):
+
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+        (WebInspector.VisualStylePropertyEditor.generateFormattedTextForNewProperty):
+        (WebInspector.VisualStylePropertyEditor.prototype.modifyPropertyText):
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add support for positioning Visual editors on non-retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=148160
+
+        Reviewed by Timothy Hatcher.
+
+        Cleans up the positioning, dimensions, and widths of the
+        Visual editors on non-retina displays.
+
+        * UserInterface/Views/VisualStyleColorPicker.css:
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > input):
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section > .content .group > .row.visual-style-separated-row):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._clearModifiedSection):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.css:
+        (.visual-style-property-editor-link):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link.link-all > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon):
+        (.visual-style-property-editor-link:not(.link-all) > .visual-style-property-editor-link-icon):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-icon:hover + .visual-style-property-editor-link-border.right): Deleted.
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.right): Deleted.
+        (.visual-style-property-editor-link.link-all > .visual-style-property-editor-link-icon): Deleted.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item > input[type="checkbox"]):
+        (.item.visual-style-selector-item > .icon):
+        (.item.visual-style-selector-item.selector-invalid > .titles > .title::before):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.item.visual-style-selector-item > .titles):
+        (.item.visual-style-selector-item.selector-invalid > .icon): Deleted.
+
+        * UserInterface/Views/VisualStyleTimingEditor.css:
+        (.visual-style-property-container.timing-editor > .visual-style-property-value-container > .bezier-editor):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+
+
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Show the computed value in an overlay for numerical Visual Editors
+        https://bugs.webkit.org/show_bug.cgi?id=148161
+
+        Reviewed by Timothy Hatcher.
+
+        Adds an "Unchanged" option to the number-based Visual editors that shows the
+        computed value if it is not a number (it would therefore be a keyword).
+
+        * UserInterface/Views/VisualStyleNumberInputBox.css:
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container:not(.has-value) > span):
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set placeholder):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set _unitsElementTextContent):
+        (WebInspector.VisualStyleNumberInputBox.prototype._markUnitsContainerIfInputHasValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown):
+        (WebInspector.VisualStyleNumberInputBox.prototype._numberInputChanged):
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Small Caps variant checkbox should be to the left of the Small Caps label
+        https://bugs.webkit.org/show_bug.cgi?id=148102
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.css:
+        (.visual-style-property-container.keyword-checkbox.font-variant > .visual-style-property-value-container > input): Deleted.
+        (.visual-style-property-container.keyword-checkbox.font-variant > .visual-style-property-value-container > input::after):
+        (.visual-style-property-container.keyword-checkbox.font-variant > .visual-style-property-value-container > input::before): Deleted.
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Visual editor links should unlink when switching styles
+        https://bugs.webkit.org/show_bug.cgi?id=148153
+
+        Reviewed by Timothy Hatcher.
+
+        Visual editor links are now deactivated when switching rules/nodes.
+
+        * UserInterface/Images/VisualStylePropertyUnlinked.svg:
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateMetricSectionRows):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.js:
+        (WebInspector.VisualStylePropertyEditorLink.prototype.set linked):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconClicked):
+        (WebInspector.VisualStylePropertyEditorLink):
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Consider showing style summary on collapsed visual sidebar sections
+        https://bugs.webkit.org/show_bug.cgi?id=148104
+
+        Reviewed by Timothy Hatcher.
+
+        The blue indicator dot on a section now means that that section has at least one set value.
+        If a section has been modified, it will display a trash can that will clear those modifications.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section.has-set-property > .header > span::after):
+        (.sidebar > .panel.details.css-style .visual > .details-section .details-section.modified > .header > span::after): Deleted.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateProperties):
+        (WebInspector.VisualStyleDetailsPanel.prototype._sectionModified):
+        (WebInspector.VisualStyleDetailsPanel.prototype._groupHasSetProperty):
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: round sub-pixel values we get from computed style in visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=148105
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set placeholder):
+        Now rounds the value and placeholder to the nearest 100th.
+
+2015-08-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: transparent color swatches have lopsided checkered background on non-retina
+        https://bugs.webkit.org/show_bug.cgi?id=148150
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (@media (-webkit-max-device-pixel-ratio: 1)):
+        Make color and bezier widgets slightly smaller, but evenly sized so the
+        checkered background is not lopsided and the curve is a little less blurry.
+
+2015-08-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Modernize CSSStyleManager
+        https://bugs.webkit.org/show_bug.cgi?id=148143
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+          - Eliminate `delete` operator use.
+          - Move from using Objects as hashmaps to Map.
+          - Fix typos.
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Move ProtocolTestStub.{html,js} into the actual WebInspectorUI project.
+
+        * UserInterface/Base/TestStub.js: Renamed from LayoutTests/http/tests/inspector/resources/ProtocolTestStub.js.
+        * UserInterface/TestStub.html: Renamed from LayoutTests/http/tests/inspector/resources/ProtocolTestStub.html.
+
+2015-08-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Better keyboard shortcut to focus on the console prompt
+        https://bugs.webkit.org/show_bug.cgi?id=147927
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._focusConsolePrompt):
+        Added a Control-Tilde keyboard shortcut to focus the console prompt.
+
+2015-08-18  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Option-Enter should commit console command without erasing the prompt
+        https://bugs.webkit.org/show_bug.cgi?id=148123
+
+        Also, don't append a console command if it's the same as the last one.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        * UserInterface/Views/ConsolePrompt.js:
+        (WebInspector.ConsolePrompt):
+        (WebInspector.ConsolePrompt.prototype._handleEnterKey.commitTextOrInsertNewLine):
+        (WebInspector.ConsolePrompt.prototype._handleEnterKey):
+        (WebInspector.ConsolePrompt.prototype._handleOptionEnterKey):
+        (WebInspector.ConsolePrompt.prototype._handleCommandOptionEnterKey):
+
+2015-08-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188539, r188544, r188552, and
+        r188564.
+        https://bugs.webkit.org/show_bug.cgi?id=148122
+
+        Broke tests and some build styles (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Web Inspector: load ProtocolTestStub from the WebInspectorUI
+        bundle"
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+        http://trac.webkit.org/changeset/188539
+
+        "Web Inspector: split TestStub.js into multiple files and
+        modernize it"
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+        http://trac.webkit.org/changeset/188544
+
+        "Web Inspector: InspectorTest should be a subclass of
+        TestHarness"
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+        http://trac.webkit.org/changeset/188552
+
+        "Unreviewed internal build fix attempt after r188539."
+        http://trac.webkit.org/changeset/188564
+
+2015-08-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Allow typing command when a console message is selected
+        https://bugs.webkit.org/show_bug.cgi?id=148121
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype._keyPress):
+        Command-C should still copy the selected message.
+
+2015-08-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Update slider styles
+        https://bugs.webkit.org/show_bug.cgi?id=148120
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Main.css:
+        (input[type=range]):
+        (input[type=range]::-webkit-slider-runnable-track::before):
+
+2015-08-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: font-family list is backwards in visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=148101
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._addCommaSeparatedKeyword):
+        Now appends new children if the current index is not set instead of inserting them.
+
+2015-08-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Style changes to Visual sidebar selector items
+        https://bugs.webkit.org/show_bug.cgi?id=148114
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype._updateTitleElements):
+        (WebInspector.GeneralTreeElement.prototype._updateTitleTooltip):
+        Moved the code to update the item tooltip to its own function.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.editorMouseover):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.editorMouseout):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners):
+        (WebInspector.VisualStyleDetailsPanel.prototype._generateMetricSectionRows):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateMarginSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populatePaddingSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.onEditorMouseover): Deleted.
+        (WebInspector.VisualStyleDetailsPanel.prototype._addMetricsMouseListeners.onEditorMouseout): Deleted.
+        Added on-hover node/selector highlighting to margin and padding editor links.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox):
+        Replaced "No Units" with "Number" for better clarity.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (body:not(.window-inactive, .window-docked-inactive) .item.visual-style-selector-item.selected > input[type="checkbox"]:checked::before):
+        (.item.visual-style-selector-item.selected > input[type="checkbox"]::before): Deleted.
+        Removes the white border when the window is inactive and when the checkbox is unchecked.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._commitSelector):
+        Now updates the title of the item when the selector changes.
+
+2015-08-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: delete key should work on multi-values visual sidebar grid sections
+        https://bugs.webkit.org/show_bug.cgi?id=148110
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._listElementKeyDown):
+        If the backspace/delete key is pressed when focus is within the list element, delete
+        the selected list item if it is not currently being edited (if it has an editor).
+
+        * UserInterface/Views/VisualStyleFontFamilyTreeElement.js:
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.get currentlyEditing):
+
+2015-08-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: web fonts or unknown fonts show up as Times in visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=148103
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleFontFamilyTreeElement.js:
+        (WebInspector.VisualStyleFontFamilyTreeElement.prototype.updateMainTitle):
+        Fonts now fall back to sans-serif and -apple-system if they do not exist.
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement IntegerHasher
+        https://bugs.webkit.org/show_bug.cgi?id=147866
+
+        Reviewed by Darin Adler and Anders Carlsson.
+
+        Update comment.
+
+        * UserInterface/Base/Utilities.js:
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorTest should be a subclass of TestHarness
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+
+        Reviewed by Timothy Hatcher.
+
+        Extract the frontend test harness into a subclass. Delete some code that
+        is now redundant. Sprinkle some ES6 syntax where possible.
+
+        Rewrite the code that redirects the Inspector page's console messages to
+        the test page, since it didn't appear to work any more.
+
+        * UserInterface/Test.html:
+        * UserInterface/Test/FrontendTestHarness.js: Added.
+        (FrontendTestHarness):
+        (FrontendTestHarness.prototype.completeTest):
+        (FrontendTestHarness.prototype.addResult):
+        (FrontendTestHarness.prototype.debugLog):
+        (FrontendTestHarness.prototype.evaluateInPage):
+        (FrontendTestHarness.prototype.expectNoError):
+        (FrontendTestHarness.prototype.testPageDidLoad):
+        (FrontendTestHarness.prototype.reloadPage):
+        (FrontendTestHarness.prototype.redirectConsoleToTestOutput.createProxyConsoleHandler):
+        (FrontendTestHarness.prototype.redirectConsoleToTestOutput):
+        (FrontendTestHarness.prototype.reportUncaughtException):
+        (FrontendTestHarness.prototype._resendResults):
+        * UserInterface/Test/Test.js:
+        (InspectorTest.EventDispatcher.prototype.dispatchEvent): Deleted.
+        (InspectorTest.EventDispatcher): Deleted.
+        (InspectorTest.log): Deleted.
+        (InspectorTest.assert): Deleted.
+        (InspectorTest.expectThat): Deleted.
+        (InspectorTest.debugLog): Deleted.
+        (InspectorTest.expectNoError): Deleted.
+        (InspectorTest.completeTest): Deleted.
+        (InspectorTest.evaluateInPage): Deleted.
+        (InspectorTest.addResult): Deleted.
+        (InspectorTest._resendResults): Deleted.
+        (InspectorTest.testPageDidLoad): Deleted.
+        (InspectorTest.reloadPage): Deleted.
+        (InspectorTest.reportUncaughtException): Deleted.
+
+2015-08-17  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Type profiler return types aren't showing up
+        https://bugs.webkit.org/show_bug.cgi?id=147348
+
+        Reviewed by Brian Burg.
+
+        Bug #145995 changed the starting offset of a function to 
+        be the open parenthesis of the function's parameter list.
+        This broke the type profiler's text offset based protocol with JSC.
+        The text offset used in the protocol is now the first letter of the 
+        function/get/set/method name.  So "f" in "function a() {}", "s" in "set foo(){}", etc.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype.containsNonEmptyReturnStatement):
+        (WebInspector.ScriptSyntaxTree.functionReturnDivot):
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: REGRESSION: spurious console.assert inside ResourceContentView._contentAvailable
+        https://bugs.webkit.org/show_bug.cgi?id=147886
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._hasContent): Fix the style class name.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: split TestStub.js into multiple files and modernize it
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+
+        Reviewed by Timothy Hatcher.
+ 
+        Since we want to share files between the two harnesses, split some of the parts
+        into different files so not everything has to be included at once.
+
+        Rename InjectedTestHarness to just TestHarness. Update some code to use
+        ES6 features where appropriate. Put test classes into Test/ directory.
+
+        * UserInterface/Base/TestStub.js: Removed.
+        * UserInterface/Test.html:
+        * UserInterface/Test/InspectorProtocol.js: Added.
+        (InspectorProtocol.sendCommand):
+        (InspectorProtocol.awaitCommand):
+        (InspectorProtocol.awaitEvent.):
+        (InspectorProtocol.awaitEvent):
+        (InspectorProtocol.addEventListener):
+        (InspectorProtocol.sendMessage):
+        (InspectorProtocol.checkForError):
+        (InspectorProtocol.dispatchMessageFromBackend):
+        * UserInterface/Test/ProtocolTestHarness.js: Added.
+        (ProtocolTestHarness.prototype.completeTest):
+        (ProtocolTestHarness.prototype.addResult):
+        (ProtocolTestHarness.prototype.debugLog):
+        (ProtocolTestHarness.prototype.evaluateInPage):
+        (ProtocolTestHarness):
+        * UserInterface/Test/Test.js: Renamed from Source/WebInspectorUI/UserInterface/Base/Test.js.
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector.UIString):
+        (WebInspector.updateDockedState):
+        (WebInspector.updateDockingAvailability):
+        (InspectorTest.EventDispatcher.prototype.dispatchEvent):
+        (InspectorTest.EventDispatcher):
+        (InspectorTest.log):
+        (InspectorTest.assert):
+        (InspectorTest.expectThat):
+        (InspectorTest.debugLog):
+        (InspectorTest.expectNoError):
+        (InspectorTest.completeTest):
+        (InspectorTest.evaluateInPage):
+        (InspectorTest.addResult):
+        (InspectorTest._resendResults):
+        (InspectorTest.testPageDidLoad):
+        (InspectorTest.reloadPage):
+        (InspectorTest.reportUncaughtException):
+        * UserInterface/Test/TestHarness.js: Added.
+        (TestHarness):
+        (TestHarness.prototype.completeTest):
+        (TestHarness.prototype.addResult):
+        (TestHarness.prototype.debugLog):
+        (TestHarness.prototype.evaluateInPage):
+        (TestHarness.prototype.createAsyncSuite):
+        (TestHarness.prototype.createSyncSuite):
+        (TestHarness.prototype.get logCount):
+        (TestHarness.prototype.log):
+        (TestHarness.prototype.assert):
+        (TestHarness.prototype.expectThat):
+        * UserInterface/Test/TestStub.js: Added.
+        * UserInterface/Test/TestSuite.js: Added.
+        (TestSuite):
+        (TestSuite.prototype.runTestCasesAndFinish):
+        (TestSuite.prototype.runTestCases):
+        (TestSuite.prototype.get passCount):
+        (TestSuite.prototype.get skipCount):
+        (TestSuite.prototype.addTestCase):
+        (AsyncTestSuite.prototype.runTestCasesAndFinish.finish):
+        (AsyncTestSuite.prototype.runTestCasesAndFinish):
+        (AsyncTestSuite.prototype.runTestCases):
+        (AsyncTestSuite):
+        (SyncTestSuite.prototype.runTestCasesAndFinish):
+        (SyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite):
+        * UserInterface/TestStub.html:
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Move ProtocolTestStub.{html,js} into the actual WebInspectorUI project.
+
+        * UserInterface/Base/TestStub.js: Renamed from LayoutTests/http/tests/inspector/resources/ProtocolTestStub.js.
+        * UserInterface/TestStub.html: Renamed from LayoutTests/http/tests/inspector/resources/ProtocolTestStub.html.
+
+2015-08-17  Simon Fraser  <simon.fraser@apple.com>
+
+        will-change should sometimes trigger compositing
+        https://bugs.webkit.org/show_bug.cgi?id=148072
+
+        Reviewed by Tim Horton.
+        
+        Have the web inspector show a correct compositing reason for will-change.
+        This could be improved to indicate which specific value in will-change triggered
+        the compositing.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._populateListOfCompositingReasons):
+        (WebInspector.LayerTreeDetailsSidebarPanel):
+
 2015-08-14  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: NavigationBar.updateLayoutSoon should use requestAnimationFrame
