@@ -1,8 +1,8 @@
 # - Try to find gbm.
 # Once done, this will define
 #
-#  GBM_INCLUDE_DIRS - the gbm include directories
-#  GBM_LIBRARIES - link these to use gbm.
+#  LIBGBM_INCLUDE_DIRS - the gbm include directories
+#  LIBGBM_LIBRARIES - link these to use gbm.
 #
 # Copyright (C) 2015 Igalia S.L.
 #
@@ -28,19 +28,19 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_GBM gbm)
+pkg_check_modules(PC_LIBGBM gbm)
 
-find_path(GBM_INCLUDE_DIRS
+find_path(LIBGBM_INCLUDE_DIRS
     NAMES gbm.h
-    HINTS ${PC_GBM_INCLUDE_DIRS} ${PC_GBM_INCUDEDIR}
+    HINTS ${PC_LIBGBM_INCLUDE_DIRS} ${PC_LIBGBM_INCUDEDIR}
 )
 
-find_library(GBM_LIBRARIES
+find_library(LIBGBM_LIBRARIES
     NAMES gbm
-    HINTS ${PC_GBM_LIBRARY_DIRS} ${PC_GBM_LIBDIR}
+    HINTS ${PC_LIBGBM_LIBRARY_DIRS} ${PC_LIBGBM_LIBDIR}
 )
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(GBM DEFAULT_MSG GBM_LIBRARIES)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LIBGBM DEFAULT_MSG LIBGBM_LIBRARIES)
 
-mark_as_advanced(GBM_INCLUDE_DIRS GBM_LIBRARIES)
+mark_as_advanced(LIBGBM_INCLUDE_DIRS LIBGBM_LIBRARIES)

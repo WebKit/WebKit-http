@@ -2,8 +2,8 @@
 # - Try to find drm.
 # Once done, this will define
 #
-#  DRM_INCLUDE_DIRS - the drm include directories
-#  DRM_LIBRARIES - link these to use drm.
+#  LIBDRM_INCLUDE_DIRS - the drm include directories
+#  LIBDRM_LIBRARIES - link these to use drm.
 #
 # Copyright (C) 2015 Igalia S.L.
 #
@@ -29,19 +29,19 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_DRM libdrm)
+pkg_check_modules(PC_LIBDRM libdrm)
 
-find_path(DRM_INCLUDE_DIRS
+find_path(LIBDRM_INCLUDE_DIRS
     NAMES drm.h
-    HINTS ${PC_DRM_INCLUDE_DIRS} ${PC_DRM_INCUDEDIR}
+    HINTS ${PC_LIBDRM_INCLUDE_DIRS} ${PC_LIBDRM_INCUDEDIR}
 )
 
-find_library(DRM_LIBRARIES
+find_library(LIBDRM_LIBRARIES
     NAMES drm
-    HINTS ${PC_DRM_LIBRARY_DIRS} ${PC_DRM_LIBDIR}
+    HINTS ${PC_LIBDRM_LIBRARY_DIRS} ${PC_LIBDRM_LIBDIR}
 )
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(DRM DEFAULT_MSG DRM_INCLUDE_DIRS)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LIBDRM DEFAULT_MSG LIBDRM_LIBRARIES)
 
-mark_as_advanced(DRM_INCLUDE_DIRS DRM_LIBRARIES)
+mark_as_advanced(LIBDRM_INCLUDE_DIRS LIBDRM_LIBRARIES)
