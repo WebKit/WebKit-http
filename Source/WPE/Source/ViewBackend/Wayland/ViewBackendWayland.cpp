@@ -92,7 +92,7 @@ ViewBackendWayland::ViewBackendWayland()
 
     m_xdgSurface = xdg_shell_get_xdg_surface(m_display.xdg(), m_surface);
     xdg_surface_add_listener(m_xdgSurface, &m_xdgSurfaceListener, this);
-    xdg_surface_set_title(m_xdgSurface, "kek");
+    xdg_surface_set_title(m_xdgSurface, "WPE");
 }
 
 void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t)
