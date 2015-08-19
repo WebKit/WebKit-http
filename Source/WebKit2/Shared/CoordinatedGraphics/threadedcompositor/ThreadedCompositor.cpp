@@ -390,22 +390,6 @@ static void debugThreadedCompositorFPS()
     }
 }
 
-#if 0
-const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
-    // frame
-    [](void* data, struct wl_callback* callback, uint32_t) {
-        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
-        if (reportFPS)
-            debugThreadedCompositorFPS();
-        wl_callback_destroy(callback);
-
-        auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
-        threadedCompositor.m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-        threadedCompositor.m_compositingRunLoop->updateCompleted();
-    }
-};
-#endif
-
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
 {
@@ -450,6 +434,10 @@ void ThreadedCompositor::frameComplete()
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([protector] {
+        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+        if (reportFPS)
+            debugThreadedCompositorFPS();
+
         protector->m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
         protector->m_compositingRunLoop->updateCompleted();
     });
