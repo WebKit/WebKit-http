@@ -41,22 +41,20 @@ public:
     static WaylandDisplay& singleton();
 
     struct wl_display* display() const { return m_display; }
-    struct wl_compositor* compositor() const { return m_compositor; }
-    struct wl_drm* drm() const { return m_drm; }
-    struct xdg_shell* xdg() const { return m_xdg; }
 
     EGLDisplay eglDisplay() const { return m_eglDisplay; }
+
+    struct Interfaces {
+        struct wl_compositor* compositor;
+        struct wl_drm* drm;
+        struct xdg_shell* xdg;
+    } interfaces;
 
 private:
     WaylandDisplay();
 
-    static const struct wl_registry_listener m_registryListener;
-
     struct wl_display* m_display;
     struct wl_registry* m_registry;
-    struct wl_compositor* m_compositor;
-    struct wl_drm* m_drm;
-    struct xdg_shell* m_xdg;
 
     EGLDisplay m_eglDisplay;
 };

@@ -59,29 +59,71 @@ static const struct xdg_surface_listener g_xdgSurfaceListener = {
     [](void*, struct xdg_surface*) { },
 };
 
+const struct wl_buffer_listener g_bufferListener = {
+    // release
+    [](void* data, struct wl_buffer* buffer)
+    {
+        auto& bufferData = *static_cast<ViewBackendWayland::BufferListenerData*>(data);
+        auto& bufferMap = bufferData.map;
+
+        auto it = std::find_if(bufferMap.begin(), bufferMap.end(),
+            [buffer] (const std::pair<uint32_t, struct wl_buffer*>& entry) { return entry.second == buffer; });
+
+        if (it == bufferMap.end())
+            return;
+
+        if (bufferData.client)
+            bufferData.client->releaseBuffer(it->first);
+    },
+};
+
+const struct wl_callback_listener g_callbackListener = {
+    // frame
+    [](void* data, struct wl_callback* callback, uint32_t)
+    {
+        auto& callbackData = *static_cast<ViewBackendWayland::CallbackListenerData*>(data);
+        if (callbackData.client)
+            callbackData.client->frameComplete();
+        callbackData.frameCallback = nullptr;
+        wl_callback_destroy(callback);
+    },
+};
 
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
     fprintf(stderr, "ViewBackendWayland::ViewBackendWayland()\n");
-    m_surface = wl_compositor_create_surface(WaylandDisplay::singleton().compositor());
+    m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
 
-    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.xdg(), m_surface);
+    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);
     xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, this);
     xdg_surface_set_title(m_xdgSurface, "WPE");
+}
+
+ViewBackendWayland::~ViewBackendWayland()
+{
+    if (m_callbackData.frameCallback)
+        wl_callback_destroy(m_callbackData.frameCallback);
+}
+
+void ViewBackendWayland::setClient(Client* client)
+{
+    m_bufferData.client = client;
+    m_callbackData.client = client;
 }
 
 void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t)
 {
     struct wl_buffer* buffer = nullptr;
+    auto& bufferMap = m_bufferData.map;
     if (fd >= 0) {
-        assert(m_bufferMap.find(handle) == m_bufferMap.end());
-        buffer = wl_drm_create_prime_buffer(m_display.drm(), fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
-        wl_buffer_add_listener(buffer, &m_bufferListener, new BufferListenerData{ *this, handle });
-        m_bufferMap.insert({ handle, buffer });
+        assert(bufferMap.find(handle) == bufferMap.end());
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces.drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
+        wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
+        bufferMap.insert({ handle, buffer });
     } else {
-        auto it = m_bufferMap.find(handle);
-        assert(it != m_bufferMap.end());
+        auto it = bufferMap.find(handle);
+        assert(it != bufferMap.end());
         buffer = it->second;
     }
 
@@ -90,36 +132,14 @@ void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, 
         return;
     }
 
-    struct wl_callback* callback = wl_surface_frame(m_surface);
-    wl_callback_add_listener(callback, &m_callbackListener, this);
+    m_callbackData.frameCallback = wl_surface_frame(m_surface);
+    wl_callback_add_listener(m_callbackData.frameCallback, &g_callbackListener, &m_callbackData);
 
     wl_surface_attach(m_surface, buffer, 0, 0);
     wl_surface_damage(m_surface, 0, 0, INT32_MAX, INT32_MAX);
     wl_surface_commit(m_surface);
     wl_display_flush(m_display.display());
 }
-
-const struct wl_buffer_listener ViewBackendWayland::m_bufferListener = {
-    // release
-    [](void* data, struct wl_buffer*)
-    {
-        auto& listenerData = *static_cast<BufferListenerData*>(data);
-        if (listenerData.first.m_client)
-            listenerData.first.m_client->releaseBuffer(listenerData.second);
-    },
-};
-
-const struct wl_callback_listener ViewBackendWayland::m_callbackListener = {
-    // frame
-    [](void* data, struct wl_callback* callback, uint32_t)
-    {
-        auto& backend = *static_cast<ViewBackendWayland*>(data);
-        if (backend.m_client)
-            backend.m_client->frameComplete();
-
-        wl_callback_destroy(callback);
-    },
-};
 
 } // namespace ViewBackend
 

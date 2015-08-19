@@ -94,6 +94,28 @@ static const struct xdg_shell_listener g_xdgShellListener = {
     },
 };
 
+const struct wl_registry_listener g_registryListener = {
+    // global
+    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t)
+    {
+        auto& interfaces = *static_cast<WaylandDisplay::Interfaces*>(data);
+
+        if (!std::strcmp(interface, "wl_compositor"))
+            interfaces.compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
+
+        if (!std::strcmp(interface, "wl_drm"))
+            interfaces.drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
+
+        if (!std::strcmp(interface, "xdg_shell")) {
+            interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
+            xdg_shell_add_listener(interfaces.xdg, &g_xdgShellListener, nullptr);
+            xdg_shell_use_unstable_version(interfaces.xdg, 5);
+        }
+    },
+    // global_remove
+    [](void*, struct wl_registry*, uint32_t) { },
+};
+
 WaylandDisplay& WaylandDisplay::singleton()
 {
     static WaylandDisplay display;
@@ -105,7 +127,7 @@ WaylandDisplay::WaylandDisplay()
     m_display = wl_display_connect(nullptr);
     m_registry = wl_display_get_registry(m_display);
 
-    wl_registry_add_listener(m_registry, &m_registryListener, this);
+    wl_registry_add_listener(m_registry, &g_registryListener, &interfaces);
     wl_display_roundtrip(m_display);
 
     GSource* baseSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
@@ -126,28 +148,6 @@ WaylandDisplay::WaylandDisplay()
     eglInitialize(m_eglDisplay, nullptr, nullptr);
     eglBindAPI(EGL_OPENGL_ES_API);
 }
-
-const struct wl_registry_listener WaylandDisplay::m_registryListener = {
-    // global
-    [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t)
-    {
-        auto& display = *static_cast<WaylandDisplay*>(data);
-
-        if (!std::strcmp(interface, "wl_compositor"))
-            display.m_compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
-
-        if (!std::strcmp(interface, "wl_drm"))
-            display.m_drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
-
-        if (!std::strcmp(interface, "xdg_shell")) {
-            display.m_xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
-            xdg_shell_add_listener(display.m_xdg, &g_xdgShellListener, &display);
-            xdg_shell_use_unstable_version(display.m_xdg, 5);
-        }
-    },
-    // global_remove
-    [](void*, struct wl_registry*, uint32_t) { },
-};
 
 } // namespace ViewBackend
 

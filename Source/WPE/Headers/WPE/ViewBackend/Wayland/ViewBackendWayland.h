@@ -44,24 +44,29 @@ class WaylandDisplay;
 class ViewBackendWayland {
 public:
     ViewBackendWayland();
-    void setClient(Client* client) { m_client = client; }
+    ~ViewBackendWayland();
+    void setClient(Client* client);
 
     void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format);
 
+    struct BufferListenerData {
+        Client* client;
+        std::unordered_map<uint32_t, struct wl_buffer*> map;
+    };
+
+    struct CallbackListenerData {
+        Client* client;
+        struct wl_callback* frameCallback;
+    };
+
 private:
-    static const struct wl_buffer_listener m_bufferListener;
-    static const struct wl_callback_listener m_callbackListener;
+    BufferListenerData m_bufferData;
+    CallbackListenerData m_callbackData;
 
-    using BufferListenerData = std::pair<ViewBackendWayland&, uint32_t>;
-
-    Client* m_client { nullptr };
-
-    std::pair<int, int> m_size;
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
 
     WaylandDisplay& m_display;
-    std::unordered_map<uint32_t, struct wl_buffer*> m_bufferMap;
 };
 
 } // namespace ViewBackend
