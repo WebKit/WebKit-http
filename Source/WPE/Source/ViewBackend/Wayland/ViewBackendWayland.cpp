@@ -31,19 +31,6 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
-#include <errno.h>
-#include <fcntl.h>
-#include <memory>
-#include <sys/mman.h>
-
-#include <sys/types.h>
-#include <gbm.h>
-
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-
-#include <array>
-#include <vector>
 
 namespace WPE {
 
@@ -92,7 +79,6 @@ const struct wl_callback_listener g_callbackListener = {
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
-    fprintf(stderr, "ViewBackendWayland::ViewBackendWayland()\n");
     m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
 
     m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);

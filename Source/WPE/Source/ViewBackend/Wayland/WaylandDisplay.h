@@ -26,11 +26,13 @@
 #ifndef ViewBackend_Wayland_WaylandDisplay_h
 #define ViewBackend_Wayland_WaylandDisplay_h
 
-#include <wayland-egl.h>
-#include <EGL/egl.h>
+#include <wayland-client.h>
 
-struct xdg_shell;
+struct wl_compositor;
+struct wl_display;
 struct wl_drm;
+struct wl_registry;
+struct xdg_shell;
 
 namespace WPE {
 
@@ -41,8 +43,6 @@ public:
     static WaylandDisplay& singleton();
 
     struct wl_display* display() const { return m_display; }
-
-    EGLDisplay eglDisplay() const { return m_eglDisplay; }
 
     struct Interfaces {
         struct wl_compositor* compositor;
@@ -55,8 +55,6 @@ private:
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
-
-    EGLDisplay m_eglDisplay;
 };
 
 } // namespace ViewBackend

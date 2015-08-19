@@ -27,11 +27,10 @@
 #define WPE_ViewBackend_ViewBackendWayland_h
 
 #include <unordered_map>
-#include <utility>
-#include <wayland-egl.h>
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
 
+struct wl_buffer;
+struct wl_callback;
+struct wl_surface;
 struct xdg_surface;
 
 namespace WPE {
