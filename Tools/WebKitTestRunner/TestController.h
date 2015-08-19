@@ -39,6 +39,7 @@ namespace WTR {
 class TestInvocation;
 class PlatformWebView;
 class EventSenderProxy;
+struct ViewOptions;
 
 // FIXME: Rename this TestRunner?
 class TestController {
@@ -67,7 +68,6 @@ public:
 
     EventSenderProxy* eventSenderProxy() { return m_eventSenderProxy.get(); }
 
-    void ensureViewSupportsOptions(WKDictionaryRef options);
     bool shouldUseRemoteLayerTree() const { return m_shouldUseRemoteLayerTree; }
     
     // Runs the run loop until `done` is true or the timeout elapses.
@@ -89,6 +89,7 @@ public:
     void setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed);
     void setMockGeolocationPositionUnavailableError(WKStringRef errorMessage);
     void handleGeolocationPermissionRequest(WKGeolocationPermissionRequestRef);
+    bool isGeolocationProviderActive() const;
 
     // MediaStream.
     void setUserMediaPermission(bool);
@@ -123,7 +124,7 @@ public:
 
 private:
     void initialize(int argc, const char* argv[]);
-    void createWebViewWithOptions(WKDictionaryRef);
+    void createWebViewWithOptions(const ViewOptions&);
     void run();
 
     void runTestingServerLoop();
@@ -140,9 +141,12 @@ private:
     void initializeInjectedBundlePath();
     void initializeTestPluginDirectory();
 
+    void ensureViewSupportsOptionsForTest(const TestInvocation&);
+    ViewOptions viewOptionsForTest(const TestInvocation&) const;
+    void updatePlatformSpecificViewOptionsForTest(ViewOptions&, const TestInvocation&) const;
+
     void updateWebViewSizeForTest(const TestInvocation&);
     void updateWindowScaleForTest(PlatformWebView*, const TestInvocation&);
-    void updateLayoutTypeForTest(const TestInvocation&);
 
     void decidePolicyForGeolocationPermissionRequestIfPossible();
     void decidePolicyForUserMediaPermissionRequestIfPossible();

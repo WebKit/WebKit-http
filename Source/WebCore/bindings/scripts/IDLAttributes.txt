@@ -34,6 +34,7 @@ ConstructorConditional=*
 ConstructorRaisesException
 ConstructorTemplate=Event|TypedArray
 Custom
+CustomBinding
 CustomCall
 CustomConstructor
 CustomDeleteProperty
@@ -98,6 +99,7 @@ ObjCPolymorphic
 ObjCProtocol
 ObjCUseDefaultView
 OperationsNotDeletable
+OverrideBuiltins
 PassContext
 RaisesException
 Reflect=*

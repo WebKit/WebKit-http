@@ -98,7 +98,7 @@ inline void CopiedSpace::recycleEvacuatedBlock(CopiedBlock* block, HeapOperation
     ASSERT(block->canBeRecycled());
     ASSERT(!block->m_isPinned);
     {
-        SpinLockHolder locker(&m_toSpaceLock);
+        LockHolder locker(&m_toSpaceLock);
         m_blockSet.remove(block);
         if (collectionType == EdenCollection)
             m_newGen.fromSpace->remove(block);
@@ -113,12 +113,12 @@ inline void CopiedSpace::recycleBorrowedBlock(CopiedBlock* block)
     CopiedBlock::destroy(block);
 
     {
-        MutexLocker locker(m_loanedBlocksLock);
+        LockHolder locker(m_loanedBlocksLock);
         ASSERT(m_numberOfLoanedBlocks > 0);
         ASSERT(m_inCopyingPhase);
         m_numberOfLoanedBlocks--;
         if (!m_numberOfLoanedBlocks)
-            m_loanedBlocksCondition.signal();
+            m_loanedBlocksCondition.notifyOne();
     }
 }
 
@@ -128,7 +128,7 @@ inline CopiedBlock* CopiedSpace::allocateBlockForCopyingPhase()
     CopiedBlock* block = CopiedBlock::createNoZeroFill();
 
     {
-        MutexLocker locker(m_loanedBlocksLock);
+        LockHolder locker(m_loanedBlocksLock);
         m_numberOfLoanedBlocks++;
     }
 

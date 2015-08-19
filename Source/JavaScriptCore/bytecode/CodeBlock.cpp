@@ -41,13 +41,13 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "FunctionExecutableDump.h"
+#include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITStubs.h"
 #include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
-#include "JSNameScope.h"
 #include "LLIntEntrypoint.h"
 #include "LowLevelInterpreter.h"
 #include "JSCInlines.h"
@@ -645,8 +645,8 @@ void CodeBlock::dumpBytecode(PrintStream& out)
         unsigned i = 0;
         do {
             HandlerInfo& handler = m_rareData->m_exceptionHandlers[i];
-            out.printf("\t %d: { start: [%4d] end: [%4d] target: [%4d] depth: [%4d] } %s\n",
-                i + 1, handler.start, handler.end, handler.target, handler.scopeDepth, handler.typeName());
+            out.printf("\t %d: { start: [%4d] end: [%4d] target: [%4d] } %s\n",
+                i + 1, handler.start, handler.end, handler.target, handler.typeName());
             ++i;
         } while (i < m_rareData->m_exceptionHandlers.size());
     }
@@ -756,6 +756,11 @@ void CodeBlock::dumpBytecode(
         case op_get_scope: {
             int r0 = (++it)->u.operand;
             printLocationOpAndRegisterOperand(out, exec, location, it, "get_scope", r0);
+            break;
+        }
+        case op_load_arrowfunction_this: {
+            int r0 = (++it)->u.operand;
+            printLocationOpAndRegisterOperand(out, exec, location, it, "load_arrowfunction_this", r0);
             break;
         }
         case op_create_direct_arguments: {
@@ -1083,26 +1088,29 @@ void CodeBlock::dumpBytecode(
         case op_put_getter_by_id: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_getter_by_id");
-            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
+            out.printf("%s, %s, %d, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data());
             break;
         }
         case op_put_setter_by_id: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_setter_by_id");
-            out.printf("%s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data());
+            out.printf("%s, %s, %d, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data());
             break;
         }
         case op_put_getter_setter: {
             int r0 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
+            int n0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
             int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_getter_setter");
-            out.printf("%s, %s, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), registerName(r1).data(), registerName(r2).data());
+            out.printf("%s, %s, %d, %s, %s", registerName(r0).data(), idName(id0, identifier(id0)).data(), n0, registerName(r1).data(), registerName(r2).data());
             break;
         }
         case op_del_by_id: {
@@ -1287,6 +1295,15 @@ void CodeBlock::dumpBytecode(
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
+        case op_new_arrow_func_exp: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "op_new_arrow_func_exp");
+            out.printf("%s, %s, f%d, %s", registerName(r0).data(), registerName(r1).data(), f0, registerName(r2).data());
+            break;
+        }
         case op_new_func_exp: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1430,8 +1447,9 @@ void CodeBlock::dumpBytecode(
         case op_push_with_scope: {
             int dst = (++it)->u.operand;
             int newScope = (++it)->u.operand;
+            int currentScope = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "push_with_scope");
-            out.printf("%s, %s", registerName(dst).data(), registerName(newScope).data());
+            out.printf("%s, %s, %s", registerName(dst).data(), registerName(newScope).data(), registerName(currentScope).data());
             break;
         }
         case op_get_parent_scope: {
@@ -1439,15 +1457,6 @@ void CodeBlock::dumpBytecode(
             int parentScope = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "get_parent_scope");
             out.printf("%s, %s", registerName(dst).data(), registerName(parentScope).data());
-            break;
-        }
-        case op_push_name_scope: {
-            int dst = (++it)->u.operand;
-            int r1 = (++it)->u.operand;
-            int k0 = (++it)->u.operand;
-            JSNameScope::Type scopeType = (JSNameScope::Type)(++it)->u.operand;
-            printLocationAndOp(out, exec, location, it, "push_name_scope");
-            out.printf("%s, %s, %s, %s", registerName(dst).data(), registerName(r1).data(), constantName(k0).data(), (scopeType == JSNameScope::FunctionNameScope) ? "functionScope" : "unknownScopeType");
             break;
         }
         case op_create_lexical_environment: {
@@ -1799,15 +1808,13 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         }
         if (size_t count = unlinkedCodeBlock->numberOfExceptionHandlers()) {
             m_rareData->m_exceptionHandlers.resizeToFit(count);
-            size_t nonLocalScopeDepth = scope->depth();
             for (size_t i = 0; i < count; i++) {
                 const UnlinkedHandlerInfo& unlinkedHandler = unlinkedCodeBlock->exceptionHandler(i);
                 HandlerInfo& handler = m_rareData->m_exceptionHandlers[i];
 #if ENABLE(JIT)
-                handler.initialize(unlinkedHandler, nonLocalScopeDepth,
-                    CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(LLInt::getCodePtr(op_catch))));
+                handler.initialize(unlinkedHandler, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(LLInt::getCodePtr(op_catch))));
 #else
-                handler.initialize(unlinkedHandler, nonLocalScopeDepth);
+                handler.initialize(unlinkedHandler);
 #endif
             }
         }
@@ -2097,9 +2104,9 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
                     // Because a return statement can be added implicitly to return undefined at the end of a function,
                     // and these nodes don't emit expression ranges because they aren't in the actual source text of
                     // the user's program, give the type profiler some range to identify these return statements.
-                    // Currently, the text offset that is used as identification is on the open brace of the function 
+                    // Currently, the text offset that is used as identification is "f" in the function keyword
                     // and is stored on TypeLocation's m_divotForFunctionOffsetIfReturnStatement member variable.
-                    divotStart = divotEnd = m_sourceOffset;
+                    divotStart = divotEnd = m_ownerExecutable->typeProfilingStartOffset();
                     shouldAnalyze = true;
                 }
                 break;
@@ -2112,7 +2119,7 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             bool isNewLocation = locationPair.second;
 
             if (flag == ProfileTypeBytecodeFunctionReturnStatement)
-                location->m_divotForFunctionOffsetIfReturnStatement = m_sourceOffset;
+                location->m_divotForFunctionOffsetIfReturnStatement = m_ownerExecutable->typeProfilingStartOffset();
 
             if (shouldAnalyze && isNewLocation)
                 vm()->typeProfiler()->insertNewLocation(location);
@@ -2683,6 +2690,22 @@ void CodeBlock::getCallLinkInfoMap(CallLinkInfoMap& result)
     getCallLinkInfoMap(locker, result);
 }
 
+void CodeBlock::getByValInfoMap(const ConcurrentJITLocker&, ByValInfoMap& result)
+{
+#if ENABLE(JIT)
+    for (auto* byValInfo : m_byValInfos)
+        result.add(CodeOrigin(byValInfo->bytecodeIndex), byValInfo);
+#else
+    UNUSED_PARAM(result);
+#endif
+}
+
+void CodeBlock::getByValInfoMap(ByValInfoMap& result)
+{
+    ConcurrentJITLocker locker(m_lock);
+    getByValInfoMap(locker, result);
+}
+
 #if ENABLE(JIT)
 StructureStubInfo* CodeBlock::addStubInfo()
 {
@@ -2697,6 +2720,12 @@ StructureStubInfo* CodeBlock::findStubInfo(CodeOrigin codeOrigin)
             return stubInfo;
     }
     return nullptr;
+}
+
+ByValInfo* CodeBlock::addByValInfo()
+{
+    ConcurrentJITLocker locker(m_lock);
+    return m_byValInfos.add();
 }
 
 CallLinkInfo* CodeBlock::addCallLinkInfo()
@@ -2997,17 +3026,6 @@ void CodeBlock::linkIncomingCall(ExecState* callerFrame, LLIntCallLinkInfo* inco
 {
     noticeIncomingCall(callerFrame);
     m_incomingLLIntCalls.push(incoming);
-}
-
-void CodeBlock::clearEvalCache()
-{
-    if (!!m_alternative)
-        m_alternative->clearEvalCache();
-    if (CodeBlock* otherBlock = specialOSREntryBlockOrNull())
-        otherBlock->clearEvalCache();
-    if (!m_rareData)
-        return;
-    m_rareData->m_evalCodeCache.clear();
 }
 
 void CodeBlock::install()

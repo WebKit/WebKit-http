@@ -202,6 +202,7 @@ public:
     void showWebInspector();
     void closeWebInspector();
     void evaluateInWebInspector(JSStringRef script);
+    JSRetainPtr<JSStringRef> inspectorTestStubURL();
 
     void setPOSIXLocale(JSStringRef);
 
@@ -259,6 +260,7 @@ public:
     void setGeolocationPermission(bool);
     void setMockGeolocationPosition(double latitude, double longitude, double accuracy, JSValueRef altitude, JSValueRef altitudeAccuracy, JSValueRef heading, JSValueRef speed);
     void setMockGeolocationPositionUnavailableError(JSStringRef message);
+    bool isGeolocationProviderActive();
 
     // MediaStream
     void setUserMediaPermission(bool);

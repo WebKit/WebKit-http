@@ -41,6 +41,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             this._canAddAttributes = true;
         this._searchQuery = null;
         this._expandedChildrenLimit = WebInspector.DOMTreeElement.InitialChildrenLimit;
+
+        this._nodeStateChanges = [];
+        this._boundNodeChangedAnimationEnd = this._nodeChangedAnimationEnd.bind(this);
     }
 
     isCloseTag()
@@ -190,6 +193,14 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (count && this.children[count - 1].expandAllButton)
             count--;
         return count;
+    }
+
+    nodeStateChanged(change)
+    {
+        if (!change)
+            return;
+
+        this._nodeStateChanges.push(change);
     }
 
     showChildNode(node)
@@ -666,6 +677,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), this._copyHTML.bind(this));
         if (this.editable)
             contextMenu.appendItem(WebInspector.UIString("Delete Node"), this.remove.bind(this));
+
+        let node = this.representedObject;
+        if (node.nodeType() === Node.ELEMENT_NODE)
+            contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), this._scrollIntoView.bind(this));
     }
 
     _startEditing()
@@ -754,6 +769,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         removeZeroWidthSpaceRecursive(attribute);
 
         var config = new WebInspector.EditingConfig(this._attributeEditingCommitted.bind(this), this._editingCancelled.bind(this), attributeName);
+        config.setNumberCommitHandler(this._attributeNumberEditingCommitted.bind(this));
         this._editing = WebInspector.startEditing(attribute, config);
 
         window.getSelection().setBaseAndExtent(elementForSelection, 0, elementForSelection, 1);
@@ -874,6 +890,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _attributeEditingCommitted(element, newText, oldText, attributeName, moveDirection)
     {
+        if (newText === oldText)
+            return;
+
         this._editing = false;
 
         var treeOutline = this.treeOutline;
@@ -927,6 +946,14 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         this.representedObject.setAttribute(attributeName, newText, moveToNextAttributeIfNeeded.bind(this));
+    }
+
+    _attributeNumberEditingCommitted(element, newText, oldText, attributeName, moveDirection)
+    {
+        if (newText === oldText)
+            return;
+
+        this.representedObject.setAttribute(attributeName, newText);
     }
 
     _tagNameEditingCommitted(element, newText, oldText, tagName, moveDirection)
@@ -1054,41 +1081,43 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _buildAttributeDOM(parentElement, name, value, node)
     {
-        var hasText = (value.length > 0);
-        var attrSpanElement = parentElement.createChild("span", "html-attribute");
-        var attrNameElement = attrSpanElement.createChild("span", "html-attribute-name");
+        let hasText = (value.length > 0);
+        let attrSpanElement = parentElement.createChild("span", "html-attribute");
+        let attrNameElement = attrSpanElement.createChild("span", "html-attribute-name");
         attrNameElement.textContent = name;
-
+        let attrValueElement = null;
         if (hasText)
             attrSpanElement.append("=\u200B\"");
 
         if (name === "src" || name === "href") {
-            var baseURL = node.ownerDocument ? node.ownerDocument.documentURL : null;
-            var rewrittenURL = absoluteURL(value, baseURL);
-
+            let baseURL = node.ownerDocument ? node.ownerDocument.documentURL : null;
+            let rewrittenURL = absoluteURL(value, baseURL);
             value = value.insertWordBreakCharacters();
-
             if (!rewrittenURL) {
-                var attrValueElement = attrSpanElement.createChild("span", "html-attribute-value");
+                attrValueElement = attrSpanElement.createChild("span", "html-attribute-value");
                 attrValueElement.textContent = value;
             } else {
                 if (value.startsWith("data:"))
                     value = value.trimMiddle(60);
 
-                var linkElement = document.createElement("a");
-                linkElement.href = rewrittenURL;
-                linkElement.textContent = value;
-
-                attrSpanElement.appendChild(linkElement);
+                attrValueElement = document.createElement("a");
+                attrValueElement.href = rewrittenURL;
+                attrValueElement.textContent = value;
+                attrSpanElement.appendChild(attrValueElement);
             }
         } else {
             value = value.insertWordBreakCharacters();
-            var attrValueElement = attrSpanElement.createChild("span", "html-attribute-value");
+            attrValueElement = attrSpanElement.createChild("span", "html-attribute-value");
             attrValueElement.textContent = value;
         }
 
         if (hasText)
             attrSpanElement.append("\"");
+
+        for (let change of this._nodeStateChanges) {
+            if (change.type === WebInspector.DOMTreeElement.ChangeType.Attribute && change.attribute === name)
+                change.element = hasText ? attrValueElement : attrNameElement;
+        }
     }
 
     _buildTagDOM(parentElement, tagName, isClosingTag, isDistinctTreeElement)
@@ -1342,6 +1371,26 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         this.representedObject.removeNode(removeNodeCallback);
     }
 
+    _scrollIntoView()
+    {
+        function resolvedNode(object)
+        {
+            if (!object)
+                return;
+
+            function scrollIntoView()
+            {
+                this.scrollIntoViewIfNeeded(true);
+            }
+
+            object.callFunction(scrollIntoView, undefined, false, function() {});
+            object.release();
+        }
+
+        let node = this.representedObject;
+        WebInspector.RemoteObject.resolveNode(node, "", resolvedNode);
+    }
+
     _editAsHTML()
     {
         var treeOutline = this.treeOutline;
@@ -1413,6 +1462,39 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         WebInspector.highlightRangesWithStyleClass(this.title, matchRanges, WebInspector.DOMTreeElement.SearchHighlightStyleClassName, this._highlightResult);
     }
 
+    _markNodeChanged()
+    {
+        for (let change of this._nodeStateChanges) {
+            let element = change.element;
+            if (!element)
+                continue;
+
+            element.classList.remove("node-state-changed");
+            element.addEventListener("animationend", this._boundNodeChangedAnimationEnd);
+            element.classList.add("node-state-changed");
+        }
+    }
+
+    _nodeChangedAnimationEnd(event)
+    {
+        let element = event.target;
+        element.classList.remove("node-state-changed");
+        element.removeEventListener("animationend", this._boundNodeChangedAnimationEnd);
+
+        for (let i = this._nodeStateChanges.length - 1; i >= 0; --i) {
+            if (this._nodeStateChanges[i].element === element)
+                this._nodeStateChanges.splice(i, 1);
+        }
+    }
+
+    _fireDidChange()
+    {
+        super._fireDidChange();
+
+        if (this._nodeStateChanges)
+            this._markNodeChanged();
+    }
+
     handleEvent(event)
     {
         if (event.type === "dragstart" && this._editing)
@@ -1435,6 +1517,10 @@ WebInspector.DOMTreeElement.ForbiddenClosingTagElements = [
 WebInspector.DOMTreeElement.EditTagBlacklist = [
     "html", "head", "body"
 ].keySet();
+
+WebInspector.DOMTreeElement.ChangeType = {
+    Attribute: "dom-tree-element-change-type-attribute"
+};
 
 WebInspector.DOMTreeElement.SearchHighlightStyleClassName = "search-highlight";
 WebInspector.DOMTreeElement.BouncyHighlightStyleClassName = "bouncy-highlight";

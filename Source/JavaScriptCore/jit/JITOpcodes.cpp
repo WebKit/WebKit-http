@@ -35,9 +35,9 @@
 #include "Heap.h"
 #include "JITInlines.h"
 #include "JSArray.h"
+#include "JSArrowFunction.h"
 #include "JSCell.h"
 #include "JSFunction.h"
-#include "JSNameScope.h"
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
@@ -46,6 +46,7 @@
 #include "TypeLocation.h"
 #include "TypeProfilerLog.h"
 #include "VirtualRegister.h"
+#include "Watchdog.h"
 
 namespace JSC {
 
@@ -426,9 +427,8 @@ void JIT::emit_op_throw(Instruction* currentInstruction)
 
 void JIT::emit_op_push_with_scope(Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
-    callOperation(operationPushWithScope, dst, regT0);
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_push_with_scope);
+    slowPathCall.call();
 }
 
 void JIT::compileOpStrictEq(Instruction* currentInstruction, CompileOpStrictEqType type)
@@ -491,14 +491,6 @@ void JIT::emit_op_to_string(Instruction* currentInstruction)
     addSlowCase(branch8(NotEqual, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
 
     emitPutVirtualRegister(currentInstruction[1].u.operand);
-}
-
-void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
-    RELEASE_ASSERT(currentInstruction[4].u.operand == JSNameScope::FunctionNameScope);
-    callOperation(operationPushFunctionNameScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT0);
 }
 
 void JIT::emit_op_catch(Instruction* currentInstruction)
@@ -680,6 +672,14 @@ void JIT::emit_op_get_scope(Instruction* currentInstruction)
     int dst = currentInstruction[1].u.operand;
     emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
+    emitStoreCell(dst, regT0);
+}
+    
+void JIT::emit_op_load_arrowfunction_this(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
+    loadPtr(Address(regT0, JSArrowFunction::offsetOfThisValue()), regT0);
     emitStoreCell(dst, regT0);
 }
 
@@ -915,7 +915,7 @@ void JIT::emit_op_loop_hint(Instruction*)
     }
 
     // Emit the watchdog timer check:
-    if (m_vm->watchdog && m_vm->watchdog->isEnabled())
+    if (m_vm->watchdog && m_vm->watchdog->hasTimeLimit())
         addSlowCase(branchTest8(NonZero, AbsoluteAddress(m_vm->watchdog->timerDidFireAddress())));
 }
 
@@ -941,7 +941,7 @@ void JIT::emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator& i
 #endif
 
     // Emit the slow path of the watchdog timer check:
-    if (m_vm->watchdog && m_vm->watchdog->isEnabled()) {
+    if (m_vm->watchdog && m_vm->watchdog->hasTimeLimit()) {
         linkSlowCase(iter);
         callOperation(operationHandleWatchdogTimer);
 
@@ -971,26 +971,45 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
 
 void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
 {
+    emitNewFuncExprCommon(currentInstruction);
+}
+    
+void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
+{
+    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
+    bool isArrowFunction = opcodeID == op_new_arrow_func_exp;
+    
     Jump notUndefinedScope;
     int dst = currentInstruction[1].u.operand;
 #if USE(JSVALUE64)
     emitGetVirtualRegister(currentInstruction[2].u.operand, regT0);
+    if (isArrowFunction)
+        emitGetVirtualRegister(currentInstruction[4].u.operand, regT1);
     notUndefinedScope = branch64(NotEqual, regT0, TrustedImm64(JSValue::encode(jsUndefined())));
     store64(TrustedImm64(JSValue::encode(jsUndefined())), Address(callFrameRegister, sizeof(Register) * dst));
 #else
     emitLoadPayload(currentInstruction[2].u.operand, regT0);
+    if (isArrowFunction)
+        emitLoadPayload(currentInstruction[4].u.operand, regT1);
     notUndefinedScope = branch32(NotEqual, tagFor(currentInstruction[2].u.operand), TrustedImm32(JSValue::UndefinedTag));
     emitStore(dst, jsUndefined());
 #endif
-
     Jump done = jump();
     notUndefinedScope.link(this);
-
-    FunctionExecutable* funcExpr = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
-    callOperation(operationNewFunction, dst, regT0, funcExpr);
+        
+    FunctionExecutable* function = m_codeBlock->functionExpr(currentInstruction[3].u.operand);
+    if (isArrowFunction)
+        callOperation(operationNewArrowFunction, dst, regT0, function, regT1);
+    else
+        callOperation(operationNewFunction, dst, regT0, function);
     done.link(this);
 }
-
+    
+void JIT::emit_op_new_arrow_func_exp(Instruction* currentInstruction)
+{
+    emitNewFuncExprCommon(currentInstruction);
+}
+    
 void JIT::emit_op_new_array(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -1077,6 +1096,7 @@ void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)
     int base = currentInstruction[2].u.operand;
     int property = currentInstruction[3].u.operand;
     ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
+    ByValInfo* byValInfo = m_codeBlock->addByValInfo();
     
     emitGetVirtualRegisters(base, regT0, property, regT1);
 
@@ -1107,8 +1127,10 @@ void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)
     Label done = label();
     
     emitPutVirtualRegister(dst);
+
+    Label nextHotPath = label();
     
-    m_byValCompilationInfo.append(ByValCompilationInfo(m_bytecodeOffset, badType, mode, done));
+    m_byValCompilationInfo.append(ByValCompilationInfo(byValInfo, m_bytecodeOffset, PatchableJump(), badType, mode, profile, done, nextHotPath));
 }
 
 void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -1116,7 +1138,7 @@ void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vect
     int dst = currentInstruction[1].u.operand;
     int base = currentInstruction[2].u.operand;
     int property = currentInstruction[3].u.operand;
-    ArrayProfile* profile = currentInstruction[4].u.arrayProfile;
+    ByValInfo* byValInfo = m_byValCompilationInfo[m_byValInstructionIndex].byValInfo;
     
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
     linkSlowCase(iter); // base array check
@@ -1127,7 +1149,7 @@ void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vect
     
     emitGetVirtualRegister(base, regT0);
     emitGetVirtualRegister(property, regT1);
-    Call call = callOperation(operationHasIndexedPropertyDefault, dst, regT0, regT1, profile);
+    Call call = callOperation(operationHasIndexedPropertyDefault, dst, regT0, regT1, byValInfo);
 
     m_byValCompilationInfo[m_byValInstructionIndex].slowPathTarget = slowPath;
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;

@@ -41,13 +41,12 @@ namespace WebCore {
 // These CoreText Text Spacing feature selectors are not defined in CoreText.
 enum TextSpacingCTFeatureSelector { TextSpacingProportional, TextSpacingFullWidth, TextSpacingHalfWidth, TextSpacingThirdWidth, TextSpacingQuarterWidth };
 
-FontPlatformData::FontPlatformData(CTFontRef font, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant)
-    : FontPlatformData(adoptCF(CTFontCopyGraphicsFont(font, NULL)).get(), size, syntheticBold, syntheticOblique, orientation, widthVariant)
+FontPlatformData::FontPlatformData(CTFontRef font, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant, TextRenderingMode textRenderingMode)
+    : FontPlatformData(adoptCF(CTFontCopyGraphicsFont(font, NULL)).get(), size, syntheticBold, syntheticOblique, orientation, widthVariant, textRenderingMode)
 {
     ASSERT_ARG(font, font);
     m_font = font;
     m_isColorBitmapFont = CTFontGetSymbolicTraits(font) & kCTFontTraitColorGlyphs;
-    m_isCompositeFontReference = CTFontGetSymbolicTraits(font) & kCTFontCompositeTrait;
 }
 
 FontPlatformData::~FontPlatformData()
@@ -113,7 +112,6 @@ void FontPlatformData::setFont(CTFontRef font)
 
     CTFontSymbolicTraits traits = CTFontGetSymbolicTraits(m_font.get());
     m_isColorBitmapFont = traits & kCTFontTraitColorGlyphs;
-    m_isCompositeFontReference = traits & kCTFontCompositeTrait;
     
     m_ctFont = nullptr;
 }
@@ -214,7 +212,7 @@ RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck(CTFontRef ctFont)
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=138683 This is a shallow pointer compare for web fonts
     // because the URL contains the address of the font. This means we might erroneously get false negatives.
     RetainPtr<CFURLRef> url = adoptCF(static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(fontDescriptor.get(), kCTFontReferenceURLAttribute)));
-    ASSERT(CFGetTypeID(url.get()) == CFURLGetTypeID());
+    ASSERT(!url || CFGetTypeID(url.get()) == CFURLGetTypeID());
     return url;
 }
 

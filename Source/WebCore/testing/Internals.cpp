@@ -446,6 +446,10 @@ String Internals::xhrResponseSource(XMLHttpRequest* xhr)
         return "Disk cache";
     case ResourceResponse::Source::DiskCacheAfterValidation:
         return "Disk cache after validation";
+    case ResourceResponse::Source::MemoryCache:
+        return "Memory cache";
+    case ResourceResponse::Source::MemoryCacheAfterValidation:
+        return "Memory cache after validation";
     }
     ASSERT_NOT_REACHED();
     return "Error";
@@ -508,6 +512,11 @@ static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
 void Internals::setOverrideResourceLoadPriority(const String& priority)
 {
     frame()->loader().setOverrideResourceLoadPriorityForTesting(stringToResourceLoadPriority(priority));
+}
+
+void Internals::setStrictRawResourceValidationPolicyDisabled(bool disabled)
+{
+    frame()->loader().setStrictRawResourceValidationPolicyDisabledForTesting(disabled);
 }
 
 void Internals::clearMemoryCache()
@@ -1179,7 +1188,7 @@ void Internals::scrollElementToRect(Element* element, long x, long y, long w, lo
         return;
     }
     FrameView* frameView = element->document().view();
-    frameView->scrollElementToRect(element, IntRect(x, y, w, h));
+    frameView->scrollElementToRect(*element, IntRect(x, y, w, h));
 }
 
 void Internals::paintControlTints(ExceptionCode& ec)
@@ -2792,6 +2801,7 @@ static MediaSessionInterruptingCategory interruptingCategoryFromString(const Str
     if (interruptingCategoryString == "transient-solo")
         return MediaSessionInterruptingCategory::TransientSolo;
     ASSERT_NOT_REACHED();
+    return MediaSessionInterruptingCategory::Content;
 }
 
 void Internals::sendMediaSessionStartOfInterruptionNotification(const String& interruptingCategoryString)

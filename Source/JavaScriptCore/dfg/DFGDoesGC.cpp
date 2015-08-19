@@ -99,6 +99,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetButterfly:
     case CheckArray:
     case GetScope:
+    case LoadArrowFunctionThis:
     case SkipScope:
     case GetClosureVar:
     case PutClosureVar:
@@ -107,6 +108,7 @@ bool doesGC(Graph& graph, Node* node)
     case VarInjectionWatchpoint:
     case CheckCell:
     case CheckNotEmpty:
+    case CheckIdent:
     case RegExpExec:
     case RegExpTest:
     case CompareLess:
@@ -114,7 +116,6 @@ bool doesGC(Graph& graph, Node* node)
     case CompareGreater:
     case CompareGreaterEq:
     case CompareEq:
-    case CompareEqConstant:
     case CompareStrictEq:
     case Call:
     case Construct:
@@ -228,6 +229,7 @@ bool doesGC(Graph& graph, Node* node)
     case NewRegexp:
     case NewStringObject:
     case MakeRope:
+    case NewArrowFunction:
     case NewFunction:
     case NewTypedArray:
     case ThrowReferenceError:

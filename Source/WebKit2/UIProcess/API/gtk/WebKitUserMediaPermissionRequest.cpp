@@ -36,6 +36,9 @@ using namespace WebKit;
  * permission to decide whether WebKit should be allowed to access the user's
  * audio and video source devices when requested throught the getUserMedia API.
  *
+ * When a WebKitUserMediaPermissionRequest is not handled by the user,
+ * it is denied by default.
+ *
  * Since: 2.8
  */
 
@@ -67,7 +70,11 @@ static void webkitUserMediaPermissionRequestAllow(WebKitPermissionRequest* reque
         return;
 
     priv->madeDecision = true;
-    priv->request->allow();
+
+    const String& videoDevice = priv->request->firstVideoDeviceUID();
+    const String& audioDevice = priv->request->firstAudioDeviceUID();
+    
+    priv->request->allow(videoDevice, audioDevice);
 }
 
 static void webkitUserMediaPermissionRequestDeny(WebKitPermissionRequest* request)

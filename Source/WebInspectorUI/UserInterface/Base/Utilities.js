@@ -588,7 +588,7 @@ Object.defineProperty(String.prototype, "hash",
 {
     get: function()
     {
-        // Matches the wtf/StringHasher.h (SuperFastHash) algorithm.
+        // Matches the wtf/Hasher.h (SuperFastHash) algorithm.
 
         // Arbitrary start value to avoid mapping all 0's to all 0's.
         const stringHashingStartValue = 0x9e3779b9;
@@ -1077,11 +1077,6 @@ function isFunctionStringNativeCode(str)
 function doubleQuotedString(str)
 {
     return "\"" + str.replace(/"/g, "\\\"") + "\"";
-}
-
-function clamp(min, value, max)
-{
-    return Math.min(Math.max(min, value), max);
 }
 
 function insertionIndexForObjectInListSortedByFunction(object, list, comparator, insertionIndexAfter)

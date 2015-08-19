@@ -115,7 +115,7 @@ void TrackPrivateBaseGStreamer::tagsChanged()
         tags = adoptGRef(gst_tag_list_new_empty());
 
     {
-        MutexLocker lock(m_tagMutex);
+        LockHolder lock(m_tagMutex);
         m_tags.swap(tags);
     }
 
@@ -171,7 +171,7 @@ void TrackPrivateBaseGStreamer::notifyTrackOfTagsChanged()
 
     GRefPtr<GstTagList> tags;
     {
-        MutexLocker lock(m_tagMutex);
+        LockHolder lock(m_tagMutex);
         tags.swap(m_tags);
     }
     if (!tags)

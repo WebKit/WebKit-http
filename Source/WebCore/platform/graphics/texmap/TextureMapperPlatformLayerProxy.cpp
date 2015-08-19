@@ -56,7 +56,6 @@ void TextureMapperPlatformLayerProxy::setCompositor(MutexLocker&, Compositor* co
 #ifndef NDEBUG
     m_compositorThreadID = WTF::currentThread();
 #endif
-    ASSERT(compositor);
     m_compositor = compositor;
     m_compositorThreadUpdateTimer = std::make_unique<RunLoop::Timer<TextureMapperPlatformLayerProxy>>(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired);
     m_pushCondition.signal();

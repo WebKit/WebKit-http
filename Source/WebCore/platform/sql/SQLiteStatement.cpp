@@ -59,9 +59,7 @@ int SQLiteStatement::prepare()
 {
     ASSERT(!m_isPrepared);
 
-    MutexLocker databaseLock(m_database.databaseMutex());
-    if (m_database.isInterrupted())
-        return SQLITE_INTERRUPT;
+    LockHolder databaseLock(m_database.databaseMutex());
 
     CString query = m_query.stripWhiteSpace().utf8();
     
@@ -88,9 +86,7 @@ int SQLiteStatement::prepare()
 
 int SQLiteStatement::step()
 {
-    MutexLocker databaseLock(m_database.databaseMutex());
-    if (m_database.isInterrupted())
-        return SQLITE_INTERRUPT;
+    LockHolder databaseLock(m_database.databaseMutex());
 
     if (!m_statement)
         return SQLITE_OK;

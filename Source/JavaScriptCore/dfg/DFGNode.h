@@ -580,7 +580,7 @@ struct Node {
 
     void convertToPhantomNewFunction()
     {
-        ASSERT(m_op == NewFunction);
+        ASSERT(m_op == NewFunction || m_op == NewArrowFunction);
         m_op = PhantomNewFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = 0;
@@ -690,7 +690,12 @@ struct Node {
     {
         return constant()->value().asBoolean();
     }
-     
+
+    bool isUndefinedOrNullConstant()
+    {
+        return isConstant() && constant()->value().isUndefinedOrNull();
+    }
+
     bool isCellConstant()
     {
         return isConstant() && constant()->value() && constant()->value().isCell();
@@ -1280,6 +1285,7 @@ struct Node {
         switch (op()) {
         case CheckCell:
         case NewFunction:
+        case NewArrowFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
             return true;
@@ -1326,6 +1332,17 @@ struct Node {
     {
         ASSERT(hasStoragePointer());
         return reinterpret_cast<void*>(m_opInfo);
+    }
+
+    bool hasUidOperand()
+    {
+        return op() == CheckIdent;
+    }
+
+    UniquedStringImpl* uidOperand()
+    {
+        ASSERT(hasUidOperand());
+        return reinterpret_cast<UniquedStringImpl*>(m_opInfo);
     }
 
     bool hasTransition()
@@ -1485,6 +1502,7 @@ struct Node {
     bool isFunctionAllocation()
     {
         switch (op()) {
+        case NewArrowFunction:
         case NewFunction:
             return true;
         default:

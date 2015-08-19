@@ -47,9 +47,6 @@ list(APPEND WebKit2_SOURCES
     Shared/efl/ProcessExecutablePathEfl.cpp
     Shared/efl/WebEventFactory.cpp
 
-    Shared/glib/KeyedDecoder.cpp
-    Shared/glib/KeyedEncoder.cpp
-
     Shared/linux/WebMemorySamplerLinux.cpp
 
     Shared/linux/SeccompFilters/OpenSyscall.cpp
@@ -183,6 +180,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/WebUIPopupMenuClient.cpp
     UIProcess/efl/WebViewEfl.cpp
 
+    UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
 
     UIProcess/soup/WebCookieManagerProxySoup.cpp
@@ -594,5 +592,8 @@ endif ()
 if (ENABLE_BATTERY_STATUS)
     list(APPEND WebKit2_LIBRARIES
         ${ELDBUS_LIBRARIES}
+    )
+    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+        ${ELDBUS_INCLUDE_DIRS}
     )
 endif ()

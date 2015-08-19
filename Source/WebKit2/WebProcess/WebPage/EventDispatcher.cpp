@@ -65,7 +65,7 @@ EventDispatcher::~EventDispatcher()
 #if ENABLE(ASYNC_SCROLLING)
 void EventDispatcher::addScrollingTreeForPage(WebPage* webPage)
 {
-    MutexLocker locker(m_scrollingTreesMutex);
+    LockHolder locker(m_scrollingTreesMutex);
 
     ASSERT(webPage->corePage()->scrollingCoordinator());
     ASSERT(!m_scrollingTrees.contains(webPage->pageID()));
@@ -76,7 +76,7 @@ void EventDispatcher::addScrollingTreeForPage(WebPage* webPage)
 
 void EventDispatcher::removeScrollingTreeForPage(WebPage* webPage)
 {
-    MutexLocker locker(m_scrollingTreesMutex);
+    LockHolder locker(m_scrollingTreesMutex);
     ASSERT(m_scrollingTrees.contains(webPage->pageID()));
 
     m_scrollingTrees.remove(webPage->pageID());
@@ -132,7 +132,7 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
 #endif
 
 #if ENABLE(ASYNC_SCROLLING)
-    MutexLocker locker(m_scrollingTreesMutex);
+    LockHolder locker(m_scrollingTreesMutex);
     if (RefPtr<ThreadedScrollingTree> scrollingTree = m_scrollingTrees.get(pageID)) {
         // FIXME: It's pretty horrible that we're updating the back/forward state here.
         // WebCore should always know the current state and know when it changes so the
@@ -172,13 +172,13 @@ void EventDispatcher::wheelEvent(uint64_t pageID, const WebWheelEvent& wheelEven
 #if ENABLE(IOS_TOUCH_EVENTS)
 void EventDispatcher::clearQueuedTouchEventsForPage(const WebPage& webPage)
 {
-    SpinLockHolder locker(&m_touchEventsLock);
+    LockHolder locker(&m_touchEventsLock);
     m_touchEvents.remove(webPage.pageID());
 }
 
 void EventDispatcher::getQueuedTouchEventsForPage(const WebPage& webPage, TouchEventQueue& destinationQueue)
 {
-    SpinLockHolder locker(&m_touchEventsLock);
+    LockHolder locker(&m_touchEventsLock);
     destinationQueue = m_touchEvents.take(webPage.pageID());
 }
 
@@ -186,7 +186,7 @@ void EventDispatcher::touchEvent(uint64_t pageID, const WebKit::WebTouchEvent& t
 {
     bool updateListWasEmpty;
     {
-        SpinLockHolder locker(&m_touchEventsLock);
+        LockHolder locker(&m_touchEventsLock);
         updateListWasEmpty = m_touchEvents.isEmpty();
         auto addResult = m_touchEvents.add(pageID, TouchEventQueue());
         if (addResult.isNewEntry)
@@ -217,7 +217,7 @@ void EventDispatcher::dispatchTouchEvents()
 {
     HashMap<uint64_t, TouchEventQueue> localCopy;
     {
-        SpinLockHolder locker(&m_touchEventsLock);
+        LockHolder locker(&m_touchEventsLock);
         localCopy.swap(m_touchEvents);
     }
 

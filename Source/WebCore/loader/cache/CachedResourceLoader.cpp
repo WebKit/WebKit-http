@@ -605,7 +605,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::revalidateResource(co
     ASSERT(resource->sessionID() == sessionID());
 
     CachedResourceHandle<CachedResource> newResource = createResource(resource->type(), resource->resourceRequest(), resource->encoding(), resource->sessionID());
-    
+
     LOG(ResourceLoading, "Resource %p created to revalidate %p", newResource.get(), resource);
     newResource->setResourceToRevalidate(resource);
     
@@ -696,8 +696,14 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
     }
 
-    if (!existingResource->canReuse(request))
-        return Reload;
+    // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
+    //        while the normal subresource policy is too loose.
+    if (existingResource->isMainOrRawResource()) {
+        bool strictPolicyDisabled = frame()->loader().isStrictRawResourceValidationPolicyDisabledForTesting();
+        bool canReuseRawResource = strictPolicyDisabled || downcast<CachedRawResource>(*existingResource).canReuse(request);
+        if (!canReuseRawResource)
+            return Reload;
+    }
 
     // Conditional requests should have failed canReuse check.
     ASSERT(!request.isConditional());
@@ -711,9 +717,14 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     if (m_allowStaleResources)
         return Use;
     
-    // Alwaus use preloads.
+    // Always use preloads.
     if (existingResource->isPreloaded())
         return Use;
+
+    // We can find resources that are being validated from cache only when validation is just successfully completing.
+    if (existingResource->validationCompleting())
+        return Use;
+    ASSERT(!existingResource->validationInProgress());
 
     // Validate the redirect chain.
     bool cachePolicyIsHistoryBuffer = cachePolicy(type) == CachePolicyHistoryBuffer;

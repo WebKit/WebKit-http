@@ -152,11 +152,11 @@ public:
     ObjectConstructorGetPrototypeOfFunctor(JSObject* object)
         : m_hasSkippedFirstFrame(false)
         , m_object(object)
-        , m_result(JSValue::encode(jsUndefined()))
+        , m_result(jsUndefined())
     {
     }
 
-    EncodedJSValue result() const { return m_result; }
+    JSValue result() const { return m_result; }
 
     StackVisitor::Status operator()(StackVisitor& visitor)
     {
@@ -166,24 +166,29 @@ public:
         }
 
         if (m_object->allowsAccessFrom(visitor->callFrame()))
-            m_result = JSValue::encode(m_object->prototype());
+            m_result = m_object->prototype();
         return StackVisitor::Done;
     }
 
 private:
     bool m_hasSkippedFirstFrame;
     JSObject* m_object;
-    EncodedJSValue m_result;
+    JSValue m_result;
 };
+
+JSValue objectConstructorGetPrototypeOf(ExecState* exec, JSObject* object)
+{
+    ObjectConstructorGetPrototypeOfFunctor functor(object);
+    exec->iterate(functor);
+    return functor.result();
+}
 
 EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(ExecState* exec)
 {
     JSObject* object = exec->argument(0).toObject(exec);
     if (exec->hadException())
-        return JSValue::encode(jsNull());
-    ObjectConstructorGetPrototypeOfFunctor functor(object);
-    exec->iterate(functor);
-    return functor.result();
+        return JSValue::encode(jsUndefined());
+    return JSValue::encode(objectConstructorGetPrototypeOf(exec, object));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorSetPrototypeOf(ExecState* exec)
@@ -203,6 +208,9 @@ EncodedJSValue JSC_HOST_CALL objectConstructorSetPrototypeOf(ExecState* exec)
     if (!checkProtoSetterAccessAllowed(exec, object))
         return JSValue::encode(objectValue);
 
+    if (object->prototype() == protoValue)
+        return JSValue::encode(objectValue);
+
     if (!object->isExtensible())
         return throwVMError(exec, createTypeError(exec, StrictModeReadonlyPropertyWriteError));
 
@@ -214,19 +222,13 @@ EncodedJSValue JSC_HOST_CALL objectConstructorSetPrototypeOf(ExecState* exec)
     return JSValue::encode(objectValue);
 }
 
-EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState* exec)
+JSValue objectConstructorGetOwnPropertyDescriptor(ExecState* exec, JSObject* object, const Identifier& propertyName)
 {
-    JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
-    auto propertyName = exec->argument(1).toPropertyKey(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
     PropertyDescriptor descriptor;
     if (!object->getOwnPropertyDescriptor(exec, propertyName, descriptor))
-        return JSValue::encode(jsUndefined());
+        return jsUndefined();
     if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+        return jsUndefined();
 
     JSObject* description = constructEmptyObject(exec);
     if (!descriptor.isAccessorDescriptor()) {
@@ -242,7 +244,18 @@ EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState
     description->putDirect(exec->vm(), exec->propertyNames().enumerable, jsBoolean(descriptor.enumerable()), 0);
     description->putDirect(exec->vm(), exec->propertyNames().configurable, jsBoolean(descriptor.configurable()), 0);
 
-    return JSValue::encode(description);
+    return description;
+}
+
+EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState* exec)
+{
+    JSObject* object = exec->argument(0).toObject(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+    auto propertyName = exec->argument(1).toPropertyKey(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+    return JSValue::encode(objectConstructorGetOwnPropertyDescriptor(exec, object, propertyName));
 }
 
 // FIXME: Use the enumeration cache.
@@ -281,7 +294,7 @@ EncodedJSValue JSC_HOST_CALL ownEnumerablePropertyKeys(ExecState* exec)
 }
 
 // ES5 8.10.5 ToPropertyDescriptor
-static bool toPropertyDescriptor(ExecState* exec, JSValue in, PropertyDescriptor& desc)
+bool toPropertyDescriptor(ExecState* exec, JSValue in, PropertyDescriptor& desc)
 {
     if (!in.isObject()) {
         exec->vm().throwException(exec, createTypeError(exec, ASCIILiteral("Property description must be an object.")));

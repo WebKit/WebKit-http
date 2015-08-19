@@ -9,7 +9,8 @@ if (WTF_PLATFORM_WIN_CAIRO)
     )
 else ()
     list(APPEND JavaScriptCore_LIBRARIES
-        CoreFoundation
+        CoreFoundation${DEBUG_SUFFIX}
+        ${ICU_LIBRARIES}
     )
 endif ()
 
@@ -27,3 +28,11 @@ endif ()
 list(REMOVE_ITEM JavaScriptCore_SOURCES
     inspector/JSGlobalObjectInspectorController.cpp
 )
+
+file(COPY
+    "${JAVASCRIPTCORE_DIR}/JavaScriptCore.vcxproj/JavaScriptCore.resources"
+    DESTINATION
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
+
+set(JavaScriptCore_OUTPUT_NAME JavaScriptCore${DEBUG_SUFFIX})

@@ -96,7 +96,6 @@ inline CapabilityLevel canCompile(Node* node)
     case ArithFRound:
     case ArithNegate:
     case UInt32ToNumber:
-    case CompareEqConstant:
     case Jump:
     case ForceOSRExit:
     case Phi:
@@ -105,6 +104,7 @@ inline CapabilityLevel canCompile(Node* node)
     case LoopHint:
     case SkipScope:
     case CreateActivation:
+    case NewArrowFunction:
     case NewFunction:
     case GetClosureVar:
     case PutClosureVar:
@@ -118,6 +118,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckCell:
     case CheckBadCell:
     case CheckNotEmpty:
+    case CheckIdent:
     case StringCharCodeAt:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
@@ -140,6 +141,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CountExecution:
     case GetExecutable:
     case GetScope:
+    case LoadArrowFunctionThis:
     case GetCallee:
     case GetArgumentCount:
     case ToString:
@@ -262,6 +264,7 @@ inline CapabilityLevel canCompile(Node* node)
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::Undecided:
         case Array::DirectArguments:
         case Array::ScopedArguments:
             break;
@@ -316,6 +319,8 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(ObjectUse, ObjectOrOtherUse))
             break;
         if (node->isBinaryUseKind(ObjectOrOtherUse, ObjectUse))
+            break;
+        if (node->child1().useKind() == OtherUse || node->child2().useKind() == OtherUse)
             break;
         return CannotCompile;
     case CompareStrictEq:
@@ -415,6 +420,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case KnownStringUse:
                 case StringObjectUse:
                 case StringOrStringObjectUse:
+                case SymbolUse:
                 case FinalObjectUse:
                 case NotCellUse:
                 case OtherUse:

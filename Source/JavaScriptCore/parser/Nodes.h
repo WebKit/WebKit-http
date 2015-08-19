@@ -41,7 +41,7 @@ namespace JSC {
 
     class ArgumentListNode;
     class BytecodeGenerator;
-    class FunctionBodyNode;
+    class FunctionMetadataNode;
     class FunctionParameters;
     class Label;
     class PropertyListNode;
@@ -49,6 +49,7 @@ namespace JSC {
     class RegisterID;
     class JSScope;
     class ScopeNode;
+    class ModuleAnalyzer;
 
     enum Operator {
         OpEqual,
@@ -81,7 +82,7 @@ namespace JSC {
     typedef HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> IdentifierSet;
 
     namespace DeclarationStacks {
-        typedef Vector<FunctionBodyNode*> FunctionStack;
+        typedef Vector<FunctionMetadataNode*> FunctionStack;
     }
 
     struct SwitchInfo {
@@ -164,6 +165,7 @@ namespace JSC {
         virtual bool isDotAccessorNode() const { return false; }
         virtual bool isDestructuringNode() const { return false; }
         virtual bool isFuncExprNode() const { return false; }
+        virtual bool isArrowFuncExprNode() const { return false; }
         virtual bool isCommaNode() const { return false; }
         virtual bool isSimpleArray() const { return false; }
         virtual bool isAdd() const { return false; }
@@ -202,6 +204,7 @@ namespace JSC {
         virtual bool isContinue() const { return false; }
         virtual bool isBlock() const { return false; }
         virtual bool isFuncDeclNode() const { return false; }
+        virtual bool isModuleDeclarationNode() const { return false; }
 
     protected:
         StatementNode* m_next;
@@ -612,7 +615,7 @@ namespace JSC {
         enum PutType { Unknown, KnownDirect };
 
         PropertyNode(const Identifier&, ExpressionNode*, Type, PutType, SuperBinding);
-        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType);
+        PropertyNode(ExpressionNode* propertyName, ExpressionNode*, Type, PutType, SuperBinding);
 
         ExpressionNode* expressionName() const { return m_expression; }
         const Identifier* name() const { return m_name; }
@@ -1276,6 +1279,7 @@ namespace JSC {
         StatementNode* lastStatement() const;
 
         void emitBytecode(BytecodeGenerator&, RegisterID* destination);
+        void analyzeModule(ModuleAnalyzer&);
 
     private:
         StatementNode* m_head;
@@ -1574,6 +1578,8 @@ namespace JSC {
         
         void setClosedVariables(Vector<RefPtr<UniquedStringImpl>>&&) { }
 
+        void analyzeModule(ModuleAnalyzer&);
+
     protected:
         int m_startLineNumber;
         unsigned m_startStartOffset;
@@ -1637,9 +1643,9 @@ namespace JSC {
         unsigned m_endColumn;
     };
 
-    class ModuleSpecifierNode : public Node {
+    class ModuleNameNode : public Node {
     public:
-        ModuleSpecifierNode(const JSTokenLocation&, const Identifier& moduleName);
+        ModuleNameNode(const JSTokenLocation&, const Identifier& moduleName);
 
         const Identifier& moduleName() { return m_moduleName; }
 
@@ -1673,43 +1679,58 @@ namespace JSC {
         Specifiers m_specifiers;
     };
 
-    class ImportDeclarationNode : public StatementNode {
+    class ModuleDeclarationNode : public StatementNode {
     public:
-        ImportDeclarationNode(const JSTokenLocation&, ImportSpecifierListNode*, ModuleSpecifierNode*);
+        virtual void analyzeModule(ModuleAnalyzer&) = 0;
+        virtual bool isModuleDeclarationNode() const { return true; }
+
+    protected:
+        ModuleDeclarationNode(const JSTokenLocation&);
+    };
+
+    class ImportDeclarationNode : public ModuleDeclarationNode {
+    public:
+        ImportDeclarationNode(const JSTokenLocation&, ImportSpecifierListNode*, ModuleNameNode*);
 
         ImportSpecifierListNode* specifierList() const { return m_specifierList; }
-        ModuleSpecifierNode* moduleSpecifier() const { return m_moduleSpecifier; }
+        ModuleNameNode* moduleName() const { return m_moduleName; }
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+        virtual void analyzeModule(ModuleAnalyzer&) override;
 
         ImportSpecifierListNode* m_specifierList;
-        ModuleSpecifierNode* m_moduleSpecifier;
+        ModuleNameNode* m_moduleName;
     };
 
-    class ExportAllDeclarationNode : public StatementNode {
+    class ExportAllDeclarationNode : public ModuleDeclarationNode {
     public:
-        ExportAllDeclarationNode(const JSTokenLocation&, ModuleSpecifierNode*);
+        ExportAllDeclarationNode(const JSTokenLocation&, ModuleNameNode*);
 
-        ModuleSpecifierNode* moduleSpecifier() const { return m_moduleSpecifier; }
+        ModuleNameNode* moduleName() const { return m_moduleName; }
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
-        ModuleSpecifierNode* m_moduleSpecifier;
+        virtual void analyzeModule(ModuleAnalyzer&) override;
+
+        ModuleNameNode* m_moduleName;
     };
 
-    class ExportDefaultDeclarationNode : public StatementNode {
+    class ExportDefaultDeclarationNode : public ModuleDeclarationNode {
     public:
-        ExportDefaultDeclarationNode(const JSTokenLocation&, StatementNode*);
+        ExportDefaultDeclarationNode(const JSTokenLocation&, StatementNode*, const Identifier& localName);
 
         const StatementNode& declaration() const { return *m_declaration; }
+        const Identifier& localName() const { return m_localName; }
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+        virtual void analyzeModule(ModuleAnalyzer&) override;
         StatementNode* m_declaration;
+        const Identifier& m_localName;
     };
 
-    class ExportLocalDeclarationNode : public StatementNode {
+    class ExportLocalDeclarationNode : public ModuleDeclarationNode {
     public:
         ExportLocalDeclarationNode(const JSTokenLocation&, StatementNode*);
 
@@ -1717,6 +1738,7 @@ namespace JSC {
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+        virtual void analyzeModule(ModuleAnalyzer&) override;
         StatementNode* m_declaration;
     };
 
@@ -1746,17 +1768,18 @@ namespace JSC {
         Specifiers m_specifiers;
     };
 
-    class ExportNamedDeclarationNode : public StatementNode {
+    class ExportNamedDeclarationNode : public ModuleDeclarationNode {
     public:
-        ExportNamedDeclarationNode(const JSTokenLocation&, ExportSpecifierListNode*, ModuleSpecifierNode*);
+        ExportNamedDeclarationNode(const JSTokenLocation&, ExportSpecifierListNode*, ModuleNameNode*);
 
         ExportSpecifierListNode* specifierList() const { return m_specifierList; }
-        ModuleSpecifierNode* moduleSpecifier() const { return m_moduleSpecifier; }
+        ModuleNameNode* moduleName() const { return m_moduleName; }
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+        virtual void analyzeModule(ModuleAnalyzer&) override;
         ExportSpecifierListNode* m_specifierList;
-        ModuleSpecifierNode* m_moduleSpecifier { nullptr };
+        ModuleNameNode* m_moduleName { nullptr };
     };
 
     class FunctionParameters : public ParserArenaDeletable {
@@ -1779,17 +1802,15 @@ namespace JSC {
         bool m_hasDefaultParameterValues { false };
     };
 
-    class FunctionBodyNode final : public StatementNode, public ParserArenaDeletable {
+    class FunctionMetadataNode final : public Node, public ParserArenaDeletable {
     public:
         using ParserArenaDeletable::operator new;
 
-        FunctionBodyNode(
+        FunctionMetadataNode(
             ParserArena&, const JSTokenLocation& start, const JSTokenLocation& end, 
             unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
             int functionNameStart, int parametersStart, bool isInStrictContext, 
-            ConstructorKind, unsigned, FunctionParseMode);
-
-        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+            ConstructorKind, unsigned, SourceParseMode, bool isArrowFunction);
 
         void finishParsing(const SourceCode&, const Identifier&, FunctionMode);
         
@@ -1806,7 +1827,7 @@ namespace JSC {
         unsigned startColumn() const { return m_startColumn; }
         unsigned endColumn() const { return m_endColumn; }
         unsigned parameterCount() const { return m_parameterCount; }
-        FunctionParseMode parseMode() const { return m_parseMode; }
+        SourceParseMode parseMode() const { return m_parseMode; }
 
         void setEndPosition(JSTextPosition);
 
@@ -1815,6 +1836,15 @@ namespace JSC {
         int startStartOffset() const { return m_startStartOffset; }
         bool isInStrictContext() const { return m_isInStrictContext; }
         ConstructorKind constructorKind() { return static_cast<ConstructorKind>(m_constructorKind); }
+        bool isArrowFunction() const { return m_isArrowFunction; }
+
+        void setLoc(unsigned firstLine, unsigned lastLine, int startOffset, int lineStartOffset)
+        {
+            m_lastLine = lastLine;
+            m_position = JSTextPosition(firstLine, startOffset, lineStartOffset);
+            ASSERT(m_position.offset >= m_position.lineStartOffset);
+        }
+        unsigned lastLine() const { return m_lastLine; }
 
     protected:
         Identifier m_ident;
@@ -1828,9 +1858,11 @@ namespace JSC {
         SourceCode m_source;
         int m_startStartOffset;
         unsigned m_parameterCount;
-        FunctionParseMode m_parseMode;
+        int m_lastLine;
+        SourceParseMode m_parseMode;
         unsigned m_isInStrictContext : 1;
         unsigned m_constructorKind : 2;
+        unsigned m_isArrowFunction : 1;
     };
 
     class FunctionNode final : public ScopeNode {
@@ -1860,18 +1892,35 @@ namespace JSC {
         unsigned m_endColumn;
     };
 
-    class FuncExprNode : public ExpressionNode {
+    class BaseFuncExprNode : public ExpressionNode {
     public:
-        FuncExprNode(const JSTokenLocation&, const Identifier&, FunctionBodyNode*, const SourceCode&);
+        BaseFuncExprNode(const JSTokenLocation&, const Identifier&, FunctionMetadataNode*, const SourceCode&);
 
-        FunctionBodyNode* body() { return m_body; }
+        FunctionMetadataNode* metadata() { return m_metadata; }
+
+    protected:
+        FunctionMetadataNode* m_metadata;
+    };
+
+
+    class FuncExprNode : public BaseFuncExprNode {
+    public:
+        FuncExprNode(const JSTokenLocation&, const Identifier&, FunctionMetadataNode*, const SourceCode&);
 
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
         virtual bool isFuncExprNode() const override { return true; }
+    };
 
-        FunctionBodyNode* m_body;
+    class ArrowFuncExprNode : public BaseFuncExprNode {
+    public:
+        ArrowFuncExprNode(const JSTokenLocation&, const Identifier&, FunctionMetadataNode*, const SourceCode&);
+
+    private:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        virtual bool isArrowFuncExprNode() const override { return true; }
     };
 
 #if ENABLE(ES6_CLASS_SYNTAX)
@@ -1997,15 +2046,15 @@ namespace JSC {
 
     class FuncDeclNode : public StatementNode {
     public:
-        FuncDeclNode(const JSTokenLocation&, const Identifier&, FunctionBodyNode*, const SourceCode&);
+        FuncDeclNode(const JSTokenLocation&, const Identifier&, FunctionMetadataNode*, const SourceCode&);
 
         virtual bool isFuncDeclNode() const override { return true; }
-        FunctionBodyNode* body() { return m_body; }
+        FunctionMetadataNode* metadata() { return m_metadata; }
 
     private:
         virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
-        FunctionBodyNode* m_body;
+        FunctionMetadataNode* m_metadata;
     };
 
 #if ENABLE(ES6_CLASS_SYNTAX)

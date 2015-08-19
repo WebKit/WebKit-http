@@ -37,6 +37,7 @@
 #include "JSCInlines.h"
 #include "SourceProvider.h"
 #include "StackVisitor.h"
+#include "Watchdog.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
@@ -91,24 +92,11 @@ static bool internalScriptTimeoutCallback(ExecState* exec, void* callbackPtr, vo
     return callback(contextRef, callbackData);
 }
 
-static void createWatchdogIfNeeded(VM& vm)
-{
-    if (!vm.watchdog) {
-        vm.watchdog = std::make_unique<Watchdog>();
-
-        // The LLINT peeks into the Watchdog object directly. In order to do that,
-        // the LLINT assumes that the internal shape of a std::unique_ptr is the
-        // same as a plain C++ pointer, and loads the address of Watchdog from it.
-        RELEASE_ASSERT(*reinterpret_cast<Watchdog**>(&vm.watchdog) == vm.watchdog.get());
-    }
-}
-
 void JSContextGroupSetExecutionTimeLimit(JSContextGroupRef group, double limit, JSShouldTerminateCallback callback, void* callbackData)
 {
     VM& vm = *toJS(group);
     JSLockHolder locker(&vm);
-    createWatchdogIfNeeded(vm);
-    Watchdog& watchdog = *vm.watchdog;
+    Watchdog& watchdog = vm.ensureWatchdog();
     if (callback) {
         void* callbackPtr = reinterpret_cast<void*>(callback);
         watchdog.setTimeLimit(vm, std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(limit)), internalScriptTimeoutCallback, callbackPtr, callbackData);
@@ -120,9 +108,8 @@ void JSContextGroupClearExecutionTimeLimit(JSContextGroupRef group)
 {
     VM& vm = *toJS(group);
     JSLockHolder locker(&vm);
-    createWatchdogIfNeeded(vm);
-    Watchdog& watchdog = *vm.watchdog;
-    watchdog.setTimeLimit(vm, std::chrono::microseconds::max());
+    if (vm.watchdog)
+        vm.watchdog->setTimeLimit(vm, Watchdog::noTimeLimit);
 }
 
 // From the API's perspective, a global context remains alive iff it has been JSGlobalContextRetained.

@@ -44,6 +44,7 @@
 #include "FTLOutput.h"
 #include "FTLThunks.h"
 #include "FTLWeightedTarget.h"
+#include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSLexicalEnvironment.h"
 #include "OperandsInlines.h"
@@ -532,6 +533,9 @@ private:
         case CheckBadCell:
             compileCheckBadCell();
             break;
+        case CheckIdent:
+            compileCheckIdent();
+            break;
         case GetExecutable:
             compileGetExecutable();
             break;
@@ -590,6 +594,7 @@ private:
             compileCreateActivation();
             break;
         case NewFunction:
+        case NewArrowFunction:
             compileNewFunction();
             break;
         case CreateDirectArguments:
@@ -675,6 +680,9 @@ private:
         case GetScope:
             compileGetScope();
             break;
+        case LoadArrowFunctionThis:
+            compileLoadArrowFunctionThis();
+            break;
         case SkipScope:
             compileSkipScope();
             break;
@@ -692,9 +700,6 @@ private:
             break;
         case CompareEq:
             compileCompareEq();
-            break;
-        case CompareEqConstant:
-            compileCompareEqConstant();
             break;
         case CompareStrictEq:
             compileCompareStrictEq();
@@ -2029,6 +2034,20 @@ private:
         speculate(TDZFailure, noValue(), nullptr, m_out.isZero64(lowJSValue(m_node->child1())));
     }
 
+    void compileCheckIdent()
+    {
+        UniquedStringImpl* uid = m_node->uidOperand();
+        if (uid->isSymbol()) {
+            LValue symbol = lowSymbol(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(symbol, m_heaps.Symbol_privateName);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        } else {
+            LValue string = lowStringIdent(m_node->child1());
+            LValue stringImpl = m_out.loadPtr(string, m_heaps.JSString_value);
+            speculate(BadIdent, noValue(), nullptr, m_out.notEqual(stringImpl, m_out.constIntPtr(uid)));
+        }
+    }
+
     void compileGetExecutable()
     {
         LValue cell = lowCell(m_node->child1());
@@ -2428,6 +2447,14 @@ private:
             
             m_out.appendTo(continuation, lastNext);
             setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
+            return;
+        }
+
+        case Array::Undecided: {
+            LValue index = lowInt32(m_node->child2());
+
+            speculate(OutOfBounds, noValue(), m_node, m_out.lessThan(index, m_out.int32Zero));
+            setJSValue(m_out.constInt64(ValueUndefined));
             return;
         }
             
@@ -3068,38 +3095,55 @@ private:
     
     void compileNewFunction()
     {
+        ASSERT(m_node->op() == NewFunction || m_node->op() == NewArrowFunction);
+        
+        bool isArrowFunction = m_node->op() == NewArrowFunction;
+        
         LValue scope = lowCell(m_node->child1());
+        LValue thisValue = isArrowFunction ? lowCell(m_node->child2()) : nullptr;
+        
         FunctionExecutable* executable = m_node->castOperand<FunctionExecutable*>();
         if (executable->singletonFunction()->isStillValid()) {
-            LValue callResult = vmCall(
-                m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
+            LValue callResult = isArrowFunction
+                ? vmCall(m_out.operation(operationNewArrowFunction), m_callFrame, scope, weakPointer(executable), thisValue)
+                : vmCall(m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
             setJSValue(callResult);
             return;
         }
         
-        Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
+        Structure* structure = isArrowFunction
+            ? m_graph.globalObjectFor(m_node->origin.semantic)->arrowFunctionStructure()
+            : m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
         
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("NewFunction slow path"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewFunction continuation"));
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
-        LValue fastObject = allocateObject<JSFunction>(
-            structure, m_out.intPtrZero, slowPath);
+        LValue fastObject = isArrowFunction
+            ? allocateObject<JSArrowFunction>(structure, m_out.intPtrZero, slowPath)
+            : allocateObject<JSFunction>(structure, m_out.intPtrZero, slowPath);
+        
         
         // We don't need memory barriers since we just fast-created the function, so it
         // must be young.
-        m_out.storePtr(scope, fastObject, m_heaps.JSFunction_scope);
-        m_out.storePtr(weakPointer(executable), fastObject, m_heaps.JSFunction_executable);
-        m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.JSFunction_rareData);
+        m_out.storePtr(scope, fastObject, isArrowFunction ? m_heaps.JSArrowFunction_scope : m_heaps.JSFunction_scope);
+        m_out.storePtr(weakPointer(executable), fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_executable : m_heaps.JSFunction_executable);
+        
+        if (isArrowFunction)
+            m_out.storePtr(thisValue, fastObject, m_heaps.JSArrowFunction_this);
+        
+        m_out.storePtr(m_out.intPtrZero, fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_rareData : m_heaps.JSFunction_rareData);
         
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
         
         m_out.appendTo(slowPath, continuation);
-        LValue callResult = vmCall(
-            m_out.operation(operationNewFunctionWithInvalidatedReallocationWatchpoint),
-            m_callFrame, scope, weakPointer(executable));
+        
+        LValue callResult = isArrowFunction
+            ? vmCall(m_out.operation(operationNewArrowFunctionWithInvalidatedReallocationWatchpoint), m_callFrame, scope, weakPointer(executable), thisValue)
+            : vmCall(m_out.operation(operationNewFunctionWithInvalidatedReallocationWatchpoint), m_callFrame, scope, weakPointer(executable));
+        
         ValueFromBlock slowResult = m_out.anchor(callResult);
         m_out.jump(continuation);
         
@@ -4031,6 +4075,11 @@ private:
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSFunction_scope));
     }
     
+    void compileLoadArrowFunctionThis()
+    {
+        setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSArrowFunction_this));
+    }
+    
     void compileSkipScope()
     {
         setJSValue(m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSScope_next));
@@ -4094,16 +4143,20 @@ private:
             nonSpeculativeCompare(LLVMIntEQ, operationCompareEq);
             return;
         }
-        
+
+        if (m_node->child1().useKind() == OtherUse) {
+            ASSERT(!m_interpreter.needsTypeCheck(m_node->child1(), SpecOther));
+            setBoolean(equalNullOrUndefined(m_node->child2(), AllCellsAreFalse, EqualNullOrUndefined, ManualOperandSpeculation));
+            return;
+        }
+
+        if (m_node->child2().useKind() == OtherUse) {
+            ASSERT(!m_interpreter.needsTypeCheck(m_node->child2(), SpecOther));
+            setBoolean(equalNullOrUndefined(m_node->child1(), AllCellsAreFalse, EqualNullOrUndefined, ManualOperandSpeculation));
+            return;
+        }
+
         DFG_CRASH(m_graph, m_node, "Bad use kinds");
-    }
-    
-    void compileCompareEqConstant()
-    {
-        ASSERT(m_node->child2()->asJSValue().isNull());
-        setBoolean(
-            equalNullOrUndefined(
-                m_node->child1(), AllCellsAreFalse, EqualNullOrUndefined));
     }
     
     void compileCompareStrictEq()
@@ -5490,6 +5543,11 @@ private:
         LValue structureDiscriminant, const FormattedValue& formattedValue, ExitKind exitKind,
         const StructureSet& set, const Functor& weakStructureDiscriminant)
     {
+        if (set.isEmpty()) {
+            terminate(exitKind);
+            return;
+        }
+
         if (set.size() == 1) {
             speculate(
                 exitKind, formattedValue, 0,
@@ -6045,19 +6103,6 @@ private:
         return ArrayValues(
             m_out.phi(m_out.intPtr, fastArray, slowArray),
             m_out.phi(m_out.intPtr, fastButterfly, slowButterfly));
-    }
-    
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode, LValue base)
-    {
-        JSArrayBufferView* view = m_graph.tryGetFoldableView(provenValue(baseEdge), arrayMode);
-        if (view)
-            return m_out.constInt32(view->length());
-        return m_out.load32NonNegative(base, m_heaps.JSArrayBufferView_length);
-    }
-    
-    LValue typedArrayLength(Edge baseEdge, ArrayMode arrayMode)
-    {
-        return typedArrayLength(baseEdge, arrayMode, lowCell(baseEdge));
     }
     
     LValue boolify(Edge edge)
@@ -7033,7 +7078,16 @@ private:
         speculateStringIdent(edge, string, stringImpl);
         return stringImpl;
     }
-    
+
+    LValue lowSymbol(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
+    {
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == SymbolUse);
+
+        LValue result = lowCell(edge, mode);
+        speculateSymbol(edge, result);
+        return result;
+    }
+
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
         ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == ObjectUse);
@@ -7430,6 +7484,9 @@ private:
         case StringIdentUse:
             speculateStringIdent(edge);
             break;
+        case SymbolUse:
+            speculateSymbol(edge);
+            break;
         case StringObjectUse:
             speculateStringObject(edge);
             break;
@@ -7526,7 +7583,16 @@ private:
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().stringStructure->id()));
     }
-    
+
+    LValue isNotSymbol(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, ~SpecSymbol))
+            return proven;
+        return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().symbolStructure->id()));
+    }
+
     LValue isArrayType(LValue cell, ArrayMode arrayMode)
     {
         switch (arrayMode.type()) {
@@ -7749,7 +7815,17 @@ private:
             NotStringObject, noValue(), 0,
             m_out.notEqual(structureID, weakStructureID(stringObjectStructure)));
     }
-    
+
+    void speculateSymbol(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol | ~SpecCell, isNotSymbol(cell));
+    }
+
+    void speculateSymbol(Edge edge)
+    {
+        speculateSymbol(edge, lowCell(edge));
+    }
+
     void speculateNonNullObject(Edge edge, LValue cell)
     {
         FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecObject, isNotObject(cell));

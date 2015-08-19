@@ -231,12 +231,12 @@ namespace JSC {
     {
     }
 
-    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType)
+    inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType, SuperBinding superBinding = SuperBinding::NotNeeded)
         : m_name(0)
         , m_expression(name)
         , m_assign(assign)
         , m_type(type)
-        , m_needsSuperBinding(false)
+        , m_needsSuperBinding(superBinding == SuperBinding::Needed)
         , m_putType(putType)
     {
     }
@@ -733,7 +733,12 @@ namespace JSC {
     {
     }
 
-    inline ModuleSpecifierNode::ModuleSpecifierNode(const JSTokenLocation& location, const Identifier& moduleName)
+    inline ModuleDeclarationNode::ModuleDeclarationNode(const JSTokenLocation& location)
+        : StatementNode(location)
+    {
+    }
+
+    inline ModuleNameNode::ModuleNameNode(const JSTokenLocation& location, const Identifier& moduleName)
         : Node(location)
         , m_moduleName(moduleName)
     {
@@ -746,35 +751,36 @@ namespace JSC {
     {
     }
 
-    inline ImportDeclarationNode::ImportDeclarationNode(const JSTokenLocation& location, ImportSpecifierListNode* importSpecifierList, ModuleSpecifierNode* moduleSpecifier)
-        : StatementNode(location)
+    inline ImportDeclarationNode::ImportDeclarationNode(const JSTokenLocation& location, ImportSpecifierListNode* importSpecifierList, ModuleNameNode* moduleName)
+        : ModuleDeclarationNode(location)
         , m_specifierList(importSpecifierList)
-        , m_moduleSpecifier(moduleSpecifier)
+        , m_moduleName(moduleName)
     {
     }
 
-    inline ExportAllDeclarationNode::ExportAllDeclarationNode(const JSTokenLocation& location, ModuleSpecifierNode* moduleSpecifier)
-        : StatementNode(location)
-        , m_moduleSpecifier(moduleSpecifier)
+    inline ExportAllDeclarationNode::ExportAllDeclarationNode(const JSTokenLocation& location, ModuleNameNode* moduleName)
+        : ModuleDeclarationNode(location)
+        , m_moduleName(moduleName)
     {
     }
 
-    inline ExportDefaultDeclarationNode::ExportDefaultDeclarationNode(const JSTokenLocation& location, StatementNode* declaration)
-        : StatementNode(location)
+    inline ExportDefaultDeclarationNode::ExportDefaultDeclarationNode(const JSTokenLocation& location, StatementNode* declaration, const Identifier& localName)
+        : ModuleDeclarationNode(location)
         , m_declaration(declaration)
+        , m_localName(localName)
     {
     }
 
     inline ExportLocalDeclarationNode::ExportLocalDeclarationNode(const JSTokenLocation& location, StatementNode* declaration)
-        : StatementNode(location)
+        : ModuleDeclarationNode(location)
         , m_declaration(declaration)
     {
     }
 
-    inline ExportNamedDeclarationNode::ExportNamedDeclarationNode(const JSTokenLocation& location, ExportSpecifierListNode* exportSpecifierList, ModuleSpecifierNode* moduleSpecifier)
-        : StatementNode(location)
+    inline ExportNamedDeclarationNode::ExportNamedDeclarationNode(const JSTokenLocation& location, ExportSpecifierListNode* exportSpecifierList, ModuleNameNode* moduleName)
+        : ModuleDeclarationNode(location)
         , m_specifierList(exportSpecifierList)
-        , m_moduleSpecifier(moduleSpecifier)
+        , m_moduleName(moduleName)
     {
     }
 
@@ -884,18 +890,29 @@ namespace JSC {
     {
     }
 
-    inline FuncExprNode::FuncExprNode(const JSTokenLocation& location, const Identifier& ident, FunctionBodyNode* body, const SourceCode& source)
+    
+    inline BaseFuncExprNode::BaseFuncExprNode(const JSTokenLocation& location, const Identifier& ident, FunctionMetadataNode* m_metadata, const SourceCode& source)
         : ExpressionNode(location)
-        , m_body(body)
+        , m_metadata(m_metadata)
     {
-        m_body->finishParsing(source, ident, FunctionExpression);
+        m_metadata->finishParsing(source, ident, FunctionExpression);
     }
 
-    inline FuncDeclNode::FuncDeclNode(const JSTokenLocation& location, const Identifier& ident, FunctionBodyNode* body, const SourceCode& source)
-        : StatementNode(location)
-        , m_body(body)
+    inline FuncExprNode::FuncExprNode(const JSTokenLocation& location, const Identifier& ident, FunctionMetadataNode* m_metadata, const SourceCode& source)
+        : BaseFuncExprNode(location, ident, m_metadata, source)
     {
-        m_body->finishParsing(source, ident, FunctionDeclaration);
+    }
+
+    inline FuncDeclNode::FuncDeclNode(const JSTokenLocation& location, const Identifier& ident, FunctionMetadataNode* m_metadata, const SourceCode& source)
+        : StatementNode(location)
+        , m_metadata(m_metadata)
+    {
+        m_metadata->finishParsing(source, ident, FunctionDeclaration);
+    }
+
+    inline ArrowFuncExprNode::ArrowFuncExprNode(const JSTokenLocation& location, const Identifier& ident, FunctionMetadataNode* m_metadata, const SourceCode& source)
+        : BaseFuncExprNode(location, ident, m_metadata, source)
+    {
     }
 
 #if ENABLE(ES6_CLASS_SYNTAX)

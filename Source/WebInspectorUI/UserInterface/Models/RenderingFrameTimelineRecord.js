@@ -30,7 +30,7 @@ WebInspector.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord e
         super(WebInspector.TimelineRecord.Type.RenderingFrame, startTime, endTime);
 
         this._durationByTaskType = new Map;
-        this._frameIndex = WebInspector.RenderingFrameTimelineRecord._nextFrameIndex++;
+        this._frameIndex = -1;
     }
 
     // Static
@@ -54,6 +54,21 @@ WebInspector.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord e
         }
     }
 
+    static taskTypeForTimelineRecord(record)
+    {
+        switch(record.type) {
+        case WebInspector.TimelineRecord.Type.Script:
+            return WebInspector.RenderingFrameTimelineRecord.TaskType.Script;
+        case WebInspector.TimelineRecord.Type.Layout:
+            if (record.eventType  === WebInspector.LayoutTimelineRecord.EventType.Paint || record.eventType === WebInspector.LayoutTimelineRecord.EventType.Composite)
+                return WebInspector.RenderingFrameTimelineRecord.TaskType.Paint;
+            return WebInspector.RenderingFrameTimelineRecord.TaskType.Layout;
+        default:
+            console.error("Unsupported timeline record type: " + record.type);
+            return null;
+        }
+    }
+
     // Public
 
     get frameIndex()
@@ -66,32 +81,25 @@ WebInspector.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord e
         return this._frameIndex + 1;
     }
 
+    setupFrameIndex()
+    {
+        console.assert(this._frameIndex === -1, "Frame index should only be set once.");
+        if (this._frameIndex >= 0)
+            return;
+        this._frameIndex = WebInspector.RenderingFrameTimelineRecord._nextFrameIndex++;
+    }
+
     durationForTask(taskType)
     {
         if (this._durationByTaskType.has(taskType))
             return this._durationByTaskType.get(taskType);
-
-        function validRecordForTaskType(record)
-        {
-            switch(taskType) {
-            case WebInspector.RenderingFrameTimelineRecord.TaskType.Script:
-                return record.type === WebInspector.TimelineRecord.Type.Script;
-            case WebInspector.RenderingFrameTimelineRecord.TaskType.Layout:
-                return record.type === WebInspector.TimelineRecord.Type.Layout && record.eventType !== WebInspector.LayoutTimelineRecord.EventType.Paint && record.eventType !== WebInspector.LayoutTimelineRecord.EventType.Composite;
-            case WebInspector.RenderingFrameTimelineRecord.TaskType.Paint:
-                return record.eventType === WebInspector.LayoutTimelineRecord.EventType.Paint || record.eventType === WebInspector.LayoutTimelineRecord.EventType.Composite;
-            default:
-                console.error("Unsupported task type: " + taskType);
-                return false;
-            }
-        }
 
         var duration;
         if (taskType === WebInspector.RenderingFrameTimelineRecord.TaskType.Other)
             duration = this._calculateDurationRemainder();
         else {
             duration = this.children.reduce(function(previousValue, currentValue) {
-                if (!validRecordForTaskType(currentValue))
+                if (taskType !== WebInspector.RenderingFrameTimelineRecord.taskTypeForTimelineRecord(currentValue))
                     return previousValue;
 
                 var currentDuration = currentValue.duration;

@@ -84,8 +84,8 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
         this._style = style;
         this._mediaList = mediaList;
 
-        delete this._matchedSelectors;
-        delete this._matchedSelectorText;
+        this._matchedSelectors = null;
+        this._matchedSelectorText = null;
 
         if (this._style)
             this._style.ownerRule = this;
@@ -175,6 +175,18 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
     get mediaList()
     {
         return this._mediaList;
+    }
+
+    get mediaText()
+    {
+        if (!this._mediaList.length)
+            return;
+
+        let mediaText = "";
+        for (let media of this._mediaList)
+            mediaText += media.text;
+
+        return mediaText;
     }
 
     isEqualTo(rule)

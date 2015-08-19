@@ -20,7 +20,7 @@
  * DISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY
  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * LOSS OF USE, DATA, OR PROFITS;   OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -29,7 +29,8 @@
 #define SQLStatement_h
 
 #include "SQLCallbackWrapper.h"
-#include "SQLResultSet.h"
+#include "SQLStatementCallback.h"
+#include "SQLStatementErrorCallback.h"
 #include "SQLValue.h"
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
@@ -39,30 +40,40 @@ namespace WebCore {
 
 class Database;
 class SQLError;
-class SQLStatementBackend;
-class SQLStatementCallback;
-class SQLStatementErrorCallback;
-class SQLTransaction;
+class SQLResultSet;
+class SQLTransactionBackend;
 
 class SQLStatement {
 public:
-    SQLStatement(Database&, PassRefPtr<SQLStatementCallback>, PassRefPtr<SQLStatementErrorCallback>);
+    SQLStatement(Database&, const String&, const Vector<SQLValue>&, PassRefPtr<SQLStatementCallback>, PassRefPtr<SQLStatementErrorCallback>, int permissions);
+    ~SQLStatement();
 
+    bool execute(Database&);
+    bool lastExecutionFailedDueToQuota() const;
+
+    bool hasStatementCallback() const { return m_statementCallbackWrapper.hasCallback(); }
+    bool hasStatementErrorCallback() const { return m_statementErrorCallbackWrapper.hasCallback(); }
     bool performCallback(SQLTransaction*);
 
-    void setBackend(SQLStatementBackend*);
+    void setDatabaseDeletedError();
+    void setVersionMismatchedError();
 
-    bool hasCallback();
-    bool hasErrorCallback();
+    PassRefPtr<SQLError> sqlError() const;
+    PassRefPtr<SQLResultSet> sqlResultSet() const;
 
 private:
-    // The SQLStatementBackend owns the SQLStatement. Hence, the backend is
-    // guaranteed to be outlive the SQLStatement, and it is safe for us to refer
-    // to the backend using a raw pointer here.
-    SQLStatementBackend* m_backend;
+    void setFailureDueToQuota();
+    void clearFailureDueToQuota();
 
+    String m_statement;
+    Vector<SQLValue> m_arguments;
     SQLCallbackWrapper<SQLStatementCallback> m_statementCallbackWrapper;
     SQLCallbackWrapper<SQLStatementErrorCallback> m_statementErrorCallbackWrapper;
+
+    RefPtr<SQLError> m_error;
+    RefPtr<SQLResultSet> m_resultSet;
+
+    int m_permissions;
 };
 
 } // namespace WebCore

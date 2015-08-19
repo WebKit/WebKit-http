@@ -895,7 +895,7 @@ public:
     void getTextShadowBlockDirectionExtent(LayoutUnit& logicalTop, LayoutUnit& logicalBottom) const { getShadowBlockDirectionExtent(textShadow(), logicalTop, logicalBottom); }
 
     float textStrokeWidth() const { return rareInheritedData->textStrokeWidth; }
-    ColorSpace colorSpace() const { return static_cast<ColorSpace>(rareInheritedData->colorSpace); }
+    static ColorSpace colorSpace() { return ColorSpaceSRGB; } // FIXME: Remove after adding color space handling into the Color class.
     float opacity() const { return rareNonInheritedData->opacity; }
     ControlPart appearance() const { return static_cast<ControlPart>(rareNonInheritedData->m_appearance); }
     AspectRatioType aspectRatioType() const { return static_cast<AspectRatioType>(rareNonInheritedData->m_aspectRatioType); }
@@ -1489,7 +1489,6 @@ public:
     void setTextStrokeColor(const Color& c) { SET_VAR(rareInheritedData, textStrokeColor, c); }
     void setTextStrokeWidth(float w) { SET_VAR(rareInheritedData, textStrokeWidth, w); }
     void setTextFillColor(const Color& c) { SET_VAR(rareInheritedData, textFillColor, c); }
-    void setColorSpace(ColorSpace space) { SET_VAR(rareInheritedData, colorSpace, space); }
     void setOpacity(float f) { float v = clampTo<float>(f, 0, 1); SET_VAR(rareNonInheritedData, opacity, v); }
     void setAppearance(ControlPart a) { SET_VAR(rareNonInheritedData, m_appearance, a); }
     // For valid values of box-align see http://www.w3.org/TR/2009/WD-css3-flexbox-20090723/#alignment
@@ -1779,7 +1778,7 @@ public:
     }
     ClipPathOperation* clipPath() const { return rareNonInheritedData->m_clipPath.get(); }
 
-    static ClipPathOperation* initialClipPath() { return 0; }
+    static ClipPathOperation* initialClipPath() { return nullptr; }
 
     bool hasContent() const { return contentData(); }
     const ContentData* contentData() const { return rareNonInheritedData->m_content.get(); }
@@ -1798,6 +1797,17 @@ public:
 
     QuotesData* quotes() const { return rareInheritedData->quotes.get(); }
     void setQuotes(PassRefPtr<QuotesData>);
+
+    WillChangeData* willChange() const { return rareNonInheritedData->m_willChange.get(); }
+    void setWillChange(PassRefPtr<WillChangeData>);
+
+    bool willChangeCreatesStackingContext() const
+    {
+        if (!willChange())
+            return false;
+        
+        return willChange()->canCreateStackingContext();
+    }
 
     const AtomicString& hyphenString() const;
 
@@ -1866,7 +1876,6 @@ public:
     static NinePieceImage initialNinePieceImage() { return NinePieceImage(); }
     static LengthSize initialBorderRadius() { return LengthSize(Length(0, Fixed), Length(0, Fixed)); }
     static ECaptionSide initialCaptionSide() { return CAPTOP; }
-    static ColorSpace initialColorSpace() { return ColorSpaceDeviceRGB; }
     static ColumnAxis initialColumnAxis() { return AutoColumnAxis; }
     static ColumnProgression initialColumnProgression() { return NormalColumnProgression; }
     static TextDirection initialDirection() { return LTR; }
@@ -2004,6 +2013,8 @@ public:
     static PrintColorAdjust initialPrintColorAdjust() { return PrintColorAdjustEconomy; }
     static QuotesData* initialQuotes() { return nullptr; }
     static const AtomicString& initialContentAltText() { return emptyAtom; }
+
+    static WillChangeData* initialWillChange() { return nullptr; }
 
 #if ENABLE(CSS_SCROLL_SNAP)
     static ScrollSnapType initialScrollSnapType() { return ScrollSnapType::None; }

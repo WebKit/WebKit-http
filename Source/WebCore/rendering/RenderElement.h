@@ -25,6 +25,7 @@
 
 #include "AnimationController.h"
 #include "RenderObject.h"
+#include "StyleInheritedData.h"
 
 namespace WebCore {
 
@@ -208,6 +209,7 @@ public:
     void setIsCSSAnimating(bool b) { m_isCSSAnimating = b; }
     
     const RenderElement* enclosingRendererWithTextDecoration(TextDecoration, bool firstLine) const;
+    void drawLineForBoxSide(GraphicsContext&, const FloatRect&, BoxSide, Color, EBorderStyle, float adjacentWidth1, float adjacentWidth2, bool antialias = false) const;
 
 protected:
     enum BaseTypeFlags {
@@ -264,6 +266,9 @@ protected:
     unsigned renderBlockFlowLineLayoutPath() const { return m_renderBlockFlowLineLayoutPath; }
     bool renderBlockFlowHasMarkupTruncation() const { return m_renderBlockFlowHasMarkupTruncation; }
 
+    void paintFocusRing(PaintInfo&, const LayoutPoint&, const RenderStyle&);
+    void paintOutline(PaintInfo&, const LayoutRect&);
+
 private:
     RenderElement(ContainerNode&, Ref<RenderStyle>&&, unsigned baseTypeFlags);
     void node() const = delete;
@@ -297,6 +302,12 @@ private:
 
     bool getLeadingCorner(FloatPoint& output) const;
     bool getTrailingCorner(FloatPoint& output) const;
+
+    void clearLayoutRootIfNeeded() const;
+    
+    bool shouldWillChangeCreateStackingContext() const;
+
+    void computeMaxOutlineSize() const;
 
     unsigned m_baseTypeFlags : 6;
     unsigned m_ancestorLineBoxDirty : 1;

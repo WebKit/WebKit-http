@@ -1,3 +1,120 @@
+2015-08-18  Alex Christensen  <achristensen@webkit.org>
+
+        [CMake] REGRESSION(r188540): WebKitTestRunner is not longer built and all the tests (layout and perf) fail.
+        https://bugs.webkit.org/show_bug.cgi?id=148127
+
+        Reviewed by Martin Robinson.
+
+        * CMakeLists.txt:
+        TOOLS_DIR hasn't been set yet since its defining has been moved to WebKitFS. 
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        [Win CMake] Allow WebKitLibraries directory to be set from the command line
+        https://bugs.webkit.org/show_bug.cgi?id=148112
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/OptionsWin.cmake:
+        Don't use an environment variable for WEBKIT_LIBRARIES_DIR.  
+        Instead, use the default location if nothing is passed in from the command line.
+        This way we can set it from the command line for the AppleInternal build.
+        Also, set the output directories to be consistent between the old and new build systems (and ninja).
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build Debug Suffix on Windows with CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148083
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/OptionsWin.cmake:
+        Use debug libraries in debug suffix builds.
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Moved functionality to WebKitCommon.cmake and WebKitFS.cmake and made conditional 
+        so we can change directory structure from command line parameters.
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWin.cmake: Copied from Source/cmake/OptionsWindows.cmake.
+        * Source/cmake/OptionsWinCairo.cmake:
+        * Source/cmake/OptionsWindows.cmake: Removed.
+        * Source/cmake/WebKitCommon.cmake: Added.
+        * Source/cmake/WebKitFS.cmake:
+
+2015-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188428.
+        https://bugs.webkit.org/show_bug.cgi?id=148015
+
+        broke cmake build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Move some commands from ./CMakeLists.txt to Source/cmake"
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+        http://trac.webkit.org/changeset/188428
+
+2015-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Moved functionality to WebKitCommon.cmake and WebKitFS.cmake and made conditional 
+        so we can change directory structure from command line parameters.
+        * Source/cmake/WebKitCommon.cmake: Added.
+        * Source/cmake/WebKitFS.cmake:
+
+2015-08-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        A focused node should not be assisted when handling touch events synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=147836
+
+        Reviewed by Enrica Casucci.
+
+        Added manual tests for keyboard assistance behavior due to receiving touch events on iOS.
+
+        * ManualTests/ios/focused-input-should-assist-on-touch.html: Checks that a currently focused
+                input can still be assisted due to a touch event.
+        * ManualTests/ios/keyboard-should-not-show-on-touch-event.html: Checks that handling a touch
+                event does not automatically cause us to assist the currently focused node.
+
+2015-08-12  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Debug CMake builds on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147940
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsWindows.cmake:
+        Put 32-bit binaries in a bin32 subdirectory and 64-bit binaries in a bin64 subdirectory.
+
+2015-08-10  Alex Christensen  <achristensen@webkit.org>
+
+        Build TestWebKitAPI with CMake on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147851
+
+        Reviewed by Chris Dumez.
+
+        * Source/cmake/OptionsWindows.cmake:
+        Enable api tests and set USE_SYSTEM_MALLOC to avoid warnings when redefining it.
+
+2015-08-06  Alex Christensen  <achristensen@webkit.org>
+
+        [Win] CMake build fix after r188098.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+        OptionsWindows.cmake uses WTF_PLATFORM_WIN_CAIRO now, so we need to set it before including OptionsWindows.
+
 2015-08-04  Alex Christensen  <achristensen@webkit.org>
 
         Fix quirks with CMake and VS2015

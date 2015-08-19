@@ -190,8 +190,13 @@ WebInspector.contentLoaded = function()
     document.body.classList.add(WebInspector.Platform.name + "-platform");
     if (WebInspector.Platform.isNightlyBuild)
         document.body.classList.add("nightly-build");
-    if (WebInspector.Platform.version.name)
-        document.body.classList.add(WebInspector.Platform.version.name);
+
+    if (WebInspector.Platform.name === "mac") {
+        if (WebInspector.Platform.version.release >= 11)
+            document.body.classList.add("latest-mac");
+        else
+            document.body.classList.add("legacy-mac");
+    }
 
     document.body.classList.add(this.debuggableType);
 
@@ -239,7 +244,8 @@ WebInspector.contentLoaded = function()
     this._reloadPageKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "R", this._reloadPage.bind(this));
     this._reloadPageIgnoringCacheKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "R", this._reloadPageIgnoringCache.bind(this));
 
-    this._consoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this._showConsoleTab.bind(this));
+    this._consoleTabKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Option | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "C", this._showConsoleTab.bind(this));
+    this._quickConsoleKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Apostrophe, this._focusConsolePrompt.bind(this));
 
     this._inspectModeKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "C", this._toggleInspectMode.bind(this));
 
@@ -1209,20 +1215,20 @@ WebInspector._saveCookieForOpenTabs = function()
 
 WebInspector._windowFocused = function(event)
 {
-    if (event.target.document.nodeType !== Node.DOCUMENT_NODE || this.docked)
+    if (event.target.document.nodeType !== Node.DOCUMENT_NODE)
         return;
 
     // FIXME: We should use the :window-inactive pseudo class once https://webkit.org/b/38927 is fixed.
-    document.body.classList.remove("window-inactive");
+    document.body.classList.remove(this.docked ? "window-docked-inactive" : "window-inactive");
 };
 
 WebInspector._windowBlurred = function(event)
 {
-    if (event.target.document.nodeType !== Node.DOCUMENT_NODE || this.docked)
+    if (event.target.document.nodeType !== Node.DOCUMENT_NODE)
         return;
 
     // FIXME: We should use the :window-inactive pseudo class once https://webkit.org/b/38927 is fixed.
-    document.body.classList.add("window-inactive");
+    document.body.classList.add(this.docked ? "window-docked-inactive" : "window-inactive");
 };
 
 WebInspector._windowResized = function(event)
@@ -1610,6 +1616,11 @@ WebInspector._toggleInspectMode = function(event)
 WebInspector._showConsoleTab = function(event)
 {
     this.showConsoleTab();
+};
+
+WebInspector._focusConsolePrompt = function(event)
+{
+    this.quickConsole.prompt.focus();
 };
 
 WebInspector._focusedContentView = function()

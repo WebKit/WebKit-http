@@ -38,6 +38,9 @@ public:
         RequiresPlaybackTargetMonitoring = 1 << 3,
         ExternalDeviceAutoPlayCandidate = 1 << 4,
         DidPlayToEnd = 1 << 5,
+        IsSourceElementPlaying = 1 << 6,
+        IsNextTrackControlEnabled = 1 << 7,
+        IsPreviousTrackControlEnabled = 1 << 8,
     };
     typedef unsigned MediaStateFlags;
 

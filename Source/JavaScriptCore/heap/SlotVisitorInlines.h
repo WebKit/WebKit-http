@@ -188,7 +188,7 @@ inline TriState SlotVisitor::containsOpaqueRootTriState(void* root) const
 {
     if (m_opaqueRoots.contains(root))
         return TrueTriState;
-    std::lock_guard<std::mutex> lock(m_shared.m_opaqueRootsMutex);
+    std::lock_guard<Lock> lock(m_shared.m_opaqueRootsMutex);
     if (m_shared.m_opaqueRoots.contains(root))
         return TrueTriState;
     return MixedTriState;
@@ -250,7 +250,7 @@ inline void SlotVisitor::copyLater(JSCell* owner, CopyToken token, void* ptr, si
 
     ASSERT(heap()->m_storageSpace.contains(block));
 
-    SpinLockHolder locker(&block->workListLock());
+    LockHolder locker(&block->workListLock());
     if (heap()->operationInProgress() == FullCollection || block->shouldReportLiveBytes(locker, owner)) {
         m_bytesCopied += bytes;
         block->reportLiveBytes(locker, owner, token, bytes);

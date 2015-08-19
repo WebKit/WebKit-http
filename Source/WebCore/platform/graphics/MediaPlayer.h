@@ -53,10 +53,6 @@
 #include "PlatformTextTrack.h"
 #endif
 
-#if USE(PLATFORM_TEXT_TRACK_MENU)
-#include "PlatformTextTrackMenu.h"
-#endif
-
 OBJC_CLASS AVAsset;
 OBJC_CLASS AVPlayer;
 OBJC_CLASS NSArray;
@@ -229,6 +225,11 @@ public:
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
 #endif
     
+#if ENABLE(MEDIA_STREAM)
+    virtual String mediaPlayerMediaDeviceIdentifierStorageDirectory() const { return emptyString(); }
+#endif
+
+    
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     virtual void mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*) { };
 #endif
@@ -284,7 +285,7 @@ public:
     virtual Vector<String> mediaPlayerPreferredAudioCharacteristics() const { return Vector<String>(); }
 
 #if USE(GSTREAMER)
-    virtual void requestInstallMissingPlugins(const String&, MediaPlayerRequestInstallMissingPluginsCallback&) { };
+    virtual void requestInstallMissingPlugins(const String&, const String&, MediaPlayerRequestInstallMissingPluginsCallback&) { };
 #endif
 };
 
@@ -580,11 +581,6 @@ public:
 #endif
 
     static void resetMediaEngines();
-
-#if USE(PLATFORM_TEXT_TRACK_MENU)
-    bool implementsTextTrackControls() const;
-    PassRefPtr<PlatformTextTrackMenuInterface> textTrackMenu();
-#endif
 
 #if USE(GSTREAMER)
     void simulateAudioInterruption();

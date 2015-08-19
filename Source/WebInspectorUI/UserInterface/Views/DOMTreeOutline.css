@@ -41,11 +41,7 @@
 
 .dom-tree-outline li.hovered:not(.selected) .selection {
     display: block;
-    left: 3px;
-    right: 3px;
-
     background-color: hsla(209, 100%, 49%, 0.1);
-    border-radius: 5px;
 }
 
 .dom-tree-outline li .selection {
@@ -168,4 +164,13 @@
     color: black;
     background-color: hsla(53, 83%, 53%, 0.2);
     border-bottom: 1px solid hsl(47, 82%, 60%);
+}
+
+@keyframes node-state-changed {
+    from { background-color: hsla(212, 92%, 54%, 0.5); }
+}
+
+.node-state-changed {
+    animation: node-state-changed 1s cubic-bezier(0, 0, 0.25, 1);
+    border-radius: 3px;
 }

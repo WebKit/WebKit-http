@@ -363,6 +363,7 @@ inline void AXObjectCache::postNotification(AccessibilityObject*, Document*, AXN
 inline void AXObjectCache::postNotification(RenderObject*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postNotification(Node*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postPlatformNotification(AccessibilityObject*, AXNotification) { }
+inline void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject*) { }
 inline void AXObjectCache::remove(AXID) { }
 inline void AXObjectCache::remove(RenderObject*) { }
 inline void AXObjectCache::remove(Node*) { }

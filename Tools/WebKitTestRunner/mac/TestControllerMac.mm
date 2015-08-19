@@ -96,23 +96,15 @@ void TestController::platformResetPreferencesToConsistentValues()
 #endif
 }
 
+void TestController::updatePlatformSpecificViewOptionsForTest(ViewOptions& viewOptions, const TestInvocation& test) const
+{
+    viewOptions.useThreadedScrolling = shouldUseThreadedScrolling(test);
+    viewOptions.useRemoteLayerTree = shouldUseRemoteLayerTree();
+    viewOptions.shouldShowWebView = shouldShowWebView();
+}
+
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
 {
-    auto viewOptions = adoptWK(WKMutableDictionaryCreate());
-    auto useThreadedScrollingKey = adoptWK(WKStringCreateWithUTF8CString("ThreadedScrolling"));
-    auto useThreadedScrollingValue = adoptWK(WKBooleanCreate(shouldUseThreadedScrolling(test)));
-    WKDictionarySetItem(viewOptions.get(), useThreadedScrollingKey.get(), useThreadedScrollingValue.get());
-
-    auto useRemoteLayerTreeKey = adoptWK(WKStringCreateWithUTF8CString("RemoteLayerTree"));
-    auto useRemoteLayerTreeValue = adoptWK(WKBooleanCreate(shouldUseRemoteLayerTree()));
-    WKDictionarySetItem(viewOptions.get(), useRemoteLayerTreeKey.get(), useRemoteLayerTreeValue.get());
-
-    auto shouldShowWebViewKey = adoptWK(WKStringCreateWithUTF8CString("ShouldShowWebView"));
-    auto shouldShowWebViewValue = adoptWK(WKBooleanCreate(shouldShowWebView()));
-    WKDictionarySetItem(viewOptions.get(), shouldShowWebViewKey.get(), shouldShowWebViewValue.get());
-
-    ensureViewSupportsOptions(viewOptions.get());
-
 #if WK_API_ENABLED
     if (!test.urlContains("contentextensions/"))
         return;
@@ -210,7 +202,6 @@ static NSSet *allowedFontFamilySet()
         @"Hiragino Kaku Gothic ProN",
         @"Hiragino Kaku Gothic Std",
         @"Hiragino Kaku Gothic StdN",
-        @"Hiragino Maru Gothic Monospaced",
         @"Hiragino Maru Gothic Pro",
         @"Hiragino Maru Gothic ProN",
         @"Hiragino Mincho Pro",

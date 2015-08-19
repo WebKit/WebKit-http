@@ -32,6 +32,7 @@
 #include "CodeSpecializationKind.h"
 #include "CompilationResult.h"
 #include "DFGPlan.h"
+#include "ExecutableInfo.h"
 #include "HandlerInfo.h"
 #include "InferredValue.h"
 #include "JITCode.h"
@@ -41,6 +42,7 @@
 #include "SourceCode.h"
 #include "TypeSet.h"
 #include "UnlinkedCodeBlock.h"
+#include "UnlinkedFunctionExecutable.h"
 
 namespace JSC {
 
@@ -472,7 +474,7 @@ public:
 
     void clearCode();
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None, false); }
 
     unsigned numVariables() { return m_unlinkedEvalCodeBlock->numVariables(); }
     unsigned numberOfFunctionDecls() { return m_unlinkedEvalCodeBlock->numberOfFunctionDecls(); }
@@ -528,7 +530,7 @@ public:
 
     void clearCode();
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None, false); }
 
 private:
     friend class ScriptExecutable;
@@ -631,6 +633,7 @@ public:
     FunctionMode functionMode() { return m_unlinkedExecutable->functionMode(); }
     bool isBuiltinFunction() const { return m_unlinkedExecutable->isBuiltinFunction(); }
     ConstructAbility constructAbility() const { return m_unlinkedExecutable->constructAbility(); }
+    bool isArrowFunction() const { return m_unlinkedExecutable->isArrowFunction(); }
     bool isClassConstructorFunction() const { return m_unlinkedExecutable->isClassConstructorFunction(); }
     const Identifier& name() { return m_unlinkedExecutable->name(); }
     const Identifier& inferredName() { return m_unlinkedExecutable->inferredName(); }

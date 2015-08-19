@@ -44,14 +44,73 @@ enum DebuggerMode { DebuggerOff, DebuggerOn };
 
 enum FunctionMode { FunctionExpression, FunctionDeclaration };
 
-enum FunctionParseMode {
+enum class SourceParseMode {
     NormalFunctionMode,
     GetterMode,
     SetterMode,
     MethodMode,
-    NotAFunctionMode,
-    ArrowFunctionMode
+    ArrowFunctionMode,
+    ProgramMode,
+    ModuleAnalyzeMode,
+    ModuleEvaluateMode
 };
+
+inline bool isFunctionParseMode(SourceParseMode parseMode)
+{
+    switch (parseMode) {
+    case SourceParseMode::NormalFunctionMode:
+    case SourceParseMode::GetterMode:
+    case SourceParseMode::SetterMode:
+    case SourceParseMode::MethodMode:
+    case SourceParseMode::ArrowFunctionMode:
+        return true;
+
+    case SourceParseMode::ProgramMode:
+    case SourceParseMode::ModuleAnalyzeMode:
+    case SourceParseMode::ModuleEvaluateMode:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return false;
+}
+
+inline bool isModuleParseMode(SourceParseMode parseMode)
+{
+    switch (parseMode) {
+    case SourceParseMode::ModuleAnalyzeMode:
+    case SourceParseMode::ModuleEvaluateMode:
+        return true;
+
+    case SourceParseMode::NormalFunctionMode:
+    case SourceParseMode::GetterMode:
+    case SourceParseMode::SetterMode:
+    case SourceParseMode::MethodMode:
+    case SourceParseMode::ArrowFunctionMode:
+    case SourceParseMode::ProgramMode:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return false;
+}
+
+inline bool isProgramParseMode(SourceParseMode parseMode)
+{
+    switch (parseMode) {
+    case SourceParseMode::ProgramMode:
+        return true;
+
+    case SourceParseMode::NormalFunctionMode:
+    case SourceParseMode::GetterMode:
+    case SourceParseMode::SetterMode:
+    case SourceParseMode::MethodMode:
+    case SourceParseMode::ArrowFunctionMode:
+    case SourceParseMode::ModuleAnalyzeMode:
+    case SourceParseMode::ModuleEvaluateMode:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return false;
+}
 
 inline bool functionNameIsInScope(const Identifier& name, FunctionMode functionMode)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 #include <memory>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
-#include <wtf/ThreadingPrimitives.h>
+#include <wtf/Lock.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -43,7 +43,6 @@ class OriginLock;
 class SQLError;
 class SQLiteTransaction;
 class SQLStatement;
-class SQLStatementBackend;
 class SQLTransaction;
 class SQLTransactionBackend;
 class SQLValue;
@@ -79,14 +78,14 @@ public:
     PassRefPtr<SQLError> transactionError();
     SQLStatement* currentStatement();
     void setShouldRetryCurrentStatement(bool);
-    void executeSQL(std::unique_ptr<SQLStatement>, const String& statement, const Vector<SQLValue>& arguments, int permissions);
+    void executeSQL(std::unique_ptr<SQLStatement>);
     
 private:
     SQLTransactionBackend(Database*, PassRefPtr<SQLTransaction>, PassRefPtr<SQLTransactionWrapper>, bool readOnly);
 
     void doCleanup();
 
-    void enqueueStatementBackend(PassRefPtr<SQLStatementBackend>);
+    void enqueueStatementBackend(std::unique_ptr<SQLStatement>);
 
     // State Machine functions:
     virtual StateFunction stateFunctionFor(SQLTransactionState) override;
@@ -96,24 +95,22 @@ private:
     SQLTransactionState acquireLock();
     SQLTransactionState openTransactionAndPreflight();
     SQLTransactionState runStatements();
-    SQLTransactionState postflightAndCommit();
     SQLTransactionState cleanupAndTerminate();
     SQLTransactionState cleanupAfterTransactionErrorCallback();
 
     SQLTransactionState unreachableState();
-    SQLTransactionState sendToFrontendState();
-
-    SQLTransactionState nextStateForCurrentStatementError();
-    SQLTransactionState nextStateForTransactionError();
-    SQLTransactionState runCurrentStatementAndGetNextState();
 
     void getNextStatement();
+    bool runCurrentStatement();
+    void handleCurrentStatementError();
+    void handleTransactionError();
+    void postflightAndCommit();
 
     void acquireOriginLock();
     void releaseOriginLockIfNeeded();
 
     RefPtr<SQLTransaction> m_frontend; // Has a reference cycle, and will break in doCleanup().
-    RefPtr<SQLStatementBackend> m_currentStatementBackend;
+    std::unique_ptr<SQLStatement> m_currentStatementBackend;
 
     RefPtr<Database> m_database;
     RefPtr<SQLTransactionWrapper> m_wrapper;
@@ -128,8 +125,8 @@ private:
     bool m_readOnly;
     bool m_hasVersionMismatch;
 
-    Mutex m_statementMutex;
-    Deque<RefPtr<SQLStatementBackend>> m_statementQueue;
+    Lock m_statementMutex;
+    Deque<std::unique_ptr<SQLStatement>> m_statementQueue;
 
     std::unique_ptr<SQLiteTransaction> m_sqliteTransaction;
     RefPtr<OriginLock> m_originLock;

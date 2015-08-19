@@ -32,9 +32,9 @@
 #include <WebEvent.h>
 #include <memory>
 #include <wtf/HashMap.h>
+#include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
-#include <wtf/SpinLock.h>
 #include <wtf/ThreadingPrimitives.h>
 
 namespace WebCore {
@@ -92,12 +92,12 @@ private:
     Ref<WorkQueue> m_queue;
 
 #if ENABLE(ASYNC_SCROLLING)
-    Mutex m_scrollingTreesMutex;
+    Lock m_scrollingTreesMutex;
     HashMap<uint64_t, RefPtr<WebCore::ThreadedScrollingTree>> m_scrollingTrees;
 #endif
     std::unique_ptr<WebCore::WheelEventDeltaTracker> m_recentWheelEventDeltaTracker;
 #if ENABLE(IOS_TOUCH_EVENTS)
-    SpinLock m_touchEventsLock;
+    Lock m_touchEventsLock;
     HashMap<uint64_t, TouchEventQueue> m_touchEvents;
 #endif
 };

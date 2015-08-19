@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WPEView.h"
 
+#include "APIPageConfiguration.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebTouchEvent.h"
@@ -49,11 +50,11 @@ View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
     pageGroup->preferences().setWebSecurityEnabled(false);
     pageGroup->preferences().setDeveloperExtrasEnabled(true);
 
-    WebPageConfiguration configuration;
-    configuration.preferences = nullptr;
-    configuration.pageGroup = pageGroup;
-    configuration.relatedPage = nullptr;
-    configuration.userContentController = nullptr;
+    auto configuration = API::PageConfiguration::create();
+    configuration->setPreferences(nullptr);
+    configuration->setPageGroup(pageGroup);
+    configuration->setRelatedPage(nullptr);
+    configuration->setUserContentController(nullptr);
     m_pageProxy = pool->createWebPage(*m_pageClient, WTF::move(configuration));
     m_pageProxy->initializeWebPage();
 }

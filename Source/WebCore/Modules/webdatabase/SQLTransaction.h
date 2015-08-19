@@ -29,8 +29,8 @@
 #ifndef SQLTransaction_h
 #define SQLTransaction_h
 
+#include "EventTarget.h"
 #include "SQLCallbackWrapper.h"
-#include "SQLStatement.h"
 #include "SQLTransactionStateMachine.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/Ref.h>

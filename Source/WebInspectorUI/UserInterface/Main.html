@@ -32,6 +32,7 @@
 
     <link rel="stylesheet" href="Views/ApplicationCacheFrameContentView.css">
     <link rel="stylesheet" href="Views/ApplicationCacheIcons.css">
+    <link rel="stylesheet" href="Views/BezierEditor.css">
     <link rel="stylesheet" href="Views/BoxModelDetailsSectionRow.css">
     <link rel="stylesheet" href="Views/Breakpoint.css">
     <link rel="stylesheet" href="Views/BreakpointActionView.css">
@@ -78,6 +79,7 @@
     <link rel="stylesheet" href="Views/DividerNavigationItem.css">
     <link rel="stylesheet" href="Views/Editing.css">
     <link rel="stylesheet" href="Views/EventListenerSectionGroup.css">
+    <link rel="stylesheet" href="Views/ErrorObjectView.css">
     <link rel="stylesheet" href="Views/FilterBar.css">
     <link rel="stylesheet" href="Views/FindBanner.css">
     <link rel="stylesheet" href="Views/FlexibleSpaceNavigationItem.css">
@@ -126,6 +128,7 @@
     <link rel="stylesheet" href="Views/ResourceTreeElement.css">
     <link rel="stylesheet" href="Views/RulesStyleDetailsPanel.css">
     <link rel="stylesheet" href="Views/ScopeBar.css">
+    <link rel="stylesheet" href="Views/ScopeChainDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/ScopeRadioButtonNavigationItem.css">
     <link rel="stylesheet" href="Views/ScriptContentView.css">
     <link rel="stylesheet" href="Views/ScriptTimelineOverviewGraph.css">
@@ -137,6 +140,7 @@
     <link rel="stylesheet" href="Views/SidebarPanel.css">
     <link rel="stylesheet" href="Views/Slider.css">
     <link rel="stylesheet" href="Views/SourceCodeTextEditor.css">
+    <link rel="stylesheet" href="Views/StackTraceView.css">
     <link rel="stylesheet" href="Views/StorageSidebarPanel.css">
     <link rel="stylesheet" href="Views/StyleRuleIcons.css">
     <link rel="stylesheet" href="Views/SyntaxHighlightingDefaultTheme.css">
@@ -159,6 +163,20 @@
     <link rel="stylesheet" href="Views/TypeTokenView.css">
     <link rel="stylesheet" href="Views/TypeTreeElement.css">
     <link rel="stylesheet" href="Views/TypeTreeView.css">
+    <link rel="stylesheet" href="Views/VisualStyleColorPicker.css">
+    <link rel="stylesheet" href="Views/VisualStyleCommaSeparatedKeywordEditor.css">
+    <link rel="stylesheet" href="Views/VisualStyleDetailsPanel.css">
+    <link rel="stylesheet" href="Views/VisualStyleKeywordCheckbox.css">
+    <link rel="stylesheet" href="Views/VisualStyleKeywordIconList.css">
+    <link rel="stylesheet" href="Views/VisualStyleNumberInputBox.css">
+    <link rel="stylesheet" href="Views/VisualStylePropertyEditor.css">
+    <link rel="stylesheet" href="Views/VisualStylePropertyEditorLink.css">
+    <link rel="stylesheet" href="Views/VisualStyleRelativeNumberSlider.css">
+    <link rel="stylesheet" href="Views/VisualStyleSelectorSection.css">
+    <link rel="stylesheet" href="Views/VisualStyleSelectorTreeItem.css">
+    <link rel="stylesheet" href="Views/VisualStyleTabbedPropertiesRow.css">
+    <link rel="stylesheet" href="Views/VisualStyleTimingEditor.css">
+    <link rel="stylesheet" href="Views/VisualStyleUnitSlider.css">
 
     <link rel="stylesheet" href="Controllers/CodeMirrorCompletionController.css">
     <link rel="stylesheet" href="Controllers/CodeMirrorDragToAdjustNumberController.css">
@@ -313,7 +331,6 @@
     <script src="Models/TimelineRecording.js"></script>
     <script src="Models/TypeDescription.js"></script>
     <script src="Models/TypeSet.js"></script>
-    <script src="Models/UnitBezier.js"></script>
     <script src="Models/WrappedPromise.js"></script>
 
     <script src="Views/ConsoleCommandView.js"></script>
@@ -379,6 +396,7 @@
     <script src="Views/ApplicationCacheFrameContentView.js"></script>
     <script src="Views/ApplicationCacheFrameTreeElement.js"></script>
     <script src="Views/ApplicationCacheManifestTreeElement.js"></script>
+    <script src="Views/BezierEditor.js"></script>
     <script src="Views/BoxModelDetailsSectionRow.js"></script>
     <script src="Views/BreakpointActionView.js"></script>
     <script src="Views/BreakpointTreeElement.js"></script>
@@ -392,6 +410,7 @@
     <script src="Views/ClusterContentView.js"></script>
     <script src="Views/CodeMirrorAdditions.js"></script>
     <script src="Views/CodeMirrorFormatters.js"></script>
+    <script src="Views/CodeMirrorTextMarkers.js"></script>
     <script src="Views/ColorPicker.js"></script>
     <script src="Views/ColorWheel.js"></script>
     <script src="Views/CompletionSuggestionsView.js"></script>
@@ -428,6 +447,7 @@
     <script src="Views/DefaultDashboardView.js"></script>
     <script src="Views/DividerNavigationItem.js"></script>
     <script src="Views/EditingSupport.js"></script>
+    <script src="Views/ErrorObjectView.js"></script>
     <script src="Views/EventListenerSection.js"></script>
     <script src="Views/EventListenerSectionGroup.js"></script>
     <script src="Views/FilterBar.js"></script>
@@ -462,7 +482,6 @@
     <script src="Views/LinearTimelineOverview.js"></script>
     <script src="Views/LogContentView.js"></script>
     <script src="Views/LogTreeElement.js"></script>
-    <script src="Views/MetricsStyleDetailsPanel.js"></script>
     <script src="Views/MultipleScopeBarItem.js"></script>
     <script src="Views/NavigationBar.js"></script>
     <script src="Views/NetworkGridContentView.js"></script>
@@ -517,6 +536,7 @@
     <script src="Views/SourceCodeTimelineTimelineDataGridNode.js"></script>
     <script src="Views/SourceCodeTimelineTreeElement.js"></script>
     <script src="Views/SourceMapResourceTreeElement.js"></script>
+    <script src="Views/StackTraceView.js"></script>
     <script src="Views/StorageSidebarPanel.js"></script>
     <script src="Views/SyntaxHighlightingSupport.js"></script>
     <script src="Views/TextContentView.js"></script>
@@ -535,6 +555,27 @@
     <script src="Views/TypeTreeElement.js"></script>
     <script src="Views/TypeTreeView.js"></script>
 
+    <script src="Views/VisualStyleDetailsPanel.js"></script>
+    <script src="Views/VisualStylePropertyEditor.js"></script>
+    <script src="Views/VisualStyleColorPicker.js"></script>
+    <script src="Views/VisualStyleCommaSeparatedKeywordEditor.js"></script>
+    <script src="Views/VisualStyleFontFamilyListEditor.js"></script>
+    <script src="Views/VisualStyleFontFamilyTreeElement.js"></script>
+    <script src="Views/VisualStyleKeywordCheckbox.js"></script>
+    <script src="Views/VisualStyleKeywordIconList.js"></script>
+    <script src="Views/VisualStyleKeywordPicker.js"></script>
+    <script src="Views/VisualStyleNumberInputBox.js"></script>
+    <script src="Views/VisualStylePropertyCombiner.js"></script>
+    <script src="Views/VisualStylePropertyEditorLink.js"></script>
+    <script src="Views/VisualStylePropertyNameInput.js"></script>
+    <script src="Views/VisualStyleRelativeNumberSlider.js"></script>
+    <script src="Views/VisualStyleSelectorSection.js"></script>
+    <script src="Views/VisualStyleSelectorTreeItem.js"></script>
+    <script src="Views/VisualStyleTabbedPropertiesRow.js"></script>
+    <script src="Views/VisualStyleTimingEditor.js"></script>
+    <script src="Views/VisualStyleUnitSlider.js"></script>
+    <script src="Views/VisualStyleURLInput.js"></script>
+
     <script src="Controllers/Annotator.js"></script>
     <script src="Controllers/CodeMirrorEditingController.js"></script>
 
@@ -545,6 +586,7 @@
     <script src="Controllers/CSSStyleManager.js"></script>
     <script src="Controllers/CodeMirrorColorEditingController.js"></script>
     <script src="Controllers/CodeMirrorCompletionController.js"></script>
+    <script src="Controllers/CodeMirrorBezierEditingController.js"></script>
     <script src="Controllers/CodeMirrorDragToAdjustNumberController.js"></script>
     <script src="Controllers/CodeMirrorGradientEditingController.js"></script>
     <script src="Controllers/CodeMirrorTokenTrackingController.js"></script>
@@ -568,6 +610,7 @@
     <script src="Controllers/StorageManager.js"></script>
     <script src="Controllers/TimelineManager.js"></script>
     <script src="Controllers/TypeTokenAnnotator.js"></script>
+    <script src="Controllers/VisualStyleCompletionsController.js"></script>
 
     <script src="Base/Main.js"></script>
 

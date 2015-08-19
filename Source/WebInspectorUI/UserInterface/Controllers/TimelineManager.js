@@ -202,16 +202,20 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
                         entry.parentRecord.children.push(record);
                 }
 
-                if (recordPayload.children)
-                    stack.push({array: recordPayload.children, parent: recordPayload, parentRecord: record, index: 0});
+                if (recordPayload.children && recordPayload.children.length)
+                    stack.push({array: recordPayload.children, parent: recordPayload, parentRecord: record || entry.parentRecord, index: 0});
                 ++entry.index;
             } else
                 stack.pop();
         }
 
         for (var record of records) {
-            if (record.type === WebInspector.RenderingFrameTimelineRecord && !record.children.length)
-                continue;
+            if (record.type === WebInspector.TimelineRecord.Type.RenderingFrame) {
+                if (!record.children.length)
+                    continue;
+                record.setupFrameIndex();
+            }
+
             this._addRecord(record);
         }
     }

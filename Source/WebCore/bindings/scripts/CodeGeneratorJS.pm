@@ -381,26 +381,27 @@ sub GenerateGetOwnPropertySlotBody
 
     my @getOwnPropertySlotImpl = ();
 
-    if ($interfaceName eq "NamedNodeMap" or $interfaceName =~ /^HTML\w*Collection$/) {
+    my $ownPropertyCheck = sub {
+        if ($hasAttributes) {
+            if ($inlined) {
+                push(@getOwnPropertySlotImpl, "    if (${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, *info()->staticPropHashTable, thisObject, propertyName, slot))\n");
+            } else {
+                push(@getOwnPropertySlotImpl, "    if (${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, ${className}Table, thisObject, propertyName, slot))\n");
+            }
+        } else {
+            push(@getOwnPropertySlotImpl, "    if (Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))\n");
+        }
+        push(@getOwnPropertySlotImpl, "        return true;\n");
+    };
+
+    # FIXME: As per the Web IDL specification, the prototype check is supposed to skip "named properties objects":
+    # https://heycam.github.io/webidl/#dfn-named-property-visibility
+    # https://heycam.github.io/webidl/#dfn-named-properties-object
+    my $prototypeCheck = sub {
         push(@getOwnPropertySlotImpl, "    ${namespaceMaybe}JSValue proto = thisObject->prototype();\n");
         push(@getOwnPropertySlotImpl, "    if (proto.isObject() && jsCast<${namespaceMaybe}JSObject*>(proto)->hasProperty(exec, propertyName))\n");
         push(@getOwnPropertySlotImpl, "        return false;\n\n");
-    }
-
-    my $manualLookupGetterGeneration = sub {
-        my $requiresManualLookup = $indexedGetterFunction || $namedGetterFunction;
-        if ($requiresManualLookup) {
-            push(@getOwnPropertySlotImpl, "    const ${namespaceMaybe}HashTableValue* entry = getStaticValueSlotEntryWithoutCaching<$className>(exec, propertyName);\n");
-            push(@getOwnPropertySlotImpl, "    if (entry) {\n");
-            push(@getOwnPropertySlotImpl, "        slot.setCacheableCustom(thisObject, entry->attributes(), entry->propertyGetter());\n");
-            push(@getOwnPropertySlotImpl, "        return true;\n");
-            push(@getOwnPropertySlotImpl, "    }\n");
-        }
     };
-
-    if (!$interface->extendedAttributes->{"CustomNamedGetter"} and InstanceAttributeCount($interface) > 0) {
-        &$manualLookupGetterGeneration();
-    }
 
     if ($indexedGetterFunction) {
         push(@getOwnPropertySlotImpl, "    Optional<uint32_t> optionalIndex = parseIndex(propertyName);\n");
@@ -424,8 +425,15 @@ sub GenerateGetOwnPropertySlotBody
         push(@getOwnPropertySlotImpl, "    }\n");
     }
 
-    if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
-        push(@getOwnPropertySlotImpl, "    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
+    my $hasNamedGetter = $namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"};
+    if ($hasNamedGetter) {
+        if (!$interface->extendedAttributes->{"OverrideBuiltins"}) {
+            &$ownPropertyCheck();
+            &$prototypeCheck();
+        }
+
+        # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+        push(@getOwnPropertySlotImpl, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
         push(@getOwnPropertySlotImpl, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
         push(@getOwnPropertySlotImpl, "    }\n");
@@ -436,24 +444,16 @@ sub GenerateGetOwnPropertySlotBody
         }
     }
 
-    if ($interface->extendedAttributes->{"CustomNamedGetter"}) {
-        &$manualLookupGetterGeneration();
-    }
-
     if ($interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}) {
         push(@getOwnPropertySlotImpl, "    if (thisObject->getOwnPropertySlotDelegate(exec, propertyName, slot))\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
     }
 
-    if ($hasAttributes) {
-        if ($inlined) {
-            push(@getOwnPropertySlotImpl, "    return ${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, *info()->staticPropHashTable, thisObject, propertyName, slot);\n");
-        } else {
-            push(@getOwnPropertySlotImpl, "    return ${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, ${className}Table, thisObject, propertyName, slot);\n");
-        }
-    } else {
-        push(@getOwnPropertySlotImpl, "    return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);\n");
+    if (!$hasNamedGetter || $interface->extendedAttributes->{"OverrideBuiltins"}) {
+        &$ownPropertyCheck();
     }
+
+    push(@getOwnPropertySlotImpl, "    return false;\n");
 
     return @getOwnPropertySlotImpl;
 }
@@ -576,13 +576,12 @@ sub HasComplexGetOwnProperty
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
+    my $hasNamedGetter = $namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"};
 
     my $hasComplexGetter = $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $hasNamedGetter;
 
     return 1 if $interface->extendedAttributes->{"CheckSecurity"};
     return 1 if IsDOMGlobalObject($interface);
@@ -728,13 +727,13 @@ sub InstanceOverridesGetOwnPropertySlot
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
+    my $hasNamedGetter = $namedGetterFunction
         || $interface->extendedAttributes->{"CustomNamedGetter"};
 
     my $hasComplexGetter = $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $hasNamedGetter;
 
     return $numInstanceAttributes > 0 || $hasComplexGetter;
 
@@ -900,9 +899,9 @@ sub GenerateHeader
     # JSValue to implementation type
     if (!$hasParent || $interface->extendedAttributes->{"JSGenerateToNativeObject"}) {
         if ($interfaceName eq "NodeFilter") {
-            push(@headerContent, "    static PassRefPtr<NodeFilter> toWrapped(JSC::VM&, JSC::JSValue);\n");
+            push(@headerContent, "    static RefPtr<NodeFilter> toWrapped(JSC::VM&, JSC::JSValue);\n");
         } elsif ($interfaceName eq "DOMStringList") {
-            push(@headerContent, "    static PassRefPtr<DOMStringList> toWrapped(JSC::ExecState*, JSC::JSValue);\n");
+            push(@headerContent, "    static RefPtr<DOMStringList> toWrapped(JSC::ExecState*, JSC::JSValue);\n");
         } else {
             push(@headerContent, "    static $implType* toWrapped(JSC::JSValue);\n");
         }
@@ -913,14 +912,15 @@ sub GenerateHeader
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
+    my $hasImpureNamedGetter = $interface->extendedAttributes->{"OverrideBuiltins"}
+        && ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"});
 
     my $hasComplexGetter =
         $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $namedGetterFunction
+        || $interface->extendedAttributes->{"CustomNamedGetter"};
     
     my $hasGetter = InstanceOverridesGetOwnPropertySlot($interface);
 
@@ -1049,14 +1049,7 @@ sub GenerateHeader
                 $needsVisitChildren = 1;
                 push(@headerContent, "#endif\n") if $conditionalString;
             }
-            elsif (IsReturningPromise($attribute)) {
-                $headerIncludes{"JSDOMPromise.h"} = 1;
 
-                my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
-                push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
-                push(@headerContent, "    JSC::Strong<JSC::JSPromiseDeferred> m_" . $attribute->signature->name . "PromiseDeferred;\n");
-                push(@headerContent, "#endif\n") if $conditionalString;
-            }
             if ($attribute->signature->extendedAttributes->{"ForwardDeclareInHeader"}) {
                 $hasForwardDeclaringAttributes = 1;
             }
@@ -1092,7 +1085,7 @@ sub GenerateHeader
     foreach my $function (@{$interface->functions}) {
         $numCustomFunctions++ if HasCustomMethod($function->signature->extendedAttributes);
 
-        if ($function->signature->extendedAttributes->{"ForwardDeclareInHeader"}) {
+        if ($function->signature->extendedAttributes->{"ForwardDeclareInHeader"} or $function->signature->extendedAttributes->{"CustomBinding"}) {
             $hasForwardDeclaringFunctions = 1;
         }
     }
@@ -1225,7 +1218,7 @@ sub GenerateHeader
         push(@headerContent,"// Functions\n\n");
         foreach my $function (@{$interface->functions}) {
             next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
-            next unless $function->signature->extendedAttributes->{"ForwardDeclareInHeader"};
+            next unless $function->signature->extendedAttributes->{"ForwardDeclareInHeader"} or $function->signature->extendedAttributes->{"CustomBinding"};
 
             my $needsAppleCopyright = $function->signature->extendedAttributes->{"AppleCopyright"};
             if ($needsAppleCopyright) {
@@ -1246,6 +1239,7 @@ sub GenerateHeader
         }
 
         push(@headerContent, $endAppleCopyright) if $inAppleCopyright;
+        push(@headerContent,"\n");
     }
 
     if ($hasForwardDeclaringAttributes) {
@@ -1743,6 +1737,7 @@ sub GenerateImplementation
         foreach my $function (@{$interface->functions}) {
             next if $function->{overloadIndex} && $function->{overloadIndex} > 1;
             next if $function->signature->extendedAttributes->{"ForwardDeclareInHeader"};
+            next if $function->signature->extendedAttributes->{"CustomBinding"};
 
             my $needsAppleCopyright = $function->signature->extendedAttributes->{"AppleCopyright"};
             if ($needsAppleCopyright) {
@@ -2189,7 +2184,9 @@ sub GenerateImplementation
 
             if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
                 &$propertyNameGeneration();
-                push(@implContent, "    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
+
+                # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+                push(@implContent, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
                 push(@implContent, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
                 push(@implContent, "        return true;\n");
                 push(@implContent, "    }\n");
@@ -2245,7 +2242,6 @@ sub GenerateImplementation
                     push(@implContent, "        return throwGetterTypeError(*exec, \"$interfaceName\", \"$name\");\n");
                     push(@implContent, "    }\n");
                 }
-                $implIncludes{"ScriptExecutionContext.h"} = 1;
             }
 
             my @arguments = ();
@@ -2760,6 +2756,7 @@ sub GenerateImplementation
     if ($numFunctions > 0) {
         my $inAppleCopyright = 0;
         foreach my $function (@{$interface->functions}) {
+            next if $function->signature->extendedAttributes->{"CustomBinding"};
             my $needsAppleCopyright = $function->signature->extendedAttributes->{"AppleCopyright"};
             if ($needsAppleCopyright) {
                 if (!$inAppleCopyright) {
@@ -4778,19 +4775,21 @@ sub GenerateConstructorHelperMethods
     if (IsDOMGlobalObject($interface)) {
         push(@$outputArray, "    Base::finishCreation(vm);\n");
         push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
     } elsif ($generatingNamedConstructor) {
         push(@$outputArray, "    Base::finishCreation(globalObject);\n");
         push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), None);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     } else {
         push(@$outputArray, "    Base::finishCreation(vm);\n");
         push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     }
 
+    push(@$outputArray, "    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral(\"$visibleInterfaceName\"))), ReadOnly | DontEnum);\n");
+
     if (defined $leastConstructorLength) {
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->length, jsNumber(${leastConstructorLength}), ReadOnly | DontDelete | DontEnum);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->length, jsNumber(${leastConstructorLength}), ReadOnly | DontEnum);\n");
     }
 
     if (ConstructorHasProperties($interface)) {

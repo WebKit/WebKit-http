@@ -40,24 +40,6 @@
     display: inline-block;
 }
 
-.call-frame .title {
-    max-width: 20vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-}
-
-.call-frame .source-link {
-    max-width: 50vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-block;
-}
-
-.call-frame .title + .subtitle > .source-link {
-    max-width: 30vw;
-}
-
 .call-frame .subtitle,
 .call-frame .subtitle .source-link {
     color: hsla(0, 0%, 0%, 0.6);
@@ -81,7 +63,7 @@
     background-color: red;
 }
 
-.call-frame .title + .subtitle::before {
-    content: " — ";
-    color: hsla(0, 0%, 0%, 0.4);
+.call-frame .separator {
+    white-space: nowrap;
+    color: hsla(0, 0%, 0%, 0.2);
 }

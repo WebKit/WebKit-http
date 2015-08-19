@@ -44,6 +44,7 @@
 #include <runtime/ExceptionHelpers.h>
 #include <runtime/Error.h>
 #include <runtime/JSLock.h>
+#include <runtime/Watchdog.h>
 
 using namespace JSC;
 
@@ -150,7 +151,7 @@ void WorkerScriptController::scheduleExecutionTermination()
     // The mutex provides a memory barrier to ensure that once
     // termination is scheduled, isExecutionTerminating will
     // accurately reflect that state when called from another thread.
-    MutexLocker locker(m_scheduledTerminationMutex);
+    LockHolder locker(m_scheduledTerminationMutex);
     if (m_vm->watchdog)
         m_vm->watchdog->fire();
 }
@@ -158,7 +159,7 @@ void WorkerScriptController::scheduleExecutionTermination()
 bool WorkerScriptController::isExecutionTerminating() const
 {
     // See comments in scheduleExecutionTermination regarding mutex usage.
-    MutexLocker locker(m_scheduledTerminationMutex);
+    LockHolder locker(m_scheduledTerminationMutex);
     if (m_vm->watchdog)
         return m_vm->watchdog->didFire();
     return false;

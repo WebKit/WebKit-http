@@ -39,11 +39,11 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JSArrowFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSGlobalObjectFunctions.h"
-#include "JSNameScope.h"
 #include "JSStackInlines.h"
 #include "JSString.h"
 #include "JSWithScope.h"
@@ -54,6 +54,7 @@
 #include "ObjectConstructor.h"
 #include "ProtoCallFrame.h"
 #include "StructureRareDataInlines.h"
+#include "Watchdog.h"
 #include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace LLInt {
@@ -171,7 +172,7 @@ namespace JSC { namespace LLInt {
         ExecState* __rcf_exec = (execCallee);                           \
         LLINT_RETURN_TWO(pc, __rcf_exec);                               \
     } while (false)
-
+    
 extern "C" SlowPathReturnType llint_trace_operand(ExecState* exec, Instruction* pc, int fromWhere, int operand)
 {
     LLINT_BEGIN();
@@ -847,11 +848,13 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_by_id)
     LLINT_BEGIN();
     ASSERT(LLINT_OP(1).jsValue().isObject());
     JSObject* baseObj = asObject(LLINT_OP(1).jsValue());
-    
-    JSValue getter = LLINT_OP(3).jsValue();
+
+    unsigned options = pc[3].u.operand;
+
+    JSValue getter = LLINT_OP(4).jsValue();
     ASSERT(getter.isObject());
-    
-    baseObj->putGetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(getter));
+
+    baseObj->putGetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(getter), options);
     LLINT_END();
 }
 
@@ -860,11 +863,13 @@ LLINT_SLOW_PATH_DECL(slow_path_put_setter_by_id)
     LLINT_BEGIN();
     ASSERT(LLINT_OP(1).jsValue().isObject());
     JSObject* baseObj = asObject(LLINT_OP(1).jsValue());
-    
-    JSValue setter = LLINT_OP(3).jsValue();
+
+    unsigned options = pc[3].u.operand;
+
+    JSValue setter = LLINT_OP(4).jsValue();
     ASSERT(setter.isObject());
-    
-    baseObj->putSetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(setter));
+
+    baseObj->putSetter(exec, exec->codeBlock()->identifier(pc[2].u.operand), asObject(setter), options);
     LLINT_END();
 }
 
@@ -876,9 +881,9 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_setter)
     
     GetterSetter* accessor = GetterSetter::create(vm, exec->lexicalGlobalObject());
     LLINT_CHECK_EXCEPTION();
-    
-    JSValue getter = LLINT_OP(3).jsValue();
-    JSValue setter = LLINT_OP(4).jsValue();
+
+    JSValue getter = LLINT_OP(4).jsValue();
+    JSValue setter = LLINT_OP(5).jsValue();
     ASSERT(getter.isObject() || getter.isUndefined());
     ASSERT(setter.isObject() || setter.isUndefined());
     ASSERT(getter.isObject() || setter.isObject());
@@ -890,7 +895,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_getter_setter)
     baseObj->putDirectAccessor(
         exec,
         exec->codeBlock()->identifier(pc[2].u.operand),
-        accessor, Accessor);
+        accessor, pc[3].u.operand);
     LLINT_END();
 }
 
@@ -1013,12 +1018,24 @@ LLINT_SLOW_PATH_DECL(slow_path_new_func)
 LLINT_SLOW_PATH_DECL(slow_path_new_func_exp)
 {
     LLINT_BEGIN();
+    
     CodeBlock* codeBlock = exec->codeBlock();
     JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
-    FunctionExecutable* function = codeBlock->functionExpr(pc[3].u.operand);
-    JSFunction* func = JSFunction::create(vm, function, scope);
+    FunctionExecutable* executable = codeBlock->functionExpr(pc[3].u.operand);
     
-    LLINT_RETURN(func);
+    LLINT_RETURN(JSFunction::create(vm, executable, scope));
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_new_arrow_func_exp)
+{
+    LLINT_BEGIN();
+
+    JSValue thisValue = LLINT_OP_C(4).jsValue();
+    CodeBlock* codeBlock = exec->codeBlock();
+    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
+    FunctionExecutable* executable = codeBlock->functionExpr(pc[3].u.operand);
+    
+    LLINT_RETURN(JSArrowFunction::create(vm, executable, scope, thisValue));
 }
 
 static SlowPathReturnType handleHostCall(ExecState* execCallee, Instruction* pc, JSValue callee, CodeSpecializationKind kind)
@@ -1096,7 +1113,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
     JSScope* scope = callee->scopeUnchecked();
     VM& vm = *scope->vm();
     ExecutableBase* executable = callee->executable();
-    
+
     MacroAssemblerCodePtr codePtr;
     CodeBlock* codeBlock = 0;
     if (executable->isHostFunction())
@@ -1262,33 +1279,6 @@ LLINT_SLOW_PATH_DECL(slow_path_to_primitive)
 {
     LLINT_BEGIN();
     LLINT_RETURN(LLINT_OP_C(2).jsValue().toPrimitive(exec));
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_push_with_scope)
-{
-    LLINT_BEGIN();
-    JSValue v = LLINT_OP_C(2).jsValue();
-    JSObject* o = v.toObject(exec);
-    LLINT_CHECK_EXCEPTION();
-
-    int scopeReg = pc[1].u.operand;
-    JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
-    exec->uncheckedR(scopeReg) = JSWithScope::create(exec, o, currentScope);
-    
-    LLINT_END();
-}
-
-LLINT_SLOW_PATH_DECL(slow_path_push_name_scope)
-{
-    LLINT_BEGIN();
-    int scopeReg = pc[1].u.operand;
-    JSScope* currentScope = exec->uncheckedR(scopeReg).Register::scope();
-    JSValue value = LLINT_OP_C(2).jsValue();
-    SymbolTable* symbolTable = jsCast<SymbolTable*>(LLINT_OP_C(3).jsValue());
-    JSNameScope::Type type = static_cast<JSNameScope::Type>(pc[4].u.operand);
-    JSNameScope* scope = JSNameScope::create(vm, exec->lexicalGlobalObject(), currentScope, symbolTable, value, type);
-    exec->uncheckedR(scopeReg) = scope;
-    LLINT_END();
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_throw)

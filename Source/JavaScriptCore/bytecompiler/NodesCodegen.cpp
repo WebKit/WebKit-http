@@ -35,7 +35,6 @@
 #include "JIT.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
-#include "JSNameScope.h"
 #include "JSONObject.h"
 #include "LabelScope.h"
 #include "Lexer.h"
@@ -498,9 +497,9 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
             // This is a get/set property which may be overridden by a computed property later.
             if (hasComputedProperty) {
                 if (node->m_type & PropertyNode::Getter)
-                    generator.emitPutGetterById(dst, *node->name(), value);
+                    generator.emitPutGetterById(dst, *node->name(), Accessor, value);
                 else
-                    generator.emitPutSetterById(dst, *node->name(), value);
+                    generator.emitPutSetterById(dst, *node->name(), Accessor, value);
                 continue;
             }
 
@@ -545,12 +544,7 @@ RegisterID* PropertyListNode::emitBytecode(BytecodeGenerator& generator, Registe
             if (isClassProperty && pair.second)
                 emitPutHomeObject(generator, secondReg, dst);
 
-            if (isClassProperty) {
-                RefPtr<RegisterID> propertyNameRegister = generator.emitLoad(generator.newTemporary(), *node->name());
-                generator.emitCallDefineProperty(dst, propertyNameRegister.get(),
-                    nullptr, getterReg.get(), setterReg.get(), BytecodeGenerator::PropertyConfigurable, m_position);
-            } else
-                generator.emitPutGetterSetter(dst, *node->name(), getterReg.get(), setterReg.get());
+            generator.emitPutGetterSetter(dst, *node->name(), isClassProperty ? (Accessor | DontEnum) : Accessor, getterReg.get(), setterReg.get());
         }
     }
 
@@ -2553,7 +2547,7 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> returnRegister = m_value ? generator.emitNode(dst, m_value) : generator.emitLoad(dst, jsUndefined());
     generator.emitProfileType(returnRegister.get(), ProfileTypeBytecodeFunctionReturnStatement, divotStart(), divotEnd());
-    if (generator.labelScopeDepth()) {
+    if (generator.isInFinallyBlock()) {
         returnRegister = generator.emitMove(generator.newTemporary(), returnRegister.get());
         generator.emitPopScopes(generator.scopeRegister(), 0);
     }
@@ -2575,9 +2569,9 @@ void WithNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 
     RefPtr<RegisterID> scope = generator.emitNode(m_expr);
     generator.emitExpressionInfo(m_divot, m_divot - m_expressionLength, m_divot);
-    generator.emitPushWithScope(generator.scopeRegister(), scope.get());
+    generator.emitPushWithScope(scope.get());
     generator.emitNode(dst, m_statement);
-    generator.emitPopWithScope(generator.scopeRegister());
+    generator.emitPopWithScope();
 }
 
 // ------------------------------ CaseClauseNode --------------------------------
@@ -2908,11 +2902,7 @@ void EvalNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     generator.emitEnd(dstRegister.get());
 }
 
-// ------------------------------ FunctionBodyNode -----------------------------
-
-void FunctionBodyNode::emitBytecode(BytecodeGenerator&, RegisterID*)
-{
-}
+// ------------------------------ FunctionNode -----------------------------
 
 void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 {
@@ -2965,6 +2955,13 @@ RegisterID* FuncExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
     return generator.emitNewFunctionExpression(generator.finalDestination(dst), this);
 }
 
+// ------------------------------ ArrowFuncExprNode ---------------------------------
+
+RegisterID* ArrowFuncExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    return generator.emitNewArrowFunctionExpression(generator.finalDestination(dst), this);
+}
+    
 #if ENABLE(ES6_CLASS_SYNTAX)
 // ------------------------------ ClassDeclNode ---------------------------------
 

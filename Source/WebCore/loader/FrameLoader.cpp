@@ -2993,9 +2993,14 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
 
     setPolicyDocumentLoader(0);
 
-    if (isBackForwardLoadType(type) && history().provisionalItem()->isInPageCache()) {
-        loadProvisionalItemFromCachedPage();
-        return;
+    if (isBackForwardLoadType(type)) {
+        auto& diagnosticLoggingClient = m_frame.mainFrame().diagnosticLoggingClient();
+        if (history().provisionalItem()->isInPageCache()) {
+            diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::retrievalKey(), DiagnosticLoggingResultPass, ShouldSample::Yes);
+            loadProvisionalItemFromCachedPage();
+            return;
+        }
+        diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::retrievalKey(), DiagnosticLoggingResultFail, ShouldSample::Yes);
     }
 
     if (!formState) {
@@ -3228,7 +3233,11 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
 
     if (!item.referrer().isNull())
         request.setHTTPReferrer(item.referrer());
-    
+
+    ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicyToApply(m_frame, item.shouldOpenExternalURLsPolicy());
+    bool isFormSubmission = false;
+    Event* event = nullptr;
+
     // If this was a repost that failed the page cache, we might try to repost the form.
     NavigationAction action;
     if (formData) {
@@ -3254,10 +3263,10 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
         
         if (cacheLoadPolicy == MayAttemptCacheOnlyLoadForFormSubmissionItem) {
             request.setCachePolicy(ReturnCacheDataDontLoad);
-            action = NavigationAction(request, loadType, false);
+            action = NavigationAction(request, loadType, isFormSubmission, event, shouldOpenExternalURLsPolicy);
         } else {
             request.setCachePolicy(ReturnCacheDataElseLoad);
-            action = NavigationAction(request, NavigationType::FormResubmitted);
+            action = NavigationAction(request, NavigationType::FormResubmitted, event, shouldOpenExternalURLsPolicy);
         }
     } else {
         switch (loadType) {
@@ -3282,7 +3291,7 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, FrameLoadType loa
 
         ResourceRequest requestForOriginalURL(request);
         requestForOriginalURL.setURL(itemOriginalURL);
-        action = NavigationAction(requestForOriginalURL, loadType, false);
+        action = NavigationAction(requestForOriginalURL, loadType, isFormSubmission, event, shouldOpenExternalURLsPolicy);
     }
 
     loadWithNavigationAction(request, action, LockHistory::No, loadType, 0, AllowNavigationToInvalidURL::Yes);
@@ -3463,6 +3472,7 @@ void FrameLoader::clearTestingOverrides()
 {
     m_overrideCachePolicyForTesting = Nullopt;
     m_overrideResourceLoadPriorityForTesting = Nullopt;
+    m_isStrictRawResourceValidationPolicyDisabledForTesting = false;
 }
 
 void FrameLoader::applyShouldOpenExternalURLsPolicyToNewDocumentLoader(DocumentLoader& documentLoader, ShouldOpenExternalURLsPolicy propagatedPolicy)
@@ -3547,15 +3557,15 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
 #if !PLATFORM(IOS)
     FloatSize viewportSize = page->chrome().pageRect().size();
     FloatRect windowRect = page->chrome().windowRect();
-    if (features.xSet)
-        windowRect.setX(features.x);
-    if (features.ySet)
-        windowRect.setY(features.y);
+    if (features.x)
+        windowRect.setX(*features.x);
+    if (features.y)
+        windowRect.setY(*features.y);
     // Zero width and height mean using default size, not minumum one.
-    if (features.widthSet && features.width)
-        windowRect.setWidth(features.width + (windowRect.width() - viewportSize.width()));
-    if (features.heightSet && features.height)
-        windowRect.setHeight(features.height + (windowRect.height() - viewportSize.height()));
+    if (features.width && *features.width)
+        windowRect.setWidth(*features.width + (windowRect.width() - viewportSize.width()));
+    if (features.height && *features.height)
+        windowRect.setHeight(*features.height + (windowRect.height() - viewportSize.height()));
 
     // Ensure non-NaN values, minimum size as well as being within valid screen area.
     FloatRect newWindowRect = DOMWindow::adjustWindowRect(page, windowRect);
@@ -3567,10 +3577,10 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
     // On iOS, width and height refer to the viewport dimensions.
     ViewportArguments arguments;
     // Zero width and height mean using default size, not minimum one.
-    if (features.widthSet && features.width)
-        arguments.width = features.width;
-    if (features.heightSet && features.height)
-        arguments.height = features.height;
+    if (features.width && *features.width)
+        arguments.width = *features.width;
+    if (features.height && *features.height)
+        arguments.height = *features.height;
     frame->setViewportArguments(arguments);
 #endif
 

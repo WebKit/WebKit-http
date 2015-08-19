@@ -1139,8 +1139,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CompareLessEq:
     case CompareGreater:
     case CompareGreaterEq:
-    case CompareEq:
-    case CompareEqConstant: {
+    case CompareEq: {
         JSValue leftConst = forNode(node->child1()).value();
         JSValue rightConst = forNode(node->child2()).value();
         if (leftConst && rightConst) {
@@ -1180,12 +1179,39 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         
-        if (node->op() == CompareEqConstant || node->op() == CompareEq) {
+        if (node->op() == CompareEq) {
             SpeculatedType leftType = forNode(node->child1()).m_type;
             SpeculatedType rightType = forNode(node->child2()).m_type;
             if (!valuesCouldBeEqual(leftType, rightType)) {
                 setConstant(node, jsBoolean(false));
                 break;
+            }
+
+            if (leftType == SpecOther)
+                std::swap(leftType, rightType);
+            if (rightType == SpecOther) {
+                // Undefined and Null are always equal when compared to eachother.
+                if (!(leftType & ~SpecOther)) {
+                    setConstant(node, jsBoolean(true));
+                    break;
+                }
+
+                // Any other type compared to Null or Undefined is always false
+                // as long as the MasqueradesAsUndefined watchpoint is valid.
+                //
+                // MasqueradesAsUndefined only matters for SpecObjectOther, other
+                // cases are always "false".
+                if (!(leftType & (SpecObjectOther | SpecOther))) {
+                    setConstant(node, jsBoolean(false));
+                    break;
+                }
+
+                if (!(leftType & SpecOther) && m_graph.masqueradesAsUndefinedWatchpointIsStillValid(node->origin.semantic)) {
+                    JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+                    m_graph.watchpoints().addLazily(globalObject->masqueradesAsUndefinedWatchpoint());
+                    setConstant(node, jsBoolean(false));
+                    break;
+                }
             }
         }
         
@@ -1206,7 +1232,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 case CompareLessEq:
                 case CompareGreaterEq:
                 case CompareEq:
-                case CompareEqConstant:
                     setConstant(node, jsBoolean(true));
                     break;
                 default:
@@ -1287,12 +1312,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         switch (node->arrayMode().type()) {
         case Array::SelectUsingPredictions:
         case Array::Unprofiled:
-        case Array::Undecided:
+        case Array::SelectUsingArguments:
             RELEASE_ASSERT_NOT_REACHED();
             break;
         case Array::ForceExit:
             m_state.setIsValid(false);
             break;
+        case Array::Undecided: {
+            JSValue index = forNode(node->child2()).value();
+            if (index && index.isInt32() && index.asInt32() >= 0) {
+                setConstant(node, jsUndefined());
+                break;
+            }
+            forNode(node).setType(SpecOther);
+            break;
+        }
         case Array::Generic:
             clobberWorld(node->origin.semantic, clobberLimit);
             forNode(node).makeHeapTop();
@@ -1673,7 +1707,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CreateClonedArguments:
         forNode(node).setType(m_graph, SpecObjectOther);
         break;
-        
+            
+    case NewArrowFunction:
+        forNode(node).set(
+            m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->arrowFunctionStructure());
+        break;
+            
     case NewFunction:
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->functionStructure());
@@ -1734,6 +1773,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(m_graph, SpecObjectOther);
         break;
 
+    case LoadArrowFunctionThis:
+        if (JSValue base = forNode(node->child1()).m_value) {
+            JSArrowFunction* function = jsDynamicCast<JSArrowFunction*>(base);
+            setConstant(node, *m_graph.freeze(function->boundThis()));
+            break;
+        }
+        forNode(node).setType(m_graph, SpecFinalObject);
+        break;
+            
     case SkipScope: {
         JSValue child = forNode(node->child1()).value();
         if (child) {
@@ -1910,6 +1958,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::Undecided:
         case Array::ArrayStorage:
         case Array::SlowPutArrayStorage:
             break;
@@ -2160,6 +2209,32 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         
         filter(value, ~SpecEmpty);
+        break;
+    }
+
+    case CheckIdent: {
+        AbstractValue& value = forNode(node->child1());
+        UniquedStringImpl* uid = node->uidOperand();
+        ASSERT(uid->isSymbol() ? !(value.m_type & ~SpecSymbol) : !(value.m_type & ~SpecStringIdent)); // Edge filtering should have already ensured this.
+
+        JSValue childConstant = value.value();
+        if (childConstant) {
+            if (uid->isSymbol()) {
+                ASSERT(childConstant.isSymbol());
+                if (asSymbol(childConstant)->privateName().uid() == uid) {
+                    m_state.setFoundConstants(true);
+                    break;
+                }
+            } else {
+                ASSERT(childConstant.isString());
+                if (asString(childConstant)->tryGetValueImpl() == uid) {
+                    m_state.setFoundConstants(true);
+                    break;
+                }
+            }
+        }
+
+        filter(value, uid->isSymbol() ? SpecSymbol : SpecStringIdent);
         break;
     }
 

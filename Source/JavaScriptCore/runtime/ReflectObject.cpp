@@ -27,16 +27,22 @@
 #include "ReflectObject.h"
 
 #include "JSCInlines.h"
+#include "JSGlobalObjectFunctions.h"
 #include "JSPropertyNameIterator.h"
 #include "Lookup.h"
 #include "ObjectConstructor.h"
 
 namespace JSC {
 
+static EncodedJSValue JSC_HOST_CALL reflectObjectDefineProperty(ExecState*);
 static EncodedJSValue JSC_HOST_CALL reflectObjectEnumerate(ExecState*);
+static EncodedJSValue JSC_HOST_CALL reflectObjectGet(ExecState*);
+static EncodedJSValue JSC_HOST_CALL reflectObjectGetOwnPropertyDescriptor(ExecState*);
+static EncodedJSValue JSC_HOST_CALL reflectObjectGetPrototypeOf(ExecState*);
 static EncodedJSValue JSC_HOST_CALL reflectObjectIsExtensible(ExecState*);
 static EncodedJSValue JSC_HOST_CALL reflectObjectOwnKeys(ExecState*);
 static EncodedJSValue JSC_HOST_CALL reflectObjectPreventExtensions(ExecState*);
+static EncodedJSValue JSC_HOST_CALL reflectObjectSetPrototypeOf(ExecState*);
 
 }
 
@@ -50,12 +56,18 @@ const ClassInfo ReflectObject::s_info = { "Reflect", &Base::s_info, &reflectObje
 
 /* Source for ReflectObject.lut.h
 @begin reflectObjectTable
-    apply             reflectObjectApply             DontEnum|Function 3
-    deleteProperty    reflectObjectDeleteProperty    DontEnum|Function 2
-    enumerate         reflectObjectEnumerate         DontEnum|Function 1
-    isExtensible      reflectObjectIsExtensible      DontEnum|Function 1
-    ownKeys           reflectObjectOwnKeys           DontEnum|Function 1
-    preventExtensions reflectObjectPreventExtensions DontEnum|Function 1
+    apply                    reflectObjectApply                    DontEnum|Function 3
+    defineProperty           reflectObjectDefineProperty           DontEnum|Function 3
+    deleteProperty           reflectObjectDeleteProperty           DontEnum|Function 2
+    enumerate                reflectObjectEnumerate                DontEnum|Function 1
+    get                      reflectObjectGet                      DontEnum|Function 2
+    getOwnPropertyDescriptor reflectObjectGetOwnPropertyDescriptor DontEnum|Function 2
+    getPrototypeOf           reflectObjectGetPrototypeOf           DontEnum|Function 1
+    has                      reflectObjectHas                      DontEnum|Function 2
+    isExtensible             reflectObjectIsExtensible             DontEnum|Function 1
+    ownKeys                  reflectObjectOwnKeys                  DontEnum|Function 1
+    preventExtensions        reflectObjectPreventExtensions        DontEnum|Function 1
+    setPrototypeOf           reflectObjectSetPrototypeOf           DontEnum|Function 2
 @end
 */
 
@@ -77,6 +89,29 @@ bool ReflectObject::getOwnPropertySlot(JSObject* object, ExecState* exec, Proper
 
 // ------------------------------ Functions --------------------------------
 
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.defineproperty
+EncodedJSValue JSC_HOST_CALL reflectObjectDefineProperty(ExecState* exec)
+{
+    JSValue target = exec->argument(0);
+    if (!target.isObject())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.defineProperty requires the first argument be an object")));
+    auto propertyName = exec->argument(1).toPropertyKey(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    PropertyDescriptor descriptor;
+    if (!toPropertyDescriptor(exec, exec->argument(2), descriptor))
+        return JSValue::encode(jsUndefined());
+    ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
+    ASSERT(!exec->hadException());
+
+    // Reflect.defineProperty should not throw an error when the defineOwnProperty operation fails.
+    bool shouldThrow = false;
+    JSObject* targetObject = asObject(target);
+    return JSValue::encode(jsBoolean(targetObject->methodTable(exec->vm())->defineOwnProperty(targetObject, exec, propertyName, descriptor, shouldThrow)));
+}
+
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.enumerate
 EncodedJSValue JSC_HOST_CALL reflectObjectEnumerate(ExecState* exec)
 {
     JSValue target = exec->argument(0);
@@ -85,6 +120,49 @@ EncodedJSValue JSC_HOST_CALL reflectObjectEnumerate(ExecState* exec)
     return JSValue::encode(JSPropertyNameIterator::create(exec, exec->lexicalGlobalObject()->propertyNameIteratorStructure(), asObject(target)));
 }
 
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.get
+EncodedJSValue JSC_HOST_CALL reflectObjectGet(ExecState* exec)
+{
+    JSValue target = exec->argument(0);
+    if (!target.isObject())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.get requires the first argument be an object")));
+
+    const Identifier propertyName = exec->argument(1).toPropertyKey(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsNull());
+
+    JSValue receiver = target;
+    if (exec->argumentCount() >= 3)
+        receiver = exec->argument(2);
+
+    PropertySlot slot(receiver);
+    return JSValue::encode(target.get(exec, propertyName, slot));
+}
+
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.getownpropertydescriptor
+EncodedJSValue JSC_HOST_CALL reflectObjectGetOwnPropertyDescriptor(ExecState* exec)
+{
+    JSValue target = exec->argument(0);
+    if (!target.isObject())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.getOwnPropertyDescriptor requires the first argument be an object")));
+
+    auto key = exec->argument(1).toPropertyKey(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    return JSValue::encode(objectConstructorGetOwnPropertyDescriptor(exec, asObject(target), key));
+}
+
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.getprototypeof
+EncodedJSValue JSC_HOST_CALL reflectObjectGetPrototypeOf(ExecState* exec)
+{
+    JSValue target = exec->argument(0);
+    if (!target.isObject())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.getPrototypeOf requires the first argument be an object")));
+    return JSValue::encode(objectConstructorGetPrototypeOf(exec, asObject(target)));
+}
+
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.isextensible
 EncodedJSValue JSC_HOST_CALL reflectObjectIsExtensible(ExecState* exec)
 {
     JSValue target = exec->argument(0);
@@ -93,6 +171,7 @@ EncodedJSValue JSC_HOST_CALL reflectObjectIsExtensible(ExecState* exec)
     return JSValue::encode(jsBoolean(asObject(target)->isExtensible()));
 }
 
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.ownkeys
 EncodedJSValue JSC_HOST_CALL reflectObjectOwnKeys(ExecState* exec)
 {
     JSValue target = exec->argument(0);
@@ -101,6 +180,7 @@ EncodedJSValue JSC_HOST_CALL reflectObjectOwnKeys(ExecState* exec)
     return JSValue::encode(ownPropertyKeys(exec, jsCast<JSObject*>(target), PropertyNameMode::StringsAndSymbols, DontEnumPropertiesMode::Include));
 }
 
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.preventextensions
 EncodedJSValue JSC_HOST_CALL reflectObjectPreventExtensions(ExecState* exec)
 {
     JSValue target = exec->argument(0);
@@ -108,6 +188,30 @@ EncodedJSValue JSC_HOST_CALL reflectObjectPreventExtensions(ExecState* exec)
         return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.preventExtensions requires the first argument be an object")));
     asObject(target)->preventExtensions(exec->vm());
     return JSValue::encode(jsBoolean(true));
+}
+
+// http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.setprototypeof
+EncodedJSValue JSC_HOST_CALL reflectObjectSetPrototypeOf(ExecState* exec)
+{
+    JSValue target = exec->argument(0);
+    if (!target.isObject())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.setPrototypeOf requires the first argument be an object")));
+    JSValue proto = exec->argument(1);
+    if (!proto.isObject() && !proto.isNull())
+        return JSValue::encode(throwTypeError(exec, ASCIILiteral("Reflect.setPrototypeOf requires the second argument be either an object or null")));
+
+    JSObject* object = asObject(target);
+
+    if (!checkProtoSetterAccessAllowed(exec, object))
+        return JSValue::encode(jsBoolean(false));
+
+    if (object->prototype() == proto)
+        return JSValue::encode(jsBoolean(true));
+
+    if (!object->isExtensible())
+        return JSValue::encode(jsBoolean(false));
+
+    return JSValue::encode(jsBoolean(object->setPrototypeWithCycleCheck(exec, proto)));
 }
 
 } // namespace JSC

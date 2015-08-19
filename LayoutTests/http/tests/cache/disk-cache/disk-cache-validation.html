@@ -25,11 +25,6 @@ var testMatrix =
   { responseHeaders: {'ETag': 'match' } },
   { responseHeaders: {'ETag': 'nomatch' } },
   ],
- [
-  {},
-  { responseHeaders: {'Vary': 'Accept-Language' }, requestHeaders: { 'Accept-Language': 'en' } },
-  { responseHeaders: {'Vary': 'Accept-Language' }, requestHeaders: { 'Accept-Language': 'unique()' } },
-  ],
  ];
 
 description("Test permutations of various cache headers");

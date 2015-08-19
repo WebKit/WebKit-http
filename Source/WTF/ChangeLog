@@ -1,3 +1,871 @@
+2015-08-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] GMainLoopSource should receive the std::function<> objects through rvalue references
+        https://bugs.webkit.org/show_bug.cgi?id=147981
+
+        Reviewed by Carlos Garcia Campos.
+
+        Scheduling methods on GMainLoopSource and GThreadSafeMainLoopSource should
+        have the std::function<> objects passed through rvalue references, and should
+        move the passed-in objects forward when required.
+
+        * wtf/glib/GMainLoopSource.cpp:
+        (WTF::GMainLoopSource::schedule):
+        (WTF::GMainLoopSource::scheduleAfterDelay):
+        (WTF::GMainLoopSource::scheduleAndDeleteOnDestroy):
+        (WTF::GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy):
+        * wtf/glib/GMainLoopSource.h:
+        * wtf/glib/GThreadSafeMainLoopSource.cpp:
+        (WTF::GThreadSafeMainLoopSource::schedule):
+        (WTF::GThreadSafeMainLoopSource::scheduleAfterDelay):
+        * wtf/glib/GThreadSafeMainLoopSource.h:
+
+2015-08-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Remove "platform text track menu"
+        https://bugs.webkit.org/show_bug.cgi?id=148139
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h: Remove PLATFORM_TEXT_TRACK_MENU.
+
+2015-08-18  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::Condition should have a fast path for notifyOne/notifyAll that avoids calling unparkOne/unparkAll
+        https://bugs.webkit.org/show_bug.cgi?id=148090
+
+        Reviewed by Geoffrey Garen.
+
+        This change makes notifyOne()/notifyAll() blazing fast when nobody is waiting, by using the
+        various hooks that ParkingLot gives us to maintain a m_hasWaiters variable. When it's false, it
+        means that any unpark operation would simply return immediately.
+
+        This is a 45% speed-up for the 1-producer/1-consumer scenario with a 100-element queue when you
+        use the notifyOne()-per-enqueue style. What's cool about this change is that you can now safely
+        call notifyOne() (or notifyAll()) out of paranoia, just in case someone might be waiting. It's
+        free to do so if nobody is waiting!
+
+        * wtf/Condition.h:
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+
+2015-08-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all remaining uses of WTF::Mutex with WTF::Lock
+        https://bugs.webkit.org/show_bug.cgi?id=148089
+
+        Reviewed by Geoffrey Garen.
+
+        This also beefs up and rationalizes the Condition API, so that it can deal with units of time
+        other than just steady_clock. This makes it easier to port ThreadCondition and
+        std::condition_variable code over to Condition. This patch does not take a position on what
+        kind of time is best; from reading a lot of the uses in WebCore, it seems like our use of
+        double to measure seconds is often nicer than the many different classes in std::chrono.
+
+        Also added a Condition speed test, to make sure that all of this is a good idea. And indeed it
+        is. The 1-producer/1-consumer scenario with a 100-element queue runs 36x faster using
+        Lock/Condition than Mutex/ThreadCondition when you use the notifyOne()-per-enqueue style. It
+        runs 58x faster with Lock/Condition when you use the notifyAll()-at-boundary style. Note that
+        I have a bug open for making the notifyOne()-per-enqueue style even faster:
+        https://bugs.webkit.org/show_bug.cgi?id=148090. Also, the 10-consumer/10-producer scenario with
+        a 100-element queue runs 20x faster with Lock/Condition for notifyOne()-per-enqueue and 30x
+        faster with notifyAll()-at-boundary. The only way to tweak the test to get
+        Mutex/ThreadCondition to win is to have one producer, one consumer, a 1-element queue, and use
+        the notifyOne()-per-enqueue style. In that case, one of the two threads is going to be waiting
+        most of the time and the test basically measures wake-up latency and nothing else. Because
+        Condition::wait() does a little bit more work than ThreadCondition::wait(),
+        Mutex/ThreadCondition end up running 3% faster in this test case. But if you vary any of the
+        parameters of the test, Mutex/ThreadCondition ends up losing - all it takes is more threads or
+        a queue size of 5 or more. To my knowledge, we never do producer/consumer with a queue bounded
+        to one element precisely because that approach is the least efficient regardless of locking
+        algorithm. For example, neither WTF::MessageQueue nor DFG::Worklist have any bounds on their
+        queue size. So, it seems that replacing all uses of system mutexes and condition variables with
+        our own thing is a great idea.
+
+        * benchmarks/LockSpeedTest.cpp:
+        * benchmarks/ConditionSpeedTest.cpp: Added.
+        * wtf/Condition.h:
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::waitFor):
+        (WTF::Condition::wait):
+        (WTF::Condition::waitUntilWallClockSeconds):
+        (WTF::Condition::waitUntilMonotonicClockSeconds):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+        (WTF::Condition::waitForSecondsImpl):
+        (WTF::Condition::waitForImpl):
+        (WTF::Condition::absoluteFromRelative):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::compareAndPark):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeThreading):
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeThreading):
+        * wtf/dtoa.cpp:
+        (WTF::pow5mult):
+        * wtf/dtoa.h:
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build Debug Suffix on Windows with CMake
+        https://bugs.webkit.org/show_bug.cgi?id=148083
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/PlatformWin.cmake:
+        Add DEBUG_SUFFIX
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement IntegerHasher
+        https://bugs.webkit.org/show_bug.cgi?id=147866
+
+        Reviewed by Darin Adler and Anders Carlsson.
+
+        Rename StringHasher.h to Hasher.h, and include an IntegerHasher class.
+
+        * WTF.vcxproj/WTF.vcxproj: Update to target new file.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+        * WTF.xcodeproj/project.pbxproj: Ditto.
+        * wtf/CMakeLists.txt: Ditto.
+        * wtf/Hasher.h: Renamed from Source/WTF/wtf/StringHasher.h.
+        * wtf/text/CString.cpp: Use new #include
+        * wtf/text/StringHash.h: Ditto.
+        * wtf/text/StringImpl.h: Ditto.
+        * wtf/unicode/UTF8.cpp: Ditto.
+
+2015-08-17  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added commands needed to build WTF by itself.
+
+2015-08-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Use WTF::Lock and WTF::Condition instead of WTF::Mutex, WTF::ThreadCondition, std::mutex, and std::condition_variable
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+
+        Reviewed by Geoffrey Garen.
+
+        Relanding after fixing a deadlock on Linux.
+
+        * wtf/Condition.h: "using WTF::Condition".
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::tryLock): Add tryLock() because it turns out that we use it sometimes.
+        (WTF::LockBase::try_lock): unique_lock needs this.
+        (WTF::LockBase::unlock):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally): Work around a Linux C++ bug where wait_until with time_point::max() immediately returns and doesn't flash the lock.
+
+2015-08-14  Keith Miller  <keith_miller@apple.com>
+
+        cryptographicallyRandomValuesFromOS should use arc4random_buf on Darwin.
+        https://bugs.webkit.org/show_bug.cgi?id=148038
+
+        Reviewed by Geoffrey Garen.
+
+        Currently, we open a file descriptor to /dev/urandom, which can sometimes
+        fail to open. Using arc4random_buf instead should get around this issue.
+
+        * wtf/OSRandomSource.cpp:
+        (WTF::cryptographicallyRandomValuesFromOS):
+
+2015-08-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188444.
+        https://bugs.webkit.org/show_bug.cgi?id=148029
+
+        Broke GTK and EFL (see bug #148027) (Requested by philn on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use WTF::Lock and WTF::Condition instead of WTF::Mutex,
+        WTF::ThreadCondition, std::mutex, and std::condition_variable"
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+        http://trac.webkit.org/changeset/188444
+
+2015-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Use WTF::Lock and WTF::Condition instead of WTF::Mutex, WTF::ThreadCondition, std::mutex, and std::condition_variable
+        https://bugs.webkit.org/show_bug.cgi?id=147999
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Condition.h: "using WTF::Condition".
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::tryLock): Add tryLock() because it turns out that we use it sometimes.
+        (WTF::LockBase::try_lock): unique_lock needs this.
+        (WTF::LockBase::unlock):
+
+2015-08-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188428.
+        https://bugs.webkit.org/show_bug.cgi?id=148015
+
+        broke cmake build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Move some commands from ./CMakeLists.txt to Source/cmake"
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+        http://trac.webkit.org/changeset/188428
+
+2015-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Move some commands from ./CMakeLists.txt to Source/cmake
+        https://bugs.webkit.org/show_bug.cgi?id=148003
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Added commands needed to build WTF by itself.
+
+2015-08-13  Mark Lam  <mark.lam@apple.com>
+
+        WorkQueue::dispatchAfter() on Windows fires early.
+        https://bugs.webkit.org/show_bug.cgi?id=147992
+
+        Reviewed by Brent Fulgham.
+
+        The Windows implementation of WorkQueue::dispatchAfter() uses CreateTimerQueueTimer().
+        Unfortunately, CreateTimerQueueTimer() is sloppy and can fire early.  We need to compensate
+        for this slop to ensure that the specified duration does expire before the callback function
+        is called.  Otherwise, the JSC watchdog (which depends on this) can fail randomly.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-08-13  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a compact Condition object to use with Lock
+        https://bugs.webkit.org/show_bug.cgi?id=147986
+
+        Reviewed by Geoffrey Garen.
+
+        Adds a condition variable implementation based on ParkingLot, called simply WTF::Condition.
+        It can be used with WTF::Lock or actually any lock implementation. It should even work with
+        WTF::SpinLock, WTF::Mutex, or std::mutex. Best of all, Condition only requires one byte.
+
+        ParkingLot almost contained all of the functionality needed to implemenet wait/notify. We
+        could have implemented Condition using a 32-bit (or even 64-bit) version that protects
+        against a notify that happens just before we park. But, this changes the ParkingLot API to
+        give us the ability to run some code between when ParkingLot enqueues the current thread
+        and when it actually sleeps. This callback is called with no locks held, so it can call
+        unlock() on any kind of lock, so long as that lock's unlock() method doesn't recurse into
+        ParkingLot::parkConditionally(). That seems unlikely; unlock() is more likely to call
+        ParkingLot::unparkOne() or unparkAll(). WTF::Lock will never call parkConditionally()
+        inside unlock(), so WTF::Lock is definitely appropriate for use with Condition.
+
+        Condition supports most of the API that std::condition_variable supports. It does some
+        things to try to reduce footgun potential. The preferred timeout form is waitUntil() which
+        takes an absolute time from the steady_clock. The only relative timeout form also takes a
+        predicate callback, so it's impossible to write the subtly incorrect
+        "while (...) wait_for(...)" idiom.
+
+        This patch doesn't actually introduce any uses of WTF::Condition other than the unit tests.
+        I'll start switching code over to using WTF::Condition in another patch.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Condition.h: Added.
+        (WTF::Condition::Condition):
+        (WTF::Condition::waitUntil):
+        (WTF::Condition::waitFor):
+        (WTF::Condition::wait):
+        (WTF::Condition::notifyOne):
+        (WTF::Condition::notifyAll):
+        * wtf/Lock.cpp:
+        (WTF::LockBase::unlockSlow): Make this useful assertion be a release assertion. It catches cases where you unlock the lock even though you don't hold it.
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally): Add the beforeSleep() callback.
+        (WTF::ParkingLot::unparkOne):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::compareAndPark):
+
+2015-08-12  Anders Carlsson  <andersca@apple.com>
+
+        Use WTF::Optional in WindowFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=147956
+
+        Reviewed by Sam Weinig.
+
+        Add new operators to WTF::Optional to make it more like std::optional.
+
+        * wtf/Optional.h:
+        (WTF::Optional::operator->):
+        (WTF::Optional::operator*):
+
+2015-08-12  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::Lock should not suffer from the thundering herd
+        https://bugs.webkit.org/show_bug.cgi?id=147947
+
+        Reviewed by Geoffrey Garen.
+
+        This changes Lock::unlockSlow() to use unparkOne() instead of unparkAll(). The problem with
+        doing this is that it's not obvious after calling unparkOne() if there are any other threads
+        that are still parked on the lock's queue. If we assume that there are and leave the
+        hasParkedBit set, then future calls to unlock() will take the slow path. We don't want that
+        if there aren't actually any threads parked. On the other hand, if we assume that there
+        aren't any threads parked and clear the hasParkedBit, then if there actually were some
+        threads parked, then they may never be awoken since future calls to unlock() won't take slow
+        path and so won't call unparkOne(). In other words, we need a way to be very precise about
+        when we clear the hasParkedBit and we need to do it in a race-free way: it can't be the case
+        that we clear the bit just as some thread gets parked on the queue.
+
+        A similar problem arises in futexes, and one of the solutions is to have a thread that
+        acquires a lock after parking sets the hasParkedBit. This is what Rusty Russel's usersem
+        does. It's a subtle algorithm. Also, it means that if a thread barges in before the unparked
+        thread runs, then that barging thread will not know that there are threads parked. This
+        could increase the severity of barging.
+
+        Since ParkingLot is a user-level API, we don't have to worry about the kernel-user security
+        issues and so we can expose callbacks while ParkingLot is holding its internal locks. This
+        change does exactly that for unparkOne(). The new variant of unparkOne() will call a user
+        function while the queue from which we are unparking is locked. The callback is told basic
+        stats about the queue: did we unpark a thread this time, and could there be more threads to
+        unpark in the future. The callback runs while it's impossible for the queue state to change,
+        since the ParkingLot's internal locks for the queue is held. This means that
+        Lock::unlockSlow() can either clear, or leave, the hasParkedBit while releasing the lock
+        inside the callback from unparkOne(). This takes care of the thundering herd problem while
+        also reducing the greed that arises from barging threads.
+
+        This required some careful reworking of the ParkingLot algorithm. The first thing I noticed
+        was that the ThreadData::shouldPark flag was useless, since it's set exactly when
+        ThreadData::address is non-null. Then I had to make sure that dequeue() could lazily create
+        both hashtables and buckets, since the "callback is called while queue is locked" invariant
+        requires that we didn't exit early due to the hashtable or bucket not being present. Note
+        that all of this is done in such a way that the old unparkOne() and unparkAll() don't have
+        to create any buckets, though they now may create the hashtable. We don't care as much about
+        the hashtable being created by unpark since it's just such an unlikely scenario and it would
+        only happen once.
+
+        This change reduces the kernel CPU usage of WTF::Lock for the long critical section test by
+        about 8x and makes it always perform as well as WTF::WordLock and WTF::Mutex for that
+        benchmark.
+
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/Lock.cpp:
+        (WTF::LockBase::unlockSlow):
+        * wtf/Lock.h:
+        (WTF::LockBase::isLocked):
+        (WTF::LockBase::isFullyReset):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkAll):
+        * wtf/ParkingLot.h:
+        * wtf/WordLock.h:
+        (WTF::WordLock::isLocked):
+        (WTF::WordLock::isFullyReset):
+
+2015-08-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Always use a byte-sized lock implementation
+        https://bugs.webkit.org/show_bug.cgi?id=147908
+
+        Reviewed by Geoffrey Garen.
+
+        At the start of my locking algorithm crusade, I implemented Lock, which is a sizeof(void*)
+        lock implementation with some nice theoretical properties and good performance. Then I added
+        the ParkingLot abstraction and ByteLock. ParkingLot uses Lock in its implementation.
+        ByteLock uses ParkingLot to create a sizeof(char) lock implementation that performs like
+        Lock.
+
+        It turns out that ByteLock is always at least as good as Lock, and sometimes a lot better:
+        it requires 8x less memory on 64-bit systems. It's hard to construct a benchmark where
+        ByteLock is significantly slower than Lock, and when you do construct such a benchmark,
+        tweaking it a bit can also create a scenario where ByteLock is significantly faster than
+        Lock.
+
+        So, the thing that we call "Lock" should really use ByteLock's algorithm, since it is more
+        compact and just as fast. That's what this patch does.
+
+        But we still need to keep the old Lock algorithm, because it's used to implement ParkingLot,
+        which in turn is used to implement ByteLock. So this patch does this transformation:
+
+        - Move the algorithm in Lock into files called WordLock.h|cpp. Make ParkingLot use
+          WordLock.
+
+        - Move the algorithm in ByteLock into Lock.h|cpp. Make everyone who used ByteLock use Lock
+          instead. All other users of Lock now get the byte-sized lock implementation.
+
+        - Remove the old ByteLock files.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/LockSpeedTest.cpp:
+        (main):
+        * wtf/WordLock.cpp: Added.
+        (WTF::WordLock::lockSlow):
+        (WTF::WordLock::unlockSlow):
+        * wtf/WordLock.h: Added.
+        (WTF::WordLock::WordLock):
+        (WTF::WordLock::lock):
+        (WTF::WordLock::unlock):
+        (WTF::WordLock::isHeld):
+        (WTF::WordLock::isLocked):
+        * wtf/ByteLock.cpp: Removed.
+        * wtf/ByteLock.h: Removed.
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.cpp:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::unlock):
+        (WTF::LockBase::isHeld):
+        (WTF::LockBase::isLocked):
+        (WTF::Lock::Lock):
+        * wtf/ParkingLot.cpp:
+
+2015-08-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Remove ByteSpinLock
+        https://bugs.webkit.org/show_bug.cgi?id=147900
+
+        Rubber stamped by Mark Lam.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ByteSpinLock.h: Removed.
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch Windows build to Visual Studio 2015
+        https://bugs.webkit.org/show_bug.cgi?id=147887
+        <rdar://problem/22235098>
+
+        Reviewed by Alex Christensen.
+
+        Update Visual Studio project file settings to use the current Visual
+        Studio and compiler. Continue targeting binaries to run on our minimum
+        supported configuration of Windows 7.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTFGenerated.vcxproj:
+
+2015-08-10  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a ParkingLot for parking sleeping threads, so that locks can fit in 1.6 bits
+        https://bugs.webkit.org/show_bug.cgi?id=147665
+
+        Reviewed by Mark Lam.
+
+        This change adds a major new abstraction for concurrency algorithms in WebKit. It's called a
+        ParkingLot, and it makes available a thread parking queue for each virtual address in memory.
+        The queues are maintained by a data-access-parallel concurrent hashtable implementation. The
+        memory usage is bounded at around half a KB per thread.
+
+        The ParkingLot makes it easy to turn any spinlock-based concurrency protocol into one that
+        parks threads after a while. Because queue state management is up to the ParkingLot and not
+        the user's data structure, this patch uses it to implement a full adaptive mutex in one byte.
+        In fact, only three states of that byte are used (0 = available, 1 = locked, 2 = locked and
+        there are parked threads). Hence the joke that ParkingLot allows locks that fit in 1.6 bits.
+
+        ByteLock is used as a replacement for ByteSpinLock in JavaScriptCore.
+
+        The API tests for this also demo how to create a completely fair (FIFO) binary semamphore. The
+        comment in Lock.h shows how we could accelerate Lock performance using ParkingLot. After we
+        are sure that this code works, we can expand the use of ParkingLot. That's covered by
+        https://bugs.webkit.org/show_bug.cgi?id=147841.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/LockSpeedTest.cpp:
+        (main):
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        * wtf/ByteLock.cpp: Added.
+        (WTF::ByteLock::lockSlow):
+        (WTF::ByteLock::unlockSlow):
+        * wtf/ByteLock.h: Added.
+        (WTF::ByteLock::ByteLock):
+        (WTF::ByteLock::lock):
+        (WTF::ByteLock::unlock):
+        (WTF::ByteLock::isHeld):
+        (WTF::ByteLock::isLocked):
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.h:
+        * wtf/ParkingLot.cpp: Added.
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkAll):
+        (WTF::ParkingLot::forEach):
+        * wtf/ParkingLot.h: Added.
+        (WTF::ParkingLot::compareAndPark):
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * WTF.vcxproj/WTF.vcxproj.filters: Place file references so that files appear in correct
+        folders in IDE.
+
+2015-08-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Compile warning (-Wsign-compare) on 32-bits at WebCore/platform/FileSystem.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=146414
+
+        Reviewed by Darin Adler.
+
+        Added convertSafely routine based on isInBounds routine.
+        Updated BoundChecker by adding a third boolean parameter to this template giving whether Target has greater or equal precision than Source.
+        Removed BoundCheckElider, which is no longer necessary and had some issues.
+
+        * wtf/CheckedArithmetic.h:
+        (WTF::isInBounds):
+        (WTF::convertSafely):
+
+2015-08-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Lightweight locks should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=147545
+
+        Reviewed by Geoffrey Garen.
+
+        A common idiom in WebKit is to use spinlocks. We use them because the lock acquisition
+        overhead is lower than system locks and because they take dramatically less space than system
+        locks. The speed and space advantages of spinlocks can be astonishing: an uncontended spinlock
+        acquire is up to 10x faster and under microcontention - short critical section with two or
+        more threads taking turns - spinlocks are up to 100x faster. Spinlocks take only 1 byte or 4
+        bytes depending on the flavor, while system locks take 64 bytes or more. Clearly, WebKit
+        should continue to avoid system locks - they are just far too slow and far too big.
+
+        But there is a problem with this idiom. System lock implementations will sleep a thread when
+        it attempts to acquire a lock that is held, while spinlocks will cause the thread to burn CPU.
+        In WebKit spinlocks, the thread will repeatedly call sched_yield(). This is awesome for
+        microcontention, but awful when the lock will not be released for a while. In fact, when
+        critical sections take tens of microseconds or more, the CPU time cost of our spinlocks is
+        almost 100x more than the CPU time cost of a system lock. This case doesn't arise too
+        frequently in our current uses of spinlocks, but that's probably because right now there are
+        places where we make a conscious decision to use system locks - even though they use more
+        memory and are slower - because we don't want to waste CPU cycles when a thread has to wait a
+        while to acquire the lock.
+
+        The solution is to just implement a modern adaptive mutex in WTF. Luckily, this isn't a new
+        concept. This patch implements a mutex that is reminiscent of the kinds of low-overhead locks
+        that JVMs use. The actual implementation here is inspired by some of the ideas from [1]. The
+        idea is simple: the fast path is an inlined CAS to immediately acquire a lock that isn't held,
+        the slow path tries some number of spins to acquire the lock, and if that fails, the thread is
+        put on a queue and put to sleep. The queue is made up of statically allocated thread nodes and
+        the lock itself is a tagged pointer: either it is just bits telling us the complete lock state
+        (not held or held) or it is a pointer to the head of a queue of threads waiting to acquire the
+        lock. This approach gives WTF::Lock three different levels of adaptation: an inlined fast path
+        if the lock is not contended, a short burst of spinning for microcontention, and a full-blown
+        queue for critical sections that are held for a long time.
+
+        On a locking microbenchmark, this new Lock exhibits the following performance
+        characteristics:
+
+        - Lock+unlock on an uncontended no-op critical section: 2x slower than SpinLock and 3x faster
+          than a system mutex.
+
+        - Lock+unlock on a contended no-op critical section: 2x slower than SpinLock and 100x faster
+          than a system mutex.
+
+        - CPU time spent in lock() on a lock held for a while: same as system mutex, 90x less than a
+          SpinLock.
+
+        - Memory usage: sizeof(void*), so on 64-bit it's 8x less than a system mutex but 2x worse than
+          a SpinLock.
+
+        This patch replaces all uses of SpinLock with Lock, since our critical sections are not
+        no-ops so if you do basically anything in your critical section, the Lock overhead will be
+        invisible. Also, in all places where we used SpinLock, we could tolerate 8 bytes of overhead
+        instead of 4. Performance benchmarking using JSC macrobenchmarks shows no difference, which is
+        as it should be: the purpose of this change is to reduce CPU time wasted, not wallclock time.
+        This patch doesn't replace any uses of ByteSpinLock, since we expect that the space benefits
+        of having a lock that just uses a byte are still better than the CPU wastage benefits of
+        Lock. But, this work will enable some future work to create locks that will fit in just 1.6
+        bits: https://bugs.webkit.org/show_bug.cgi?id=147665.
+        
+        Rolling this back in after fixing Lock::unlockSlow() for architectures that have a truly weak
+        CAS. Since the Lock::unlock() fast path can go to slow path spuriously, it may go there even if
+        there aren't any threads on the Lock's queue. So, unlockSlow() must be able to deal with the
+        possibility of a null queue head.
+
+        [1] http://www.filpizlo.com/papers/pizlo-pppj2011-fable.pdf
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks: Added.
+        * benchmarks/LockSpeedTest.cpp: Added.
+        (main):
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.cpp: Added.
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        * wtf/Lock.h: Added.
+        (WTF::LockBase::lock):
+        (WTF::LockBase::unlock):
+        (WTF::LockBase::isHeld):
+        (WTF::LockBase::isLocked):
+        (WTF::Lock::Lock):
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::release):
+        (WTF::MetaAllocatorHandle::shrink):
+        (WTF::MetaAllocator::allocate):
+        (WTF::MetaAllocator::currentStatistics):
+        (WTF::MetaAllocator::addFreshFreeSpace):
+        (WTF::MetaAllocator::debugFreeSpaceSize):
+        * wtf/MetaAllocator.h:
+        * wtf/SpinLock.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/text/AtomicString.cpp:
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker):
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/187972.
+
+        * wtf/Atomics.cpp:
+        (WTF::getSwapLock):
+        (WTF::atomicStep):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::destructorsList):
+        (WTF::destructorsMutex):
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::ThreadSpecificThreadExit):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::createThread):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::identifierByPthreadHandle):
+        (WTF::establishIdentifierForPthreadHandle):
+        (WTF::changeThreadPriority):
+        (WTF::waitForThreadCompletion):
+        (WTF::detachThread):
+        (WTF::threadDidExit):
+        (WTF::currentThread):
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+        (WTF::Mutex::lock):
+        (WTF::Mutex::tryLock):
+        (WTF::Mutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::DeprecatedMutex::DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::~DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::lock): Deleted.
+        (WTF::DeprecatedMutex::tryLock): Deleted.
+        (WTF::DeprecatedMutex::unlock): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::storeThreadHandleByIdentifier):
+        (WTF::threadHandleForIdentifier):
+        (WTF::clearThreadHandleForIdentifier):
+        (WTF::currentThread):
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+        (WTF::Mutex::lock):
+        (WTF::Mutex::tryLock):
+        (WTF::Mutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::DeprecatedMutex::DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::~DeprecatedMutex): Deleted.
+        (WTF::DeprecatedMutex::lock): Deleted.
+        (WTF::DeprecatedMutex::tryLock): Deleted.
+        (WTF::DeprecatedMutex::unlock): Deleted.
+        * wtf/WorkQueue.h:
+        * wtf/dtoa.cpp:
+        * wtf/dtoa.h:
+        * wtf/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::dispatch):
+        (DispatchQueue::performWork):
+        (DispatchQueue::performTimerWork):
+        (DispatchQueue::insertTimerWorkItem):
+        (DispatchQueue::wakeUpThread):
+        (DispatchQueue::getNextTimeOut):
+        * wtf/efl/DispatchQueueEfl.h:
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::wakeUpEvent):
+        (WTF::RunLoop::wakeUp):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::signal):
+        (WTF::BinarySemaphore::wait):
+        * wtf/threads/BinarySemaphore.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-08-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix Windows.
+
+        * wtf/ThreadSpecificWin.cpp:
+        (WTF::destructorsList):
+        (WTF::destructorsMutex):
+        (WTF::threadSpecificKeyCreate):
+        (WTF::threadSpecificKeyDelete):
+        (WTF::ThreadSpecificThreadExit):
+
+2015-08-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename Mutex to DeprecatedMutex
+        https://bugs.webkit.org/show_bug.cgi?id=147675
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Atomics.cpp:
+        (WTF::getSwapLock):
+        (WTF::atomicStep):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime):
+        (WTF::MessageQueue<DataType>::append):
+        (WTF::MessageQueue<DataType>::appendAndKill):
+        (WTF::MessageQueue<DataType>::appendAndCheckEmpty):
+        (WTF::MessageQueue<DataType>::prepend):
+        (WTF::MessageQueue<DataType>::removeIf):
+        (WTF::MessageQueue<DataType>::isEmpty):
+        (WTF::MessageQueue<DataType>::kill):
+        (WTF::MessageQueue<DataType>::killed):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::execute):
+        (WTF::ParallelEnvironment::ThreadPrivate::waitForFinish):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::createThread):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::identifierByPthreadHandle):
+        (WTF::establishIdentifierForPthreadHandle):
+        (WTF::changeThreadPriority):
+        (WTF::waitForThreadCompletion):
+        (WTF::detachThread):
+        (WTF::threadDidExit):
+        (WTF::currentThread):
+        (WTF::DeprecatedMutex::DeprecatedMutex):
+        (WTF::DeprecatedMutex::~DeprecatedMutex):
+        (WTF::DeprecatedMutex::lock):
+        (WTF::DeprecatedMutex::tryLock):
+        (WTF::DeprecatedMutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::Mutex::~Mutex): Deleted.
+        (WTF::Mutex::lock): Deleted.
+        (WTF::Mutex::tryLock): Deleted.
+        (WTF::Mutex::unlock): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        (WTF::threadMapMutex):
+        (WTF::initializeThreading):
+        (WTF::storeThreadHandleByIdentifier):
+        (WTF::threadHandleForIdentifier):
+        (WTF::clearThreadHandleForIdentifier):
+        (WTF::currentThread):
+        (WTF::DeprecatedMutex::DeprecatedMutex):
+        (WTF::DeprecatedMutex::~DeprecatedMutex):
+        (WTF::DeprecatedMutex::lock):
+        (WTF::DeprecatedMutex::tryLock):
+        (WTF::DeprecatedMutex::unlock):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::Mutex::Mutex): Deleted.
+        (WTF::Mutex::~Mutex): Deleted.
+        (WTF::Mutex::lock): Deleted.
+        (WTF::Mutex::tryLock): Deleted.
+        (WTF::Mutex::unlock): Deleted.
+        * wtf/WorkQueue.h:
+        * wtf/dtoa.cpp:
+        * wtf/dtoa.h:
+        * wtf/efl/DispatchQueueEfl.cpp:
+        (DispatchQueue::dispatch):
+        (DispatchQueue::performWork):
+        (DispatchQueue::performTimerWork):
+        (DispatchQueue::insertTimerWorkItem):
+        (DispatchQueue::wakeUpThread):
+        (DispatchQueue::getNextTimeOut):
+        * wtf/efl/DispatchQueueEfl.h:
+        * wtf/efl/RunLoopEfl.cpp:
+        (WTF::RunLoop::wakeUpEvent):
+        (WTF::RunLoop::wakeUp):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::signal):
+        (WTF::BinarySemaphore::wait):
+        * wtf/threads/BinarySemaphore.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+
 2015-08-04  Alex Christensen  <achristensen@webkit.org>
 
         Fix quirks with CMake and VS2015

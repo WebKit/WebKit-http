@@ -1,3 +1,2566 @@
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Punctuation near Hindi text is garbled when styled with the system font
+        https://bugs.webkit.org/show_bug.cgi?id=148164
+
+        Reviewed by Brian Burg.
+
+        This test is only relevant when the system font is set to Japanese or Simplified Chinese. In these
+        languages, the system font doesn't support punctuation, but CG will erroneously say that it does.
+
+        I intend to implement testing infrastructure which will allow us to mock the system language,
+        thereby allowing this test to be valid on all machines. The tracking bug for this effort is
+        https://bugs.webkit.org/show_bug.cgi?id=148168
+
+        * fast/text/hindi-system-font-punctuation-expected.html: Added.
+        * fast/text/hindi-system-font-punctuation.html: Added.
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        [Win] Test Gardening after r188598
+
+        Unreviewed. Really skip all inspector/ tests until the test harnesses are fixed.
+        This work is tracked by <https://bugs.webkit.org/show_bug.cgi?id=148025> and
+        <https://bugs.webkit.org/show_bug.cgi?id=148037>.
+
+        * platform/win/TestExpectations: 
+
+2015-08-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Links for rules in <style> are incorrect, do not account for <style> offset in the document
+        https://bugs.webkit.org/show_bug.cgi?id=148141
+
+        Reviewed by Brian Burg.
+
+        * inspector/css/getAllStyleSheets-expected.txt: Added.
+        * inspector/css/getAllStyleSheets.html: Added.
+        * inspector/css/resources/external.css: Added.
+        (body):
+        Test for style sheet header information for external and inline stylesheets.
+
+2015-08-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Optimize more cases of something-compared-to-null/undefined
+        https://bugs.webkit.org/show_bug.cgi?id=148157
+
+        Reviewed by Geoffrey Garen and Filip Pizlo.
+
+        * js/dom/document-all-watchpoint-covers-eliminated-compare-eq-expected.txt: Added.
+        * js/dom/document-all-watchpoint-covers-eliminated-compare-eq.html: Added.
+        * js/dom/script-tests/document-all-watchpoint-covers-eliminated-compare-eq.js: Added.
+        (compareFunction):
+
+2015-08-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Attempt to fix the failing search-padding-cancel-results-buttons.html test by making
+        platform-specific versions of the test.
+
+        * TestExpectations: Added search-padding-cancel-results-buttons-expected.txt with a default [ Skip ].
+        * fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt.
+        * fast/forms/search/search-padding-cancel-results-buttons.html: Renamed from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons.html.
+        * platform/mac-mavericks/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt.
+        * platform/mac/TestExpectations: Enable the test only for Mac platforms.
+
+2015-08-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix a rare flakiness in svg/animations/svgPreserveAspectRatio-animation-1.html
+        https://bugs.webkit.org/show_bug.cgi?id=148149
+
+        Reviewed by Tim Horton.
+        
+        Do not sample the SVG animation at the middle of the animation period. At
+        that time, the SVG animation test script changes the value of the animated
+        attribute from the from-value to the to-value. It is safer to sample
+        immediately before and after the middle of the animation period.
+
+        * svg/animations/script-tests/svgPreserveAspectRatio-animation-1.js:
+        * svg/animations/svgPreserveAspectRatio-animation-1-expected.txt:
+
+2015-08-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Search input results and clear icons are misaligned when padding is added
+        https://bugs.webkit.org/show_bug.cgi?id=148146
+        <rdar://problem/22310951>
+
+        Reviewed by Zalan Bujtas.
+
+        Tests that for a search field with -webkit-appearance: textfield; and padding will not clip
+        its cancel and results buttons.
+
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Added.
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons.html: Added.
+
+2015-08-18  Simon Fraser  <simon.fraser@apple.com>
+
+        will-change: backface-visibility should not cause stacking context
+        https://bugs.webkit.org/show_bug.cgi?id=148091
+
+        Reviewed by Zalan Bujtas.
+        
+        Test that will-change: -webkit-backface-visibility does not create
+        stacking context.
+
+        * fast/css/will-change/resources/will-change-stacking-helper.js:
+
+2015-08-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark fast/css/will-change/will-change-creates-stacking-context.html as an image-only
+        failure. Filed webkit.org/b/148144 to track it.
+
+        * platform/win/TestExpectations:
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Since the inspector stub cannot open files that live in the LayoutTests
+        directory, adopt the test helper marshalling approach used by inspector.js.
+        Each helper must register its code for marshalling and explicitly put globals
+        on the window object.
+
+        Use script tags rather than importScript to include helpers in a test.
+
+        * TestExpectations: For now, skip inspector http tests. These should be rewritten
+        to use inspector-test.js, which does not run into cross-origin problems.
+
+        Rebaseline some test results to account for shifted line numbers (yuck).
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (ProtocolTestProxy.registerInitializer):
+        (log):
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations-expected.txt:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations-expected.txt:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message-expected.txt:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/dom/dom-search-expected.txt:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/resources/dom-search-queries.js:
+
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening after r188591
+        https://bugs.webkit.org/show_bug.cgi?id=148119
+
+        Unreviewed.
+
+        * platform/win/fast/text/trak-optimizeLegibility-expected.txt: Added.
+
+2015-08-18  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/navigation/page-cache-iframe-provisional-load.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148133
+
+        Reviewed by Alexey Proskuryakov.
+
+        http/tests/navigation/page-cache-iframe-provisional-load.html would fail if
+        the slow load would finish before navigating away. To greatly reduce the
+        chances of it happening, increase the slow load delay from 100ms to 3s.
+
+        Also make the test faster by using page-cache-helper.html instead of
+        page-cache-helper-slow.html. The idea of using a slow helper was for the
+        load to potentially finish while the page was in the PageCache. However,
+        now that we've increased the slow load delay, this will no longer happen.
+
+        * http/tests/navigation/page-cache-iframe-provisional-load.html:
+        * http/tests/navigation/resources/page-cache-helper-slow.html: Removed.
+
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Honor the 'trak' table by opting in via text-rendering: optimizeLegibility
+        https://bugs.webkit.org/show_bug.cgi?id=148119
+        <rdar://problem/22291561>
+
+        Reviewed by Tim Horton.
+
+        This test will fail until we stop mocking the system font on El Capitan. Until then,
+        this patch will commit the test failure as an expected result.
+
+        * fast/text/trak-optimizeLegibility-expected.html: Added
+        * fast/text/trak-optimizeLegibility.html: Added
+
+2015-08-18  Chris Dumez  <cdumez@apple.com>
+
+        Make our bindings' GetOwnPropertySlot() behave according to specification
+        https://bugs.webkit.org/show_bug.cgi?id=148092
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/childnode-item-after-itemname.html:
+        Update the test so the item's id in the NodeList is "testItem"
+        instead of "item". NodeList has a method called item() which now
+        takes priority over the name when accessing Nodelist.item, as per
+        the Web IDL specification.
+
+        * fast/dom/htmlcollection-getownproperty-expected.txt:
+        Rebaseline test. This is a progression.
+
+2015-08-18  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Remove failing expectations for some WK1 tests that have passed recent
+        builds.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+
+2015-08-18  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Do not stretch always grid items with auto width
+        https://bugs.webkit.org/show_bug.cgi?id=148069
+
+        Reviewed by Darin Adler.
+
+        New Layout tests to verify that grid stretching logic works as expected
+        when aligning both horizontally and vertically.
+
+        * fast/css-grid-layout/grid-align-justify-stretch-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-stretch.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch.html: Added.
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change-expected.txt: Added.
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change.html: Added.
+
+2015-08-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Update implementation with the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=147978
+
+        Reviewed by Darin Adler.
+
+        Changed tests about the order of the read and closed promise resolution.
+
+        * streams/readable-stream-reader-read.html:
+        * streams/reference-implementation/readable-stream-tee.html:
+        * streams/reference-implementation/readable-stream-templated.html:
+        * streams/reference-implementation/readable-stream.html:
+
+2015-08-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188539, r188544, r188552, and
+        r188564.
+        https://bugs.webkit.org/show_bug.cgi?id=148122
+
+        Broke tests and some build styles (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Web Inspector: load ProtocolTestStub from the WebInspectorUI
+        bundle"
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+        http://trac.webkit.org/changeset/188539
+
+        "Web Inspector: split TestStub.js into multiple files and
+        modernize it"
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+        http://trac.webkit.org/changeset/188544
+
+        "Web Inspector: InspectorTest should be a subclass of
+        TestHarness"
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+        http://trac.webkit.org/changeset/188552
+
+        "Unreviewed internal build fix attempt after r188539."
+        http://trac.webkit.org/changeset/188564
+
+2015-08-17  Zalan Bujtas  <zalan@apple.com>
+
+        Outline with auto style leaves bits behind when the the box is moved.
+        https://bugs.webkit.org/show_bug.cgi?id=148100
+
+        Reviewed by Simon Fraser.
+
+        Due to RenderView::maximalOutlineSize() each outline width need to be tested separately.
+
+        * fast/repaint/outline-with1px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with1px-auto-repaint-rect.html: Added.
+        * fast/repaint/outline-with2px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with2px-auto-repaint-rect.html: Added.
+        * fast/repaint/outline-with3px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with3px-auto-repaint-rect.html: Added.
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Remove support for composite fonts
+        https://bugs.webkit.org/show_bug.cgi?id=147920
+
+        Reviewed by Dan Bernstein.
+
+        * fast/text/international/text-spliced-font.html: Removed.
+        * platform/efl/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/efl/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/gtk/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/gtk/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/ios-simulator/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/mac/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/mac/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/win/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/win/fast/text/international/text-spliced-font-expected.txt: Removed.
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening
+
+        Unreviewed.
+
+        * platform/win/fast/text/system-font-punctuation-expected.txt: Added.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorTest should be a subclass of TestHarness
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+
+        Reviewed by Timothy Hatcher.
+
+        Rename InspectorTestProxy to TestPage.
+
+        * http/tests/inspector/debugger/debugger-test.js:
+        * http/tests/inspector/dom/shapes-test.js:
+        * http/tests/inspector/replay/replay-test.js:
+        * http/tests/inspector/resources/inspector-test.js:
+        (TestPage.registerInitializer):
+        (runTest):
+        (TestPage.completeTest):
+        (TestPage.debugLog):
+        (TestPage.addResult):
+        (TestPage.reportUncaughtException):
+        (InspectorTestProxy.registerInitializer): Deleted.
+        (InspectorTestProxy.completeTest): Deleted.
+        (InspectorTestProxy.debugLog): Deleted.
+        (InspectorTestProxy.addResult): Deleted.
+        (InspectorTestProxy.reportUncaughtException): Deleted.
+        * inspector/debugger/breakpoint-action-eval.html:
+        * inspector/debugger/resources/break-on-exception-tests.js:
+        * inspector/debugger/resources/script-for-breakpoint-actions.js:
+        (breakpointActions):
+        * inspector/debugger/search-scripts.html:
+        * inspector/replay/window-navigator-plugins-memoized.html:
+        * inspector/timeline/debugger-paused-while-recording.html:
+        * inspector/timeline/exception-in-injected-script-while-recording.html:
+
+2015-08-17  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Remove failing expectations for some WK2 tests that have passed for the
+        last 15 builds.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2015-08-17  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Implement ES6 arrow function syntax. Arrow function specific features. Lexical bind of this
+        https://bugs.webkit.org/show_bug.cgi?id=144956
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-bind-expected.txt: Added.
+        * js/arrowfunction-bind.html: Added.
+        * js/arrowfunction-call-expected.txt: Added.
+        * js/arrowfunction-call.html: Added.
+        * js/arrowfunction-constructor-expected.txt: Added.
+        * js/arrowfunction-constructor.html: Added.
+        * js/arrowfunction-lexical-bind-this-expected.txt: Added.
+        * js/arrowfunction-lexical-bind-this.html: Added.
+        * js/arrowfunction-others-expected.txt: Added.
+        * js/arrowfunction-others.html: Added.
+        * js/arrowfunction-tdz-expected.txt: Added.
+        * js/arrowfunction-tdz.html: Added.
+        * js/arrowfunction-typeof-expected.txt: Added.
+        * js/arrowfunction-typeof.html: Added.
+        * js/regress/arrowfunction-call-expected.txt: Added.
+        * js/regress/arrowfunction-call.html: Added.
+        * js/regress/script-tests/arrowfunction-call.js: Added.
+        * js/regress/script-tests/function-call.js: Added.
+        * js/script-tests/arrowfunction-bind.js: Added.
+        * js/script-tests/arrowfunction-call.js: Added.
+        * js/script-tests/arrowfunction-constructor.js: Added.
+        * js/script-tests/arrowfunction-lexical-bind-this.js: Added.
+        * js/script-tests/arrowfunction-others.js: Added.
+        * js/script-tests/arrowfunction-tdz.js: Added.
+        * js/script-tests/arrowfunction-typeof.js: Added.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: split TestStub.js into multiple files and modernize it
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+
+        Reviewed by Timothy Hatcher.
+
+        Add the prefix 'TestPage' to everything in protocol-test.js. Continue
+        exporting it to the global namespace for backwards compatibility, too.
+
+        Rename some things to match changes in the test harness. Tighten up
+        preconditions for test suite and test case names. Sprinkle some ES6.
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (TestPage.registerInitializer):
+        (TestPage.debugLog.window.debugLog):
+        (TestPage.log.window.log):
+        (TestPage.closeTest.window.closeTest):
+        (TestPage.runTest.window.runTest):
+        (ProtocolTestProxy.registerInitializer): Deleted.
+        (debugLog): Deleted.
+        (log): Deleted.
+        (closeTest): Deleted.
+        (runTest): Deleted.
+        * inspector/dom/resources/dom-search-queries.js:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite.html:
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Since the inspector stub cannot open files that live in the LayoutTests
+        directory, adopt the test helper marshalling approach used by inspector.js.
+        Each helper must register its code for marshalling and explicitly put globals
+        on the window object.
+
+        Use script tags rather than importScript to include helpers in a test.
+
+        * TestExpectations: For now, skip inspector http tests. These should be rewritten
+        to use inspector-test.js, which does not run into cross-origin problems.
+
+        Rebaseline some test results to account for shifted line numbers (yuck).
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (ProtocolTestProxy.registerInitializer):
+        (log):
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations-expected.txt:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations-expected.txt:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message-expected.txt:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/dom/dom-search-expected.txt:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/resources/dom-search-queries.js:
+
+2015-08-17  Simon Fraser  <simon.fraser@apple.com>
+
+        will-change should sometimes trigger compositing
+        https://bugs.webkit.org/show_bug.cgi?id=148072
+
+        Reviewed by Tim Horton.
+
+        * compositing/layer-creation/will-change-change-expected.txt: Added.
+        * compositing/layer-creation/will-change-change.html: Added.
+        * compositing/layer-creation/will-change-layer-creation-expected.txt: Added.
+        * compositing/layer-creation/will-change-layer-creation.html: Added.
+
+2015-08-17  Timothy Horton  <timothy_horton@apple.com>
+
+        Holes for find matches that span multiple lines are completely wrong
+        https://bugs.webkit.org/show_bug.cgi?id=148065
+        <rdar://problem/5305002>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/mark-matches-broken-line-rendering-expected.html: Added.
+        * fast/text/mark-matches-broken-line-rendering.html: Added.
+        Add a test that ensures that we correctly mark test matches that cross
+        line breaks.
+
+2015-08-17  Chris Dumez  <cdumez@apple.com>
+
+        Accessing HTMLCollection.length is slow
+        https://bugs.webkit.org/show_bug.cgi?id=148039
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/htmlcollection-getownproperty-expected.txt: Added.
+        * fast/dom/htmlcollection-getownproperty.html: Added.
+        Add new layout test covering the expected behavior of HTMLCollection's
+        [[GetOwnProperty]]. A few checks are still failing as we don't entirely
+        match the specification yet.
+
+        * fast/dom/wrapper-classes-expected.txt:
+        Rebaseline test as a few more checks are now passing.
+
+2015-08-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Removed an expectation for http/tests/media/video-buffered-range-contains-currentTime.html,
+        which no longer times out. This expectation was conflicting with a correct one.
+
+        * platform/mac/TestExpectations:
+
+2015-08-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Have will-change create stacking context when necessary
+        https://bugs.webkit.org/show_bug.cgi?id=148060
+
+        Reviewed by Zalan Bujtas.
+        
+        Ref test for will-change creating stacking context.
+
+        * fast/css/will-change/resources/will-change-stacking-helper.js: Added.
+        (makeStackingBlock):
+        * fast/css/will-change/will-change-creates-stacking-context-expected.html: Added.
+        * fast/css/will-change/will-change-creates-stacking-context.html: Added.
+        * platform/efl/TestExpectations: Mark image failure on EFL, since some CSS
+        properties in the test are disabled there.
+
+2015-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement parsing for CSS will-change
+        https://bugs.webkit.org/show_bug.cgi?id=148052
+
+        Reviewed by Dean Jackson.
+        
+        will-change parsing test.
+
+        * fast/css/will-change-parsing-expected.txt: Added.
+        * fast/css/will-change-parsing.html: Added.
+
+2015-08-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up js-test use in scroll-snap tests
+        https://bugs.webkit.org/show_bug.cgi?id=148046
+
+        Reviewed by Brent Fulgham.
+
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-stateless-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-stateless.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated-expected.txt:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html:
+
+2015-08-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Rebase some WK2 test results to include the frame scroll pos. Move the
+        cross-platform test results to the WK1 directory.
+
+        * platform/ios-simulator-wk1/fast/multicol/pagination/BottomToTop-bt-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/BottomToTop-bt-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/BottomToTop-lr-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/BottomToTop-lr-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/BottomToTop-rl-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/BottomToTop-rl-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/BottomToTop-tb-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/BottomToTop-tb-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/RightToLeft-bt-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/RightToLeft-bt-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/RightToLeft-lr-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/RightToLeft-lr-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/RightToLeft-rl-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/RightToLeft-rl-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/pagination/RightToLeft-tb-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/pagination/RightToLeft-tb-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/vertical-rl/column-rules-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/vertical-rl/column-rules-expected.txt.
+        * platform/ios-simulator-wk1/fast/multicol/vertical-rl/float-paginate-complex-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/multicol/vertical-rl/float-paginate-complex-expected.txt.
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+
+2015-08-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        iOS test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/js/dom/constructor-length-expected.txt:
+
+2015-08-14  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        iOS test gardening.
+
+        * platform/ios-simulator-wk2/fast/ruby/bopomofo-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/ruby/bopomofo-letter-spacing-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/ruby/bopomofo-rl-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/international/plane2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/international/synthesized-italic-vertical-latin-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/japanese-lr-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/japanese-rl-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/japanese-ruby-horizontal-bt-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/japanese-ruby-vertical-lr-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/japanese-ruby-vertical-rl-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/writing-mode/vertical-align-table-baseline-expected.txt: Removed.
+
+2015-08-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ES6 class syntax should allow computed name method
+        https://bugs.webkit.org/show_bug.cgi?id=142690
+
+        Reviewed by Saam Barati.
+
+        Added test cases for computed method names.
+
+        * js/class-syntax-method-names-expected.txt:
+        * js/script-tests/class-syntax-method-names.js:
+
+2015-08-14  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] video-buffered-range-contains-currentTime.html is flakey after r188390
+        https://bugs.webkit.org/show_bug.cgi?id=148042
+
+        * platform/mac/TestExpectations: Mark the test as flakey.
+
+2015-08-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Frequent assertions on animations/restart-after-scroll.html
+        https://bugs.webkit.org/show_bug.cgi?id=148026
+
+        * TestExpectations: Skip the test in debug mode.
+
+2015-08-13  Antti Koivisto  <antti@apple.com>
+
+        Cover memory cache subresource validation policy with cache tests
+        https://bugs.webkit.org/show_bug.cgi?id=147830
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add another test round using subresource validation policy.
+
+        * http/tests/cache/disk-cache/disk-cache-204-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-302-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-307-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-404-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-disable-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-media-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-range-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-headers-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-max-stale-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-attachment-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body-expected.txt:
+        * http/tests/cache/disk-cache/resources/cache-test.js:
+        (loadResourcesWithOptions):
+        (.):
+        (runTests):
+
+2015-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce flakiness of inspector/indexeddb/requestDatabaseNames
+        https://bugs.webkit.org/show_bug.cgi?id=148008
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/indexeddb/requestDatabaseNames.html:
+        Follow-up fix to reduce flakiness in the test caused by other tests
+        creating IndexedDB databases.
+
+2015-08-13  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        iOS test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator-wk1/fast/forms/indeterminate-progress-inline-height-expected.txt: Added.
+        * platform/ios-simulator-wk1/fast/forms/input-appearance-spinbutton-expected.txt: Added.
+        * platform/ios-simulator-wk1/fast/forms/input-appearance-spinbutton-up-expected.txt: Added.
+
+2015-08-13  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Rebaseline some iOS simulator test results for font changes.
+
+        Rubber-stamped by Sam Weinig.
+
+        * platform/ios-simulator/editing/selection/vertical-lr-ltr-extend-line-backward-br-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-lr-ltr-extend-line-forward-br-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-backward-br-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-backward-p-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-backward-wrap-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-forward-br-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-forward-p-expected.txt:
+        * platform/ios-simulator/editing/selection/vertical-rl-ltr-extend-line-forward-wrap-expected.txt:
+        * platform/ios-simulator/fast/ruby/bopomofo-expected.txt:
+        * platform/ios-simulator/fast/ruby/bopomofo-letter-spacing-expected.txt:
+        * platform/ios-simulator/fast/ruby/bopomofo-rl-expected.txt:
+        * platform/ios-simulator/fast/text/backslash-to-yen-sign-euc-expected.txt:
+        * platform/ios-simulator/fast/text/backslash-to-yen-sign-expected.txt:
+        * platform/ios-simulator/fast/text/font-weights-zh-expected.txt:
+        * platform/ios-simulator/fast/text/indic-expected.txt:
+        * platform/ios-simulator/fast/text/international/plane2-expected.txt:
+        * platform/ios-simulator/fast/text/international/synthesized-italic-vertical-latin-expected.txt:
+        * platform/ios-simulator/fast/text/international/text-combine-image-test-expected.txt:
+        * platform/ios-simulator/fast/text/international/text-spliced-font-expected.txt:
+        * platform/ios-simulator/fast/text/tatechuyoko-expected.txt:
+        * platform/ios-simulator/fast/text/text-combine-different-fonts-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-lr-selection-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-lr-text-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-rl-selection-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-rl-text-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-ruby-horizontal-bt-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-ruby-vertical-lr-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/japanese-ruby-vertical-rl-expected.txt:
+        * platform/ios-simulator/fast/writing-mode/vertical-align-table-baseline-expected.txt:
+
+2015-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Watch Expressions
+        https://bugs.webkit.org/show_bug.cgi?id=147904
+
+        Reviewed by Brian Burg.
+
+        * inspector/model/remote-object-fake-object-expected.txt: Added.
+        * inspector/model/remote-object-fake-object.html: Added.
+
+2015-08-13  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: refactor ProtocolTest to be an InjectedTestHarness subclass
+        https://bugs.webkit.org/show_bug.cgi?id=147954
+
+        Reviewed by Joseph Pecoraro.
+
+        In preparation for sharing the same test harness API between protocol tests
+        and frontend tests, this patch refactors ProtocolTest into the desired
+        class structure. Each type of test (currently: protocol, frontend) extends
+        InjectedTestHarness and fills in a few key methods for communicating with
+        the test page-side code.
+
+        This patch standardizes on assert() only logging when the condition is false.
+        Update protocol tests to use ProtocolTestHarness.expectThat, rather than assert.
+
+        * http/tests/inspector/resources/ProtocolTestStub.js:
+        (window.InjectedTestHarness):
+        (window.InjectedTestHarness.prototype.createAsyncSuite):
+        (window.InjectedTestHarness.prototype.createSyncSuite):
+        (window.InjectedTestHarness.prototype.completeTest):
+        (window.InjectedTestHarness.prototype.addResult):
+        (window.InjectedTestHarness.prototype.debugLog):
+        (window.InjectedTestHarness.prototype.evaluateInPage):
+        (window.InjectedTestHarness.prototype.importScript):
+        (window.InjectedTestHarness.prototype.get logCount):
+        (window.InjectedTestHarness.prototype.log):
+        (window.InjectedTestHarness.prototype.assert):
+        (window.InjectedTestHarness.prototype.expectThat):
+ 
+        (InjectedTestHarness.AsyncTestSuite): Use a stored reference to the harness
+        rather than hardcoding a specific InjectedTestHarness instance.
+
+        (InjectedTestHarness.AsyncTestSuite.prototype.runTestCasesAndFinish.finish):
+        (InjectedTestHarness.AsyncTestSuite.prototype.runTestCasesAndFinish):
+        (InjectedTestHarness.AsyncTestSuite.prototype.runTestCases):
+ 
+        (InjectedTestHarness.SyncTestSuite): Use a stored reference to the harness
+        rather than hardcoding a specific InjectedTestHarness instance.
+
+        (InjectedTestHarness.SyncTestSuite.prototype.runTestCasesAndFinish):
+        (InjectedTestHarness.SyncTestSuite.prototype.runTestCases):
+
+        (ProtocolTestHarness.prototype.completeTest):
+        (ProtocolTestHarness.prototype.addResult):
+        (ProtocolTestHarness.prototype.debugLog):
+        (ProtocolTestHarness.prototype.evaluateInPage):
+        (ProtocolTestHarness):
+        (InspectorProtocol.sendCommand):
+        (InspectorProtocol.awaitCommand):
+        (InspectorProtocol.awaitEvent.):
+        (InspectorProtocol.awaitEvent):
+        (InspectorProtocol.addEventListener):
+        (InspectorProtocol.sendMessage):
+        (InspectorProtocol.checkForError):
+        (InspectorFrontendAPI.dispatchMessageAsync):
+        (ProtocolTest.AsyncTestSuite): Moved.
+        (ProtocolTest.AsyncTestSuite.prototype.runTestCasesAndFinish.finish): Moved.
+        (ProtocolTest.AsyncTestSuite.prototype.runTestCasesAndFinish): Moved.
+        (ProtocolTest.AsyncTestSuite.prototype.runTestCases): Moved.
+        (ProtocolTest.SyncTestSuite): Moved.
+        (ProtocolTest.SyncTestSuite.prototype.runTestCasesAndFinish): Moved.
+        (ProtocolTest.SyncTestSuite.prototype.runTestCases): Moved.
+        (ProtocolTest.log): Moved.
+        (ProtocolTest.assert): Moved.
+        (ProtocolTest.debugLog): Moved.
+        (ProtocolTest.completeTest): Moved.
+        (ProtocolTest.importScript): Moved.
+        * http/tests/inspector/resources/console-test.js:
+        (.suite.addTestCase.):
+        (.suite.addTestCase):
+        (ProtocolTest.Console.addTestCase):
+        * http/tests/inspector/resources/protocol-test.js:
+        (closeTest):
+        * inspector/console/console-message.html:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/dom-debugger/node-removed.html:
+        * inspector/dom/dom-remove-events.html:
+        * inspector/runtime/getProperties.html:
+        * inspector/unit-tests/async-test-suite-expected.txt:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite-expected.txt:
+        * inspector/unit-tests/sync-test-suite.html:
+
+2015-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: A {Map, WeakMap, Set, WeakSet} object contains itself will hang the console
+        https://bugs.webkit.org/show_bug.cgi?id=147966
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object.html:
+        * inspector/model/remote-object-expected.txt:
+        Add tests for a cylic array, set, and map.
+
+2015-08-13  Eric Carlson  <eric.carlson@apple.com>
+
+        Don't short circuit seeking
+        https://bugs.webkit.org/show_bug.cgi?id=147892
+
+        Reviewed by Jer Noble.
+
+        * media/event-attributes-expected.txt: Update for test change.
+        * media/event-attributes.html: There is no reason to expect that a 'timeupdate' will have
+          been sent before 'canplaythrough'.
+        * media/video-seek-to-current-time-expected.txt: Added.
+        * media/video-seek-to-current-time.html: Added.
+        * platform/efl/TestExpectations: Skip new test.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Mark the new test as sometimes failing because of 
+          webkit.org/b/147944.
+        * platform/win/TestExpectations: Skip new test.
+
+2015-08-13  Alexey Proskuryakov  <ap@apple.com>
+
+        [Cocoa] [CJK-configured device] System font has vertical punctuation
+        https://bugs.webkit.org/show_bug.cgi?id=147964
+        <rdar://problem/22256660>
+
+        * platform/mac/fast/text/system-font-punctuation-expected.txt: Actually landing
+        results for Mac.
+
+2015-08-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac TestExpectations gardening.
+
+        * platform/mac/TestExpectations:
+
+2015-08-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] [CJK-configured device] System font has vertical punctuation
+        https://bugs.webkit.org/show_bug.cgi?id=147964
+        <rdar://problem/22256660>
+
+        Reviewed by Dean Jackson.
+
+        Make sure punctuation isn't vertical.
+
+        * fast/text/system-font-punctuation.html: Added.
+        * platform/ios-simulator/fast/text/system-font-punctuation-expected.txt: Added
+        * platform/mac/fast/text/system-font-punctuation-expected.txt: Added
+
+2015-08-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Removing an expectation for a long fixed bug.
+
+        * TestExpectations: Unskip fast/multicol/newmulticol/spanner-crash.html.
+
+2015-08-12  Alexey Proskuryakov  <ap@apple.com>
+
+        http/tests/security/cors-post-redirect-308.html doesn't work properly
+        https://bugs.webkit.org/show_bug.cgi?id=147914
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/resources/redirect.php: Trying to return
+        code 308 without a reason phrase results in an internal server error with Apache/2.2.
+        While at it, also corrected the script to always set Cache-Control: no-store.
+
+2015-08-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Removing an expectation for a test that's fixed.
+
+        * platform/mac/TestExpectations:
+
+2015-08-12  Antti Koivisto  <antti@apple.com>
+
+        CachedResource leak in validation code
+        https://bugs.webkit.org/show_bug.cgi?id=147941
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache/recursive-validation.html: Added.
+        * http/tests/cache/resources/no-cache-with-validation.php: Added.
+
+2015-08-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Not receiving responses for async request IndexedDB.requestDatabaseNames
+        https://bugs.webkit.org/show_bug.cgi?id=147844
+
+        Reviewed by Brian Burg.
+
+        * inspector/indexeddb/requestDatabaseNames-expected.txt: Added.
+        * inspector/indexeddb/requestDatabaseNames.html: Added.
+
+2015-08-11  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: test Play/Pause media control events delivered to Default media sessions
+        https://bugs.webkit.org/show_bug.cgi?id=147910
+
+        Reviewed by Eric Carlson.
+
+        Media elements that aren't explicitly assigned a media session should respond to play/pause media control events.
+
+        * media/session/play-pause-media-events-in-default-sessions-expected.txt: Added.
+        * media/session/play-pause-media-events-in-default-sessions.html: Added.
+
+2015-08-11  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: add test for Content media session focus
+        https://bugs.webkit.org/show_bug.cgi?id=147902
+
+        Reviewed by Eric Carlson.
+
+        Playing a media element that belongs to a Content media session should pause other media elements that belong
+        to Content media sessions.
+
+        * media/session/content-session-focus-expected.txt: Added.
+        * media/session/content-session-focus.html: Added.
+
+2015-08-12  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r185606): ASSERT in WebCore::RenderElement::styleWillChange
+        https://bugs.webkit.org/show_bug.cgi?id=147596
+        <rdar://problem/21963355>
+
+        Reviewed by Jon Honeycutt.
+
+        * css3/scroll-snap/improper-snap-points-crash-expected.txt: Added.
+        * css3/scroll-snap/improper-snap-points-crash.html: Added.
+
+2015-08-12  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        XHR.setRequestHeader should remove trailing and leading whitespaces from the header value
+        https://bugs.webkit.org/show_bug.cgi?id=147445
+
+        Reviewed by Darin Adler.
+
+        * http/tests/xmlhttprequest/inject-header-expected.txt:
+        * http/tests/xmlhttprequest/inject-header.html:
+        * http/tests/xmlhttprequest/resources/print-xtest-header.cgi: Added.
+        * http/tests/xmlhttprequest/set-bad-headervalue-expected.txt:
+        * http/tests/xmlhttprequest/set-bad-headervalue.html:
+        * http/tests/xmlhttprequest/setrequestheader-allow-whitespace-in-value-expected.txt: Added.
+        * http/tests/xmlhttprequest/setrequestheader-allow-whitespace-in-value.htm: Added.
+
+2015-08-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [font-features] Map OpenType feature tags to TrueType feature selectors
+        https://bugs.webkit.org/show_bug.cgi?id=147819
+
+        Reviewed by Dean Jackson.
+
+        Updated test results.
+
+        * platform/mac/css3/font-feature-settings-preinstalled-fonts-expected.png: Added.
+        * platform/mac/css3/font-feature-settings-preinstalled-fonts-expected.txt:
+
+2015-08-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Windows test gardening.
+
+        * platform/win/TestExpectations:
+        * platform/win/css3/font-feature-settings-preinstalled-fonts-expected.txt: Added.
+        * platform/win/fast/forms/input-appearance-spinbutton-expected.txt: Added.
+        * platform/win/fast/forms/input-appearance-spinbutton-up-expected.txt: Added.
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce get_by_id like IC into get_by_val when the given name is String or Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=147480
+
+        Reviewed by Filip Pizlo.
+
+        Add synthetic benchmarks that replaces normal property load with symbol/string keyed load.
+
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-string-chain-from-try-block-expected.txt: Added.
+        * js/regress/get-by-val-with-string-chain-from-try-block.html: Added.
+        * js/regress/get-by-val-with-string-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-string-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-string-proto-or-self-expected.txt: Added.
+        * js/regress/get-by-val-with-string-proto-or-self.html: Added.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-string-self-or-proto-expected.txt: Added.
+        * js/regress/get-by-val-with-string-self-or-proto.html: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block.html: Added.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-symbol-proto-or-self-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-proto-or-self.html: Added.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-symbol-self-or-proto-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-self-or-proto.html: Added.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-chain-from-try-block.js: Added.
+        (A):
+        (B):
+        (C):
+        (D):
+        (E):
+        (F):
+        (G):
+        (foo):
+        * js/regress/script-tests/get-by-val-with-string-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-proto-or-self.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-self-or-proto.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-chain-from-try-block.js: Added.
+        (A):
+        (B):
+        (C):
+        (D):
+        (E):
+        (F):
+        (G):
+        (foo):
+        * js/regress/script-tests/get-by-val-with-symbol-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-proto-or-self.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-self-or-proto.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Agent commands do not actually return a promise when expected
+        https://bugs.webkit.org/show_bug.cgi?id=138665
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new test that only checks for proper invocation return values.
+        Once the async test suite infrastructure is available for frontend tests,
+        more thorough tests of promises and callbacks will be added.
+
+        * inspector/protocol/inspector-backend-invocation-return-value-expected.txt: Added.
+        * inspector/protocol/inspector-backend-invocation-return-value.html: Added.
+        * inspector/protocol/protocol-promise-result-expected.txt: Removed.
+        * inspector/protocol/protocol-promise-result.html: Removed.
+        * platform/win/TestExpectations: Remove deleted test.
+
+2015-08-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        feMorphology is not rendered correctly on Retina display
+        https://bugs.webkit.org/show_bug.cgi?id=147589
+
+        Reviewed by Dean Jackson.
+
+        Ensure we take the filter scale factor into consideration when applying
+        the FEMorphology.
+
+        * fast/hidpi/filters-morphology-expected.html: Added.
+        * fast/hidpi/filters-morphology.html: Added.
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Numeric setter on prototype doesn't get called.
+        https://bugs.webkit.org/show_bug.cgi?id=144252
+
+        Reviewed by Darin Adler.
+
+        Update the test expectation file.
+
+        * js/class-syntax-string-and-numeric-names-expected.txt:
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use different namespaces in test fixtures for protocol tests and frontend tests
+        https://bugs.webkit.org/show_bug.cgi?id=147787
+
+        Reviewed by Timothy Hatcher.
+
+        Refactor test methods to use three distinct namespaces to reflect their implementation:
+
+        - InspectorProtocol contains commands that are only used from within protocol tests.
+        This includes sending and receiving protocol messages and checking message errors.
+
+        - InspectorTest contains test methods for full inspector frontend tests.
+
+        - ProtocolTest contains test methods for protocol tests.
+
+        In a subsequent patch, most methods in InspectorTest and ProtocolTest namespaces
+        will be unified so that implementations of log, assert, etc. are no longer duplicated.
+        For now, at least make it obvious at each callsite what code is being invoked.
+
+        * http/tests/inspector/console/access-inspected-object.html:
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/page/loading-iframe-document-node.html:
+        * http/tests/inspector/resources/ProtocolTestStub.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/css/getSupportedCSSProperties.html:
+        * inspector/debugger/breakpoint-action-detach.html:
+        * inspector/debugger/breakpoint-action-with-exception.html:
+        * inspector/debugger/breakpoint-condition-detach.html:
+        * inspector/debugger/breakpoint-condition-with-bad-script.html:
+        * inspector/debugger/breakpoint-condition-with-exception.html:
+        * inspector/debugger/breakpoint-eval-with-exception.html:
+        * inspector/debugger/breakpoint-inside-conditons-and-actions.html:
+        * inspector/debugger/call-frame-function-name.html:
+        * inspector/debugger/call-frame-this-host.html:
+        * inspector/debugger/call-frame-this-nonstrict.html:
+        * inspector/debugger/call-frame-this-strict.html:
+        * inspector/debugger/debugger-statement.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/hit-breakpoint-from-console.html:
+        * inspector/debugger/nested-inspectors.html:
+        * inspector/debugger/pause-dedicated-worker.html:
+        * inspector/debugger/pause-on-assert.html:
+        * inspector/debugger/regress-133182.html:
+        * inspector/debugger/removeBreakpoint.html:
+        * inspector/debugger/searchInContent-linebreaks.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-autoContinue.html:
+        * inspector/debugger/setBreakpoint-column.html:
+        * inspector/debugger/setBreakpoint-condition.html:
+        * inspector/debugger/setBreakpoint-dfg-and-modify-local.html:
+        * inspector/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html:
+        * inspector/debugger/setBreakpoint-dfg.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/debugger/setBreakpoint.html:
+        * inspector/debugger/setBreakpointByUrl-sourceURL.html:
+        * inspector/debugger/setPauseOnExceptions-all.html:
+        * inspector/debugger/setPauseOnExceptions-none.html:
+        * inspector/debugger/setPauseOnExceptions-uncaught.html:
+        * inspector/debugger/setVariableValue.html:
+        * inspector/debugger/terminate-dedicated-worker-while-paused.html:
+        * inspector/dom-debugger/node-removed.html:
+        * inspector/dom/dom-remove-events.html:
+        * inspector/dom/dom-search-crash.html:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/focus.html:
+        * inspector/dom/getAccessibilityPropertiesForNode.html:
+        * inspector/dom/getAccessibilityPropertiesForNode_liveRegion.html:
+        * inspector/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html:
+        * inspector/dom/highlight-flow-with-no-region.html:
+        * inspector/dom/remove-multiple-nodes.html:
+        * inspector/dom/request-child-nodes-depth.html:
+        * inspector/layers/layers-anonymous.html:
+        * inspector/layers/layers-blending-compositing-reasons.html:
+        * inspector/layers/layers-compositing-reasons.html:
+        * inspector/layers/layers-for-node.html:
+        * inspector/layers/layers-generated-content.html:
+        * inspector/layers/layers-reflected-content.html:
+        * inspector/page/archive.html:
+        * inspector/page/frameScheduledNavigation.html:
+        * inspector/page/frameStartedLoading.html:
+        * inspector/page/javascriptDialogEvents.html:
+        * inspector/page/setEmulatedMedia.html:
+        * inspector/runtime/getProperties.html:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite.html:
+
+2015-08-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic letter Yeh is drawn in LastResort
+        https://bugs.webkit.org/show_bug.cgi?id=147862
+        <rdar://problem/22202935>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/arabic-glyph-cache-fill-combine-expected.html: Added.
+        * fast/text/arabic-glyph-cache-fill-combine.html: Added.
+        * platform/mac/TestExpectations: Mark test as iOS-specific
+        * platform/gtk/TestExpectations: Mark test as iOS-specific
+        * platform/efl/TestExpectations: Mark test as iOS-specific
+        * platform/efl/TestExpectations: Mark test as iOS-specific
+
+2015-08-11  Chris Dumez  <cdumez@apple.com>
+
+        The 'length' property on interface objects should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=147858
+
+        Reviewed by Daniel Bates.
+
+        Add layout test to check that the 'length' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }
+
+        * fast/dom/length-property-configurable-expected.txt: Added.
+        * fast/dom/length-property-configurable.html: Added.
+
+2015-08-11  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] All interface objects must have a property named "name"
+        https://bugs.webkit.org/show_bug.cgi?id=147865
+
+        Reviewed by Darin Adler.
+
+        Add layout test to check that the 'name' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }
+
+        * fast/dom/interface-name-property-expected.txt: Added.
+        * fast/dom/interface-name-property.html: Added.
+        New test.
+
+        * media/track/track-cue-empty-cue-text-expected.txt:
+        Rebaseline, this is a progression.
+
+2015-08-10  Chris Dumez  <cdumez@apple.com>
+
+        The 'prototype' property on interface objects should not be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=147861
+
+        Reviewed by Darin Adler.
+
+        Add layout test to check that the 'prototype' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }
+
+        * fast/dom/prototype-property-not-enumerable-expected.txt: Added.
+        * fast/dom/prototype-property-not-enumerable.html: Added.
+
+2015-08-10  Antti Koivisto  <antti@apple.com>
+
+        http/tests/cache/disk-cache/disk-cache-validation.html has too many subtests
+        https://bugs.webkit.org/show_bug.cgi?id=147827
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        Also split the no-body variant of this.
+
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body.html:
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body.html: Added.
+
+2015-08-10  Antti Koivisto  <antti@apple.com>
+
+        http/tests/cache/disk-cache/disk-cache-validation.html has too many subtests
+        https://bugs.webkit.org/show_bug.cgi?id=147827
+
+        Reviewed by Chris Dumez.
+
+        Looks like it occasionally times out because a bot is running slowly and 243 subtests take >30s.
+
+        * http/tests/cache/disk-cache/disk-cache-validation-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation.html:
+
+        Split Vary header cases to a separate test.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary.html:
+
+        Reduce test matrix size by no testing Expires header here.
+
+2015-08-10  James Craig  <jcraig@apple.com>
+
+        AX: Address follow-up comments in bug 145684
+        https://bugs.webkit.org/show_bug.cgi?id=147817
+
+        Reviewed by Dean Jackson.
+
+        Minor cleanup and style updates requested by Dean.
+
+        * http/tests/contentextensions/text-track-blocked-expected.txt:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.txt:
+
+2015-08-07  Antti Koivisto  <antti@apple.com>
+
+        Expand network cache tests to cover memory cache behavior
+        https://bugs.webkit.org/show_bug.cgi?id=147783
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add another round to existing cache tests with hot memory cache.
+        This add 691 individual cases worth of memory cache test coverage.
+
+        XHR (and main resource, CachedRawResource in general) behaves differently from other resource types. The added
+        coverage maps this behavior. The regular subresource behavior needs coverage too.
+
+        * http/tests/cache/disk-cache/disk-cache-204-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-302-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-307-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-404-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-disable-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-media-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-range-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-headers-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-max-stale-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-attachment-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body-expected.txt:
+        * http/tests/cache/disk-cache/resources/cache-test.js:
+        (loadResource):
+        (loadResourcesWithOptions):
+        (loadResources):
+        (.):
+        (runTests):
+
+2015-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Page cache doesn't work for pages actively using Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=147785
+        <rdar://problem/11147901>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage for page caching of pages actively using
+        the Geolocation API.
+
+        * fast/history/page-cache-geolocation-active-oneshot-expected.txt: Added.
+        * fast/history/page-cache-geolocation-active-oneshot.html: Added.
+        * fast/history/page-cache-geolocation-active-watcher-expected.txt: Added.
+        * fast/history/page-cache-geolocation-active-watcher.html: Added.
+
+2015-08-09  Nan Wang  <n_wang@apple.com>
+
+        AX: CSS table display styles can cause malformed, inaccessible AXTables to be exposed to the AX tree
+        https://bugs.webkit.org/show_bug.cgi?id=136415
+        <rdar://problem/22026625>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-table-with-presentational-elements-expected.txt:
+        * accessibility/aria-table-with-presentational-elements.html:
+        * accessibility/mac/malformed-table-expected.txt: Added.
+        * accessibility/mac/malformed-table.html: Added.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/aria-table-hierarchy-expected.txt:
+        * platform/mac/accessibility/aria-tables-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2015-08-08  Darin Adler  <darin@apple.com>
+
+        Remove -webkit-color-correction CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=147812
+
+        Reviewed by Maciej Stachowiak.
+
+        Given that -webkit-color-correction had no effect on rendering on any platform in any
+        configuration we covered, it's amazing how many tests we had for it.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt: Removed expected results for
+        -webkit-color-correction property.
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Ditto.
+        * svg/css/getComputedStyle-basic-expected.txt: Ditto.
+
+        * fast/css/getComputedStyle/resources/property-names.js: Removed -webkit-color-correction.
+
+        * fast/css/color-correction-backgrounds-and-text.html: Removed.
+        * fast/css/color-correction-on-background-image.html: Removed.
+        * fast/css/color-correction-on-backgrounds.html: Removed.
+        * fast/css/color-correction-on-box-shadow.html: Removed.
+        * fast/css/color-correction-on-text-shadow.html: Removed.
+        * fast/css/color-correction-on-text.html: Removed.
+        * fast/css/color-correction-untagged-images.html: Removed.
+        * fast/css/color-correction.html: Removed.
+        * fast/css/parsing-color-correction-expected.txt: Removed.
+        * fast/css/parsing-color-correction.html: Removed.
+        * fast/css/resources/parsing-color-correction.js: Removed.
+        * platform/efl/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-untagged-images-expected.txt: Removed.
+
+2015-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r188105): Seems to have caused crashes during PLT on some iPads
+        https://bugs.webkit.org/show_bug.cgi?id=147818
+
+        Unreviewed, roll out r188105.
+
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-string-chain-from-try-block-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-chain-from-try-block.html: Removed.
+        * js/regress/get-by-val-with-string-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-string-proto-or-self-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-proto-or-self.html: Removed.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-string-self-or-proto-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-self-or-proto.html: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block.html: Removed.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-symbol-proto-or-self-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-proto-or-self.html: Removed.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-symbol-self-or-proto-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-self-or-proto.html: Removed.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-chain-from-try-block.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-proto-or-self.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-self-or-proto.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-chain-from-try-block.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-proto-or-self.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-self-or-proto.js: Removed.
+
+2015-08-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in ComplexTextController when laying out obscure text
+        https://bugs.webkit.org/show_bug.cgi?id=147806
+        <rdar://problem/22102378>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/crash-obscure-text-expected.txt: Added.
+        * fast/text/crash-obscure-text.html: Added.
+
+2015-08-08  Dean Jackson  <dino@apple.com>
+
+        Remove the webkit prefix from CanvasRenderingContext2D imageSmoothingEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=147803
+        <rdar://problem/22200553>
+
+        Reviewed by Sam Weinig.
+
+        Use the standard version of imageSmoothingEnabled rather than
+        the prefixed version.
+
+        * fast/canvas/canvas-imageSmoothingEnabled-expected.txt:
+        * fast/canvas/canvas-imageSmoothingEnabled-patterns.html:
+        * fast/canvas/canvas-imageSmoothingEnabled-zero-size.html:
+        * fast/canvas/script-tests/canvas-imageSmoothingEnabled-repaint.js:
+        (draw):
+        * fast/canvas/script-tests/canvas-imageSmoothingEnabled.js: Add some tests
+        to make sure the prefixed version correctly maps to the standard version.
+
+2015-08-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179871.
+        https://bugs.webkit.org/show_bug.cgi?id=147810
+
+        Breaks product images on http://www.apple.com/shop/buy-
+        mac/macbook (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Render: properly update body's background image"
+        https://bugs.webkit.org/show_bug.cgi?id=140183
+        http://trac.webkit.org/changeset/179871
+
+2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [El Capitan] Test Gardening
+
+        Unreviewed.
+
+        * platform/mac/css3/font-feature-settings-preinstalled-fonts-expected.txt: Added.
+
+2015-08-07  James Craig  <jcraig@apple.com>
+
+        REGRESSION(r184722) AX: WebKit video playback toolbar removed from DOM; no longer accessible to VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=145684
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/contentextensions/text-track-blocked-expected.txt: Minor update to test case expectation.
+        * media/video-controls-show-on-kb-or-ax-event-expected.txt: Added.
+        * media/video-controls-show-on-kb-or-ax-event.html: New test validates video controls can be displayed without the need for a mouse.
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.txt: Minor update to test case expectation.
+
+2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Mac] Test gardening
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Font fallback is not language-sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=147390
+
+        Reviewed by Dean Jackson.
+
+        This test is expected to fail most places.
+
+        * fast/text/fallback-language-han-expected.html: Added.
+        * fast/text/fallback-language-han.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/iOS/TestExpectations:
+
+2015-08-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Move platform/mac/fast/scrolling/ tests into fast/scrolling/latching/
+
+        * TestExpectations:
+        * fast/scrolling/latching/iframe_in_iframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/iframe_in_iframe-expected.txt.
+        * fast/scrolling/latching/iframe_in_iframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/iframe_in_iframe.html.
+        * fast/scrolling/latching/resources/background.html: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/background.html.
+        * fast/scrolling/latching/resources/inner_content.html: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/inner_content.html.
+        * fast/scrolling/latching/resources/scroll_nested_iframe_test_inner.html: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/scroll_nested_iframe_test_inner.html.
+        * fast/scrolling/latching/resources/scroll_nested_iframe_test_outer.html: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/scroll_nested_iframe_test_outer.html.
+        * fast/scrolling/latching/resources/testContent.html: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/testContent.html.
+        * fast/scrolling/latching/resources/testImage.png: Renamed from LayoutTests/platform/mac/fast/scrolling/resources/testImage.png.
+        * fast/scrolling/latching/scroll-div-latched-div-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-latched-div-expected.txt.
+        * fast/scrolling/latching/scroll-div-latched-div.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-latched-div.html.
+        * fast/scrolling/latching/scroll-div-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-latched-mainframe-expected.txt.
+        * fast/scrolling/latching/scroll-div-latched-mainframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-latched-mainframe.html.
+        * fast/scrolling/latching/scroll-div-no-latching-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-no-latching-expected.txt.
+        * fast/scrolling/latching/scroll-div-no-latching.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-no-latching.html.
+        * fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-with-nested-nonscrollable-iframe-expected.txt.
+        * fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-div-with-nested-nonscrollable-iframe.html.
+        * fast/scrolling/latching/scroll-iframe-fragment-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-fragment-expected.txt.
+        * fast/scrolling/latching/scroll-iframe-fragment.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-fragment.html.
+        * fast/scrolling/latching/scroll-iframe-latched-iframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-latched-iframe-expected.txt.
+        * fast/scrolling/latching/scroll-iframe-latched-iframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-latched-iframe.html.
+        * fast/scrolling/latching/scroll-iframe-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-latched-mainframe-expected.txt.
+        * fast/scrolling/latching/scroll-iframe-latched-mainframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-latched-mainframe.html.
+        * fast/scrolling/latching/scroll-iframe-webkit1-latching-bug-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-webkit1-latching-bug-expected.txt.
+        * fast/scrolling/latching/scroll-iframe-webkit1-latching-bug.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-iframe-webkit1-latching-bug.html.
+        * fast/scrolling/latching/scroll-latched-nested-div-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-latched-nested-div-expected.txt.
+        * fast/scrolling/latching/scroll-latched-nested-div.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-latched-nested-div.html.
+        * fast/scrolling/latching/scroll-nested-iframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-nested-iframe-expected.txt.
+        * fast/scrolling/latching/scroll-nested-iframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-nested-iframe.html.
+        * fast/scrolling/latching/scroll-select-bottom-test-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-bottom-test-expected.txt.
+        * fast/scrolling/latching/scroll-select-bottom-test.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-bottom-test.html.
+        * fast/scrolling/latching/scroll-select-latched-mainframe-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-latched-mainframe-expected.txt.
+        * fast/scrolling/latching/scroll-select-latched-mainframe.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-latched-mainframe.html.
+        * fast/scrolling/latching/scroll-select-latched-select-expected.txt: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-latched-select-expected.txt.
+        * fast/scrolling/latching/scroll-select-latched-select.html: Renamed from LayoutTests/platform/mac/fast/scrolling/scroll-select-latched-select.html.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-08-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Move platform/mac/fast/forms/ tests to fast/forms/
+
+        * TestExpectations:
+        * fast/forms/attributed-strings-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/attributed-strings-expected.txt.
+        * fast/forms/attributed-strings.html: Renamed from LayoutTests/platform/mac/fast/forms/attributed-strings.html.
+        * fast/forms/focus-option-control-on-page-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/focus-option-control-on-page-expected.txt.
+        * fast/forms/focus-option-control-on-page.html: Renamed from LayoutTests/platform/mac/fast/forms/focus-option-control-on-page.html.
+        * fast/forms/indeterminate-progress-inline-height-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/indeterminate-progress-inline-height-expected.txt.
+        * fast/forms/indeterminate-progress-inline-height.html: Renamed from LayoutTests/platform/mac/fast/forms/indeterminate-progress-inline-height.html.
+        * fast/forms/input-appearance-spinbutton-expected.png: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-expected.png.
+        * fast/forms/input-appearance-spinbutton-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-expected.txt.
+        * fast/forms/input-appearance-spinbutton-size-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-size-expected.txt.
+        * fast/forms/input-appearance-spinbutton-size.html: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-size.html.
+        * fast/forms/input-appearance-spinbutton-up-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-up-expected.txt.
+        * fast/forms/input-appearance-spinbutton-up.html: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton-up.html.
+        * fast/forms/input-appearance-spinbutton.html: Renamed from LayoutTests/platform/mac/fast/forms/input-appearance-spinbutton.html.
+        * fast/forms/input-number-click-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/input-number-click-expected.txt.
+        * fast/forms/input-number-click.html: Renamed from LayoutTests/platform/mac/fast/forms/input-number-click.html.
+        * fast/forms/listbox-scrollbar-hit-test-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/listbox-scrollbar-hit-test-expected.txt.
+        * fast/forms/listbox-scrollbar-hit-test.html: Renamed from LayoutTests/platform/mac/fast/forms/listbox-scrollbar-hit-test.html.
+        * fast/forms/script-tests/focus-option-control-on-page.js: Renamed from LayoutTests/platform/mac/fast/forms/script-tests/focus-option-control-on-page.js.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/forms/input-appearance-spinbutton-up-expected.png: Removed.
+        * platform/wk2/TestExpectations:
+
+2015-08-06  Dean Jackson  <dino@apple.com>
+
+        Shadows don't draw on fillText when using a gradient fill
+        https://bugs.webkit.org/show_bug.cgi?id=147758
+        <rdar://problem/20860912>
+
+        Reviewed by Myles Maxfield.
+
+        New test that exercises shadows on gradient fills. This really
+        should be a ref test, but there is a very small rendering difference
+        caused by masking, so instead it uses JS to look for pixels of
+        the correct color.
+
+        * fast/canvas/gradient-text-with-shadow-expected.txt: Added.
+        * fast/canvas/gradient-text-with-shadow.html: Added.
+
+2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement font-feature-settings
+        https://bugs.webkit.org/show_bug.cgi?id=147722
+
+        Reviewed by Simon Fraser.
+
+        Until I can make a custom font for reference tests, use a simple dump-render-tree test.
+
+        * css3/font-feature-settings-preinstalled-fonts.html: Added.
+        * platform/mac-yosemite/css3/font-feature-settings-preinstalled-fonts-expected.txt: Added.
+
+2015-08-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove platform/ios-sim-deprecated. All of the tests here exist elsewhere already.
+
+        * platform/ios-sim-deprecated/: Removed.
+
+2015-08-07  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move LayoutTests/inspector-protocol/ tests to LayoutTests/inspector/
+        https://bugs.webkit.org/show_bug.cgi?id=147729
+
+        Reviewed by Timothy Hatcher.
+
+        Merge inspector-protocol tests into the inspector directory. Rename a few helper
+        resources whose names clashed. Put top-level tests into unit-tests/ and protocol/.
+
+        Update TestExpectations to not reference inspector-protocol paths.
+
+        * TestExpectations:
+        * http/tests/inspector/resources/console-test.js: Renamed from LayoutTests/inspector-protocol/resources/console-test.js.
+        * http/tests/inspector/resources/probe-test.js: Renamed from LayoutTests/inspector-protocol/resources/probe-helper.js.
+        * inspector-protocol/debugger/resources/breakpoint.js: Removed.
+        * inspector/console/console-message-expected.txt: Renamed from LayoutTests/inspector-protocol/console/console-message-expected.txt.
+        * inspector/console/console-message.html: Renamed from LayoutTests/inspector-protocol/console/console-message.html.
+        * inspector/console/css-source-locations-expected.txt: Renamed from LayoutTests/inspector-protocol/console/css-source-locations-expected.txt.
+        * inspector/console/css-source-locations.html: Renamed from LayoutTests/inspector-protocol/console/css-source-locations.html.
+        * inspector/console/js-source-locations-expected.txt: Renamed from LayoutTests/inspector-protocol/console/js-source-locations-expected.txt.
+        * inspector/console/js-source-locations.html: Renamed from LayoutTests/inspector-protocol/console/js-source-locations.html.
+        * inspector/console/resources/errors.css: Renamed from LayoutTests/inspector-protocol/resources/errors.css.
+        (div):
+        * inspector/console/resources/errors.js: Renamed from LayoutTests/inspector-protocol/resources/errors.js.
+        (foo):
+        * inspector/console/x-frame-options-message-expected.txt: Renamed from LayoutTests/inspector-protocol/console/x-frame-options-message-expected.txt.
+        * inspector/console/x-frame-options-message.html: Renamed from LayoutTests/inspector-protocol/console/x-frame-options-message.html.
+        * inspector/css/getSupportedCSSProperties-expected.txt: Renamed from LayoutTests/inspector-protocol/css/getSupportedCSSProperties-expected.txt.
+        * inspector/css/getSupportedCSSProperties.html: Renamed from LayoutTests/inspector-protocol/css/getSupportedCSSProperties.html.
+        * inspector/debugger/breakpoint-action-detach-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-action-detach-expected.txt.
+        * inspector/debugger/breakpoint-action-detach.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-action-detach.html.
+        * inspector/debugger/breakpoint-action-eval.html:
+        * inspector/debugger/breakpoint-action-with-exception-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-action-with-exception-expected.txt.
+        * inspector/debugger/breakpoint-action-with-exception.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-action-with-exception.html.
+        * inspector/debugger/breakpoint-condition-detach-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-detach-expected.txt.
+        * inspector/debugger/breakpoint-condition-detach.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-detach.html.
+        * inspector/debugger/breakpoint-condition-with-bad-script-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-with-bad-script-expected.txt.
+        * inspector/debugger/breakpoint-condition-with-bad-script.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-with-bad-script.html.
+        * inspector/debugger/breakpoint-condition-with-exception-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-with-exception-expected.txt.
+        * inspector/debugger/breakpoint-condition-with-exception.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-condition-with-exception.html.
+        * inspector/debugger/breakpoint-eval-with-exception-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-eval-with-exception-expected.txt.
+        * inspector/debugger/breakpoint-eval-with-exception.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-eval-with-exception.html.
+        * inspector/debugger/breakpoint-inside-conditons-and-actions-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-inside-conditons-and-actions-expected.txt.
+        * inspector/debugger/breakpoint-inside-conditons-and-actions.html: Renamed from LayoutTests/inspector-protocol/debugger/breakpoint-inside-conditons-and-actions.html.
+        * inspector/debugger/call-frame-function-name-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-function-name-expected.txt.
+        * inspector/debugger/call-frame-function-name.html: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-function-name.html.
+        * inspector/debugger/call-frame-this-host-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-host-expected.txt.
+        * inspector/debugger/call-frame-this-host.html: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-host.html.
+        * inspector/debugger/call-frame-this-nonstrict-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-nonstrict-expected.txt.
+        * inspector/debugger/call-frame-this-nonstrict.html: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-nonstrict.html.
+        * inspector/debugger/call-frame-this-strict-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-strict-expected.txt.
+        * inspector/debugger/call-frame-this-strict.html: Renamed from LayoutTests/inspector-protocol/debugger/call-frame-this-strict.html.
+        * inspector/debugger/debugger-statement-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/debugger-statement-expected.txt.
+        * inspector/debugger/debugger-statement.html: Renamed from LayoutTests/inspector-protocol/debugger/debugger-statement.html.
+        * inspector/debugger/didSampleProbe-multiple-probes-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/didSampleProbe-multiple-probes-expected.txt.
+        * inspector/debugger/didSampleProbe-multiple-probes.html: Renamed from LayoutTests/inspector-protocol/debugger/didSampleProbe-multiple-probes.html.
+        * inspector/debugger/hit-breakpoint-from-console-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/hit-breakpoint-from-console-expected.txt.
+        * inspector/debugger/hit-breakpoint-from-console.html: Renamed from LayoutTests/inspector-protocol/debugger/hit-breakpoint-from-console.html.
+        * inspector/debugger/nested-inspectors-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/nested-inspectors-expected.txt.
+        * inspector/debugger/nested-inspectors.html: Renamed from LayoutTests/inspector-protocol/debugger/nested-inspectors.html.
+        * inspector/debugger/pause-dedicated-worker-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/pause-dedicated-worker-expected.txt.
+        * inspector/debugger/pause-dedicated-worker.html: Renamed from LayoutTests/inspector-protocol/debugger/pause-dedicated-worker.html.
+        * inspector/debugger/pause-on-assert-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/pause-on-assert-expected.txt.
+        * inspector/debugger/pause-on-assert.html: Renamed from LayoutTests/inspector-protocol/debugger/pause-on-assert.html.
+        * inspector/debugger/probe-manager-add-remove-actions.html:
+        * inspector/debugger/regress-133182-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/regress-133182-expected.txt.
+        * inspector/debugger/regress-133182.html: Renamed from LayoutTests/inspector-protocol/debugger/regress-133182.html.
+        * inspector/debugger/removeBreakpoint-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/removeBreakpoint-expected.txt.
+        * inspector/debugger/removeBreakpoint.html: Renamed from LayoutTests/inspector-protocol/debugger/removeBreakpoint.html.
+        * inspector/debugger/resources/assert.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/assert.js.
+        * inspector/debugger/resources/dedicated-worker.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/dedicated-worker.js.
+        * inspector/debugger/resources/exception.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/exception.js.
+        * inspector/debugger/resources/mac-linebreaks.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/mac-linebreaks.js.
+        * inspector/debugger/resources/mixed-linebreaks.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/mixed-linebreaks.js.
+        * inspector/debugger/resources/script-for-breakpoint-actions.js: Copied from LayoutTests/inspector/debugger/resources/breakpoint.js.
+        * inspector/debugger/resources/unix-linebreaks.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/unix-linebreaks.js.
+        * inspector/debugger/resources/windows-linebreaks.js: Renamed from LayoutTests/inspector-protocol/debugger/resources/windows-linebreaks.js.
+        * inspector/debugger/searchInContent-linebreaks-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/searchInContent-linebreaks-expected.txt.
+        * inspector/debugger/searchInContent-linebreaks.html: Renamed from LayoutTests/inspector-protocol/debugger/searchInContent-linebreaks.html.
+        * inspector/debugger/setBreakpoint-actions-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-actions-expected.txt.
+        * inspector/debugger/setBreakpoint-actions.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-actions.html.
+        * inspector/debugger/setBreakpoint-autoContinue-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-autoContinue-expected.txt.
+        * inspector/debugger/setBreakpoint-autoContinue.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-autoContinue.html.
+        * inspector/debugger/setBreakpoint-column-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-column-expected.txt.
+        * inspector/debugger/setBreakpoint-column.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-column.html.
+        * inspector/debugger/setBreakpoint-column.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-column.txt.
+        * inspector/debugger/setBreakpoint-condition-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-condition-expected.txt.
+        * inspector/debugger/setBreakpoint-condition.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-condition.html.
+        * inspector/debugger/setBreakpoint-dfg-and-modify-local-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local-expected.txt.
+        * inspector/debugger/setBreakpoint-dfg-and-modify-local.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html.
+        * inspector/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local-expected.txt.
+        * inspector/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html.
+        * inspector/debugger/setBreakpoint-dfg-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg-expected.txt.
+        * inspector/debugger/setBreakpoint-dfg.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-dfg.html.
+        * inspector/debugger/setBreakpoint-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-expected.txt.
+        * inspector/debugger/setBreakpoint-options-exception-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-options-exception-expected.txt.
+        * inspector/debugger/setBreakpoint-options-exception.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint-options-exception.html.
+        * inspector/debugger/setBreakpoint.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpoint.html.
+        * inspector/debugger/setBreakpointByUrl-sourceURL-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpointByUrl-sourceURL-expected.txt.
+        * inspector/debugger/setBreakpointByUrl-sourceURL.html: Renamed from LayoutTests/inspector-protocol/debugger/setBreakpointByUrl-sourceURL.html.
+        * inspector/debugger/setPauseOnExceptions-all-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-all-expected.txt.
+        * inspector/debugger/setPauseOnExceptions-all.html: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-all.html.
+        * inspector/debugger/setPauseOnExceptions-none-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-none-expected.txt.
+        * inspector/debugger/setPauseOnExceptions-none.html: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-none.html.
+        * inspector/debugger/setPauseOnExceptions-uncaught-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-uncaught-expected.txt.
+        * inspector/debugger/setPauseOnExceptions-uncaught.html: Renamed from LayoutTests/inspector-protocol/debugger/setPauseOnExceptions-uncaught.html.
+        * inspector/debugger/setVariableValue-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/setVariableValue-expected.txt.
+        * inspector/debugger/setVariableValue.html: Renamed from LayoutTests/inspector-protocol/debugger/setVariableValue.html.
+        * inspector/debugger/terminate-dedicated-worker-while-paused-expected.txt: Renamed from LayoutTests/inspector-protocol/debugger/terminate-dedicated-worker-while-paused-expected.txt.
+        * inspector/debugger/terminate-dedicated-worker-while-paused.html: Renamed from LayoutTests/inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html.
+        * inspector/dom-debugger/node-removed-expected.txt: Renamed from LayoutTests/inspector-protocol/dom-debugger/node-removed-expected.txt.
+        * inspector/dom-debugger/node-removed.html: Renamed from LayoutTests/inspector-protocol/dom-debugger/node-removed.html.
+        * inspector/dom/dom-remove-events-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/dom-remove-events-expected.txt.
+        * inspector/dom/dom-remove-events.html: Renamed from LayoutTests/inspector-protocol/dom/dom-remove-events.html.
+        * inspector/dom/dom-search-crash-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/dom-search-crash-expected.txt.
+        * inspector/dom/dom-search-crash.html: Renamed from LayoutTests/inspector-protocol/dom/dom-search-crash.html.
+        * inspector/dom/dom-search-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/dom-search-expected.txt.
+        * inspector/dom/dom-search-with-context-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/dom-search-with-context-expected.txt.
+        * inspector/dom/dom-search-with-context.html: Renamed from LayoutTests/inspector-protocol/dom/dom-search-with-context.html.
+        * inspector/dom/dom-search.html: Renamed from LayoutTests/inspector-protocol/dom/dom-search.html.
+        * inspector/dom/focus-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/focus-expected.txt.
+        * inspector/dom/focus.html: Renamed from LayoutTests/inspector-protocol/dom/focus.html.
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode-expected.txt.
+        * inspector/dom/getAccessibilityPropertiesForNode.html: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode.html.
+        * inspector/dom/getAccessibilityPropertiesForNode_liveRegion-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion-expected.txt.
+        * inspector/dom/getAccessibilityPropertiesForNode_liveRegion.html: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion.html.
+        * inspector/dom/getAccessibilityPropertiesForNode_mouseEventNodeId-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode_mouseEventNodeId-expected.txt.
+        * inspector/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html: Renamed from LayoutTests/inspector-protocol/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html.
+        * inspector/dom/highlight-flow-with-no-region-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/highlight-flow-with-no-region-expected.txt.
+        * inspector/dom/highlight-flow-with-no-region.html: Renamed from LayoutTests/inspector-protocol/dom/highlight-flow-with-no-region.html.
+        * inspector/dom/remove-multiple-nodes-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/remove-multiple-nodes-expected.txt.
+        * inspector/dom/remove-multiple-nodes.html: Renamed from LayoutTests/inspector-protocol/dom/remove-multiple-nodes.html.
+        * inspector/dom/request-child-nodes-depth-expected.txt: Renamed from LayoutTests/inspector-protocol/dom/request-child-nodes-depth-expected.txt.
+        * inspector/dom/request-child-nodes-depth.html: Renamed from LayoutTests/inspector-protocol/dom/request-child-nodes-depth.html.
+        * inspector/dom/resources/dom-search-crash-iframe.html: Renamed from LayoutTests/inspector-protocol/dom/resources/dom-search-crash-iframe.html.
+        * inspector/dom/resources/dom-search-iframe.html: Renamed from LayoutTests/inspector-protocol/dom/resources/dom-search-iframe.html.
+        * inspector/dom/resources/dom-search-queries.js: Renamed from LayoutTests/inspector-protocol/dom/resources/dom-search-queries.js.
+        * inspector/layers/layers-anonymous-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-anonymous-expected.txt.
+        * inspector/layers/layers-anonymous.html: Renamed from LayoutTests/inspector-protocol/layers/layers-anonymous.html.
+        * inspector/layers/layers-blending-compositing-reasons-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-blending-compositing-reasons-expected.txt.
+        * inspector/layers/layers-blending-compositing-reasons.html: Renamed from LayoutTests/inspector-protocol/layers/layers-blending-compositing-reasons.html.
+        * inspector/layers/layers-compositing-reasons-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-compositing-reasons-expected.txt.
+        * inspector/layers/layers-compositing-reasons.html: Renamed from LayoutTests/inspector-protocol/layers/layers-compositing-reasons.html.
+        * inspector/layers/layers-for-node-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-for-node-expected.txt.
+        * inspector/layers/layers-for-node.html: Renamed from LayoutTests/inspector-protocol/layers/layers-for-node.html.
+        * inspector/layers/layers-generated-content-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-generated-content-expected.txt.
+        * inspector/layers/layers-generated-content.html: Renamed from LayoutTests/inspector-protocol/layers/layers-generated-content.html.
+        * inspector/layers/layers-reflected-content-expected.txt: Renamed from LayoutTests/inspector-protocol/layers/layers-reflected-content-expected.txt.
+        * inspector/layers/layers-reflected-content.html: Renamed from LayoutTests/inspector-protocol/layers/layers-reflected-content.html.
+        * inspector/page/archive-expected.txt: Renamed from LayoutTests/inspector-protocol/page/archive-expected.txt.
+        * inspector/page/archive.html: Renamed from LayoutTests/inspector-protocol/page/archive.html.
+        * inspector/page/frameScheduledNavigation-expected.txt: Renamed from LayoutTests/inspector-protocol/page/frameScheduledNavigation-expected.txt.
+        * inspector/page/frameScheduledNavigation.html: Renamed from LayoutTests/inspector-protocol/page/frameScheduledNavigation.html.
+        * inspector/page/frameStartedLoading-expected.txt: Renamed from LayoutTests/inspector-protocol/page/frameStartedLoading-expected.txt.
+        * inspector/page/frameStartedLoading.html: Renamed from LayoutTests/inspector-protocol/page/frameStartedLoading.html.
+        * inspector/page/javascriptDialogEvents-expected.txt: Renamed from LayoutTests/inspector-protocol/page/javascriptDialogEvents-expected.txt.
+        * inspector/page/javascriptDialogEvents.html: Renamed from LayoutTests/inspector-protocol/page/javascriptDialogEvents.html.
+        * inspector/page/resources/blank.html: Renamed from LayoutTests/inspector-protocol/page/resources/blank.html.
+        * inspector/page/setEmulatedMedia-expected.txt: Renamed from LayoutTests/inspector-protocol/page/setEmulatedMedia-expected.txt.
+        * inspector/page/setEmulatedMedia.html: Renamed from LayoutTests/inspector-protocol/page/setEmulatedMedia.html.
+        * inspector/protocol/protocol-promise-result-expected.txt: Renamed from LayoutTests/inspector/protocol-promise-result-expected.txt.
+        * inspector/protocol/protocol-promise-result.html: Renamed from LayoutTests/inspector/protocol-promise-result.html.
+        * inspector/runtime/getProperties-expected.txt: Renamed from LayoutTests/inspector-protocol/runtime/getProperties-expected.txt.
+        * inspector/runtime/getProperties.html: Renamed from LayoutTests/inspector-protocol/runtime/getProperties.html.
+        * inspector/unit-tests/async-test-suite-expected.txt: Renamed from LayoutTests/inspector-protocol/async-test-suite-expected.txt.
+        * inspector/unit-tests/async-test-suite.html: Renamed from LayoutTests/inspector-protocol/async-test-suite.html.
+        * inspector/unit-tests/event-listener-expected.txt: Renamed from LayoutTests/inspector/event-listener-expected.txt.
+        * inspector/unit-tests/event-listener-set-expected.txt: Renamed from LayoutTests/inspector/event-listener-set-expected.txt.
+        * inspector/unit-tests/event-listener-set.html: Renamed from LayoutTests/inspector/event-listener-set.html.
+        * inspector/unit-tests/event-listener.html: Renamed from LayoutTests/inspector/event-listener.html.
+        * inspector/unit-tests/sync-test-suite-expected.txt: Renamed from LayoutTests/inspector-protocol/sync-test-suite-expected.txt.
+        * inspector/unit-tests/sync-test-suite.html: Renamed from LayoutTests/inspector-protocol/sync-test-suite.html.
+        * inspector/unit-tests/test-harness-trivially-works-expected.txt: Renamed from LayoutTests/inspector/test-harness-trivially-works-expected.txt.
+        * inspector/unit-tests/test-harness-trivially-works.html: Renamed from LayoutTests/inspector/test-harness-trivially-works.html.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-08-07  Simon Fraser  <simon.fraser@apple.com>
+
+        ios-sim-deprecated/iphone/fast/events/touch/ already existed in fast/events/touch, so remove them.
+
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/document-create-touch-list-ios-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/document-create-touch-list-ios.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/gesture-event-basic-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/gesture-event-basic.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/input-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/input-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/inserted-fragment-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/inserted-fragment-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/moved-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/moved-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/multi-touch-some-without-handlers-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/multi-touch-some-without-handlers.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/ontouchstart-active-selector-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/ontouchstart-active-selector.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/removed-fragment-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/removed-fragment-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/removed-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/removed-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/TEMPLATE.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/document-create-touch-list-ios.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/input-touch-target.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/multi-touch-some-without-handlers.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/text-node-touch-target.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/textarea-touch-target.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/touch-event-frames.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/touch-event-pageXY.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/script-tests/zoomed-touch-event-pageXY.js: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/text-node-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/text-node-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/textarea-touch-target-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/textarea-touch-target.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/touch-event-frames-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/touch-event-frames.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/touch-event-pageXY-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/touch-event-pageXY.html: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/zoomed-touch-event-pageXY-expected.txt: Removed.
+        * platform/ios-sim-deprecated/iphone/fast/events/touch/zoomed-touch-event-pageXY.html: Removed.
+
+2015-08-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Move platform/ios-sim-deprecated/http/tests/loading/multiple-prioritization.html into http/tests/loading/
+
+        * http/tests/loading/multiple-prioritization-expected.txt: Renamed from LayoutTests/platform/ios-sim-deprecated/http/tests/loading/multiple-prioritization-expected.txt.
+        * http/tests/loading/multiple-prioritization.html: Renamed from LayoutTests/platform/ios-sim-deprecated/http/tests/loading/multiple-prioritization.html.
+
+2015-08-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Move ios-sim-deprecated/fast/dom/ tests into fast/dom
+
+        * TestExpectations:
+        * fast/dom/Range/expand-word-with-apostrophe-expected.txt: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/Range/expand-word-with-apostrophe-expected.txt.
+        * fast/dom/Range/expand-word-with-apostrophe.html: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/Range/expand-word-with-apostrophe.html.
+        * fast/dom/Window/no-window-resize-on-document-size-change-expected.txt: Added.
+        * fast/dom/Window/no-window-resize-on-document-size-change.html: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/Window/no-window-resize-on-document-size-change.html.
+        * fast/dom/adopt-attribute-crash-expected.txt:
+        * fast/dom/navigator-iOS-userAgent-expected.txt: Added.
+        * fast/dom/navigator-iOS-userAgent.html: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/navigator-iOS-userAgent.html.
+        * fast/dom/timer-fire-after-page-pause-expected.txt: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/timer-fire-after-page-pause-expected.txt.
+        * fast/dom/timer-fire-after-page-pause.html: Renamed from LayoutTests/platform/ios-sim-deprecated/fast/dom/timer-fire-after-page-pause.html.
+        * platform/ios-sim-deprecated/fast/dom/Window/no-window-resize-on-document-size-change-expected.txt: Removed.
+        * platform/ios-sim-deprecated/fast/dom/navigator-iOS-userAgent-expected.txt: Removed.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/fast/dom/navigator-iOS-userAgent-expected.txt: Added.
+
+2015-08-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Move two ios-sim-deprecated/animations/ tests into animations.
+
+        * animations/resources/anim.html: Renamed from LayoutTests/platform/ios-sim-deprecated/animations/resources/anim.html.
+        * animations/restart-after-scroll-expected.txt: Copied from LayoutTests/platform/ios-sim-deprecated/animations/restart-after-scroll-nested-expected.txt.
+        * animations/restart-after-scroll-nested-expected.txt: Renamed from LayoutTests/platform/ios-sim-deprecated/animations/restart-after-scroll-nested-expected.txt.
+        * animations/restart-after-scroll-nested.html: Renamed from LayoutTests/platform/ios-sim-deprecated/animations/restart-after-scroll-nested.html.
+        * animations/restart-after-scroll.html: Renamed from LayoutTests/platform/ios-sim-deprecated/animations/restart-after-scroll.html.
+        * platform/ios-sim-deprecated/animations/restart-after-scroll-expected.txt: Removed.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-08-07  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Create CountQueuingStrategy object as per spec
+        https://bugs.webkit.org/show_bug.cgi?id=146594
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/ios-sim-deprecated/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt: Updated expectations with
+        CountQueuingStrategy constructor.
+        * streams/reference-implementation/brand-checks.html:
+        * streams/reference-implementation/count-queuing-strategy.html: Removed reference to count-queuing-strategy.js.
+        * streams/reference-implementation/resources/count-queuing-strategy.js: Removed.
+        (CountQueuingStrategy): Deleted.
+        (CountQueuingStrategy.prototype.size): Deleted.
+
+2015-08-07  Doug Russell  <d_russell@apple.com>
+
+        AX: Bug 147737 is causing test failures in Mavericks WK1
+        https://bugs.webkit.org/show_bug.cgi?id=147763
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac/TestExpectations:
+
+2015-08-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce get_by_id like IC into get_by_val when the given name is String or Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=147480
+
+        Reviewed by Filip Pizlo.
+
+        Add synthetic benchmarks that replaces normal property load with symbol/string keyed load.
+
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-string-chain-from-try-block-expected.txt: Added.
+        * js/regress/get-by-val-with-string-chain-from-try-block.html: Added.
+        * js/regress/get-by-val-with-string-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-string-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-string-proto-or-self-expected.txt: Added.
+        * js/regress/get-by-val-with-string-proto-or-self.html: Added.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-string-self-or-proto-expected.txt: Added.
+        * js/regress/get-by-val-with-string-self-or-proto.html: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block.html: Added.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination.html: Added.
+        * js/regress/get-by-val-with-symbol-proto-or-self-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-proto-or-self.html: Added.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.html: Added.
+        * js/regress/get-by-val-with-symbol-self-or-proto-expected.txt: Added.
+        * js/regress/get-by-val-with-symbol-self-or-proto.html: Added.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-chain-from-try-block.js: Added.
+        (A):
+        (B):
+        (C):
+        (D):
+        (E):
+        (F):
+        (G):
+        (foo):
+        * js/regress/script-tests/get-by-val-with-string-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-proto-or-self.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-string-self-or-proto.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-chain-from-try-block.js: Added.
+        (A):
+        (B):
+        (C):
+        (D):
+        (E):
+        (F):
+        (G):
+        (foo):
+        * js/regress/script-tests/get-by-val-with-symbol-check-structure-elimination.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-proto-or-self.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+        * js/regress/script-tests/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.js: Added.
+        * js/regress/script-tests/get-by-val-with-symbol-self-or-proto.js: Added.
+        (foo):
+        (bar):
+        (Foo):
+
+2015-08-06  Keith Miller  <keith_miller@apple.com>
+
+        The JSONP parser incorrectly parses -0 as +0.
+        https://bugs.webkit.org/show_bug.cgi?id=147590
+
+        Reviewed by Michael Saboff.
+
+        A simple test that attempts loads a JSONP that sets a variable to 0.
+
+        * js/regress/JSONP-negative-0-expected.txt: Added.
+        * js/regress/JSONP-negative-0.html: Added.
+        * js/regress/script-tests/JSONP-negative-0.js: Added.
+
+2015-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Toggle GPS state based on page visibility to save battery
+        https://bugs.webkit.org/show_bug.cgi?id=147685
+
+        Reviewed by Benjamin Poulain.
+
+        Add layout tests to check that the GeolocationClient starts and stops
+        updating when page visibility changes.
+
+        * fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible-expected.txt: Added.
+        * fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible.html: Added.
+        * fast/dom/Geolocation/stopUpdatingForHiddenPage-expected.txt: Added.
+        * fast/dom/Geolocation/stopUpdatingForHiddenPage.html: Added.
+
+2015-08-06  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move http/tests/inspector-protocol/ contents to http/tests/inspector/
+        https://bugs.webkit.org/show_bug.cgi?id=147739
+
+        Reviewed by Timothy Hatcher.
+
+        Start merging inspector-protocol/ directory into inspector/, starting with http tests.
+
+        This patch puts the few http tests into their own domain directories. Files related
+        to the test harness have been moved to the appropriate resources/ directory.
+        Update all inspector tests to the new paths.
+
+        Lastly, rename InspectorTest.js and protocol-test.html to ProtocolTestStub, to make
+        it obvious that these files are only used by the protocol test harness.
+
+        * http/tests/inspector/console/access-inspected-object-expected.txt: Renamed from LayoutTests/http/tests/inspector-protocol/access-inspected-object-expected.txt.
+        * http/tests/inspector/console/access-inspected-object.html: Renamed from LayoutTests/http/tests/inspector-protocol/access-inspected-object.html.
+        * http/tests/inspector/css/bad-mime-type.html:
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js: Renamed from LayoutTests/http/tests/inspector-protocol/resources/InspectorDOMListener.js.
+        * http/tests/inspector/page/loading-iframe-document-node-expected.txt: Renamed from LayoutTests/http/tests/inspector-protocol/loading-iframe-document-node-expected.txt.
+        * http/tests/inspector/page/loading-iframe-document-node.html: Renamed from LayoutTests/http/tests/inspector-protocol/loading-iframe-document-node.html.
+        * http/tests/inspector/page/resources/slow-test-page.html: Renamed from LayoutTests/http/tests/inspector-protocol/resources/slow-test-page.html.
+        * http/tests/inspector/page/resources/test-page.html: Renamed from LayoutTests/http/tests/inspector-protocol/resources/test-page.html.
+        * http/tests/inspector/replay/document-last-modified-fallback-value.html:
+        * http/tests/inspector/resources/ProtocolTestStub.html: Renamed from LayoutTests/http/tests/inspector-protocol/resources/protocol-test.html.
+        * http/tests/inspector/resources/ProtocolTestStub.js: Renamed from LayoutTests/http/tests/inspector-protocol/resources/InspectorTest.js.
+        * http/tests/inspector/resources/inspector-test.js: Renamed from LayoutTests/http/tests/inspector/inspector-test.js.
+        * http/tests/inspector/resources/protocol-test.js: Renamed from LayoutTests/http/tests/inspector-protocol/resources/protocol-test.js.
+        * inspector-protocol/async-test-suite.html:
+        * inspector-protocol/console/console-message.html:
+        * inspector-protocol/console/css-source-locations.html: Fix references to console helpers.
+        * inspector-protocol/console/js-source-locations.html:
+        * inspector-protocol/console/x-frame-options-message.html:
+        * inspector-protocol/css/getSupportedCSSProperties.html:
+        * inspector-protocol/debugger/breakpoint-action-detach.html:
+        * inspector-protocol/debugger/breakpoint-action-with-exception.html:
+        * inspector-protocol/debugger/breakpoint-condition-detach.html:
+        * inspector-protocol/debugger/breakpoint-condition-with-bad-script.html:
+        * inspector-protocol/debugger/breakpoint-condition-with-exception.html:
+        * inspector-protocol/debugger/breakpoint-eval-with-exception.html:
+        * inspector-protocol/debugger/breakpoint-inside-conditons-and-actions.html:
+        * inspector-protocol/debugger/call-frame-function-name.html:
+        * inspector-protocol/debugger/call-frame-this-host.html:
+        * inspector-protocol/debugger/call-frame-this-nonstrict.html:
+        * inspector-protocol/debugger/call-frame-this-strict.html:
+        * inspector-protocol/debugger/debugger-statement.html:
+        * inspector-protocol/debugger/didSampleProbe-multiple-probes.html:
+        * inspector-protocol/debugger/hit-breakpoint-from-console.html:
+        * inspector-protocol/debugger/nested-inspectors.html:
+        * inspector-protocol/debugger/pause-dedicated-worker.html:
+        * inspector-protocol/debugger/pause-on-assert.html:
+        * inspector-protocol/debugger/regress-133182.html:
+        * inspector-protocol/debugger/removeBreakpoint.html:
+        * inspector-protocol/debugger/searchInContent-linebreaks.html:
+        * inspector-protocol/debugger/setBreakpoint-actions.html:
+        * inspector-protocol/debugger/setBreakpoint-autoContinue.html:
+        * inspector-protocol/debugger/setBreakpoint-column.html:
+        * inspector-protocol/debugger/setBreakpoint-condition.html:
+        * inspector-protocol/debugger/setBreakpoint-dfg-and-modify-local.html:
+        * inspector-protocol/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html:
+        * inspector-protocol/debugger/setBreakpoint-dfg.html:
+        * inspector-protocol/debugger/setBreakpoint-options-exception.html:
+        * inspector-protocol/debugger/setBreakpoint.html:
+        * inspector-protocol/debugger/setBreakpointByUrl-sourceURL.html:
+        * inspector-protocol/debugger/setPauseOnExceptions-all.html:
+        * inspector-protocol/debugger/setPauseOnExceptions-none.html:
+        * inspector-protocol/debugger/setPauseOnExceptions-uncaught.html:
+        * inspector-protocol/debugger/setVariableValue.html:
+        * inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html:
+        * inspector-protocol/dom-debugger/node-removed.html:
+        * inspector-protocol/dom/dom-remove-events.html:
+        * inspector-protocol/dom/dom-search-crash.html:
+        * inspector-protocol/dom/dom-search-with-context.html:
+        * inspector-protocol/dom/dom-search.html:
+        * inspector-protocol/dom/focus.html:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode.html:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_liveRegion.html:
+        * inspector-protocol/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html:
+        * inspector-protocol/dom/highlight-flow-with-no-region.html:
+        * inspector-protocol/dom/remove-multiple-nodes.html:
+        * inspector-protocol/dom/request-child-nodes-depth.html:
+        * inspector-protocol/layers/layers-anonymous.html:
+        * inspector-protocol/layers/layers-blending-compositing-reasons.html:
+        * inspector-protocol/layers/layers-compositing-reasons.html:
+        * inspector-protocol/layers/layers-for-node.html:
+        * inspector-protocol/layers/layers-generated-content.html:
+        * inspector-protocol/layers/layers-reflected-content.html:
+        * inspector-protocol/page/archive.html:
+        * inspector-protocol/page/frameScheduledNavigation.html:
+        * inspector-protocol/page/frameStartedLoading.html:
+        * inspector-protocol/page/javascriptDialogEvents.html:
+        * inspector-protocol/page/setEmulatedMedia.html:
+        * inspector-protocol/runtime/getProperties.html:
+        * inspector-protocol/sync-test-suite.html:
+        * inspector/console/command-line-api.html:
+        * inspector/console/console-api.html:
+        * inspector/console/console-table.html:
+        * inspector/css/get-system-fonts.html:
+        * inspector/css/matched-style-properties.html:
+        * inspector/css/modify-rule-selector.html:
+        * inspector/css/pseudo-element-matches-for-pseudo-element-node.html:
+        * inspector/css/pseudo-element-matches.html:
+        * inspector/css/selector-dynamic-specificity.html:
+        * inspector/css/selector-specificity.html:
+        * inspector/css/stylesheet-with-mutations.html:
+        * inspector/debugger/break-on-exception-catch.html:
+        * inspector/debugger/break-on-exception-finally.html:
+        * inspector/debugger/break-on-exception-native.html:
+        * inspector/debugger/break-on-exception-throw-in-promise-rethrow-in-catch.html:
+        * inspector/debugger/break-on-exception-throw-in-promise-then-with-catch.html:
+        * inspector/debugger/break-on-exception-throw-in-promise-then.html:
+        * inspector/debugger/break-on-exception-throw-in-promise-with-catch.html:
+        * inspector/debugger/break-on-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-exception-window-onerror.html:
+        * inspector/debugger/break-on-exception.html:
+        * inspector/debugger/break-on-uncaught-exception-catch.html:
+        * inspector/debugger/break-on-uncaught-exception-finally.html:
+        * inspector/debugger/break-on-uncaught-exception-native.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-rethrow-in-catch.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then-with-catch.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-then.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-with-catch.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-uncaught-exception-window-onerror.html:
+        * inspector/debugger/break-on-uncaught-exception.html:
+        * inspector/debugger/breakpoint-action-eval.html:
+        * inspector/debugger/breakpoint-columns.html:
+        * inspector/debugger/breakpoint-scope.html:
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * inspector/debugger/js-stacktrace.html:
+        * inspector/debugger/pause-reason.html:
+        * inspector/debugger/probe-manager-add-remove-actions.html:
+        * inspector/debugger/search-scripts-expected.txt:
+        * inspector/debugger/search-scripts.html:
+        * inspector/dom/content-flow-content-nodes.html:
+        * inspector/dom/content-flow-content-removal.html:
+        * inspector/dom/content-flow-list.html:
+        * inspector/dom/content-node-region-info.html:
+        * inspector/dom/highlight-shape-outside-margin.html:
+        * inspector/dom/highlight-shape-outside.html:
+        * inspector/dom/highlightSelector.html:
+        * inspector/dom/pseudo-element-dynamic.html:
+        * inspector/dom/pseudo-element-static.html:
+        * inspector/dom/template-content.html:
+        * inspector/event-listener-set.html:
+        * inspector/event-listener.html:
+        * inspector/model/parse-script-syntax-tree.html:
+        * inspector/model/remote-object-get-properties.html:
+        * inspector/model/remote-object-weak-collection.html:
+        * inspector/model/remote-object.html:
+        * inspector/page/main-frame-resource.html:
+        * inspector/protocol-promise-result.html:
+        * inspector/replay/javascript-date-now.html:
+        * inspector/replay/javascript-random-seed.html:
+        * inspector/replay/window-navigator-plugins-memoized.html:
+        * inspector/test-harness-trivially-works.html:
+        * inspector/timeline/debugger-paused-while-recording.html:
+        * inspector/timeline/exception-in-injected-script-while-recording.html:
+        * inspector/timeline/recording-start-stop-timestamps.html:
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2015-08-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font feature settings comparisons are order-dependent and case-dependent
+        https://bugs.webkit.org/show_bug.cgi?id=147719
+
+        Reviewed by Benjamin Poulain.
+
+        Make the test insensitive to order and case.
+
+        * css3/font-feature-settings-parsing-expected.txt:
+        * css3/font-feature-settings-parsing.html:
+
+2015-08-06  Doug Russell  <d_russell@apple.com>
+
+        AX: AXLoadComplete that comes before AX API access won't fire
+        https://bugs.webkit.org/show_bug.cgi?id=147737
+
+        Reviewed by Chris Fleizach.
+
+        Treat setEnhancedUserInterfaceAccessibility() as AX API access and if true,
+        enableAccessibility().
+
+        * accessibility/mac/loaded-notification-expected.txt: Added.
+        * accessibility/mac/loaded-notification.html: Added.
+
+2015-08-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix TestExpectations lint warnings.
+
+        * platform/mac-wk2/TestExpectations: Remove duplicate entries.
+
+        * platform/win/TestExpectations: Update for the big platform move of 2015. One of
+        these tests no longer asserts, so it doesn't need to be skipped.
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix paths to ruby-expansion tests, and make them ImageOnlyFailure rather than Skip.
+
+        * platform/mac-mavericks/TestExpectations:
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Move /mac/fast/text reference tests into fast/text. Some may need to be skipped on other platforms.
+
+        * fast/text/arabic-zwj-and-zwnj-expected.html: Renamed from LayoutTests/platform/mac/fast/text/arabic-zwj-and-zwnj-expected.html.
+        * fast/text/arabic-zwj-and-zwnj.html: Renamed from LayoutTests/platform/mac/fast/text/arabic-zwj-and-zwnj.html.
+        * fast/text/combining-character-sequence-vertical-expected.html: Renamed from LayoutTests/platform/mac/fast/text/combining-character-sequence-vertical-expected.html.
+        * fast/text/combining-character-sequence-vertical.html: Renamed from LayoutTests/platform/mac/fast/text/combining-character-sequence-vertical.html.
+        * fast/text/combining-mark-paint-expected.html: Renamed from LayoutTests/platform/mac/fast/text/combining-mark-paint-expected.html.
+        * fast/text/combining-mark-paint.html: Renamed from LayoutTests/platform/mac/fast/text/combining-mark-paint.html.
+        * fast/text/font-cursive-italic-cjk-expected.html: Renamed from LayoutTests/platform/mac/fast/text/font-cursive-italic-cjk-expected.html.
+        * fast/text/font-cursive-italic-cjk.html: Renamed from LayoutTests/platform/mac/fast/text/font-cursive-italic-cjk.html.
+        * fast/text/kerning-with-TextLayout-expected.html: Renamed from LayoutTests/platform/mac/fast/text/kerning-with-TextLayout-expected.html.
+        * fast/text/kerning-with-TextLayout.html: Renamed from LayoutTests/platform/mac/fast/text/kerning-with-TextLayout.html.
+        * fast/text/multiple-codeunit-vertical-upright-expected.html: Renamed from LayoutTests/platform/mac/fast/text/multiple-codeunit-vertical-upright-expected.html.
+        * fast/text/multiple-codeunit-vertical-upright.html: Renamed from LayoutTests/platform/mac/fast/text/multiple-codeunit-vertical-upright.html.
+        * fast/text/synthetic-bold-transformed-expected.html: Renamed from LayoutTests/platform/mac/fast/text/synthetic-bold-transformed-expected.html.
+        * fast/text/synthetic-bold-transformed.html: Renamed from LayoutTests/platform/mac/fast/text/synthetic-bold-transformed.html.
+        * fast/text/trailing-word-expected.html: Renamed from LayoutTests/platform/mac/fast/text/trailing-word-expected.html.
+        * fast/text/trailing-word.html: Renamed from LayoutTests/platform/mac/fast/text/trailing-word.html.
+        * platform/mac/TestExpectations:
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Make ruby-expansion tests cross-platform. They may have to be skipped on other platforms.
+
+        * fast/ruby/resources/green.png: Renamed from LayoutTests/platform/mac/fast/ruby/resources/green.png.
+        * fast/ruby/resources/ruby-expansion.svg: Renamed from LayoutTests/platform/mac/fast/ruby/resources/ruby-expansion.svg.
+        * fast/ruby/ruby-expansion-cjk-2-expected.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2-expected.html.
+        * fast/ruby/ruby-expansion-cjk-2.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2.html.
+        * fast/ruby/ruby-expansion-cjk-3-expected.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3-expected.html.
+        * fast/ruby/ruby-expansion-cjk-3.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3.html.
+        * fast/ruby/ruby-expansion-cjk-4-expected.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4-expected.html.
+        * fast/ruby/ruby-expansion-cjk-4.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4.html.
+        * fast/ruby/ruby-expansion-cjk-5-expected.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5-expected.html.
+        * fast/ruby/ruby-expansion-cjk-5.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5.html.
+        * fast/ruby/ruby-expansion-cjk-expected.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-expected.html.
+        * fast/ruby/ruby-expansion-cjk.html: Renamed from LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk.html.
+        * platform/mac-wk1/TestExpectations:
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the XBM image test. Mac doesn't suport XBM images any more.
+
+        * platform/mac/fast/canvas/canvas-draw-xbm-image-expected.png: Removed.
+        * platform/mac/fast/canvas/canvas-draw-xbm-image-expected.txt: Removed.
+        * platform/mac/fast/canvas/canvas-draw-xbm-image.html: Removed.
+        * platform/mac/fast/canvas/resources/smile.xbm: Removed.
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Make platform/mac/compositing/canvas/accelerated-canvas-compositing.html a cross-platform test.
+
+        * compositing/canvas/accelerated-canvas-compositing-expected.txt: Added.
+        * compositing/canvas/accelerated-canvas-compositing.html: Renamed from LayoutTests/platform/mac/compositing/canvas/accelerated-canvas-compositing.html.
+
+2015-08-05  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: rewrite protocol test for console messages from X-Frame-Options
+        https://bugs.webkit.org/show_bug.cgi?id=147714
+
+        Reviewed by Joseph Pecoraro.
+
+        Rewrite deny-X-FrameOption.html to use AsyncTestSuite, and hopefully address
+        the flakiness of the test. It is now in the inspector-protocol/console/ directory.
+
+        Extract the addConsoleTestCase helper to a shared file. Clean up console test
+        helpers and use a less awkward namespace for these helpers.
+
+        * TestExpectations: Unskip the deleted test, the new test should be less flaky.
+        * inspector-protocol/console/console-message.html:
+        * inspector-protocol/console/css-source-locations.html:
+        * inspector-protocol/console/js-source-locations.html:
+        * inspector-protocol/console/x-frame-options-message-expected.txt: Added.
+        * inspector-protocol/console/x-frame-options-message.html: Added.
+        * inspector-protocol/debugger/setBreakpoint-actions.html:
+        * inspector-protocol/debugger/setBreakpoint-options-exception.html:
+        * inspector-protocol/page/deny-X-FrameOption-expected.txt: Removed.
+        * inspector-protocol/page/deny-X-FrameOption.html: Removed.
+        * inspector-protocol/resources/console-helper.js: Removed.
+        * inspector-protocol/resources/console-test.js: Added.
+        (InspectorTest.Console.sanitizeConsoleMessage):
+        (InspectorTest.Console.addTestCase):
+
+2015-08-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [ES6] Class parser does not allow methods named set and get.
+        https://bugs.webkit.org/show_bug.cgi?id=147150
+
+        Reviewed by Oliver Hunt.
+
+        Added a regression test and rebaselined a test.
+
+        * js/class-syntax-method-names-expected.txt: Added.
+        * js/class-syntax-method-names.html: Added.
+        * js/class-syntax-semicolon-expected.txt: Rebaselined as the error message got improved.
+        * js/script-tests/class-syntax-method-names.js: Added.
+        * js/script-tests/class-syntax-semicolon.js:
+
+2015-08-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Logging error objects should have a better UI
+        https://bugs.webkit.org/show_bug.cgi?id=143853
+
+        Add tests for stack trace format in case it changes.
+
+        Reviewed by Brian Burg.
+
+        * inspector/debugger/js-stacktrace-expected.txt: Added.
+        * inspector/debugger/js-stacktrace.html: Added.
+
+2015-08-05  Zalan Bujtas  <zalan@apple.com>
+
+        Add missing test case (r187994).
+
+        Unreviewed.
+
+        * fast/frames/flattening/crash-when-sibling-iframe-is-destroyed-with-subtree-layoutroot-expected.txt: Added.
+        * fast/frames/flattening/crash-when-sibling-iframe-is-destroyed-with-subtree-layoutroot.html: Added.
+        * fast/frames/flattening/resources/childframe1.html: Added.
+        * fast/frames/flattening/resources/childframe2.html: Added.
+
+2015-08-05  Chris Dumez  <cdumez@apple.com>
+
+        Crash when removing children of a MathMLSelectElement
+        https://bugs.webkit.org/show_bug.cgi?id=147704
+        <rdar://problem/21940321>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test that reproduces the crash under guardmalloc.
+
+        * mathml/maction-removeChild-expected.txt: Added.
+        * mathml/maction-removeChild.html: Added.
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Move platform/ios-simulator/ios/fast/events/touch tests to fast/events/touch
+
+        * fast/events/touch/document-create-touch-list-ios-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/document-create-touch-list-ios-expected.txt.
+        * fast/events/touch/document-create-touch-list-ios.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/document-create-touch-list-ios.html.
+        * fast/events/touch/gesture-event-basic-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/gesture-event-basic-expected.txt.
+        * fast/events/touch/gesture-event-basic.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/gesture-event-basic.html.
+        * fast/events/touch/input-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/input-touch-target.html.
+        * fast/events/touch/inserted-fragment-touch-target-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/inserted-fragment-touch-target-expected.txt.
+        * fast/events/touch/inserted-fragment-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/inserted-fragment-touch-target.html.
+        * fast/events/touch/moved-touch-target-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/moved-touch-target-expected.txt.
+        * fast/events/touch/moved-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/moved-touch-target.html.
+        * fast/events/touch/multi-touch-some-without-handlers.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/multi-touch-some-without-handlers.html.
+        * fast/events/touch/ontouchstart-active-selector.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/ontouchstart-active-selector.html.
+        * fast/events/touch/removed-fragment-touch-target-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/removed-fragment-touch-target-expected.txt.
+        * fast/events/touch/removed-fragment-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/removed-fragment-touch-target.html.
+        * fast/events/touch/removed-touch-target-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/removed-touch-target-expected.txt.
+        * fast/events/touch/removed-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/removed-touch-target.html.
+        * fast/events/touch/resources/misc-touch-helpers.js: Renamed from LayoutTests/platform/ios-sim-deprecated/iphone/fast/events/touch/misc-touch-helpers.js.
+        * fast/events/touch/script-tests/document-create-touch-list-ios.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/document-create-touch-list-ios.js.
+        * fast/events/touch/script-tests/input-touch-target.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/input-touch-target.js.
+        * fast/events/touch/script-tests/multi-touch-some-without-handlers.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/multi-touch-some-without-handlers.js.
+        * fast/events/touch/script-tests/text-node-touch-target.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/text-node-touch-target.js.
+        * fast/events/touch/script-tests/textarea-touch-target.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/textarea-touch-target.js.
+        * fast/events/touch/script-tests/touch-event-frames.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/touch-event-frames.js.
+        * fast/events/touch/script-tests/touch-event-pageXY.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/touch-event-pageXY.js.
+        * fast/events/touch/script-tests/zoomed-touch-event-pageXY.js: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/script-tests/zoomed-touch-event-pageXY.js.
+        * fast/events/touch/text-node-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/text-node-touch-target.html.
+        * fast/events/touch/textarea-touch-target.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/textarea-touch-target.html.
+        * fast/events/touch/touch-event-frames-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/touch-event-frames-expected.txt.
+        * fast/events/touch/touch-event-frames.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/touch-event-frames.html.
+        * fast/events/touch/touch-event-pageXY-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/touch-event-pageXY-expected.txt.
+        * fast/events/touch/touch-event-pageXY.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/touch-event-pageXY.html.
+        * fast/events/touch/touch-scaled-scrolled.html:
+        * fast/events/touch/zoomed-touch-event-pageXY-expected.txt: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/zoomed-touch-event-pageXY-expected.txt.
+        * fast/events/touch/zoomed-touch-event-pageXY.html: Renamed from LayoutTests/platform/ios-simulator/ios/fast/events/touch/zoomed-touch-event-pageXY.html.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/ios/fast/events/touch/script-tests/TEMPLATE.html: Removed.
+        * platform/mac/TestExpectations:
+
+2015-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove non-existant tests from iOS TestExpectations files.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2015-08-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Mark failing scrolling test.
+
+        * platform/mac/TestExpectations:
+
+2015-08-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test gardening.
+
+        Skip new latched scrolling test on WK1 due to timeout. Check in some minor clean-ups in
+        the test based on feedback from Antti and others:
+
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/scrolling/scroll-div-with-nested-nonscrollable-iframe.html:
+
+2015-08-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Support for PropertyName Iterator (Reflect.enumerate) in Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=147679
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+
 2015-08-04  Simon Fraser  <simon.fraser@apple.com>
 
         Put Yosemite mac editing results in the correct location.

@@ -174,7 +174,7 @@ void RenderListBox::layout()
     }
 
     if (m_scrollToRevealSelectionAfterLayout) {
-        LayoutStateDisabler layoutStateDisabler(&view());
+        LayoutStateDisabler layoutStateDisabler(view());
         scrollToRevealSelection();
     }
 }
@@ -640,12 +640,12 @@ int RenderListBox::verticalScrollbarWidth() const
 int RenderListBox::scrollWidth() const
 {
     // There is no horizontal scrolling allowed.
-    return pixelSnappedClientWidth();
+    return roundToInt(clientWidth());
 }
 
 int RenderListBox::scrollHeight() const
 {
-    return std::max(pixelSnappedClientHeight(), roundToInt(listHeight()));
+    return roundToInt(std::max(clientHeight(), listHeight()));
 }
 
 int RenderListBox::scrollLeft() const

@@ -463,7 +463,6 @@ static EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionAddressOf(ExecState*);
 #ifndef NDEBUG
-static EncodedJSValue JSC_HOST_CALL functionReleaseExecutableMemory(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState*);
 #endif
 static EncodedJSValue JSC_HOST_CALL functionVersion(ExecState*);
@@ -612,7 +611,6 @@ protected:
         addFunction(vm, "addressOf", functionAddressOf, 1);
 #ifndef NDEBUG
         addFunction(vm, "dumpCallFrame", functionDumpCallFrame, 0);
-        addFunction(vm, "releaseExecutableMemory", functionReleaseExecutableMemory, 0);
 #endif
         addFunction(vm, "version", functionVersion, 1);
         addFunction(vm, "run", functionRun, 1);
@@ -909,16 +907,6 @@ EncodedJSValue JSC_HOST_CALL functionAddressOf(ExecState* exec)
     return returnValue;
 }
 
-
-#ifndef NDEBUG
-EncodedJSValue JSC_HOST_CALL functionReleaseExecutableMemory(ExecState* exec)
-{
-    JSLockHolder lock(exec);
-    exec->vm().releaseExecutableMemory();
-    return JSValue::encode(jsUndefined());
-}
-#endif
-
 EncodedJSValue JSC_HOST_CALL functionVersion(ExecState*)
 {
     // We need this function for compatibility with the Mozilla JS tests but for now
@@ -1162,7 +1150,7 @@ EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState* exec)
     RELEASE_ASSERT(functionValue.isFunction());
     FunctionExecutable* executable = (jsDynamicCast<JSFunction*>(functionValue.asCell()->getObject()))->jsExecutable();
 
-    unsigned offset = executable->source().startOffset();
+    unsigned offset = executable->typeProfilingStartOffset();
     String jsonString = exec->vm().typeProfiler()->typeInformationForExpressionAtOffset(TypeProfilerSearchDescriptorFunctionReturn, offset, executable->sourceID(), exec->vm());
     return JSValue::encode(JSONParse(exec, jsonString));
 }

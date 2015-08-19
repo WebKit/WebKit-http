@@ -1,9 +1,9 @@
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DUSE_CAIRO=1 -DUSE_CURL=1 -DWEBKIT_EXPORTS=1)
     list(APPEND WebKit_INCLUDE_DIRECTORIES
-        "$ENV{WEBKIT_LIBRARIES}/include"
-        "$ENV{WEBKIT_LIBRARIES}/include/cairo"
-        "$ENV{WEBKIT_LIBRARIES}/include/sqlite"
+        "${WEBKIT_LIBRARIES_DIR}/include"
+        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
+        "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
     list(APPEND WebKit_SOURCES_Classes
@@ -11,8 +11,10 @@ if (${WTF_PLATFORM_WIN_CAIRO})
         win/WebURLAuthenticationChallengeSenderCURL.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        libeay32.lib
-        ssleay32.lib
+        PRIVATE libeay32.lib
+        PRIVATE mfuuid.lib
+        PRIVATE ssleay32.lib
+        PRIVATE strmiids.lib
     )
 else ()
     list(APPEND WebKit_SOURCES_Classes
@@ -20,7 +22,28 @@ else ()
         win/WebURLAuthenticationChallengeSenderCFNet.cpp
     )
     list(APPEND WebKit_LIBRARIES
-        WebKitSystemInterface
+        PRIVATE ASL${DEBUG_SUFFIX}
+        PRIVATE AVFoundationCF${DEBUG_SUFFIX}
+        PRIVATE CFNetwork${DEBUG_SUFFIX}
+        PRIVATE CoreAudioToolbox${DEBUG_SUFFIX}
+        PRIVATE CoreFoundation${DEBUG_SUFFIX}
+        PRIVATE CoreGraphics${DEBUG_SUFFIX}
+        PRIVATE CoreMedia${DEBUG_SUFFIX}
+        PRIVATE CoreText${DEBUG_SUFFIX}
+        PRIVATE CoreVideo${DEBUG_SUFFIX}
+        PRIVATE MediaAccessibility${DEBUG_SUFFIX}
+        PRIVATE MediaToolbox${DEBUG_SUFFIX}
+        PRIVATE QuartzCore${DEBUG_SUFFIX}
+        PRIVATE SQLite3${DEBUG_SUFFIX}
+        PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
+        PRIVATE WebKitQuartzCoreAdditions${DEBUG_SUFFIX}
+        PRIVATE libdispatch${DEBUG_SUFFIX}
+        PRIVATE libexslt${DEBUG_SUFFIX}
+        PRIVATE libicuin${DEBUG_SUFFIX}
+        PRIVATE libicuuc${DEBUG_SUFFIX}
+        PRIVATE libxml2${DEBUG_SUFFIX}
+        PRIVATE libxslt${DEBUG_SUFFIX}
+        PRIVATE zdll${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -48,7 +71,9 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/win"
     "${WEBCORE_DIR}/rendering/line"
+    "${WEBCORE_DIR}/rendering/shapes"
     "${WEBCORE_DIR}/html/shadow"
+    "${WEBCORE_DIR}/html/track"
     "${WEBCORE_DIR}/modules/websockets"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
@@ -414,25 +439,27 @@ add_library(WebKitGUID STATIC
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/AccessibleText_i.c"
     "${DERIVED_SOURCES_WEBKIT_DIR}/Interfaces/AccessibleText2_i.c"
 )
+set_target_properties(WebKitGUID PROPERTIES OUTPUT_NAME WebKitGUID${DEBUG_SUFFIX})
 set_target_properties(WebKitGUID PROPERTIES FOLDER "WebKit")
 
 list(APPEND WebKit_LIBRARIES
-    Comctl32
-    Comsupp
-    Crypt32
-    Iphlpapi
-    Rpcrt4
-    Shlwapi
-    Usp10
-    Version
-    WebKitGUID
+    PRIVATE Comctl32
+    PRIVATE Comsupp
+    PRIVATE Crypt32
+    PRIVATE Iphlpapi
+    PRIVATE Rpcrt4
+    PRIVATE Shlwapi
+    PRIVATE Usp10
+    PRIVATE Version
+    PRIVATE Winmm
+    PRIVATE WebKitGUID${DEBUG_SUFFIX}
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebKit_LIBRARIES
-        libANGLE
-        libEGL
-        libGLESv2
+        libANGLE${DEBUG_SUFFIX}
+        libEGL${DEBUG_SUFFIX}
+        libGLESv2${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -442,7 +469,11 @@ string(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 list(APPEND WebKit_LIBRARIES ${CXX_LIBS})
 set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
+if (${WTF_PLATFORM_WIN_CAIRO})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:LIBCMTD")
+else ()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
+endif ()
 
 # If this directory isn't created before midl runs and attempts to output WebKit.tlb,
 # It fails with an unusual error - midl failed - failed to save all changes

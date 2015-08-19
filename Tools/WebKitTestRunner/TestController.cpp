@@ -31,6 +31,7 @@
 #include "PlatformWebView.h"
 #include "StringFunctions.h"
 #include "TestInvocation.h"
+#include <WebKit/WKArray.h>
 #include <WebKit/WKAuthenticationChallenge.h>
 #include <WebKit/WKAuthenticationDecisionListener.h>
 #include <WebKit/WKContextConfigurationRef.h>
@@ -431,27 +432,9 @@ void TestController::initialize(int argc, const char* argv[])
 
     // Some preferences (notably mock scroll bars setting) currently cannot be re-applied to an existing view, so we need to set them now.
     resetPreferencesToConsistentValues();
-
-    WKRetainPtr<WKMutableDictionaryRef> viewOptions;
-    if (m_shouldUseRemoteLayerTree) {
-        viewOptions = adoptWK(WKMutableDictionaryCreate());
-        WKRetainPtr<WKStringRef> useRemoteLayerTreeKey = adoptWK(WKStringCreateWithUTF8CString("RemoteLayerTree"));
-        WKRetainPtr<WKBooleanRef> useRemoteLayerTreeValue = adoptWK(WKBooleanCreate(m_shouldUseRemoteLayerTree));
-        WKDictionarySetItem(viewOptions.get(), useRemoteLayerTreeKey.get(), useRemoteLayerTreeValue.get());
-    }
-
-    if (m_shouldShowWebView) {
-        if (!viewOptions)
-            viewOptions = adoptWK(WKMutableDictionaryCreate());
-        WKRetainPtr<WKStringRef> shouldShowWebViewKey = adoptWK(WKStringCreateWithUTF8CString("ShouldShowWebView"));
-        WKRetainPtr<WKBooleanRef> shouldShowWebViewValue = adoptWK(WKBooleanCreate(m_shouldShowWebView));
-        WKDictionarySetItem(viewOptions.get(), shouldShowWebViewKey.get(), shouldShowWebViewValue.get());
-    }
-
-    createWebViewWithOptions(viewOptions.get());
 }
 
-void TestController::createWebViewWithOptions(WKDictionaryRef options)
+void TestController::createWebViewWithOptions(const ViewOptions& options)
 {
     m_mainWebView = std::make_unique<PlatformWebView>(m_context.get(), m_pageGroup.get(), nullptr, options);
     WKPageUIClientV5 pageUIClient = {
@@ -554,18 +537,25 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
     m_mainWebView->changeWindowScaleIfNeeded(1);
 }
 
-void TestController::ensureViewSupportsOptions(WKDictionaryRef options)
+void TestController::ensureViewSupportsOptionsForTest(const TestInvocation& test)
 {
-    if (m_mainWebView && !m_mainWebView->viewSupportsOptions(options)) {
-        WKPageSetPageUIClient(m_mainWebView->page(), 0);
-        WKPageSetPageNavigationClient(m_mainWebView->page(), 0);
-        WKPageClose(m_mainWebView->page());
-        
-        m_mainWebView = nullptr;
+    auto viewOptions = viewOptionsForTest(test);
 
-        createWebViewWithOptions(options);
-        resetStateToConsistentValues();
+    if (m_mainWebView) {
+        if (m_mainWebView->viewSupportsOptions(viewOptions))
+            return;
+
+        WKPageSetPageUIClient(m_mainWebView->page(), nullptr);
+        WKPageSetPageNavigationClient(m_mainWebView->page(), nullptr);
+        WKPageClose(m_mainWebView->page());
+
+        m_mainWebView = nullptr;
     }
+
+    createWebViewWithOptions(viewOptions);
+
+    if (!resetStateToConsistentValues())
+        TestInvocation::dumpWebProcessUnresponsiveness("<unknown> - TestController::run - Failed to reset state to consistent values\n");
 }
 
 void TestController::resetPreferencesToConsistentValues()
@@ -620,6 +610,9 @@ void TestController::resetPreferencesToConsistentValues()
 #if ENABLE(WEB_AUDIO)
     WKPreferencesSetMediaSourceEnabled(preferences, true);
 #endif
+
+    WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(preferences, false);
+    WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(preferences, false);
 
     WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing);
 
@@ -755,6 +748,29 @@ const char* TestController::networkProcessName()
 #endif
 }
 
+static bool shouldUseFixedLayout(const TestInvocation& test)
+{
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+        if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
+            return true;
+#endif
+
+    return false;
+}
+
+ViewOptions TestController::viewOptionsForTest(const TestInvocation& test) const
+{
+    ViewOptions viewOptions;
+
+    viewOptions.useRemoteLayerTree = m_shouldUseRemoteLayerTree;
+    viewOptions.shouldShowWebView = m_shouldShowWebView;
+    viewOptions.useFixedLayout = shouldUseFixedLayout(test);
+
+    updatePlatformSpecificViewOptionsForTest(viewOptions, test);
+
+    return viewOptions;
+}
+
 void TestController::updateWebViewSizeForTest(const TestInvocation& test)
 {
     bool isSVGW3CTest = test.urlContains("svg/W3C-SVG-1.1") || test.urlContains("svg\\W3C-SVG-1.1");
@@ -775,48 +791,11 @@ void TestController::updateWindowScaleForTest(PlatformWebView* view, const TestI
     view->changeWindowScaleIfNeeded(needsHighDPIWindow ? 2 : 1);
 }
 
-// FIXME: move into relevant platformConfigureViewForTest()?
-static bool shouldUseFixedLayout(const TestInvocation& test)
-{
-#if ENABLE(CSS_DEVICE_ADAPTATION)
-    if (test.urlContains("device-adapt/") || test.urlContains("device-adapt\\"))
-        return true;
-#endif
-
-#if USE(COORDINATED_GRAPHICS) && PLATFORM(EFL)
-    if (test.urlContains("sticky/") || test.urlContains("sticky\\"))
-        return true;
-#endif
-    return false;
-
-    UNUSED_PARAM(test);
-}
-
-void TestController::updateLayoutTypeForTest(const TestInvocation& test)
-{
-    auto viewOptions = adoptWK(WKMutableDictionaryCreate());
-    auto useFixedLayoutKey = adoptWK(WKStringCreateWithUTF8CString("UseFixedLayout"));
-    auto useFixedLayoutValue = adoptWK(WKBooleanCreate(shouldUseFixedLayout(test)));
-    WKDictionarySetItem(viewOptions.get(), useFixedLayoutKey.get(), useFixedLayoutValue.get());
-
-    ensureViewSupportsOptions(viewOptions.get());
-}
-
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
-void TestController::platformConfigureViewForTest(const TestInvocation&)
-{
-}
-
-void TestController::platformResetPreferencesToConsistentValues()
-{
-}
-#endif
-
 void TestController::configureViewForTest(const TestInvocation& test)
 {
+    ensureViewSupportsOptionsForTest(test);
     updateWebViewSizeForTest(test);
     updateWindowScaleForTest(mainWebView(), test);
-    updateLayoutTypeForTest(test);
 
     platformConfigureViewForTest(test);
 }
@@ -944,11 +923,6 @@ void TestController::runTestingServerLoop()
 
 void TestController::run()
 {
-    if (!resetStateToConsistentValues()) {
-        TestInvocation::dumpWebProcessUnresponsiveness("<unknown> - TestController::run - Failed to reset state to consistent values\n");
-        return;
-    }
-
     if (m_usingServerMode)
         runTestingServerLoop();
     else {
@@ -1478,6 +1452,11 @@ void TestController::handleGeolocationPermissionRequest(WKGeolocationPermissionR
     decidePolicyForGeolocationPermissionRequestIfPossible();
 }
 
+bool TestController::isGeolocationProviderActive() const
+{
+    return m_geolocationProvider->isActive();
+}
+
 void TestController::setUserMediaPermission(bool enabled)
 {
     m_isUserMediaPermissionSet = true;
@@ -1497,9 +1476,10 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         return;
 
     for (auto& request : m_userMediaPermissionRequests) {
-        if (m_isUserMediaPermissionAllowed)
-            WKUserMediaPermissionRequestAllow(request.get());
-        else
+        if (m_isUserMediaPermissionAllowed) {
+            if (WKArrayGetSize(WKUserMediaPermissionRequestDeviceNamesVideo(request.get())) || WKArrayGetSize(WKUserMediaPermissionRequestDeviceNamesAudio(request.get())))
+                WKUserMediaPermissionRequestAllow(request.get(), WKUserMediaPermissionRequestFirstVideoDeviceUID(request.get()), WKUserMediaPermissionRequestFirstAudioDeviceUID(request.get()));
+        } else
             WKUserMediaPermissionRequestDeny(request.get());
     }
     m_userMediaPermissionRequests.clear();

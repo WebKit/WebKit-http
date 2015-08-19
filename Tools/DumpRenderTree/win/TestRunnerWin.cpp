@@ -241,6 +241,13 @@ int TestRunner::numberOfPendingGeolocationPermissionRequests()
     return -1;
 }
 
+bool TestRunner::isGeolocationProviderActive()
+{
+    // FIXME: Implement for Geolocation layout tests.
+    printf("ERROR: TestRunner::isGeolocationProviderActive() not implemented\n");
+    return false;
+}
+
 size_t TestRunner::webHistoryItemCount()
 {
     COMPtr<IWebHistory> history;
@@ -1084,6 +1091,15 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
         return;
 
     inspectorPrivate->evaluateInFrontend(bstrT(script).GetBSTR());
+}
+
+JSStringRef TestRunner::inspectorTestStubURL()
+{
+    // FIXME: Implement this to support Web Inspector tests using `protocol-test.js`.
+    // See https://bugs.webkit.org/show_bug.cgi?id=148025.
+    printf("ERROR: TestRunner::inspectorTestStubURL() not implemented\n");
+
+    return nullptr;
 }
 
 typedef HashMap<unsigned, COMPtr<IWebScriptWorld> > WorldMap;
