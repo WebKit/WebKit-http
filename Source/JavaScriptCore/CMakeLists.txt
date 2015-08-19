@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 2.8.12)
+include(WebKitCommon)
+
 set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${JAVASCRIPTCORE_DIR}"
@@ -92,6 +95,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ExitingJITType.cpp
     bytecode/GetByIdStatus.cpp
     bytecode/GetByIdVariant.cpp
+    bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
     bytecode/LazyOperandValueProfile.cpp
@@ -507,6 +511,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
     runtime/JSArrayIterator.cpp
+    runtime/JSArrowFunction.cpp
     runtime/JSBoundFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
@@ -664,7 +669,7 @@ set(JavaScriptCore_LUT_FILES
 )
 
 set(JavaScriptCore_LIBRARIES
-    WTF
+    WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
 )
 

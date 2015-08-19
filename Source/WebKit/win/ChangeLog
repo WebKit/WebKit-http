@@ -1,3 +1,63 @@
+2015-08-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Replace all remaining uses of WTF::Mutex with WTF::Lock
+        https://bugs.webkit.org/show_bug.cgi?id=148089
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/PluginMainThreadScheduler.cpp:
+        (WebCore::PluginMainThreadScheduler::scheduleCall):
+        (WebCore::PluginMainThreadScheduler::registerPlugin):
+        (WebCore::PluginMainThreadScheduler::unregisterPlugin):
+        (WebCore::PluginMainThreadScheduler::dispatchCallsForPlugin):
+        * Plugins/PluginMainThreadScheduler.h:
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::didRemoveAllIcons):
+        (WebIconDatabase::didImportIconURLForPageURL):
+        (WebIconDatabase::deliverNotifications):
+        * WebIconDatabase.h:
+        * WebLocalizableStrings.cpp:
+        (mainBundleLocStrings):
+        (frameworkLocStringsMutex):
+        (findCachedString):
+        (cacheString):
+
+2015-08-17  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo] Accelerated compositing does not respect device scale factor.
+        https://bugs.webkit.org/show_bug.cgi?id=148085
+
+        Reviewed by Brent Fulgham.
+
+        Scale root layer's transformation matrix with device scale factor.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+        (AcceleratedCompositingContext::startedAnimation):
+        (AcceleratedCompositingContext::applyDeviceScaleFactor):
+        (AcceleratedCompositingContext::compositeLayersToContext):
+        (AcceleratedCompositingContext::resizeRootLayer):
+        (AcceleratedCompositingContext::flushAndRenderLayers):
+        (AcceleratedCompositingContext::paintContents):
+        (AcceleratedCompositingContext::deviceScaleFactor):
+        * WebCoreSupport/AcceleratedCompositingContext.h:
+        * WebView.cpp:
+        (WebView::repaint):
+
+2015-08-17  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        [Win] Cleanups to PluginView::handleMouseEvent().
+        https://bugs.webkit.org/show_bug.cgi?id=148024
+
+        Reviewed by Alex Christensen.
+
+        1. Replace the raw values identifying specific mouse buttons with
+           WebCore::MouseButton enum values.
+        2. Reindent if and switch statements.
+
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::handleMouseEvent):
+
 2015-08-13  Andy Estes  <aestes@apple.com>
 
         [Cocoa] Downloads do not start if policy decision is made asynchronously

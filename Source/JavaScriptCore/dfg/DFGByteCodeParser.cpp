@@ -3356,7 +3356,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
         case op_eq_null: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CompareEqConstant, value, addToGraph(JSConstant, OpInfo(m_constantNull))));
+            Node* nullConstant = addToGraph(JSConstant, OpInfo(m_constantNull));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CompareEq, value, nullConstant));
             NEXT_OPCODE(op_eq_null);
         }
 
@@ -3376,7 +3377,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
         case op_neq_null: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(LogicalNot, addToGraph(CompareEqConstant, value, addToGraph(JSConstant, OpInfo(m_constantNull)))));
+            Node* nullConstant = addToGraph(JSConstant, OpInfo(m_constantNull));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(LogicalNot, addToGraph(CompareEq, value, nullConstant)));
             NEXT_OPCODE(op_neq_null);
         }
 
@@ -3523,7 +3525,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_jeq_null: {
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* value = get(VirtualRegister(currentInstruction[1].u.operand));
-            Node* condition = addToGraph(CompareEqConstant, value, addToGraph(JSConstant, OpInfo(m_constantNull)));
+            Node* nullConstant = addToGraph(JSConstant, OpInfo(m_constantNull));
+            Node* condition = addToGraph(CompareEq, value, nullConstant);
             addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jeq_null))), condition);
             LAST_OPCODE(op_jeq_null);
         }
@@ -3531,7 +3534,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_jneq_null: {
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* value = get(VirtualRegister(currentInstruction[1].u.operand));
-            Node* condition = addToGraph(CompareEqConstant, value, addToGraph(JSConstant, OpInfo(m_constantNull)));
+            Node* nullConstant = addToGraph(JSConstant, OpInfo(m_constantNull));
+            Node* condition = addToGraph(CompareEq, value, nullConstant);
             addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jneq_null), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jneq_null);
         }
@@ -4079,6 +4083,17 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), result);
             NEXT_OPCODE(op_get_scope);
         }
+
+        case op_load_arrowfunction_this: {
+            Node* callee = get(VirtualRegister(JSStack::Callee));
+            Node* result;
+            if (JSArrowFunction* function = callee->dynamicCastConstant<JSArrowFunction*>())
+                result = jsConstant(function->boundThis());
+            else
+                result = addToGraph(LoadArrowFunctionThis, callee);
+            set(VirtualRegister(currentInstruction[1].u.operand), result);
+            NEXT_OPCODE(op_load_arrowfunction_this);
+        }
             
         case op_create_direct_arguments: {
             noticeArgumentsUse();
@@ -4134,6 +4149,18 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand),
                 addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             NEXT_OPCODE(op_new_func_exp);
+        }
+
+        case op_new_arrow_func_exp: {
+            FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
+            FrozenValue* frozen = m_graph.freezeStrong(expr);
+
+            set(VirtualRegister(currentInstruction[1].u.operand),
+                addToGraph(NewArrowFunction, OpInfo(frozen),
+                    get(VirtualRegister(currentInstruction[2].u.operand)),
+                    get(VirtualRegister(currentInstruction[4].u.operand))));
+            
+            NEXT_OPCODE(op_new_arrow_func_exp);
         }
 
         case op_typeof: {

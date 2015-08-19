@@ -79,7 +79,7 @@ void InbandTextTrackPrivateGStreamer::handleSample(GRefPtr<GstSample> sample)
 {
     m_sampleTimerHandler.cancel();
     {
-        MutexLocker lock(m_sampleMutex);
+        LockHolder lock(m_sampleMutex);
         m_pendingSamples.append(sample);
     }
     m_sampleTimerHandler.schedule();
@@ -94,7 +94,7 @@ void InbandTextTrackPrivateGStreamer::notifyTrackOfSample()
 {
     Vector<GRefPtr<GstSample> > samples;
     {
-        MutexLocker lock(m_sampleMutex);
+        LockHolder lock(m_sampleMutex);
         m_pendingSamples.swap(samples);
     }
 

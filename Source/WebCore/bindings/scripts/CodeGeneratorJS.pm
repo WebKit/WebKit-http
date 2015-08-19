@@ -381,26 +381,27 @@ sub GenerateGetOwnPropertySlotBody
 
     my @getOwnPropertySlotImpl = ();
 
-    if ($interfaceName eq "NamedNodeMap" or $interfaceName =~ /^HTML\w*Collection$/) {
+    my $ownPropertyCheck = sub {
+        if ($hasAttributes) {
+            if ($inlined) {
+                push(@getOwnPropertySlotImpl, "    if (${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, *info()->staticPropHashTable, thisObject, propertyName, slot))\n");
+            } else {
+                push(@getOwnPropertySlotImpl, "    if (${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, ${className}Table, thisObject, propertyName, slot))\n");
+            }
+        } else {
+            push(@getOwnPropertySlotImpl, "    if (Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))\n");
+        }
+        push(@getOwnPropertySlotImpl, "        return true;\n");
+    };
+
+    # FIXME: As per the Web IDL specification, the prototype check is supposed to skip "named properties objects":
+    # https://heycam.github.io/webidl/#dfn-named-property-visibility
+    # https://heycam.github.io/webidl/#dfn-named-properties-object
+    my $prototypeCheck = sub {
         push(@getOwnPropertySlotImpl, "    ${namespaceMaybe}JSValue proto = thisObject->prototype();\n");
         push(@getOwnPropertySlotImpl, "    if (proto.isObject() && jsCast<${namespaceMaybe}JSObject*>(proto)->hasProperty(exec, propertyName))\n");
         push(@getOwnPropertySlotImpl, "        return false;\n\n");
-    }
-
-    my $manualLookupGetterGeneration = sub {
-        my $requiresManualLookup = $indexedGetterFunction || $namedGetterFunction;
-        if ($requiresManualLookup) {
-            push(@getOwnPropertySlotImpl, "    const ${namespaceMaybe}HashTableValue* entry = getStaticValueSlotEntryWithoutCaching<$className>(exec, propertyName);\n");
-            push(@getOwnPropertySlotImpl, "    if (entry) {\n");
-            push(@getOwnPropertySlotImpl, "        slot.setCacheableCustom(thisObject, entry->attributes(), entry->propertyGetter());\n");
-            push(@getOwnPropertySlotImpl, "        return true;\n");
-            push(@getOwnPropertySlotImpl, "    }\n");
-        }
     };
-
-    if (!$interface->extendedAttributes->{"CustomNamedGetter"} and InstanceAttributeCount($interface) > 0) {
-        &$manualLookupGetterGeneration();
-    }
 
     if ($indexedGetterFunction) {
         push(@getOwnPropertySlotImpl, "    Optional<uint32_t> optionalIndex = parseIndex(propertyName);\n");
@@ -424,8 +425,15 @@ sub GenerateGetOwnPropertySlotBody
         push(@getOwnPropertySlotImpl, "    }\n");
     }
 
-    if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
-        push(@getOwnPropertySlotImpl, "    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
+    my $hasNamedGetter = $namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"};
+    if ($hasNamedGetter) {
+        if (!$interface->extendedAttributes->{"OverrideBuiltins"}) {
+            &$ownPropertyCheck();
+            &$prototypeCheck();
+        }
+
+        # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+        push(@getOwnPropertySlotImpl, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
         push(@getOwnPropertySlotImpl, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
         push(@getOwnPropertySlotImpl, "    }\n");
@@ -436,24 +444,16 @@ sub GenerateGetOwnPropertySlotBody
         }
     }
 
-    if ($interface->extendedAttributes->{"CustomNamedGetter"}) {
-        &$manualLookupGetterGeneration();
-    }
-
     if ($interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}) {
         push(@getOwnPropertySlotImpl, "    if (thisObject->getOwnPropertySlotDelegate(exec, propertyName, slot))\n");
         push(@getOwnPropertySlotImpl, "        return true;\n");
     }
 
-    if ($hasAttributes) {
-        if ($inlined) {
-            push(@getOwnPropertySlotImpl, "    return ${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, *info()->staticPropHashTable, thisObject, propertyName, slot);\n");
-        } else {
-            push(@getOwnPropertySlotImpl, "    return ${namespaceMaybe}getStaticValueSlot<$className, Base>(exec, ${className}Table, thisObject, propertyName, slot);\n");
-        }
-    } else {
-        push(@getOwnPropertySlotImpl, "    return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);\n");
+    if (!$hasNamedGetter || $interface->extendedAttributes->{"OverrideBuiltins"}) {
+        &$ownPropertyCheck();
     }
+
+    push(@getOwnPropertySlotImpl, "    return false;\n");
 
     return @getOwnPropertySlotImpl;
 }
@@ -576,13 +576,12 @@ sub HasComplexGetOwnProperty
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
+    my $hasNamedGetter = $namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"};
 
     my $hasComplexGetter = $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $hasNamedGetter;
 
     return 1 if $interface->extendedAttributes->{"CheckSecurity"};
     return 1 if IsDOMGlobalObject($interface);
@@ -728,13 +727,13 @@ sub InstanceOverridesGetOwnPropertySlot
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
+    my $hasNamedGetter = $namedGetterFunction
         || $interface->extendedAttributes->{"CustomNamedGetter"};
 
     my $hasComplexGetter = $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $hasNamedGetter;
 
     return $numInstanceAttributes > 0 || $hasComplexGetter;
 
@@ -913,14 +912,15 @@ sub GenerateHeader
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
+    my $hasImpureNamedGetter = $interface->extendedAttributes->{"OverrideBuiltins"}
+        && ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"});
 
     my $hasComplexGetter =
         $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $hasImpureNamedGetter;
+        || $namedGetterFunction
+        || $interface->extendedAttributes->{"CustomNamedGetter"};
     
     my $hasGetter = InstanceOverridesGetOwnPropertySlot($interface);
 
@@ -2184,7 +2184,9 @@ sub GenerateImplementation
 
             if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
                 &$propertyNameGeneration();
-                push(@implContent, "    if (canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
+
+                # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+                push(@implContent, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
                 push(@implContent, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
                 push(@implContent, "        return true;\n");
                 push(@implContent, "    }\n");

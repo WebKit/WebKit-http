@@ -33,10 +33,11 @@
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
+#include <wtf/Condition.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Threading.h>
 
 #if PLATFORM(GBM)
 #include <WebCore/GBMSurface.h>
@@ -128,10 +129,10 @@ private:
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
     ThreadIdentifier m_threadIdentifier;
-    ThreadCondition m_initializeRunLoopCondition;
-    Mutex m_initializeRunLoopConditionMutex;
-    ThreadCondition m_terminateRunLoopCondition;
-    Mutex m_terminateRunLoopConditionMutex;
+    Condition m_initializeRunLoopCondition;
+    Lock m_initializeRunLoopConditionLock;
+    Condition m_terminateRunLoopCondition;
+    Lock m_terminateRunLoopConditionLock;
 
 #if 0
     static const struct wl_callback_listener m_frameListener;

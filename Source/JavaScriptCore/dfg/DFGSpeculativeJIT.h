@@ -162,7 +162,11 @@ public:
     // and its machine registers may be reused.
     bool canReuse(Node* node)
     {
-        return generationInfo(node).canReuse();
+        return generationInfo(node).useCount() == 1;
+    }
+    bool canReuse(Node* nodeA, Node* nodeB)
+    {
+        return nodeA == nodeB && generationInfo(nodeA).useCount() == 2;
     }
     bool canReuse(Edge nodeUse)
     {
@@ -552,6 +556,7 @@ public:
     bool isKnownNotInteger(Node* node) { return !(m_state.forNode(node).m_type & SpecInt32); }
     bool isKnownNotNumber(Node* node) { return !(m_state.forNode(node).m_type & SpecFullNumber); }
     bool isKnownNotCell(Node* node) { return !(m_state.forNode(node).m_type & SpecCell); }
+    bool isKnownNotOther(Node* node) { return !(m_state.forNode(node).m_type & SpecOther); }
     
     UniquedStringImpl* identifierUID(unsigned index)
     {
@@ -697,9 +702,8 @@ public:
     
     void compileBaseValueStoreBarrier(Edge& baseEdge, Edge& valueEdge);
 
-    void nonSpeculativeNonPeepholeCompareNull(Edge operand, bool invert = false);
-    void nonSpeculativePeepholeBranchNull(Edge operand, Node* branchNode, bool invert = false);
-    bool nonSpeculativeCompareNull(Node*, Edge operand, bool invert = false);
+    void nonSpeculativeNonPeepholeCompareNullOrUndefined(Edge operand);
+    void nonSpeculativePeepholeBranchNullOrUndefined(Edge operand, Node* branchNode);
     
     void nonSpeculativePeepholeBranch(Node*, Node* branchNode, MacroAssembler::RelationalCondition, S_JITOperation_EJJ helperFunction);
     void nonSpeculativeNonPeepholeCompare(Node*, MacroAssembler::RelationalCondition, S_JITOperation_EJJ helperFunction);
@@ -1211,6 +1215,12 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(cell));
         return appendCallWithExceptionCheckSetResult(operation, result);
     }
+    
+    JITCompiler::Call callOperation(J_JITOperation_EJscCJ operation, GPRReg result, GPRReg arg1, JSCell* cell, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(cell), arg2);
+        return appendCallWithExceptionCheckSetResult(operation, result);
+    }
 
     JITCompiler::Call callOperation(V_JITOperation_EWs operation, WatchpointSet* watchpointSet)
     {
@@ -1615,6 +1625,11 @@ public:
     JITCompiler::Call callOperation(J_JITOperation_EJscC operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1, JSCell* cell)
     {
         m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(cell));
+        return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EJscCJ operation, GPRReg resultTag, GPRReg resultPayload, GPRReg arg1, JSCell* cell, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, TrustedImmPtr(cell), arg2);
         return appendCallWithExceptionCheckSetResult(operation, resultPayload, resultTag);
     }
     JITCompiler::Call callOperation(J_JITOperation_ESsiCI operation, GPRReg resultTag, GPRReg resultPayload, StructureStubInfo* stubInfo, GPRReg arg1, const UniquedStringImpl* uid)
@@ -2188,6 +2203,7 @@ public:
     void compileGetByValOnScopedArguments(Node*);
     
     void compileGetScope(Node*);
+    void compileLoadArrowFunctionThis(Node*);
     void compileSkipScope(Node*);
 
     void compileGetArrayLength(Node*);
@@ -2221,6 +2237,7 @@ public:
     void compilePutByValForIntTypedArray(GPRReg base, GPRReg property, Node*, TypedArrayType);
     void compileGetByValOnFloatTypedArray(Node*, TypedArrayType);
     void compilePutByValForFloatTypedArray(GPRReg base, GPRReg property, Node*, TypedArrayType);
+    template <typename ClassType> void compileNewFunctionCommon(GPRReg, Structure*, GPRReg, GPRReg, GPRReg, MacroAssembler::JumpList&, size_t, FunctionExecutable*, ptrdiff_t, ptrdiff_t, ptrdiff_t);
     void compileNewFunction(Node*);
     void compileForwardVarargs(Node*);
     void compileCreateActivation(Node*);
@@ -2717,6 +2734,8 @@ public:
             m_gpr = m_jit->reuse(op1.gpr());
         else if (m_jit->canReuse(op2.node()))
             m_gpr = m_jit->reuse(op2.gpr());
+        else if (m_jit->canReuse(op1.node(), op2.node()) && op1.gpr() == op2.gpr())
+            m_gpr = m_jit->reuse(op1.gpr());
         else
             m_gpr = m_jit->allocate();
     }

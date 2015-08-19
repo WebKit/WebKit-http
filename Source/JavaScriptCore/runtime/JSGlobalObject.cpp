@@ -60,6 +60,7 @@
 #include "JSArrayBufferConstructor.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSArrayIterator.h"
+#include "JSArrowFunction.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
@@ -260,6 +261,7 @@ void JSGlobalObject::init(VM& vm)
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
+    m_arrowFunctionStructure.set(vm, this, JSArrowFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_boundFunctionStructure.set(vm, this, JSBoundFunction::createStructure(vm, this, m_functionPrototype.get()));
     m_namedFunctionStructure.set(vm, this, Structure::addPropertyTransition(vm, m_functionStructure.get(), vm.propertyNames->name, DontDelete | ReadOnly | DontEnum, m_functionNameOffset));
     m_internalFunctionStructure.set(vm, this, InternalFunction::createStructure(vm, this, m_functionPrototype.get()));
@@ -336,9 +338,6 @@ void JSGlobalObject::init(VM& vm)
     m_regExpPrototype.set(vm, this, RegExpPrototype::create(vm, RegExpPrototype::createStructure(vm, this, m_objectPrototype.get()), emptyRegex));
     m_regExpStructure.set(vm, this, RegExpObject::createStructure(vm, this, m_regExpPrototype.get()));
     m_regExpMatchesArrayStructure.set(vm, this, createRegExpMatchesArrayStructure(vm, *this));
-    
-    m_promisePrototype.set(vm, this, JSPromisePrototype::create(exec, this, JSPromisePrototype::createStructure(vm, this, m_objectPrototype.get())));
-    m_promiseStructure.set(vm, this, JSPromise::createStructure(vm, this, m_promisePrototype.get()));
 
 #if ENABLE(WEBASSEMBLY)
     m_wasmModuleStructure.set(vm, this, JSWASMModule::createStructure(vm, this));
@@ -397,13 +396,11 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     m_syntaxErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("SyntaxError")));
     m_typeErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("TypeError")));
     m_URIErrorConstructor.set(vm, this, NativeErrorConstructor::create(vm, this, nativeErrorStructure, nativeErrorPrototypeStructure, ASCIILiteral("URIError")));
-    m_promiseConstructor.set(vm, this, JSPromiseConstructor::create(vm, JSPromiseConstructor::createStructure(vm, this, m_functionPrototype.get()), m_promisePrototype.get()));
     
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, DontEnum);
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, DontEnum);
     m_arrayPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayConstructor, DontEnum);
     m_regExpPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_regExpConstructor.get(), DontEnum);
-    m_promisePrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_promiseConstructor.get(), DontEnum);
     
     putDirectWithoutTransition(vm, vm.propertyNames->Object, objectConstructor, DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->Function, functionConstructor, DontEnum);
@@ -415,7 +412,6 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
     putDirectWithoutTransition(vm, vm.propertyNames->SyntaxError, m_syntaxErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->TypeError, m_typeErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->URIError, m_URIErrorConstructor.get(), DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->Promise, m_promiseConstructor.get(), DontEnum);
     
     
 #define PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName) \
@@ -491,7 +487,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->arrayIterationKindValuePrivateName, jsNumber(ArrayIterateValue), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->arrayIterationKindKeyValuePrivateName, jsNumber(ArrayIterateKeyValue), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().symbolIteratorPrivateName(), Symbol::create(vm, static_cast<SymbolImpl&>(*vm.propertyNames->iteratorSymbol.impl())), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->PromisePrivateName, m_promiseConstructor.get(), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->PromisePrivateName, promiseConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->promisePendingPrivateName, jsNumber(static_cast<unsigned>(JSPromise::Status::Pending)), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseFulfilledPrivateName(), jsNumber(static_cast<unsigned>(JSPromise::Status::Fulfilled)), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseRejectedPrivateName(), jsNumber(static_cast<unsigned>(JSPromise::Status::Rejected)), DontEnum | DontDelete | ReadOnly),
@@ -507,6 +503,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().createResolvingFunctionsPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromiseCreateResolvingFunctionsCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseReactionJobPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromisePromiseReactionJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().promiseResolveThenableJobPrivateName(), JSFunction::createBuiltinFunction(vm, operationsPromisePromiseResolveThenableJobCodeGenerator(vm), this), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().newPromiseDeferredPrivateName(), m_newPromiseDeferredFunction.get(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().InspectorInstrumentationPrivateName(), InspectorInstrumentationObject::create(vm, this, InspectorInstrumentationObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum | DontDelete | ReadOnly),
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
@@ -750,7 +747,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_typeErrorConstructor);
     visitor.append(&thisObject->m_URIErrorConstructor);
     visitor.append(&thisObject->m_objectConstructor);
-    visitor.append(&thisObject->m_promiseConstructor);
 
     visitor.append(&thisObject->m_nullGetterFunction);
     visitor.append(&thisObject->m_nullSetterFunction);
@@ -770,7 +766,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_arrayPrototype);
     visitor.append(&thisObject->m_errorPrototype);
     visitor.append(&thisObject->m_iteratorPrototype);
-    visitor.append(&thisObject->m_promisePrototype);
 
     visitor.append(&thisObject->m_debuggerScopeStructure);
     visitor.append(&thisObject->m_withScopeStructure);
@@ -797,6 +792,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_calleeStructure);
     visitor.append(&thisObject->m_functionStructure);
     visitor.append(&thisObject->m_boundFunctionStructure);
+    visitor.append(&thisObject->m_arrowFunctionStructure);
     visitor.append(&thisObject->m_namedFunctionStructure);
     visitor.append(&thisObject->m_symbolObjectStructure);
     visitor.append(&thisObject->m_regExpStructure);
@@ -804,7 +800,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_consoleStructure);
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
-    visitor.append(&thisObject->m_promiseStructure);
 #if ENABLE(WEBASSEMBLY)
     visitor.append(&thisObject->m_wasmModuleStructure);
 #endif

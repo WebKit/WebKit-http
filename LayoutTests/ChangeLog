@@ -1,3 +1,548 @@
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Punctuation near Hindi text is garbled when styled with the system font
+        https://bugs.webkit.org/show_bug.cgi?id=148164
+
+        Reviewed by Brian Burg.
+
+        This test is only relevant when the system font is set to Japanese or Simplified Chinese. In these
+        languages, the system font doesn't support punctuation, but CG will erroneously say that it does.
+
+        I intend to implement testing infrastructure which will allow us to mock the system language,
+        thereby allowing this test to be valid on all machines. The tracking bug for this effort is
+        https://bugs.webkit.org/show_bug.cgi?id=148168
+
+        * fast/text/hindi-system-font-punctuation-expected.html: Added.
+        * fast/text/hindi-system-font-punctuation.html: Added.
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        [Win] Test Gardening after r188598
+
+        Unreviewed. Really skip all inspector/ tests until the test harnesses are fixed.
+        This work is tracked by <https://bugs.webkit.org/show_bug.cgi?id=148025> and
+        <https://bugs.webkit.org/show_bug.cgi?id=148037>.
+
+        * platform/win/TestExpectations: 
+
+2015-08-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Links for rules in <style> are incorrect, do not account for <style> offset in the document
+        https://bugs.webkit.org/show_bug.cgi?id=148141
+
+        Reviewed by Brian Burg.
+
+        * inspector/css/getAllStyleSheets-expected.txt: Added.
+        * inspector/css/getAllStyleSheets.html: Added.
+        * inspector/css/resources/external.css: Added.
+        (body):
+        Test for style sheet header information for external and inline stylesheets.
+
+2015-08-18  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Optimize more cases of something-compared-to-null/undefined
+        https://bugs.webkit.org/show_bug.cgi?id=148157
+
+        Reviewed by Geoffrey Garen and Filip Pizlo.
+
+        * js/dom/document-all-watchpoint-covers-eliminated-compare-eq-expected.txt: Added.
+        * js/dom/document-all-watchpoint-covers-eliminated-compare-eq.html: Added.
+        * js/dom/script-tests/document-all-watchpoint-covers-eliminated-compare-eq.js: Added.
+        (compareFunction):
+
+2015-08-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Attempt to fix the failing search-padding-cancel-results-buttons.html test by making
+        platform-specific versions of the test.
+
+        * TestExpectations: Added search-padding-cancel-results-buttons-expected.txt with a default [ Skip ].
+        * fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Copied from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt.
+        * fast/forms/search/search-padding-cancel-results-buttons.html: Renamed from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons.html.
+        * platform/mac-mavericks/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Renamed from LayoutTests/platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt.
+        * platform/mac/TestExpectations: Enable the test only for Mac platforms.
+
+2015-08-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix a rare flakiness in svg/animations/svgPreserveAspectRatio-animation-1.html
+        https://bugs.webkit.org/show_bug.cgi?id=148149
+
+        Reviewed by Tim Horton.
+        
+        Do not sample the SVG animation at the middle of the animation period. At
+        that time, the SVG animation test script changes the value of the animated
+        attribute from the from-value to the to-value. It is safer to sample
+        immediately before and after the middle of the animation period.
+
+        * svg/animations/script-tests/svgPreserveAspectRatio-animation-1.js:
+        * svg/animations/svgPreserveAspectRatio-animation-1-expected.txt:
+
+2015-08-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Search input results and clear icons are misaligned when padding is added
+        https://bugs.webkit.org/show_bug.cgi?id=148146
+        <rdar://problem/22310951>
+
+        Reviewed by Zalan Bujtas.
+
+        Tests that for a search field with -webkit-appearance: textfield; and padding will not clip
+        its cancel and results buttons.
+
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Added.
+        * platform/mac/fast/forms/search/search-padding-cancel-results-buttons.html: Added.
+
+2015-08-18  Simon Fraser  <simon.fraser@apple.com>
+
+        will-change: backface-visibility should not cause stacking context
+        https://bugs.webkit.org/show_bug.cgi?id=148091
+
+        Reviewed by Zalan Bujtas.
+        
+        Test that will-change: -webkit-backface-visibility does not create
+        stacking context.
+
+        * fast/css/will-change/resources/will-change-stacking-helper.js:
+
+2015-08-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark fast/css/will-change/will-change-creates-stacking-context.html as an image-only
+        failure. Filed webkit.org/b/148144 to track it.
+
+        * platform/win/TestExpectations:
+
+2015-08-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Since the inspector stub cannot open files that live in the LayoutTests
+        directory, adopt the test helper marshalling approach used by inspector.js.
+        Each helper must register its code for marshalling and explicitly put globals
+        on the window object.
+
+        Use script tags rather than importScript to include helpers in a test.
+
+        * TestExpectations: For now, skip inspector http tests. These should be rewritten
+        to use inspector-test.js, which does not run into cross-origin problems.
+
+        Rebaseline some test results to account for shifted line numbers (yuck).
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (ProtocolTestProxy.registerInitializer):
+        (log):
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations-expected.txt:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations-expected.txt:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message-expected.txt:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/dom/dom-search-expected.txt:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/resources/dom-search-queries.js:
+
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening after r188591
+        https://bugs.webkit.org/show_bug.cgi?id=148119
+
+        Unreviewed.
+
+        * platform/win/fast/text/trak-optimizeLegibility-expected.txt: Added.
+
+2015-08-18  Chris Dumez  <cdumez@apple.com>
+
+        http/tests/navigation/page-cache-iframe-provisional-load.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148133
+
+        Reviewed by Alexey Proskuryakov.
+
+        http/tests/navigation/page-cache-iframe-provisional-load.html would fail if
+        the slow load would finish before navigating away. To greatly reduce the
+        chances of it happening, increase the slow load delay from 100ms to 3s.
+
+        Also make the test faster by using page-cache-helper.html instead of
+        page-cache-helper-slow.html. The idea of using a slow helper was for the
+        load to potentially finish while the page was in the PageCache. However,
+        now that we've increased the slow load delay, this will no longer happen.
+
+        * http/tests/navigation/page-cache-iframe-provisional-load.html:
+        * http/tests/navigation/resources/page-cache-helper-slow.html: Removed.
+
+2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Honor the 'trak' table by opting in via text-rendering: optimizeLegibility
+        https://bugs.webkit.org/show_bug.cgi?id=148119
+        <rdar://problem/22291561>
+
+        Reviewed by Tim Horton.
+
+        This test will fail until we stop mocking the system font on El Capitan. Until then,
+        this patch will commit the test failure as an expected result.
+
+        * fast/text/trak-optimizeLegibility-expected.html: Added
+        * fast/text/trak-optimizeLegibility.html: Added
+
+2015-08-18  Chris Dumez  <cdumez@apple.com>
+
+        Make our bindings' GetOwnPropertySlot() behave according to specification
+        https://bugs.webkit.org/show_bug.cgi?id=148092
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/childnode-item-after-itemname.html:
+        Update the test so the item's id in the NodeList is "testItem"
+        instead of "item". NodeList has a method called item() which now
+        takes priority over the name when accessing Nodelist.item, as per
+        the Web IDL specification.
+
+        * fast/dom/htmlcollection-getownproperty-expected.txt:
+        Rebaseline test. This is a progression.
+
+2015-08-18  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Remove failing expectations for some WK1 tests that have passed recent
+        builds.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+
+2015-08-18  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Do not stretch always grid items with auto width
+        https://bugs.webkit.org/show_bug.cgi?id=148069
+
+        Reviewed by Darin Adler.
+
+        New Layout tests to verify that grid stretching logic works as expected
+        when aligning both horizontally and vertically.
+
+        * fast/css-grid-layout/grid-align-justify-stretch-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-stretch.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-and-stretch.html: Added.
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change-expected.txt: Added.
+        * fast/css-grid-layout/grid-items-should-not-be-stretched-when-height-or-width-or-margin-change.html: Added.
+
+2015-08-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Update implementation with the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=147978
+
+        Reviewed by Darin Adler.
+
+        Changed tests about the order of the read and closed promise resolution.
+
+        * streams/readable-stream-reader-read.html:
+        * streams/reference-implementation/readable-stream-tee.html:
+        * streams/reference-implementation/readable-stream-templated.html:
+        * streams/reference-implementation/readable-stream.html:
+
+2015-08-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188539, r188544, r188552, and
+        r188564.
+        https://bugs.webkit.org/show_bug.cgi?id=148122
+
+        Broke tests and some build styles (Requested by ap on
+        #webkit).
+
+        Reverted changesets:
+
+        "Web Inspector: load ProtocolTestStub from the WebInspectorUI
+        bundle"
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+        http://trac.webkit.org/changeset/188539
+
+        "Web Inspector: split TestStub.js into multiple files and
+        modernize it"
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+        http://trac.webkit.org/changeset/188544
+
+        "Web Inspector: InspectorTest should be a subclass of
+        TestHarness"
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+        http://trac.webkit.org/changeset/188552
+
+        "Unreviewed internal build fix attempt after r188539."
+        http://trac.webkit.org/changeset/188564
+
+2015-08-17  Zalan Bujtas  <zalan@apple.com>
+
+        Outline with auto style leaves bits behind when the the box is moved.
+        https://bugs.webkit.org/show_bug.cgi?id=148100
+
+        Reviewed by Simon Fraser.
+
+        Due to RenderView::maximalOutlineSize() each outline width need to be tested separately.
+
+        * fast/repaint/outline-with1px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with1px-auto-repaint-rect.html: Added.
+        * fast/repaint/outline-with2px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with2px-auto-repaint-rect.html: Added.
+        * fast/repaint/outline-with3px-auto-repaint-rect-expected.txt: Added.
+        * fast/repaint/outline-with3px-auto-repaint-rect.html: Added.
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Remove support for composite fonts
+        https://bugs.webkit.org/show_bug.cgi?id=147920
+
+        Reviewed by Dan Bernstein.
+
+        * fast/text/international/text-spliced-font.html: Removed.
+        * platform/efl/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/efl/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/gtk/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/gtk/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/ios-simulator/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/mac/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/mac/fast/text/international/text-spliced-font-expected.txt: Removed.
+        * platform/win/fast/text/international/text-spliced-font-expected.png: Removed.
+        * platform/win/fast/text/international/text-spliced-font-expected.txt: Removed.
+
+2015-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening
+
+        Unreviewed.
+
+        * platform/win/fast/text/system-font-punctuation-expected.txt: Added.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorTest should be a subclass of TestHarness
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+
+        Reviewed by Timothy Hatcher.
+
+        Rename InspectorTestProxy to TestPage.
+
+        * http/tests/inspector/debugger/debugger-test.js:
+        * http/tests/inspector/dom/shapes-test.js:
+        * http/tests/inspector/replay/replay-test.js:
+        * http/tests/inspector/resources/inspector-test.js:
+        (TestPage.registerInitializer):
+        (runTest):
+        (TestPage.completeTest):
+        (TestPage.debugLog):
+        (TestPage.addResult):
+        (TestPage.reportUncaughtException):
+        (InspectorTestProxy.registerInitializer): Deleted.
+        (InspectorTestProxy.completeTest): Deleted.
+        (InspectorTestProxy.debugLog): Deleted.
+        (InspectorTestProxy.addResult): Deleted.
+        (InspectorTestProxy.reportUncaughtException): Deleted.
+        * inspector/debugger/breakpoint-action-eval.html:
+        * inspector/debugger/resources/break-on-exception-tests.js:
+        * inspector/debugger/resources/script-for-breakpoint-actions.js:
+        (breakpointActions):
+        * inspector/debugger/search-scripts.html:
+        * inspector/replay/window-navigator-plugins-memoized.html:
+        * inspector/timeline/debugger-paused-while-recording.html:
+        * inspector/timeline/exception-in-injected-script-while-recording.html:
+
+2015-08-17  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Remove failing expectations for some WK2 tests that have passed for the
+        last 15 builds.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2015-08-17  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Implement ES6 arrow function syntax. Arrow function specific features. Lexical bind of this
+        https://bugs.webkit.org/show_bug.cgi?id=144956
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-bind-expected.txt: Added.
+        * js/arrowfunction-bind.html: Added.
+        * js/arrowfunction-call-expected.txt: Added.
+        * js/arrowfunction-call.html: Added.
+        * js/arrowfunction-constructor-expected.txt: Added.
+        * js/arrowfunction-constructor.html: Added.
+        * js/arrowfunction-lexical-bind-this-expected.txt: Added.
+        * js/arrowfunction-lexical-bind-this.html: Added.
+        * js/arrowfunction-others-expected.txt: Added.
+        * js/arrowfunction-others.html: Added.
+        * js/arrowfunction-tdz-expected.txt: Added.
+        * js/arrowfunction-tdz.html: Added.
+        * js/arrowfunction-typeof-expected.txt: Added.
+        * js/arrowfunction-typeof.html: Added.
+        * js/regress/arrowfunction-call-expected.txt: Added.
+        * js/regress/arrowfunction-call.html: Added.
+        * js/regress/script-tests/arrowfunction-call.js: Added.
+        * js/regress/script-tests/function-call.js: Added.
+        * js/script-tests/arrowfunction-bind.js: Added.
+        * js/script-tests/arrowfunction-call.js: Added.
+        * js/script-tests/arrowfunction-constructor.js: Added.
+        * js/script-tests/arrowfunction-lexical-bind-this.js: Added.
+        * js/script-tests/arrowfunction-others.js: Added.
+        * js/script-tests/arrowfunction-tdz.js: Added.
+        * js/script-tests/arrowfunction-typeof.js: Added.
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: split TestStub.js into multiple files and modernize it
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+
+        Reviewed by Timothy Hatcher.
+
+        Add the prefix 'TestPage' to everything in protocol-test.js. Continue
+        exporting it to the global namespace for backwards compatibility, too.
+
+        Rename some things to match changes in the test harness. Tighten up
+        preconditions for test suite and test case names. Sprinkle some ES6.
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (TestPage.registerInitializer):
+        (TestPage.debugLog.window.debugLog):
+        (TestPage.log.window.log):
+        (TestPage.closeTest.window.closeTest):
+        (TestPage.runTest.window.runTest):
+        (ProtocolTestProxy.registerInitializer): Deleted.
+        (debugLog): Deleted.
+        (log): Deleted.
+        (closeTest): Deleted.
+        (runTest): Deleted.
+        * inspector/dom/resources/dom-search-queries.js:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite.html:
+
+2015-08-17  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: load ProtocolTestStub from the WebInspectorUI bundle
+        https://bugs.webkit.org/show_bug.cgi?id=147955
+
+        Reviewed by Timothy Hatcher.
+
+        Since the inspector stub cannot open files that live in the LayoutTests
+        directory, adopt the test helper marshalling approach used by inspector.js.
+        Each helper must register its code for marshalling and explicitly put globals
+        on the window object.
+
+        Use script tags rather than importScript to include helpers in a test.
+
+        * TestExpectations: For now, skip inspector http tests. These should be rewritten
+        to use inspector-test.js, which does not run into cross-origin problems.
+
+        Rebaseline some test results to account for shifted line numbers (yuck).
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (ProtocolTestProxy.registerInitializer):
+        (log):
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations-expected.txt:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations-expected.txt:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message-expected.txt:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/dom/dom-search-expected.txt:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/resources/dom-search-queries.js:
+
+2015-08-17  Simon Fraser  <simon.fraser@apple.com>
+
+        will-change should sometimes trigger compositing
+        https://bugs.webkit.org/show_bug.cgi?id=148072
+
+        Reviewed by Tim Horton.
+
+        * compositing/layer-creation/will-change-change-expected.txt: Added.
+        * compositing/layer-creation/will-change-change.html: Added.
+        * compositing/layer-creation/will-change-layer-creation-expected.txt: Added.
+        * compositing/layer-creation/will-change-layer-creation.html: Added.
+
+2015-08-17  Timothy Horton  <timothy_horton@apple.com>
+
+        Holes for find matches that span multiple lines are completely wrong
+        https://bugs.webkit.org/show_bug.cgi?id=148065
+        <rdar://problem/5305002>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/mark-matches-broken-line-rendering-expected.html: Added.
+        * fast/text/mark-matches-broken-line-rendering.html: Added.
+        Add a test that ensures that we correctly mark test matches that cross
+        line breaks.
+
+2015-08-17  Chris Dumez  <cdumez@apple.com>
+
+        Accessing HTMLCollection.length is slow
+        https://bugs.webkit.org/show_bug.cgi?id=148039
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/htmlcollection-getownproperty-expected.txt: Added.
+        * fast/dom/htmlcollection-getownproperty.html: Added.
+        Add new layout test covering the expected behavior of HTMLCollection's
+        [[GetOwnProperty]]. A few checks are still failing as we don't entirely
+        match the specification yet.
+
+        * fast/dom/wrapper-classes-expected.txt:
+        Rebaseline test as a few more checks are now passing.
+
+2015-08-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Removed an expectation for http/tests/media/video-buffered-range-contains-currentTime.html,
+        which no longer times out. This expectation was conflicting with a correct one.
+
+        * platform/mac/TestExpectations:
+
+2015-08-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Have will-change create stacking context when necessary
+        https://bugs.webkit.org/show_bug.cgi?id=148060
+
+        Reviewed by Zalan Bujtas.
+        
+        Ref test for will-change creating stacking context.
+
+        * fast/css/will-change/resources/will-change-stacking-helper.js: Added.
+        (makeStackingBlock):
+        * fast/css/will-change/will-change-creates-stacking-context-expected.html: Added.
+        * fast/css/will-change/will-change-creates-stacking-context.html: Added.
+        * platform/efl/TestExpectations: Mark image failure on EFL, since some CSS
+        properties in the test are disabled there.
+
+2015-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement parsing for CSS will-change
+        https://bugs.webkit.org/show_bug.cgi?id=148052
+
+        Reviewed by Dean Jackson.
+        
+        will-change parsing test.
+
+        * fast/css/will-change-parsing-expected.txt: Added.
+        * fast/css/will-change-parsing.html: Added.
+
 2015-08-14  Alexey Proskuryakov  <ap@apple.com>
 
         Clean up js-test use in scroll-snap tests

@@ -51,7 +51,8 @@ WebInspector.VisualStyleFontFamilyTreeElement = class VisualStyleFontFamilyTreeE
 
     updateMainTitle(text)
     {
-        this.mainTitle = this._listItemNode.style.fontFamily = this._keywordEditor.value = text;
+        this.mainTitle = this._keywordEditor.value = text;
+        this._listItemNode.style.fontFamily = text + ", " + WebInspector.VisualStyleFontFamilyTreeElement.FontFamilyFallback;
 
         let hasText = text && text.length;
         this._listItemNode.classList.toggle("no-value", !hasText);
@@ -59,6 +60,11 @@ WebInspector.VisualStyleFontFamilyTreeElement = class VisualStyleFontFamilyTreeE
             this.subtitle = this._keywordEditor.placeholder;
 
         this.dispatchEventToListeners(WebInspector.VisualStyleFontFamilyTreeElement.Event.KeywordChanged);
+    }
+
+    get currentlyEditing()
+    {
+        return !this.keywordEditorHidden;
     }
 
     showKeywordEditor()
@@ -159,6 +165,8 @@ WebInspector.VisualStyleFontFamilyTreeElement = class VisualStyleFontFamilyTreeE
         this.dispatchEventToListeners(WebInspector.VisualStyleFontFamilyTreeElement.Event.EditorBlurred);
     }
 };
+
+WebInspector.VisualStyleFontFamilyTreeElement.FontFamilyFallback = "-apple-system, sans-serif";
 
 WebInspector.VisualStyleFontFamilyTreeElement.Event = {
     KeywordChanged: "visual-style-font-family-tree-element-keyword-changed",

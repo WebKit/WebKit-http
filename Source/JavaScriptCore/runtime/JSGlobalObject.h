@@ -99,6 +99,7 @@ struct HashTable;
     macro(Boolean, boolean, booleanObject, BooleanObject, Boolean) \
     macro(Number, number, numberObject, NumberObject, Number) \
     macro(Error, error, error, ErrorInstance, Error) \
+    macro(JSPromise, promise, promise, JSPromise, Promise) \
     macro(JSArrayBuffer, arrayBuffer, arrayBuffer, JSArrayBuffer, ArrayBuffer) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
     DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
@@ -183,7 +184,6 @@ protected:
     WriteBarrier<NativeErrorConstructor> m_syntaxErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_URIErrorConstructor;
-    WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
     WriteBarrier<ObjectConstructor> m_objectConstructor;
 
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
@@ -205,7 +205,6 @@ protected:
     WriteBarrier<ArrayPrototype> m_arrayPrototype;
     WriteBarrier<RegExpPrototype> m_regExpPrototype;
     WriteBarrier<IteratorPrototype> m_iteratorPrototype;
-    WriteBarrier<JSPromisePrototype> m_promisePrototype;
 
     WriteBarrier<Structure> m_debuggerScopeStructure;
     WriteBarrier<Structure> m_withScopeStructure;
@@ -232,6 +231,7 @@ protected:
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
     WriteBarrier<Structure> m_boundFunctionStructure;
+    WriteBarrier<Structure> m_arrowFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
@@ -241,7 +241,6 @@ protected:
     WriteBarrier<Structure> m_internalFunctionStructure;
     WriteBarrier<Structure> m_iteratorResultStructure;
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
-    WriteBarrier<Structure> m_promiseStructure;
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_wasmModuleStructure;
 #endif
@@ -386,7 +385,6 @@ public:
     NativeErrorConstructor* syntaxErrorConstructor() const { return m_syntaxErrorConstructor.get(); }
     NativeErrorConstructor* typeErrorConstructor() const { return m_typeErrorConstructor.get(); }
     NativeErrorConstructor* URIErrorConstructor() const { return m_URIErrorConstructor.get(); }
-    JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
 
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
     NullSetterFunction* nullSetterFunction() const { return m_nullSetterFunction.get(); }
@@ -418,7 +416,6 @@ public:
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
     ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
-    JSPromisePrototype* promisePrototype() const { return m_promisePrototype.get(); }
 
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
@@ -462,6 +459,7 @@ public:
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
+    Structure* arrowFunctionStructure() const { return m_arrowFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
@@ -475,7 +473,6 @@ public:
     Structure* iteratorResultStructure() const { return m_iteratorResultStructure.get(); }
     static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
-    Structure* promiseStructure() const { return m_promiseStructure.get(); }
 #if ENABLE(WEBASSEMBLY)
     Structure* wasmModuleStructure() const { return m_wasmModuleStructure.get(); }
 #endif
