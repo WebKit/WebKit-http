@@ -34,10 +34,11 @@
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
 #include <WebCore/WaylandSurfaceWPE.h>
+#include <wtf/Condition.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Threading.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
@@ -118,10 +119,10 @@ private:
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
     ThreadIdentifier m_threadIdentifier;
-    ThreadCondition m_initializeRunLoopCondition;
-    Lock m_initializeRunLoopConditionMutex;
-    ThreadCondition m_terminateRunLoopCondition;
-    Lock m_terminateRunLoopConditionMutex;
+    Condition m_initializeRunLoopCondition;
+    Lock m_initializeRunLoopConditionLock;
+    Condition m_terminateRunLoopCondition;
+    Lock m_terminateRunLoopConditionLock;
 
     static const struct wl_callback_listener m_frameListener;
 
