@@ -114,7 +114,7 @@ const struct wl_registry_listener g_registryListener = {
     [](void*, struct wl_registry*, uint32_t) { },
 };
 
-WaylandDisplay& WaylandDisplay::singleton()
+const WaylandDisplay& WaylandDisplay::singleton()
 {
     static WaylandDisplay display;
     return display;

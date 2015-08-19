@@ -65,7 +65,7 @@ private:
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
 
-    WaylandDisplay& m_display;
+    const WaylandDisplay& m_display;
 };
 
 } // namespace ViewBackend

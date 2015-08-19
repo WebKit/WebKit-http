@@ -40,7 +40,7 @@ namespace ViewBackend {
 
 class WaylandDisplay {
 public:
-    static WaylandDisplay& singleton();
+    static const WaylandDisplay& singleton();
 
     struct wl_display* display() const { return m_display; }
 
