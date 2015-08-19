@@ -143,6 +143,21 @@ WaylandDisplay::WaylandDisplay()
     g_source_attach(baseSource, g_main_context_get_thread_default());
 }
 
+WaylandDisplay::~WaylandDisplay()
+{
+    if (interfaces.compositor)
+        wl_compositor_destroy(interfaces.compositor);
+    if (interfaces.drm)
+        wl_drm_destroy(interfaces.drm);
+    if (interfaces.xdg)
+        xdg_shell_destroy(interfaces.xdg);
+
+    if (m_registry)
+        wl_registry_destroy(m_registry);
+    if (m_display)
+        wl_display_disconnect(m_display);
+}
+
 } // namespace ViewBackend
 
 } // namespace WPE

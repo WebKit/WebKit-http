@@ -52,6 +52,7 @@ public:
 
 private:
     WaylandDisplay();
+    ~WaylandDisplay();
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
