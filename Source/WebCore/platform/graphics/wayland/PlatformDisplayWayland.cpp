@@ -195,12 +195,9 @@ void PlatformDisplayWayland::registerSurface(struct wl_surface* surface) const
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createOffscreenContext(GLContext* sharingContext)
 {
-#if 0
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
     return GLContextEGL::createWindowContext(nativeWindow, sharingContext);
-#endif
-    return nullptr;
 }
 
 } // namespace WebCore
