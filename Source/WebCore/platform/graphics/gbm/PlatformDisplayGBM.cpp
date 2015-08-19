@@ -40,8 +40,6 @@ namespace WebCore {
 
 PlatformDisplayGBM::PlatformDisplayGBM()
 {
-    fprintf(stderr, "PlatformDisplayGBM: ctor\n");
-
     m_gbm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
     if (m_gbm.fd < 0) {
         fprintf(stderr, "PlatformDisplayGBM: cannot open the render node\n");
@@ -81,7 +79,6 @@ PlatformDisplayGBM::PlatformDisplayGBM()
 
 PlatformDisplayGBM::~PlatformDisplayGBM()
 {
-    fprintf(stderr, "PlatformDisplayGBM: dtor\n");
     if (m_gbm.device)
         gbm_device_destroy(m_gbm.device);
 
@@ -117,7 +114,7 @@ PlatformDisplayGBM::GBMBufferExport PlatformDisplayGBM::lockFrontBuffer(GBMSurfa
 
     uint32_t handle = gbm_bo_get_handle(bo).u32;
     auto result = m_lockedBuffers.add(handle, bo);
-    RELEASE_ASSERT(result.isNewEntry);
+    ASSERT_UNUSED(result, result.isNewEntry);
 
     auto* data = static_cast<GBMBufferExport*>(gbm_bo_get_user_data(bo));
     if (data)
@@ -134,7 +131,7 @@ PlatformDisplayGBM::GBMBufferExport PlatformDisplayGBM::lockFrontBuffer(GBMSurfa
 
 void PlatformDisplayGBM::releaseBuffer(GBMSurface& surface, uint32_t handle)
 {
-    RELEASE_ASSERT(m_lockedBuffers.contains(handle));
+    ASSERT(m_lockedBuffers.contains(handle));
     struct gbm_bo* bo = m_lockedBuffers.take(handle);
     gbm_surface_release_buffer(surface.native(), bo);
 }
