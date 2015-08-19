@@ -47,43 +47,6 @@ namespace WPE {
 
 namespace ViewBackend {
 
-#if 0
-static const char* vertexShaderSource = 
-    "attribute vec4 position;\n"
-    "attribute vec2 texcoords;\n"
-    "varying vec2 tcoords;\n"
-    "void main()\n"
-    "{\n"
-    "    tcoords = texcoords;\n"
-    "    gl_Position = position;\n"
-    "}\n";
-
-static const char* fragmentShaderSource = 
-    "#extension GL_OES_EGL_image_external : require\n"
-    "varying highp vec2 tcoords;\n"
-    "uniform samplerExternalOES samp;\n"
-    "void main()\n"
-    "{\n"
-    "    gl_FragColor = texture2D(samp, tcoords);\n"
-    "}\n";
-
-static const EGLint configAttributes[] = {
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-    EGL_RED_SIZE, 8,
-    EGL_GREEN_SIZE, 8,
-    EGL_BLUE_SIZE, 8,
-    EGL_STENCIL_SIZE, 8,
-    EGL_ALPHA_SIZE, 8,
-    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-    EGL_NONE
-};
-
-static const EGLint contextAttributes[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE
-};
-#endif
-
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
