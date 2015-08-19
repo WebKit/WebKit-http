@@ -219,13 +219,8 @@ void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-#if ENABLE(ENCRYPTED_MEDIA)
-        registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
-            getSupportedTypes, extendedSupportsType, 0, 0, 0, supportsKeySystem);
-#else
          registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
             getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
-#endif
 }
 
 bool initializeGStreamerAndRegisterWebKitElements()
@@ -2217,14 +2212,16 @@ bool MediaPlayerPrivateGStreamer::supportsKeySystem(const String& keySystem, con
 {
     GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
 
-#if USE(DXDRM)
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready") ||
-        equalIgnoringCase(keySystem, "com.youtube.playready"))
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (equalIgnoringCase(keySystem, "org.w3.clearkey"))
         return true;
 #endif
 
-    if (equalIgnoringCase(keySystem, "org.w3.clearkey"))
+#if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
+    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
+        || equalIgnoringCase(keySystem, "com.youtube.playready"))
         return true;
+#endif
 
     return false;
 }
@@ -2235,7 +2232,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
     LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
 #if USE(DXDRM)
-    if (keySystem == PLAYREADY_PROTECTION_SYSTEM_ID) {
+    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
+        || equalIgnoringCase(keySystem, "com.youtube.playready")) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
         RefPtr<Uint8Array> nextMessage;
         unsigned short errorCode;
@@ -2255,6 +2253,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
     }
 #endif
 
+    if (!equalIgnoringCase(keySystem, "org.w3.clearkey"))
+        return MediaPlayer::KeySystemNotSupported;
+
     GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
@@ -2265,22 +2266,28 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
 
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
-    LOG_MEDIA_MESSAGE("generateKeyRequest");
+    LOG_MEDIA_MESSAGE("generating key request for system: %s", keySystem.utf8().data());
 #if USE(DXDRM)
-    if (!m_dxdrmSession)
-        m_dxdrmSession = new DiscretixSession(this);
-    unsigned short errorCode;
-    unsigned long systemCode;
-    RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
-    String destinationURL;
-    RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
-    if (errorCode)
-        return MediaPlayer::InvalidPlayerState;
+    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
+        || equalIgnoringCase(keySystem, "com.youtube.playready")) {
+        if (!m_dxdrmSession)
+            m_dxdrmSession = new DiscretixSession(this);
+        unsigned short errorCode;
+        unsigned long systemCode;
+        RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
+        String destinationURL;
+        RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
+        if (errorCode)
+            return MediaPlayer::InvalidPlayerState;
 
-    URL url(URL(), destinationURL);
-    m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
-    return MediaPlayer::NoError;
+        URL url(URL(), destinationURL);
+        m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
+        return MediaPlayer::NoError;
+    }
 #endif
+
+    if (!equalIgnoringCase(keySystem, "org.w3.clearkey"))
+        return MediaPlayer::KeySystemNotSupported;
 
     m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
     return MediaPlayer::NoError;
@@ -2307,30 +2314,6 @@ void MediaPlayerPrivateGStreamer::signalDRM()
     GST_DEBUG("key/license was changed or failed, signal semaphore");
     // Wake up a potential waiter blocked in the GStreamer thread
     m_drmKeySemaphore.signal();
-}
-#endif
-
-
-#if ENABLE(ENCRYPTED_MEDIA)
-MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::extendedSupportsType(const MediaEngineSupportParameters& parameters)
-{
-    // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
-    // In addition to the steps in the current specification, this method must run the following steps:
-
-    // 1. Check whether the Key System is supported with the specified container and codec type(s) by following the steps for the first matching condition from the following list:
-    //    If keySystem is null, continue to the next step.
-    if (parameters.keySystem.isNull() || parameters.keySystem.isEmpty())
-        return supportsType(parameters);
-
-    // If keySystem contains an unrecognized or unsupported Key System, return the empty string
-    if (!supportsKeySystem(parameters.keySystem, emptyString()))
-        return MediaPlayer::IsNotSupported;
-
-    // If the Key System specified by keySystem does not support decrypting the container and/or codec specified in the rest of the type string.
-    // (AVFoundation does not provide an API which would allow us to determine this, so this is a no-op)
-
-    // 2. Return "maybe" or "probably" as appropriate per the existing specification of canPlayType().
-    return supportsType(parameters);
 }
 #endif
 
@@ -2375,19 +2358,35 @@ void MediaPlayerPrivateGStreamer::keyAdded()
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
 {
+    MediaPlayer::SupportsType result = MediaPlayer::IsNotSupported;
 #if ENABLE(MEDIA_SOURCE)
     // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
     if (parameters.isMediaSource && parameters.type.endsWith("webm"))
-        return MediaPlayer::IsNotSupported;
+        return result;
 #endif
 
     if (parameters.type.isNull() || parameters.type.isEmpty())
-        return MediaPlayer::IsNotSupported;
+        return result;
 
     // spec says we should not return "probably" if the codecs string is empty
     if (mimeTypeCache().contains(parameters.type))
-        return parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
-    return MediaPlayer::IsNotSupported;
+        result = parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
+    // In addition to the steps in the current specification, this method must run the following steps:
+
+    // 1. Check whether the Key System is supported with the specified container and codec type(s) by following the steps for the first matching condition from the following list:
+    //    If keySystem is null, continue to the next step.
+    if (parameters.keySystem.isNull() || parameters.keySystem.isEmpty())
+        return result;
+
+    // If keySystem contains an unrecognized or unsupported Key System, return the empty string
+    if (supportsKeySystem(parameters.keySystem, emptyString()))
+        result = MediaPlayer::IsSupported;
+#endif
+
+    return result;
 }
 
 void MediaPlayerPrivateGStreamer::setDownloadBuffering()

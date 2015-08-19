@@ -185,9 +185,6 @@ private:
 
     GstElement* createAudioSink() override;
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&);
-#endif
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&);
     CDMSession* m_cdmSession;

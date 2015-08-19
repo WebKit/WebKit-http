@@ -371,7 +371,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             gst_element_post_message(GST_ELEMENT(self),
                 gst_message_new_element(GST_OBJECT(self),
                     gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, buffer,
-                        "key-system-id", G_TYPE_STRING, systemId, nullptr)));
+                        "key-system-id", G_TYPE_STRING, "org.w3.clearkey", nullptr)));
         }
 
         gst_event_unref(event);
