@@ -126,10 +126,8 @@ const struct wl_registry_listener WaylandDisplay::m_registryListener = {
         if (!std::strcmp(interface, "wl_compositor"))
             display.m_compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
 
-        if (!std::strcmp(interface, "wl_drm")) {
+        if (!std::strcmp(interface, "wl_drm"))
             display.m_drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
-            wl_drm_add_listener(display.m_drm, &WaylandDisplay::m_drmListener, &display);
-        }
 
         if (!std::strcmp(interface, "xdg_shell")) {
             display.m_xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
@@ -139,28 +137,6 @@ const struct wl_registry_listener WaylandDisplay::m_registryListener = {
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
-};
-
-const struct wl_drm_listener WaylandDisplay::m_drmListener = {
-    // device
-    [](void* data, struct wl_drm*, const char* device)
-    {
-        fprintf(stderr, "WaylandDisplay::m_drmListener::device() %s\n", device);
-        auto& display = *static_cast<WaylandDisplay*>(data);
-        display.m_drmFD = open(device, O_RDWR | O_CLOEXEC);
-        if (display.m_drmFD < 0)
-            return;
-
-        drm_magic_t magic;
-        drmGetMagic(display.m_drmFD, &magic);
-        wl_drm_authenticate(display.m_drm, magic);
-    },
-    // format
-    [](void*, struct wl_drm*, uint32_t) { },
-    // authenticated
-    [](void*, struct wl_drm*) { },
-    // capabilities
-    [](void*, struct wl_drm*, uint32_t) { },
 };
 
 const struct xdg_shell_listener WaylandDisplay::m_xdgShellListener = {

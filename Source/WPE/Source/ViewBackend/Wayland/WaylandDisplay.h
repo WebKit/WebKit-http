@@ -50,7 +50,6 @@ private:
     WaylandDisplay();
 
     static const struct wl_registry_listener m_registryListener;
-    static const struct wl_drm_listener m_drmListener;
     static const struct xdg_shell_listener m_xdgShellListener;
 
     struct wl_display* m_display;
@@ -58,8 +57,6 @@ private:
     struct wl_compositor* m_compositor;
     struct wl_drm* m_drm;
     struct xdg_shell* m_xdg;
-
-    int m_drmFD { -1 };
 
     EGLDisplay m_eglDisplay;
 };
