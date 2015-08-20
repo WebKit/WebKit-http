@@ -38,8 +38,8 @@
 
 namespace WebCore {
 
-CDMPRSessionGStreamer::CDMPRSessionGStreamer(MediaPlayerPrivateGStreamer* parent)
-    : DiscretixSession(parent)
+CDMPRSessionGStreamer::CDMPRSessionGStreamer()
+    : DiscretixSession()
     , m_client(nullptr)
     , m_sessionId(createCanonicalUUIDString())
 {
@@ -80,7 +80,6 @@ bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMess
 
 void CDMPRSessionGStreamer::releaseKeys()
 {
-    signalDRM();
 }
 
 RefPtr<ArrayBuffer> CDMPRSessionGStreamer::cachedKeyForKeyID(const String& sessionId) const

@@ -30,11 +30,7 @@
 
 namespace WebCore {
 
-class MediaPlayerPrivateGStreamer;
-
 class DiscretixSession {
-private:
-    DiscretixSession();
 
 private:
     enum SessionState {
@@ -44,21 +40,25 @@ private:
     };
 
 public:
-    DiscretixSession(MediaPlayerPrivateGStreamer* parent);
+    DiscretixSession();
     ~DiscretixSession();
 
     PassRefPtr<Uint8Array> dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode);
     bool dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode);
 
-    void signalDRM();
+    bool keyRequested() const { return m_keyRequested; }
+    bool ready() const { return m_ready; }
     int decrypt(void* data, uint32_t dataLength, const void* encryptionBoxData, uint32_t encryptionBoxLength, uint32_t sampleIndex, uint32_t trackId);
 
 protected:
-    MediaPlayerPrivateGStreamer* m_player;
-    void* m_DxDrmStream;
     RefPtr<ArrayBuffer> m_key;
+
+private:
+    void* m_DxDrmStream;
     SessionState m_state;
     EDxDrmStatus m_status;
+    bool m_ready;
+    bool m_keyRequested;
 };
 
 }
