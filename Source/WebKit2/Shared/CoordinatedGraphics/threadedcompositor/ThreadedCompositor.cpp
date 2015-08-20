@@ -424,14 +424,14 @@ ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedComposi
 
 bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
 {
-    MutexLocker locker(mutex());
+    LockHolder locker(mutex());
     setIsScheduled(true);
     return true;
 }
 
 bool ThreadedCompositor::DisplayRefreshMonitor::requiresDisplayRefreshCallback()
 {
-    MutexLocker locker(mutex());
+    LockHolder locker(mutex());
     return isScheduled() && isPreviousFrameDone();
 }
 
@@ -444,7 +444,7 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 {
     bool shouldHandleDisplayRefreshNotification = false;
     {
-        MutexLocker locker(mutex());
+        LockHolder locker(mutex());
         shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
         if (shouldHandleDisplayRefreshNotification) {
             setIsPreviousFrameDone(false);
