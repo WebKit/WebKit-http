@@ -198,10 +198,11 @@ void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const 
         cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_FAST);
         break;
     case InterpolationMedium:
-    case InterpolationDefault:
-        cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_GOOD);
     case InterpolationHigh:
-        cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_BEST);
+        cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_BILINEAR);
+        break;
+    case InterpolationDefault:
+        cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_BILINEAR);
         break;
     }
     cairo_pattern_set_extend(pattern.get(), CAIRO_EXTEND_PAD);
