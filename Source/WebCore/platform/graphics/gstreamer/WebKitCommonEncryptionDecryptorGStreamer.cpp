@@ -32,12 +32,18 @@
 struct _WebKitMediaCommonEncryptionDecrypt {
     GstBaseTransform parent;
     GBytes* key;
+    GstBuffer* initDataBuffer;
+
+    gboolean keyReceived;
+    GMutex mutex;
+    GCond condition;
 };
 
 struct _WebKitMediaCommonEncryptionDecryptClass {
     GstBaseTransformClass parentClass;
 };
 
+static void webkit_media_common_encryption_decrypt_dispose(GObject* object);
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps* filter);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
@@ -64,6 +70,9 @@ G_DEFINE_TYPE(WebKitMediaCommonEncryptionDecrypt, webkit_media_common_encryption
 static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonEncryptionDecryptClass* klass) {
     GstBaseTransformClass* baseTransformClass = GST_BASE_TRANSFORM_CLASS(klass);
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
+    GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
+
+    gobjectClass->dispose = webkit_media_common_encryption_decrypt_dispose;
 
     gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
     gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
@@ -91,8 +100,20 @@ static void webkit_media_common_encryption_decrypt_init(WebKitMediaCommonEncrypt
     gst_base_transform_set_in_place(base, TRUE);
     gst_base_transform_set_passthrough(base, FALSE);
     gst_base_transform_set_gap_aware(base, FALSE);
+
+    g_mutex_init(&self->mutex);
+    g_cond_init(&self->condition);
 }
 
+static void webkit_media_common_encryption_decrypt_dispose(GObject* object)
+{
+    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(object);
+
+    g_mutex_clear(&self->mutex);
+    g_cond_clear(&self->condition);
+
+    G_OBJECT_CLASS(parent_class)->dispose(object);
+}
 /*
   Given the pad in this direction and the given caps, what caps are allowed on
   the other pad in this element ?
@@ -201,8 +222,22 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     GstBuffer* subsamplesBuffer = nullptr;
     GstMapInfo subSamplesMap;
     GstByteReader* reader = nullptr;
+    GstProtectionMeta* protectionMeta;
 
-    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
+    g_mutex_lock(&self->mutex);
+
+    // The key might not have been received yet. Wait for it.
+    if (!self->keyReceived)
+        g_cond_wait(&self->condition, &self->mutex);
+
+    ASSERT(self->key);
+    if (!self->key) {
+        GST_ERROR_OBJECT(self, "Decryption key not provided");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto release;
+    }
+
+    protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta || !buffer) {
         if (!protectionMeta)
             GST_ERROR_OBJECT(self, "Failed to get GstProtection metadata from buffer %p", buffer);
@@ -210,7 +245,8 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         if (!buffer)
             GST_ERROR_OBJECT(self, "Failed to get writable buffer");
 
-        return GST_FLOW_NOT_SUPPORTED;
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto release;
     }
 
     if (!gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE))) {
@@ -272,12 +308,6 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             result = GST_FLOW_NOT_SUPPORTED;
             goto release;
         }
-    }
-
-    if (!self->key) {
-        GST_ERROR_OBJECT(self, "Decryption key not provided");
-        result = GST_FLOW_NOT_SUPPORTED;
-        goto release;
     }
 
     state = webkit_media_aes_ctr_decrypt_new(self->key, ivBytes);
@@ -344,7 +374,19 @@ release:
     if (ivBytes)
         g_bytes_unref(ivBytes);
 
+    g_mutex_unlock(&self->mutex);
     return result;
+}
+
+static gboolean requestKeyFromMainThread(gpointer userData)
+{
+    WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(userData);
+
+    gst_element_post_message(GST_ELEMENT(self),
+        gst_message_new_element(GST_OBJECT(self),
+            gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, self->initDataBuffer,
+                "key-system-id", G_TYPE_STRING, "org.w3.clearkey", nullptr)));
+    return G_SOURCE_REMOVE;
 }
 
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform* trans, GstEvent* event)
@@ -355,11 +397,10 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_PROTECTION: {
         const gchar* systemId;
-        GstBuffer* buffer = nullptr;
         const gchar* origin;
 
         GST_DEBUG_OBJECT(self, "received protection event");
-        gst_event_parse_protection(event, &systemId, &buffer, &origin);
+        gst_event_parse_protection(event, &systemId, &self->initDataBuffer, &origin);
         GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
         if (!g_str_equal(systemId, CLEAR_KEY_PROTECTION_SYSTEM_ID)) {
             gst_event_unref(event);
@@ -367,12 +408,8 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             break;
         }
 
-        if (g_str_has_prefix(origin, "isobmff/")) {
-            gst_element_post_message(GST_ELEMENT(self),
-                gst_message_new_element(GST_OBJECT(self),
-                    gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, buffer,
-                        "key-system-id", G_TYPE_STRING, "org.w3.clearkey", nullptr)));
-        }
+        if (g_str_has_prefix(origin, "isobmff/"))
+            g_timeout_add(0, requestKeyFromMainThread, self);
 
         gst_event_unref(event);
         result = TRUE;
@@ -390,6 +427,9 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             gst_buffer_map(buffer, &info, GST_MAP_READ);
             self->key = g_bytes_new(info.data, info.size);
             gst_buffer_unmap(buffer, &info);
+
+            self->keyReceived = TRUE;
+            g_cond_signal(&self->condition);
         }
 
         gst_event_unref(event);
