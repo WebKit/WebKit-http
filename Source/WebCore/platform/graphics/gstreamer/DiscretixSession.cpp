@@ -27,7 +27,6 @@
 #include "MediaPlayerPrivateGStreamer.h"
 
 #include <dxdrm/DxDrmDebugApi.h>
-#include <gst/base/gstbytereader.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/CString.h>
 
