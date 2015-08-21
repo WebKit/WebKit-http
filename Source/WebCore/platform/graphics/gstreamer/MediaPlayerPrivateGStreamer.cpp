@@ -1150,7 +1150,6 @@ DiscretixSession* MediaPlayerPrivateGStreamer::dxdrmSession() const
         session = static_cast<DiscretixSession*>(cdmSession);
     }
 #endif
-    ASSERT(session);
     return session;
 }
 
