@@ -40,7 +40,6 @@ public:
 
     WTF_EXPORT_PRIVATE void signal();
     WTF_EXPORT_PRIVATE bool wait(double absoluteTime);
-    WTF_EXPORT_PRIVATE bool wait();
 
 private:
     bool m_isSet;
