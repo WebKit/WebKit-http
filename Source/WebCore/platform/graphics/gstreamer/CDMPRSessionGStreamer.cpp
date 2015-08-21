@@ -51,7 +51,7 @@ CDMPRSessionGStreamer::~CDMPRSessionGStreamer()
 
 CDMSessionType CDMPRSessionGStreamer::type()
 {
-    return CDMSessionTypeMediaSourcePlayReady;
+    return CDMSessionTypePlayReady;
 }
 
 void CDMPRSessionGStreamer::setClient(CDMSessionClient* client)
