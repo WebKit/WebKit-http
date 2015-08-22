@@ -48,7 +48,8 @@
   typedef __int32 int32_t;
   typedef __int64 int64_t;
 #else
-# if defined(__GNU_LIBRARY__) && defined(__WORDSIZE) && (__WORDSIZE == 64)
+# if (defined(__GNU_LIBRARY__) && defined(__WORDSIZE) && (__WORDSIZE == 64)) \
+		|| defined(__LP64__)
 #  define FMT64 "%l"
 # else
 #  define FMT64 "%ll"
