@@ -21,20 +21,32 @@
 #include "config.h"
 #include "TextBreakIteratorInternalICU.h"
 
+#include <mutex>
+
 #include "Language.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+static std::once_flag defaultLanguageCacheOnceFlag;
+static CString defaultLanguageCache;
+
+static void defaultLanguageCacheOnce()
+{
+    defaultLanguageCache = defaultLanguage().utf8();
+}
+
 const char* currentSearchLocaleID()
 {
-    return defaultLanguage().utf8().data();
+    std::call_once(defaultLanguageCacheOnceFlag, defaultLanguageCacheOnce);
+    return defaultLanguageCache.data();
 }
 
 const char* currentTextBreakLocaleID()
 {
-    return defaultLanguage().utf8().data();
+    std::call_once(defaultLanguageCacheOnceFlag, defaultLanguageCacheOnce);
+    return defaultLanguageCache.data();
 }
 
 } // namespace WebCore
