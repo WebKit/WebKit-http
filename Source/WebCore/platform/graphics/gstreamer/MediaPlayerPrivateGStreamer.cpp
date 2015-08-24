@@ -88,32 +88,6 @@
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 #endif
 
-#if USE(GSTREAMER_GL)
-#include "GLContext.h"
-
-#define GST_USE_UNSTABLE_API
-#include <gst/gl/gl.h>
-#undef GST_USE_UNSTABLE_API
-
-#if USE(GLX)
-#include "GLContextGLX.h"
-#include <gst/gl/x11/gstgldisplay_x11.h>
-#elif USE(EGL)
-#include "GLContextEGL.h"
-#include <gst/gl/egl/gstgldisplay_egl.h>
-#endif
-
-// gstglapi.h may include eglplatform.h and it includes X.h, which
-// defines None, breaking MediaPlayer::None enum
-#if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
-#undef None
-#endif
-#endif // USE(GSTREAMER_GL)
-
-#if PLATFORM(WAYLAND)
-#include "PlatformDisplayWayland.h"
-#endif
-
 #include <wtf/MainThread.h>
 
 // Max interval in seconds to stay in the READY state on manual
