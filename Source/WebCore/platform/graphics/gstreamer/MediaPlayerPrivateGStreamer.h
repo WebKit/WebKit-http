@@ -56,10 +56,6 @@ class AudioSourceProvider;
 class AudioSourceProviderGStreamer;
 #endif
 
-#if USE(DXDRM)
-class DiscretixSession;
-#endif
-
 class AudioTrackPrivateGStreamer;
 class InbandMetadataTextTrackPrivateGStreamer;
 class InbandTextTrackPrivateGStreamer;
@@ -151,22 +147,9 @@ public:
     AudioSourceProvider* audioSourceProvider() override { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned);
-    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
-    void needKey(const String&, const String&, const unsigned char*, unsigned);
-#endif
-
     bool isLiveStream() const override { return m_isStreaming; }
 #if ENABLE(MEDIA_SOURCE)
     void notifyAppendComplete();
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    void needKey(RefPtr<Uint8Array> initData);
-    void setCDMSession(CDMSession*);
-    void keyAdded();
 #endif
 
 private:
@@ -174,23 +157,8 @@ private:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
     static bool isAvailable();
-    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     GstElement* createAudioSink() override;
-
-#if USE(DXDRM)
-    DiscretixSession* dxdrmSession() const;
-    void emitSession();
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    std::unique_ptr<CDMSession> createSession(const String&);
-    CDMSession* m_cdmSession;
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
-    DiscretixSession* m_dxdrmSession;
-#endif
 
     float playbackPosition() const;
 

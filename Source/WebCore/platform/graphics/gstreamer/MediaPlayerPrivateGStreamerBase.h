@@ -66,6 +66,12 @@ class GraphicsContext;
 class IntSize;
 class IntRect;
 
+#if USE(DXDRM)
+class DiscretixSession;
+#endif
+
+void registerWebKitGStreamerElements();
+
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     , public TextureMapperPlatformLayer
@@ -88,6 +94,7 @@ public:
     bool ensureGstGLContext();
 #endif
     void handleNeedContextMessage(GstMessage*);
+    void handleElementMessage(GstMessage*);
 
     virtual bool supportsMuting() const override { return true; }
     virtual void setMuted(bool) override;
@@ -139,10 +146,27 @@ public:
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned);
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void needKey(RefPtr<Uint8Array> initData);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+#endif
+
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
+
     GstElement* pipeline() const { return m_pipeline.get(); }
 
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
+
     virtual GstElement* createVideoSink();
 
     void setStreamVolumeElement(GstStreamVolume*);
@@ -198,6 +222,23 @@ protected:
     GRefPtr<GstGLContext> m_glContext;
     GRefPtr<GstGLDisplay> m_glDisplay;
 #endif
+
+private:
+
+#if USE(DXDRM)
+    DiscretixSession* dxdrmSession() const;
+    void emitSession();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+    DiscretixSession* m_dxdrmSession;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    std::unique_ptr<CDMSession> createSession(const String&);
+    CDMSession* m_cdmSession;
+#endif
+
 };
 }
 
