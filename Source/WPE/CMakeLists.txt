@@ -11,12 +11,14 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     ${GLIB_INCLUDE_DIRS}
+    ${LIBDRM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
     ${GLIB_LIBRARIES}
+    ${LIBDRM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
 )
@@ -30,6 +32,8 @@ set(WPE_SOURCES
 
     Source/Input/XKB/KeyMappingXKB.cpp
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
+
+    Source/ViewBackend/DRM/ViewBackendDRM.cpp
 
     Source/ViewBackend/Wayland/ViewBackendWayland.cpp
     Source/ViewBackend/Wayland/WaylandDisplay.cpp
