@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendDRM_h
 #define WPE_ViewBackend_ViewBackendDRM_h
 
+#include <WPE/ViewBackend/ViewBackend.h>
+
 #include <unordered_map>
 #include <utility>
 
@@ -39,13 +41,14 @@ namespace ViewBackend {
 
 class Client;
 
-class ViewBackendDRM {
+class ViewBackendDRM final : public ViewBackend {
 public:
     ViewBackendDRM();
     ~ViewBackendDRM();
-    void setClient(Client*);
 
-    void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format);
+
+    void setClient(Client*) override;
+    void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
 
     struct PageFlipHandlerData {
         Client* client;

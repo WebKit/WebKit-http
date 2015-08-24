@@ -23,31 +23,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackend_h
-#define WPE_ViewBackend_ViewBackend_h
+#include <WPE/ViewBackend/ViewBackend.h>
 
-#include <memory>
+#include <WPE/ViewBackend/DRM/ViewBackendDRM.h>
+#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
+#include <cstdlib>
 
 namespace WPE {
 
 namespace ViewBackend {
 
-class Client {
-public:
-    virtual void releaseBuffer(uint32_t handle) = 0;
-    virtual void frameComplete() = 0;
-};
+std::unique_ptr<ViewBackend> ViewBackend::create()
+{
+    auto* backendEnv = std::getenv("WPE_BACKEND");
 
-class ViewBackend {
-public:
-    static std::unique_ptr<ViewBackend> create();
+    if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland")))
+        return std::unique_ptr<ViewBackendWayland>(new ViewBackendWayland);
 
-    virtual void setClient(Client*) { }
-    virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) { }
-};
+    if (backendEnv && !std::strcmp(backendEnv, "drm"))
+        return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+
+    return nullptr;
+}
 
 } // namespace ViewBackend
 
 } // namespace WPE
-
-#endif // WPE_ViewBackend_ViewBackend_h

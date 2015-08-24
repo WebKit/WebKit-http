@@ -30,7 +30,6 @@
 
 #include "LayerTreeContext.h"
 #include <WPE/ViewBackend/ViewBackend.h>
-#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
 
 namespace WebKit {
 
@@ -56,7 +55,7 @@ private:
     void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
     void commitPrimeFD(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) override;
 
-    WPE::ViewBackend::ViewBackendWayland& m_viewBackend;
+    WPE::ViewBackend::ViewBackend& m_viewBackend;
 
     // The current layer tree context.
     LayerTreeContext m_layerTreeContext;

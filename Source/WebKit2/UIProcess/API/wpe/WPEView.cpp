@@ -40,7 +40,7 @@ namespace WKWPE {
 
 View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
-    , m_viewBackend(std::make_unique<WPE::ViewBackend::ViewBackendWayland>())
+    , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{800, 600}
 {
     pageGroup->preferences().setAcceleratedCompositingEnabled(true);

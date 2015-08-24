@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendWayland_h
 #define WPE_ViewBackend_ViewBackendWayland_h
 
+#include <WPE/ViewBackend/ViewBackend.h>
+
 #include <unordered_map>
 
 struct wl_buffer;
@@ -40,13 +42,13 @@ namespace ViewBackend {
 class Client;
 class WaylandDisplay;
 
-class ViewBackendWayland {
+class ViewBackendWayland final : public ViewBackend {
 public:
     ViewBackendWayland();
     ~ViewBackendWayland();
-    void setClient(Client* client);
 
-    void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format);
+    void setClient(Client* client) override;
+    void commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
 
     struct BufferListenerData {
         Client* client;

@@ -33,6 +33,8 @@ set(WPE_SOURCES
     Source/Input/XKB/KeyMappingXKB.cpp
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
 
+    Source/ViewBackend/ViewBackend.cpp
+
     Source/ViewBackend/DRM/ViewBackendDRM.cpp
 
     Source/ViewBackend/Wayland/ViewBackendWayland.cpp
