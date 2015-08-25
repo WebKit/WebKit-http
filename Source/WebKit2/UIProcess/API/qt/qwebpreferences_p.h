@@ -49,6 +49,7 @@ public:
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled NOTIFY notificationsEnabledChanged FINAL)
     Q_PROPERTY(bool universalAccessFromFileURLsAllowed READ universalAccessFromFileURLsAllowed WRITE setUniversalAccessFromFileURLsAllowed NOTIFY universalAccessFromFileURLsAllowedChanged FINAL)
     Q_PROPERTY(bool fileAccessFromFileURLsAllowed READ fileAccessFromFileURLsAllowed WRITE setFileAccessFromFileURLsAllowed NOTIFY fileAccessFromFileURLsAllowedChanged FINAL)
+    Q_PROPERTY(bool spatialNavigationEnabled READ spatialNavigationEnabled WRITE setSpatialNavigationEnabled NOTIFY spatialNavigationEnabledChanged FINAL)
 
     Q_PROPERTY(QString standardFontFamily READ standardFontFamily WRITE setStandardFontFamily NOTIFY standardFontFamilyChanged FINAL)
     Q_PROPERTY(QString fixedFontFamily READ fixedFontFamily WRITE setFixedFontFamily NOTIFY fixedFontFamilyChanged FINAL)
@@ -115,6 +116,9 @@ public:
     bool fileAccessFromFileURLsAllowed() const;
     void setFileAccessFromFileURLsAllowed(bool enable);
 
+    bool spatialNavigationEnabled() const;
+    void setSpatialNavigationEnabled(bool enable);
+
     QString standardFontFamily() const;
     void setStandardFontFamily(const QString& family);
 
@@ -159,6 +163,7 @@ Q_SIGNALS:
     void webAudioEnabledChanged();
     void caretBrowsingEnabledChanged();
     void notificationsEnabledChanged();
+    void spatialNavigationEnabledChanged();
     void universalAccessFromFileURLsAllowedChanged();
     void fileAccessFromFileURLsAllowedChanged();
 

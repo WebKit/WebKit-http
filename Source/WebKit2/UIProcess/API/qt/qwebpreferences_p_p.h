@@ -43,7 +43,8 @@ public:
         CaretBrowsingEnabled,
         NotificationsEnabled,
         UniversalAccessFromFileURLsAllowed,
-        FileAccessFromFileURLsAllowed
+        FileAccessFromFileURLsAllowed,
+        SpatialNavigationEnabled
     };
 
     enum FontFamily {

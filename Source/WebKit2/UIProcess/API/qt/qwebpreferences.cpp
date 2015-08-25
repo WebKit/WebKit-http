@@ -79,6 +79,8 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
         return WKPreferencesGetCaretBrowsingEnabled(preferencesRef);
     case NotificationsEnabled:
         return WKPreferencesGetNotificationsEnabled(preferencesRef);
+    case SpatialNavigationEnabled:
+        return WKPreferencesGetSpatialNavigationEnabled(preferencesRef);
     case UniversalAccessFromFileURLsAllowed:
         return WKPreferencesGetUniversalAccessFromFileURLsAllowed(preferencesRef);
     case FileAccessFromFileURLsAllowed:
@@ -148,6 +150,9 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
         break;
     case NotificationsEnabled:
         WKPreferencesSetNotificationsEnabled(preferencesRef, enable);
+        break;
+    case SpatialNavigationEnabled:
+        WKPreferencesSetSpatialNavigationEnabled(preferencesRef, enable);
         break;
     case UniversalAccessFromFileURLsAllowed:
         WKPreferencesSetUniversalAccessFromFileURLsAllowed(preferencesRef, enable);
@@ -602,6 +607,19 @@ void QWebPreferences::setFileAccessFromFileURLsAllowed(bool enable)
         return;
     d->setAttribute(QWebPreferencesPrivate::FileAccessFromFileURLsAllowed, enable);
     emit fileAccessFromFileURLsAllowedChanged();
+}
+
+bool QWebPreferences::spatialNavigationEnabled() const
+{
+    return d->testAttribute(QWebPreferencesPrivate::SpatialNavigationEnabled);
+}
+
+void QWebPreferences::setSpatialNavigationEnabled(bool enable)
+{
+    if (spatialNavigationEnabled() == enable)
+        return;
+    d->setAttribute(QWebPreferencesPrivate::SpatialNavigationEnabled, enable);
+    emit spatialNavigationEnabledChanged();
 }
 
 QWebPreferencesPrivate* QWebPreferencesPrivate::get(QWebPreferences* preferences)
