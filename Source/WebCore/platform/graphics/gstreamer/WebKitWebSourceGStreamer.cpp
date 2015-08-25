@@ -811,7 +811,7 @@ static void webKitWebSrcNeedDataCb(GstAppSrc*, guint length, gpointer userData)
     WebKitWebSrc* src = WEBKIT_WEB_SRC(userData);
     WebKitWebSrcPrivate* priv = src->priv;
 
-    GST_DEBUG_OBJECT(src, "Need more data: %u", length);
+    GST_LOG_OBJECT(src, "Need more data: %u", length);
 
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
     if (priv->needDataSource.isScheduled() || !priv->paused)
