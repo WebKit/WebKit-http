@@ -110,6 +110,7 @@ struct _WebKitWebSrcPrivate {
     _WebKitWebSrcPrivate()
         : pendingStart(false)
         , startSource("[WebKit] webKitWebSrcStart")
+        , stopSource("[WebKit] webKitWebSrcStop")
         , needDataSource("[WebKit] webKitWebSrcNeedDataMainCb")
         , enoughDataSource("[WebKit] webKitWebSrcEnoughDataMainCb")
         , seekSource("[WebKit] webKitWebSrcSeekMainCb")
@@ -139,6 +140,7 @@ struct _WebKitWebSrcPrivate {
 
     gboolean pendingStart;
     GMainLoopSource::Simple startSource;
+    GMainLoopSource::Simple stopSource;
     GMainLoopSource::Simple needDataSource;
     GMainLoopSource::Simple enoughDataSource;
     GMainLoopSource::Simple seekSource;
@@ -415,6 +417,7 @@ static void removeTimeoutSources(WebKitWebSrc* src)
 
     if (!priv->pendingStart)
         priv->startSource.cancel();
+    priv->stopSource.cancel();
     priv->needDataSource.cancel();
     priv->enoughDataSource.cancel();
     priv->seekSource.cancel();
@@ -654,8 +657,9 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     {
         GST_DEBUG_OBJECT(src, "READY->PAUSED");
         priv->pendingStart = TRUE;
+        locker.unlock();
         GstObjectRef protector(GST_OBJECT(src));
-        priv->startSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcStart(WEBKIT_WEB_SRC(protector.get())); });
+        priv->startSource.scheduleAndWaitCompletion(std::chrono::milliseconds(0), [protector] { webKitWebSrcStart(WEBKIT_WEB_SRC(protector.get())); });
         break;
     }
     case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -663,7 +667,8 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
         GST_DEBUG_OBJECT(src, "PAUSED->READY");
         priv->pendingStart = FALSE;
         locker.unlock();
-        webKitWebSrcStop(src);
+        GstObjectRef protector(GST_OBJECT(src));
+        priv->stopSource.scheduleAndWaitCompletion(std::chrono::milliseconds(0), [protector] { webKitWebSrcStop(WEBKIT_WEB_SRC(protector.get())); });
         break;
     }
     default:
