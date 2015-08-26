@@ -26,6 +26,7 @@
 #ifndef WPE_ViewBackend_ViewBackend_h
 #define WPE_ViewBackend_ViewBackend_h
 
+#include <WPE/WPE.h>
 #include <memory>
 
 namespace WPE {
@@ -40,10 +41,10 @@ public:
 
 class ViewBackend {
 public:
-    static std::unique_ptr<ViewBackend> create();
+    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
 
-    virtual void setClient(Client*) { }
-    virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) { }
+    virtual void setClient(Client*);
+    virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 };
 
 } // namespace ViewBackend

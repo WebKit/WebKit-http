@@ -46,6 +46,14 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
     return nullptr;
 }
 
+void ViewBackend::setClient(Client*)
+{
+}
+
+void ViewBackend::commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+}
+
 } // namespace ViewBackend
 
 } // namespace WPE
