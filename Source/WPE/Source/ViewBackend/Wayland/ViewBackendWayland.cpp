@@ -29,6 +29,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <WPE/ViewBackend/ViewBackend.h>
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 

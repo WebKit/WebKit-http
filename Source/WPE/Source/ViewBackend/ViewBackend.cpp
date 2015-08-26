@@ -27,6 +27,7 @@
 
 #include <WPE/ViewBackend/DRM/ViewBackendDRM.h>
 #include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
+#include <cstring>
 #include <cstdlib>
 
 namespace WPE {

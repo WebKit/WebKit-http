@@ -28,6 +28,7 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <errno.h>
 #include <fcntl.h>
 #include <gbm.h>

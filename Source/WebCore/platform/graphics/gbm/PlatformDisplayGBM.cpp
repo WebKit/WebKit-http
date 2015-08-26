@@ -32,6 +32,7 @@
 #include "GLContextEGL.h"
 #include "IntSize.h"
 #include <fcntl.h>
+#include <unistd.h>
 #include <xf86drm.h>
 
 #include <cstdio>
