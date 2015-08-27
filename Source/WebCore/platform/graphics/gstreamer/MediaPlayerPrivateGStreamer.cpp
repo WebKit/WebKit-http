@@ -810,6 +810,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
     }
 #endif
 
+    m_player->sizeChanged();
     m_player->client().mediaPlayerEngineUpdated(m_player);
 }
 
