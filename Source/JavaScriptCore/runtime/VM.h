@@ -86,7 +86,6 @@ class Identifier;
 class Interpreter;
 class JSGlobalObject;
 class JSObject;
-class Keywords;
 class LLIntOffsetsExtractor;
 class LegacyProfiler;
 class NativeExecutable;
@@ -237,7 +236,7 @@ public:
     static Ref<VM> createContextGroup(HeapType = SmallHeap);
     JS_EXPORT_PRIVATE ~VM();
 
-    Watchdog& ensureWatchdog();
+    JS_EXPORT_PRIVATE Watchdog& ensureWatchdog();
 
 private:
     RefPtr<JSLock> m_apiLock;
@@ -297,6 +296,7 @@ public:
     Strong<Structure> functionRareDataStructure;
     Strong<Structure> exceptionStructure;
     Strong<Structure> promiseDeferredStructure;
+    Strong<Structure> internalPromiseDeferredStructure;
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
@@ -348,7 +348,6 @@ public:
 
     typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache>> SourceProviderCacheMap;
     SourceProviderCacheMap sourceProviderCacheMap;
-    std::unique_ptr<Keywords> keywords;
     Interpreter* interpreter;
 #if ENABLE(JIT)
     std::unique_ptr<JITThunks> jitStubs;
@@ -476,6 +475,14 @@ public:
         return result;
     }
 
+    EncodedJSValue* exceptionFuzzingBuffer(size_t size)
+    {
+        ASSERT(Options::enableExceptionFuzz());
+        if (!m_exceptionFuzzBuffer)
+            m_exceptionFuzzBuffer = MallocPtr<EncodedJSValue>::malloc(size);
+        return m_exceptionFuzzBuffer.get();
+    }
+
     void gatherConservativeRoots(ConservativeRoots&);
 
     VMEntryScope* entryScope;
@@ -532,8 +539,8 @@ public:
     JSLock& apiLock() { return *m_apiLock; }
     CodeCache* codeCache() { return m_codeCache.get(); }
 
-    void prepareToDeleteCode();
-        
+    void whenIdle(std::function<void()>);
+
     JS_EXPORT_PRIVATE void deleteAllCode();
 
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
@@ -557,6 +564,8 @@ public:
 
     JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
     JS_EXPORT_PRIVATE void drainMicrotasks();
+
+    inline bool shouldTriggerTermination(ExecState*);
 
 private:
     friend class LLIntOffsetsExtractor;
@@ -613,6 +622,7 @@ private:
     std::unique_ptr<ControlFlowProfiler> m_controlFlowProfiler;
     unsigned m_controlFlowProfilerEnabledCount;
     Deque<std::unique_ptr<QueuedTask>> m_microtaskQueue;
+    MallocPtr<EncodedJSValue> m_exceptionFuzzBuffer;
 };
 
 #if ENABLE(GC_VALIDATION)

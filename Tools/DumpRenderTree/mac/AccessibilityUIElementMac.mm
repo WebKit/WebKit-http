@@ -395,8 +395,13 @@ AccessibilityUIElement AccessibilityUIElement::ariaFlowToElementAtIndex(unsigned
 
 AccessibilityUIElement AccessibilityUIElement::ariaControlsElementAtIndex(unsigned index)
 {
-    // FIXME: implement
-    return 0;
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSArray* ariaControls = [m_element accessibilityAttributeValue:@"AXARIAControls"];
+    if (index < [ariaControls count])
+        return [ariaControls objectAtIndex:index];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return nullptr;
 }
 
 AccessibilityUIElement AccessibilityUIElement::disclosedRowAtIndex(unsigned index)
@@ -694,7 +699,8 @@ JSStringRef AccessibilityUIElement::stringValue()
 {
     BEGIN_AX_OBJC_EXCEPTIONS
     id description = descriptionOfValue([m_element accessibilityAttributeValue:NSAccessibilityValueAttribute], m_element);
-    return concatenateAttributeAndValue(@"AXValue", description);
+    if (description)
+        return concatenateAttributeAndValue(@"AXValue", description);
     END_AX_OBJC_EXCEPTIONS
 
     return nullptr;
@@ -1406,11 +1412,23 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
 
 JSStringRef AccessibilityUIElement::documentEncoding()
 {
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXDocumentEncoding"];
+    if ([value isKindOfClass:[NSString class]])
+        return [value createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
     return JSStringCreateWithCharacters(0, 0);
 }
 
 JSStringRef AccessibilityUIElement::documentURI()
 {
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXDocumentURI"];
+    if ([value isKindOfClass:[NSString class]])
+        return [value createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
     return JSStringCreateWithCharacters(0, 0);
 }
 
@@ -1463,14 +1481,22 @@ bool AccessibilityUIElement::isFocusable() const
 
 bool AccessibilityUIElement::isSelectable() const
 {
-    // FIXME: implement
-    return false;
+    bool result = false;
+    BEGIN_AX_OBJC_EXCEPTIONS
+    result = [m_element accessibilityIsAttributeSettable:NSAccessibilitySelectedAttribute];
+    END_AX_OBJC_EXCEPTIONS
+    return result;
 }
 
 bool AccessibilityUIElement::isMultiSelectable() const
 {
-    // FIXME: implement
-    return false;
+    BOOL result = NO;
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXIsMultiSelectable"];
+    if ([value isKindOfClass:[NSNumber class]])
+        result = [value boolValue];
+    END_AX_OBJC_EXCEPTIONS
+    return result;
 }
 
 bool AccessibilityUIElement::isSelectedOptionActive() const

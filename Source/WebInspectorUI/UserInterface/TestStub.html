@@ -22,8 +22,32 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
+<!DOCTYPE html>
 <html>
 <head>
-    <script type="text/javascript" src="Base/TestStub.js"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--
+    These resources should match the order and groups used in Main.html and Test.html.
+    -->
+    <script src="Base/WebInspector.js"></script>
+    <script src="Base/Object.js"></script>
+
+    <script src="Test/TestSuite.js"></script>
+    <script src="Test/TestHarness.js"></script>
+    <script src="Test/ProtocolTestHarness.js"></script>
+
+    <script src="Test/InspectorProtocol.js"></script>
+
+    <script src="Test/TestStub.js"></script>
+    <script>
+        // Debug logging is synchronous on the test page.
+        ProtocolTest.forceDebugLogging = false;
+
+        // Tee all TestHarness commands to stderr from within the Inspector.
+        ProtocolTest.dumpActivityToSystemConsole = false;
+
+        // Best used in combination with dumpActivityToSystemConsole.
+        ProtocolTest.dumpInspectorProtocolMessages = false;
+    </script>
 </head>
 </html>

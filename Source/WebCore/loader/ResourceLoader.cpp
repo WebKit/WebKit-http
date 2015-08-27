@@ -32,6 +32,7 @@
 
 #include "ApplicationCacheHost.h"
 #include "AuthenticationChallenge.h"
+#include "DataURLDecoder.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
@@ -202,10 +203,15 @@ void ResourceLoader::start()
         return;
     }
 
-    if (!m_reachedTerminalState) {
-        FrameLoader& loader = m_request.url().protocolIsData() ? dataProtocolFrameLoader() : *frameLoader();
-        m_handle = ResourceHandle::create(loader.networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
+    if (m_reachedTerminalState)
+        return;
+
+    if (m_request.url().protocolIsData()) {
+        loadDataURL();
+        return;
     }
+
+    m_handle = ResourceHandle::create(frameLoader()->networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
 }
 
 void ResourceLoader::setDefersLoading(bool defers)
@@ -229,13 +235,31 @@ FrameLoader* ResourceLoader::frameLoader() const
     return &m_frame->loader();
 }
 
-// This function should only be called when frameLoader() is non-null.
-FrameLoader& ResourceLoader::dataProtocolFrameLoader() const
+void ResourceLoader::loadDataURL()
 {
-    FrameLoader* loader = frameLoader();
-    ASSERT(loader);
-    FrameLoader* dataProtocolLoader = loader->client().dataProtocolLoader();
-    return *(dataProtocolLoader ? dataProtocolLoader : loader);
+    auto url = m_request.url();
+    ASSERT(url.protocolIsData());
+
+    RefPtr<ResourceLoader> loader(this);
+    DataURLDecoder::decode(url, [loader, url] (Optional<DataURLDecoder::Result> decodeResult) {
+        if (loader->reachedTerminalState())
+            return;
+        if (!decodeResult) {
+            loader->didFail(ResourceError(errorDomainWebKitInternal, 0, url.string(), "Data URL decoding failed"));
+            return;
+        }
+        auto& result = decodeResult.value();
+        auto dataSize = result.data->size();
+
+        ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
+        loader->didReceiveResponse(dataResponse);
+
+        if (!loader->reachedTerminalState() && dataSize)
+            loader->didReceiveBuffer(result.data.get(), dataSize, DataPayloadWholeResource);
+
+        if (!loader->reachedTerminalState())
+            loader->didFinishLoading(currentTime());
+    });
 }
 
 void ResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
@@ -341,7 +365,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
     m_request = request;
 
     if (!redirectResponse.isNull() && !m_documentLoader->isCommitted())
-        frameLoader()->client().dispatchDidReceiveServerRedirectForProvisionalLoad();
+        frameLoader()->client().dispatchDidReceiveServerRedirectForProvisionalLoad(m_request.url());
 }
 
 void ResourceLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void(ResourceRequest&&)>&& callback)

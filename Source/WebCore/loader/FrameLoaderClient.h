@@ -154,7 +154,7 @@ namespace WebCore {
         virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int length) = 0;
 
         virtual void dispatchDidHandleOnloadEvents() = 0;
-        virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() = 0;
+        virtual void dispatchDidReceiveServerRedirectForProvisionalLoad(const URL&) = 0;
         virtual void dispatchDidChangeProvisionalURL() { }
         virtual void dispatchDidCancelClientRedirect() = 0;
         virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) = 0;
@@ -338,8 +338,6 @@ namespace WebCore {
 
         // FIXME (bug 116233): We need to get rid of EmptyFrameLoaderClient completely, then this will no longer be needed.
         virtual bool isEmptyFrameLoaderClient() { return false; }
-
-        virtual FrameLoader* dataProtocolLoader() const { return nullptr; }
 
 #if USE(QUICK_LOOK)
         virtual void didCreateQuickLookHandle(QuickLookHandle&) { }

@@ -5612,7 +5612,7 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
         // If the region does not clip its overflow, inflate the outline rect.
         if (namedFlowFragment) {
             if (!(namedFlowFragment->parent()->hasOverflowClip() && (&namedFlowFragment->fragmentContainerLayer() != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)))
-                outlineRect.inflate(renderer().maximalOutlineSize(PaintPhaseOutline));
+                outlineRect.inflate(renderer().view().maximalOutlineSize());
         }
     }
 
@@ -5830,7 +5830,7 @@ LayoutRect RenderLayer::localBoundingBox(CalculateLayerBoundsFlags flags) const
         }
     }
 
-    result.inflate(renderer().view().maximalOutlineSize()); // Used to apply a fudge factor to dirty-rect checks on blocks/tables.
+    result.inflate(renderer().view().maximalOutlineSize());
     return result;
 }
 
@@ -6863,8 +6863,9 @@ void RenderLayer::updateOrRemoveFilterClients()
         FilterInfo::remove(*this);
         return;
     }
-
-    if (renderer().style().filter().hasReferenceFilter())
+    // Add the filter as a client to this renderer, unless we are a RenderLayer accommodating
+    // an SVG. In that case it takes care of its own resource management for filters.
+    if (renderer().style().filter().hasReferenceFilter() && !renderer().isSVGRoot())
         FilterInfo::get(*this).updateReferenceFilterClients(renderer().style().filter());
     else if (FilterInfo* filterInfo = FilterInfo::getIfExists(*this))
         filterInfo->removeReferenceFilterClients();

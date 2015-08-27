@@ -135,7 +135,7 @@ static const HashTableValue JSTestTypedefsTableValues[] =
     { 0, 0, NoIntrinsic, 0, 0 }
 };
 
-static const HashTable JSTestTypedefsTable = { 0, 1, false, JSTestTypedefsTableValues, 0, JSTestTypedefsTableIndex };
+static const HashTable JSTestTypedefsTable = { 0, 1, false, JSTestTypedefsTableValues, JSTestTypedefsTableIndex };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestTypedefsConstructorTableValues[] =
@@ -151,7 +151,7 @@ EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::constructJSTestTypedefs(
     String hello = exec->argument(0).toString(exec)->value(exec);
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
-    if (!exec->argument(1).isFunction())
+    if (!exec->argument(1).isObject())
         return throwArgumentMustBeFunctionError(*exec, 1, "testCallback", "TestTypedefs", nullptr);
     RefPtr<TestCallback> testCallback = JSTestCallback::create(asObject(exec->uncheckedArgument(1)), castedThis->globalObject());
     RefPtr<TestTypedefs> object = TestTypedefs::create(hello, testCallback);

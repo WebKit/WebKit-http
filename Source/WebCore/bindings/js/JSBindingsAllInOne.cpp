@@ -56,6 +56,7 @@
 #include "JSDOMGlobalObject.cpp"
 #include "JSDOMGlobalObjectTask.cpp"
 #include "JSDOMMimeTypeArrayCustom.cpp"
+#include "JSDOMNamedFlowCollectionCustom.cpp"
 #include "JSDOMPluginArrayCustom.cpp"
 #include "JSDOMPluginCustom.cpp"
 #include "JSDOMPromise.cpp"
@@ -126,7 +127,6 @@
 #include "JSReadableStreamReaderCustom.cpp"
 #include "ReadableJSStream.cpp"
 #endif
-#include "JSRequestAnimationFrameCallbackCustom.cpp"
 #include "JSSQLResultSetRowListCustom.cpp"
 #include "JSSQLTransactionCustom.cpp"
 #include "JSSVGLengthCustom.cpp"

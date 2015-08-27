@@ -67,6 +67,12 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
         return Object.keys(this._flowMap).length;
     }
 
+    disconnect()
+    {
+        WebInspector.domTreeManager.removeEventListener(null, null, this);
+        this._frame.removeEventListener(null, null, this);
+    }
+
     invalidate()
     {
         // Set to null so it is fetched again next time requestRootDOMNode is called.
@@ -74,14 +80,14 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
 
         // Clear the pending callbacks. It is the responsibility of the client to listen for
         // the RootDOMNodeInvalidated event and request the root DOM node again.
-        delete this._pendingRootDOMNodeRequests;
+        this._pendingRootDOMNodeRequests = null;
 
         if (this._invalidateTimeoutIdentifier)
             return;
 
         function performInvalidate()
         {
-            delete this._invalidateTimeoutIdentifier;
+            this._invalidateTimeoutIdentifier = undefined;
 
             this.dispatchEventToListeners(WebInspector.DOMTree.Event.RootDOMNodeInvalidated);
         }
@@ -101,7 +107,7 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
             return;
         }
 
-        if (!this._frame.isMainFrame() && WebInspector.ExecutionContext.supported() && !this._frame.pageExecutionContext) {
+        if (!this._frame.isMainFrame() && !this._frame.pageExecutionContext) {
             this._rootDOMNodeRequestWaitingForExecutionContext = true;
             if (!this._pendingRootDOMNodeRequests)
                 this._pendingRootDOMNodeRequests = [];
@@ -130,7 +136,7 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
 
     _requestRootDOMNode()
     {
-        console.assert(this._frame.isMainFrame() || !WebInspector.ExecutionContext.supported() || this._frame.pageExecutionContext);
+        console.assert(this._frame.isMainFrame() || this._frame.pageExecutionContext);
         console.assert(this._pendingRootDOMNodeRequests.length);
 
         // Bump the request identifier. This prevents pending callbacks for previous requests from completing.
@@ -197,7 +203,7 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
 
             for (var i = 0; i < this._pendingRootDOMNodeRequests.length; ++i)
                 this._pendingRootDOMNodeRequests[i](this._rootDOMNode);
-            delete this._pendingRootDOMNodeRequests;
+            this._pendingRootDOMNodeRequests = null;
         }
 
         // For the main frame we can use the more straight forward requestDocument function. For
@@ -207,10 +213,8 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
         if (this._frame.isMainFrame())
             WebInspector.domTreeManager.requestDocument(mainDocumentAvailable.bind(this));
         else {
-            // COMPATIBILITY (iOS 6): Execution context identifiers (contextId) did not exist
-            // in iOS 6. Fallback to including the frame identifier (frameId).
-            var contextId = this._frame.pageExecutionContext ? this._frame.pageExecutionContext.id : undefined;
-            RuntimeAgent.evaluate.invoke({expression: appendWebInspectorSourceURL("document"), objectGroup: "", includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, contextId, frameId: this._frame.id, returnByValue: false, generatePreview: false}, rootObjectAvailable.bind(this));
+            var contextId = this._frame.pageExecutionContext.id;
+            RuntimeAgent.evaluate.invoke({expression: appendWebInspectorSourceURL("document"), objectGroup: "", includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, contextId, returnByValue: false, generatePreview: false}, rootObjectAvailable.bind(this));
         }
     }
 
@@ -242,7 +246,7 @@ WebInspector.DOMTree = class DOMTree extends WebInspector.Object
             console.assert(this._frame.pageExecutionContext);
             console.assert(this._pendingRootDOMNodeRequests && this._pendingRootDOMNodeRequests.length);
 
-            delete this._rootDOMNodeRequestWaitingForExecutionContext;
+            this._rootDOMNodeRequestWaitingForExecutionContext = false;
 
             this._requestRootDOMNode();
         }

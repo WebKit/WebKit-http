@@ -28,11 +28,14 @@
 #include "Debugger.h"
 #include "Exception.h"
 #include "Interpreter.h"
-#include "JSGlobalObject.h"
-#include "JSLock.h"
 #include "JSCInlines.h"
+#include "JSGlobalObject.h"
+#include "JSInternalPromise.h"
+#include "JSInternalPromiseDeferred.h"
+#include "JSLock.h"
+#include "JSModuleRecord.h"
 #include "ModuleAnalyzer.h"
-#include "ModuleRecord.h"
+#include "ModuleLoaderObject.h"
 #include "Parser.h"
 #include <wtf/WTFThreadData.h>
 
@@ -63,8 +66,9 @@ bool checkSyntax(VM& vm, const SourceCode& source, ParserError& error)
         JSParserStrictMode::NotStrict, SourceParseMode::ProgramMode, error);
 }
 
-bool checkModuleSyntax(VM& vm, const SourceCode& source, ParserError& error)
+bool checkModuleSyntax(ExecState* exec, const SourceCode& source, ParserError& error)
 {
+    VM& vm = exec->vm();
     JSLockHolder lock(vm);
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
     std::unique_ptr<ModuleProgramNode> moduleProgramNode = parse<ModuleProgramNode>(
@@ -73,7 +77,8 @@ bool checkModuleSyntax(VM& vm, const SourceCode& source, ParserError& error)
     if (!moduleProgramNode)
         return false;
 
-    ModuleAnalyzer moduleAnalyzer(vm, moduleProgramNode->varDeclarations(), moduleProgramNode->lexicalVariables());
+    PrivateName privateName(PrivateName::Description, "EntryPointModule");
+    ModuleAnalyzer moduleAnalyzer(exec, Identifier::fromUid(privateName), moduleProgramNode->varDeclarations(), moduleProgramNode->lexicalVariables());
     moduleAnalyzer.analyze(*moduleProgramNode);
     return true;
 }
@@ -106,6 +111,65 @@ JSValue evaluate(ExecState* exec, const SourceCode& source, JSValue thisValue, N
 
     RELEASE_ASSERT(result);
     return result;
+}
+
+static JSInternalPromise* evaluateModule(const JSLockHolder&, ExecState* exec, JSGlobalObject* globalObject, JSValue moduleName, JSValue referrer)
+{
+    return globalObject->moduleLoader()->loadModule(exec, moduleName, referrer);
+}
+
+static JSInternalPromise* evaluateModule(const JSLockHolder& lock, ExecState* exec, JSGlobalObject* globalObject, const Identifier& moduleName)
+{
+    JSValue moduleNameValue;
+    if (moduleName.isSymbol())
+        moduleNameValue = Symbol::create(exec->vm(), static_cast<SymbolImpl&>(*moduleName.impl()));
+    else
+        moduleNameValue = jsString(&exec->vm(), moduleName.impl());
+
+    return evaluateModule(lock, exec, globalObject, moduleNameValue, jsUndefined());
+}
+
+JSInternalPromise* evaluateModule(ExecState* exec, const SourceCode& source)
+{
+    JSLockHolder lock(exec);
+    RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+
+    JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
+
+    // Generate the unique key for the source-provided module.
+    PrivateName privateName(PrivateName::Description, "EntryPointModule");
+    Symbol* key = Symbol::create(exec->vm(), *privateName.uid());
+
+    // Insert the given source code to the ModuleLoader registry as the fetched registry entry.
+    globalObject->moduleLoader()->provide(exec, key, ModuleLoaderObject::Status::Fetch, source.toString());
+    if (exec->hadException()) {
+        JSValue exception = exec->exception()->value();
+        exec->clearException();
+        JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
+        deferred->reject(exec, exception);
+        return deferred->promise();
+    }
+
+    return evaluateModule(lock, exec, globalObject, key, jsUndefined());
+}
+
+JSInternalPromise* evaluateModule(ExecState* exec, const Identifier& moduleName)
+{
+    JSLockHolder lock(exec);
+    RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+
+    return evaluateModule(lock, exec, exec->vmEntryGlobalObject(), moduleName);
+}
+
+JSInternalPromise* evaluateModule(ExecState* exec, const String& moduleName)
+{
+    JSLockHolder lock(exec);
+    RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+
+    return evaluateModule(lock, exec, exec->vmEntryGlobalObject(), Identifier::fromString(exec, moduleName));
 }
 
 } // namespace JSC

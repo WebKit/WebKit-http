@@ -243,12 +243,6 @@ void PageClientImpl::didChangeBackgroundColor()
 {
 }
 
-#if ENABLE(VIDEO)
-void PageClientImpl::mediaDocumentNaturalSizeChanged(const WebCore::IntSize&)
-{
-}
-#endif
-
 void PageClientImpl::refView()
 {
 }

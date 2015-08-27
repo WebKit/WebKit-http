@@ -32,7 +32,9 @@
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheFileSystem.h"
 #include "NetworkCacheIOChannel.h"
-#include <condition_variable>
+#include <mutex>
+#include <wtf/Condition.h>
+#include <wtf/Lock.h>
 #include <wtf/RandomNumber.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -119,8 +121,8 @@ public:
     const TraverseFlags flags;
     const TraverseHandler handler;
 
-    std::mutex activeMutex;
-    std::condition_variable activeCondition;
+    Lock activeMutex;
+    Condition activeCondition;
     unsigned activeCount { 0 };
 };
 
@@ -494,13 +496,30 @@ Data Storage::encodeRecord(const Record& record, Optional<BlobStorage::Blob> blo
     return { headerData };
 }
 
+bool Storage::removeFromPendingWriteOperations(const Key& key)
+{
+    auto end = m_pendingWriteOperations.end();
+    for (auto it = m_pendingWriteOperations.begin(); it != end; ++it) {
+        if ((*it)->record.key == key) {
+            m_pendingWriteOperations.remove(it);
+            return true;
+        }
+    }
+    return false;
+}
+
 void Storage::remove(const Key& key)
 {
     ASSERT(RunLoop::isMain());
 
+    if (!mayContain(key))
+        return;
+
     // We can't remove the key from the Bloom filter (but some false positives are expected anyway).
     // For simplicity we also don't reduce m_approximateSize on removals.
     // The next synchronization will update everything.
+
+    removeFromPendingWriteOperations(key);
 
     serialBackgroundIOQueue().dispatch([this, key] {
         WebCore::deleteFile(recordPathForKey(key));
@@ -774,7 +793,7 @@ void Storage::traverse(TraverseFlags flags, TraverseHandler&& traverseHandler)
             if (traverseOperation.flags & TraverseFlag::ShareCount)
                 bodyShareCount = m_blobStorage.shareCount(bodyPathForRecordPath(recordPath));
 
-            std::unique_lock<std::mutex> lock(traverseOperation.activeMutex);
+            std::unique_lock<Lock> lock(traverseOperation.activeMutex);
             ++traverseOperation.activeCount;
 
             auto channel = IOChannel::open(recordPath, IOChannel::Type::Read);
@@ -797,9 +816,9 @@ void Storage::traverse(TraverseFlags flags, TraverseHandler&& traverseHandler)
                     traverseOperation.handler(&record, info);
                 }
 
-                std::lock_guard<std::mutex> lock(traverseOperation.activeMutex);
+                std::lock_guard<Lock> lock(traverseOperation.activeMutex);
                 --traverseOperation.activeCount;
-                traverseOperation.activeCondition.notify_one();
+                traverseOperation.activeCondition.notifyOne();
             });
 
             const unsigned maximumParallelReadCount = 5;
@@ -808,7 +827,7 @@ void Storage::traverse(TraverseFlags flags, TraverseHandler&& traverseHandler)
             });
         });
         // Wait for all reads to finish.
-        std::unique_lock<std::mutex> lock(traverseOperation.activeMutex);
+        std::unique_lock<Lock> lock(traverseOperation.activeMutex);
         traverseOperation.activeCondition.wait(lock, [&traverseOperation] {
             return !traverseOperation.activeCount;
         });

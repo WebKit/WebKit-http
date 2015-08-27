@@ -31,8 +31,8 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef, const ViewOptions& options)
-    : m_view(WKViewCreate(context, pageGroup))
+PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const ViewOptions& options)
+    : m_view(WKViewCreate(WKPageConfigurationGetContext(configuration), WKPageConfigurationGetPageGroup(configuration)))
     , m_window(nullptr)
     , m_windowIsKey(true)
     , m_options(options)
@@ -88,6 +88,11 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)
 {
+}
+
+bool PlatformWebView::viewSupportsOptions(const ViewOptions&) const
+{
+    return true;
 }
 
 void PlatformWebView::forceWindowFramesChanged()

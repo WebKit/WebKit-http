@@ -58,27 +58,26 @@ private:
 #endif
 };
 
-class HTMLCollection : public ScriptWrappable, public RefCounted<HTMLCollection> {
+// HTMLCollection subclasses NodeList to maintain legacy ObjC API compatibility.
+class HTMLCollection : public NodeList {
 public:
     virtual ~HTMLCollection();
 
     // DOM API
-    virtual unsigned length() const = 0;
-    virtual Element* item(unsigned offset) const = 0;
+    virtual Element* item(unsigned index) const override = 0; // Tighten return type from NodeList::item().
     virtual Element* namedItem(const AtomicString& name) const = 0;
-    PassRefPtr<NodeList> tags(const String&);
+    RefPtr<NodeList> tags(const String&);
 
     // Non-DOM API
-    bool hasNamedItem(const AtomicString& name) const;
     Vector<Ref<Element>> namedItems(const AtomicString& name) const;
-    virtual size_t memoryCost() const;
+    virtual size_t memoryCost() const override;
 
     bool isRootedAtDocument() const;
     NodeListInvalidationType invalidationType() const;
     CollectionType type() const;
     ContainerNode& ownerNode() const;
     ContainerNode& rootNode() const;
-    void invalidateCache(const QualifiedName* attributeName);
+    void invalidateCacheForAttribute(const QualifiedName* attributeName);
     virtual void invalidateCache(Document&);
 
     bool hasNamedElementCache() const;
@@ -192,7 +191,7 @@ inline Document& HTMLCollection::document() const
     return m_ownerNode->document();
 }
 
-inline void HTMLCollection::invalidateCache(const QualifiedName* attributeName)
+inline void HTMLCollection::invalidateCacheForAttribute(const QualifiedName* attributeName)
 {
     if (!attributeName || shouldInvalidateTypeOnAttributeChange(invalidationType(), *attributeName))
         invalidateCache(document());

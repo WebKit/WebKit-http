@@ -44,10 +44,9 @@
 
 namespace JSC {
 
-Keywords::Keywords(VM& vm)
-    : m_vm(vm)
-    , m_keywordTable(JSC::mainTable)
+bool isLexerKeyword(const Identifier& identifier)
 {
+    return JSC::mainTable.entry(identifier);
 }
 
 enum CharacterType {
@@ -935,7 +934,7 @@ template <bool shouldCreateIdentifier> ALWAYS_INLINE JSTokenType Lexer<LChar>::p
                 return ERRORTOK;
             }
             if (isPrivateName)
-                ident = m_vm->propertyNames->getPrivateName(*ident);
+                ident = m_vm->propertyNames->lookUpPrivateName(*ident);
             else if (*ident == m_vm->propertyNames->undefinedKeyword)
                 tokenData->ident = &m_vm->propertyNames->undefinedPrivateName;
             if (!ident)
@@ -948,7 +947,7 @@ template <bool shouldCreateIdentifier> ALWAYS_INLINE JSTokenType Lexer<LChar>::p
     if (UNLIKELY((remaining < maxTokenLength) && !(lexerFlags & LexerFlagsIgnoreReservedWords)) && !isPrivateName) {
         ASSERT(shouldCreateIdentifier);
         if (remaining < maxTokenLength) {
-            const HashTableValue* entry = m_vm->keywords->getKeyword(*ident);
+            const HashTableValue* entry = JSC::mainTable.entry(*ident);
             ASSERT((remaining < maxTokenLength) || !entry);
             if (!entry)
                 return IDENT;
@@ -1012,7 +1011,7 @@ template <bool shouldCreateIdentifier> ALWAYS_INLINE JSTokenType Lexer<UChar>::p
                 return ERRORTOK;
             }
             if (isPrivateName)
-                ident = m_vm->propertyNames->getPrivateName(*ident);
+                ident = m_vm->propertyNames->lookUpPrivateName(*ident);
             else if (*ident == m_vm->propertyNames->undefinedKeyword)
                 tokenData->ident = &m_vm->propertyNames->undefinedPrivateName;
             if (!ident)
@@ -1025,7 +1024,7 @@ template <bool shouldCreateIdentifier> ALWAYS_INLINE JSTokenType Lexer<UChar>::p
     if (UNLIKELY((remaining < maxTokenLength) && !(lexerFlags & LexerFlagsIgnoreReservedWords)) && !isPrivateName) {
         ASSERT(shouldCreateIdentifier);
         if (remaining < maxTokenLength) {
-            const HashTableValue* entry = m_vm->keywords->getKeyword(*ident);
+            const HashTableValue* entry = JSC::mainTable.entry(*ident);
             ASSERT((remaining < maxTokenLength) || !entry);
             if (!entry)
                 return IDENT;
@@ -1089,7 +1088,7 @@ template<typename CharacterType> template<bool shouldCreateIdentifier> JSTokenTy
 
     if (LIKELY(!(lexerFlags & LexerFlagsIgnoreReservedWords))) {
         ASSERT(shouldCreateIdentifier);
-        const HashTableValue* entry = m_vm->keywords->getKeyword(*ident);
+        const HashTableValue* entry = JSC::mainTable.entry(*ident);
         if (!entry)
             return IDENT;
         JSTokenType token = static_cast<JSTokenType>(entry->lexerValue());

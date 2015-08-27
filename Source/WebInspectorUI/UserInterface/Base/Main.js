@@ -123,6 +123,7 @@ WebInspector.loaded = function()
 
     // Tell the backend we are initialized after all our initialization messages have been sent.
     setTimeout(function() {
+        // COMPATIBILITY (iOS 8): Inspector.initialized did not exist yet.
         if (window.InspectorAgent && InspectorAgent.initialized)
             InspectorAgent.initialized();
     }, 0);
@@ -152,10 +153,12 @@ WebInspector.loaded = function()
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", false);
     this.showReplayInterfaceSetting = new WebInspector.Setting("show-web-replay", false);
 
+    // COMPATIBILITY (iOS 8): Page.enableTypeProfiler did not exist.
     this.showJavaScriptTypeInformationSetting = new WebInspector.Setting("show-javascript-type-information", false);
     if (this.showJavaScriptTypeInformationSetting.value && window.RuntimeAgent && RuntimeAgent.enableTypeProfiler)
         RuntimeAgent.enableTypeProfiler();
 
+    // COMPATIBILITY (iOS 8): Page.setShowPaintRects did not exist.
     this.showPaintRectsSetting = new WebInspector.Setting("show-paint-rects", false);
     if (this.showPaintRectsSetting.value && window.PageAgent && PageAgent.setShowPaintRects)
         PageAgent.setShowPaintRects(true);
@@ -192,6 +195,8 @@ WebInspector.contentLoaded = function()
         document.body.classList.add("nightly-build");
 
     if (WebInspector.Platform.name === "mac") {
+        document.body.classList.add(WebInspector.Platform.version.name);
+
         if (WebInspector.Platform.version.release >= 11)
             document.body.classList.add("latest-mac");
         else
@@ -341,15 +346,18 @@ WebInspector.contentLoaded = function()
     this._updateDockNavigationItems();
     this._updateToolbarHeight();
 
-    this._pendingOpenTabTypes = [];
+    this._pendingOpenTabs = [];
 
-    for (var tabType of this._openTabsSetting.value) {
+    let openTabTypes = this._openTabsSetting.value;
+
+    for (let i = 0; i < openTabTypes.length; ++i) {
+        let tabType = openTabTypes[i];
         if (!this.isTabTypeAllowed(tabType)) {
-            this._pendingOpenTabTypes.push(tabType);
+            this._pendingOpenTabs.push({tabType, index: i});
             continue;
         }
 
-        var tabContentView = this._tabContentViewForType(tabType);
+        let tabContentView = this._tabContentViewForType(tabType);
         if (!tabContentView)
             continue;
         this.tabBrowser.addTabForContentView(tabContentView, true);
@@ -442,6 +450,10 @@ WebInspector._rememberOpenTabs = function()
         openTabs.push(tabContentView.type);
     }
 
+    // Keep currently unsupported tabs in the setting at their previous index.
+    for (let {tabType, index} of this._pendingOpenTabs)
+        openTabs.insertAtIndex(tabType, index);
+
     this._openTabsSetting.value = openTabs;
 };
 
@@ -512,23 +524,23 @@ WebInspector.activateExtraDomains = function(domains)
     this._updateReloadToolbarButton();
     this._updateDownloadToolbarButton();
 
-    var stillPendingOpenTabTypes = [];
-    for (var tabType of this._pendingOpenTabTypes) {
+    let stillPendingOpenTabs = [];
+    for (let {tabType, index} of this._pendingOpenTabs) {
         if (!this.isTabTypeAllowed(tabType)) {
-            stillPendingOpenTabTypes.push(tabType);
+            stillPendingOpenTabs.push({tabType, index});
             continue;
         }
 
-        var tabContentView = this._tabContentViewForType(tabType);
+        let tabContentView = this._tabContentViewForType(tabType);
         if (!tabContentView)
             continue;
 
-        this.tabBrowser.addTabForContentView(tabContentView, true);
+        this.tabBrowser.addTabForContentView(tabContentView, true, index);
 
         tabContentView.restoreStateFromCookie(WebInspector.StateRestorationType.Load);
     }
 
-    this._pendingOpenTabTypes = stillPendingOpenTabTypes;
+    this._pendingOpenTabs = stillPendingOpenTabs;
 
     this._updateNewTabButtonState();
 };
@@ -1585,7 +1597,7 @@ WebInspector._reloadPageIgnoringCache = function(event)
 
 WebInspector._updateReloadToolbarButton = function()
 {
-    if (!window.PageAgent || !PageAgent.reload) {
+    if (!window.PageAgent) {
         this._reloadToolbarButton.hidden = true;
         return;
     }
@@ -1595,6 +1607,7 @@ WebInspector._updateReloadToolbarButton = function()
 
 WebInspector._updateDownloadToolbarButton = function()
 {
+    // COMPATIBILITY (iOS 7): Page.archive did not exist yet.
     if (!window.PageAgent || !PageAgent.archive || this.debuggableType !== WebInspector.DebuggableType.Web) {
         this._downloadToolbarButton.hidden = true;
         return;
@@ -2074,6 +2087,7 @@ WebInspector.archiveMainFrame = function()
 
 WebInspector.canArchiveMainFrame = function()
 {
+    // COMPATIBILITY (iOS 7): Page.archive did not exist yet.
     if (!PageAgent.archive || this.debuggableType !== WebInspector.DebuggableType.Web)
         return false;
 

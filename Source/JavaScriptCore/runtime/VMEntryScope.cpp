@@ -42,7 +42,7 @@ VMEntryScope::VMEntryScope(VM& vm, JSGlobalObject* globalObject)
     if (!vm.entryScope) {
 #if ENABLE(ASSEMBLER)
         if (ExecutableAllocator::underMemoryPressure())
-            vm.heap.deleteAllCompiledCode();
+            vm.heap.deleteAllCodeBlocks();
 #endif
         vm.entryScope = this;
 
@@ -57,9 +57,9 @@ VMEntryScope::VMEntryScope(VM& vm, JSGlobalObject* globalObject)
     vm.clearLastException();
 }
 
-void VMEntryScope::setEntryScopeDidPopListener(void* key, EntryScopeDidPopListener listener)
+void VMEntryScope::addDidPopListener(std::function<void ()> listener)
 {
-    m_allEntryScopeDidPopListeners.set(key, listener);
+    m_didPopListeners.append(listener);
 }
 
 VMEntryScope::~VMEntryScope()
@@ -72,8 +72,8 @@ VMEntryScope::~VMEntryScope()
 
     m_vm.entryScope = nullptr;
 
-    for (auto& listener : m_allEntryScopeDidPopListeners.values())
-        listener(m_vm, m_globalObject);
+    for (auto& listener : m_didPopListeners)
+        listener();
 }
 
 } // namespace JSC

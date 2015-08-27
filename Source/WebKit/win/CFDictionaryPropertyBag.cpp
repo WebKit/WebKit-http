@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2007, 2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 // CFDictionaryPropertyBag -----------------------------------------------
 
 CFDictionaryPropertyBag::CFDictionaryPropertyBag()
-    : m_refCount(0)
 {
     gClassCount++;
     gClassNameCount().add("CFDictionaryPropertyBag");
@@ -61,9 +60,11 @@ CFMutableDictionaryRef CFDictionaryPropertyBag::dictionary() const
 
 // IUnknown -------------------------------------------------------------------
 
-HRESULT STDMETHODCALLTYPE CFDictionaryPropertyBag::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT CFDictionaryPropertyBag::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
 {
-    *ppvObject = 0;
+    if (!ppvObject)
+        return E_POINTER;
+    *ppvObject = nullptr;
     if (IsEqualGUID(riid, IID_IUnknown))
         *ppvObject = static_cast<IPropertyBag*>(this);
     else if (IsEqualGUID(riid, IID_IPropertyBag))
@@ -77,12 +78,12 @@ HRESULT STDMETHODCALLTYPE CFDictionaryPropertyBag::QueryInterface(REFIID riid, v
     return S_OK;
 }
 
-ULONG STDMETHODCALLTYPE CFDictionaryPropertyBag::AddRef(void)
+ULONG CFDictionaryPropertyBag::AddRef()
 {
     return ++m_refCount;
 }
 
-ULONG STDMETHODCALLTYPE CFDictionaryPropertyBag::Release(void)
+ULONG CFDictionaryPropertyBag::Release()
 {
     ULONG newRef = --m_refCount;
     if (!newRef)
@@ -153,7 +154,7 @@ static bool ConvertVariantToCFType(VARIANT* pVar, void** cfObj)
     return false;
 }
 
-HRESULT STDMETHODCALLTYPE CFDictionaryPropertyBag::Read(LPCOLESTR pszPropName, VARIANT *pVar, IErrorLog * /*pErrorLog*/)
+HRESULT CFDictionaryPropertyBag::Read(LPCOLESTR pszPropName, VARIANT *pVar, IErrorLog * /*pErrorLog*/)
 {
     if (!pszPropName)
         return E_POINTER;
@@ -172,7 +173,7 @@ HRESULT STDMETHODCALLTYPE CFDictionaryPropertyBag::Read(LPCOLESTR pszPropName, V
     return E_FAIL;
 }
         
-HRESULT STDMETHODCALLTYPE CFDictionaryPropertyBag::Write(LPCOLESTR pszPropName, VARIANT* pVar)
+HRESULT CFDictionaryPropertyBag::Write(_In_ LPCOLESTR pszPropName, _In_ VARIANT* pVar)
 {
     if (!pszPropName || !pVar)
         return E_POINTER;

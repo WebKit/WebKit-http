@@ -35,6 +35,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGArrayMode.h"
 #include "DFGCapabilities.h"
+#include "DFGClobbersExitState.h"
 #include "DFGGraph.h"
 #include "DFGJITCode.h"
 #include "GetByIdStatus.h"
@@ -362,6 +363,9 @@ private:
     {
         addToGraph(MovHint, OpInfo(operand.offset()), value);
 
+        // We can't exit anymore because our OSR exit state has changed.
+        m_exitOK = false;
+
         DelayedSetLocal delayed(currentCodeOrigin(), operand, value);
         
         if (setMode == NormalSet) {
@@ -651,11 +655,17 @@ private:
 
     NodeOrigin currentNodeOrigin()
     {
-        // FIXME: We should set the forExit origin only on those nodes that can exit.
-        // https://bugs.webkit.org/show_bug.cgi?id=145204
+        CodeOrigin semantic;
+        CodeOrigin forExit;
+
         if (m_currentSemanticOrigin.isSet())
-            return NodeOrigin(m_currentSemanticOrigin, currentCodeOrigin());
-        return NodeOrigin(currentCodeOrigin());
+            semantic = m_currentSemanticOrigin;
+        else
+            semantic = currentCodeOrigin();
+
+        forExit = currentCodeOrigin();
+
+        return NodeOrigin(semantic, forExit, m_exitOK);
     }
     
     BranchData* branchData(unsigned taken, unsigned notTaken)
@@ -673,6 +683,8 @@ private:
         if (Options::verboseDFGByteCodeParsing())
             dataLog("        appended ", node, " ", Graph::opName(node->op()), "\n");
         m_currentBlock->append(node);
+        if (clobbersExitState(m_graph, node))
+            m_exitOK = false;
         return node;
     }
     
@@ -896,6 +908,8 @@ private:
     unsigned m_currentIndex;
     // The semantic origin of the current node if different from the current Index.
     CodeOrigin m_currentSemanticOrigin;
+    // True if it's OK to OSR exit right now.
+    bool m_exitOK { false };
 
     FrozenValue* m_constantUndefined;
     FrozenValue* m_constantNull;
@@ -1049,6 +1063,7 @@ private:
 
 #define LAST_OPCODE(name) \
     m_currentIndex += OPCODE_LENGTH(name); \
+    m_exitOK = false; \
     return shouldContinueParsing
 
 void ByteCodeParser::handleCall(Instruction* pc, NodeType op, CodeSpecializationKind kind)
@@ -1320,6 +1335,15 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
     VirtualRegister resultReg(resultOperand);
     if (resultReg.isValid())
         resultReg = m_inlineStackTop->remapOperand(resultReg);
+
+    VariableAccessData* calleeVariable = nullptr;
+    if (callee.isClosureCall()) {
+        Node* calleeSet = set(
+            VirtualRegister(registerOffset + JSStack::Callee), callTargetNode, ImmediateNakedSet);
+        
+        calleeVariable = calleeSet->variableAccessData();
+        calleeVariable->mergeShouldNeverUnbox(true);
+    }
     
     InlineStackEntry inlineStackEntry(
         this, codeBlock, codeBlock, m_graph.lastBlock(), callee.function(), resultReg,
@@ -1328,6 +1352,9 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
     // This is where the actual inlining really happens.
     unsigned oldIndex = m_currentIndex;
     m_currentIndex = 0;
+
+    // At this point, it's again OK to OSR exit.
+    m_exitOK = true;
 
     InlineVariableData inlineVariableData;
     inlineVariableData.inlineCallFrame = m_inlineStackTop->m_inlineCallFrame;
@@ -1338,20 +1365,17 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
         m_inlineStackTop->m_inlineCallFrame->isClosureCall
         == callee.isClosureCall());
     if (callee.isClosureCall()) {
-        VariableAccessData* calleeVariable =
-            set(VirtualRegister(JSStack::Callee), callTargetNode, ImmediateNakedSet)->variableAccessData();
-        
-        calleeVariable->mergeShouldNeverUnbox(true);
-        
+        RELEASE_ASSERT(calleeVariable);
         inlineVariableData.calleeVariable = calleeVariable;
     }
     
     m_graph.m_inlineVariableData.append(inlineVariableData);
-    
+
     parseCodeBlock();
     clearCaches(); // Reset our state now that we're back to the outer code.
     
     m_currentIndex = oldIndex;
+    m_exitOK = false;
     
     // If the inlined code created some new basic blocks, then we have linking to do.
     if (inlineStackEntry.m_callsiteBlockHead != m_graph.lastBlock()) {
@@ -1720,6 +1744,11 @@ bool ByteCodeParser::handleInlining(
     if (verbose)
         dataLog("Callee is going to be ", calleeReg, "\n");
     setDirect(calleeReg, callTargetNode, ImmediateSetWithFlush);
+
+    // It's OK to exit right now, even though we set some locals. That's because those locals are not
+    // user-visible.
+    m_exitOK = true;
+    addToGraph(ExitOK);
     
     SwitchData& data = *m_graph.m_switchData.add();
     data.kind = SwitchCell;
@@ -1777,6 +1806,7 @@ bool ByteCodeParser::handleInlining(
         }
         data.cases.append(SwitchCase(m_graph.freeze(thingToCaseOn), block.get()));
         m_currentIndex = nextOffset;
+        m_exitOK = true;
         processSetLocalQueue(); // This only comes into play for intrinsics, since normal inlined code will leave an empty queue.
         addToGraph(Jump);
         if (verbose)
@@ -1791,6 +1821,7 @@ bool ByteCodeParser::handleInlining(
     RefPtr<BasicBlock> slowPathBlock = adoptRef(
         new BasicBlock(UINT_MAX, m_numArguments, m_numLocals, PNaN));
     m_currentIndex = oldOffset;
+    m_exitOK = true;
     data.fallThrough = BranchTarget(slowPathBlock.get());
     m_graph.appendBlock(slowPathBlock);
     if (verbose)
@@ -1812,6 +1843,7 @@ bool ByteCodeParser::handleInlining(
     }
 
     m_currentIndex = nextOffset;
+    m_exitOK = true; // Origin changed, so it's fine to exit again.
     processSetLocalQueue();
     addToGraph(Jump);
     landingBlocks.append(m_currentBlock);
@@ -1829,6 +1861,7 @@ bool ByteCodeParser::handleInlining(
         landingBlocks[i]->terminal()->targetBlock() = continuationBlock.get();
     
     m_currentIndex = oldOffset;
+    m_exitOK = true;
     
     if (verbose) {
         dataLog("Done inlining (hard).\n");
@@ -2710,6 +2743,10 @@ void ByteCodeParser::handleGetById(
     //    shortcut.
     int nextRegister = registerOffset + JSStack::CallFrameHeaderSize;
     set(VirtualRegister(nextRegister++), base, ImmediateNakedSet);
+
+    // We've set some locals, but they are not user-visible. It's still OK to exit from here.
+    m_exitOK = true;
+    addToGraph(ExitOK);
     
     handleCall(
         destinationOperand, Call, InlineCallFrame::GetterCall, OPCODE_LENGTH(op_get_by_id),
@@ -2865,6 +2902,10 @@ void ByteCodeParser::handlePutById(
         int nextRegister = registerOffset + JSStack::CallFrameHeaderSize;
         set(VirtualRegister(nextRegister++), base, ImmediateNakedSet);
         set(VirtualRegister(nextRegister++), value, ImmediateNakedSet);
+
+        // We've set some locals, but they are not user-visible. It's still OK to exit from here.
+        m_exitOK = true;
+        addToGraph(ExitOK);
     
         handleCall(
             VirtualRegister().offset(), Call, InlineCallFrame::SetterCall,
@@ -2897,12 +2938,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
     Interpreter* interpreter = m_vm->interpreter;
     Instruction* instructionsBegin = m_inlineStackTop->m_codeBlock->instructions().begin();
     unsigned blockBegin = m_currentIndex;
-    
+
     // If we are the first basic block, introduce markers for arguments. This allows
     // us to track if a use of an argument may use the actual argument passed, as
     // opposed to using a value we set explicitly.
     if (m_currentBlock == m_graph.block(0) && !inlineCallFrame()) {
         m_graph.m_arguments.resize(m_numArguments);
+        // We will emit SetArgument nodes. They don't exit, but we're at the top of an op_enter so
+        // exitOK = true.
+        m_exitOK = true;
         for (unsigned argument = 0; argument < m_numArguments; ++argument) {
             VariableAccessData* variable = newVariableAccessData(
                 virtualRegisterForArgument(argument));
@@ -2918,6 +2962,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
     }
 
     while (true) {
+        // We're staring a new bytecode instruction. Hence, we once again have a place that we can exit
+        // to.
+        m_exitOK = true;
+        
         processSetLocalQueue();
         
         // Don't extend over jump destinations.
@@ -2994,7 +3042,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
                     FrozenValue* frozen = m_graph.freeze(cachedFunction);
                     addToGraph(CheckCell, OpInfo(frozen), callee);
-                    set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(JSConstant, OpInfo(frozen)));
 
                     function = static_cast<JSFunction*>(cachedFunction);
                 }
@@ -3285,37 +3332,31 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int startOperand = currentInstruction[2].u.operand;
             int numOperands = currentInstruction[3].u.operand;
 #if CPU(X86)
-            // X86 doesn't have enough registers to compile MakeRope with three arguments.
-            // Rather than try to be clever, we just make MakeRope dumber on this processor.
-            const unsigned maxRopeArguments = 2;
+            // X86 doesn't have enough registers to compile MakeRope with three arguments. The
+            // StrCat we emit here may be turned into a MakeRope. Rather than try to be clever,
+            // we just make StrCat dumber on this processor.
+            const unsigned maxArguments = 2;
 #else
-            const unsigned maxRopeArguments = 3;
+            const unsigned maxArguments = 3;
 #endif
-            auto toStringNodes = std::make_unique<Node*[]>(numOperands);
-            for (int i = 0; i < numOperands; i++)
-                toStringNodes[i] = addToGraph(ToString, get(VirtualRegister(startOperand - i)));
-
-            for (int i = 0; i < numOperands; i++)
-                addToGraph(Phantom, toStringNodes[i]);
-
             Node* operands[AdjacencyList::Size];
             unsigned indexInOperands = 0;
             for (unsigned i = 0; i < AdjacencyList::Size; ++i)
                 operands[i] = 0;
             for (int operandIdx = 0; operandIdx < numOperands; ++operandIdx) {
-                if (indexInOperands == maxRopeArguments) {
-                    operands[0] = addToGraph(MakeRope, operands[0], operands[1], operands[2]);
+                if (indexInOperands == maxArguments) {
+                    operands[0] = addToGraph(StrCat, operands[0], operands[1], operands[2]);
                     for (unsigned i = 1; i < AdjacencyList::Size; ++i)
                         operands[i] = 0;
                     indexInOperands = 1;
                 }
                 
                 ASSERT(indexInOperands < AdjacencyList::Size);
-                ASSERT(indexInOperands < maxRopeArguments);
-                operands[indexInOperands++] = toStringNodes[operandIdx];
+                ASSERT(indexInOperands < maxArguments);
+                operands[indexInOperands++] = get(VirtualRegister(startOperand - operandIdx));
             }
             set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(MakeRope, operands[0], operands[1], operands[2]));
+                addToGraph(StrCat, operands[0], operands[1], operands[2]));
             NEXT_OPCODE(op_strcat);
         }
 
@@ -3422,6 +3463,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (!compiledAsGetById) {
                 ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Read);
                 Node* getByVal = addToGraph(GetByVal, OpInfo(arrayMode.asWord()), OpInfo(prediction), base, property);
+                m_exitOK = false; // GetByVal must be treated as if it clobbers exit state, since FixupPhase may make it generic.
                 set(VirtualRegister(currentInstruction[1].u.operand), getByVal);
             }
 
@@ -3431,18 +3473,40 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_put_by_val_direct:
         case op_put_by_val: {
             Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
-
-            ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Write);
-            
             Node* property = get(VirtualRegister(currentInstruction[2].u.operand));
             Node* value = get(VirtualRegister(currentInstruction[3].u.operand));
-            
-            addVarArgChild(base);
-            addVarArgChild(property);
-            addVarArgChild(value);
-            addVarArgChild(0); // Leave room for property storage.
-            addVarArgChild(0); // Leave room for length.
-            addToGraph(Node::VarArg, opcodeID == op_put_by_val_direct ? PutByValDirect : PutByVal, OpInfo(arrayMode.asWord()), OpInfo(0));
+            bool isDirect = opcodeID == op_put_by_val_direct;
+            bool compiledAsPutById = false;
+            {
+                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
+                // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
+                // At that time, there is no information.
+                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)) {
+                    compiledAsPutById = true;
+                    unsigned identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
+                    UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
+
+                    addToGraph(CheckIdent, OpInfo(uid), property);
+
+                    PutByIdStatus putByIdStatus = PutByIdStatus::computeForStubInfo(
+                        locker, m_inlineStackTop->m_profiledBlock,
+                        byValInfo->stubInfo, currentCodeOrigin(), uid);
+
+                    handlePutById(base, identifierNumber, value, putByIdStatus, isDirect);
+                }
+            }
+
+            if (!compiledAsPutById) {
+                ArrayMode arrayMode = getArrayMode(currentInstruction[4].u.arrayProfile, Array::Write);
+
+                addVarArgChild(base);
+                addVarArgChild(property);
+                addVarArgChild(value);
+                addVarArgChild(0); // Leave room for property storage.
+                addVarArgChild(0); // Leave room for length.
+                addToGraph(Node::VarArg, isDirect ? PutByValDirect : PutByVal, OpInfo(arrayMode.asWord()), OpInfo(0));
+            }
 
             NEXT_OPCODE(op_put_by_val);
         }
@@ -4043,7 +4107,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
             addToGraph(LoopHint);
             
-            if (m_vm->watchdog && m_vm->watchdog->hasTimeLimit())
+            if (m_vm->watchdog)
                 addToGraph(CheckWatchdogTimer);
             
             NEXT_OPCODE(op_loop_hint);
