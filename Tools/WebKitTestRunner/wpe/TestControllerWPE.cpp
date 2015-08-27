@@ -27,6 +27,7 @@
 #include "TestController.h"
 
 #include <glib.h>
+#include <wtf/RunLoop.h>
 #include <wtf/glib/GSourceWrap.h>
 #include <wtf/glib/GUniquePtr.h>
 
@@ -34,6 +35,7 @@ namespace WTR {
 
 void TestController::notifyDone()
 {
+    RunLoop::main().stop();
 }
 
 void TestController::setHidden(bool)
@@ -44,15 +46,16 @@ void TestController::platformInitialize()
 {
 }
 
+WKPreferencesRef TestController::platformPreferences()
+{
+    return WKPageGroupGetPreferences(m_pageGroup.get());
+}
+
 void TestController::platformDestroy()
 {
 }
 
 void TestController::platformInitializeContext()
-{
-}
-
-void TestController::platformWillRunTest(const TestInvocation&)
 {
 }
 
@@ -66,15 +69,13 @@ static GMainContext* threadDefaultContext()
 void TestController::platformRunUntil(bool& condition, double timeout)
 {
     GMainContext* threadContext = threadDefaultContext();
-    bool timeoutReached = false;
 
     GSourceWrap::Static timeoutSource("[WebKit] WTR::TestController::runUntil",
-        [&timeoutReached] { timeoutReached = true; }, G_PRIORITY_DEFAULT_IDLE, threadContext);
+        [] { RunLoop::main().stop(); }, G_PRIORITY_DEFAULT_IDLE, threadContext);
     if (timeout >= 0)
         timeoutSource.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(timeout)));
 
-    while (!condition && !timeoutReached)
-        g_main_context_iteration(threadContext, FALSE);
+    RunLoop::main().run();
 
     timeoutSource.cancel();
 }
@@ -111,6 +112,18 @@ void TestController::runModal(PlatformWebView*)
 const char* TestController::platformLibraryPathForTesting()
 {
     return nullptr;
+}
+
+void TestController::platformConfigureViewForTest(const TestInvocation&)
+{
+}
+
+void TestController::platformResetPreferencesToConsistentValues()
+{
+}
+
+void TestController::updatePlatformSpecificViewOptionsForTest(ViewOptions&, const TestInvocation&) const
+{
 }
 
 } // namespace WTR

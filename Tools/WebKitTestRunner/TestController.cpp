@@ -313,6 +313,7 @@ const char* TestController::libraryPathForTesting()
 
 void TestController::initialize(int argc, const char* argv[])
 {
+    WTF::initializeThreading();
     RunLoop::initializeMainRunLoop();
 
     platformInitialize();
