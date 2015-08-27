@@ -93,9 +93,16 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Paint, "rgb(152, 188, 77)");
             this._chartColors.set(WebInspector.RenderingFrameTimelineRecord.TaskType.Other, "rgb(221, 221, 221)");
 
-            this._frameSelectionChartRow = new WebInspector.ChartDetailsSectionRow(this);
-            this._frameSelectionChartRow.innerRadius = 0.5;
+            this._frameSelectionChartRow = new WebInspector.ChartDetailsSectionRow(this, 74, 0.5);
             this._frameSelectionChartRow.addEventListener(WebInspector.ChartDetailsSectionRow.Event.LegendItemChecked, this._frameSelectionLegendItemChecked, this);
+
+            for (let key in WebInspector.RenderingFrameTimelineRecord.TaskType) {
+                let taskType = WebInspector.RenderingFrameTimelineRecord.TaskType[key];
+                let label = WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType(taskType);
+                let color = this._chartColors.get(taskType);
+                let checkbox = taskType !== WebInspector.RenderingFrameTimelineRecord.TaskType.Other;
+                this._frameSelectionChartRow.addItem(taskType, label, 0, color, checkbox, true);
+            }
 
             this._renderingFrameTaskFilter = new Set;
 
@@ -377,6 +384,14 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
     // Protected
 
+    representedObjectWasFiltered(representedObject, filtered)
+    {
+        super.representedObjectWasFiltered(representedObject, filtered);
+
+        if (representedObject instanceof WebInspector.TimelineRecord)
+            this._displayedContentView.recordWasFiltered(representedObject, filtered);
+    }
+
     updateFilter()
     {
         super.updateFilter();
@@ -402,14 +417,18 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             if (!treeElement)
                 return false;
 
-            var visible = false;
-            if (!(treeElement.record instanceof WebInspector.RenderingFrameTimelineRecord)) {
-                var taskType = WebInspector.RenderingFrameTimelineRecord.taskTypeForTimelineRecord(treeElement.record);
-                if (!this._renderingFrameTaskFilter.has(taskType))
-                    visible = true;
-            }
+            let records;
+            if (treeElement.record instanceof WebInspector.RenderingFrameTimelineRecord)
+                records = treeElement.record.children;
+            else
+                records = [treeElement.record];
 
-            if (!visible)
+            const filtered = records.every(function(record) {
+                var taskType = WebInspector.RenderingFrameTimelineRecord.taskTypeForTimelineRecord(record);
+                return this._renderingFrameTaskFilter.has(taskType);
+            }, this);
+
+            if (filtered)
                 return false;
         }
 
@@ -881,17 +900,12 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             return selectedRecords;
         }
 
-        var chart = this._frameSelectionChartRow;
-        var records = getSelectedRecords.call(this);
-        var chartData = Object.keys(WebInspector.RenderingFrameTimelineRecord.TaskType).map(function(taskTypeKey) {
-            var taskType = WebInspector.RenderingFrameTimelineRecord.TaskType[taskTypeKey];
-            var label = WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType(taskType);
-            var value = records.reduce(function(previousValue, currentValue) { return previousValue + currentValue.durationForTask(taskType); }, 0);
-            var color = this._chartColors.get(taskType);
-            return {id: taskType, label, value, color, checkbox: taskType !== WebInspector.RenderingFrameTimelineRecord.TaskType.Other};
-        }, this);
-
-        this._frameSelectionChartRow.data = chartData;
+        let records = getSelectedRecords.call(this);
+        for (let key in WebInspector.RenderingFrameTimelineRecord.TaskType) {
+            let taskType = WebInspector.RenderingFrameTimelineRecord.TaskType[key];
+            let value = records.reduce(function(previousValue, currentValue) { return previousValue + currentValue.durationForTask(taskType); }, 0);
+            this._frameSelectionChartRow.setItemValue(taskType, value);
+        }
 
         if (!records.length) {
             this._frameSelectionChartRow.title = WebInspector.UIString("Frames: None Selected");

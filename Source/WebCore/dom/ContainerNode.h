@@ -31,6 +31,7 @@
 namespace WebCore {
 
 class HTMLCollection;
+class NodeList;
 class NodeOrString;
 class QualifiedName;
 class RenderElement;
@@ -142,11 +143,14 @@ public:
     Element* querySelector(const String& selectors, ExceptionCode&);
     RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
 
-    RefPtr<NodeList> getElementsByTagName(const AtomicString&);
-    RefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<NodeList> getElementsByName(const String& elementName);
-    RefPtr<NodeList> getElementsByClassName(const AtomicString& classNames);
-    RefPtr<RadioNodeList> radioNodeList(const AtomicString&);
+    Ref<HTMLCollection> getElementsByTagName(const AtomicString&);
+    RefPtr<NodeList> getElementsByTagNameForObjC(const AtomicString&);
+    Ref<HTMLCollection> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    RefPtr<NodeList> getElementsByTagNameNSForObjC(const AtomicString& namespaceURI, const AtomicString& localName);
+    Ref<NodeList> getElementsByName(const String& elementName);
+    Ref<HTMLCollection> getElementsByClassName(const AtomicString& classNames);
+    Ref<NodeList> getElementsByClassNameForObjC(const AtomicString& classNames);
+    Ref<RadioNodeList> radioNodeList(const AtomicString&);
 
     // From the ParentNode interface - https://dom.spec.whatwg.org/#interface-parentnode
     Ref<HTMLCollection> children();

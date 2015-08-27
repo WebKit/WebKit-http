@@ -36,13 +36,9 @@
 namespace WTF {
 
 typedef uint32_t ThreadIdentifier;
-typedef void MainThreadFunction(void*);
 
 // Must be called from the main thread.
 WTF_EXPORT_PRIVATE void initializeMainThread();
-
-WTF_EXPORT_PRIVATE void callOnMainThread(MainThreadFunction*, void* context);
-WTF_EXPORT_PRIVATE void cancelCallOnMainThread(MainThreadFunction*, void* context);
 
 WTF_EXPORT_PRIVATE void callOnMainThread(std::function<void ()>);
 
@@ -94,10 +90,18 @@ WTF_EXPORT_PRIVATE void initializeMainThreadToProcessMainThread();
 void initializeMainThreadToProcessMainThreadPlatform();
 #endif
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1090
+WTF_EXPORT_PRIVATE void callOnMainThread(void (*function)(void*), void* context);
+WTF_EXPORT_PRIVATE void cancelCallOnMainThread(void (*function)(void*), void* context);
+#endif
+
 } // namespace WTF
 
-using WTF::callOnMainThread;
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1090
 using WTF::cancelCallOnMainThread;
+#endif
+
+using WTF::callOnMainThread;
 #if PLATFORM(COCOA)
 using WTF::callOnWebThreadOrDispatchAsyncOnMainThread;
 #endif

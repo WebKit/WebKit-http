@@ -1,3 +1,39 @@
+2015-08-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct build after r188982.
+
+        * WebKit.vcxproj/WebKit.sln:
+
+2015-08-20  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up CMake build after r188673
+        https://bugs.webkit.org/show_bug.cgi?id=148234
+
+        Reviewed by Tim Horton.
+
+        * PlatformWin.cmake:
+        Include ANGLE forwarding headers directories.
+
+2015-08-19  Alex Christensen  <achristensen@webkit.org>
+
+        CMake Windows build should not include files directly from other Source directories
+        https://bugs.webkit.org/show_bug.cgi?id=148198
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2015-08-19  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Replace MIDL [in/out] comments with equivalent SAL
+        https://bugs.webkit.org/show_bug.cgi?id=148001
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props: Turn
+        on SAL declarations in MIDL output.
+
 2015-08-17  Filip Pizlo  <fpizlo@apple.com>
 
         Replace all remaining uses of WTF::Mutex with WTF::Lock

@@ -358,7 +358,7 @@ public:
                 if (verbose)
                     dataLog("Adding Phi for ", operand, " at ", pointerDump(block), "\n");
                 
-                Node* phiNode = m_graph.addNode(SpecHeapTop, Phi, NodeOrigin());
+                Node* phiNode = m_graph.addNode(SpecHeapTop, Phi, block->at(0)->origin.withInvalidExit());
                 phiNode->mergeFlags(resultFor(format));
                 return phiNode;
             });
@@ -461,7 +461,7 @@ public:
                         insertionSet.insertNode(
                             nodeIndex, SpecNone, PutStack, node->origin,
                             OpInfo(m_graph.m_stackAccessData.add(operand, format)),
-                            Edge(incoming, useKindFor(format)));
+                            Edge(incoming, uncheckedUseKindFor(format)));
                     
                         deferred.operand(operand) = DeadFlush;
                     };
@@ -516,8 +516,7 @@ public:
         }
         
         // Finally eliminate the sunken PutStacks by turning them into Checks. This keeps whatever
-        // type check they were doing. Also prepend KillStacks to them to ensure that we know that
-        // the relevant value was *not* stored to the stack.
+        // type check they were doing.
         for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node* node = block->at(nodeIndex);
@@ -525,8 +524,6 @@ public:
                 if (!putLocalsToSink.contains(node))
                     continue;
                 
-                insertionSet.insertNode(
-                    nodeIndex, SpecNone, KillStack, node->origin, OpInfo(node->stackAccessData()->local.offset()));
                 node->remove();
             }
             

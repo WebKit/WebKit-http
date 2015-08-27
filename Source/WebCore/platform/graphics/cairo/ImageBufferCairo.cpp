@@ -104,7 +104,17 @@ void ImageBufferData::swapBuffers()
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-void ImageBufferData::createCairoGLSurface()
+void clearSurface(cairo_surface_t* surface)
+{
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+        return;
+
+    RefPtr<cairo_t> cr = adoptRef(cairo_create(surface));
+    cairo_set_operator(cr.get(), CAIRO_OPERATOR_CLEAR);
+    cairo_paint(cr.get());
+}
+
+PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t& texture)
 {
     MutexLocker locker(m_platformLayerProxy->mutex());
 
@@ -133,7 +143,9 @@ void ImageBufferData::createCairoGLSurface()
     // Thread-awareness is a huge performance hit on non-Intel drivers.
     cairo_gl_device_set_thread_aware(device, FALSE);
 
-    m_surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, m_texture, m_size.width(), m_size.height()));
+    auto surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, texture, size.width(), size.height()));
+    clearSurface(surface.get());
+    return surface;
 }
 #endif
 
@@ -147,9 +159,12 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         return;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    if (renderingMode == Accelerated)
-        m_data.createCairoGLSurface();
-    else
+    if (renderingMode == Accelerated) {
+        m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
+        if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
+            renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
+    }
+    if (renderingMode == Unaccelerated)
 #else
     ASSERT_UNUSED(renderingMode, renderingMode != Accelerated);
 #endif

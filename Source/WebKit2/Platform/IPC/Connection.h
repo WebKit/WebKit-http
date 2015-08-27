@@ -34,7 +34,7 @@
 #include "MessageReceiver.h"
 #include "ProcessType.h"
 #include <atomic>
-#include <condition_variable>
+#include <wtf/Condition.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -68,6 +68,7 @@ enum SyncMessageSendFlags {
     // Some platform accessibility clients can't suspend gracefully and need to spin the run loop so WebProcess doesn't hang.
     // FIXME (126021): Remove when no platforms need to support this.
     SpinRunLoopWhileWaitingForReply = 1 << 1,
+    UseFullySynchronousModeForTesting = 1 << 2,
 };
 
 enum WaitForMessageFlags {
@@ -205,6 +206,8 @@ public:
     void uninstallIncomingSyncMessageCallback(uint64_t);
     bool hasIncomingSyncMessage();
 
+    void allowFullySynchronousModeForTesting() { m_fullySynchronousModeIsAllowedForTesting = true; }
+
 private:
     Connection(Identifier, bool isServer, Client&);
     void platformInitialize(Identifier);
@@ -256,18 +259,20 @@ private:
     unsigned m_inSendSyncCount;
     unsigned m_inDispatchMessageCount;
     unsigned m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount;
+    unsigned m_inDispatchMessageMarkedToUseFullySynchronousModeForTesting { 0 };
+    bool m_fullySynchronousModeIsAllowedForTesting { false };
     bool m_didReceiveInvalidMessage;
 
     // Incoming messages.
-    std::mutex m_incomingMessagesMutex;
+    Lock m_incomingMessagesMutex;
     Deque<std::unique_ptr<MessageDecoder>> m_incomingMessages;
 
     // Outgoing messages.
-    std::mutex m_outgoingMessagesMutex;
+    Lock m_outgoingMessagesMutex;
     Deque<std::unique_ptr<MessageEncoder>> m_outgoingMessages;
     
-    std::condition_variable m_waitForMessageCondition;
-    std::mutex m_waitForMessageMutex;
+    Condition m_waitForMessageCondition;
+    Lock m_waitForMessageMutex;
 
     WaitForMessageState* m_waitingForMessage;
 
@@ -307,7 +312,7 @@ private:
     typedef HashMap<uint64_t, SecondaryThreadPendingSyncReply*> SecondaryThreadPendingSyncReplyMap;
     SecondaryThreadPendingSyncReplyMap m_secondaryThreadPendingSyncReplyMap;
 
-    std::mutex m_incomingSyncMessageCallbackMutex;
+    Lock m_incomingSyncMessageCallbackMutex;
     HashMap<uint64_t, std::function<void ()>> m_incomingSyncMessageCallbacks;
     RefPtr<WorkQueue> m_incomingSyncMessageCallbackQueue;
     uint64_t m_nextIncomingSyncMessageCallbackID { 0 };
@@ -368,7 +373,12 @@ template<typename T> bool Connection::sendSync(T&& message, typename T::Reply&& 
 
     uint64_t syncRequestID = 0;
     std::unique_ptr<MessageEncoder> encoder = createSyncMessageEncoder(T::receiverName(), T::name(), destinationID, syncRequestID);
-    
+
+    if (syncSendFlags & SyncMessageSendFlags::UseFullySynchronousModeForTesting) {
+        encoder->setFullySynchronousModeForTesting();
+        m_fullySynchronousModeIsAllowedForTesting = true;
+    }
+
     // Encode the rest of the input arguments.
     encoder->encode(message.arguments());
 

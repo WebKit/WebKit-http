@@ -63,6 +63,8 @@
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextIndicator.h>
 #include <WebCore/UserActivity.h>
+#include <WebCore/UserContentTypes.h>
+#include <WebCore/UserScriptTypes.h>
 #include <WebCore/ViewState.h>
 #include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
@@ -750,6 +752,7 @@ public:
 
 #if ENABLE(MEDIA_SESSION)
     void handleMediaEvent(uint32_t /* WebCore::MediaEventType */);
+    void setVolumeOfMediaElement(double, uint64_t);
 #endif
 
     void updateMainFrameScrollOffsetPinning();
@@ -900,18 +903,22 @@ public:
     void setPageActivityState(WebCore::PageActivityState::Flags);
 
     void postMessage(const String& messageName, API::Object* messageBody);
-    void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
+    void postSynchronousMessageForTesting(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
 
 #if PLATFORM(GTK)
     void setInputMethodState(bool);
 #endif
 
+    void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&);
 #if ENABLE(VIDEO)
-    void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
 #if USE(GSTREAMER)
     void requestInstallMissingMediaPlugins(const String& details, const String& description, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
 #endif
 #endif
+
+    void addUserScript(const String& source, WebCore::UserContentInjectedFrames, WebCore::UserScriptInjectionTime);
+    void addUserStyleSheet(const String& source, WebCore::UserContentInjectedFrames);
+    void removeAllUserContent();
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -989,15 +996,11 @@ private:
     void updateUserActivity();
 
     void mouseEvent(const WebMouseEvent&);
-    void mouseEventSyncForTesting(const WebMouseEvent&, bool&);
-    void wheelEventSyncForTesting(const WebWheelEvent&, bool&);
     void keyEvent(const WebKeyboardEvent&);
-    void keyEventSyncForTesting(const WebKeyboardEvent&, bool&);
 #if ENABLE(IOS_TOUCH_EVENTS)
     void touchEventSync(const WebTouchEvent&, bool& handled);
 #elif ENABLE(TOUCH_EVENTS)
     void touchEvent(const WebTouchEvent&);
-    void touchEventSyncForTesting(const WebTouchEvent&, bool& handled);
 #endif
 #if ENABLE(CONTEXT_MENUS)
     void contextMenuHidden() { m_isShowingContextMenu = false; }

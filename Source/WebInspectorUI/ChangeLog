@@ -1,3 +1,1145 @@
+2015-08-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: [Regression] [Mavericks]: Undocked Web Inspector toolbar is two different colors and has extra space
+        https://bugs.webkit.org/show_bug.cgi?id=148510
+
+        Make body element transparent and remove extra padding above the toolbar only for OS X Mavericks.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/Main.css:
+        (body:not(.mavericks)):
+        (body): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (body:not(.mavericks) .toolbar):
+        (body.window-inactive:not(.mavericks) .toolbar):
+        (body.mac-platform:not(.docked, .mavericks) .toolbar):
+        (.toolbar): Deleted.
+        (body.window-inactive .toolbar): Deleted.
+        (body.mac-platform:not(.docked) .toolbar): Deleted.
+
+2015-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception in CSS Completion - TypeError: undefined is not an object (evaluating 'this._values[middleIndex].startsWith')
+        https://bugs.webkit.org/show_bug.cgi?id=148508
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions):
+        Add a comment explaining that the constructor may be called with
+        a list of strings or a list of objects from the protocol. Add
+        a fast path for when this is constructed with a list of strings.
+
+2015-08-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames timeline pie chart should use SVG instead of 2D canvas
+        https://bugs.webkit.org/show_bug.cgi?id=148457
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChartDetailsSectionRow.css:
+        (.details-section > .content > .group > .row.chart > .chart-content > svg > path.hidden):
+        (.details-section > .content > .group > .row.chart > .chart-content > svg > path.chart-segment):
+        (.details-section > .content > .group > .row.chart > .chart-content > svg > path.empty-chart):
+        New styles for SVG chart elements.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow):
+        Calculate radii and create SVG chart elements.
+        (WebInspector.ChartDetailsSectionRow.prototype.clearItems):
+        Remove chart segment path elements.
+        (WebInspector.ChartDetailsSectionRow.prototype._needsLayout):
+        (WebInspector.ChartDetailsSectionRow.prototype._updateLayout.createSegmentPathData):
+        Helper function that creates path data for a single pie chart segment.
+        (WebInspector.ChartDetailsSectionRow.prototype._updateLayout):
+        Creates path elements as needed, and updates path data for for non-zero data points.
+        (WebInspector.ChartDetailsSectionRow.prototype.set innerLabel): Deleted.
+        (WebInspector.ChartDetailsSectionRow.prototype.set innerRadius): Deleted.
+        These properties are now set during construction.
+        (WebInspector.ChartDetailsSectionRow.prototype.updateLayout): Deleted.
+        Renamed to _updateLayout.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Chart size and inner radius passed to chart constructor.
+
+2015-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Implement tracking of active stylesheets in the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=105828
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSStyleSheet.js:
+        (WebInspector.CSSStyleSheet):
+        (WebInspector.CSSStyleSheet.prototype.get origin):
+        (WebInspector.CSSStyleSheet.prototype.updateInfo):
+        Add a new origin attribute that has been sent from the backend for a while.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager.prototype.styleSheetAdded):
+        (WebInspector.CSSStyleManager.prototype.styleSheetRemoved):
+        Handle the new events by managing the new CSSStyleSheets.
+        
+        (WebInspector.CSSStyleManager):
+        (WebInspector.CSSStyleManager.prototype._mainResourceDidChange):
+        Reset the legacy fetching flag. Fetching is only needed for legacy backends.
+
+        (WebInspector.CSSStyleManager.prototype._fetchInfoForAllStyleSheets):
+        Include the new origin property in the legacy updateInfo path.
+
+        * UserInterface/Protocol/CSSObserver.js:
+        (WebInspector.CSSObserver.prototype.styleSheetAdded):
+        (WebInspector.CSSObserver.prototype.styleSheetRemoved):
+        Forward to the manager.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        Refresh the sidebar when stylesheets are added / removed, as that
+        may affect the style of the select element.
+
+2015-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Drop iOS 6 Legacy Remote Inspector Support
+        https://bugs.webkit.org/show_bug.cgi?id=148456
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector._updateReloadToolbarButton):
+        (WebInspector._updateDownloadToolbarButton):
+        (WebInspector.canArchiveMainFrame):
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager.prototype._frameURLMapKey):
+        (WebInspector.CSSStyleManager.prototype._lookupStyleSheet.styleSheetsFetched):
+        (WebInspector.CSSStyleManager._updateResourceContent.fetchedStyleSheetContent):
+        (WebInspector.CSSStyleManager.prototype._clearStyleSheetsForResource): Deleted.
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.highlightSelector):
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        * UserInterface/Controllers/SourceMapManager.js:
+        (WebInspector.SourceMapManager.prototype._loadAndParseSourceMap):
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager):
+        (WebInspector.StorageManager.prototype._addDOMStorageIfNeeded):
+        (WebInspector.StorageManager.prototype.domStorageWasUpdated): Deleted.
+        (WebInspector.StorageManager.prototype._domStorageForIdentifier): Deleted.
+        (WebInspector.StorageManager.prototype._extraDomainsActivated): Deleted.
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype._processRecord):
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype._editBreakpointPopoverContentElement):
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions):
+        (WebInspector.CSSCompletions.requestCSSCompletions):
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.addCustomCompletions): Deleted.
+        * UserInterface/Models/CSSProperty.js:
+        (WebInspector.CSSProperty):
+        (WebInspector.CSSProperty.prototype.update):
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.get matchedSelectors): Deleted.
+        (WebInspector.CSSRule.prototype.get matchedSelectorText): Deleted.
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh.parseRuleMatchArrayPayload):
+        (WebInspector.DOMNodeStyles.prototype.refresh.fetchedMatchedStyles):
+        (WebInspector.DOMNodeStyles.prototype.changeRule.changeText):
+        (WebInspector.DOMNodeStyles.prototype.changeStyleText):
+        (WebInspector.DOMNodeStyles.prototype._parseStylePropertyPayload):
+        (WebInspector.DOMNodeStyles.prototype._parseRulePayload):
+        (WebInspector.DOMNodeStyles.prototype.changeStyleText.attributeChanged): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.changeStyleText.fetchedStyleSheetContent.contentDidChange): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.changeStyleText.fetchedStyleSheetContent): Deleted.
+        (WebInspector.DOMNodeStyles.prototype._parseSourceRangePayload): Deleted.
+        (WebInspector.DOMNodeStyles.prototype._parseSelectorListPayload): Deleted.
+        * UserInterface/Models/DOMStorageObject.js:
+        * UserInterface/Models/DOMTree.js:
+        (WebInspector.DOMTree.prototype.requestRootDOMNode):
+        (WebInspector.DOMTree.prototype._requestRootDOMNode):
+        * UserInterface/Models/DatabaseObject.js:
+        (WebInspector.DatabaseObject.prototype.executeSQL.queryCallback):
+        (WebInspector.DatabaseObject.prototype.executeSQL):
+        (WebInspector.DatabaseObject):
+        (WebInspector.DatabaseObject.prototype.executeSQL.callback): Deleted.
+        * UserInterface/Models/ExecutionContext.js:
+        (WebInspector.ExecutionContext.supported): Deleted.
+        * UserInterface/Models/IssueMessage.js:
+        (WebInspector.IssueMessage): Deleted.
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WebInspector.LayoutTimelineRecord):
+        (WebInspector.LayoutTimelineRecord.prototype.get width):
+        (WebInspector.LayoutTimelineRecord.prototype.get height):
+        (WebInspector.LayoutTimelineRecord.prototype.get area):
+        (WebInspector.LayoutTimelineRecord.prototype.get x): Deleted.
+        (WebInspector.LayoutTimelineRecord.prototype.get y): Deleted.
+        (WebInspector.LayoutTimelineRecord.prototype.get rect): Deleted.
+        * UserInterface/Models/ProfileNode.js:
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.associateWithScript):
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype._initializeProfileFromPayload.profileNodeFromPayload):
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend):
+        * UserInterface/Models/TextRange.js:
+        (WebInspector.TextRange.prototype.resolveLinesAndColumns.countNewLineCharacters): Deleted.
+        (WebInspector.TextRange.prototype.resolveLinesAndColumns): Deleted.
+        * UserInterface/Models/TimelineRecording.js:
+        * UserInterface/Protocol/ConsoleObserver.js:
+        (WebInspector.ConsoleObserver.prototype.messageAdded): Deleted.
+        * UserInterface/Protocol/DOMStorageObserver.js:
+        (WebInspector.DOMStorageObserver.prototype.addDOMStorage): Deleted.
+        (WebInspector.DOMStorageObserver.prototype.updateDOMStorage): Deleted.
+        * UserInterface/Protocol/DatabaseObserver.js:
+        (WebInspector.DatabaseObserver.prototype.sqlTransactionSucceeded): Deleted.
+        (WebInspector.DatabaseObserver.prototype.sqlTransactionFailed): Deleted.
+        (WebInspector.DatabaseObserver): Deleted.
+        * UserInterface/Protocol/Legacy/6.0/InspectorBackendCommands.js: Removed.
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._deleteCallback):
+        (WebInspector.CookieStorageContentView):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype._updateCompositingBordersButtonToMatchPageSettings): Deleted.
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WebInspector.EventListenerSectionGroup.prototype._functionTextOrLink):
+        (WebInspector.EventListenerSectionGroup):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype._showHighlightForRecord):
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole):
+        (WebInspector.QuickConsole.prototype._createExecutionContextPathComponentFromFrame):
+        (WebInspector.QuickConsole.prototype._frameAdded): Deleted.
+        (WebInspector.QuickConsole.prototype._frameRemoved): Deleted.
+        (WebInspector.QuickConsole.prototype._frameMainResourceChanged): Deleted.
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._makeTypeTokenAnnotator):
+        (WebInspector.SourceCodeTextEditor.prototype._makeBasicBlockAnnotator):
+        * Versions/Inspector-iOS-6.0.json: Removed.
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2015-08-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Enter should evaluate selected JS in Debugger/Sources
+        https://bugs.webkit.org/show_bug.cgi?id=148368
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions):
+        Evaluate selected text in the console only for JS and HTML resources. HTML resources
+        should be allowed because they can have commented out (inside <!-- -->) and
+        inline (onclick="") JavaScript.
+
+2015-08-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: no need to allocate protocolErrors array for every dispatched backend command
+        https://bugs.webkit.org/show_bug.cgi?id=146466
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/TestStub.html: Fix a typo, this property exists on ProtocolTest.
+
+2015-08-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames legend item checkbox colors are too light
+        https://bugs.webkit.org/show_bug.cgi?id=148465
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow.prototype._addCheckboxColorFilter):
+        Gamma primitive should use an "exponent" attribute instead of "value".
+        Increased gamma exponent to 1.4.
+
+2015-08-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make DOM node attribute changes highlighting less obnoxious
+        https://bugs.webkit.org/show_bug.cgi?id=148050
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (@keyframes node-state-changed): Change color to a light green.
+        (.node-state-changed): Add a slight ease-in for the animation function.
+
+2015-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Refresh button to Cookie Content View
+        https://bugs.webkit.org/show_bug.cgi?id=148468
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView):
+        (WebInspector.CookieStorageContentView.prototype.get navigationItems):
+        (WebInspector.CookieStorageContentView.prototype._refreshButtonClicked):
+
+2015-08-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: message dispatch metrics should use high-resolution timing data
+        https://bugs.webkit.org/show_bug.cgi?id=135467
+
+        Reviewed by Timothy Hatcher.
+
+        Use performance.now if it's available, otherwise fallback to Date.now().
+        Format timestamps with fixed decimal point, and sprinkle some ES6.
+
+        * UserInterface/Base/Utilities.js:
+        (timestamp): Added.
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackendClass.prototype._dispatchEvent):
+        * UserInterface/Protocol/MessageDispatcher.js:
+        (WebInspector.dispatchNextQueuedMessageFromBackend):
+        (WebInspector.dispatchMessageFromBackend): Be consistent about using `this`.
+
+2015-08-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames pie chart should use the needsLayout/updateLayout idiom
+        https://bugs.webkit.org/show_bug.cgi?id=148412
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow):
+        (WebInspector.ChartDetailsSectionRow.prototype.set innerLabel):
+        (WebInspector.ChartDetailsSectionRow.prototype.set innerRadius):
+        Schedule a layout.
+        (WebInspector.ChartDetailsSectionRow.prototype.set data): Deleted.
+        Replaced by addItem, setItemValue, and clearItems.
+        (WebInspector.ChartDetailsSectionRow.prototype.addItem):
+        (WebInspector.ChartDetailsSectionRow.prototype.setItemValue):
+        (WebInspector.ChartDetailsSectionRow.prototype.clearItems):
+        Add/update data points and schedule a layout.
+        (WebInspector.ChartDetailsSectionRow.prototype._needsLayout):
+        (WebInspector.ChartDetailsSectionRow.prototype.updateLayout):
+        Update legend and draw pie chart.
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend): Deleted.
+        Refactored as _updateLegend.
+        (WebInspector.ChartDetailsSectionRow.prototype._refresh): Deleted.
+        Refactored as updateLayout.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        Add chart data points once.
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart):
+        Update chart values.
+
+2015-08-24  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add protocol test for existing error handling performed by the backend
+        https://bugs.webkit.org/show_bug.cgi?id=147097
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a way to send raw messages to the backend while still awaiting on responses.
+        This is necessary to test protocol error handling in the inspector backend.
+
+        * UserInterface/Test/InspectorProtocol.js:
+        (InspectorProtocol.sendCommand):
+        (InspectorProtocol.awaitCommand): Use awaitMessage internally.
+        (InspectorProtocol.awaitMessage): Added. Use a dummy requestId if none is supplied.
+        (InspectorProtocol._sendMessage): Added.
+        (InspectorProtocol.dispatchMessageFromBackend):
+        Reject with the error object instead of the error message, so error code/data can be checked.
+        (InspectorProtocol.sendMessage): Deleted, it is now a private method.
+
+2015-08-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Change webkitAnimationEnd use, should be animationEnd
+        https://bugs.webkit.org/show_bug.cgi?id=148385
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype.emphasizeSearchHighlight):
+        * UserInterface/Views/DashboardContainerView.js:
+        (WebInspector.DashboardContainerView.prototype._showDashboardView.animationEnded):
+        (WebInspector.DashboardContainerView.prototype._showDashboardView):
+        (WebInspector.DashboardContainerView.prototype._hideDashboardView.animationEnded):
+        (WebInspector.DashboardContainerView.prototype._hideDashboardView):
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView.prototype._setConsoleItemValue.animationEnded):
+        (WebInspector.DefaultDashboardView.prototype._setConsoleItemValue):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.revealPosition.revealAndHighlightLine):
+        (WebInspector.TextEditor.prototype.revealPosition):
+        (WebInspector.TextEditor.prototype._revealSearchResult):
+
+2015-08-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r188581): Web Inspector: Console user command isn't visible when it's expected to be
+        https://bugs.webkit.org/show_bug.cgi?id=148283
+
+        One of the improvements of r188581 "Option-Enter should commit console command
+        without erasing the prompt" was not to show a console user command if it's the
+        same as the previous one.
+
+        However, there could be a lot of other messages between the last two user
+        commands - console.log, CSS warnings, etc. In that case we should show a console
+        user command again by resetting _lastCommitted.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        (WebInspector.JavaScriptLogViewController.prototype.startNewSession):
+        (WebInspector.JavaScriptLogViewController.prototype._appendConsoleMessageView):
+        Reset _lastCommitted for all messages except for user commands and use command results.
+
+2015-08-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames filter checkboxes all become checked during recording
+        https://bugs.webkit.org/show_bug.cgi?id=148375
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend):
+        Removed incorrect code that forced checked to true.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart):
+        Persist legend item checkbox state when updating the chart.
+
+2015-08-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filtered style not applied to graph elements during timeline recording
+        https://bugs.webkit.org/show_bug.cgi?id=148339
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        Check for hidden state change when applying filters to newly added tree elements.
+
+2015-08-23  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Drop webkit prefixes from animation, keyframes and transform
+        https://bugs.webkit.org/show_bug.cgi?id=148364
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.breakpoint-generic-line-icon .icon > span):
+        (.data-updated.breakpoint-generic-line-icon .icon > span):
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker > .slider):
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard):
+        (.toolbar .dashboard.slide-out-up):
+        (.toolbar .dashboard.slide-out-down):
+        (.toolbar .dashboard.slide-in-up):
+        (.toolbar .dashboard.slide-in-down):
+        (@keyframes slide-top-edge):
+        (@keyframes slide-bottom-edge):
+        (@-webkit-keyframes slide-top-edge): Deleted.
+        (@-webkit-keyframes slide-bottom-edge): Deleted.
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.dashboard.debugger .navigation-bar .item.button > .glyph):
+        (@keyframes pulse-pause-button):
+        (@-webkit-keyframes pulse-pause-button): Deleted.
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item.pulsing):
+        (@keyframes console-item-pulse):
+        (@-webkit-keyframes console-item-pulse): Deleted.
+        * UserInterface/Views/GoToLineDialog.css:
+        (.go-to-line-dialog):
+        * UserInterface/Views/HoverMenu.css:
+        (.hover-menu):
+        * UserInterface/Views/IndeterminateProgressSpinner.css:
+        (@keyframes discrete-spinner):
+        (.indeterminate-progress-spinner):
+        (@-webkit-keyframes discrete-spinner): Deleted.
+        * UserInterface/Views/Main.css:
+        (.bouncy-highlight):
+        (@keyframes bouncy-highlight-animation):
+        (@-webkit-keyframes bouncy-highlight-animation): Deleted.
+        * UserInterface/Views/ProbeSetDataGrid.css:
+        (.details-section.probe-set .data-grid tr.revealed.highlighted):
+        (@keyframes blink-frame-highlight):
+        (.details-section.probe-set .data-grid > tr.data-updated):
+        (@keyframes blink-probe-frame):
+        (@-webkit-keyframes blink-frame-highlight): Deleted.
+        (@-webkit-keyframes blink-probe-frame): Deleted.
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .highlighted):
+        (@keyframes text-editor-highlight-fadeout):
+        (.text-editor > .CodeMirror .hovered-expression-highlight):
+        (@keyframes text-editor-hovered-expression-highlight-fadeout):
+        (@-webkit-keyframes text-editor-highlight-fadeout): Deleted.
+        (@-webkit-keyframes text-editor-hovered-expression-highlight-fadeout): Deleted.
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.frames > .timeline-ruler > .markers > .divider):
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.right):
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.right):
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .header > .divider):
+        (.timeline-ruler > .markers > .divider):
+        (.timeline-ruler > .markers > .marker):
+        (.timeline-ruler > .selection-handle.left):
+        (.timeline-ruler > .selection-handle.right):
+
+2015-08-21  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Type profiler shows 'Undefined' annotation for functions with no return statements
+        https://bugs.webkit.org/show_bug.cgi?id=146882
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TypeTokenAnnotator.js:
+        (WebInspector.TypeTokenAnnotator.prototype._insertTypeToken):
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        (WebInspector.ScriptSyntaxTree):
+
+2015-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: WebInspector.domTreeManager.regionLayoutUpdated does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=148348
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/CSSObserver.js:
+        (WebInspector.CSSObserver.prototype.regionLayoutUpdated):
+        Just do the same as the new event name.
+
+2015-08-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: clean up uses of `new` with zero-argument constructors and factory methods
+        https://bugs.webkit.org/show_bug.cgi?id=148311
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView):
+        * UserInterface/Views/ColorPicker.js:
+        (WebInspector.ColorPicker):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject): This was causing a console assertion
+        when a breakpoint tree element was selected and the inspector tried to restore the view state
+        after a reload or back/forward navigation.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+
+2015-08-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add a regression test for the fix introduced in r188679
+        https://bugs.webkit.org/show_bug.cgi?id=148223
+
+        Reviewed by Joseph Pecoraro.
+
+        Turns out that we were possibly leaking a single DOMTree on reload.
+        Always clear the main frame's DOMTree as well as those of sub-frames.
+
+        * UserInterface/Base/Object.js: Add back single-fire listeners.
+        (WebInspector.Object.singleFireEventListener.let.wrappedCallback):
+        (WebInspector.Object.singleFireEventListener):
+        (WebInspector.Object.retainedObjectsWithPrototype):
+        (WebInspector.Object.prototype.singleFireEventListener):
+        (WebInspector.Object.prototype.retainedObjectsWithPrototype):
+        * UserInterface/Models/Frame.js:
+        (WebInspector.Frame.prototype.removeAllChildFrames): Clear own tree too.
+
+2015-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better Remember open tab types and order if using JSContext inspector
+        https://bugs.webkit.org/show_bug.cgi?id=148285
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector.activateExtraDomains):
+        Save and restore extra domain related tabs at the expected saved index.
+
+        (WebInspector._rememberOpenTabs):
+        Keep unsupported tab types in the setting so when they are supported they open.
+
+        * UserInterface/Base/Utilities.js:
+        Add a helper for inserting a single object into an array.
+
+2015-08-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: inline errors/warnings are taller than the line height
+        https://bugs.webkit.org/show_bug.cgi?id=148232
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .issue-widget.inline):
+        (.source-code.text-editor > .CodeMirror .issue-widget.inline > .text):
+
+2015-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Uncaught Exception opening Search Tab
+        https://bugs.webkit.org/show_bug.cgi?id=148284
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel):
+        This is copied / pasted code that shouldn't apply to the Search tab.
+        We want to show results under Resources in the Search tab.
+
+2015-08-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Truncate data URIs
+        https://bugs.webkit.org/show_bug.cgi?id=148212
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseURL):
+        Exit early to avoid an expensive RegExp match on a potentially very large data URI.
+
+        (parseQueryString):
+        Fix typo.
+
+        (WebInspector.displayNameForURL):
+        (WebInspector.truncateURL):
+        By default, only show first and last 3 characters of data URIs.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.get displayURL):
+        For tooltips, show first and last 32 characters of data URIs.
+
+        * UserInterface/Models/SourceCodeLocation.js:
+        (WebInspector.SourceCodeLocation.prototype._locationString):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateToolTip):
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add flex alignment section to Visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=148243
+
+        Reviewed by Timothy Hatcher.
+
+        Uses select keyword pickers to contain the list of possible values.  Also supports
+        the upcoming Grid layout keywords in the advanced keyword list.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateFlexboxSection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateAlignmentSection):
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Labels in the computed panel are shifted when a filter is applieds
+        https://bugs.webkit.org/show_bug.cgi?id=148250
+
+        Reviewed by Timothy Hatcher.
+
+        Added to the selectors for filtering to ensure they only apply to the rules panel.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .label:not(.filter-section-non-matching) ~ .label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .label.filter-matching-label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .label:not(.filter-section-non-matching) + .label.filter-matching-label:not(.filter-section-non-matching)):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .new-rule):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .style-declaration-section:not(.filter-section-non-matching) ~ .label:not(.filter-section-non-matching)):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label:not(.filter-section-non-matching) ~ .label): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label.filter-matching-label): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .label:not(.filter-section-non-matching) + .label.filter-matching-label:not(.filter-section-non-matching)): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .new-rule): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress .style-declaration-section:not(.filter-section-non-matching) ~ .label:not(.filter-section-non-matching)): Deleted.
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Fix "attempted to assign to readonly property" in Visual editor links
+        https://bugs.webkit.org/show_bug.cgi?id=148264
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.js:
+        (WebInspector.VisualStylePropertyEditorLink.prototype.set linked):
+        No longer attempts to set the "hidden" attribute of the link icons before they exist.
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Visual editor adds extra spaces to styles with no properties
+        https://bugs.webkit.org/show_bug.cgi?id=148242
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration.prototype.set text):
+        Now trims the text and, if the resulting string has no length or the style is inline,
+        replaces the text to be set with the trimmed text.
+
+        * UserInterface/Views/VisualStylePropertyCombiner.js:
+        (WebInspector.VisualStylePropertyCombiner.prototype.modifyPropertyText):
+        Removed unnecessary trim.
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Font size between computed and set value is off in visual styles popups
+        https://bugs.webkit.org/show_bug.cgi?id=148226
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStylePropertyEditor.css:
+        (.visual-style-property-container > .visual-style-property-value-container > .visual-style-special-property-placeholder):
+        Increased font-size to match the font-size of the overlaid select element.
+
+2015-08-20  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filtered frames shouldn't be selectable in the Rendering Frames overview graph
+        https://bugs.webkit.org/show_bug.cgi?id=148253
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        Check record's filtered state before setting new frame selection.
+
+2015-08-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: visual style number inputs don't style the units correctly
+        https://bugs.webkit.org/show_bug.cgi?id=148222
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js:
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        Added extra checks to see if the number input has a value when setting the value on the editor.
+
+2015-08-20  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Filtered frames should be styled differently in the Rendering Frames overview graph
+        https://bugs.webkit.org/show_bug.cgi?id=147421
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.representedObjectWasFiltered):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        Inform derived sidebar of tree element filter state changes.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype.recordWasFiltered):
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype.updateLayout):
+        Update filtered frame style when a record's state changes, and during layout.
+
+        * UserInterface/Views/TimelineOverview.js:
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WebInspector.TimelineOverviewGraph.prototype.recordWasFiltered):
+        Allow setting a record's filtered state for a given timeline in the overview.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame.filtered > .frame):
+        New filtered frame style.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype.get filtered):
+        (WebInspector.TimelineRecordFrame.prototype.set filtered):
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.recordWasFiltered):
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.representedObjectWasFiltered):
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Apply task filters to RenderingFrameTimelineRecords and their immediate children.
+
+2015-08-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: console assertion when hitting breakpoint after auto-recording ends
+        https://bugs.webkit.org/show_bug.cgi?id=148225
+
+        Reviewed by Timothy Hatcher.
+
+        Add checks for the precondition to starting/stopping time updates.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._capturingStarted):
+        (WebInspector.TimelineRecordingContentView.prototype._debuggerPaused):
+        (WebInspector.TimelineRecordingContentView.prototype._debuggerResumed):
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add TestHarness option to tee all commands to system console
+        https://bugs.webkit.org/show_bug.cgi?id=148181
+
+        Reviewed by Joseph Pecoraro.
+
+        It is currently difficult to trace what's going on when a test times out
+        on a buildbot instance. The existing option for forcing debug logging can
+        still drop messages that don't make it from the inspector to the test page.
+
+        This patch adds an option which logs all TestHarness commands directly to
+        stderr in the Inspector instance using InspectorFrontendHost::unbufferedLog.
+
+        Clean up how existing harness logging code calls into each other. Extract
+        the stringifying code that is duplicated everywhere.
+
+        * UserInterface/Test.html: Reorganize options and add new option.
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.completeTest):
+        (FrontendTestHarness.prototype.addResult):
+        (FrontendTestHarness.prototype.debugLog):
+        (FrontendTestHarness.prototype.testPageDidLoad):
+        (FrontendTestHarness.prototype._resendResults):
+        (FrontendTestHarness):
+        * UserInterface/Test/ProtocolTestHarness.js:
+        (ProtocolTestHarness.prototype.completeTest):
+        (ProtocolTestHarness.prototype.addResult):
+        (ProtocolTestHarness.prototype.debugLog):
+        * UserInterface/Test/TestHarness.js:
+        (TestHarness.prototype.log):
+        (TestHarness.prototype.assert):
+        (TestHarness.prototype.expectThat):
+        (TestHarness.messageAsString):
+        (TestHarness):
+        * UserInterface/TestStub.html: Reorganize options and add new option.
+
+2015-08-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused temporary variable
+        https://bugs.webkit.org/show_bug.cgi?id=148215
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+
+2015-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Visual styles panel does not work with pseudo-elements
+        https://bugs.webkit.org/show_bug.cgi?id=148187
+
+        Reviewed by Timothy Hatcher.
+
+        If the inline style does not exist, such as for pseudo-elements, default to the first matched rule.
+
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype.update):
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOMTree leaks on main resource changes
+        https://bugs.webkit.org/show_bug.cgi?id=148158
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMTree.js:
+        (WebInspector.DOMTree.prototype.disconnect):
+        Add a way to disconnect the DOMTree and allow it to get garbage collected.
+
+        (WebInspector.DOMTree.prototype.invalidate.performInvalidate):
+        (WebInspector.DOMTree.prototype.invalidate):
+        (WebInspector.DOMTree.prototype._requestRootDOMNode):
+        (WebInspector.DOMTree.prototype._framePageExecutionContextChanged):
+        Remove some uses of the delete operator.
+
+        * UserInterface/Models/Frame.js:
+        (WebInspector.Frame.prototype.removeChildFrame):
+        (WebInspector.Frame.prototype.removeAllChildFrames):
+        (WebInspector.Frame.prototype._detachFromParentFrame):
+        When a frame gets removed from its parent, disconnect its DOMTree.
+
+2015-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: The first style in the Rules panel for pseudo-elements needs padding
+        https://bugs.webkit.org/show_bug.cgi?id=148207
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .label:first-child):
+        If the first element in the Rules panel is a label, add some top padding.
+
+2015-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Committing a valid selector in the styles sidebar replaces the new selector with the old one
+        https://bugs.webkit.org/show_bug.cgi?id=148206
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._markSelector):
+        No longer unnecessarily refreshes the section if the selector is valid.
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exceptions regarding PseudoElements / TemplateContent
+        https://bugs.webkit.org/show_bug.cgi?id=148190
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._unbind):
+        Iterate over the values in the map, not the iterator pairs.
+
+        * UserInterface/Models/DOMNode.js:
+        When removing a pseudo element, don't assume this._children
+        exists, it may be null. So separate the two paths.
+
+2015-08-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: long selectors in the visual editor sidebar can overflow
+        https://bugs.webkit.org/show_bug.cgi?id=148185
+
+        Reviewed by Timothy Hatcher.
+
+        Selectors in the Visual editor sidebar are now clipped and use ellipses.
+
+        * UserInterface/Views/VisualStyleSelectorSection.css:
+        (.details-section.visual-style-selector-section > .header > .current-selector):
+        (.details-section.visual-style-selector-section:not(.collapsed) > .content):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .titles):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .titles > .title): Deleted.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item):
+        (.item.visual-style-selector-item > .titles):
+        (.item.visual-style-selector-item > input[type="checkbox"]):
+        (.item.visual-style-selector-item > .icon):
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include Legacy Inspector JSON for iOS 9
+        https://bugs.webkit.org/show_bug.cgi?id=148200
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-9.0.json: Added.
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update Copyright in minified / combined output
+        https://bugs.webkit.org/show_bug.cgi?id=148201
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Include copyright comments from missing 2014 and 2015 contributors
+        in the comment in the minified / combined Main.js.
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception in inspector page while handling event DOMStorage.domStorageItemRemoved
+        https://bugs.webkit.org/show_bug.cgi?id=148191
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/StorageManager.js:
+        (WebInspector.StorageManager.prototype.itemsCleared):
+        (WebInspector.StorageManager.prototype.itemRemoved):
+        (WebInspector.StorageManager.prototype.itemAdded):
+        (WebInspector.StorageManager.prototype.itemUpdated):
+        Check if the DOMStorage for the identifier actually exists.
+        Due to how the backend emits events, the page may have already
+        navigated when we get a storage update for the previous page.
+        In that case, we don't want to create a DOMStorage for the
+        previous page if it doesn't exist.
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use unprefixed CSS property 'filter' instead of '-webkit-filter'
+        https://bugs.webkit.org/show_bug.cgi?id=148186
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-remove-button:active):
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:not(.invalid-selector) > .header > .icon.toggle-able:hover):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker.clickable:hover):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:hover):
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .cubic-bezier-marker:active):
+        * UserInterface/Views/ChartDetailsSectionRow.css:
+        (body.window-inactive .details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]):
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow.prototype._addCheckboxColorFilter):
+        * UserInterface/Views/NewTabContentView.css:
+        (.new-tab.tab.content-view > .tab-item.disabled):
+        (.new-tab.tab.content-view > .tab-item:not(.disabled):hover > .box):
+        (.new-tab.tab.content-view > .tab-item:not(.disabled):active > .box):
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:hover):
+        (.sidebar > .panel.navigation.timeline > .status-bar > .record-glyph:active):
+        * UserInterface/Views/VisualStyleKeywordIconList.css:
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:not(.selected) > div):
+        * UserInterface/Views/VisualStyleSelectorSection.css:
+        (.details-section.visual-style-selector-section > .header > .controls > .visual-style-selector-section-add-rule):
+
+2015-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught Exception while handling event DOM.pseudoElementRemoved reloading twitter pages
+        https://bugs.webkit.org/show_bug.cgi?id=148180
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._visibleChildren):
+        DOMNode.children can be null before it is filled in.
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorTest should be a subclass of TestHarness
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+
+        Reviewed by Timothy Hatcher.
+
+        Extract the frontend test harness into a subclass. Delete some code that
+        is now redundant. Sprinkle some ES6 syntax where possible.
+
+        Rewrite the code that redirects the Inspector page's console messages to
+        the test page, since it didn't appear to work any more.
+
+        * UserInterface/Test.html: Add debug options here, and a wiki link.
+        * UserInterface/Test/FrontendTestHarness.js: Added.
+        (FrontendTestHarness):
+        (FrontendTestHarness.prototype.completeTest):
+        (FrontendTestHarness.prototype.addResult):
+        (FrontendTestHarness.prototype.debugLog):
+        (FrontendTestHarness.prototype.evaluateInPage):
+        (FrontendTestHarness.prototype.expectNoError):
+        (FrontendTestHarness.prototype.testPageDidLoad):
+        (FrontendTestHarness.prototype.reloadPage):
+        (FrontendTestHarness.prototype.redirectConsoleToTestOutput.createProxyConsoleHandler):
+        (FrontendTestHarness.prototype.redirectConsoleToTestOutput):
+        (FrontendTestHarness.prototype.reportUncaughtException):
+        (FrontendTestHarness.prototype._resendResults):
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        (WebInspector.UIString): Arrow it.
+        (WebInspector.updateDockedState): Arrow it.
+        (WebInspector.updateDockingAvailability): Arrow it.
+        (InspectorTest.EventDispatcher.prototype.dispatchEvent): Deleted.
+        (InspectorTest.EventDispatcher): Deleted.
+        (InspectorTest.log): Deleted.
+        (InspectorTest.assert): Deleted.
+        (InspectorTest.expectThat): Deleted.
+        (InspectorTest.debugLog): Deleted.
+        (InspectorTest.expectNoError): Deleted.
+        (InspectorTest.completeTest): Deleted.
+        (InspectorTest.evaluateInPage): Deleted.
+        (InspectorTest.addResult): Deleted.
+        (InspectorTest._resendResults): Deleted.
+        (InspectorTest.testPageDidLoad): Deleted.
+        (InspectorTest.reloadPage): Deleted.
+        (InspectorTest.reportUncaughtException): Deleted.
+        * UserInterface/Test/TestSuite.js: Clean an unnecessary self = this.
+        (SyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite):
+        * UserInterface/TestStub.html: Add matching link to wiki.
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: split TestStub.js into multiple files and modernize it
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+
+        Reviewed by Timothy Hatcher.
+ 
+        Since we want to share files between the two harnesses, split some of the parts
+        into different files so not everything has to be included at once.
+
+        Rename InjectedTestHarness to just TestHarness. Update some code to use
+        ES6 features where appropriate. Put test classes into Test/ directory.
+
+        * UserInterface/Base/TestStub.js: Removed.
+        * UserInterface/Test.html:
+        * UserInterface/Test/InspectorProtocol.js: Added.
+        (InspectorProtocol.sendCommand):
+        (InspectorProtocol.awaitCommand):
+        (InspectorProtocol.awaitEvent.):
+        (InspectorProtocol.awaitEvent):
+        (InspectorProtocol.addEventListener):
+        (InspectorProtocol.sendMessage):
+        (InspectorProtocol.checkForError):
+        (InspectorProtocol.dispatchMessageFromBackend):
+        * UserInterface/Test/ProtocolTestHarness.js: Added.
+        (ProtocolTestHarness.prototype.completeTest):
+        (ProtocolTestHarness.prototype.addResult):
+        (ProtocolTestHarness.prototype.debugLog):
+        (ProtocolTestHarness.prototype.evaluateInPage):
+        (ProtocolTestHarness):
+        * UserInterface/Test/Test.js: Renamed from Source/WebInspectorUI/UserInterface/Base/Test.js.
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector.UIString):
+        (WebInspector.updateDockedState):
+        (WebInspector.updateDockingAvailability):
+        (InspectorTest.EventDispatcher.prototype.dispatchEvent):
+        (InspectorTest.EventDispatcher):
+        (InspectorTest.log):
+        (InspectorTest.assert):
+        (InspectorTest.expectThat):
+        (InspectorTest.debugLog):
+        (InspectorTest.expectNoError):
+        (InspectorTest.completeTest):
+        (InspectorTest.evaluateInPage):
+        (InspectorTest.addResult):
+        (InspectorTest._resendResults):
+        (InspectorTest.testPageDidLoad):
+        (InspectorTest.reloadPage):
+        (InspectorTest.reportUncaughtException):
+        * UserInterface/Test/TestHarness.js: Added.
+        (TestHarness):
+        (TestHarness.prototype.completeTest):
+        (TestHarness.prototype.addResult):
+        (TestHarness.prototype.debugLog):
+        (TestHarness.prototype.evaluateInPage):
+        (TestHarness.prototype.createAsyncSuite):
+        (TestHarness.prototype.createSyncSuite):
+        (TestHarness.prototype.get logCount):
+        (TestHarness.prototype.log):
+        (TestHarness.prototype.assert):
+        (TestHarness.prototype.expectThat):
+        * UserInterface/Test/TestStub.js: Added.
+        * UserInterface/Test/TestSuite.js: Added.
+        (TestSuite):
+        (TestSuite.prototype.runTestCasesAndFinish):
+        (TestSuite.prototype.runTestCases):
+        (TestSuite.prototype.get passCount):
+        (TestSuite.prototype.get skipCount):
+        (TestSuite.prototype.addTestCase):
+        (AsyncTestSuite.prototype.runTestCasesAndFinish.finish):
+        (AsyncTestSuite.prototype.runTestCasesAndFinish):
+        (AsyncTestSuite.prototype.runTestCases):
+        (AsyncTestSuite):
+        (SyncTestSuite.prototype.runTestCasesAndFinish):
+        (SyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite):
+        * UserInterface/TestStub.html:
+
+2015-08-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Pressing Command-Enter should re-evaluate selected console user command
+        https://bugs.webkit.org/show_bug.cgi?id=147918
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._keyDown):
+        (WebInspector.LogContentView.prototype._commandEnterWasPressed):
+        Only re-evaluate one selected user command.
+
 2015-08-19  Nikita Vasilyev  <nvasilyev@apple.com>
 
         REGRESSION (r188581): Web Inspector: Console user command isn't visible after reloading the page

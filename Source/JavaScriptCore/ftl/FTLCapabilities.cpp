@@ -51,6 +51,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetStack:
     case MovHint:
     case ZombieHint:
+    case ExitOK:
     case Phantom:
     case Flush:
     case PhantomLocal:
@@ -78,6 +79,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetGlobalVar:
     case PutGlobalVar:
     case ValueAdd:
+    case StrCat:
     case ArithAdd:
     case ArithClz32:
     case ArithSub:
@@ -119,6 +121,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckBadCell:
     case CheckNotEmpty:
     case CheckIdent:
+    case CheckWatchdogTimer:
     case StringCharCodeAt:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
@@ -411,6 +414,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case DoubleRepUse:
                 case DoubleRepRealUse:
                 case BooleanUse:
+                case KnownBooleanUse:
                 case CellUse:
                 case KnownCellUse:
                 case ObjectUse:

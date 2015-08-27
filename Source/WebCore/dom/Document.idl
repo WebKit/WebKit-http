@@ -40,7 +40,12 @@
                                                                                  [Default=Undefined] optional DOMString data);
     [ReturnNewObject, RaisesException] Attr createAttribute([Default=Undefined] optional DOMString name);
     [ReturnNewObject, RaisesException] EntityReference createEntityReference([Default=Undefined] optional DOMString name);
-    NodeList getElementsByTagName([Default=Undefined] optional DOMString tagname);
+
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
+    [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName([Default=Undefined] optional DOMString tagname);
+#else
+    HTMLCollection getElementsByTagName([Default=Undefined] optional DOMString tagname);
+#endif
 
     // Introduced in DOM Level 2:
 
@@ -50,8 +55,12 @@
                             [TreatNullAs=NullString,Default=Undefined] optional DOMString qualifiedName);
     [ObjCLegacyUnnamedParameters, ReturnNewObject, RaisesException] Attr createAttributeNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI,
                                                                           [TreatNullAs=NullString,Default=Undefined] optional DOMString qualifiedName);
-    [ObjCLegacyUnnamedParameters] NodeList getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI,
-                                                   [Default=Undefined] optional DOMString localName);
+
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
+    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI, [Default=Undefined] optional DOMString localName);
+#else
+    HTMLCollection getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI, [Default=Undefined] optional DOMString localName);
+#endif
 
     // DOM Level 3 Core
 
@@ -83,14 +92,14 @@
 
     // DOM Level 2 Tranversal and Range (DocumentTraversal interface)
 
-    [ObjCLegacyUnnamedParameters, RaisesException] NodeIterator createNodeIterator([Default=Undefined] optional Node root,
-                                                   [Default=Undefined] optional unsigned long whatToShow,
-                                                   [Default=Undefined] optional NodeFilter filter,
-                                                   [Default=Undefined] optional boolean expandEntityReferences);
-    [ObjCLegacyUnnamedParameters, RaisesException] TreeWalker createTreeWalker([Default=Undefined] optional Node root,
-                                               [Default=Undefined] optional unsigned long whatToShow,
-                                               [Default=Undefined] optional NodeFilter filter,
-                                               [Default=Undefined] optional boolean expandEntityReferences);
+    [ObjCLegacyUnnamedParameters] NodeIterator createNodeIterator(Node root,
+        optional unsigned long whatToShow,
+        optional NodeFilter? filter,
+        optional boolean expandEntityReferences);
+    [ObjCLegacyUnnamedParameters] TreeWalker createTreeWalker(Node root,
+        optional unsigned long whatToShow,
+        optional NodeFilter? filter,
+        optional boolean expandEntityReferences);
 
     // DOM Level 2 Abstract Views (DocumentView interface)
 
@@ -210,7 +219,11 @@
 #endif
 
     // HTML 5
-    NodeList getElementsByClassName([Default=Undefined] optional DOMString classNames);
+#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
+    [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName([Default=Undefined] optional DOMString classNames);
+#else
+    HTMLCollection getElementsByClassName([Default=Undefined] optional DOMString classNames);
+#endif
 
     readonly attribute Element activeElement;
     boolean hasFocus();

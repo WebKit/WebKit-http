@@ -51,6 +51,7 @@
 #include "ScopedArguments.h"
 #include "ScopedArgumentsTable.h"
 #include "VirtualRegister.h"
+#include "Watchdog.h"
 #include <atomic>
 #include <dlfcn.h>
 #include <llvm/InitializeLLVM.h>
@@ -226,9 +227,8 @@ public:
             availabilityMap().m_locals.argument(i) =
                 Availability(FlushedAt(FlushedJSValue, virtualRegisterForArgument(i)));
         }
-        m_codeOriginForExitTarget = CodeOrigin(0);
-        m_codeOriginForExitProfile = CodeOrigin(0);
         m_node = nullptr;
+        m_origin = NodeOrigin(CodeOrigin(0), CodeOrigin(0), true);
         for (unsigned i = codeBlock()->numParameters(); i--;) {
             Node* node = m_graph.m_arguments[i];
             VirtualRegister operand = virtualRegisterForArgument(i);
@@ -392,8 +392,7 @@ private:
         }
         
         m_node = m_highBlock->at(nodeIndex);
-        m_codeOriginForExitProfile = m_node->origin.semantic;
-        m_codeOriginForExitTarget = m_node->origin.forExit;
+        m_origin = m_node->origin;
         
         if (verboseCompilationEnabled())
             dataLog("Lowering ", m_node, "\n");
@@ -452,6 +451,9 @@ private:
             break;
         case ValueAdd:
             compileValueAdd();
+            break;
+        case StrCat:
+            compileStrCat();
             break;
         case ArithAdd:
         case ArithSub:
@@ -829,11 +831,15 @@ private:
         case MaterializeCreateActivation:
             compileMaterializeCreateActivation();
             break;
+        case CheckWatchdogTimer:
+            compileCheckWatchdogTimer();
+            break;
 
         case PhantomLocal:
         case LoopHint:
         case MovHint:
         case ZombieHint:
+        case ExitOK:
         case PhantomNewObject:
         case PhantomNewFunction:
         case PhantomCreateActivation:
@@ -871,15 +877,18 @@ private:
             m_out.set(lowDouble(m_node->child1()), destination);
             break;
         case Int32Use:
+        case KnownInt32Use:
             m_out.set(lowInt32(m_node->child1()), destination);
             break;
         case Int52RepUse:
             m_out.set(lowInt52(m_node->child1()), destination);
             break;
         case BooleanUse:
+        case KnownBooleanUse:
             m_out.set(lowBoolean(m_node->child1()), destination);
             break;
         case CellUse:
+        case KnownCellUse:
             m_out.set(lowCell(m_node->child1()), destination);
             break;
         case UntypedUse:
@@ -1309,6 +1318,22 @@ private:
         setJSValue(vmCall(
             m_out.operation(operation), m_callFrame,
             lowJSValue(m_node->child1()), lowJSValue(m_node->child2())));
+    }
+    
+    void compileStrCat()
+    {
+        LValue result;
+        if (m_node->child3()) {
+            result = vmCall(
+                m_out.operation(operationStrCat3), m_callFrame,
+                lowJSValue(m_node->child1()), lowJSValue(m_node->child2()),
+                lowJSValue(m_node->child3()));
+        } else {
+            result = vmCall(
+                m_out.operation(operationStrCat2), m_callFrame,
+                lowJSValue(m_node->child1()), lowJSValue(m_node->child2()));
+        }
+        setJSValue(result);
     }
     
     void compileArithAddOrSub()
@@ -2197,7 +2222,7 @@ private:
         setInstructionCallingConvention(call, LLVMAnyRegCallConv);
         
         m_ftlState.putByIds.append(PutByIdDescriptor(
-            stackmapID, m_node->origin.semantic, uid,
+            stackmapID, m_ftlState.jitCode->common.addCodeOrigin(m_node->origin.semantic), uid,
             m_graph.executableFor(m_node->origin.semantic)->ecmaMode(),
             m_node->op() == PutByIdDirect ? Direct : NotDirect));
     }
@@ -4729,10 +4754,12 @@ private:
     {
         if (verboseCompilationEnabled())
             dataLog("    Invalidation point with availability: ", availabilityMap(), "\n");
+
+        DFG_ASSERT(m_graph, m_node, m_origin.exitOK);
         
         m_ftlState.jitCode->osrExit.append(OSRExit(
             UncountableInvalidation, InvalidValueFormat, MethodOfGettingAValueProfile(),
-            m_codeOriginForExitTarget, m_codeOriginForExitProfile,
+            m_origin.forExit, m_origin.semantic,
             availabilityMap().m_locals.numberOfArguments(),
             availabilityMap().m_locals.numberOfLocals()));
         m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
@@ -4934,7 +4961,7 @@ private:
 
                 setInstructionCallingConvention(call, LLVMAnyRegCallConv);
 
-                m_ftlState.checkIns.append(CheckInDescriptor(stackmapID, m_node->origin.semantic, str));
+                m_ftlState.checkIns.append(CheckInDescriptor(stackmapID, m_ftlState.jitCode->common.addCodeOrigin(m_node->origin.semantic), str));
                 setJSValue(call);
                 return;
             }
@@ -5428,6 +5455,23 @@ private:
         setJSValue(activation);
     }
 
+    void compileCheckWatchdogTimer()
+    {
+        LBasicBlock timerDidFire = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer timer did fire"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("CheckWatchdogTimer continuation"));
+        
+        LValue state = m_out.load8(m_out.absolute(vm().watchdog->timerDidFireAddress()));
+        m_out.branch(m_out.equal(state, m_out.constInt8(0)),
+            usually(continuation), rarely(timerDidFire));
+
+        LBasicBlock lastNext = m_out.appendTo(timerDidFire, continuation);
+
+        vmCall(m_out.operation(operationHandleWatchdogTimer), m_callFrame);
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+    }
+
     bool isInlinableSize(LValue function)
     {
         size_t instructionCount = 0;
@@ -5760,7 +5804,7 @@ private:
             constNull(m_out.ref8), m_out.constInt32(1), base);
         setInstructionCallingConvention(call, LLVMAnyRegCallConv);
         
-        m_ftlState.getByIds.append(GetByIdDescriptor(stackmapID, m_node->origin.semantic, uid));
+        m_ftlState.getByIds.append(GetByIdDescriptor(stackmapID, m_ftlState.jitCode->common.addCodeOrigin(m_node->origin.semantic), uid));
         
         return call;
     }
@@ -6109,6 +6153,7 @@ private:
     {
         switch (edge.useKind()) {
         case BooleanUse:
+        case KnownBooleanUse:
             return lowBoolean(edge);
         case Int32Use:
             return m_out.notZero32(lowInt32(edge));
@@ -7099,7 +7144,7 @@ private:
     
     LValue lowBoolean(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
-        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BooleanUse);
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BooleanUse || edge.useKind() == KnownBooleanUse);
         
         if (edge->hasConstant()) {
             JSValue value = edge->asJSValue();
@@ -8015,8 +8060,7 @@ private:
     {
         m_out.store32(
             m_out.constInt32(
-                CallFrame::Location::encodeAsCodeOriginIndex(
-                    m_ftlState.jitCode->common.addCodeOrigin(codeOrigin))),
+                m_ftlState.jitCode->common.addCodeOrigin(codeOrigin).bits()),
             tagFor(JSStack::ArgumentCount));
     }
     void callPreflight()
@@ -8027,7 +8071,7 @@ private:
     void callCheck()
     {
         if (Options::enableExceptionFuzz())
-            m_out.call(m_out.operation(operationExceptionFuzz));
+            m_out.call(m_out.operation(operationExceptionFuzz), m_callFrame);
         
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Exception check continuation"));
         
@@ -8052,6 +8096,8 @@ private:
             if (!m_availableRecoveries.isEmpty())
                 dataLog("        Available recoveries: ", listDump(m_availableRecoveries), "\n");
         }
+
+        DFG_ASSERT(m_graph, m_node, m_origin.exitOK);
         
         if (doOSRExitFuzzing()) {
             LValue numberOfFuzzChecks = m_out.add(
@@ -8076,7 +8122,7 @@ private:
         
         m_ftlState.jitCode->osrExit.append(OSRExit(
             kind, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
-            m_codeOriginForExitTarget, m_codeOriginForExitProfile,
+            m_origin.forExit, m_origin.semantic,
             availabilityMap().m_locals.numberOfArguments(),
             availabilityMap().m_locals.numberOfLocals()));
         m_ftlState.finalizer->osrExit.append(OSRExitCompilationInfo());
@@ -8571,9 +8617,8 @@ private:
     BasicBlock* m_highBlock;
     BasicBlock* m_nextHighBlock;
     LBasicBlock m_nextLowBlock;
-    
-    CodeOrigin m_codeOriginForExitTarget;
-    CodeOrigin m_codeOriginForExitProfile;
+
+    NodeOrigin m_origin;
     unsigned m_nodeIndex;
     Node* m_node;
     

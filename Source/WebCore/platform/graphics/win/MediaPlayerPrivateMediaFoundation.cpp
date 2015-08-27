@@ -62,12 +62,7 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
     , m_hasVideo(false)
     , m_hwndVideo(nullptr)
     , m_readyState(MediaPlayer::HaveNothing)
-    , m_mediaSession(nullptr)
-    , m_sourceResolver(nullptr)
-    , m_mediaSource(nullptr)
-    , m_topology(nullptr)
-    , m_sourcePD(nullptr)
-    , m_videoDisplay(nullptr)
+    , m_weakPtrFactory(this)
 {
     createSession();
     createVideoWindow();
@@ -78,8 +73,6 @@ MediaPlayerPrivateMediaFoundation::~MediaPlayerPrivateMediaFoundation()
     notifyDeleted();
     destroyVideoWindow();
     endSession();
-    cancelCallOnMainThread(onTopologySetCallback, this);
-    cancelCallOnMainThread(onCreatedMediaSourceCallback, this);
 }
 
 void MediaPlayerPrivateMediaFoundation::registerMediaEngine(MediaEngineRegistrar registrar)
@@ -342,7 +335,12 @@ bool MediaPlayerPrivateMediaFoundation::endCreatedMediaSource(IMFAsyncResult* as
     hr = asyncResult->GetStatus();
     m_loadingProgress = SUCCEEDED(hr);
 
-    callOnMainThread(onCreatedMediaSourceCallback, this);
+    auto weakPtr = m_weakPtrFactory.createWeakPtr();
+    callOnMainThread([weakPtr] {
+        if (!weakPtr)
+            return;
+        weakPtr->onCreatedMediaSource();
+    });
 
     return true;
 }
@@ -366,9 +364,15 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
         return false;
 
     switch (mediaEventType) {
-    case MESessionTopologySet:
-        callOnMainThread(onTopologySetCallback, this);
+    case MESessionTopologySet: {
+        auto weakPtr = m_weakPtrFactory.createWeakPtr();
+        callOnMainThread([weakPtr] {
+            if (!weakPtr)
+                return;
+            weakPtr->onTopologySet();
+        });
         break;
+    }
 
     case MESessionClosed:
         break;
@@ -641,18 +645,6 @@ void MediaPlayerPrivateMediaFoundation::onTopologySet()
 
     play();
     m_player->playbackStateChanged();
-}
-
-void MediaPlayerPrivateMediaFoundation::onCreatedMediaSourceCallback(void* context)
-{
-    MediaPlayerPrivateMediaFoundation* mediaPlayer = static_cast<MediaPlayerPrivateMediaFoundation*>(context);
-    mediaPlayer->onCreatedMediaSource();
-}
-
-void MediaPlayerPrivateMediaFoundation::onTopologySetCallback(void* context)
-{
-    MediaPlayerPrivateMediaFoundation* mediaPlayer = static_cast<MediaPlayerPrivateMediaFoundation*>(context);
-    mediaPlayer->onTopologySet();
 }
 
 MediaPlayerPrivateMediaFoundation::AsyncCallback::AsyncCallback(MediaPlayerPrivateMediaFoundation* mediaPlayer, bool event)

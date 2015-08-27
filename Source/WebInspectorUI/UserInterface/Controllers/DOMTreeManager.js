@@ -286,14 +286,14 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
 
         delete this._idToDOMNode[node.id];
 
-        for (var i = 0; node.children && i < node.children.length; ++i)
+        for (let i = 0; node.children && i < node.children.length; ++i)
             this._unbind(node.children[i]);
 
-        if (node.templateContent())
-            this._unbind(node.templateContent());
+        let templateContent = node.templateContent();
+        if (templateContent)
+            this._unbind(templateContent);
 
-        var pseudoElements = node.pseudoElements();
-        for (var pseudoElement of pseudoElements)
+        for (let pseudoElement of node.pseudoElements().values())
             this._unbind(pseudoElement);
 
         // FIXME: Handle shadow roots.
@@ -403,7 +403,8 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
 
     highlightSelector(selectorText, frameId, mode)
     {
-        if (!DOMAgent.highlightSelector || typeof DOMAgent.highlightSelector !== "function")
+        // COMPATIBILITY (iOS 8): DOM.highlightSelector did not exist.
+        if (!DOMAgent.highlightSelector)
             return;
 
         DOMAgent.highlightSelector(this._buildHighlightConfig(mode), selectorText, frameId);
@@ -513,7 +514,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
             this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.ContentFlowListWasUpdated, {documentNodeIdentifier, flows: contentFlows});
         }
 
-        if (window.CSSAgent && CSSAgent.getNamedFlowCollection)
+        if (window.CSSAgent)
             CSSAgent.getNamedFlowCollection(documentNodeIdentifier, onNamedFlowCollectionAvailable.bind(this));
     }
 

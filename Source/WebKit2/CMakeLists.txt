@@ -341,7 +341,7 @@ set(WebKit2_SOURCES
     UIProcess/TextCheckerCompletion.cpp
     UIProcess/UserMediaPermissionRequestManagerProxy.cpp
     UIProcess/UserMediaPermissionRequestProxy.cpp
-    UIProcess/VisitedLinkProvider.cpp
+    UIProcess/VisitedLinkStore.cpp
     UIProcess/WebBackForwardList.cpp
     UIProcess/WebBatteryManagerProxy.cpp
     UIProcess/WebBatteryProvider.cpp
@@ -438,6 +438,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKOpenPanelResultListener.cpp
     UIProcess/API/C/WKOriginDataManager.cpp
     UIProcess/API/C/WKPage.cpp
+    UIProcess/API/C/WKPageConfigurationRef.cpp
     UIProcess/API/C/WKPageGroup.cpp
     UIProcess/API/C/WKPluginSiteDataManager.cpp
     UIProcess/API/C/WKPreferences.cpp
@@ -445,6 +446,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKResourceCacheManager.cpp
     UIProcess/API/C/WKSessionStateRef.cpp
     UIProcess/API/C/WKTextChecker.cpp
+    UIProcess/API/C/WKUserContentControllerRef.cpp
     UIProcess/API/C/WKUserMediaPermissionRequest.cpp
     UIProcess/API/C/WKVibration.cpp
     UIProcess/API/C/WKViewportAttributes.cpp
@@ -650,7 +652,7 @@ set(WebKit2_MESSAGES_IN_FILES
     Shared/Plugins/NPObjectMessageReceiver.messages.in
 
     UIProcess/DrawingAreaProxy.messages.in
-    UIProcess/VisitedLinkProvider.messages.in
+    UIProcess/VisitedLinkStore.messages.in
     UIProcess/WebBatteryManagerProxy.messages.in
     UIProcess/WebCookieManagerProxy.messages.in
     UIProcess/WebDatabaseManagerProxy.messages.in

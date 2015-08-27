@@ -25,11 +25,16 @@
 
 #include "config.h"
 
+#if PLATFORM(MAC)
+
 #include "Functional.h"
+#include "HashMap.h"
+#include "HashSet.h"
+#include "Lock.h"
 #include "MainThread.h"
 #include "NeverDestroyed.h"
 #include "StdLibExtras.h"
-#include <mutex>
+#include <stdint.h>
 
 // This file contains deprecated symbols that the last released version of Safari uses.
 // Once Safari stops using them, we should remove them.
@@ -45,25 +50,109 @@ void callOnMainThread(const Function<void ()>& function)
     callOnMainThread(std::function<void ()>(function));
 }
 
-static std::mutex& atomicallyInitializedStaticMutex()
-{
-    static std::once_flag onceFlag;
-    static LazyNeverDestroyed<std::mutex> mutex;
-    std::call_once(onceFlag, []{
-        mutex.construct();
-    });
-
-    return mutex;
-}
+static StaticLock atomicallyInitializedStaticMutex;
 
 void lockAtomicallyInitializedStaticMutex()
 {
-    atomicallyInitializedStaticMutex().lock();
+    atomicallyInitializedStaticMutex.lock();
 }
 
 void unlockAtomicallyInitializedStaticMutex()
 {
-    atomicallyInitializedStaticMutex().unlock();
+    atomicallyInitializedStaticMutex.unlock();
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 101100
+WTF_EXPORT_PRIVATE void callOnMainThread(void (*function)(void*), void* context);
+WTF_EXPORT_PRIVATE void cancelCallOnMainThread(void (*function)(void*), void* context);
+
+class MainThreadFunctionTracker {
+public:
+    static MainThreadFunctionTracker& singleton()
+    {
+        static std::once_flag onceFlag;
+
+        static LazyNeverDestroyed<MainThreadFunctionTracker> tracker;
+
+        std::call_once(onceFlag, [&] {
+            tracker.construct();
+        });
+
+        return tracker;
+    }
+
+    void callOnMainThread(void (*function)(void*), void* context)
+    {
+        uint64_t identifier = addFunction(function, context);
+
+        WTF::callOnMainThread([this, function, context, identifier] {
+            if (!removeIdentifier(function, context, identifier))
+                return;
+
+            function(context);
+        });
+    }
+
+    void cancelCallOnMainThread(void (*function)(void*), void* context)
+    {
+        removeFunctions(function, context);
+    }
+
+private:
+    uint64_t addFunction(void (*function)(void*), void* context)
+    {
+        LockHolder lockHolder(m_lock);
+        uint64_t identifier = ++m_currentIdentifier;
+
+        auto& set = m_functions.add({ function, context }, HashSet<uint64_t> { }).iterator->value;
+        set.add(identifier);
+
+        return identifier;
+    }
+
+    bool removeIdentifier(void (*function)(void*), void* context, uint64_t identifier)
+    {
+        LockHolder lockHolder(m_lock);
+
+        auto it = m_functions.find({ function, context });
+        if (it == m_functions.end())
+            return false;
+
+        auto& set = it->value;
+        if (!set.remove(identifier))
+            return false;
+
+        if (set.isEmpty())
+            m_functions.remove(it);
+
+        return true;
+    }
+
+    void removeFunctions(void (*function)(void*), void* context)
+    {
+        LockHolder lockHolder(m_lock);
+
+        m_functions.remove({ function, context });
+    }
+
+    Lock m_lock;
+    uint64_t m_currentIdentifier;
+    HashMap<std::pair<void (*)(void*), void*>, HashSet<uint64_t>> m_functions;
+};
+
+void callOnMainThread(void (*function)(void*), void* context)
+{
+    MainThreadFunctionTracker::singleton().callOnMainThread(function, context);
+}
+
+void cancelCallOnMainThread(void (*function)(void*), void* context)
+{
+    ASSERT(function);
+
+    MainThreadFunctionTracker::singleton().cancelCallOnMainThread(function, context);
+}
+#endif
+
 } // namespace WTF
+
+#endif

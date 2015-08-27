@@ -3,7 +3,7 @@
 # Copyright (C) 2006 Anders Carlsson <andersca@mac.com>
 # Copyright (C) 2006, 2007 Samuel Weinig <sam@webkit.org>
 # Copyright (C) 2006 Alexey Proskuryakov <ap@webkit.org>
-# Copyright (C) 2006, 2007, 2008, 2009, 2010, 2013, 2014 Apple Inc. All rights reserved.
+# Copyright (C) 2006, 2007-2010, 2013-2105 Apple Inc. All rights reserved.
 # Copyright (C) 2009 Cameron McCormack <cam@mcc.id.au>
 # Copyright (C) Research In Motion Limited 2010. All rights reserved.
 # Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -432,10 +432,13 @@ sub GenerateGetOwnPropertySlotBody
             &$prototypeCheck();
         }
 
-        # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
-        push(@getOwnPropertySlotImpl, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
-        push(@getOwnPropertySlotImpl, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
-        push(@getOwnPropertySlotImpl, "        return true;\n");
+        # This condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+        push(@getOwnPropertySlotImpl, "    if (thisObject->classInfo() == info()) {\n");
+        push(@getOwnPropertySlotImpl, "        JSValue value;\n");
+        push(@getOwnPropertySlotImpl, "        if (thisObject->nameGetter(exec, propertyName, value)) {\n");
+        push(@getOwnPropertySlotImpl, "            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, value);\n");
+        push(@getOwnPropertySlotImpl, "            return true;\n");
+        push(@getOwnPropertySlotImpl, "        }\n");
         push(@getOwnPropertySlotImpl, "    }\n");
         if ($inlined) {
             $headerIncludes{"wtf/text/AtomicString.h"} = 1;
@@ -1162,8 +1165,7 @@ sub GenerateHeader
     # Name getter
     if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
         push(@headerContent, "private:\n");
-        push(@headerContent, "    static bool canGetItemsForName(JSC::ExecState*, $interfaceName*, JSC::PropertyName);\n");
-        push(@headerContent, "    static JSC::EncodedJSValue nameGetter(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);\n");
+        push(@headerContent, "    bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);\n");
     }
 
     push(@headerContent, "};\n\n");
@@ -1377,7 +1379,11 @@ sub GenerateParametersCheckExpression
             }
         } elsif ($codeGenerator->IsCallbackInterface($parameter->type)) {
             # For Callbacks only checks if the value is null or object.
-            push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
+            if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                push(@andExpression, "(${value}.isNull() || ${value}.isFunction())");
+            } else {
+                push(@andExpression, "(${value}.isNull() || ${value}.isObject())");
+            }
             $usedArguments{$parameterIndex} = 1;
         } elsif (!IsNativeType($type)) {
             my $condition = "";
@@ -2185,10 +2191,13 @@ sub GenerateImplementation
             if ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"}) {
                 &$propertyNameGeneration();
 
-                # The first condition is to make sure we use the subclass' named getter instead of the base class one when possible.
-                push(@implContent, "    if (thisObject->classInfo() == info() && canGetItemsForName(exec, &thisObject->impl(), propertyName)) {\n");
-                push(@implContent, "        slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, thisObject->nameGetter);\n");
-                push(@implContent, "        return true;\n");
+                # This condition is to make sure we use the subclass' named getter instead of the base class one when possible.
+                push(@implContent, "    if (thisObject->classInfo() == info()) {\n");
+                push(@implContent, "        JSValue value;\n");
+                push(@implContent, "        if (thisObject->nameGetter(exec, propertyName, value)) {\n");
+                push(@implContent, "            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, value);\n");
+                push(@implContent, "            return true;\n");
+                push(@implContent, "        }\n");
                 push(@implContent, "    }\n");
                 $implIncludes{"wtf/text/AtomicString.h"} = 1;
             }
@@ -2926,20 +2935,6 @@ sub GenerateImplementation
         }
     }
 
-    if ($interfaceName eq "DOMNamedFlowCollection") {
-        if ($namedGetterFunction) {
-            push(@implContent, "bool ${className}::canGetItemsForName(ExecState*, $interfaceName* collection, PropertyName propertyName)\n");
-            push(@implContent, "{\n");
-            push(@implContent, "    return collection->hasNamedItem(propertyNameToAtomicString(propertyName));\n");
-            push(@implContent, "}\n\n");
-            push(@implContent, "EncodedJSValue ${className}::nameGetter(ExecState* exec, JSObject* slotBase, EncodedJSValue, PropertyName propertyName)\n");
-            push(@implContent, "{\n");
-            push(@implContent, "    auto* thisObject = jsCast<$className*>(slotBase);\n");
-            push(@implContent, "    return JSValue::encode(toJS(exec, thisObject->globalObject(), thisObject->impl().namedItem(propertyNameToAtomicString(propertyName))));\n");
-            push(@implContent, "}\n\n");
-        }
-    }
-
     if ((!$hasParent && !GetCustomIsReachable($interface)) || GetGenerateIsReachable($interface) || $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
 
         push(@implContent, "bool JS${interfaceName}Owner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)\n");
@@ -3280,7 +3275,11 @@ sub GenerateParametersCheck
             if ($optional) {
                 push(@$outputArray, "    RefPtr<$argType> $name;\n");
                 push(@$outputArray, "    if (!exec->argument($argsIndex).isUndefinedOrNull()) {\n");
-                push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isFunction())\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                    push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isFunction())\n");
+                } else {
+                    push(@$outputArray, "        if (!exec->uncheckedArgument($argsIndex).isObject())\n");
+                }
                 push(@$outputArray, "            return throwArgumentMustBeFunctionError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
@@ -3290,7 +3289,11 @@ sub GenerateParametersCheck
                 }
                 push(@$outputArray, "    }\n");
             } else {
-                push(@$outputArray, "    if (!exec->argument($argsIndex).isFunction())\n");
+                if ($codeGenerator->IsFunctionOnlyCallbackInterface($parameter->type)) {
+                    push(@$outputArray, "    if (!exec->argument($argsIndex).isFunction())\n");
+                } else {
+                    push(@$outputArray, "    if (!exec->argument($argsIndex).isObject())\n");
+                }
                 push(@$outputArray, "        return throwArgumentMustBeFunctionError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName);\n");
                 if ($function->isStatic) {
                     AddToImplIncludes("CallbackFunction.h");
@@ -3579,7 +3582,8 @@ sub GenerateCallbackImplementation
             }
 
             AddIncludesForTypeInImpl($function->signature->type);
-            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${className}::" . $function->signature->name . "(");
+            my $functionName = $function->signature->name;
+            push(@implContent, "\n" . GetNativeTypeForCallbacks($function->signature->type) . " ${className}::${functionName}(");
 
             my @args = ();
             my @argsCheck = ();
@@ -3597,26 +3601,31 @@ sub GenerateCallbackImplementation
             push(@implContent, "        return true;\n\n");
             push(@implContent, "    Ref<$className> protect(*this);\n\n");
             push(@implContent, "    JSLockHolder lock(m_data->globalObject()->vm());\n\n");
-            if (@params) {
-                push(@implContent, "    ExecState* exec = m_data->globalObject()->globalExec();\n");
-            }
+            push(@implContent, "    ExecState* exec = m_data->globalObject()->globalExec();\n");
             push(@implContent, "    MarkedArgumentBuffer args;\n");
 
             foreach my $param (@params) {
                 my $paramName = $param->name;
-                if ($param->type eq "DOMString") {
-                    push(@implContent, "    args.append(jsStringWithCache(exec, ${paramName}));\n");
-                } elsif ($param->type eq "boolean") {
-                    push(@implContent, "    args.append(jsBoolean(${paramName}));\n");
-                } elsif ($param->type eq "SerializedScriptValue") {
-                    push(@implContent, "    args.append($paramName ? $paramName->deserialize(exec, m_data->globalObject(), 0) : jsNull());\n");
-                } else {
-                    push(@implContent, "    args.append(toJS(exec, m_data->globalObject(), ${paramName}));\n");
-                }
+                push(@implContent, "    args.append(" . NativeToJSValue($param, 1, $interfaceName, $paramName, "m_data") . ");\n");
             }
 
             push(@implContent, "\n    bool raisedException = false;\n");
-            push(@implContent, "    m_data->invokeCallback(args, &raisedException);\n");
+
+            my $propertyToLookup = "Identifier::fromString(exec, \"${functionName}\")";
+            my $invokeMethod = "JSCallbackData::CallbackType::FunctionOrObject";
+            if ($codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{"Callback"}, "FunctionOnly")) {
+                # For callback functions, do not look up callable property on the user object.
+                # https://heycam.github.io/webidl/#es-callback-function
+                $invokeMethod = "JSCallbackData::CallbackType::Function";
+                $propertyToLookup = "Identifier()";
+                push(@implContent, "    UNUSED_PARAM(exec);\n");    
+            } elsif ($numFunctions > 1) {
+                # The callback interface has more than one operation so we should not call the user object as a function.
+                # instead, we should look for a property with the same name as the operation on the user object.
+                # https://heycam.github.io/webidl/#es-user-objects
+                $invokeMethod = "JSCallbackData::CallbackType::Object";
+            }
+            push(@implContent, "    m_data->invokeCallback(args, $invokeMethod, $propertyToLookup, &raisedException);\n");
             push(@implContent, "    return !raisedException;\n");
             push(@implContent, "}\n");
         }
@@ -4237,7 +4246,7 @@ sub GenerateHashTable
     my $packedSize = scalar @{$keys};
 
     my $compactSizeMask = $numEntries - 1;
-    push(@implContent, "static const HashTable $name = { $packedSize, $compactSizeMask, $hasSetter, $nameEntries, 0, $nameIndex };\n");
+    push(@implContent, "static const HashTable $name = { $packedSize, $compactSizeMask, $hasSetter, $nameEntries, $nameIndex };\n");
 }
 
 sub WriteData

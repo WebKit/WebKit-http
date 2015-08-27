@@ -59,6 +59,7 @@
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
+#include "JSInternalPromiseDeferred.h"
 #include "JSLexicalEnvironment.h"
 #include "JSLock.h"
 #include "JSNotAnObject.h"
@@ -85,6 +86,7 @@
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
+#include "VMEntryScope.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
@@ -153,7 +155,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , emptyList(new MarkedArgumentBuffer)
     , stringCache(*this)
     , prototypeMap(*this)
-    , keywords(std::make_unique<Keywords>(*this))
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
     , jsFinalObjectClassInfo(JSFinalObject::info())
@@ -237,6 +238,7 @@ VM::VM(VMType vmType, HeapType heapType)
     functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
     exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
+    internalPromiseDeferredStructure.set(*this, JSInternalPromiseDeferred::createStructure(*this, 0, jsNull()));
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
@@ -290,7 +292,7 @@ VM::VM(VMType vmType, HeapType heapType)
     if (Options::watchdog()) {
         std::chrono::milliseconds timeoutMillis(Options::watchdog());
         Watchdog& watchdog = ensureWatchdog();
-        watchdog.setTimeLimit(*this, timeoutMillis);
+        watchdog.setTimeLimit(timeoutMillis);
     }
 }
 
@@ -386,6 +388,11 @@ Watchdog& VM::ensureWatchdog()
         // the LLINT assumes that the internal shape of a std::unique_ptr is the
         // same as a plain C++ pointer, and loads the address of Watchdog from it.
         RELEASE_ASSERT(*reinterpret_cast<Watchdog**>(&watchdog) == watchdog.get());
+
+        // And if we've previously compiled any functions, we need to revert
+        // them because they don't have the needed polling checks for the watchdog
+        // yet.
+        deleteAllCode();
     }
     return *watchdog;
 }
@@ -469,24 +476,28 @@ void VM::stopSampling()
     interpreter->stopSampling();
 }
 
-void VM::prepareToDeleteCode()
+void VM::whenIdle(std::function<void()> callback)
 {
-#if ENABLE(DFG_JIT)
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i))
-            worklist->completeAllPlansForVM(*this);
+    if (!entryScope) {
+        callback();
+        return;
     }
-#endif // ENABLE(DFG_JIT)
+
+    entryScope->addDidPopListener(callback);
 }
 
 void VM::deleteAllCode()
 {
-    prepareToDeleteCode();
-    m_codeCache->clear();
-    m_regExpCache->deleteAllCode();
-    heap.deleteAllCompiledCode();
-    heap.deleteAllUnlinkedFunctionCode();
-    heap.reportAbandonedObjectGraph();
+    whenIdle([this]() {
+        m_codeCache->clear();
+        m_regExpCache->deleteAllCode();
+#if ENABLE(DFG_JIT)
+        DFG::completeAllPlansForVM(*this);
+#endif
+        heap.deleteAllCodeBlocks();
+        heap.deleteAllUnlinkedCodeBlocks();
+        heap.reportAbandonedObjectGraph();
+    });
 }
 
 void VM::dumpSampleData(ExecState* exec)
@@ -706,7 +717,6 @@ void VM::setEnabledProfiler(LegacyProfiler* profiler)
 {
     m_enabledProfiler = profiler;
     if (m_enabledProfiler) {
-        prepareToDeleteCode();
         SetEnabledProfilerFunctor functor;
         heap.forEachCodeBlock(functor);
     }
