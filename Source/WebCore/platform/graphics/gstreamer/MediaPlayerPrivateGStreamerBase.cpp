@@ -337,6 +337,12 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     if (GST_IS_SAMPLE(m_sample.get()) && !caps)
         caps = gst_sample_get_caps(m_sample.get());
 
+    if (!caps) {
+        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+        if (videoSinkPad)
+            caps = gst_pad_get_current_caps(videoSinkPad.get());
+    }
+
     if (!caps)
         return FloatSize();
 
@@ -776,6 +782,7 @@ void MediaPlayerPrivateGStreamerBase::triggerDrain()
 
 void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 {
+    INFO_MEDIA_MESSAGE("Setting size to %dx%d", size.width(), size.height());
     m_size = size;
 }
 

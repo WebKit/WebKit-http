@@ -27,7 +27,8 @@
 #include "MediaPlayerPrivateGStreamer.h"
 
 #include <dxdrm/DxDrmDebugApi.h>
-#include <gst/base/gstbytereader.h>
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/CString.h>
 
@@ -37,32 +38,6 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 #define MAX_CHALLENGE_LEN 64000
 
 namespace WebCore {
-
-static const guint8* extractWrmHeader(Uint8Array* initData, guint16* recordLength)
-{
-    GstByteReader reader;
-    guint32 length;
-    guint16 recordCount;
-    const guint8* data;
-
-    gst_byte_reader_init(&reader, initData->data(), initData->byteLength());
-
-    gst_byte_reader_get_uint32_le(&reader, &length);
-    gst_byte_reader_get_uint16_le(&reader, &recordCount);
-
-    for (int i = 0; i < recordCount; i++) {
-        guint16 type;
-        gst_byte_reader_get_uint16_le(&reader, &type);
-        gst_byte_reader_get_uint16_le(&reader, recordLength);
-
-        gst_byte_reader_get_data(&reader, *recordLength, &data);
-        // 0x1 => rights management header
-        if (type == 0x1)
-            return data;
-    }
-
-    return nullptr;
-}
 
 void reportError(const EDxDrmStatus status)
 {
@@ -82,11 +57,12 @@ void reportError(const EDxDrmStatus status)
     }
 }
 
-DiscretixSession::DiscretixSession(MediaPlayerPrivateGStreamer* parent)
-    : m_player(parent)
+DiscretixSession::DiscretixSession()
+    : m_key()
     , m_DxDrmStream(nullptr)
-    , m_key()
     , m_state(PHASE_INITIAL)
+    , m_ready(false)
+    , m_keyRequested(false)
 {
     DxStatus status = DxLoadConfigFile("/etc/dxdrm/dxdrm.config");
     if (status != DX_SUCCESS) {
@@ -124,12 +100,10 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
 {
     RefPtr<Uint8Array> result;
 
-    // Instantiate Discretix DRM client from the parsed WRMHEADER.
-    guint16 recordLength;
-    const guint8* data = extractWrmHeader(initData, &recordLength);
-    EDxDrmStatus status = DxDrmClient_OpenDrmStreamFromData(&m_DxDrmStream, data, recordLength);
+    EDxDrmStatus status = DxDrmClient_OpenDrmStreamFromData(&m_DxDrmStream, initData->data(), initData->byteLength());
 
     GST_DEBUG("generating key request");
+    m_keyRequested = true;
     if (status != DX_SUCCESS) {
         GST_WARNING("failed to create DxDrmClient from initData (error: %d)", status);
         reportError(status);
@@ -217,7 +191,7 @@ bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& next
                 GST_WARNING("Content consumption failed");
             else {
                 GST_INFO("Stream was opened and is ready for playback");
-                signalDRM();
+                m_ready = true;
             }
         }
 
@@ -240,11 +214,6 @@ bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& next
     return (status == DX_SUCCESS);
 }
 
-void DiscretixSession::signalDRM()
-{
-    m_player->signalDRM();
-}
-
 int DiscretixSession::decrypt(void* data, uint32_t dataLength, const void* encryptionBoxData, uint32_t encryptionBoxLength, uint32_t sampleIndex, uint32_t trackId)
 {
     EDxDrmStatus status = DxDrmStream_ProcessPiffPacket(m_DxDrmStream, data, dataLength, encryptionBoxData, encryptionBoxLength,
@@ -256,4 +225,3 @@ int DiscretixSession::decrypt(void* data, uint32_t dataLength, const void* encry
 }
 
 #endif
-

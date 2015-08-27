@@ -35,15 +35,12 @@
 
 namespace WebCore {
 
-class MediaPlayerPrivateGStreamer;
-
 class CDMPRSessionGStreamer : public CDMSession, public DiscretixSession {
 private:
-    CDMPRSessionGStreamer();
     CDMPRSessionGStreamer(const CDMPRSessionGStreamer&);
 
 public:
-    CDMPRSessionGStreamer(MediaPlayerPrivateGStreamer* parent);
+    CDMPRSessionGStreamer();
     virtual ~CDMPRSessionGStreamer() override;
 
     // CDMSession interface.

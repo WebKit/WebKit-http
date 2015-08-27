@@ -74,68 +74,21 @@
 #include "AudioSourceProviderGStreamer.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/Uint8Array.h>
+#endif
+
 #if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 #include "CDMPRSessionGStreamer.h"
-#elif ENABLE(ENCRYPTED_MEDIA)
-#include "DiscretixSession.h"
 #endif
+#include "DiscretixSession.h"
 #include "WebKitPlayReadyDecryptorGStreamer.h"
 #endif
 
-#if USE(GSTREAMER_GL)
-#include "GLContext.h"
-
-#define GST_USE_UNSTABLE_API
-#include <gst/gl/gl.h>
-#undef GST_USE_UNSTABLE_API
-
-#if USE(GLX)
-#include "GLContextGLX.h"
-#include <gst/gl/x11/gstgldisplay_x11.h>
-#elif USE(EGL)
-#include "GLContextEGL.h"
-#include <gst/gl/egl/gstgldisplay_egl.h>
-#endif
-
-// gstglapi.h may include eglplatform.h and it includes X.h, which
-// defines None, breaking MediaPlayer::None enum
-#if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
-#undef None
-#endif
-#endif // USE(GSTREAMER_GL)
-
-#if PLATFORM(WAYLAND)
-#include "PlatformDisplayWayland.h"
-#endif
-
-#include <condition_variable>
-#include <mutex>
 #include <wtf/MainThread.h>
-
-static void callOnMainThreadAndWait(std::function<void ()> function)
-{
-    if (isMainThread()) {
-        function();
-        return;
-    }
-
-    std::mutex mutex;
-    std::condition_variable conditionVariable;
-
-    bool isFinished = false;
-
-    callOnMainThread([&] {
-        function();
-
-        std::lock_guard<std::mutex> lock(mutex);
-        isFinished = true;
-        conditionVariable.notify_one();
-    });
-
-    std::unique_lock<std::mutex> lock(mutex);
-    conditionVariable.wait(lock, [&] { return isFinished; });
-}
 
 // Max interval in seconds to stay in the READY state on manual
 // state change requests.
@@ -313,15 +266,13 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 #if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
     m_dxdrmSession = 0;
 #endif
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    m_cdmSession = 0;
+#endif
 }
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 {
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    // Potentially unblock GStreamer thread for DRM license acquisition.
-    m_drmKeySemaphore.signal();
-#endif
-
 #if ENABLE(VIDEO_TRACK)
     for (size_t i = 0; i < m_audioTracks.size(); ++i)
         m_audioTracks[i]->disconnect();
@@ -409,11 +360,6 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
         createGSTPlayBin();
 
     ASSERT(m_pipeline);
-
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    // Potentially unblock GStreamer thread for DRM license acquisition.
-    m_drmKeySemaphore.signal();
-#endif
 
     m_url = URL(URL(), cleanURL);
     g_object_set(m_pipeline.get(), "uri", cleanURL.utf8().data(), nullptr);
@@ -864,6 +810,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
     }
 #endif
 
+    m_player->sizeChanged();
     m_player->client().mediaPlayerEngineUpdated(m_player);
 }
 
@@ -1166,6 +1113,28 @@ static StreamType getStreamType(GstElement* element)
 }
 #endif
 
+#if USE(DXDRM)
+DiscretixSession* MediaPlayerPrivateGStreamer::dxdrmSession() const
+{
+    DiscretixSession* session = nullptr;
+#if ENABLE(ENCRYPTED_MEDIA)
+    session = m_dxdrmSession;
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+    if (m_cdmSession) {
+        CDMPRSessionGStreamer* cdmSession = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
+        session = static_cast<DiscretixSession*>(cdmSession);
+    }
+#endif
+    return session;
+}
+
+void MediaPlayerPrivateGStreamer::emitSession()
+{
+    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, dxdrmSession(), nullptr)));
+}
+#endif
+
 void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 {
     switch (GST_MESSAGE_TYPE(message)) {
@@ -1173,6 +1142,21 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
         {
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
             const GstStructure* structure = gst_message_get_structure(message);
+            if (!gst_structure_has_name(structure, "drm-key-needed"))
+                break;
+
+            LOG_MEDIA_MESSAGE("handling drm-key-needed message");
+#if USE(DXDRM)
+            DiscretixSession* session = dxdrmSession();
+            if (session && session->keyRequested()) {
+                LOG_MEDIA_MESSAGE("key requested already");
+                if (session->ready()) {
+                    LOG_MEDIA_MESSAGE("key already negotiated");
+                    emitSession();
+                }
+                break;
+            }
+#endif
             // Here we receive the DRM init data from the pipeline: we will emit
             // the needkey event with that data and the browser might create a
             // CDMSession from this event handler. If such a session was created
@@ -1180,37 +1164,25 @@ void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
             // DRM challenge to the browser and wait for an update. If on the
             // contrary no session was created we won't wait and let the pipeline
             // error out by itself.
-            if (gst_structure_has_name(structure, "drm-key-needed")) {
-                GstBuffer* data;
-                const char* keySystemId;
-                gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
-                    "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
-                GstMapInfo mapInfo;
-                if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
-                    break;
+            GstBuffer* data;
+            const char* keySystemId;
+            gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
+                "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
+            GstMapInfo mapInfo;
+            if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
+                break;
 
-                GST_DEBUG("queueing keyNeeded event");
-                // We need to reset the semaphore first. signal, wait
-                m_drmKeySemaphore.signal();
-                m_drmKeySemaphore.wait();
-                // Fire the need key event from main thread
-                callOnMainThreadAndWait([&] {
-                    // FIXME: Provide a somehow valid sessionId.
+            GST_DEBUG("scheduling keyNeeded event");
+            // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(ENCRYPTED_MEDIA)
-                        needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+            needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
 #elif ENABLE(ENCRYPTED_MEDIA_V2)
-                        RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-                        needKey(initData);
+            RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+            needKey(initData);
 #else
-                        ASSERT_NOT_REACHED();
+            ASSERT_NOT_REACHED();
 #endif
-                    });
-                // Wait for a potential license
-                GST_DEBUG("waiting for a license");
-                m_drmKeySemaphore.wait();
-                GST_DEBUG("finished waiting");
-                gst_buffer_unmap(data, &mapInfo);
-            }
+            gst_buffer_unmap(data, &mapInfo);
 #endif
             break;
         }
@@ -1673,11 +1645,6 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
 {
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    // Potentially unblock GStreamer thread for DRM license acquisition.
-    m_drmKeySemaphore.signal();
-#endif
-
     if (m_networkState < MediaPlayer::Loading || m_networkState == MediaPlayer::Loaded)
         return;
 
@@ -1953,11 +1920,6 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
         RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::create(m_url);
         if (securityOrigin->canRequest(newUrl)) {
             INFO_MEDIA_MESSAGE("New media url: %s", newUrl.string().utf8().data());
-
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-            // Potentially unblock GStreamer thread for DRM license acquisition.
-            m_drmKeySemaphore.signal();
-#endif
 
             // Reset player states.
             m_networkState = MediaPlayer::Loading;
@@ -2243,13 +2205,10 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
         bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
         if (errorCode || !result) {
             LOG_MEDIA_MESSAGE("Error processing key: errorCode: %u, result: %d", errorCode, result);
-            m_drmKeySemaphore.signal();
             return MediaPlayer::InvalidPlayerState;
         }
 
-        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-            gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, m_dxdrmSession, nullptr)));
-        m_drmKeySemaphore.signal();
+        emitSession();
         return MediaPlayer::NoError;
     }
 #endif
@@ -2261,7 +2220,6 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
     gst_buffer_unref(buffer);
-    m_drmKeySemaphore.signal();
     return MediaPlayer::NoError;
 }
 
@@ -2272,7 +2230,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::generateKeyRequest(c
     if (equalIgnoringCase(keySystem, "com.microsoft.playready")
         || equalIgnoringCase(keySystem, "com.youtube.playready")) {
         if (!m_dxdrmSession)
-            m_dxdrmSession = new DiscretixSession(this);
+            m_dxdrmSession = new DiscretixSession();
         unsigned short errorCode;
         unsigned long systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
@@ -2302,29 +2260,16 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::cancelKeyRequest(con
 
 void MediaPlayerPrivateGStreamer::needKey(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength)
 {
-    if (!m_player->keyNeeded(keySystem, sessionId, initData, initDataLength)) {
-        GST_DEBUG("no event handler for key needed, waking up GStreamer thread");
-        m_drmKeySemaphore.signal();
-    }
-}
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-void MediaPlayerPrivateGStreamer::signalDRM()
-{
-    GST_DEBUG("key/license was changed or failed, signal semaphore");
-    // Wake up a potential waiter blocked in the GStreamer thread
-    m_drmKeySemaphore.signal();
+    if (!m_player->keyNeeded(keySystem, sessionId, initData, initDataLength))
+        GST_DEBUG("no event handler for key needed");
 }
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
 void MediaPlayerPrivateGStreamer::needKey(RefPtr<Uint8Array> initData)
 {
-    if (!m_player->keyNeeded(initData.get())) {
-        GST_DEBUG("no event handler for key needed, waking up GStreamer thread");
-        m_drmKeySemaphore.signal();
-    }
+    if (!m_player->keyNeeded(initData.get()))
+        GST_DEBUG("no event handler for key needed");
 }
 
 std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamer::createSession(const String& keySystem)
@@ -2332,10 +2277,11 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamer::createSession(const Str
     if (!supportsKeySystem(keySystem, emptyString()))
         return nullptr;
 
+    LOG_MEDIA_MESSAGE("creating key session for %s", keySystem.utf8().data());
 #if USE(DXDRM)
     if (equalIgnoringCase(keySystem, "com.microsoft.playready")
         || equalIgnoringCase(keySystem, "com.youtube.playready"))
-        return std::make_unique<CDMPRSessionGStreamer>(this);
+        return std::make_unique<CDMPRSessionGStreamer>();
 #endif
 
     return nullptr;
@@ -2343,15 +2289,14 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamer::createSession(const Str
 
 void MediaPlayerPrivateGStreamer::setCDMSession(CDMSession* session)
 {
+    LOG_MEDIA_MESSAGE("setting CDM session");
     m_cdmSession = session;
 }
 
 void MediaPlayerPrivateGStreamer::keyAdded()
 {
 #if USE(DXDRM)
-    CDMPRSessionGStreamer* session = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-       gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, static_cast<DiscretixSession*>(session), nullptr)));
+    emitSession();
 #endif
 }
 #endif
@@ -2502,13 +2447,6 @@ GstElement* MediaPlayerPrivateGStreamer::audioSink() const
     GstElement* sink;
     g_object_get(m_pipeline.get(), "audio-sink", &sink, nullptr);
     return sink;
-
-    GRefPtr<GstElement> playsink = adoptGRef(gst_bin_get_by_name(GST_BIN(m_pipeline.get()), "playsink"));
-    if (playsink) {
-        // The default value (0) means "send events to all the sinks", instead
-        // of "only to the first that returns true". This is needed for MSE seek.
-        g_object_set(G_OBJECT(playsink.get()), "send-event-mode", 0, NULL);
-    }
 }
 
 void MediaPlayerPrivateGStreamer::configurePlaySink()

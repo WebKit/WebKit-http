@@ -44,10 +44,6 @@
 #include "WebKitMediaSourceGStreamer.h"
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-#include <wtf/threads/BinarySemaphore.h>
-#endif
-
 typedef struct _GstBuffer GstBuffer;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstElement GstElement;
@@ -60,7 +56,7 @@ class AudioSourceProvider;
 class AudioSourceProviderGStreamer;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(DXDRM)
+#if USE(DXDRM)
 class DiscretixSession;
 #endif
 
@@ -161,9 +157,6 @@ public:
     MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
     void needKey(const String&, const String&, const unsigned char*, unsigned);
 #endif
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    void signalDRM();
-#endif
 
     bool isLiveStream() const override { return m_isStreaming; }
 #if ENABLE(MEDIA_SOURCE)
@@ -184,6 +177,11 @@ private:
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
 
     GstElement* createAudioSink() override;
+
+#if USE(DXDRM)
+    DiscretixSession* dxdrmSession() const;
+    void emitSession();
+#endif
 
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&);
@@ -300,9 +298,6 @@ private:
 #if USE(GSTREAMER_GL)
     GstGLContext* m_glContext;
     GstGLDisplay* m_glDisplay;
-#endif
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    BinarySemaphore m_drmKeySemaphore;
 #endif
     Mutex m_pendingAsyncOperationsLock;
     GList* m_pendingAsyncOperations;
