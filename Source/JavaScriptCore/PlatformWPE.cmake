@@ -3,4 +3,5 @@ list(APPEND JavaScriptCore_LIBRARIES
 )
 list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
+    ${WTF_DIR}
 )
