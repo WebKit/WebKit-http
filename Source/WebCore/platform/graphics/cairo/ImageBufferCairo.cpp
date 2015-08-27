@@ -116,14 +116,12 @@ void clearSurface(cairo_surface_t* surface)
 
 PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t& texture)
 {
-    MutexLocker locker(m_platformLayerProxy->mutex());
-
     GLContext::sharingContext()->makeContextCurrent();
 
     // We must generate the texture ourselves, because there is no Cairo API for extracting it
     // from a pre-existing surface.
-    glGenTextures(1, &m_texture);
-    glBindTexture(GL_TEXTURE_2D, m_texture);
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -131,11 +129,7 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, m_size.width(), m_size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_texture, m_size, false, false));
-#endif
+    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, size.width(), size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
     GLContext* context = GLContext::sharingContext();
     cairo_device_t* device = context->cairoDevice();
@@ -158,11 +152,20 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     if (m_size.isEmpty())
         return;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    MutexLocker locker(m_data.m_platformLayerProxy->mutex());
+#endif
+
 #if ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated) {
         m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
             renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        else
+            m_data.m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, false, false));
+#endif
+
     }
     if (renderingMode == Unaccelerated)
 #else
