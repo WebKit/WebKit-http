@@ -136,7 +136,6 @@ void ImageBufferData::swapBuffersIfNeeded()
 }
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
 void clearSurface(cairo_surface_t* surface)
 {
     if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
