@@ -102,10 +102,6 @@ private:
 
     virtual void didChangeBackgroundColor() override;
 
-#if ENABLE(VIDEO)
-    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override;
-#endif
-
     virtual void refView() override;
     virtual void derefView() override;
 
