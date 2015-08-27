@@ -1,3 +1,1099 @@
+2015-08-26  Mark Lam  <mark.lam@apple.com>
+
+        watchdog m_didFire state erroneously retained.
+        https://bugs.webkit.org/show_bug.cgi?id=131082
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/workers/worker-terminate-forever-expected.txt:
+        * fast/workers/worker-terminate-forever.html:
+        - Updated to check if the worker actually did terminate. 
+
+2015-08-26  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r188987): imported/mozilla/svg/filters/feConvolveMatrix-1.svg fails
+        https://bugs.webkit.org/show_bug.cgi?id=148497
+
+        * TestExpectations: Marked as ImageOnlyFailure.
+
+2015-08-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Implement tracking of active stylesheets in the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=105828
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/css/resources/import-level-1.css: Added.
+        * inspector/css/resources/import-level-2.css: Added.
+        * inspector/css/resources/stylesheet-events-subframe.html: Added.
+        * inspector/css/stylesheet-events-basic-expected.txt: Added.
+        * inspector/css/stylesheet-events-basic.html: Added.
+        * inspector/css/stylesheet-events-imports-expected.txt: Added.
+        * inspector/css/stylesheet-events-imports.html: Added.
+        * inspector/css/stylesheet-events-inspector-stylesheet-expected.txt: Added.
+        * inspector/css/stylesheet-events-inspector-stylesheet.html: Added.
+        * inspector/css/stylesheet-events-multiple-documents-expected.txt: Added.
+        * inspector/css/stylesheet-events-multiple-documents.html: Added.
+        Tests for different ways that StyleSheets can be added / removed.
+
+2015-08-26  Andy Estes  <aestes@apple.com>
+
+        Crash when following a Google search link to Twitter with Limit Adult Content enabled
+        https://bugs.webkit.org/show_bug.cgi?id=147651
+
+        Rubber-stamped by Brady Eidson.
+
+        Added a layout test.
+
+        * http/tests/contentfiltering/load-substitute-data-from-appcache-expected.txt: Added.
+        * http/tests/contentfiltering/load-substitute-data-from-appcache.html: Added.
+        * http/tests/contentfiltering/resources/appcache.html: Added.
+        * http/tests/contentfiltering/resources/appcache.manifest: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2015-08-26  Tim Horton  <timothy_horton@apple.com>
+
+        Layout Test platform/mac/fast/events/content-inset-hit-testing-in-frame.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148409
+
+        Reviewed by Beth Dakin.
+
+        * platform/mac/fast/events/resources/iframe-to-hit-test.html:
+        Adjust the test so that it logs something useful if it fails
+        instead of complaining about not being run in WKTR/DRT.
+
+2015-08-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r188960.
+        https://bugs.webkit.org/show_bug.cgi?id=148479
+
+        Broke all the tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Add some new emoji with modifiers and new sequence."
+        https://bugs.webkit.org/show_bug.cgi?id=148202
+        http://trac.webkit.org/changeset/188960
+
+2015-08-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: no need to allocate protocolErrors array for every dispatched backend command
+        https://bugs.webkit.org/show_bug.cgi?id=146466
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/backend-dispatcher-argument-errors-expected.txt:
+        * inspector/protocol/backend-dispatcher-argument-errors.html:
+        Stringify the 'data' member before dumping, since it now contains JSON. Rebaseline it.
+
+2015-08-26  Enrica Casucci  <enrica@apple.com>
+
+        Add some new emoji with modifiers and new sequence.
+        https://bugs.webkit.org/show_bug.cgi?id=148202
+        rdar://problem/21849857
+
+        Reviewed by Sam Weinig.
+
+        Updated test to reflect the changes.
+
+        * editing/deleting/delete-emoji-expected.txt:
+        * editing/deleting/delete-emoji.html:
+
+2015-08-25  Nan Wang  <n_wang@apple.com>
+
+        AX: Enable accessibility/aria-controls.html test for mac
+        https://bugs.webkit.org/show_bug.cgi?id=148458
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-controls.html:
+        * platform/mac/TestExpectations:
+        * platform/mac/accessibility/aria-controls-expected.txt: Added.
+
+2015-08-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        More test gardening of css3/line-break-language-sensitive.
+
+        Unreviewed.
+
+        * css3/line-break-language-sensitive/line-break-auto-hyphens-expected.html:
+        * css3/line-break-language-sensitive/line-break-auto-hyphens.html:
+        * css3/line-break-language-sensitive/line-break-auto-sound-marks-expected.html:
+        * css3/line-break-language-sensitive/line-break-auto-sound-marks.html:
+
+2015-08-25  Nan Wang  <n_wang@apple.com>
+
+        AX: accessibility/mac/misspelled-attributed-string.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148455
+
+        Reviewed by Chris Fleizach.
+
+        Updated the test case to be more stable since the client's text checker
+        might change over time.
+
+        * accessibility/mac/misspelled-attributed-string-expected.txt:
+        * accessibility/mac/misspelled-attributed-string.html:
+        * platform/mac/TestExpectations:
+
+2015-08-25  Zalan Bujtas  <zalan@apple.com>
+
+        Using the filter functional notation for background images results in wrong background-size rendering
+        https://bugs.webkit.org/show_bug.cgi?id=148221
+        rdar://problem/22379518
+
+        Reviewed by Daniel Bates.
+
+        Do not ignore the size argument, when the filter image is being drawn onto the context.
+        When the size is ignored, we end up painting the image with its native size while the filter
+        is applied on the size of the generated image.
+
+        * fast/filter-image/background-filter-image-expected.html: Added.
+        * fast/filter-image/background-filter-image.html: Added.
+
+2015-08-25  Nan Wang  <n_wang@apple.com>
+
+        [Mac] accessibility/document-attributes.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=116636
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac/TestExpectations:
+
+2015-08-25  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Function.prototype.toString is incorrect for ArrowFunction
+        https://bugs.webkit.org/show_bug.cgi?id=148148
+
+        Reviewed by Saam Barati.
+
+        Added test of toString() method.
+
+        * js/arrowfunction-tostring-expected.txt: Added.
+        * js/arrowfunction-tostring.html: Added.
+        * js/script-tests/arrowfunction-tostring.js: Added.
+
+2015-08-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening
+        <rdar://problem/22420410>
+
+        Unreviewed.
+
+        Updating test expected results according to Kinsoku Shori.
+
+        * css3/line-break-language-sensitive/line-break-auto-hyphens-expected.html:
+        * css3/line-break-language-sensitive/line-break-auto-sound-marks-expected.html:
+
+2015-08-25  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix typo introduced in r188917
+
+        * TestExpectations:
+
+2015-08-24  Brent Fulgham  <bfulgham@apple.com>
+
+        Wheel events stop propagating when target element is removed from DOM
+        https://bugs.webkit.org/show_bug.cgi?id=148384
+        <rdar://problem/19732211>
+
+        Reviewed by David Hyatt.
+
+        * tiled-drawing/scrolling/latched-to-deleted-node-expected.txt: Added.
+        * tiled-drawing/scrolling/latched-to-deleted-node.html: Added.
+
+2015-08-25  Chris Dumez  <cdumez@apple.com>
+
+        compareDocumentPosition() should report PRECEDING or FOLLOWING information even if nodes are disconnected
+        https://bugs.webkit.org/show_bug.cgi?id=119316
+
+        Reviewed by Darin Adler.
+
+        Update fast/dom/compare-document-position-disconnected-nodes.html to check that compareDocumentPosition()
+        now returns one of the following values for disconnected nodes:
+        - DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC | DOCUMENT_POSITION_PRECEDING
+        - DOCUMENT_POSITION_DISCONNECTED | DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC | DOCUMENT_POSITION_FOLLOWING
+
+        * TestExpectations:
+        Several dom/xhtml/level3 are skipped and marked as WonfFix because they are outdated and no longer match
+        the latest DOM specification. They expect compareDocumentPosition() not to return PRECEDING / FOLLOWING
+        information for disconnected nodes.
+
+        * dom/xhtml/level3/core/nodecomparedocumentposition38-expected.txt:
+        * fast/dom/compare-document-position-disconnected-nodes-expected.txt:
+        * fast/dom/compare-document-position-disconnected-nodes.html:
+        * fast/dom/shadow/compare-document-position-expected.txt:
+        * fast/dom/shadow/compare-document-position.html:
+
+2015-08-24  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/mac/search-with-frames.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148313
+
+        Reviewed by Chris Fleizach.
+
+        Fixed the test by making sure that search is performed after all frames
+        have been loaded.
+
+        * accessibility/mac/search-with-frames.html:
+        * platform/mac/TestExpectations:
+
+2015-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Marking more scroll-snap tests as flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Roll out r188827, because it didn't help.
+
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html:
+
+2015-08-24  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add protocol test for existing error handling performed by the backend
+        https://bugs.webkit.org/show_bug.cgi?id=147097
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a bunch of test cases to cover existing error handling by the backend dispatcher.
+
+        * inspector/protocol/backend-dispatcher-argument-errors-expected.txt: Added.
+        * inspector/protocol/backend-dispatcher-argument-errors.html: Added.
+        * inspector/protocol/backend-dispatcher-malformed-message-errors-expected.txt: Added.
+        * inspector/protocol/backend-dispatcher-malformed-message-errors.html: Added.
+
+2015-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark flaky scrolling tests as such.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-08-24  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/mac/mathml-elements.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148393
+
+        Reviewed by Chris Fleizach.
+
+        Updated the test to match the structure changes of mfenced/mo operators in bug 124838.
+
+        * accessibility/mac/mathml-elements-expected.txt:
+        * accessibility/mac/mathml-elements.html:
+        * platform/mac/TestExpectations:
+
+2015-08-24  Chris Dumez  <cdumez@apple.com>
+
+        NodeList should not have a named getter
+        https://bugs.webkit.org/show_bug.cgi?id=148117
+
+        Reviewed by Geoffrey Garen.
+
+        Add a layout test to check that NodeList no longer has a named property
+        getter after r188829.
+
+        * fast/dom/NodeList/no-named-getter-expected.txt: Added.
+        * fast/dom/NodeList/no-named-getter.html: Added.
+
+2015-08-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Create ById IC for ByVal operation only when the specific Id comes more than once
+        https://bugs.webkit.org/show_bug.cgi?id=148288
+
+        Reviewed by Geoffrey Garen.
+
+        Revert the skip marks introduced in r188767.
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array-overflow-values.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+        * js/script-tests/dfg-uint8clampedarray.js:
+        * js/script-tests/regress-141098.js:
+
+2015-08-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, slight layout test clean up after r188829.
+
+        Remove a useless blank line.
+
+        * fast/dom/named-items-with-symbol-name-expected.txt:
+        * fast/dom/named-items-with-symbol-name.html:
+
+2015-08-23  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/deleting-iframe-destroys-axcache.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148328
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/TestExpectations:
+
+2015-08-22  Chris Dumez  <cdumez@apple.com>
+
+        NodeList should not have a named getter
+        https://bugs.webkit.org/show_bug.cgi?id=148117
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/childnode-item-after-itemname-expected.txt: Removed.
+        * fast/dom/childnode-item-after-itemname.html: Removed.
+        Drop test as it is no longer relevant now that NodeList no longer
+        has a named property getter.
+
+2015-08-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Tweak a test that became flaky on some machines after r188793.
+
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html:
+
+2015-08-22  Doug Russell  <d_russell@apple.com>
+
+        AX: aria-table-content.html test failing on windows
+        https://bugs.webkit.org/show_bug.cgi?id=148354
+
+        Update TestExpectation for Windows to Skip test.
+
+        Reviewed by Tim Horton.
+
+        * platform/win/TestExpectations:
+
+2015-08-21  Chris Dumez  <cdumez@apple.com>
+
+        document.getElementsByTagName should return an HTMLCollection
+        https://bugs.webkit.org/show_bug.cgi?id=110611
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/getElementsByTagName-return-type-expected.txt: Added.
+        * fast/dom/getElementsByTagName-return-type.html: Added.
+        New test checking that getElementsByTagName*() returns an HTMLcollection.
+
+        * fast/dom/NodeList/script-tests/nodelist-item-call-as-function.js:
+        * fast/dom/domListEnumeration-expected.txt:
+        * fast/dom/named-items-with-symbol-name-expected.txt:
+        * fast/dom/script-tests/domListEnumeration.js:
+        * fast/dom/wrapper-classes-expected.txt:
+        * fast/dom/wrapper-classes.html:
+        * js/dom/constructor-expected.txt:
+        * js/dom/script-tests/constructor.js:
+        * platform/mac/fast/dom/wrapper-classes-objc-expected.txt:
+        * platform/mac/fast/dom/wrapper-classes-objc.html:
+        Rebaseline / update.
+
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        One of the checks is now failing because HTMLCollection.item()'s
+        parameter is optional. The specification says the parameter should
+        be mandatory so I did not update the test. It was previously passing
+        because NodeList.item()'s parameter is mandatory.
+
+2015-08-21  Tim Horton  <timothy_horton@apple.com>
+
+        Re-mark accessibility/mac/search-with-frames.html flaky
+
+        * platform/mac/TestExpectations:
+        It's still not 100%.
+
+2015-08-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Improve how UI events are dispatched by WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=148326
+
+        Reviewed by Anders Carlsson.
+
+        * fast/events/clear-drag-state-expected.txt:
+        * fast/events/clear-drag-state.html:
+        * platform/mac-wk2/TestExpectations:
+        This test used to accidentally pass in WebKit2, but it didn't actually check
+        for the problem. This patch improves WK2 behavior, which makes the test fail.
+        Changed the test to not pass accidentally, and added it to WK2 test expectations.
+        
+        * fast/events/scroll-in-scaled-page-with-overflow-hidden-expected.txt:
+        * fast/events/scroll-in-scaled-page-with-overflow-hidden.html:
+        Updated the test to be fully async.
+
+        * fast/events/wheelevent-basic-expected.txt:
+        * fast/events/wheelevent-basic.html:
+        Updated the test to be fully async, got rid of tab characters.
+
+        * fast/events/wheelevent-mousewheel-interaction.html: 
+        * fast/forms/search/search-scroll-hidden-decoration-container-crash.html:
+        * fast/frames/flattening/scrolling-in-object.html:
+        Updated these tests to be fully async. Since they check for something that happens
+        asynchronously, and doesn't have an end event, they have to use setTimeout.
+
+        * fast/scrolling/latching/iframe_in_iframe.html:
+        * fast/scrolling/latching/scroll-div-latched-div.html:
+        * fast/scrolling/latching/scroll-div-latched-mainframe.html:
+        * fast/scrolling/latching/scroll-div-no-latching.html:
+        * fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html:
+        * fast/scrolling/latching/scroll-iframe-fragment.html:
+        * fast/scrolling/latching/scroll-iframe-latched-iframe.html:
+        * fast/scrolling/latching/scroll-iframe-latched-mainframe.html:
+        * fast/scrolling/latching/scroll-iframe-webkit1-latching-bug.html:
+        * fast/scrolling/latching/scroll-latched-nested-div.html:
+        * fast/scrolling/latching/scroll-nested-iframe.html:
+        * fast/scrolling/latching/scroll-select-bottom-test.html:
+        * fast/scrolling/latching/scroll-select-latched-mainframe.html:
+        * fast/scrolling/latching/scroll-select-latched-select.html:
+        Removed extra testRunner.mouseScrollByWithWheelAndMomentumPhases() calls.
+        We no longer need multiple events for scroll snap animation to start, and due to
+        the way we coalesce events, having multiple events resulted in getting too high velocity.
+        Removed async scrolling argument form the function calls, because it's now always async.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+        Moved fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html
+        to WK1 expectations, because the test needn't be skipped on WK2.
+
+        * scrollbars/scroll-rtl-or-bt-layer.html: Made the test fully async, and refactored
+        it for clarity.
+
+        * tiled-drawing/scrolling/fast-scroll-div-latched-div-with-handler.html:
+        * tiled-drawing/scrolling/fast-scroll-div-latched-div.html:
+        * tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler.html:
+        * tiled-drawing/scrolling/fast-scroll-div-latched-mainframe.html:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler.html:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe.html:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler.html:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html:
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-select.html:
+        * tiled-drawing/scrolling/fast-scroll-mainframe-zoom.html:
+        * tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-with-handler.html:
+        * tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html:
+        * tiled-drawing/scrolling/fast-scroll-select-latched-select.html:
+        * tiled-drawing/scrolling/iframe_in_iframe.html:
+        * tiled-drawing/scrolling/overflow-scroll-reduced-content.html:
+        * tiled-drawing/scrolling/overflow-scroll-zero-delta-wheel-events.html:
+        * tiled-drawing/scrolling/root-overflow-with-mousewheel.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-2d-overflow.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-borders.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-horizontal.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-horizontal.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-slow-vertical.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow-stateless.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-overflow.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html:
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html:
+        * tiled-drawing/scrolling/wheel-events-with-no-delta.html:
+        Same testRunner.mouseScrollByWithWheelAndMomentumPhases changes as in fast/scrolling/latching.
+
+        * tiled-drawing/scrolling/fast-scroll-select-latched-select-with-handler-expected.txt:
+        * tiled-drawing/scrolling/fast-scroll-select-latched-select-with-handler.html:
+        Removed debug output about how many events are received. The number may vary due
+        to coalescing.
+
+2015-08-21  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/mac/search-with-frames.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148313
+
+        Reviewed by Chris Fleizach.
+
+        uiElementForSearchPredicate function needs five parameters for DumpRenderTree.
+
+        * accessibility/mac/search-with-frames.html:
+        * platform/mac/TestExpectations:
+
+2015-08-21  Doug Russell  <d_russell@apple.com>
+
+        AX: Table with CSS that makes a row anonymous can return NULL from cellForColumnAndRow
+        https://bugs.webkit.org/show_bug.cgi?id=148293
+
+        Reviewed by Chris Fleizach.
+
+        When RenderTableRows are anonymous, they may not be added to the accessible data 
+        table's internal row list. However, when calculating the row range for a cell, 
+        we were still accounting for those anonymous sections.
+        Change how the row range is calculated to directly ask the accessible parent row 
+        for its index. This will ensure it’s more inline with what’s being represented to 
+        the accessibility API.
+
+        * accessibility/aria-table-content-expected.txt: Added.
+        * accessibility/aria-table-content.html: Added.
+
+2015-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION(173684): Edit as HTML not working
+        https://bugs.webkit.org/show_bug.cgi?id=148268
+
+        Reviewed by Chris Dumez.
+
+        * inspector/dom/getOuterHTML-expected.txt: Added.
+        * inspector/dom/getOuterHTML.html: Added.
+        * inspector/dom/setOuterHTML-expected.txt: Added.
+        * inspector/dom/setOuterHTML.html: Added.
+
+2015-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Skip no-llint tests that fail due to running out of executable memory after r188969
+        https://bugs.webkit.org/show_bug.cgi?id=148273
+
+        Reviewed by Michael Saboff.
+
+        r188969 is causing the "no-llint" variation of some tests to fail due to "ran out of executable memory".
+        These failures are caused because put_by_val and get_by_val aggressively generate the ICs even if the op is executed only once.
+        The failing tests call eval("contains byVal ops") with the different strings repeatedly under the "no-llint" variation.
+        In those cases, each eval call creates byId IC for byVal and exhausts executable memory.
+
+        We will fix this issue by generating the IC in the second call[1]. In the meantime, we skip these tests.
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=148288
+
+        * js/script-tests/dfg-float32array.js:
+        * js/script-tests/dfg-int16array.js:
+        * js/script-tests/dfg-int32array-overflow-values.js:
+        * js/script-tests/dfg-int32array.js:
+        * js/script-tests/dfg-int8array.js:
+        * js/script-tests/dfg-uint16array.js:
+        * js/script-tests/dfg-uint32array-overflow-values.js:
+        * js/script-tests/dfg-uint32array.js:
+        * js/script-tests/dfg-uint8array.js:
+        * js/script-tests/dfg-uint8clampedarray.js:
+        * js/script-tests/regress-141098.js:
+
+2015-08-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: inspector/css/modify-rule-selector.html is flaky on some bots
+        https://bugs.webkit.org/show_bug.cgi?id=148321
+
+        Unreviewed, enable extra logging to stderr so we can hopefully see
+        why the test is occasionally timing out with no output to the test page.
+
+        * inspector/css/modify-rule-selector.html:
+
+2015-08-21  Nan Wang  <n_wang@apple.com>
+
+        [Mac] accessibility/selection-states.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=116637
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac/TestExpectations:
+
+2015-08-20  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add a regression test for the fix introduced in r188679
+        https://bugs.webkit.org/show_bug.cgi?id=148223
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a regression test to check the number of DOMTree instances that
+        listen to DOMTreeManager.
+
+        * TestExpectations: Don't skip the inspector/dom/ directory.
+        * http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation-expected.txt: Added.
+        * http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html: Added.
+        * http/tests/inspector/dom/resources/nested-frame-1-deep.html: Added.
+        * http/tests/inspector/dom/resources/nested-frame-2-deep.html: Added.
+        * http/tests/inspector/dom/resources/nested-frame-base.html: Added.
+
+2015-08-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r188698): http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148205
+
+        Reviewed by Antti Koivisto.
+
+        * http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header.html:
+        Drop temporary fix landed in r188698 to make the test less flaky.
+
+2015-08-20  Nan Wang  <n_wang@apple.com>
+
+        AX: fix accessibility/loading-iframe-updates-axtree.html test for mac
+        https://bugs.webkit.org/show_bug.cgi?id=148251
+
+        Reviewed by Chris Fleizach.
+
+        Added a container in order to make the frame accessible. Also, added expected results for
+        both WK1 and WK2.
+
+        * accessibility/loading-iframe-updates-axtree-expected.txt:
+        * accessibility/loading-iframe-updates-axtree.html:
+        * platform/mac-wk1/accessibility: Added.
+        * platform/mac-wk1/accessibility/loading-iframe-updates-axtree-expected.txt: Added.
+        * platform/mac/TestExpectations:
+
+2015-08-20  Chris Dumez  <cdumez@apple.com>
+
+        Fix passing null / undefined as NodeFilter parameter for createNodeIterator() / createTreeWalker()
+        https://bugs.webkit.org/show_bug.cgi?id=148257
+
+        Reviewed by Darin Adler.
+
+        Rebaseline tests. We are now passing more of the checks.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+
+2015-08-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Adopt OS X's emoji behavior
+        https://bugs.webkit.org/show_bug.cgi?id=148265
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios-simulator/fast/text/emoji-expected.txt:
+
+2015-08-20  Chris Dumez  <cdumez@apple.com>
+
+        getElementsByClassName() should return an HTMLCollection
+        https://bugs.webkit.org/show_bug.cgi?id=147980
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/getElementsByClassName/dumpHTMLCollection-expected.txt: Renamed from LayoutTests/fast/dom/getElementsByClassName/dumpNodeList-expected.txt.
+        * fast/dom/getElementsByClassName/dumpHTMLCollection.html: Renamed from LayoutTests/fast/dom/getElementsByClassName/dumpNodeList.html.
+        Rename test now that getElementsByClassName returns an HTMLCollection
+        and update the test to update the HTMLCollection prototype instead
+        of the NodeList one.
+
+        * fast/dom/getElementsByClassName/return-type-expected.txt: Added.
+        * fast/dom/getElementsByClassName/return-type.html: Added.
+        New test that checks that getElementsByClassName() returns an
+        HTMLCollection.
+
+        * inspector/model/remote-object-expected.txt:
+        Rebaseline.
+
+2015-08-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r188167
+        https://bugs.webkit.org/show_bug.cgi?id=148276
+
+        Unreviewed.
+
+        The tests in css3/line-break require non-language-sensitive font fallback. This patch adds
+        slightly modified tests which test line-breaking with language-sensitive font fallback.
+        This patch also marks all operating systems which do not support language-sensitive font
+        fallback to ignore the results of these new tests.
+
+        * css3/line-break-language-sensitive: Added
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-08-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Overflow check elimination fails for a simple test case
+        https://bugs.webkit.org/show_bug.cgi?id=147387
+
+        Reviewed by Benjamin Poulain.
+
+        Added two test cases that previously would have an unnecessary overflow check on an induction
+        variable. These tests speed up by 10-15% thanks to this change.
+
+        Also added .html/expected files for some regress test that didn't have them.
+
+        * js/regress/function-call-expected.txt: Added.
+        * js/regress/function-call.html: Added.
+        * js/regress/hard-overflow-check-equal-expected.txt: Added.
+        * js/regress/hard-overflow-check-equal.html: Added.
+        * js/regress/hard-overflow-check-expected.txt: Added.
+        * js/regress/hard-overflow-check.html: Added.
+        * js/regress/script-tests/hard-overflow-check-equal.js: Added.
+        (foo):
+        * js/regress/script-tests/hard-overflow-check.js: Added.
+        (foo):
+
+2015-08-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/mac/selection-value-changes-for-aria-textbox.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148247
+
+        Reviewed by Chris Fleizach.
+
+        Fixed the test by adding the notification listener before executing the commands.
+
+        * accessibility/mac/selection-value-changes-for-aria-textbox-expected.txt:
+        * accessibility/mac/selection-value-changes-for-aria-textbox.html:
+        * platform/mac/TestExpectations:
+
+2015-08-20  Chris Dumez  <cdumez@apple.com>
+
+        Default value for createNodeIterator() / createTreeWalker()'s whatToShow parameter should be 0xFFFFFFFF
+        https://bugs.webkit.org/show_bug.cgi?id=148238
+
+        Reviewed by Ryosuke Niwa.
+
+        Add tests for createNodeIterator() / createTreeWalker() parameters.
+        Some of the checks are still failing.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt: Added.
+        * fast/dom/createNodeIterator-parameters.html: Added.
+        * fast/dom/createTreeWalker-parameters-expected.txt: Added.
+        * fast/dom/createTreeWalker-parameters.html: Added.
+
+2015-08-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Re-enable aria-checked-mixed-value.html test for mac
+        https://bugs.webkit.org/show_bug.cgi?id=148235
+
+        Reviewed by Chris Fleizach.
+
+        isIndeterminate is already implemented in mac, re-enable the test.
+
+        * platform/mac/TestExpectations:
+
+2015-08-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Mac doesn't have expectation for LayoutTests/accessibility/table-cells-roles.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148236
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/table-cells-roles-expected.txt:
+        * accessibility/table-cells-roles.html:
+        * platform/mac/TestExpectations:
+        * platform/mac/accessibility/table-cells-roles-expected.txt: Added.
+
+2015-08-20  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header.html is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148205
+
+        Unreviewed, give the disk cache a chance to settle down before querying
+        the resource again. This fixes the flakiness locally. Longer term, I will
+        try and figure out why the cache is sometimes revalidating if the resource
+        is requested very quickly after.
+
+        * http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header.html:
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce put_by_id like IC into put_by_val when the given name is String or Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=147760
+
+        Reviewed by Filip Pizlo.
+
+        Add synthetic tests for put-by-val. Just make put-by-id tests using symbol / string.
+
+        * js/regress/fold-put-by-val-with-string-to-multi-put-by-offset-expected.txt: Added.
+        * js/regress/fold-put-by-val-with-string-to-multi-put-by-offset.html: Added.
+        * js/regress/fold-put-by-val-with-symbol-to-multi-put-by-offset-expected.txt: Added.
+        * js/regress/fold-put-by-val-with-symbol-to-multi-put-by-offset.html: Added.
+        * js/regress/inlined-put-by-val-with-string-transition-expected.txt: Added.
+        * js/regress/inlined-put-by-val-with-string-transition.html: Added.
+        * js/regress/inlined-put-by-val-with-symbol-transition-expected.txt: Added.
+        * js/regress/inlined-put-by-val-with-symbol-transition.html: Added.
+        * js/regress/polymorphic-put-by-val-with-string-expected.txt: Added.
+        * js/regress/polymorphic-put-by-val-with-string.html: Added.
+        * js/regress/polymorphic-put-by-val-with-symbol-expected.txt: Added.
+        * js/regress/polymorphic-put-by-val-with-symbol.html: Added.
+        * js/regress/put-by-val-with-string-expected.txt: Added.
+        * js/regress/put-by-val-with-string-replace-and-transition-expected.txt: Added.
+        * js/regress/put-by-val-with-string-replace-and-transition.html: Added.
+        * js/regress/put-by-val-with-string-slightly-polymorphic-expected.txt: Added.
+        * js/regress/put-by-val-with-string-slightly-polymorphic.html: Added.
+        * js/regress/put-by-val-with-string.html: Added.
+        * js/regress/put-by-val-with-symbol-expected.txt: Added.
+        * js/regress/put-by-val-with-symbol-replace-and-transition-expected.txt: Added.
+        * js/regress/put-by-val-with-symbol-replace-and-transition.html: Added.
+        * js/regress/put-by-val-with-symbol-slightly-polymorphic-expected.txt: Added.
+        * js/regress/put-by-val-with-symbol-slightly-polymorphic.html: Added.
+        * js/regress/put-by-val-with-symbol.html: Added.
+        * js/regress/script-tests/fold-put-by-val-with-string-to-multi-put-by-offset.js: Added.
+        (foo):
+        (fu):
+        (bar):
+        * js/regress/script-tests/fold-put-by-val-with-symbol-to-multi-put-by-offset.js: Added.
+        (foo):
+        (fu):
+        (bar):
+        * js/regress/script-tests/inlined-put-by-val-with-string-transition.js: Added.
+        (foo):
+        (Foo):
+        * js/regress/script-tests/inlined-put-by-val-with-symbol-transition.js: Added.
+        (foo):
+        (Foo):
+        * js/regress/script-tests/polymorphic-put-by-val-with-string.js: Added.
+        (foo):
+        * js/regress/script-tests/polymorphic-put-by-val-with-symbol.js: Added.
+        (foo):
+        * js/regress/script-tests/put-by-val-with-string-replace-and-transition.js: Added.
+        * js/regress/script-tests/put-by-val-with-string-slightly-polymorphic.js: Added.
+        * js/regress/script-tests/put-by-val-with-string.js: Added.
+        (foo):
+        (bar):
+        * js/regress/script-tests/put-by-val-with-symbol-replace-and-transition.js: Added.
+        * js/regress/script-tests/put-by-val-with-symbol-slightly-polymorphic.js: Added.
+        * js/regress/script-tests/put-by-val-with-symbol.js: Added.
+        (foo):
+        (bar):
+
+2015-08-20  Chris Dumez  <cdumez@apple.com>
+
+        [Cocoa] Treat Epoch as invalid value for "Last-Modified" header
+        https://bugs.webkit.org/show_bug.cgi?id=148162
+        rdar://problem/22330837
+
+        Reviewed by Antti Koivisto.
+
+        Add better layout test coverage for using the "Last-Modified" header to
+        compute heuristic freshness. In particular, it adds coverage for the
+        following values: Epoch, malformed date.
+
+        * http/tests/cache/disk-cache/disk-cache-last-modified-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-last-modified.html: Added.
+        New test.
+
+        * http/tests/cache/disk-cache/resources/cache-test.js:
+        (makeHeaderValue):
+        makeHeaderValue() was not resolving 'now(-1000)' into a date. This means that the
+        tests using it would end up sending an invalid "Last-Modified" header which our
+        networking code was translating to Epoch. We now ignore Epoch as Last-Modified
+        value for computing heuristic freshness to not cache due to malformed headers.
+
+2015-08-20  Eric Carlson  <eric.carlson@apple.com>
+
+        Revert accidental commit of a new test that isn't ready for prime time.
+
+        Unreviewed build fix.
+
+        * http/tests/media/video-media-document-disposition-download.html: Removed.
+        * http/tests/media/resources/serve-video.php: Remove contentDisposition support.
+
+2015-08-20  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Sync tests with upstream reference
+        https://bugs.webkit.org/show_bug.cgi?id=148078
+
+        Synced with the upstream reference tests. This means that we moved
+        some of ours to the reference and brought some new ones. Of course
+        expectations were updated accordingly.
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-controller-error-expected.txt: Expectations.
+        * streams/readable-stream-controller-error.html: Changed test descriptions and moved one test to the reference.
+        * streams/readable-stream-gc-expected.txt: Removed.
+        * streams/readable-stream-gc.html: Moved to the reference.
+        * streams/readable-stream-reader-read-expected.txt: Expectations.
+        * streams/readable-stream-reader-read.html: Moved a test to the reference.
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt: Expectations.
+        * streams/reference-implementation/readable-stream-reader.html: Brought changes from upstream reference and
+        uncomented async pull source test (which had been commented since a long time ago and is working now).
+        * streams/reference-implementation/readable-stream-tee.html: Brought changes from upstream reference.
+        * streams/reference-implementation/readable-stream-templated-expected.txt: Expectations.
+        * streams/reference-implementation/readable-stream-templated.html:
+        * streams/reference-implementation/readable-stream.html: Brought changes from upstream reference.
+
+2015-08-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Select validation does not correctly work when handling change event
+        https://bugs.webkit.org/show_bug.cgi?id=145869
+
+        Reviewed by Dean Jackson.
+
+        Tests that checkValidity() returns correct results from within the onchange handler of a
+        <select> when the validity of the selected option changes.
+
+        * fast/forms/onchange-select-check-validity-expected.txt: Added.
+        * fast/forms/onchange-select-check-validity.html: Added.
+
+2015-08-19  Jinyoung Hur  <hur.ims@navercorp.com>
+
+        GraphicsContext3D::activeTexture should not be called with zero-based index
+        https://bugs.webkit.org/show_bug.cgi?id=148020
+
+        Reviewed by Alex Christensen.
+
+        Insert WebGLRenderingContext.activeTexture call during the texture complete test to verify
+        a meaningless change of the active texture doesn't make any gl errors.
+
+        * fast/canvas/webgl/texture-complete.html:
+
+2015-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        outline-style: auto leaves bits behind on strava's flyby view.
+        https://bugs.webkit.org/show_bug.cgi?id=148178
+
+        Reviewed by Simon Fraser.
+
+        RenderView::m_maximalOutlineSize should include outline-offset.
+
+        * fast/repaint/outline-auto-with-width-less-than-focus-ring-width-and-offset-repaint-expected.txt: Added.
+        * fast/repaint/outline-auto-with-width-less-than-focus-ring-width-and-offset-repaint.html: Added.
+
+2015-08-19  Zalan Bujtas  <zalan@apple.com>
+
+        Cleanup outline-style: auto painting.
+        https://bugs.webkit.org/show_bug.cgi?id=148159
+
+        Reviewed by Simon Fraser.
+
+        Old platform style required the focus ring to be painted with an offset. (https://trac.webkit.org/r5358)
+        (and it has the side effect of growing outline-width adds further, unwanted offset)
+        Default css for :focus is adjusted to remove this offset by setting the outline-width to 5px
+        and the outline-offset to -2px. (https://trac.webkit.org/r13639)
+        This patch removes both the old logic and the workaround for getting rid of the unwanted offset.
+
+        * fast/repaint/outline-auto-with-default-width-and-offset-repaint-expected.txt: Added.
+        * fast/repaint/outline-auto-with-default-width-and-offset-repaint.html: Copied from LayoutTests/fast/repaint/outline-with2px-auto-repaint-rect.html.
+        * fast/repaint/outline-with1px-auto-repaint-rect.html:
+        * fast/repaint/outline-with2px-auto-repaint-rect.html:
+        * fast/repaint/outline-with3px-auto-repaint-rect.html:
+
+2015-08-18  Dean Jackson  <dino@apple.com>
+
+        Support CSS filters without webkit prefix
+        https://bugs.webkit.org/show_bug.cgi?id=148138
+        <rdar://problem/22331434>
+
+        Reviewed by Sam Weinig.
+
+        Globally change -webkit-filter to filter in as many places as
+        possible. Then add a new test that makes sure the prefixed
+        and unprefixed value resolve to the same computed style.
+
+        * animations/resources/animation-test-helpers.js:
+        (parseCSSImage):
+        * css3/filters/backdrop/effect-hw-expected.html:
+        * css3/filters/effect-blur-hw.html:
+        * css3/filters/effect-blur.html:
+        * css3/filters/effect-brightness-clamping-hw.html:
+        * css3/filters/effect-brightness-clamping.html:
+        * css3/filters/effect-brightness-hw.html:
+        * css3/filters/effect-brightness.html:
+        * css3/filters/effect-combined-hw.html:
+        * css3/filters/effect-combined.html:
+        * css3/filters/effect-contrast-hw.html:
+        * css3/filters/effect-contrast.html:
+        * css3/filters/effect-drop-shadow-hw.html:
+        * css3/filters/effect-drop-shadow.html:
+        * css3/filters/effect-grayscale-hw.html:
+        * css3/filters/effect-grayscale.html:
+        * css3/filters/effect-hue-rotate-hw.html:
+        * css3/filters/effect-hue-rotate.html:
+        * css3/filters/effect-invert-hw.html:
+        * css3/filters/effect-invert.html:
+        * css3/filters/effect-opacity-hw.html:
+        * css3/filters/effect-opacity.html:
+        * css3/filters/effect-reference-composite-hw.html:
+        * css3/filters/effect-reference-composite.html:
+        * css3/filters/effect-reference-hw.html:
+        * css3/filters/effect-reference-ordering-hw.html:
+        * css3/filters/effect-reference-ordering.html:
+        * css3/filters/effect-reference.html:
+        * css3/filters/effect-saturate-hw.html:
+        * css3/filters/effect-saturate.html:
+        * css3/filters/effect-sepia-hw.html:
+        * css3/filters/effect-sepia.html:
+        * css3/filters/filter-property-computed-style-expected.txt:
+        * css3/filters/filter-property-parsing-expected.txt:
+        * css3/filters/script-tests/filter-property-computed-style.js:
+        (testComputedFilterRule):
+        * css3/filters/script-tests/filter-property-parsing.js:
+        (testFilterRule):
+        * css3/filters/script-tests/unprefixed.js: Copied from LayoutTests/css3/filters/script-tests/filter-property-computed-style.js.
+        (testComputedFilterRule):
+        * css3/filters/unprefixed-expected.txt: Copied from LayoutTests/css3/filters/filter-property-computed-style-expected.txt.
+        * css3/filters/unprefixed.html: Added.
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/filter-image/clipped-filter-expected.html:
+        * fast/filter-image/clipped-filter.html:
+        * fast/filter-image/filter-image-animation-expected.txt:
+        * fast/filter-image/filter-image-animation.html:
+        * fast/filter-image/filter-image-blur.html:
+        * fast/filter-image/filter-image-expected.html:
+        * fast/filter-image/filter-image-svg.html:
+        * fast/filter-image/filter-image.html:
+        * fast/filter-image/parse-filter-image-expected.txt:
+        * fast/filter-image/parse-filter-image.html:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorTest should be a subclass of TestHarness
+        https://bugs.webkit.org/show_bug.cgi?id=148079
+
+        Reviewed by Timothy Hatcher.
+
+        Rename InspectorTestProxy to TestPage. Update some code style in
+        the harness script files to be consistent.
+
+        * http/tests/inspector/debugger/debugger-test.js:
+        * http/tests/inspector/dom/shapes-test.js:
+        * http/tests/inspector/replay/replay-test.js:
+        * http/tests/inspector/resources/inspector-test.js:
+        (TestPage.registerInitializer):
+        (runTest.runInitializationMethodsInFrontend):
+        (runTest.runTestMethodInFrontend):
+        (runTest):
+        (TestPage.completeTest):
+        (TestPage.debugLog):
+        (TestPage.addResult):
+        (TestPage.reportUncaughtException):
+        (InspectorTestProxy.registerInitializer): Deleted.
+        (InspectorTestProxy.completeTest): Deleted.
+        (InspectorTestProxy.debugLog): Deleted.
+        (InspectorTestProxy.addResult): Deleted.
+        (InspectorTestProxy.reportUncaughtException): Deleted.
+        * inspector/debugger/breakpoint-action-eval.html:
+        * inspector/debugger/resources/break-on-exception-tests.js:
+        * inspector/debugger/resources/script-for-breakpoint-actions.js:
+        (breakpointActions):
+        * inspector/debugger/search-scripts.html:
+        * inspector/replay/window-navigator-plugins-memoized.html:
+        * inspector/timeline/debugger-paused-while-recording.html:
+        * inspector/timeline/exception-in-injected-script-while-recording.html:
+
+2015-08-19  Chris Dumez  <cdumez@apple.com>
+
+        WebKit may keep outdated entry in the disk cache after a reload
+        https://bugs.webkit.org/show_bug.cgi?id=148137
+        <rdar://problem/22299547>
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test to make sure that stale disk cached entries are removed
+        when it becomes uncacheable.
+
+        * http/tests/cache/disk-cache/resource-becomes-uncacheable-expected.txt: Added.
+        * http/tests/cache/disk-cache/resource-becomes-uncacheable.html: Added.
+        * http/tests/cache/disk-cache/resources/generate-response-optionally-cacheable.cgi: Added.
+
+2015-08-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: split TestStub.js into multiple files and modernize it
+        https://bugs.webkit.org/show_bug.cgi?id=148077
+
+        Reviewed by Timothy Hatcher.
+
+        Add the prefix 'TestPage' to everything in protocol-test.js. Continue
+        exporting it to the global namespace for backwards compatibility, too.
+
+        Rename some things to match changes in the test harness. Tighten up
+        preconditions for test suite and test case names. Sprinkle some ES6.
+
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * http/tests/inspector/resources/protocol-test.js:
+        (TestPage.registerInitializer):
+        (TestPage.debugLog.window.debugLog):
+        (TestPage.log.window.log):
+        (TestPage.closeTest.window.closeTest):
+        (TestPage.runTest.window.runTest):
+        (ProtocolTestProxy.registerInitializer): Deleted.
+        (debugLog): Deleted.
+        (log): Deleted.
+        (closeTest): Deleted.
+        (runTest): Deleted.
+        * inspector/dom/resources/dom-search-queries.js:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite.html:
+
 2015-08-18  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [Cocoa] Punctuation near Hindi text is garbled when styled with the system font

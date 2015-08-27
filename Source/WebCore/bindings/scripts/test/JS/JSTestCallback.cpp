@@ -24,11 +24,15 @@
 
 #include "JSTestCallback.h"
 
+#include "DOMStringList.h"
 #include "JSDOMStringList.h"
 #include "JSTestNode.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
+#include "TestNode.h"
+#include "URL.h"
 #include <runtime/JSLock.h>
+#include <runtime/JSString.h>
 
 using namespace JSC;
 
@@ -67,10 +71,11 @@ bool JSTestCallback::callbackWithNoParam()
 
     JSLockHolder lock(m_data->globalObject()->vm());
 
+    ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackWithNoParam"), &raisedException);
     return !raisedException;
 }
 
@@ -85,10 +90,10 @@ bool JSTestCallback::callbackWithArrayParam(RefPtr<Float32Array> arrayParam)
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), arrayParam));
+    args.append(toJS(exec, m_data->globalObject(), WTF::getPtr(arrayParam)));
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackWithArrayParam"), &raisedException);
     return !raisedException;
 }
 
@@ -103,11 +108,11 @@ bool JSTestCallback::callbackWithSerializedScriptValueParam(PassRefPtr<Serialize
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(srzParam ? srzParam->deserialize(exec, m_data->globalObject(), 0) : jsNull());
+    args.append(srzParam ? srzParam->deserialize(exec, castedThis->globalObject(), 0) : jsNull());
     args.append(jsStringWithCache(exec, strArg));
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackWithSerializedScriptValueParam"), &raisedException);
     return !raisedException;
 }
 
@@ -122,10 +127,10 @@ bool JSTestCallback::callbackWithStringList(PassRefPtr<DOMStringList> listParam)
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), listParam));
+    args.append(toJS(exec, m_data->globalObject(), WTF::getPtr(listParam)));
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackWithStringList"), &raisedException);
     return !raisedException;
 }
 
@@ -143,7 +148,7 @@ bool JSTestCallback::callbackWithBoolean(bool boolParam)
     args.append(jsBoolean(boolParam));
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackWithBoolean"), &raisedException);
     return !raisedException;
 }
 
@@ -158,11 +163,11 @@ bool JSTestCallback::callbackRequiresThisToPass(int longParam, TestNode* testNod
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), longParam));
-    args.append(toJS(exec, m_data->globalObject(), testNodeParam));
+    args.append(jsNumber(longParam));
+    args.append(toJS(exec, m_data->globalObject(), WTF::getPtr(testNodeParam)));
 
     bool raisedException = false;
-    m_data->invokeCallback(args, &raisedException);
+    m_data->invokeCallback(args, JSCallbackData::CallbackType::Object, Identifier::fromString(exec, "callbackRequiresThisToPass"), &raisedException);
     return !raisedException;
 }
 

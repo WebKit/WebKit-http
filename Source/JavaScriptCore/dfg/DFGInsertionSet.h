@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,11 +44,17 @@ public:
     }
     
     Graph& graph() { return m_graph; }
-    
+
+    // Adds another code insertion. It's expected that you'll usually insert things in order. If
+    // you don't, this function will perform a linear search to find the largest insertion point
+    // at which insertion order would be preserved. This is essentially equivalent to if you did
+    // a stable sort on the insertions.
     Node* insert(const Insertion& insertion)
     {
-        ASSERT(!m_insertions.size() || m_insertions.last().index() <= insertion.index());
-        m_insertions.append(insertion);
+        if (LIKELY(!m_insertions.size() || m_insertions.last().index() <= insertion.index()))
+            m_insertions.append(insertion);
+        else
+            insertSlow(insertion);
         return insertion.element();
     }
     
@@ -71,12 +77,6 @@ public:
             index, speculationFromValue(value->value()), op, origin, OpInfo(value));
     }
     
-    Node* insertConstant(
-        size_t index, CodeOrigin origin, FrozenValue* value, NodeType op = JSConstant)
-    {
-        return insertConstant(index, NodeOrigin(origin), value, op);
-    }
-    
     Edge insertConstantForUse(
         size_t index, NodeOrigin origin, FrozenValue* value, UseKind useKind)
     {
@@ -90,18 +90,7 @@ public:
         return Edge(insertConstant(index, origin, value, op), useKind);
     }
     
-    Edge insertConstantForUse(
-        size_t index, CodeOrigin origin, FrozenValue* value, UseKind useKind)
-    {
-        return insertConstantForUse(index, NodeOrigin(origin), value, useKind);
-    }
-
     Node* insertConstant(size_t index, NodeOrigin origin, JSValue value, NodeType op = JSConstant)
-    {
-        return insertConstant(index, origin, m_graph.freeze(value), op);
-    }
-    
-    Node* insertConstant(size_t index, CodeOrigin origin, JSValue value, NodeType op = JSConstant)
     {
         return insertConstant(index, origin, m_graph.freeze(value), op);
     }
@@ -109,11 +98,6 @@ public:
     Edge insertConstantForUse(size_t index, NodeOrigin origin, JSValue value, UseKind useKind)
     {
         return insertConstantForUse(index, origin, m_graph.freeze(value), useKind);
-    }
-    
-    Edge insertConstantForUse(size_t index, CodeOrigin origin, JSValue value, UseKind useKind)
-    {
-        return insertConstantForUse(index, NodeOrigin(origin), value, useKind);
     }
     
     Edge insertBottomConstantForUse(size_t index, NodeOrigin origin, UseKind useKind)
@@ -145,11 +129,11 @@ public:
         return nullptr;
     }
     
-    void execute(BasicBlock* block)
-    {
-        executeInsertions(*block, m_insertions);
-    }
+    void execute(BasicBlock* block);
+
 private:
+    void insertSlow(const Insertion&);
+    
     Graph& m_graph;
     Vector<Insertion, 8> m_insertions;
 };

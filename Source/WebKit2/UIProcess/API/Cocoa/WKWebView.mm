@@ -76,7 +76,7 @@
 #import "_WKFormDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
-#import "_WKVisitedLinkProviderInternal.h"
+#import "_WKVisitedLinkStoreInternal.h"
 #import <WebCore/IOSurface.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
@@ -310,7 +310,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
         pageConfiguration->setRelatedPage(relatedWebView->_page.get());
 
     pageConfiguration->setUserContentController([_configuration userContentController]->_userContentControllerProxy.get());
-    pageConfiguration->setVisitedLinkProvider([_configuration _visitedLinkProvider]->_visitedLinkProvider.get());
+    pageConfiguration->setVisitedLinkStore([_configuration _visitedLinkStore]->_visitedLinkStore.get());
     pageConfiguration->setWebsiteDataStore([_configuration websiteDataStore]->_websiteDataStore.get());
     pageConfiguration->setTreatsSHA1SignedCertificatesAsInsecure([_configuration _treatsSHA1SignedCertificatesAsInsecure]);
 
@@ -1897,15 +1897,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 }
 #endif // PLATFORM(MAC)
 
-#if ENABLE(VIDEO)
-- (void)_mediaDocumentNaturalSizeChanged:(NSSize)newSize
-{
-    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([self UIDelegate]);
-    if ([uiDelegate respondsToSelector:@selector(_webView:mediaDocumentNaturalSizeChanged:)])
-        [uiDelegate _webView:self mediaDocumentNaturalSizeChanged:newSize];
-}
-#endif
-
 @end
 
 @implementation WKWebView (WKPrivate)
@@ -3090,6 +3081,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (CGFloat)_topContentInset
 {
     return [_wkView _topContentInset];
+}
+
+- (BOOL)_windowOcclusionDetectionEnabled
+{
+    return [_wkView windowOcclusionDetectionEnabled];
+}
+
+- (void)_setWindowOcclusionDetectionEnabled:(BOOL)flag
+{
+    [_wkView setWindowOcclusionDetectionEnabled:flag];
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000

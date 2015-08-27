@@ -33,6 +33,11 @@ JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSStringRef)
     return nullptr;
 }
 
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
+{
+    return JSStringCreateWithUTF8CString("");
+}
+
 void TestRunner::invalidateWaitToDumpWatchdogTimer()
 {
 }

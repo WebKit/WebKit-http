@@ -45,7 +45,7 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSPromisePrototype);
 
 namespace JSC {
 
-const ClassInfo JSPromisePrototype::s_info = { "PromisePrototype", &JSNonFinalObject::s_info, &promisePrototypeTable, CREATE_METHOD_TABLE(JSPromisePrototype) };
+const ClassInfo JSPromisePrototype::s_info = { "PromisePrototype", &Base::s_info, &promisePrototypeTable, CREATE_METHOD_TABLE(JSPromisePrototype) };
 
 /* Source for JSPromisePrototype.lut.h
 @begin promisePrototypeTable
@@ -78,7 +78,7 @@ void JSPromisePrototype::finishCreation(VM& vm, Structure*)
 
 bool JSPromisePrototype::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    return getStaticFunctionSlot<JSObject>(exec, promisePrototypeTable, jsCast<JSPromisePrototype*>(object), propertyName, slot);
+    return getStaticFunctionSlot<Base>(exec, promisePrototypeTable, jsCast<JSPromisePrototype*>(object), propertyName, slot);
 }
 
 } // namespace JSC

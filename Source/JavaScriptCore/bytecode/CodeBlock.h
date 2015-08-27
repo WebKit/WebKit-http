@@ -230,8 +230,6 @@ public:
     void unlinkIncomingCalls();
 
 #if ENABLE(JIT)
-    void unlinkCalls();
-        
     void linkIncomingCall(ExecState* callerFrame, CallLinkInfo*);
     void linkIncomingPolymorphicCall(ExecState* callerFrame, PolymorphicCallNode*);
 #endif // ENABLE(JIT)
@@ -501,16 +499,16 @@ public:
         return JITCode::isOptimizingJIT(jitType());
     }
         
-    bool canGetCodeOrigin(unsigned index)
+    bool canGetCodeOrigin(CallSiteIndex index)
     {
         if (!hasCodeOrigins())
             return false;
-        return index < codeOrigins().size();
+        return index.bits() < codeOrigins().size();
     }
 
-    CodeOrigin codeOrigin(unsigned index)
+    CodeOrigin codeOrigin(CallSiteIndex index)
     {
-        return codeOrigins()[index];
+        return codeOrigins()[index.bits()];
     }
 
     bool addFrequentExitSite(const DFG::FrequentExitSite& site)

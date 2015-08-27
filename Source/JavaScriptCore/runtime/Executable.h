@@ -381,8 +381,6 @@ public:
     
     bool* addressOfDidTryToEnterInLoop() { return &m_didTryToEnterInLoop; }
 
-    void unlinkCalls();
-        
     CodeFeatures features() const { return m_features; }
         
     DECLARE_INFO;
@@ -421,7 +419,7 @@ protected:
     void finishCreation(VM& vm)
     {
         Base::finishCreation(vm);
-        vm.heap.addCompiledCode(this); // Balanced by Heap::deleteUnmarkedCompiledCode().
+        vm.heap.addExecutable(this); // Balanced by Heap::deleteUnmarkedCompiledCode().
 
 #if ENABLE(CODEBLOCK_SAMPLING)
         if (SamplingTool* sampler = vm.interpreter->sampler())
@@ -469,8 +467,6 @@ public:
     }
         
     DECLARE_INFO;
-
-    void unlinkCalls();
 
     void clearCode();
 
@@ -525,8 +521,6 @@ public:
     }
         
     DECLARE_INFO;
-        
-    void unlinkCalls();
 
     void clearCode();
 
@@ -640,7 +634,6 @@ public:
     JSString* nameValue() const { return m_unlinkedExecutable->nameValue(); }
     size_t parameterCount() const { return m_unlinkedExecutable->parameterCount(); } // Excluding 'this'!
 
-    void clearUnlinkedCodeForRecompilation();
     static void visitChildren(JSCell*, SlotVisitor&);
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
@@ -657,8 +650,6 @@ public:
     }
 
     DECLARE_INFO;
-        
-    void unlinkCalls();
 
     void clearCode();
     
@@ -692,20 +683,6 @@ inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)
         return jsCast<FunctionExecutable*>(executable)->clearCode();
     default:
         return jsCast<NativeExecutable*>(executable)->clearCode();
-    }
-}
-
-inline void ScriptExecutable::unlinkCalls()
-{
-    switch (type()) {
-    case EvalExecutableType:
-        return jsCast<EvalExecutable*>(this)->unlinkCalls();
-    case ProgramExecutableType:
-        return jsCast<ProgramExecutable*>(this)->unlinkCalls();
-    case FunctionExecutableType:
-        return jsCast<FunctionExecutable*>(this)->unlinkCalls();
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
     }
 }
 

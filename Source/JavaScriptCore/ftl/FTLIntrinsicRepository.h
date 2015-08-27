@@ -63,6 +63,8 @@ namespace JSC { namespace FTL {
     macro(C_JITOperation_ECZC, functionType(intPtr, intPtr, intPtr, int32, intPtr)) \
     macro(C_JITOperation_EGC, functionType(intPtr, intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_EJ, functionType(intPtr, intPtr, int64)) \
+    macro(C_JITOperation_EJJ, functionType(intPtr, intPtr, int64, int64)) \
+    macro(C_JITOperation_EJJJ, functionType(intPtr, intPtr, int64, int64, int64)) \
     macro(C_JITOperation_EJssJss, functionType(intPtr, intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_EJssJssJss, functionType(intPtr, intPtr, intPtr, intPtr, intPtr)) \
     macro(C_JITOperation_ESt, functionType(intPtr, intPtr, intPtr)) \
@@ -115,6 +117,7 @@ namespace JSC { namespace FTL {
     macro(V_JITOperation_EZJZZZ, functionType(voidType, intPtr, int32, int64, int32, int32, int32)) \
     macro(V_JITOperation_J, functionType(voidType, int64)) \
     macro(V_JITOperation_Z, functionType(voidType, int32)) \
+    macro(V_JITOperation_E, functionType(voidType, intPtr)) \
     macro(Z_JITOperation_D, functionType(int32, doubleType)) \
     macro(Z_JITOperation_EC, functionType(int32, intPtr, intPtr)) \
     macro(Z_JITOperation_EGC, functionType(int32, intPtr, intPtr, intPtr)) \

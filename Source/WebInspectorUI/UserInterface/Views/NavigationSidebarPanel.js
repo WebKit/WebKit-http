@@ -37,7 +37,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
         this._contentTreeOutline = this.createContentTreeOutline(true);
 
-        this._filterBar = new WebInspector.FilterBar();
+        this._filterBar = new WebInspector.FilterBar;
         this._filterBar.addEventListener(WebInspector.FilterBar.Event.FilterDidChange, this._filterDidChange, this);
         this.element.appendChild(this._filterBar.element);
 
@@ -421,6 +421,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
     // Protected
 
+    representedObjectWasFiltered(representedObject, filtered)
+    {
+        // Implemented by subclasses if needed.
+    }
+
     pruneStaleResourceTreeElements()
     {
         if (this._checkForStaleResourcesTimeoutIdentifier) {
@@ -525,7 +530,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         // Update the whole tree.
         var currentTreeElement = this._contentTreeOutline.children[0];
         while (currentTreeElement && !currentTreeElement.root) {
+            const currentTreeElementWasHidden = currentTreeElement.hidden;
             this.applyFiltersToTreeElement(currentTreeElement);
+            if (currentTreeElementWasHidden !== currentTreeElement.hidden)
+                this.representedObjectWasFiltered(currentTreeElement.representedObject, currentTreeElement.hidden);
+
             currentTreeElement = currentTreeElement.traverseNextTreeElement(false, null, dontPopulate);
         }
 
@@ -550,7 +559,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         // Apply the filters to the tree element and its descendants.
         var currentTreeElement = treeElement;
         while (currentTreeElement && !currentTreeElement.root) {
+            const currentTreeElementWasHidden = currentTreeElement.hidden;
             this.applyFiltersToTreeElement(currentTreeElement);
+            if (currentTreeElementWasHidden !== currentTreeElement.hidden)
+                this.representedObjectWasFiltered(currentTreeElement.representedObject, currentTreeElement.hidden);
+
             currentTreeElement = currentTreeElement.traverseNextTreeElement(false, treeElement, dontPopulate);
         }
 

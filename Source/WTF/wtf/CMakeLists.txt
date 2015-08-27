@@ -84,7 +84,6 @@ set(WTF_HEADERS
     SHA1.h
     SaturatedArithmetic.h
     SegmentedVector.h
-    SpinLock.h
     StackBounds.h
     StackStats.h
     StaticConstructors.h
@@ -272,6 +271,10 @@ add_library(WTF ${WTF_LIBRARY_TYPE} ${WTF_HEADERS} ${WTF_SOURCES})
 target_link_libraries(WTF ${WTF_LIBRARIES})
 set_target_properties(WTF PROPERTIES COMPILE_DEFINITIONS "BUILDING_WTF")
 set_target_properties(WTF PROPERTIES FOLDER "JavaScriptCore")
+
+if (WTF_POST_BUILD_COMMAND)
+    add_custom_command(TARGET WTF POST_BUILD COMMAND ${WTF_POST_BUILD_COMMAND} VERBATIM)
+endif ()
 
 if (WTF_OUTPUT_NAME)
     set_target_properties(WTF PROPERTIES OUTPUT_NAME ${WTF_OUTPUT_NAME})

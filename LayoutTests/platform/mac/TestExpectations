@@ -11,6 +11,7 @@ editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
+fast/forms/search/search-results-hidden-crash.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -35,14 +36,6 @@ fast/notifications
 fast/dom/Window/slow-unload-handler.html
 fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html
 
-# This test fails on release and crashes on debug because of trying to use isEqual() with undefined objects
-webkit.org/b/126066 accessibility/loading-iframe-updates-axtree.html [ Failure Crash ]
-
-webkit.org/b/116636 accessibility/document-attributes.html [ Failure ]
-
-# Accessibility tests with missing AccessibilityController functionality.
-webkit.org/b/116637 accessibility/selection-states.html [ Failure ]
-
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X.
 accessibility/aria-checkbox-sends-notification.html
 accessibility/aria-switch-sends-notification.html
@@ -51,13 +44,8 @@ accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
 
-# isIndeterminate is not implemented in mac
-webkit.org/b/125855 accessibility/aria-checked-mixed-value.html [ Skip ]
 # Missing implementation of some functions in mac.
 webkit.org/b/129039 accessibility/select-element-at-index.html [ Skip ]
-
-# ariaControlsElementAtIndex is not implemented in mac
-webkit.org/b/127908 accessibility/aria-controls.html [ Skip ]
 
 # Need to add functionality to DumpRenderTree to handle error pages
 fast/history/back-forward-reset-after-error-handling.html
@@ -492,9 +480,6 @@ webkit.org/b/96828 webgl/1.0.2/conformance/extensions/oes-vertex-array-object.ht
 
 http/tests/misc/willCacheResponse-delegate-callback.html [ Failure ]
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
-accessibility/mac/selection-value-changes-for-aria-textbox.html [ Failure ]
-
-accessibility/mac/search-with-frames.html [ Pass Failure ]
 
 # --- Plugins ---
 # WebKit1 OOP plug-ins: Can't evaluate JavaScript from NPP_Destroy.
@@ -815,9 +800,6 @@ webkit.org/b/129180 svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 # Skipped for ios-simulator as well:
 webkit.org/b/129758 js/dom/create-lots-of-workers.html [ Skip ]
 
-# This test fails because the structure of mfenced/mo operators was changed in bug 124838.
-webkit.org/b/124836 accessibility/mac/mathml-elements.html [ Failure ]
-
 webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ ImageOnlyFailure ]
 
 # These tests require an OpenType MATH font on the Apple bots.
@@ -877,8 +859,6 @@ webkit.org/b/135015 plugins/quicktime-plugin-replacement.html [ Pass Failure ]
 webkit.org/b/131477 fast/repaint/obscured-background-no-repaint.html [ Pass Failure ]
 
 webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Pass Failure ]
-
-webkit.org/b/137737 accessibility/table-cells-roles.html [ Skip ]
 
 # --- Start media tests ---
 ## --- Start media wontfix tests ---
@@ -1083,9 +1063,6 @@ webkit.org/b/136994 http/tests/media/hls/video-cookie.html [ Failure ]
 
 webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pass Timeout ]
 
-# FIXME: Needs bugzilla (<rdar://problem/15971968>)
-[ Yosemite+ ] accessibility/mac/misspelled-attributed-string.html [ Pass Failure ]
-
 # FIXME: Needs bugzilla (<rdar://problem/16040720>)
 [ Yosemite+ ] canvas/philip/tests/2d.drawImage.animated.poster.html [ Pass Failure ]
 [ Yosemite+ ] fast/canvas/canvas-scale-strokePath-shadow.html [ Pass Failure ]
@@ -1266,9 +1243,6 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 [ ElCapitan+ ] sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html [ Failure ]
 [ ElCapitan+ ] sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html [ Failure ]
 
-# <rdar://problem/20417352>
-[ ElCapitan+ ] accessibility/deleting-iframe-destroys-axcache.html [ Pass Failure ]
-
 # <rdar://problem/20622665> WebKit media doesn't get a canplay event when load stalls
 [ ElCapitan+ ] http/tests/media/video-play-stall.html [ Pass Failure ]
 
@@ -1285,9 +1259,6 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 # <rdar://problem/21857102>
 [ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
 
-# WK1-only timeout.
-webkit.org/b/147683 fast/scrolling/latching/scroll-div-with-nested-nonscrollable-iframe.html [ Skip ]
-
 webkit.org/b/147763 [ Mavericks Yosemite ] accessibility/mac/loaded-notification.html [ Skip ]
 
 # Language-specific font fallback is disabled on certain versions of OS X
@@ -1301,3 +1272,6 @@ webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.h
 
 # This test tests a particular system font, which is only on iOS and El Capitan.
 webkit.org/b/148119 [ Mavericks Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
+
+# These operating systems do not have language-sensitive font fallback.
+[ Mavericks Yosemite ElCapitan ] css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]

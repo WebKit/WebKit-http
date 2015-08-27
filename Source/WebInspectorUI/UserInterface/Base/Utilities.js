@@ -433,6 +433,14 @@ Object.defineProperty(Array.prototype, "remove",
     }
 });
 
+Object.defineProperty(Array.prototype, "insertAtIndex",
+{
+    value: function(value, index)
+    {
+        this.splice(index, 0, value);
+    }
+});
+
 Object.defineProperty(Array.prototype, "keySet",
 {
     value: function()
@@ -1115,4 +1123,10 @@ function decodeBase64ToBlob(base64Data, mimeType)
     }
 
     return new Blob(byteArrays, {type: mimeType});
+}
+
+// FIXME: This can be removed when WEB_TIMING is enabled for all platforms.
+function timestamp()
+{
+    return window.performance ? performance.now() : Date.now();
 }

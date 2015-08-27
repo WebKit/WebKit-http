@@ -117,8 +117,8 @@ RenderObject::RenderObject(Node& node)
 #endif
     , m_bitfields(node)
 {
-    if (!node.isDocumentNode())
-        view().didCreateRenderer();
+    if (RenderView* renderView = node.document().renderView())
+        renderView->didCreateRenderer();
 #ifndef NDEBUG
     renderObjectCounter.increment();
 #endif
@@ -126,11 +126,11 @@ RenderObject::RenderObject(Node& node)
 
 RenderObject::~RenderObject()
 {
+    view().didDestroyRenderer();
 #ifndef NDEBUG
     ASSERT(!m_hasAXObject);
     renderObjectCounter.decrement();
 #endif
-    view().didDestroyRenderer();
     ASSERT(!hasRareData());
 }
 
@@ -1878,11 +1878,11 @@ void RenderObject::collectAnnotatedRegions(Vector<AnnotatedRegionValue>& regions
 }
 #endif
 
-int RenderObject::maximalOutlineSize(PaintPhase p) const
+void RenderObject::adjustRectWithMaximumOutline(PaintPhase phase, LayoutRect& rect) const
 {
-    if (p != PaintPhaseOutline && p != PaintPhaseSelfOutline && p != PaintPhaseChildOutlines)
-        return 0;
-    return view().maximalOutlineSize();
+    if (phase != PaintPhaseOutline && phase != PaintPhaseSelfOutline && phase != PaintPhaseChildOutlines)
+        return;
+    rect.inflate(view().maximalOutlineSize());
 }
 
 int RenderObject::caretMinOffset() const
@@ -1918,7 +1918,7 @@ void RenderObject::adjustRectForOutlineAndShadow(LayoutRect& rect) const
 {
     int outlineSize = outlineStyleForRepaint().outlineSize();
     if (outlineStyleForRepaint().outlineStyleIsAuto())
-        outlineSize = std::max(theme().platformFocusRingMaxWidth(), outlineSize);
+        outlineSize = std::max(theme().platformFocusRingWidth() + outlineStyleForRepaint().outlineOffset(), outlineSize);
     if (const ShadowData* boxShadow = style().boxShadow()) {
         boxShadow->adjustRectForShadow(rect, outlineSize);
         return;
