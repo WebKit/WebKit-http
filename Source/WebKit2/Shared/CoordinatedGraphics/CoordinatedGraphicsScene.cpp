@@ -193,7 +193,6 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
     if (existingProxy) {
         MutexLocker locker(existingProxy->mutex());
         existingProxy->setCompositor(locker, nullptr);
-        existingProxy->setTargetLayer(locker, nullptr);
     }
 
     auto& newProxy = state.platformLayerProxy;
