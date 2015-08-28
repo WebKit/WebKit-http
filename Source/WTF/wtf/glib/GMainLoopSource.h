@@ -76,11 +76,9 @@ public:
     public:
         Simple(const char*);
         Simple(const char* name, std::function<void ()>);
-        ~Simple();
 
         void schedule(std::chrono::microseconds);
         void schedule(std::chrono::microseconds, std::function<void ()>);
-        void scheduleAndWaitCompletion(std::chrono::microseconds, std::function<void ()>);
         void cancel();
 
         bool isActive() { return m_status != Ready; }
@@ -95,8 +93,6 @@ public:
         GRefPtr<GSource> m_source;
         std::function<void ()> m_function;
         Status m_status;
-        GCond m_condition;
-        GMutex m_mutex;
     };
 
 protected:
