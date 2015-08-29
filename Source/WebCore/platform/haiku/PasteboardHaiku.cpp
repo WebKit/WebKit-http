@@ -105,8 +105,9 @@ void Pasteboard::writeString(const String& type, const String& data)
         if (bdata) {
             bdata->RemoveName(type.utf8().data());
 
+            CString dataUTF8 = data.utf8();
             if (bdata->AddData(type.utf8().data(), B_MIME_TYPE,
-                    data.utf8().data(), data.length()) == B_OK)
+                    dataUTF8.data(), dataUTF8.length()) == B_OK)
                 result = true;
         }
 
