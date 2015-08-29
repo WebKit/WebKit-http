@@ -132,6 +132,7 @@ private:
 			float				fZoomFactor;
 			bool				fIsEditable;
 			BString				fTitle;
+mutable		BString				fName;
 
 			WebFramePrivate*	fData;
 };

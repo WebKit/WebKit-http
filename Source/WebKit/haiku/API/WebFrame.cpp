@@ -411,8 +411,8 @@ const BString& BWebFrame::Title() const
 
 const char* BWebFrame::Name() const
 {
-    const WTF::String frameName = Frame()->tree().uniqueName();
-    return frameName.utf8().data();
+    fName = WTF::String(Frame()->tree().uniqueName()).utf8().data();
+    return fName.String();
 }
 
 

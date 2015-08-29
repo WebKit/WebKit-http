@@ -107,10 +107,10 @@ float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run,
     BView* view = context->platformContext();
     view->SetFont(primaryFont().platformData().font());
 
-    const char* string = run.subRun(from,to).string().utf8().data();
-    view->DrawString(string, point);
+    CString string = run.subRun(from,to).string().utf8();
+    view->DrawString(string.data(), point);
 
-    return view->StringWidth(string);
+    return view->StringWidth(string.data());
 }
 
 
