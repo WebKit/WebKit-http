@@ -42,8 +42,9 @@ static inline bool isEmtpyValue(const float size, const bool bold, const bool ob
 void
 FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily)
 {
-    if (BFont().SetFamilyAndStyle(familyName.string().utf8().data(), 0) == B_OK)
-        strncpy(*fontFamily, familyName.string().utf8().data(), B_FONT_FAMILY_LENGTH + 1);
+    CString familyNameUTF8 = familyName.string().utf8();
+    if (BFont().SetFamilyAndStyle(familyNameUTF8.data(), 0) == B_OK)
+        strncpy(*fontFamily, familyNameUTF8.data(), B_FONT_FAMILY_LENGTH + 1);
     else {
         // If no font family is found for the given name, we use a generic font.
         if (familyName.contains("Sans", false) != B_ERROR)

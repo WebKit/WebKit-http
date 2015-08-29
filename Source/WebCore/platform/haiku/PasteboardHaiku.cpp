@@ -103,10 +103,11 @@ void Pasteboard::writeString(const String& type, const String& data)
         BMessage* bdata = be_clipboard->Data();
 
         if (bdata) {
-            bdata->RemoveName(type.utf8().data());
+            CString typeUTF8 = type.utf8();
+            bdata->RemoveName(typeUTF8.data());
 
             CString dataUTF8 = data.utf8();
-            if (bdata->AddData(type.utf8().data(), B_MIME_TYPE,
+            if (bdata->AddData(typeUTF8.data(), B_MIME_TYPE,
                     dataUTF8.data(), dataUTF8.length()) == B_OK)
                 result = true;
         }
