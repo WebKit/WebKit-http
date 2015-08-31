@@ -31,6 +31,10 @@
 
 namespace WPE {
 
+namespace Input {
+class Client;
+}
+
 namespace ViewBackend {
 
 class Client {
@@ -45,6 +49,8 @@ public:
 
     virtual void setClient(Client*);
     virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+
+    virtual void setInputClient(Input::Client*);
 };
 
 } // namespace ViewBackend

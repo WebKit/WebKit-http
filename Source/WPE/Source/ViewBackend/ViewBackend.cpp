@@ -55,6 +55,10 @@ void ViewBackend::commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uin
 {
 }
 
+void ViewBackend::setInputClient(Input::Client*)
+{
+}
+
 } // namespace ViewBackend
 
 } // namespace WPE

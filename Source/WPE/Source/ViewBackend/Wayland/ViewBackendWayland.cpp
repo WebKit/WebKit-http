@@ -128,6 +128,10 @@ void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, 
     wl_display_flush(m_display.display());
 }
 
+void ViewBackendWayland::setInputClient(Input::Client* client)
+{
+}
+
 } // namespace ViewBackend
 
 } // namespace WPE
