@@ -38,10 +38,6 @@ struct _WebKitMediaPlayReadyDecrypt {
     GCond condition;
 
     GstBuffer* initDataBuffer;
-    GMutex decryptMutex;
-    GCond decryptCondition;
-    GstBuffer* currentBuffer;
-    GstFlowReturn decryptResult;
 };
 
 struct _WebKitMediaPlayReadyDecryptClass {
@@ -107,8 +103,6 @@ static void webkit_media_playready_decrypt_init(WebKitMediaPlayReadyDecrypt* sel
 
     g_mutex_init(&self->mutex);
     g_cond_init(&self->condition);
-    g_mutex_init(&self->decryptMutex);
-    g_cond_init(&self->decryptCondition);
 }
 
 static void webkit_media_playready_decrypt_dispose(GObject* object)
@@ -117,8 +111,6 @@ static void webkit_media_playready_decrypt_dispose(GObject* object)
 
     g_mutex_clear(&self->mutex);
     g_cond_clear(&self->condition);
-    g_mutex_clear(&self->decryptMutex);
-    g_cond_clear(&self->decryptCondition);
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -220,9 +212,9 @@ static GstCaps* webkitMediaPlayReadyDecryptTransformCaps(GstBaseTransform* base,
     return transformedCaps;
 }
 
-gboolean performDecryption(gpointer userData)
+static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
 {
-    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(userData);
+    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(base);
     GstFlowReturn result = GST_FLOW_OK;
     GstMapInfo map;
     const GValue* value;
@@ -233,10 +225,13 @@ gboolean performDecryption(gpointer userData)
     GstCaps* caps;
     GstMapInfo boxMap;
     GstBuffer* box = nullptr;
-    GstBuffer* buffer;
 
-    g_mutex_lock(&self->decryptMutex);
-    buffer = self->currentBuffer;
+    g_mutex_lock(&self->mutex);
+
+    // The key might not have been received yet. Wait for it.
+    if (!self->streamReceived)
+        g_cond_wait(&self->condition, &self->mutex);
+
     GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta || !buffer) {
         if (!protectionMeta)
@@ -302,31 +297,8 @@ beach:
     if (protectionMeta)
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
 
-    self->decryptResult = result;
-    g_cond_signal(&self->decryptCondition);
-    g_mutex_unlock(&self->decryptMutex);
-    return G_SOURCE_REMOVE;
-}
-
-static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform* base, GstBuffer* buffer)
-{
-    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(base);
-
-    g_mutex_lock(&self->mutex);
-
-    // The key might not have been received yet. Wait for it.
-    if (!self->streamReceived)
-        g_cond_wait(&self->condition, &self->mutex);
-
-    g_mutex_lock(&self->decryptMutex);
-    self->currentBuffer = buffer;
-    g_timeout_add(0, performDecryption, self);
-    g_cond_wait(&self->decryptCondition, &self->decryptMutex);
-    g_mutex_unlock(&self->decryptMutex);
-
     g_mutex_unlock(&self->mutex);
-    return self->decryptResult;
-
+    return result;
 }
 
 static gboolean requestKey(gpointer userData)
