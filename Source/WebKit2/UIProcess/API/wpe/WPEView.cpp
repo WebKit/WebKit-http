@@ -43,6 +43,8 @@ View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
     , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{800, 600}
 {
+    m_viewBackend->setInputClient(this);
+
     pageGroup->preferences().setAcceleratedCompositingEnabled(true);
     pageGroup->preferences().setForceCompositingMode(true);
     pageGroup->preferences().setAccelerated2dCanvasEnabled(true);
