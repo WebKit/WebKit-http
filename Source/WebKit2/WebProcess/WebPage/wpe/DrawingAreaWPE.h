@@ -75,7 +75,7 @@ private:
 
     // When true, we maintain the layer tree in its current state by not leaving accelerated compositing mode
     // and not scheduling layer flushes.
-    bool m_layerTreeStateIsFrozen;
+    bool m_layerTreeStateIsFrozen { false };
 
     // The layer tree host that handles accelerated compositing.
     RefPtr<LayerTreeHost> m_layerTreeHost;

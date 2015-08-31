@@ -68,7 +68,7 @@ bool DrawingAreaWPE::forceRepaintAsync(uint64_t callbackID)
 
 void DrawingAreaWPE::setLayerTreeStateIsFrozen(bool frozen)
 {
-    fprintf(stderr, "DrawingAreaWPE: %s, frozen %d\n", __func__, frozen);
+    m_layerTreeStateIsFrozen = frozen;
 }
 
 void DrawingAreaWPE::setPaintingEnabled(bool)
