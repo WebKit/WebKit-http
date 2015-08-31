@@ -104,6 +104,9 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_drm"))
             interfaces.drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
 
+        if (!std::strcmp(interface, "wl_seat"))
+            interfaces.seat = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 1));
+
         if (!std::strcmp(interface, "xdg_shell")) {
             interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
             xdg_shell_add_listener(interfaces.xdg, &g_xdgShellListener, nullptr);
@@ -149,6 +152,8 @@ WaylandDisplay::~WaylandDisplay()
         wl_compositor_destroy(interfaces.compositor);
     if (interfaces.drm)
         wl_drm_destroy(interfaces.drm);
+    if (interfaces.seat)
+        wl_seat_destroy(interfaces.seat);
     if (interfaces.xdg)
         xdg_shell_destroy(interfaces.xdg);
 

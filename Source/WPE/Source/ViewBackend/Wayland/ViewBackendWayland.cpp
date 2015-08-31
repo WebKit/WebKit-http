@@ -28,14 +28,104 @@
 #include "WaylandDisplay.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
+#include <WPE/Input/Handling.h>
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <linux/input.h>
 
 namespace WPE {
 
 namespace ViewBackend {
+
+static const struct wl_pointer_listener g_pointerListener = {
+    // enter
+    [](void*, struct wl_pointer*, uint32_t, struct wl_surface*, wl_fixed_t, wl_fixed_t) { },
+    // leave
+    [](void*, struct wl_pointer*, uint32_t, struct wl_surface*) { },
+    // motion
+    [](void* data, struct wl_pointer*, uint32_t time, wl_fixed_t fixedX, wl_fixed_t fixedY)
+    {
+        auto x = wl_fixed_to_int(fixedX);
+        auto y = wl_fixed_to_int(fixedY);
+
+        auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+        seatData.pointerCoords = { x, y };
+        if (seatData.client)
+            seatData.client->handlePointerEvent({ Input::PointerEvent::Motion, time, x, y, 0, 0 });
+    },
+    // button
+    [](void* data, struct wl_pointer*, uint32_t, uint32_t time, uint32_t button, uint32_t state)
+    {
+        if (button >= BTN_MOUSE)
+            button = button - BTN_MOUSE + 1;
+        else
+            button = 0;
+
+        auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+        auto& coords = seatData.pointerCoords;
+        if (seatData.client)
+            seatData.client->handlePointerEvent(
+                { Input::PointerEvent::Button, time, coords.first, coords.second, button, state });
+    },
+    // axis
+    [](void* data, struct wl_pointer*, uint32_t time, uint32_t axis, wl_fixed_t value)
+    {
+        auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+        auto& coords = seatData.pointerCoords;
+        if (seatData.client)
+            seatData.client->handleAxisEvent(
+                { Input::AxisEvent::Motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) });
+    },
+};
+
+static const struct wl_keyboard_listener g_keyboardListener = {
+    // keymap
+    [](void*, struct wl_keyboard*, uint32_t, int, uint32_t) { },
+    // enter
+    [](void*, struct wl_keyboard*, uint32_t, wl_surface*, struct wl_array*) { },
+    // leave
+    [](void*, struct wl_keyboard*, uint32_t, struct wl_surface*) { },
+    // key
+    [](void*, struct wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t) { },
+    // modifiers
+    [](void*, struct wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) { },
+    // repeat_info
+    [](void*, struct wl_keyboard*, int32_t, int32_t) { },
+};
+
+static const struct wl_seat_listener g_seatListener = {
+    // capabilities
+    [](void* data, struct wl_seat* seat, uint32_t capabilities)
+    {
+        auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+
+        // WL_SEAT_CAPABILITY_POINTER
+        const bool hasPointerCap = capabilities & WL_SEAT_CAPABILITY_POINTER;
+        if (hasPointerCap && !seatData.pointer) {
+            seatData.pointer = wl_seat_get_pointer(seat);
+            wl_pointer_add_listener(seatData.pointer, &g_pointerListener, &seatData);
+        }
+        if (!hasPointerCap && seatData.pointer) {
+            wl_pointer_destroy(seatData.pointer);
+            seatData.pointer = nullptr;
+        }
+
+        // WL_SEAT_CAPABILITY_KEYBOARD
+        const bool hasKeyboardCap = capabilities & WL_SEAT_CAPABILITY_KEYBOARD;
+        if (hasKeyboardCap && !seatData.keyboard) {
+            seatData.keyboard = wl_seat_get_keyboard(seat);
+            wl_keyboard_add_listener(seatData.keyboard, &g_keyboardListener, &seatData);
+        }
+        if (!hasKeyboardCap && seatData.keyboard) {
+            wl_keyboard_destroy(seatData.keyboard);
+            seatData.keyboard = nullptr;
+        }
+    },
+    // name
+    [](void*, struct wl_seat*, const char*) { }
+};
 
 static const struct xdg_surface_listener g_xdgSurfaceListener = {
     // configure
@@ -82,8 +172,10 @@ ViewBackendWayland::ViewBackendWayland()
 {
     m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
 
+    wl_seat_add_listener(m_display.interfaces.seat, &g_seatListener, &m_seatData);
+
     m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);
-    xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, this);
+    xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
     xdg_surface_set_title(m_xdgSurface, "WPE");
 }
 
@@ -130,6 +222,7 @@ void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, 
 
 void ViewBackendWayland::setInputClient(Input::Client* client)
 {
+    m_seatData.client = client;
 }
 
 } // namespace ViewBackend

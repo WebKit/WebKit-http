@@ -47,6 +47,7 @@ public:
     struct Interfaces {
         struct wl_compositor* compositor;
         struct wl_drm* drm;
+        struct wl_seat* seat;
         struct xdg_shell* xdg;
     } interfaces;
 

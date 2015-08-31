@@ -29,9 +29,12 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 
 #include <unordered_map>
+#include <utility>
 
 struct wl_buffer;
 struct wl_callback;
+struct wl_keyboard;
+struct wl_pointer;
 struct wl_surface;
 struct xdg_surface;
 
@@ -56,6 +59,13 @@ public:
 
     void setInputClient(Input::Client*) override;
 
+    struct SeatData {
+        Input::Client* client;
+        std::pair<int, int> pointerCoords;
+        struct wl_pointer* pointer;
+        struct wl_keyboard* keyboard;
+    };
+
     struct BufferListenerData {
         Client* client;
         std::unordered_map<uint32_t, struct wl_buffer*> map;
@@ -67,13 +77,14 @@ public:
     };
 
 private:
+    const WaylandDisplay& m_display;
+
+    SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
 
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
-
-    const WaylandDisplay& m_display;
 };
 
 } // namespace ViewBackend
