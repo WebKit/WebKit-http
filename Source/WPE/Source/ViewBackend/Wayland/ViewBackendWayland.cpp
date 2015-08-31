@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cstdio>
 #include <linux/input.h>
+#include <sys/mman.h>
 
 namespace WPE {
 
@@ -82,15 +83,71 @@ static const struct wl_pointer_listener g_pointerListener = {
 
 static const struct wl_keyboard_listener g_keyboardListener = {
     // keymap
-    [](void*, struct wl_keyboard*, uint32_t, int, uint32_t) { },
+    [](void* data, struct wl_keyboard*, uint32_t format, int fd, uint32_t size)
+    {
+        if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+            close(fd);
+            return;
+        }
+
+        void* mapping = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+        if (mapping == MAP_FAILED) {
+            close(fd);
+            return;
+        }
+
+        auto& xkb = static_cast<ViewBackendWayland::SeatData*>(data)->xkb;
+        xkb.keymap = xkb_keymap_new_from_string(xkb.context, static_cast<char*>(mapping),
+            XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        munmap(mapping, size);
+        close(fd);
+
+        if (!xkb.keymap)
+            return;
+
+        xkb.state = xkb_state_new(xkb.keymap);
+        if (!xkb.state)
+            return;
+
+        xkb.masks.control = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_CTRL);
+        xkb.masks.alt = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_ALT);
+        xkb.masks.shift = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_SHIFT);
+    },
     // enter
     [](void*, struct wl_keyboard*, uint32_t, wl_surface*, struct wl_array*) { },
     // leave
     [](void*, struct wl_keyboard*, uint32_t, struct wl_surface*) { },
     // key
-    [](void*, struct wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t) { },
+    [](void* data, struct wl_keyboard*, uint32_t, uint32_t time, uint32_t key, uint32_t state)
+    {
+        // IDK.
+        key += 8;
+
+        auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+        auto& xkb = seatData.xkb;
+        uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
+        uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+
+        if (seatData.client)
+            seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
+    },
     // modifiers
-    [](void*, struct wl_keyboard*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) { },
+    [](void* data, struct wl_keyboard*, uint32_t, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
+    {
+        auto& xkb = static_cast<ViewBackendWayland::SeatData*>(data)->xkb;
+        xkb_state_update_mask(xkb.state, depressedMods, latchedMods, lockedMods, 0, 0, group);
+        xkb_mod_mask_t mask = xkb_state_serialize_mods(xkb.state,
+            static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED));
+
+        auto& modifiers = xkb.modifiers;
+        modifiers = 0;
+        if (mask & xkb.masks.control)
+            modifiers |= Input::KeyboardEvent::Control;
+        if (mask & xkb.masks.alt)
+            modifiers |= Input::KeyboardEvent::Alt;
+        if (mask & xkb.masks.shift)
+            modifiers |= Input::KeyboardEvent::Shift;
+    },
     // repeat_info
     [](void*, struct wl_keyboard*, int32_t, int32_t) { },
 };
@@ -173,6 +230,7 @@ ViewBackendWayland::ViewBackendWayland()
     m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
 
     wl_seat_add_listener(m_display.interfaces.seat, &g_seatListener, &m_seatData);
+    m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
     m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);
     xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
@@ -183,6 +241,13 @@ ViewBackendWayland::~ViewBackendWayland()
 {
     if (m_callbackData.frameCallback)
         wl_callback_destroy(m_callbackData.frameCallback);
+
+    if (m_seatData.xkb.state)
+        xkb_state_unref(m_seatData.xkb.state);
+    if (m_seatData.xkb.keymap)
+        xkb_keymap_unref(m_seatData.xkb.keymap);
+    if (m_seatData.xkb.context)
+        xkb_context_unref(m_seatData.xkb.context);
 }
 
 void ViewBackendWayland::setClient(Client* client)

@@ -27,9 +27,9 @@
 #define WPE_ViewBackend_ViewBackendWayland_h
 
 #include <WPE/ViewBackend/ViewBackend.h>
-
 #include <unordered_map>
 #include <utility>
+#include <xkbcommon/xkbcommon.h>
 
 struct wl_buffer;
 struct wl_callback;
@@ -61,9 +61,22 @@ public:
 
     struct SeatData {
         Input::Client* client;
-        std::pair<int, int> pointerCoords;
         struct wl_pointer* pointer;
         struct wl_keyboard* keyboard;
+
+        std::pair<int, int> pointerCoords;
+
+        struct {
+            struct xkb_context* context;
+            struct xkb_keymap* keymap;
+            struct xkb_state* state;
+            struct {
+                xkb_mod_mask_t control;
+                xkb_mod_mask_t alt;
+                xkb_mod_mask_t shift;
+            } masks;
+            uint8_t modifiers;
+        } xkb;
     };
 
     struct BufferListenerData {
