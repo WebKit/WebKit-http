@@ -51,5 +51,4 @@ void WKViewResize(WKViewRef view, WKSize size)
 
 void WKViewMakeWPEInputTarget(WKViewRef view)
 {
-    toImpl(view)->makeWPEInputTarget();
 }

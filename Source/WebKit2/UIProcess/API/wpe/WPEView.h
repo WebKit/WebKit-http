@@ -58,8 +58,6 @@ public:
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
 
-    void makeWPEInputTarget();
-
     // WPE::Input::Client
     void handleKeyboardEvent(WPE::Input::KeyboardEvent&&) override;
     void handlePointerEvent(WPE::Input::PointerEvent&&) override;

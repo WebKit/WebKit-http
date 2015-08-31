@@ -67,11 +67,6 @@ void View::setSize(const WebCore::IntSize& size)
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
 }
 
-void View::makeWPEInputTarget()
-{
-    WPE::Input::Server::singleton().setTarget(this);
-}
-
 void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)
 {
     page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(WTF::move(event)));
