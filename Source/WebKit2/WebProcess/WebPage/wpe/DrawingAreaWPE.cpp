@@ -44,9 +44,10 @@ void DrawingAreaWPE::setNeedsDisplayInRect(const IntRect& rect)
     m_layerTreeHost->setNonCompositedContentsNeedDisplayInRect(rect);
 }
 
-void DrawingAreaWPE::scroll(const IntRect&, const IntSize&)
+void DrawingAreaWPE::scroll(const IntRect& scrollRect, const IntSize&)
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
+    ASSERT(m_layerTreeHost);
+    m_layerTreeHost->scrollNonCompositedContents(scrollRect);
 }
 
 void DrawingAreaWPE::pageBackgroundTransparencyChanged()
