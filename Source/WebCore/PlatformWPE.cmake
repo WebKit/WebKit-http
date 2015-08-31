@@ -371,6 +371,12 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2) AND ENABLE_DXDRM)
         -lDxDrm
     )
 
+    if (ENABLE_PROVISIONING)
+        list(APPEND WebCore_LIBRARIES
+            -lprovisioning
+        )
+    endif ()
+
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/DiscretixSession.cpp
         platform/graphics/gstreamer/WebKitPlayReadyDecryptorGStreamer.cpp
