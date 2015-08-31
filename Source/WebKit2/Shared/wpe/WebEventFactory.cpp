@@ -27,6 +27,8 @@
 #include "WebEventFactory.h"
 
 #include <WPE/Input/KeyMapping.h>
+#include <WebCore/Scrollbar.h>
+#include <cstdlib>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {
@@ -138,7 +140,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::Input::AxisEvent&& event
     };
 
     WebCore::FloatSize delta = wheelTicks;
-    delta.scale(event.value);
+    delta.scale(event.value / std::abs(event.value) * WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event.x, event.y);
     return WebWheelEvent(WebEvent::Wheel, position, position,
