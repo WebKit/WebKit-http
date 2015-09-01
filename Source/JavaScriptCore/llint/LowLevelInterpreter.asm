@@ -1088,6 +1088,7 @@ else
             subp 8, pcBase
         elsif MIPS
             la _relativePCBase, pcBase
+            jmp pcBase # needed to set $t9 to the right value for the .cpload created by the label.
         _relativePCBase:
         elsif SH4
             mova _relativePCBase, t0
