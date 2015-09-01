@@ -752,7 +752,7 @@ static GstURIType webKitWebSrcUriGetType(GType)
 
 const gchar* const* webKitWebSrcGetProtocols(GType)
 {
-    static const char* protocols[] = {"http", "https", "blob", 0 };
+    static const char* protocols[] = {"webkit+http", "webkit+https", "blob", 0 };
     return protocols;
 }
 
@@ -785,6 +785,8 @@ static gboolean webKitWebSrcSetUri(GstURIHandler* handler, const gchar* uri, GEr
         return TRUE;
 
     URL url(URL(), uri);
+    ASSERT(url.protocol().substring(0, 7) == "webkit+");
+    url.setProtocol(url.protocol().substring(7));
     if (!urlHasSupportedProtocol(url)) {
         g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_URI, "Invalid URI '%s'", uri);
         return FALSE;

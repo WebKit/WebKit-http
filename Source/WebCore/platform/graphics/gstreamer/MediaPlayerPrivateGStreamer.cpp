@@ -356,15 +356,19 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
     if (url.isLocalFile())
         cleanURL = cleanURL.substring(0, url.pathEnd());
 
+    m_url = URL(URL(), cleanURL);
+
+    if (m_url.protocolIsInHTTPFamily())
+        m_url.setProtocol("webkit+" + m_url.protocol());
+
     if (!m_pipeline)
         createGSTPlayBin();
 
     ASSERT(m_pipeline);
 
-    m_url = URL(URL(), cleanURL);
-    g_object_set(m_pipeline.get(), "uri", cleanURL.utf8().data(), nullptr);
+    g_object_set(m_pipeline.get(), "uri", m_url.string().utf8().data(), nullptr);
 
-    INFO_MEDIA_MESSAGE("Load %s", cleanURL.utf8().data());
+    INFO_MEDIA_MESSAGE("Load %s", m_url.string().utf8().data());
 
     if (m_preload == MediaPlayer::None) {
         LOG_MEDIA_MESSAGE("Delaying load.");
