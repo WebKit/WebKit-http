@@ -442,13 +442,24 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
 
     removeTimeoutSources(src);
 
-    if (priv->client) {
-        delete priv->client;
-        priv->client = 0;
-    }
+    {
+        ResourceHandleStreamingClient* client = nullptr;
+        if (priv->client) {
+            client = priv->client;
+            priv->client = nullptr;
+        }
 
-    if (!priv->keepAlive)
-        priv->loader = nullptr;
+        PlatformMediaResourceLoader* loader = nullptr;
+        if (!priv->keepAlive && priv->loader)
+            loader = priv->loader.leakRef();
+
+        if (client || loader)
+            callOnMainThread([client, loader] {
+                delete client;
+
+                RefPtr<PlatformMediaResourceLoader> loaderRef = adoptRef(loader);
+            });
+    }
 
     if (priv->buffer) {
         unmapGstBuffer(priv->buffer.get());
