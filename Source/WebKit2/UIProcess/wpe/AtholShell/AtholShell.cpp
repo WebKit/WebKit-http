@@ -34,6 +34,7 @@
 #include <WebKit/WKPage.h>
 #include <WebKit/WKString.h>
 #include <WebKit/WKURL.h>
+#include <WebKit/WKCookieManagerSoup.h>
 #include <cstdio>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -150,6 +151,14 @@ gpointer AtholShell::launchWPE(gpointer data)
     auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 
     auto context = adoptWK(WKContextCreate());
+
+    if (!!g_getenv("WPE_SHELL_COOKIE_STORAGE")) {
+        gchar *cookieDatabasePath = g_build_filename(g_get_user_cache_dir(), "cookies.db", nullptr);
+        auto path = adoptWK(WKStringCreateWithUTF8CString(cookieDatabasePath));
+        g_free(cookieDatabasePath);
+        auto cookieManager = adoptWK(WKContextGetCookieManager(context.get()));
+        WKCookieManagerSetCookiePersistentStorage(cookieManager.get(), path.get(), kWKCookieStorageTypeSQLite);
+    }
 
     shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
     auto* view = shell.m_view.get();
