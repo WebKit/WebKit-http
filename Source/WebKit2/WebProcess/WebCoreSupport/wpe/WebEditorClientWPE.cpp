@@ -40,7 +40,6 @@ namespace WebKit {
 
 static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent& platformEvent)
 {
-    // Don't insert null or control characters as they can result in unexpected behaviour
     {
         bool handled = true;
         int keyCode = event.keyCode();
@@ -56,8 +55,12 @@ static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKey
             handled = false;
             break;
         }
+
+        if (handled)
+            return;
     }
 
+    // Don't insert null or control characters as they can result in unexpected behaviour
     if (event.charCode() < ' ')
         return;
 
