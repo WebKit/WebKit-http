@@ -161,8 +161,10 @@ static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mai
         return WebKit::WebPlatformTouchPoint::TouchReleased;
     case WPE::Input::TouchEvent::Null:
         ASSERT_NOT_REACHED();
-        return WebKit::WebPlatformTouchPoint::TouchStationary;
+        break;
     };
+
+    return WebKit::WebPlatformTouchPoint::TouchStationary;
 }
 
 WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::Input::TouchEvent&& event)
