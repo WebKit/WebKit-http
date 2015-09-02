@@ -214,6 +214,15 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
         fprintf(stderr, "ViewBackendDRM: failed to queue page flip\n");
 }
 
+void ViewBackendDRM::destroyPrimeBuffer(uint32_t handle)
+{
+    auto it = m_fbMap.find(handle);
+    assert(it != m_fbMap.end());
+
+    drmModeRmFB(m_drm.fd, it->second.second);
+    m_fbMap.erase(it);
+}
+
 } // namespace ViewBackend
 
 } // namespace WPE
