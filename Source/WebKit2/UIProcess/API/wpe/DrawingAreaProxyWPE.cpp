@@ -93,9 +93,9 @@ void DrawingAreaProxyWPE::updateAcceleratedCompositingMode(uint64_t backingStore
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
 }
 
-void DrawingAreaProxyWPE::commitPrimeFD(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
+void DrawingAreaProxyWPE::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
 {
-    m_viewBackend.commitPrimeFD(fd.fileDescriptor(), handle, width, height, stride, format);
+    m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
 }
 
 void DrawingAreaProxyWPE::destroyPrimeBuffer(uint32_t handle)

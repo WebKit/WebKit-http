@@ -48,7 +48,7 @@ public:
     static WPE_EXPORT std::unique_ptr<ViewBackend> create();
 
     virtual void setClient(Client*);
-    virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    virtual void commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
     virtual void destroyPrimeBuffer(uint32_t);
 
     virtual void setInputClient(Input::Client*);

@@ -181,7 +181,7 @@ void ViewBackendDRM::setClient(Client* client)
     m_pageFlipData.client = client;
 }
 
-void ViewBackendDRM::commitPrimeFD(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
+void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
 {
     uint32_t fbID = 0;
 

@@ -309,7 +309,7 @@ void ThreadedCompositor::renderLayerTree()
     auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
     RefPtr<ThreadedCompositor> protector(this);
     callOnMainThread([protector, bufferExport] {
-        protector->m_client->commitPrimeFD(bufferExport);
+        protector->m_client->commitPrimeBuffer(bufferExport);
     });
 }
 

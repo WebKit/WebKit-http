@@ -281,9 +281,9 @@ void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, cons
     m_coordinator->commitScrollOffset(layerID, offset);
 }
 
-void ThreadedCoordinatedLayerTreeHost::commitPrimeFD(const PlatformDisplayGBM::GBMBufferExport& bufferExport)
+void ThreadedCoordinatedLayerTreeHost::commitPrimeBuffer(const PlatformDisplayGBM::GBMBufferExport& bufferExport)
 {
-    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeFD(
+    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeBuffer(
         std::get<1>(bufferExport),
         std::get<2>(bufferExport),
         std::get<3>(bufferExport),

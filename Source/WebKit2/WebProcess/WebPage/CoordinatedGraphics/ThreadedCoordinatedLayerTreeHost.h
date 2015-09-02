@@ -122,7 +122,7 @@ private:
     virtual void purgeBackingStores() override;
     virtual void renderNextFrame() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
-    virtual void commitPrimeFD(const WebCore::PlatformDisplayGBM::GBMBufferExport&) override;
+    virtual void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&) override;
     virtual void destroyPrimeBuffer(uint32_t handle) override;
 
     // CompositingCoordinator::Client

@@ -68,7 +68,7 @@ public:
         virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
-        virtual void commitPrimeFD(const WebCore::PlatformDisplayGBM::GBMBufferExport&) = 0;
+        virtual void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&) = 0;
         virtual void destroyPrimeBuffer(uint32_t handle) = 0;
     };
 
