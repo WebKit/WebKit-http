@@ -10,6 +10,9 @@ endif ()
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${GLIB_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}

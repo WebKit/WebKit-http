@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <WPE/ViewBackend/DRM/ViewBackendDRM.h>
+#include "ViewBackendDRM.h"
 
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>

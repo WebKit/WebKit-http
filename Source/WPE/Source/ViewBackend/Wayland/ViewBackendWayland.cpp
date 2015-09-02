@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
+#include "ViewBackendWayland.h"
 
 #include "WaylandDisplay.h"
 #include "xdg-shell-client-protocol.h"

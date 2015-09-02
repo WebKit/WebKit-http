@@ -25,8 +25,8 @@
 
 #include <WPE/ViewBackend/ViewBackend.h>
 
-#include <WPE/ViewBackend/DRM/ViewBackendDRM.h>
-#include <WPE/ViewBackend/Wayland/ViewBackendWayland.h>
+#include "ViewBackendDRM.h"
+#include "ViewBackendWayland.h"
 #include <cstring>
 #include <cstdlib>
 
