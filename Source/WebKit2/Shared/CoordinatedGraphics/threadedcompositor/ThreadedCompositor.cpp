@@ -226,6 +226,14 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
+void ThreadedCompositor::destroyBuffer(uint32_t handle)
+{
+    RefPtr<ThreadedCompositor> protector(this);
+    callOnMainThread([protector, handle] {
+        protector->m_client->destroyPrimeBuffer(handle);
+    });
+}
+
 bool ThreadedCompositor::ensureGLContext()
 {
     if (!glContext())
@@ -251,7 +259,7 @@ GLContext* ThreadedCompositor::glContext()
 
     RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
 
-    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
+    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600), *this);
     if (!m_gbmSurface)
         return 0;
 

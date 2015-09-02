@@ -36,15 +36,22 @@ class GLContextEGL;
 
 class GBMSurface {
 public:
-    GBMSurface(struct gbm_surface*);
+    class Client {
+    public:
+        virtual void destroyBuffer(uint32_t) = 0;
+    };
+
+    GBMSurface(struct gbm_surface*, Client&);
     ~GBMSurface();
 
     std::unique_ptr<GLContextEGL> createGLContext() const;
 
     struct gbm_surface* native() const { return m_surface; }
+    void destroyBuffer(uint32_t handle) { m_client.destroyBuffer(handle); }
 
 private:
     struct gbm_surface* m_surface;
+    Client& m_client;
 };
 
 } // namespace WebCore

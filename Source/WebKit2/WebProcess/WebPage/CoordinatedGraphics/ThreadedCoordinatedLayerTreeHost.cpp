@@ -292,6 +292,11 @@ void ThreadedCoordinatedLayerTreeHost::commitPrimeFD(const PlatformDisplayGBM::G
         IPC::Attachment(std::get<0>(bufferExport))));
 }
 
+void ThreadedCoordinatedLayerTreeHost::destroyPrimeBuffer(uint32_t handle)
+{
+    m_webPage->send(Messages::DrawingAreaProxy::DestroyPrimeBuffer(handle));
+}
+
 void ThreadedCoordinatedLayerTreeHost::notifyFlushRequired()
 {
     scheduleLayerFlush();

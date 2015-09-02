@@ -33,8 +33,9 @@
 
 namespace WebCore {
 
-GBMSurface::GBMSurface(struct gbm_surface* surface)
+GBMSurface::GBMSurface(struct gbm_surface* surface, Client& client)
     : m_surface(surface)
+    , m_client(client)
 {
     fprintf(stderr, "GBMSurface: ctor, surface %p\n", m_surface);
 }

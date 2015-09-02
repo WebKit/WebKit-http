@@ -49,6 +49,7 @@ public:
 
     virtual void setClient(Client*);
     virtual void commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    virtual void destroyPrimeBuffer(uint32_t);
 
     virtual void setInputClient(Input::Client*);
 };

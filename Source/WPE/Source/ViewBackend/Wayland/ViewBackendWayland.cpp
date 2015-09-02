@@ -286,6 +286,16 @@ void ViewBackendWayland::commitPrimeFD(int fd, uint32_t handle, uint32_t width, 
     wl_display_flush(m_display.display());
 }
 
+void ViewBackendWayland::destroyPrimeBuffer(uint32_t handle)
+{
+    auto& bufferMap = m_bufferData.map;
+    auto it = bufferMap.find(handle);
+    assert(it != bufferMap.end());
+
+    wl_buffer_destroy(it->second);
+    bufferMap.erase(it);
+}
+
 void ViewBackendWayland::setInputClient(Input::Client* client)
 {
     m_seatData.client = client;

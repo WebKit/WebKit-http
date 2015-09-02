@@ -30,6 +30,7 @@
 
 #include "PlatformDisplay.h"
 
+#include "GBMSurface.h"
 #include <tuple>
 #include <wtf/HashMap.h>
 
@@ -40,7 +41,6 @@ struct gbm_device;
 
 namespace WebCore {
 
-class GBMSurface;
 class GLContext;
 class GLContextEGL;
 class IntSize;
@@ -50,7 +50,7 @@ public:
     PlatformDisplayGBM();
     virtual ~PlatformDisplayGBM();
 
-    std::unique_ptr<GBMSurface> createSurface(const IntSize&);
+    std::unique_ptr<GBMSurface> createSurface(const IntSize&, GBMSurface::Client&);
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
     using GBMBufferExport = std::tuple<int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int>;

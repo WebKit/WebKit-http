@@ -58,7 +58,7 @@ class CoordinatedGraphicsSceneClient;
 
 class CompositingRunLoop;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::GBMSurface::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -69,6 +69,7 @@ public:
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
         virtual void commitPrimeFD(const WebCore::PlatformDisplayGBM::GBMBufferExport&) = 0;
+        virtual void destroyPrimeBuffer(uint32_t handle) = 0;
     };
 
     static Ref<ThreadedCompositor> create(Client*);
@@ -101,6 +102,9 @@ private:
     virtual void renderNextFrame() override;
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
+
+    // GBMSurface::Client
+    virtual void destroyBuffer(uint32_t) override;
 
     void renderLayerTree();
     void scheduleDisplayImmediately();

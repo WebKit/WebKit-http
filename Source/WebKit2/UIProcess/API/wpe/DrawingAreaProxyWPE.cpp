@@ -98,4 +98,9 @@ void DrawingAreaProxyWPE::commitPrimeFD(uint32_t handle, uint32_t width, uint32_
     m_viewBackend.commitPrimeFD(fd.fileDescriptor(), handle, width, height, stride, format);
 }
 
+void DrawingAreaProxyWPE::destroyPrimeBuffer(uint32_t handle)
+{
+    m_viewBackend.destroyPrimeBuffer(handle);
+}
+
 } // namespace WebKit

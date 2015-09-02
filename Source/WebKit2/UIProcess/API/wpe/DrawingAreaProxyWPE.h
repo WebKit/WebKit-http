@@ -54,6 +54,7 @@ private:
     void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
     void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
     void commitPrimeFD(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) override;
+    void destroyPrimeBuffer(uint32_t) override;
 
     WPE::ViewBackend::ViewBackend& m_viewBackend;
 

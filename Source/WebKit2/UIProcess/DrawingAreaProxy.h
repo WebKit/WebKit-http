@@ -124,6 +124,7 @@ private:
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
 #if PLATFORM(WPE)
     virtual void commitPrimeFD(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) { };
+    virtual void destroyPrimeBuffer(uint32_t) { };
 #endif
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }

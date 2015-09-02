@@ -55,6 +55,10 @@ void ViewBackend::commitPrimeFD(int, uint32_t, uint32_t, uint32_t, uint32_t, uin
 {
 }
 
+void ViewBackend::destroyPrimeBuffer(uint32_t)
+{
+}
+
 void ViewBackend::setInputClient(Input::Client*)
 {
 }
