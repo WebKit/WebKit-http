@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <linux/input.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 namespace WPE {
 
