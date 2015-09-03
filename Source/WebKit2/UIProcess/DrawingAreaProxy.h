@@ -122,10 +122,6 @@ private:
     virtual void enterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
     virtual void exitAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
-#if PLATFORM(WPE)
-    virtual void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) { };
-    virtual void destroyPrimeBuffer(uint32_t) { };
-#endif
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize&) { }

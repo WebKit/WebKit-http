@@ -30,6 +30,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingManager.h"
 #include "LayerTreeContext.h"
 #include "LayerTreeHost.h"
 #include "ThreadedCompositor.h"
@@ -59,7 +60,7 @@ namespace WebKit {
 
 class WebPage;
 
-class ThreadedCoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client, public ThreadedCompositor::Client {
+class ThreadedCoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client, public ThreadedCompositor::Client, public CompositingManager::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCoordinatedLayerTreeHost); WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<ThreadedCoordinatedLayerTreeHost> create(WebPage*);
@@ -136,6 +137,7 @@ private:
 #endif
 
 #if PLATFORM(WPE)
+    // CompositingManager::Client
     virtual void releaseBuffer(uint32_t) override;
     virtual void frameComplete() override;
 #endif
@@ -150,6 +152,7 @@ private:
 
     std::unique_ptr<WebCore::CompositingCoordinator> m_coordinator;
     RefPtr<ThreadedCompositor> m_compositor;
+    CompositingManager m_compositingManager;
 
     bool m_notifyAfterScheduledLayerFlush;
     bool m_isSuspended;

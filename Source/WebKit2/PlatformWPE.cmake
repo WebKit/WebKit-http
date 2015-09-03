@@ -103,8 +103,16 @@ if (ENABLE_THREADED_COMPOSITOR)
         Shared/CoordinatedGraphics/SimpleViewportController.cpp
         Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
         Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+        UIProcess/API/wpe/CompositingManagerProxy.cpp
         WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+        WebProcess/WebPage/wpe/CompositingManager.cpp
     )
+
+    list(APPEND WebKit2_MESSAGES_IN_FILES
+        UIProcess/API/wpe/CompositingManagerProxy.messages.in
+        WebProcess/WebPage/wpe/CompositingManager.messages.in
+    )
+
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
         "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"

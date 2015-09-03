@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,44 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaProxyWPE_h
-#define DrawingAreaProxyWPE_h
-
-#include "DrawingAreaProxy.h"
-
+#include "config.h"
 #include "CompositingManagerProxy.h"
-#include "LayerTreeContext.h"
-#include <WPE/ViewBackend/ViewBackend.h>
+
+#include "Attachment.h"
+#include "CompositingManagerMessages.h"
+#include "CompositingManagerProxyMessages.h"
+#include "DrawingAreaMessages.h"
+#include "WPEView.h"
+#include "WebProcessProxy.h"
 
 namespace WebKit {
 
-class DrawingAreaProxyWPE final : public DrawingAreaProxy {
-public:
-    explicit DrawingAreaProxyWPE(WKWPE::View&);
-    virtual ~DrawingAreaProxyWPE();
-
-private:
-    // DrawingAreaProxy
-    void deviceScaleFactorDidChange() override;
-    void sizeDidChange() override;
-
-    // IPC message handlers
-    void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
-    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-
-    CompositingManagerProxy m_compositingManagerProxy;
-
-    // The current layer tree context.
-    LayerTreeContext m_layerTreeContext;
-};
-
+CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
+    : m_webPageProxy(view.page())
+    , m_viewBackend(view.viewBackend())
+{
+    m_webPageProxy.process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_webPageProxy.pageID(), *this);
+    m_viewBackend.setClient(this);
 }
 
+void CompositingManagerProxy::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
+{
+    m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
+}
 
-#endif // DrawingAreaProxyWPE_h
+void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
+{
+    m_viewBackend.destroyPrimeBuffer(handle);
+}
+
+void CompositingManagerProxy::releaseBuffer(uint32_t handle)
+{
+    m_webPageProxy.process().send(Messages::CompositingManager::ReleaseBuffer(handle), m_webPageProxy.pageID());
+}
+
+void CompositingManagerProxy::frameComplete()
+{
+    m_webPageProxy.process().send(Messages::CompositingManager::FrameComplete(), m_webPageProxy.pageID());
+}
+
+} // namespace WebKit

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaProxyWPE_h
-#define DrawingAreaProxyWPE_h
+#include "config.h"
+#include "CompositingManager.h"
 
-#include "DrawingAreaProxy.h"
-
-#include "CompositingManagerProxy.h"
-#include "LayerTreeContext.h"
-#include <WPE/ViewBackend/ViewBackend.h>
+#include "CompositingManagerMessages.h"
+#include "WebPage.h"
+#include "WebProcess.h"
 
 namespace WebKit {
 
-class DrawingAreaProxyWPE final : public DrawingAreaProxy {
-public:
-    explicit DrawingAreaProxyWPE(WKWPE::View&);
-    virtual ~DrawingAreaProxyWPE();
-
-private:
-    // DrawingAreaProxy
-    void deviceScaleFactorDidChange() override;
-    void sizeDidChange() override;
-
-    // IPC message handlers
-    void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
-    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-
-    CompositingManagerProxy m_compositingManagerProxy;
-
-    // The current layer tree context.
-    LayerTreeContext m_layerTreeContext;
-};
-
+CompositingManager::CompositingManager(Client& client, WebPage& webPage)
+    : m_client(client)
+{
+    WebProcess::singleton().addMessageReceiver(Messages::CompositingManager::messageReceiverName(), webPage.pageID(), *this);
 }
 
+void CompositingManager::releaseBuffer(uint32_t handle)
+{
+    m_client.releaseBuffer(handle);
+}
 
-#endif // DrawingAreaProxyWPE_h
+void CompositingManager::frameComplete()
+{
+    m_client.frameComplete();
+}
+
+} // namespace WebKit

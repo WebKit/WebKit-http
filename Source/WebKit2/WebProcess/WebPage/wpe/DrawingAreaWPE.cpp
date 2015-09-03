@@ -140,14 +140,4 @@ void DrawingAreaWPE::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLaye
     m_layerTreeHost->viewportSizeChanged(m_webPage.size());
 }
 
-void DrawingAreaWPE::releaseBuffer(uint32_t handle)
-{
-    m_layerTreeHost->releaseBuffer(handle);
-}
-
-void DrawingAreaWPE::frameComplete()
-{
-    m_layerTreeHost->frameComplete();
-}
-
 } // namespace WebKit

@@ -102,11 +102,6 @@ public:
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) { return nullptr; }
 #endif
 
-#if PLATFORM(WPE)
-    virtual void releaseBuffer(uint32_t) = 0;
-    virtual void frameComplete() = 0;
-#endif
-
     virtual void setViewOverlayRootLayer(WebCore::GraphicsLayer*) = 0;
 
 protected:

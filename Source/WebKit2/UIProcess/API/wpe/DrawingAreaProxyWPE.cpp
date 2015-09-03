@@ -35,9 +35,8 @@ namespace WebKit {
 
 DrawingAreaProxyWPE::DrawingAreaProxyWPE(WKWPE::View& view)
     : DrawingAreaProxy(DrawingAreaTypeWPE, view.page())
-    , m_viewBackend(view.viewBackend())
+    , m_compositingManagerProxy(view)
 {
-    m_viewBackend.setClient(this);
 }
 
 DrawingAreaProxyWPE::~DrawingAreaProxyWPE()
@@ -52,16 +51,6 @@ void DrawingAreaProxyWPE::deviceScaleFactorDidChange()
 void DrawingAreaProxyWPE::sizeDidChange()
 {
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
-}
-
-void DrawingAreaProxyWPE::releaseBuffer(uint32_t handle)
-{
-    m_webPageProxy.process().send(Messages::DrawingArea::ReleaseBuffer(handle), m_webPageProxy.pageID());
-}
-
-void DrawingAreaProxyWPE::frameComplete()
-{
-    m_webPageProxy.process().send(Messages::DrawingArea::FrameComplete(), m_webPageProxy.pageID());
 }
 
 void DrawingAreaProxyWPE::update(uint64_t backingStoreStateID, const UpdateInfo&)
@@ -91,16 +80,6 @@ void DrawingAreaProxyWPE::exitAcceleratedCompositingMode(uint64_t backingStoreSt
 void DrawingAreaProxyWPE::updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&)
 {
     fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
-}
-
-void DrawingAreaProxyWPE::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
-{
-    m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
-}
-
-void DrawingAreaProxyWPE::destroyPrimeBuffer(uint32_t handle)
-{
-    m_viewBackend.destroyPrimeBuffer(handle);
 }
 
 } // namespace WebKit

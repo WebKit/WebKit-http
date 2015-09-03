@@ -43,9 +43,4 @@ messages -> DrawingArea {
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
     SetNativeSurfaceHandleForCompositing(uint64_t handle)
 #endif
-
-#if PLATFORM(WPE)
-    ReleaseBuffer(uint32_t handle)
-    FrameComplete()
-#endif
 }

@@ -168,11 +168,6 @@ private:
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK)
     virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
 #endif
-
-#if PLATFORM(WPE)
-    virtual void releaseBuffer(uint32_t) = 0;
-    virtual void frameComplete() = 0;
-#endif
 };
 
 } // namespace WebKit

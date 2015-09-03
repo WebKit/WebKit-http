@@ -31,6 +31,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingManagerProxyMessages.h"
 #include "DrawingAreaProxyMessages.h"
 #include "DrawingAreaWPE.h"
 #include "NotImplemented.h"
@@ -64,6 +65,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_forceRepaintAsyncCallbackID(0)
     , m_contentLayer(nullptr)
     , m_viewOverlayRootLayer(nullptr)
+    , m_compositingManager(*this, *webPage)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
@@ -283,7 +285,7 @@ void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, cons
 
 void ThreadedCoordinatedLayerTreeHost::commitPrimeBuffer(const PlatformDisplayGBM::GBMBufferExport& bufferExport)
 {
-    m_webPage->send(Messages::DrawingAreaProxy::CommitPrimeBuffer(
+    m_webPage->send(Messages::CompositingManagerProxy::CommitPrimeBuffer(
         std::get<1>(bufferExport),
         std::get<2>(bufferExport),
         std::get<3>(bufferExport),
@@ -294,7 +296,7 @@ void ThreadedCoordinatedLayerTreeHost::commitPrimeBuffer(const PlatformDisplayGB
 
 void ThreadedCoordinatedLayerTreeHost::destroyPrimeBuffer(uint32_t handle)
 {
-    m_webPage->send(Messages::DrawingAreaProxy::DestroyPrimeBuffer(handle));
+    m_webPage->send(Messages::CompositingManagerProxy::DestroyPrimeBuffer(handle));
 }
 
 void ThreadedCoordinatedLayerTreeHost::notifyFlushRequired()

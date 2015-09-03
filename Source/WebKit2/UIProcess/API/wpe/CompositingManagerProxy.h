@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaProxyWPE_h
-#define DrawingAreaProxyWPE_h
+#ifndef CompositingManagerProxy_h
+#define CompositingManagerProxy_h
 
-#include "DrawingAreaProxy.h"
-
-#include "CompositingManagerProxy.h"
-#include "LayerTreeContext.h"
+#include "MessageReceiver.h"
 #include <WPE/ViewBackend/ViewBackend.h>
+
+namespace IPC {
+class Attachment;
+}
+
+namespace WKWPE {
+class View;
+}
 
 namespace WebKit {
 
-class DrawingAreaProxyWPE final : public DrawingAreaProxy {
+class WebPageProxy;
+
+class CompositingManagerProxy final : public IPC::MessageReceiver, public WPE::ViewBackend::Client {
 public:
-    explicit DrawingAreaProxyWPE(WKWPE::View&);
-    virtual ~DrawingAreaProxyWPE();
+    CompositingManagerProxy(WKWPE::View&);
+
+    CompositingManagerProxy(const CompositingManagerProxy&) = delete;
+    CompositingManagerProxy& operator=(const CompositingManagerProxy&) = delete;
+    CompositingManagerProxy(CompositingManagerProxy&&) = delete;
+    CompositingManagerProxy& operator=(CompositingManagerProxy&&) = delete;
 
 private:
-    // DrawingAreaProxy
-    void deviceScaleFactorDidChange() override;
-    void sizeDidChange() override;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
-    // IPC message handlers
-    void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
-    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+    virtual void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) final;
+    virtual void destroyPrimeBuffer(uint32_t) final;
 
-    CompositingManagerProxy m_compositingManagerProxy;
+    // WPE::ViewBackend::Client
+    void releaseBuffer(uint32_t) override;
+    void frameComplete() override;
 
-    // The current layer tree context.
-    LayerTreeContext m_layerTreeContext;
+    WebPageProxy& m_webPageProxy;
+    WPE::ViewBackend::ViewBackend& m_viewBackend;
 };
 
-}
+} // namespace WebKit
 
-
-#endif // DrawingAreaProxyWPE_h
+#endif // CompositingManagerProxy_h

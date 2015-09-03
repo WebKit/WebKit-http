@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DrawingAreaProxyWPE_h
-#define DrawingAreaProxyWPE_h
+#ifndef CompositingManager_h
+#define CompositingManager_h
 
-#include "DrawingAreaProxy.h"
-
-#include "CompositingManagerProxy.h"
-#include "LayerTreeContext.h"
-#include <WPE/ViewBackend/ViewBackend.h>
+#include "MessageReceiver.h"
 
 namespace WebKit {
 
-class DrawingAreaProxyWPE final : public DrawingAreaProxy {
+class WebPage;
+
+class CompositingManager final : public IPC::MessageReceiver {
 public:
-    explicit DrawingAreaProxyWPE(WKWPE::View&);
-    virtual ~DrawingAreaProxyWPE();
+    class Client {
+    public:
+        virtual void releaseBuffer(uint32_t) = 0;
+        virtual void frameComplete() = 0;
+    };
+
+    CompositingManager(Client&, WebPage&);
+
+    CompositingManager(const CompositingManager&) = delete;
+    CompositingManager& operator=(const CompositingManager&) = delete;
+    CompositingManager(CompositingManager&&) = delete;
+    CompositingManager& operator=(CompositingManager&&) = delete;
 
 private:
-    // DrawingAreaProxy
-    void deviceScaleFactorDidChange() override;
-    void sizeDidChange() override;
+    // IPC::MessageReceiver
+    virtual void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
 
-    // IPC message handlers
-    void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
-    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
-    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+    virtual void releaseBuffer(uint32_t) final;
+    virtual void frameComplete() final;
 
-    CompositingManagerProxy m_compositingManagerProxy;
-
-    // The current layer tree context.
-    LayerTreeContext m_layerTreeContext;
+    Client& m_client;
 };
 
-}
+} // namespace WebKit
 
-
-#endif // DrawingAreaProxyWPE_h
+#endif // CompositingManager
