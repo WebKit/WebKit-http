@@ -60,10 +60,10 @@ IntRect ScrollbarThemeWPE::trackRect(Scrollbar&, bool)
     return IntRect();
 }
 
-ScrollbarTheme* ScrollbarTheme::nativeTheme()
+ScrollbarTheme& ScrollbarTheme::nativeTheme()
 {
     static ScrollbarThemeWPE theme;
-    return &theme;
+    return theme;
 }
 
 } // namespace WebCore

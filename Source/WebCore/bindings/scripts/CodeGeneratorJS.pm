@@ -191,6 +191,13 @@ sub GetCallbackClassName
     return "JS$className";
 }
 
+sub GetJSCallbackDataType
+{
+    my $callbackInterface = shift;
+
+    return $callbackInterface->extendedAttributes->{"IsWeakCallback"} ? "JSCallbackDataWeak" : "JSCallbackDataStrong";
+}
+
 sub AddIncludesForTypeInImpl
 {
     my $type = shift;
@@ -3475,6 +3482,13 @@ sub GenerateCallbackHeader
     # Destructor
     push(@headerContent, "    virtual ~$className();\n");
 
+    push(@headerContent, "    " . GetJSCallbackDataType($interface) . "* callbackData() { return m_data; }\n");
+
+    # Constructor object getter.
+    if (@{$interface->constants}) {
+        push(@headerContent, "    static JSC::JSValue getConstructor(JSC::VM&, JSC::JSGlobalObject*);\n");
+    }
+
     if ($interface->extendedAttributes->{"CallbackNeedsOperatorEqual"}) {
         push(@headerContent, "    virtual bool operator==(const $interfaceName&) const;\n\n")
     }
@@ -3508,8 +3522,12 @@ sub GenerateCallbackHeader
     push(@headerContent, "    $className(JSC::JSObject* callback, JSDOMGlobalObject*);\n\n");
 
     # Private members
-    push(@headerContent, "    JSCallbackData* m_data;\n");
+    push(@headerContent, "    " . GetJSCallbackDataType($interface) . "* m_data;\n");
     push(@headerContent, "};\n\n");
+
+    # toJS().
+    push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName*);\n");
+    push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, $interfaceName& impl) { return toJS(exec, globalObject, &impl); }\n\n");
 
     push(@headerContent, "} // namespace WebCore\n\n");
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
@@ -3522,6 +3540,7 @@ sub GenerateCallbackImplementation
     my ($object, $interface) = @_;
 
     my $interfaceName = $interface->name;
+    my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
     my $className = "JS$interfaceName";
 
     # - Add default header template
@@ -3543,7 +3562,7 @@ sub GenerateCallbackImplementation
         push(@implContent, "    : ${interfaceName}()\n");
     }
     push(@implContent, "    , ActiveDOMCallback(globalObject->scriptExecutionContext())\n");
-    push(@implContent, "    , m_data(new JSCallbackData(callback, globalObject))\n");
+    push(@implContent, "    , m_data(new " . GetJSCallbackDataType($interface) . "(callback, this))\n");
     push(@implContent, "{\n");
     push(@implContent, "}\n\n");
 
@@ -3558,7 +3577,7 @@ sub GenerateCallbackImplementation
     push(@implContent, "    else\n");
     push(@implContent, "        context->postTask(DeleteCallbackDataTask(m_data));\n");
     push(@implContent, "#ifndef NDEBUG\n");
-    push(@implContent, "    m_data = 0;\n");
+    push(@implContent, "    m_data = nullptr;\n");
     push(@implContent, "#endif\n");
     push(@implContent, "}\n\n");
 
@@ -3570,7 +3589,54 @@ sub GenerateCallbackImplementation
         push(@implContent, "    return static_cast<const ${className}*>(&other)->m_data->callback() == m_data->callback();\n");
         push(@implContent, "}\n\n");
     }
-    # Functions
+
+    # Constants.
+    my $numConstants = @{$interface->constants};
+    if ($numConstants > 0) {
+        GenerateConstructorDeclaration(\@implContent, $className, $interface, $interfaceName);
+
+        my $hashSize = 0;
+        my $hashName = $className . "ConstructorTable";
+
+        my @hashKeys = ();
+        my @hashValue1 = ();
+        my @hashValue2 = ();
+        my @hashSpecials = ();
+        my %conditionals = ();
+
+        foreach my $constant (@{$interface->constants}) {
+            my $name = $constant->name;
+            push(@hashKeys, $name);
+            push(@hashValue1, $constant->value);
+            push(@hashValue2, "0");
+            push(@hashSpecials, "DontDelete | ReadOnly | ConstantInteger");
+
+            my $implementedBy = $constant->extendedAttributes->{"ImplementedBy"};
+            if ($implementedBy) {
+                $implIncludes{"${implementedBy}.h"} = 1;
+            }
+            my $conditional = $constant->extendedAttributes->{"Conditional"};
+            if ($conditional) {
+                $conditionals{$name} = $conditional;
+            }
+
+            $hashSize++;
+        }
+        $object->GenerateHashTable($hashName, $hashSize,
+                                   \@hashKeys, \@hashSpecials,
+                                   \@hashValue1, \@hashValue2,
+                                   \%conditionals, 1) if $hashSize > 0;
+
+       push(@implContent, $codeGenerator->GenerateCompileTimeCheckForEnumsIfNeeded($interface));
+
+       GenerateConstructorDefinitions(\@implContent, $className, "", $interfaceName, $visibleInterfaceName, $interface);
+
+       push(@implContent, "JSValue ${className}::getConstructor(VM& vm, JSGlobalObject* globalObject)\n{\n");
+       push(@implContent, "    return getDOMConstructor<${className}Constructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));\n");
+       push(@implContent, "}\n\n");
+    }
+
+    # Functions.
     my $numFunctions = @{$interface->functions};
     if ($numFunctions > 0) {
         push(@implContent, "\n// Functions\n");
@@ -3609,7 +3675,7 @@ sub GenerateCallbackImplementation
                 push(@implContent, "    args.append(" . NativeToJSValue($param, 1, $interfaceName, $paramName, "m_data") . ");\n");
             }
 
-            push(@implContent, "\n    bool raisedException = false;\n");
+            push(@implContent, "\n    NakedPtr<Exception> returnedException;\n");
 
             my $propertyToLookup = "Identifier::fromString(exec, \"${functionName}\")";
             my $invokeMethod = "JSCallbackData::CallbackType::FunctionOrObject";
@@ -3625,11 +3691,24 @@ sub GenerateCallbackImplementation
                 # https://heycam.github.io/webidl/#es-user-objects
                 $invokeMethod = "JSCallbackData::CallbackType::Object";
             }
-            push(@implContent, "    m_data->invokeCallback(args, $invokeMethod, $propertyToLookup, &raisedException);\n");
-            push(@implContent, "    return !raisedException;\n");
+            push(@implContent, "    m_data->invokeCallback(args, $invokeMethod, $propertyToLookup, returnedException);\n");
+
+            # FIXME: We currently just report the exception. We should probably add an extended attribute to indicate when
+            # we want the exception to be rethrown instead.
+            push(@implContent, "    if (returnedException)\n");
+            push(@implContent, "        reportException(exec, returnedException);\n");
+            push(@implContent, "    return !returnedException;\n");
             push(@implContent, "}\n");
         }
     }
+
+    # toJS() implementation.
+    push(@implContent, "\nJSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName* impl)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    if (!impl || !static_cast<${className}&>(*impl).callbackData())\n");
+    push(@implContent, "        return jsNull();\n\n");
+    push(@implContent, "    return static_cast<${className}&>(*impl).callbackData()->callback();\n\n");
+    push(@implContent, "}\n");
 
     push(@implContent, "\n}\n");
     my $conditionalString = $codeGenerator->GenerateConditionalString($interface);
@@ -3740,7 +3819,6 @@ sub GetNativeTypeFromSignature
 }
 
 my %nativeType = (
-    "CompareHow" => "Range::CompareHow",
     "DOMString" => "String",
     "NodeFilter" => "RefPtr<NodeFilter>",
     "SerializedScriptValue" => "RefPtr<SerializedScriptValue>",
@@ -3880,7 +3958,6 @@ sub JSValueToNative
     return "toUInt64(exec, $value, $intConversion)" if $type eq "unsigned long long";
 
     return "valueToDate(exec, $value)" if $type eq "Date";
-    return "static_cast<Range::CompareHow>($value.toInt32(exec))" if $type eq "CompareHow";
 
     if ($type eq "DOMString") {
         # FIXME: This implements [TreatNullAs=NullString] and [TreatUndefinedAs=NullString],
@@ -4142,16 +4219,20 @@ sub GenerateHashTableValueArray
             $secondTargetType = "static_cast<PutPropertySlot::PutValueFunc>";
             $hasSetter = "true";
         }
-        push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) },\n");
+        if ("@$specials[$i]" =~ m/ConstantInteger/) {
+            push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, { (long long)" . $firstTargetType . "(@$value1[$i]) } },\n");
+        } else {
+            push(@implContent, "    { \"$key\", @$specials[$i], NoIntrinsic, { (intptr_t)" . $firstTargetType . "(@$value1[$i]), (intptr_t) " . $secondTargetType . "(@$value2[$i]) } },\n");
+        }
         if ($conditional) {
             push(@implContent, "#else\n") ;
-            push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 },\n");
+            push(@implContent, "    { 0, 0, NoIntrinsic, { 0, 0 } },\n");
             push(@implContent, "#endif\n") ;
         }
         ++$i;
     }
 
-    push(@implContent, "    { 0, 0, NoIntrinsic, 0, 0 }\n") if (!$packedSize);
+    push(@implContent, "    { 0, 0, NoIntrinsic, { 0, 0 } }\n") if (!$packedSize);
     push(@implContent, "};\n\n");
 
     return $hasSetter;
@@ -4781,18 +4862,23 @@ sub GenerateConstructorHelperMethods
 
     push(@$outputArray, "void ${constructorClassName}::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)\n");
     push(@$outputArray, "{\n");
-    if (IsDOMGlobalObject($interface)) {
-        push(@$outputArray, "    Base::finishCreation(vm);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
-    } elsif ($generatingNamedConstructor) {
+
+    if ($generatingNamedConstructor) {
         push(@$outputArray, "    Base::finishCreation(globalObject);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     } else {
         push(@$outputArray, "    Base::finishCreation(vm);\n");
-        push(@$outputArray, "    ASSERT(inherits(info()));\n");
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
+    }
+    push(@$outputArray, "    ASSERT(inherits(info()));\n");
+
+    # There must exist an interface prototype object for every non-callback interface defined, regardless
+    # of whether the interface was declared with the [NoInterfaceObject] extended attribute.
+    # https://heycam.github.io/webidl/#interface-prototype-object
+    if (IsDOMGlobalObject($interface)) {
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
+    } elsif ($interface->isCallback) {
+        push(@$outputArray, "    UNUSED_PARAM(globalObject);\n");
+    } else {
+       push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
     }
 
     push(@$outputArray, "    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral(\"$visibleInterfaceName\"))), ReadOnly | DontEnum);\n");

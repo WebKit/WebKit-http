@@ -374,7 +374,8 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         
         performCleanUp(dfg); // Reduce the graph size a bit.
         performCriticalEdgeBreaking(dfg);
-        performLoopPreHeaderCreation(dfg);
+        if (Options::createPreHeaders())
+            performLoopPreHeaderCreation(dfg);
         performCPSRethreading(dfg);
         performSSAConversion(dfg);
         performSSALowering(dfg);
@@ -594,6 +595,13 @@ CompilationKey Plan::key()
     return CompilationKey(codeBlock->alternative(), mode);
 }
 
+void Plan::clearCodeBlockMarks(CodeBlockSet& codeBlocks)
+{
+    codeBlocks.clearMarks(codeBlock.get());
+    codeBlocks.clearMarks(codeBlock->alternative());
+    codeBlocks.clearMarks(profiledDFGCodeBlock.get());
+}
+
 void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor, CodeBlockSet& codeBlocks)
 {
     if (!isKnownToBeLiveDuringGC())
@@ -602,8 +610,8 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor, CodeBlockSet& cod
     for (unsigned i = mustHandleValues.size(); i--;)
         visitor.appendUnbarrieredValue(&mustHandleValues[i]);
     
-    codeBlocks.mark(codeBlock->alternative());
     codeBlocks.mark(codeBlock.get());
+    codeBlocks.mark(codeBlock->alternative());
     codeBlocks.mark(profiledDFGCodeBlock.get());
     
     weakReferences.visitChildren(visitor);

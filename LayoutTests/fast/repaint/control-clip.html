@@ -1,12 +1,15 @@
 <html>
 <head>
     <title></title>
-    <script src="resources/repaint.js"></script>
     <script>
-        function repaintTest()
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        function runTest()
         {
             document.getElementById("popup").selectedIndex = 1;
             document.getElementById("button").innerText = "SUCCESS";
+            if (window.testRunner)
+                testRunner.notifyDone();
         }
     </script>
     <style>
@@ -14,7 +17,7 @@
         select { -webkit-appearance: none; }
     </style>
 </head>
-<body onload="runRepaintTest()">
+<body onload="setTimeout(runTest, 0)">
     <p>
         Test for <i><a href="http://bugs.webkit.org/show_bug.cgi?id=13391">http://bugs.webkit.org/show_bug.cgi?id=13391</a>
         REGRESSION (r18819): Incomplete repaint of button text</i>.

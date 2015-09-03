@@ -305,7 +305,7 @@ sub SkipFunction {
     # sequence<T> parameters, because this code generator doesn't know how to auto-generate
     # MediaQueryListListener or sequence<T>. Skip EventListeners because they are handled elsewhere.
     foreach my $param (@{$function->parameters}) {
-        if ($codeGenerator->IsCallbackInterface($param->type) ||
+        if ($codeGenerator->IsFunctionOnlyCallbackInterface($param->type) ||
             $param->extendedAttributes->{"Clamp"} ||
             $param->type eq "MediaQueryListListener" ||
             $param->type eq "EventListener" ||
@@ -411,7 +411,6 @@ sub GetGlibTypeName {
 
     my %types = ("DOMString", "gchar*",
                  "DOMTimeStamp", "guint32",
-                 "CompareHow", "gushort",
                  "SerializedScriptValue", "gchar*",
                  "float", "gfloat",
                  "unrestricted float", "gfloat",
@@ -548,17 +547,19 @@ sub GenerateProperty {
         $mutableString = "read-write";
     }
 
+    my $getterFunctionName = "webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName;
     my @getterArguments = ();
     push(@getterArguments, "self");
-    push(@getterArguments, "nullptr") if $hasGetterException;
-
-    my @setterArguments = ();
-    push(@setterArguments, "self, g_value_get_$gtype(value)");
-    push(@setterArguments, "nullptr") if $hasSetterException;
+    push(@getterArguments, "nullptr") if $hasGetterException || FunctionUsedToRaiseException($getterFunctionName);
 
     if (grep {$_ eq $attribute} @writeableProperties) {
+        my $setterFunctionName = "webkit_dom_${decamelizeInterfaceName}_set_" . $propFunctionName;
+        my @setterArguments = ();
+        push(@setterArguments, "self, g_value_get_$gtype(value)");
+        push(@setterArguments, "nullptr") if $hasSetterException || FunctionUsedToRaiseException($setterFunctionName);
+
         push(@txtSetProps, "    case ${propEnum}:\n");
-        push(@txtSetProps, "        webkit_dom_${decamelizeInterfaceName}_set_" . $propFunctionName . "(" . join(", ", @setterArguments) . ");\n");
+        push(@txtSetProps, "        " . $setterFunctionName . "(" . join(", ", @setterArguments) . ");\n");
         push(@txtSetProps, "        break;\n");
     }
 
@@ -568,9 +569,9 @@ sub GenerateProperty {
 
     my $postConvertFunction = "";
     if ($gtype eq "string") {
-        push(@txtGetProps, "        g_value_take_string(value, webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName . "(" . join(", ", @getterArguments) . "));\n");
+        push(@txtGetProps, "        g_value_take_string(value, " . $getterFunctionName . "(" . join(", ", @getterArguments) . "));\n");
     } else {
-        push(@txtGetProps, "        g_value_set_$gtype(value, webkit_dom_${decamelizeInterfaceName}_get_" . $propFunctionName . "(" . join(", ", @getterArguments) . "));\n");
+        push(@txtGetProps, "        g_value_set_$gtype(value, " . $getterFunctionName . "(" . join(", ", @getterArguments) . "));\n");
     }
 
     push(@txtGetProps, "        break;\n");
@@ -1015,7 +1016,19 @@ sub FunctionUsedToRaiseException {
     my $functionName = shift;
 
     return $functionName eq "webkit_dom_document_create_node_iterator"
-        || $functionName eq "webkit_dom_document_create_tree_walker";
+        || $functionName eq "webkit_dom_document_create_tree_walker"
+        || $functionName eq "webkit_dom_node_iterator_next_node"
+        || $functionName eq "webkit_dom_node_iterator_previous_node"
+        || $functionName eq "webkit_dom_range_clone_range"
+        || $functionName eq "webkit_dom_range_collapse"
+        || $functionName eq "webkit_dom_range_detach"
+        || $functionName eq "webkit_dom_range_get_common_ancestor_container"
+        || $functionName eq "webkit_dom_range_get_end_container"
+        || $functionName eq "webkit_dom_range_get_start_container"
+        || $functionName eq "webkit_dom_range_get_collapsed"
+        || $functionName eq "webkit_dom_range_get_end_offset"
+        || $functionName eq "webkit_dom_range_get_start_offset"
+        || $functionName eq "webkit_dom_range_to_string";
 }
 
 sub GenerateFunction {
@@ -1066,7 +1079,7 @@ sub GenerateFunction {
                 $implIncludes{"WebKitDOM${paramIDLType}Private.h"} = 1;
             }
         }
-        if ($paramIsGDOMType || ($paramIDLType eq "DOMString") || ($paramIDLType eq "CompareHow")) {
+        if ($paramIsGDOMType || ($paramIDLType eq "DOMString")) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
         }
         if ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
@@ -1188,8 +1201,6 @@ sub GenerateFunction {
         $convertedParamName = "converted" . $codeGenerator->WK_ucfirst($paramName);
         if ($paramIDLType eq "DOMString") {
             push(@cBody, "    WTF::String ${convertedParamName} = WTF::String::fromUTF8($paramName);\n");
-        } elsif ($paramIDLType eq "CompareHow") {
-            push(@cBody, "    WebCore::Range::CompareHow ${convertedParamName} = static_cast<WebCore::Range::CompareHow>($paramName);\n");
         } elsif ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
             push(@cBody, "    RefPtr<WebCore::$paramIDLType> ${convertedParamName} = WebKit::core($paramName);\n");
         } elsif ($paramIsGDOMType) {

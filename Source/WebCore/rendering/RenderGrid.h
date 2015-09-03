@@ -61,7 +61,6 @@ private:
     virtual const char* renderName() const override;
     virtual bool isRenderGrid() const override { return true; }
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
-    virtual void computePreferredLogicalWidths() override;
 
     class GridIterator;
     class GridSizingData;
@@ -137,7 +136,9 @@ private:
     void applyStretchAlignmentToChildIfNeeded(RenderBox&);
     bool hasAutoMarginsInColumnAxis(const RenderBox&) const;
     bool hasAutoMarginsInRowAxis(const RenderBox&) const;
-    void updateAutoMarginsInColumnAxisIfNeeded(RenderBox&, LayoutUnit gridAreaBreadthForChild);
+    void resetAutoMarginsAndLogicalTopInColumnAxis(RenderBox& child);
+    void updateAutoMarginsInColumnAxisIfNeeded(RenderBox&);
+    void updateAutoMarginsInRowAxisIfNeeded(RenderBox&);
 
 #ifndef NDEBUG
     bool tracksAreWiderThanMinTrackBreadth(GridTrackSizingDirection, const Vector<GridTrack>&);

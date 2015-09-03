@@ -78,6 +78,7 @@ class JSStack;
 class LLIntOffsetsExtractor;
 class Microtask;
 class ModuleLoaderObject;
+class ModuleProgramExecutable;
 class NativeErrorConstructor;
 class ObjectConstructor;
 class ProgramCodeBlock;
@@ -85,6 +86,7 @@ class ProgramExecutable;
 class RegExpConstructor;
 class RegExpPrototype;
 class SourceCode;
+class UnlinkedModuleProgramCodeBlock;
 class NullGetterFunction;
 class NullSetterFunction;
 enum class ThisTDZMode;
@@ -252,6 +254,7 @@ protected:
     WriteBarrier<Structure> m_functionStructure;
     WriteBarrier<Structure> m_boundFunctionStructure;
     WriteBarrier<Structure> m_arrowFunctionStructure;
+    WriteBarrier<Structure> m_nativeStdFunctionStructure;
     WriteBarrier<Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
@@ -485,6 +488,7 @@ public:
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
     Structure* arrowFunctionStructure() const { return m_arrowFunctionStructure.get(); }
+    Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
@@ -641,6 +645,7 @@ public:
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
     UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, ThisTDZMode, const VariableEnvironment*);
+    UnlinkedModuleProgramCodeBlock* createModuleProgramCodeBlock(CallFrame*, ModuleProgramExecutable*);
 
 protected:
     struct GlobalPropertyInfo {

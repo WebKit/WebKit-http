@@ -50,25 +50,38 @@ struct HashTableValue {
     const char* m_key; // property name
     unsigned m_attributes; // JSObject attributes
     Intrinsic m_intrinsic;
-    intptr_t m_value1;
-    intptr_t m_value2;
+    union ValueStorage {
+        constexpr ValueStorage(intptr_t value1, intptr_t value2)
+            : value1(value1)
+            , value2(value2)
+        { }
+        constexpr ValueStorage(long long constant)
+            : constant(constant)
+        { }
+
+        struct {
+            intptr_t value1;
+            intptr_t value2;
+        };
+        long long constant;
+    } m_values;
 
     unsigned attributes() const { return m_attributes; }
 
     Intrinsic intrinsic() const { ASSERT(m_attributes & Function); return m_intrinsic; }
-    BuiltinGenerator builtinGenerator() const { ASSERT(m_attributes & Builtin); return reinterpret_cast<BuiltinGenerator>(m_value1); }
-    NativeFunction function() const { ASSERT(m_attributes & Function); return reinterpret_cast<NativeFunction>(m_value1); }
-    unsigned char functionLength() const { ASSERT(m_attributes & Function); return static_cast<unsigned char>(m_value2); }
+    BuiltinGenerator builtinGenerator() const { ASSERT(m_attributes & Builtin); return reinterpret_cast<BuiltinGenerator>(m_values.value1); }
+    NativeFunction function() const { ASSERT(m_attributes & Function); return reinterpret_cast<NativeFunction>(m_values.value1); }
+    unsigned char functionLength() const { ASSERT(m_attributes & Function); return static_cast<unsigned char>(m_values.value2); }
 
-    GetFunction propertyGetter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrConstant)); return reinterpret_cast<GetFunction>(m_value1); }
-    PutFunction propertyPutter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrConstant)); return reinterpret_cast<PutFunction>(m_value2); }
+    GetFunction propertyGetter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrConstant)); return reinterpret_cast<GetFunction>(m_values.value1); }
+    PutFunction propertyPutter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrConstant)); return reinterpret_cast<PutFunction>(m_values.value2); }
 
-    NativeFunction accessorGetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_value1); }
-    NativeFunction accessorSetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_value2); }
+    NativeFunction accessorGetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_values.value1); }
+    NativeFunction accessorSetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_values.value2); }
 
-    intptr_t constantInteger() const { ASSERT(m_attributes & ConstantInteger); return m_value1; }
+    long long constantInteger() const { ASSERT(m_attributes & ConstantInteger); return m_values.constant; }
 
-    intptr_t lexerValue() const { ASSERT(!m_attributes); return m_value1; }
+    intptr_t lexerValue() const { ASSERT(!m_attributes); return m_values.value1; }
 };
 
 struct HashTable {
@@ -188,11 +201,11 @@ inline bool getStaticPropertySlot(ExecState* exec, const HashTable& table, ThisI
         return setUpStaticFunctionSlot(exec, entry, thisObj, propertyName, slot);
 
     if (entry->attributes() & ConstantInteger) {
-        slot.setValue(thisObj, entry->attributes(), jsNumber(entry->constantInteger()));
+        slot.setValue(thisObj, attributesForStructure(entry->attributes()), jsNumber(entry->constantInteger()));
         return true;
     }
 
-    slot.setCacheableCustom(thisObj, entry->attributes(), entry->propertyGetter());
+    slot.setCacheableCustom(thisObj, attributesForStructure(entry->attributes()), entry->propertyGetter());
     return true;
 }
 
@@ -229,11 +242,11 @@ inline bool getStaticValueSlot(ExecState* exec, const HashTable& table, ThisImp*
     ASSERT(!(entry->attributes() & BuiltinOrFunctionOrAccessor));
 
     if (entry->attributes() & ConstantInteger) {
-        slot.setValue(thisObj, entry->attributes(), jsNumber(entry->constantInteger()));
+        slot.setValue(thisObj, attributesForStructure(entry->attributes()), jsNumber(entry->constantInteger()));
         return true;
     }
 
-    slot.setCacheableCustom(thisObj, entry->attributes(), entry->propertyGetter());
+    slot.setCacheableCustom(thisObj, attributesForStructure(entry->attributes()), entry->propertyGetter());
     return true;
 }
 
@@ -279,18 +292,19 @@ inline void reifyStaticProperties(VM& vm, const HashTableValue (&values)[numberO
 
         Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(value.m_key), strlen(value.m_key));
         if (value.attributes() & Builtin) {
-            thisObj.putDirectBuiltinFunction(vm, thisObj.globalObject(), propertyName, value.builtinGenerator()(vm), value.attributes());
+            thisObj.putDirectBuiltinFunction(vm, thisObj.globalObject(), propertyName, value.builtinGenerator()(vm), attributesForStructure(value.attributes()));
             continue;
         }
 
         if (value.attributes() & Function) {
-            thisObj.putDirectNativeFunction(vm, thisObj.globalObject(), propertyName, value.functionLength(),
-                value.function(), value.intrinsic(), value.attributes());
+            thisObj.putDirectNativeFunction(
+                vm, thisObj.globalObject(), propertyName, value.functionLength(),
+                value.function(), value.intrinsic(), attributesForStructure(value.attributes()));
             continue;
         }
 
         if (value.attributes() & ConstantInteger) {
-            thisObj.putDirect(vm, propertyName, jsNumber(value.constantInteger()), value.attributes());
+            thisObj.putDirect(vm, propertyName, jsNumber(value.constantInteger()), attributesForStructure(value.attributes()));
             continue;
         }
 
@@ -300,7 +314,7 @@ inline void reifyStaticProperties(VM& vm, const HashTableValue (&values)[numberO
         }
 
         CustomGetterSetter* customGetterSetter = CustomGetterSetter::create(vm, value.propertyGetter(), value.propertyPutter());
-        thisObj.putDirectCustomAccessor(vm, propertyName, customGetterSetter, value.attributes());
+        thisObj.putDirectCustomAccessor(vm, propertyName, customGetterSetter, attributesForStructure(value.attributes()));
     }
 }
 

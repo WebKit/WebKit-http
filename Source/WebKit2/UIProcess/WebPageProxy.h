@@ -155,6 +155,7 @@ class ProtectionSpace;
 class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
+struct DictionaryPopupInfo;
 struct FileChooserSettings;
 struct TextAlternativeWithRange;
 struct TextCheckingResult;
@@ -201,7 +202,6 @@ class WebWheelEvent;
 class WebsiteDataStore;
 struct AttributedString;
 struct ColorSpaceData;
-struct DictionaryPopupInfo;
 struct EditingRange;
 struct EditorState;
 struct PlatformPopupMenuData;
@@ -642,9 +642,6 @@ public:
     double pageScaleFactor() const;
     double viewScaleFactor() const { return m_viewScaleFactor; }
     void scaleView(double scale);
-#if PLATFORM(COCOA)
-    void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, std::function<void (const WebCore::MachSendRight&, CallbackBase::Error)>);
-#endif
     void setShouldScaleViewToFitDocument(bool);
     
     bool userContentExtensionsEnabled() { return m_userContentExtensionsEnabled; }
@@ -1265,8 +1262,7 @@ private:
     };
     void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, const UserData&);
     void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, const UserData&);
-
-    void platformInitializeShareMenuItem(WebCore::ContextMenuItem&);
+    WebCore::ContextMenuItem platformInitializeShareMenuItem(const ContextMenuContextData&);
 #endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -1295,7 +1291,7 @@ private:
     void searchTheWeb(const String&);
 
     // Dictionary.
-    void didPerformDictionaryLookup(const DictionaryPopupInfo&);
+    void didPerformDictionaryLookup(const WebCore::DictionaryPopupInfo&);
 #endif
 
 #if PLATFORM(MAC)

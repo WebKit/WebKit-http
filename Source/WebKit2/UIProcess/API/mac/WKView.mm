@@ -83,6 +83,7 @@
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ColorMac.h>
 #import <WebCore/DataDetectorsSPI.h>
+#import <WebCore/DictionaryLookup.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
 #import <WebCore/FloatRect.h>
@@ -266,7 +267,6 @@ struct WKViewInterpretKeyEventsParameters {
     RetainPtr<WKViewLayoutStrategy> _layoutStrategy;
     WKLayoutMode _lastRequestedLayoutMode;
     float _lastRequestedViewScale;
-    CGSize _minimumViewSize;
 
     RetainPtr<CALayer> _rootLayer;
 
@@ -3900,6 +3900,9 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (BOOL)_supportsArbitraryLayoutModes
 {
+    if ([_data->_fullScreenWindowController isFullScreen])
+        return NO;
+
     WebPageProxy* page = _data->_page.get();
     if (!page)
         return YES;
@@ -3915,7 +3918,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     return YES;
 }
 
-- (void)_didCommitLoadForMainFrame
+- (void)_updateSupportsArbitraryLayoutModes
 {
     if (![self _supportsArbitraryLayoutModes]) {
         WKLayoutMode oldRequestedLayoutMode = _data->_lastRequestedLayoutMode;
@@ -3931,6 +3934,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         [self _setViewScale:_data->_lastRequestedViewScale];
         [self _setLayoutMode:_data->_lastRequestedLayoutMode];
     }
+}
+
+- (void)_didCommitLoadForMainFrame
+{
+    [self _updateSupportsArbitraryLayoutModes];
 }
 
 - (void)_didFinishLoadForMainFrame
@@ -4083,9 +4091,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 + (void)hideWordDefinitionWindow
 {
-    if (!getLULookupDefinitionModuleClass())
-        return;
-    [getLULookupDefinitionModuleClass() hideDefinition];
+    DictionaryLookup::hidePopup();
 }
 
 - (NSSize)minimumSizeForAutoLayout
@@ -4383,17 +4389,6 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     [_data->_layoutStrategy didChangeViewScale];
 }
 
-- (void)_setMinimumViewSize:(CGSize)minimumViewSize
-{
-    _data->_minimumViewSize = minimumViewSize;
-    [_data->_layoutStrategy didChangeMinimumViewSize];
-}
-
-- (CGSize)_minimumViewSize
-{
-    return _data->_minimumViewSize;
-}
-
 - (void)_dispatchSetTopContentInset
 {
     if (!_data->_didScheduleSetTopContentInset)
@@ -4676,8 +4671,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         || [_data->_immediateActionController hasActiveImmediateAction]
 #endif
         ) {
-        if (Class lookupDefinitionModuleClass = getLULookupDefinitionModuleClass())
-            [lookupDefinitionModuleClass hideDefinition];
+        DictionaryLookup::hidePopup();
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];

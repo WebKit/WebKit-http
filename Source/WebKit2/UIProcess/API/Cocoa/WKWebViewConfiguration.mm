@@ -40,6 +40,7 @@
 
 #if PLATFORM(IOS)
 #import "UIKitSPI.h"
+#import "WebKitSystemInterfaceIOS.h"
 #endif
 
 template<typename T> class LazyInitialized {
@@ -94,6 +95,9 @@ private:
 #if PLATFORM(IOS)
     LazyInitialized<RetainPtr<WKWebViewContentProviderRegistry>> _contentProviderRegistry;
     BOOL _alwaysRunsAtForegroundPriority;
+    BOOL _allowsInlineMediaPlayback;
+    BOOL _inlineMediaPlaybackRequiresPlaysInlineAttribute;
+    BOOL _mediaDataLoadsAutomatically;
 #endif
 }
 
@@ -105,6 +109,9 @@ private:
 #if PLATFORM(IOS)
     _requiresUserActionForMediaPlayback = YES;
     _allowsPictureInPictureMediaPlayback = YES;
+    _allowsInlineMediaPlayback = WKGetDeviceClass() == WKDeviceClassiPad;
+    _inlineMediaPlaybackRequiresPlaysInlineAttribute = !_allowsInlineMediaPlayback;
+    _mediaDataLoadsAutomatically = NO;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -140,6 +147,8 @@ private:
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
+    configuration->_inlineMediaPlaybackRequiresPlaysInlineAttribute = self->_inlineMediaPlaybackRequiresPlaysInlineAttribute;
+    configuration->_mediaDataLoadsAutomatically = self->_mediaDataLoadsAutomatically;
     configuration->_allowsPictureInPictureMediaPlayback = self->_allowsPictureInPictureMediaPlayback;
     configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
     configuration->_requiresUserActionForMediaPlayback = self->_requiresUserActionForMediaPlayback;
@@ -334,6 +343,26 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setAlwaysRunsAtForegroundPriority:(BOOL)alwaysRunsAtForegroundPriority
 {
     _alwaysRunsAtForegroundPriority = alwaysRunsAtForegroundPriority;
+}
+
+- (BOOL)_inlineMediaPlaybackRequiresPlaysInlineAttribute
+{
+    return _inlineMediaPlaybackRequiresPlaysInlineAttribute;
+}
+
+- (void)_setInlineMediaPlaybackRequiresPlaysInlineAttribute:(BOOL)requires
+{
+    _inlineMediaPlaybackRequiresPlaysInlineAttribute = requires;
+}
+
+- (BOOL)_mediaDataLoadsAutomatically
+{
+    return _mediaDataLoadsAutomatically;
+}
+
+- (void)_setMediaDataLoadsAutomatically:(BOOL)mediaDataLoadsAutomatically
+{
+    _mediaDataLoadsAutomatically = mediaDataLoadsAutomatically;
 }
 #endif
 

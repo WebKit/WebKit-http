@@ -151,16 +151,16 @@ PlatformLayer* ImageBuffer::platformLayer() const
 {
     return 0;
 }
-#endif
 
-bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, Platform3DObject, GC3Denum, bool, bool)
+bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum, Platform3DObject, GC3Denum, bool, bool)
 {
     return false;
 }
+#endif
 
-std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext* context, bool)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context, bool)
 {
-    return create(size, resolutionScale, colorSpace, context->isAcceleratedContext() ? Accelerated : Unaccelerated);
+    return create(size, resolutionScale, colorSpace, context.isAcceleratedContext() ? Accelerated : Unaccelerated);
 }
 
 }
