@@ -62,7 +62,7 @@ WebProcessConnection::~WebProcessConnection()
     
 WebProcessConnection::WebProcessConnection(IPC::Connection::Identifier connectionIdentifier)
 {
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, RunLoop::main());
     m_npRemoteObjectMap = NPRemoteObjectMap::create(m_connection.get());
 
     m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);

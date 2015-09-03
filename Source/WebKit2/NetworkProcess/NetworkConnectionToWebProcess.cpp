@@ -55,7 +55,7 @@ Ref<NetworkConnectionToWebProcess> NetworkConnectionToWebProcess::create(IPC::Co
 
 NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(IPC::Connection::Identifier connectionIdentifier)
 {
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, RunLoop::main());
     m_connection->open();
 }
 
