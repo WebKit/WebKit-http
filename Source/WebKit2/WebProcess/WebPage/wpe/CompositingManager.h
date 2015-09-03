@@ -26,13 +26,15 @@
 #ifndef CompositingManager_h
 #define CompositingManager_h
 
+#include "Connection.h"
 #include "MessageReceiver.h"
+#include <WebCore/PlatformDisplayGBM.h>
 
 namespace WebKit {
 
 class WebPage;
 
-class CompositingManager final : public IPC::MessageReceiver {
+class CompositingManager final : public IPC::Connection::Client {
 public:
     class Client {
     public:
@@ -40,7 +42,11 @@ public:
         virtual void frameComplete() = 0;
     };
 
-    CompositingManager(Client&, WebPage&);
+    CompositingManager(Client&);
+
+    void establishConnection(WebPage&, WTF::RunLoop&);
+    void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&);
+    void destroyPrimeBuffer(uint32_t);
 
     CompositingManager(const CompositingManager&) = delete;
     CompositingManager& operator=(const CompositingManager&) = delete;
@@ -54,7 +60,15 @@ private:
     virtual void releaseBuffer(uint32_t) final;
     virtual void frameComplete() final;
 
+    // IPC::Connection::Client
+    void didClose(IPC::Connection&) override { }
+    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { }
+    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
+    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
+
     Client& m_client;
+
+    RefPtr<IPC::Connection> m_connection;
 };
 
 } // namespace WebKit

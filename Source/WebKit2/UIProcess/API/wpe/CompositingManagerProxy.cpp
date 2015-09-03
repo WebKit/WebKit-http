@@ -43,6 +43,13 @@ CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
     m_viewBackend.setClient(this);
 }
 
+void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnectionIdentifier)
+{
+    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.releaseFileDescriptor());
+    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this, RunLoop::main());
+    m_connection->open();
+}
+
 void CompositingManagerProxy::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
 {
     m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
@@ -55,12 +62,12 @@ void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
 
 void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 {
-    m_webPageProxy.process().send(Messages::CompositingManager::ReleaseBuffer(handle), m_webPageProxy.pageID());
+    m_connection->send(Messages::CompositingManager::ReleaseBuffer(handle), 0);
 }
 
 void CompositingManagerProxy::frameComplete()
 {
-    m_webPageProxy.process().send(Messages::CompositingManager::FrameComplete(), m_webPageProxy.pageID());
+    m_connection->send(Messages::CompositingManager::FrameComplete(), 0);
 }
 
 } // namespace WebKit

@@ -28,6 +28,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingManager.h"
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
 #include <WebCore/GLContext.h>
@@ -53,12 +54,13 @@ struct CoordinatedGraphicsState;
 }
 
 namespace WebKit {
-class CoordinatedGraphicsScene;
-class CoordinatedGraphicsSceneClient;
 
 class CompositingRunLoop;
+class CoordinatedGraphicsScene;
+class CoordinatedGraphicsSceneClient;
+class WebPage;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::GBMSurface::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::GBMSurface::Client, public CompositingManager::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -68,11 +70,9 @@ public:
         virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
-        virtual void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&) = 0;
-        virtual void destroyPrimeBuffer(uint32_t handle) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*);
+    static Ref<ThreadedCompositor> create(Client*, WebPage&);
     virtual ~ThreadedCompositor();
 
     void setNeedsDisplay();
@@ -89,13 +89,8 @@ public:
 
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
 
-#if PLATFORM(WPE)
-    void releaseBuffer(uint32_t);
-    void frameComplete();
-#endif
-
 private:
-    ThreadedCompositor(Client*);
+    ThreadedCompositor(Client*, WebPage&);
 
     // CoordinatedGraphicsSceneClient
     virtual void purgeBackingStores() override;
@@ -105,6 +100,10 @@ private:
 
     // GBMSurface::Client
     virtual void destroyBuffer(uint32_t) override;
+
+    // CompositingManager::Client
+    virtual void releaseBuffer(uint32_t) override;
+    virtual void frameComplete() override;
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
@@ -141,6 +140,8 @@ private:
 #if 0
     static const struct wl_callback_listener m_frameListener;
 #endif
+
+    CompositingManager m_compositingManager;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {

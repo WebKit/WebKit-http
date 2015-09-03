@@ -132,19 +132,21 @@ private:
     Atomic<UpdateState> m_updateState;
 };
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage)
 {
-    return adoptRef(*new ThreadedCompositor(client));
+    return adoptRef(*new ThreadedCompositor(client, webPage));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client* client)
+ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     : m_client(client)
     , m_threadIdentifier(0)
+    , m_compositingManager(*this)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor))
 #endif
 {
     createCompositingThread();
+    m_compositingManager.establishConnection(webPage, m_compositingRunLoop->runLoop());
 }
 
 ThreadedCompositor::~ThreadedCompositor()

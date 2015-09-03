@@ -27,15 +27,43 @@
 #include "CompositingManager.h"
 
 #include "CompositingManagerMessages.h"
+#include "CompositingManagerProxyMessages.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 
 namespace WebKit {
 
-CompositingManager::CompositingManager(Client& client, WebPage& webPage)
+CompositingManager::CompositingManager(Client& client)
     : m_client(client)
 {
-    WebProcess::singleton().addMessageReceiver(Messages::CompositingManager::messageReceiverName(), webPage.pageID(), *this);
+}
+
+void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& runLoop)
+{
+    IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
+    IPC::Connection::Identifier connectionIdentifier(socketPair.server);
+    IPC::Attachment connectionClientPort(socketPair.client);
+
+    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, runLoop);
+    m_connection->open();
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::CompositingManagerProxy::EstablishConnection(connectionClientPort),
+        Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
+}
+
+void CompositingManager::commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport& bufferExport)
+{
+    m_connection->send(Messages::CompositingManagerProxy::CommitPrimeBuffer(
+        std::get<1>(bufferExport),
+        std::get<2>(bufferExport),
+        std::get<3>(bufferExport),
+        std::get<4>(bufferExport),
+        std::get<5>(bufferExport),
+        IPC::Attachment(std::get<0>(bufferExport))), 0);
+}
+
+void CompositingManager::destroyPrimeBuffer(uint32_t handle)
+{
+    m_connection->send(Messages::CompositingManagerProxy::DestroyPrimeBuffer(handle), 0);
 }
 
 void CompositingManager::releaseBuffer(uint32_t handle)

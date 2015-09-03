@@ -30,7 +30,6 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "CompositingManager.h"
 #include "LayerTreeContext.h"
 #include "LayerTreeHost.h"
 #include "ThreadedCompositor.h"
@@ -60,7 +59,7 @@ namespace WebKit {
 
 class WebPage;
 
-class ThreadedCoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client, public ThreadedCompositor::Client, public CompositingManager::Client {
+class ThreadedCoordinatedLayerTreeHost : public LayerTreeHost, public WebCore::CompositingCoordinator::Client, public ThreadedCompositor::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCoordinatedLayerTreeHost); WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<ThreadedCoordinatedLayerTreeHost> create(WebPage*);
@@ -123,8 +122,6 @@ private:
     virtual void purgeBackingStores() override;
     virtual void renderNextFrame() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
-    virtual void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&) override;
-    virtual void destroyPrimeBuffer(uint32_t handle) override;
 
     // CompositingCoordinator::Client
     virtual void didFlushRootLayer(const WebCore::FloatRect&) override { }
@@ -134,12 +131,6 @@ private:
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     virtual RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) override;
-#endif
-
-#if PLATFORM(WPE)
-    // CompositingManager::Client
-    virtual void releaseBuffer(uint32_t) override;
-    virtual void frameComplete() override;
 #endif
 
     LayerTreeContext m_layerTreeContext;
@@ -152,7 +143,6 @@ private:
 
     std::unique_ptr<WebCore::CompositingCoordinator> m_coordinator;
     RefPtr<ThreadedCompositor> m_compositor;
-    CompositingManager m_compositingManager;
 
     bool m_notifyAfterScheduledLayerFlush;
     bool m_isSuspended;
