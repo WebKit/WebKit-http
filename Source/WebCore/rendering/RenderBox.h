@@ -640,7 +640,7 @@ protected:
 
     void paintMaskImages(const PaintInfo&, const LayoutRect&);
 
-    BackgroundBleedAvoidance determineBackgroundBleedAvoidance(GraphicsContext*) const;
+    BackgroundBleedAvoidance determineBackgroundBleedAvoidance(GraphicsContext&) const;
     bool backgroundHasOpaqueTopLayer() const;
 
     void computePositionedLogicalWidth(LogicalExtentComputedValues&, RenderRegion* = nullptr) const;
@@ -664,7 +664,6 @@ private:
 #endif
 
 #if ENABLE(CSS_GRID_LAYOUT)
-    void updateGridAlignmentAfterStyleChange(const RenderStyle*);
     bool isGridItem() const { return parent() && parent()->isRenderGrid(); }
 #endif
 

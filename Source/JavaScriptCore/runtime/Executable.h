@@ -50,10 +50,14 @@ class CodeBlock;
 class Debugger;
 class EvalCodeBlock;
 class FunctionCodeBlock;
+class JSScope;
+class JSWASMModule;
 class LLIntOffsetsExtractor;
 class ProgramCodeBlock;
+class ModuleProgramCodeBlock;
 class JSScope;
-    
+class WebAssemblyCodeBlock;
+
 enum CompilationKind { FirstCompilation, OptimizingCompilation };
 
 inline bool isCall(CodeSpecializationKind kind)
@@ -92,24 +96,36 @@ public:
         
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
-    bool isEvalExecutable()
+    bool isEvalExecutable() const
     {
         return type() == EvalExecutableType;
     }
-    bool isFunctionExecutable()
+    bool isFunctionExecutable() const
     {
         return type() == FunctionExecutableType;
     }
-    bool isProgramExecutable()
+    bool isProgramExecutable() const
     {
         return type() == ProgramExecutableType;
     }
+    bool isModuleProgramExecutable()
+    {
+        return type() == ModuleProgramExecutableType;
+    }
+
 
     bool isHostFunction() const
     {
         ASSERT((m_numParametersForCall == NUM_PARAMETERS_IS_HOST) == (m_numParametersForConstruct == NUM_PARAMETERS_IS_HOST));
         return m_numParametersForCall == NUM_PARAMETERS_IS_HOST;
     }
+
+#if ENABLE(WEBASSEMBLY)
+    bool isWebAssemblyExecutable() const
+    {
+        return type() == WebAssemblyExecutableType;
+    }
+#endif
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(vm, globalObject, proto, TypeInfo(CellType, StructureFlags), info()); }
         
@@ -374,16 +390,19 @@ public:
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
         
     void setNeverInline(bool value) { m_neverInline = value; }
+    void setNeverOptimize(bool value) { m_neverOptimize = value; }
     void setDidTryToEnterInLoop(bool value) { m_didTryToEnterInLoop = value; }
     bool neverInline() const { return m_neverInline; }
+    bool neverOptimize() const { return m_neverOptimize; }
     bool didTryToEnterInLoop() const { return m_didTryToEnterInLoop; }
     bool isInliningCandidate() const { return !neverInline(); }
+    bool isOkToOptimize() const { return !neverOptimize(); }
     
     bool* addressOfDidTryToEnterInLoop() { return &m_didTryToEnterInLoop; }
 
     CodeFeatures features() const { return m_features; }
         
-    DECLARE_INFO;
+    DECLARE_EXPORT_INFO;
 
     void recordParse(CodeFeatures features, bool hasCapturedVariables, int firstLine, int lastLine, unsigned startColumn, unsigned endColumn)
     {
@@ -431,6 +450,7 @@ protected:
     CodeFeatures m_features;
     bool m_hasCapturedVariables;
     bool m_neverInline;
+    bool m_neverOptimize { false };
     bool m_didTryToEnterInLoop;
     int m_overrideLineNumber;
     int m_firstLine;
@@ -537,6 +557,49 @@ private:
     RefPtr<ProgramCodeBlock> m_programCodeBlock;
 };
 
+class ModuleProgramExecutable final : public ScriptExecutable {
+    friend class LLIntOffsetsExtractor;
+public:
+    typedef ScriptExecutable Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+
+    static ModuleProgramExecutable* create(ExecState*, const SourceCode&);
+
+    static void destroy(JSCell*);
+
+    ModuleProgramCodeBlock* codeBlock()
+    {
+        return m_moduleProgramCodeBlock.get();
+    }
+
+    PassRefPtr<JITCode> generatedJITCode()
+    {
+        return generatedJITCodeForCall();
+    }
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
+    {
+        return Structure::create(vm, globalObject, proto, TypeInfo(ModuleProgramExecutableType, StructureFlags), info());
+    }
+
+    DECLARE_INFO;
+
+    void clearCode();
+
+    ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None, false); }
+    UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock() { return m_unlinkedModuleProgramCodeBlock.get(); }
+
+private:
+    friend class ScriptExecutable;
+
+    ModuleProgramExecutable(ExecState*, const SourceCode&);
+
+    static void visitChildren(JSCell*, SlotVisitor&);
+
+    WriteBarrier<UnlinkedModuleProgramCodeBlock> m_unlinkedModuleProgramCodeBlock;
+    RefPtr<ModuleProgramCodeBlock> m_moduleProgramCodeBlock;
+};
+
 class FunctionExecutable final : public ScriptExecutable {
     friend class JIT;
     friend class LLIntOffsetsExtractor;
@@ -558,7 +621,7 @@ public:
 
     static void destroy(JSCell*);
         
-    UnlinkedFunctionExecutable* unlinkedExecutable()
+    UnlinkedFunctionExecutable* unlinkedExecutable() const
     {
         return m_unlinkedExecutable.get();
     }
@@ -672,6 +735,50 @@ private:
     WriteBarrier<InferredValue> m_singletonFunction;
 };
 
+#if ENABLE(WEBASSEMBLY)
+class WebAssemblyExecutable final : public ExecutableBase {
+public:
+    typedef ExecutableBase Base;
+    static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+
+    static WebAssemblyExecutable* create(VM& vm, const SourceCode& source, JSWASMModule* module, unsigned functionIndex)
+    {
+        WebAssemblyExecutable* executable = new (NotNull, allocateCell<WebAssemblyExecutable>(vm.heap)) WebAssemblyExecutable(vm, source, module, functionIndex);
+        executable->finishCreation(vm);
+        return executable;
+    }
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
+    {
+        return Structure::create(vm, globalObject, proto, TypeInfo(WebAssemblyExecutableType, StructureFlags), info());
+    }
+
+    static void destroy(JSCell*);
+
+    DECLARE_INFO;
+
+    void clearCode();
+
+    void prepareForExecution(ExecState*);
+
+    WebAssemblyCodeBlock* codeBlockForCall()
+    {
+        return m_codeBlockForCall.get();
+    }
+
+private:
+    WebAssemblyExecutable(VM&, const SourceCode&, JSWASMModule*, unsigned functionIndex);
+
+    static void visitChildren(JSCell*, SlotVisitor&);
+
+    SourceCode m_source;
+    WriteBarrier<JSWASMModule> m_module;
+    unsigned m_functionIndex;
+
+    RefPtr<WebAssemblyCodeBlock> m_codeBlockForCall;
+};
+#endif
+
 inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)
 {
     switch (executable->type()) {
@@ -681,6 +788,12 @@ inline void ExecutableBase::clearCodeVirtual(ExecutableBase* executable)
         return jsCast<ProgramExecutable*>(executable)->clearCode();
     case FunctionExecutableType:
         return jsCast<FunctionExecutable*>(executable)->clearCode();
+#if ENABLE(WEBASSEMBLY)
+    case WebAssemblyExecutableType:
+        return jsCast<WebAssemblyExecutable*>(executable)->clearCode();
+#endif
+    case ModuleProgramExecutableType:
+        return jsCast<ModuleProgramExecutable*>(executable)->clearCode();
     default:
         return jsCast<NativeExecutable*>(executable)->clearCode();
     }

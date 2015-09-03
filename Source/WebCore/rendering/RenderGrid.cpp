@@ -311,25 +311,6 @@ void RenderGrid::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, Layo
         const_cast<RenderGrid*>(this)->clearGrid();
 }
 
-void RenderGrid::computePreferredLogicalWidths()
-{
-    ASSERT(preferredLogicalWidthsDirty());
-
-    m_minPreferredLogicalWidth = 0;
-    m_maxPreferredLogicalWidth = 0;
-
-    // FIXME: We don't take our own logical width into account. Once we do, we need to make sure
-    // we apply (and test the interaction with) min-width / max-width.
-
-    computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);
-
-    LayoutUnit borderAndPaddingInInlineDirection = borderAndPaddingLogicalWidth();
-    m_minPreferredLogicalWidth += borderAndPaddingInInlineDirection;
-    m_maxPreferredLogicalWidth += borderAndPaddingInInlineDirection;
-
-    setPreferredLogicalWidthsDirty(false);
-}
-
 void RenderGrid::computeUsedBreadthOfGridTracks(GridTrackSizingDirection direction, GridSizingData& sizingData)
 {
     LayoutUnit availableLogicalSpace = (direction == ForColumns) ? availableLogicalWidth() : availableLogicalHeight(IncludeMarginBorderPadding);
@@ -518,6 +499,11 @@ double RenderGrid::computeNormalizedFractionBreadth(Vector<GridTrack>& tracks, c
         // This item was processed so we re-add its used breadth to the available space to accurately count the remaining space.
         availableLogicalSpaceIgnoringFractionTracks += track.m_track->baseSize();
     }
+
+    // Let flex factor sum be the sum of the flex factors of the flexible tracks. If this value
+    // is less than 1, set it to 1 instead.
+    if (accumulatedFractions < 1)
+        return availableLogicalSpaceIgnoringFractionTracks;
 
     return availableLogicalSpaceIgnoringFractionTracks / accumulatedFractions;
 }
@@ -1185,6 +1171,8 @@ void RenderGrid::layoutGridItems()
             || ((!oldOverrideContainingBlockContentLogicalHeight || oldOverrideContainingBlockContentLogicalHeight.value() != overrideContainingBlockContentLogicalHeight)
                 && child->hasRelativeLogicalHeight()))
             child->setNeedsLayout(MarkOnlyThis);
+        else
+            resetAutoMarginsAndLogicalTopInColumnAxis(*child);
 
         child->setOverrideContainingBlockContentLogicalWidth(overrideContainingBlockContentLogicalWidth);
         child->setOverrideContainingBlockContentLogicalHeight(overrideContainingBlockContentLogicalHeight);
@@ -1199,7 +1187,8 @@ void RenderGrid::layoutGridItems()
         child->layoutIfNeeded();
 
         // We need pending layouts to be done in order to compute auto-margins properly.
-        updateAutoMarginsInColumnAxisIfNeeded(*child, overrideContainingBlockContentLogicalHeight);
+        updateAutoMarginsInColumnAxisIfNeeded(*child);
+        updateAutoMarginsInRowAxisIfNeeded(*child);
 
         child->setLogicalLocation(findChildLogicalPosition(*child));
 
@@ -1298,6 +1287,8 @@ LayoutUnit RenderGrid::availableAlignmentSpaceForChildBeforeStretching(LayoutUni
 // FIXME: This logic is shared by RenderFlexibleBox, so it should be moved to RenderBox.
 void RenderGrid::applyStretchAlignmentToChildIfNeeded(RenderBox& child)
 {
+    ASSERT(child.overrideContainingBlockContentLogicalWidth() && child.overrideContainingBlockContentLogicalHeight());
+
     // We clear both width and height override values because we will decide now whether they
     // are allowed or not, evaluating the conditions which might have changed since the old
     // values were set.
@@ -1310,11 +1301,11 @@ void RenderGrid::applyStretchAlignmentToChildIfNeeded(RenderBox& child)
     bool allowedToStretchChildAlongRowAxis = hasAutoSizeInRowAxis && !childStyle.marginStartUsing(&gridStyle).isAuto() && !childStyle.marginEndUsing(&gridStyle).isAuto();
     if (!allowedToStretchChildAlongRowAxis || RenderStyle::resolveJustification(gridStyle, childStyle, ItemPositionStretch) != ItemPositionStretch) {
         bool hasAutoMinSizeInRowAxis = isHorizontalMode ? childStyle.minWidth().isAuto() : childStyle.minHeight().isAuto();
-        bool canShrinkToFitInRowAxisForChild = !hasAutoMinSizeInRowAxis || (child.overrideContainingBlockContentLogicalWidth() && child.minPreferredLogicalWidth() <= child.overrideContainingBlockContentLogicalWidth().value());
+        bool canShrinkToFitInRowAxisForChild = !hasAutoMinSizeInRowAxis || child.minPreferredLogicalWidth() <= child.overrideContainingBlockContentLogicalWidth().value();
         // TODO(lajava): how to handle orthogonality in this case ?.
         // TODO(lajava): grid track sizing and positioning do not support orthogonal modes yet.
         if (hasAutoSizeInRowAxis && canShrinkToFitInRowAxisForChild) {
-            LayoutUnit childWidthToFitContent = std::max(std::min(child.maxPreferredLogicalWidth(), child.overrideContainingBlockContentLogicalWidth().valueOr(-1) - child.marginLogicalWidth()), child.minPreferredLogicalWidth());
+            LayoutUnit childWidthToFitContent = std::max(std::min(child.maxPreferredLogicalWidth(), child.overrideContainingBlockContentLogicalWidth().value() - child.marginLogicalWidth()), child.minPreferredLogicalWidth());
             LayoutUnit desiredLogicalWidth = child.constrainLogicalHeightByMinMax(childWidthToFitContent, Nullopt);
             child.setOverrideLogicalContentWidth(desiredLogicalWidth - child.borderAndPaddingLogicalWidth());
             if (desiredLogicalWidth != child.logicalWidth())
@@ -1328,7 +1319,7 @@ void RenderGrid::applyStretchAlignmentToChildIfNeeded(RenderBox& child)
         // TODO (lajava): If the child has orthogonal flow, then it already has an override height set, so use it.
         // TODO (lajava): grid track sizing and positioning do not support orthogonal modes yet.
         if (child.isHorizontalWritingMode() == isHorizontalMode) {
-            LayoutUnit stretchedLogicalHeight = availableAlignmentSpaceForChildBeforeStretching(child.overrideContainingBlockContentLogicalHeight().valueOr(-1), child);
+            LayoutUnit stretchedLogicalHeight = availableAlignmentSpaceForChildBeforeStretching(child.overrideContainingBlockContentLogicalHeight().value(), child);
             LayoutUnit desiredLogicalHeight = child.constrainLogicalHeightByMinMax(stretchedLogicalHeight, Nullopt);
             child.setOverrideLogicalContentHeight(desiredLogicalHeight - child.borderAndPaddingLogicalHeight());
             if (desiredLogicalHeight != child.logicalHeight()) {
@@ -1357,11 +1348,67 @@ bool RenderGrid::hasAutoMarginsInRowAxis(const RenderBox& child) const
 }
 
 // FIXME: This logic is shared by RenderFlexibleBox, so it should be moved to RenderBox.
-void RenderGrid::updateAutoMarginsInColumnAxisIfNeeded(RenderBox& child, LayoutUnit gridAreaBreadthForChild)
+void RenderGrid::resetAutoMarginsAndLogicalTopInColumnAxis(RenderBox& child)
+{
+    if (hasAutoMarginsInColumnAxis(child) || child.needsLayout()) {
+        child.clearOverrideLogicalContentHeight();
+        child.updateLogicalHeight();
+        if (isHorizontalWritingMode()) {
+            if (child.style().marginTop().isAuto())
+                child.setMarginTop(0);
+            if (child.style().marginBottom().isAuto())
+                child.setMarginBottom(0);
+        } else {
+            if (child.style().marginLeft().isAuto())
+                child.setMarginLeft(0);
+            if (child.style().marginRight().isAuto())
+                child.setMarginRight(0);
+        }
+
+    }
+}
+
+// FIXME: This logic is shared by RenderFlexibleBox, so it should be moved to RenderBox.
+void RenderGrid::updateAutoMarginsInRowAxisIfNeeded(RenderBox& child)
 {
     ASSERT(!child.isOutOfFlowPositioned());
+    ASSERT(child.overrideContainingBlockContentLogicalWidth());
 
-    LayoutUnit availableAlignmentSpace = gridAreaBreadthForChild - child.logicalHeight();
+    LayoutUnit availableAlignmentSpace = child.overrideContainingBlockContentLogicalWidth().value() - child.logicalWidth();
+    if (availableAlignmentSpace <= 0)
+        return;
+
+    bool isHorizontal = isHorizontalWritingMode();
+    Length topOrLeft = isHorizontal ? child.style().marginLeft() : child.style().marginTop();
+    Length bottomOrRight = isHorizontal ? child.style().marginRight() : child.style().marginBottom();
+    if (topOrLeft.isAuto() && bottomOrRight.isAuto()) {
+        if (isHorizontal) {
+            child.setMarginLeft(availableAlignmentSpace / 2);
+            child.setMarginRight(availableAlignmentSpace / 2);
+        } else {
+            child.setMarginTop(availableAlignmentSpace / 2);
+            child.setMarginBottom(availableAlignmentSpace / 2);
+        }
+    } else if (topOrLeft.isAuto()) {
+        if (isHorizontal)
+            child.setMarginLeft(availableAlignmentSpace);
+        else
+            child.setMarginTop(availableAlignmentSpace);
+    } else if (bottomOrRight.isAuto()) {
+        if (isHorizontal)
+            child.setMarginRight(availableAlignmentSpace);
+        else
+            child.setMarginBottom(availableAlignmentSpace);
+    }
+}
+
+// FIXME: This logic is shared by RenderFlexibleBox, so it should be moved to RenderBox.
+void RenderGrid::updateAutoMarginsInColumnAxisIfNeeded(RenderBox& child)
+{
+    ASSERT(!child.isOutOfFlowPositioned());
+    ASSERT(child.overrideContainingBlockContentLogicalHeight());
+
+    LayoutUnit availableAlignmentSpace = child.overrideContainingBlockContentLogicalHeight().value() - child.logicalHeight();
     if (availableAlignmentSpace <= 0)
         return;
 

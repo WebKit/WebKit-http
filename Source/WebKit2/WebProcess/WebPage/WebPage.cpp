@@ -1334,7 +1334,7 @@ void WebPage::drawRect(GraphicsContext& graphicsContext, const IntRect& rect)
     GraphicsContextStateSaver stateSaver(graphicsContext);
     graphicsContext.clip(rect);
 
-    m_mainFrame->coreFrame()->view()->paint(&graphicsContext, rect);
+    m_mainFrame->coreFrame()->view()->paint(graphicsContext, rect);
 }
 
 double WebPage::textZoomFactor() const
@@ -1491,15 +1491,6 @@ void WebPage::scaleView(double scale)
     m_page->setViewScaleFactor(scale);
     scalePage(pageScale, scrollPositionAtNewScale);
 }
-
-#if PLATFORM(COCOA)
-void WebPage::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, uint64_t callbackID)
-{
-    scaleView(scale);
-    m_drawingArea->updateGeometry(viewSize, IntSize(), false, MachSendRight());
-    m_drawingArea->replyWithFenceAfterNextFlush(callbackID);
-}
-#endif
 
 void WebPage::setDeviceScaleFactor(float scaleFactor)
 {
@@ -1772,7 +1763,7 @@ PassRefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize&
     if (options & SnapshotOptionsInViewCoordinates)
         coordinateSpace = FrameView::ViewCoordinates;
 
-    frameView->paintContentsForSnapshot(graphicsContext.get(), snapshotRect, shouldPaintSelection, coordinateSpace);
+    frameView->paintContentsForSnapshot(*graphicsContext, snapshotRect, shouldPaintSelection, coordinateSpace);
 
     if (options & SnapshotOptionsPaintSelectionRectangle) {
         FloatRect selectionRectangle = m_mainFrame->coreFrame()->selection().selectionBounds();
@@ -1828,7 +1819,7 @@ PassRefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions 
     frameView->setBaseBackgroundColor(Color::transparent);
     frameView->setNodeToDraw(&node);
 
-    frameView->paintContentsForSnapshot(graphicsContext.get(), snapshotRect, FrameView::ExcludeSelection, FrameView::DocumentCoordinates);
+    frameView->paintContentsForSnapshot(*graphicsContext, snapshotRect, FrameView::ExcludeSelection, FrameView::DocumentCoordinates);
 
     frameView->setBaseBackgroundColor(savedBackgroundColor);
     frameView->setNodeToDraw(nullptr);
@@ -2743,6 +2734,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setRequiresUserGestureForMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForMediaPlaybackKey()));
     settings.setAllowsInlineMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackKey()));
+    settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(store.getBoolValueForKey(WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey()));
+    settings.setMediaDataLoadsAutomatically(store.getBoolValueForKey(WebPreferencesKey::mediaDataLoadsAutomaticallyKey()));
     settings.setAllowsPictureInPictureMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey()));
     settings.setMediaControlsScaleWithPageZoom(store.getBoolValueForKey(WebPreferencesKey::mediaControlsScaleWithPageZoomKey()));
     settings.setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
@@ -4305,9 +4298,6 @@ void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, 
         return;
     }
 
-    ASSERT(range->startContainer());
-    ASSERT(range->endContainer());
-
     result = frame.view()->contentsToWindow(frame.editor().firstRectForRange(range.get()));
 
     // FIXME: Update actualRange to match the range of first rect.
@@ -4345,17 +4335,16 @@ static Frame* targetFrameForEditing(WebPage* page)
 
     Editor& editor = targetFrame.editor();
     if (!editor.canEdit())
-        return 0;
+        return nullptr;
 
     if (editor.hasComposition()) {
         // We should verify the parent node of this IME composition node are
         // editable because JavaScript may delete a parent node of the composition
         // node. In this case, WebKit crashes while deleting texts from the parent
         // node, which doesn't exist any longer.
-        if (PassRefPtr<Range> range = editor.compositionRange()) {
-            Node* node = range->startContainer();
-            if (!node || !node->isContentEditable())
-                return 0;
+        if (auto range = editor.compositionRange()) {
+            if (!range->startContainer().isContentEditable())
+                return nullptr;
         }
     }
     return &targetFrame;

@@ -56,7 +56,6 @@ WebInspector.CSSStyleManager = class CSSStyleManager extends WebInspector.Object
 
     static protocolStyleSheetOriginToEnum(origin)
     {
-        // FIXME: Switch from CSSRule.Type to CSSStyleSheet.Type everywhere.
         switch (origin) {
         case CSSAgent.StyleSheetOrigin.Regular:
             return WebInspector.CSSStyleSheet.Type.Author;
@@ -67,8 +66,25 @@ WebInspector.CSSStyleManager = class CSSStyleManager extends WebInspector.Object
         case CSSAgent.StyleSheetOrigin.Inspector:
             return WebInspector.CSSStyleSheet.Type.Inspector;
         default:
-            console.assert(false, "Unknown StyleSheetOrigin", origin);
+            console.assert(false, "Unknown CSS.StyleSheetOrigin", origin);
             return CSSAgent.StyleSheetOrigin.Regular;
+        }
+    }
+
+    static protocolMediaSourceToEnum(source)
+    {
+        switch (source) {
+        case CSSAgent.CSSMediaSource.MediaRule:
+            return WebInspector.CSSMedia.Type.MediaRule;
+        case CSSAgent.CSSMediaSource.ImportRule:
+            return WebInspector.CSSMedia.Type.ImportRule;
+        case CSSAgent.CSSMediaSource.LinkedSheet:
+            return WebInspector.CSSMedia.Type.LinkedStyleSheet;
+        case CSSAgent.CSSMediaSource.InlineSheet:
+            return WebInspector.CSSMedia.Type.InlineStyleSheet;
+        default:
+            console.assert(false, "Unknown CSS.CSSMediaSource", origin);
+            return WebInspector.CSSMedia.Type.MediaRule;
         }
     }
 
@@ -151,6 +167,92 @@ WebInspector.CSSStyleManager = class CSSStyleManager extends WebInspector.Object
         return styles;
     }
 
+    preferredInspectorStyleSheetForFrame(frame, callback)
+    {
+        var inspectorStyleSheets = this._inspectorStyleSheetsForFrame(frame);
+        for (let styleSheet of inspectorStyleSheets) {
+            if (styleSheet[WebInspector.CSSStyleManager.PreferredInspectorStyleSheetSymbol]) {
+                callback(styleSheet);
+                return;
+            }
+        }
+
+        if (CSSAgent.createStyleSheet) {
+            CSSAgent.createStyleSheet(frame.id, function(error, styleSheetId) {
+                let styleSheet = WebInspector.cssStyleManager.styleSheetForIdentifier(styleSheetId);
+                styleSheet[WebInspector.CSSStyleManager.PreferredInspectorStyleSheetSymbol] = true;
+                callback(styleSheet);
+            });
+            return;
+        }
+
+        // COMPATIBILITY (iOS 9): CSS.createStyleSheet did not exist.
+        // Legacy backends can only create the Inspector StyleSheet through CSS.addRule.
+        // Exploit that to create the Inspector StyleSheet for the document.body node in
+        // this frame, then get the StyleSheet for the new rule.
+
+        let expression = appendWebInspectorSourceURL("document");
+        let contextId = frame.pageExecutionContext.id;
+        RuntimeAgent.evaluate.invoke({expression, objectGroup: "", includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, contextId, returnByValue: false, generatePreview: false}, documentAvailable);
+
+        function documentAvailable(error, documentRemoteObjectPayload)
+        {
+            if (error) {
+                callback(null);
+                return;
+            }
+
+            let remoteObject = WebInspector.RemoteObject.fromPayload(documentRemoteObjectPayload);
+            remoteObject.pushNodeToFrontend(documentNodeAvailable.bind(null, remoteObject));
+        }
+
+        function documentNodeAvailable(remoteObject, documentNodeId)
+        {
+            remoteObject.release();
+
+            if (!documentNodeId) {
+                callback(null);
+                return;
+            }
+
+            DOMAgent.querySelector(documentNodeId, "body", bodyNodeAvailable);
+        }
+
+        function bodyNodeAvailable(error, bodyNodeId)
+        {
+            if (error) {
+                console.error(error);
+                callback(null);
+                return;
+            }
+
+            let selector = ""; // Intentionally empty.
+            CSSAgent.addRule(bodyNodeId, selector, cssRuleAvailable);
+        }
+
+        function cssRuleAvailable(error, payload)
+        {
+            if (error || !payload.ruleId) {
+                callback(null);
+                return;
+            }
+
+            let styleSheetId = payload.ruleId.styleSheetId;
+            let styleSheet = WebInspector.cssStyleManager.styleSheetForIdentifier(styleSheetId);
+            if (!styleSheet) {
+                callback(null);
+                return;
+            }
+
+            styleSheet[WebInspector.CSSStyleManager.PreferredInspectorStyleSheetSymbol] = true;
+
+            console.assert(styleSheet.isInspectorStyleSheet());
+            console.assert(styleSheet.parentFrame === frame);
+
+            callback(styleSheet);
+        }
+    }
+
     // Protected
 
     mediaQueryResultChanged()
@@ -199,6 +301,18 @@ WebInspector.CSSStyleManager = class CSSStyleManager extends WebInspector.Object
     }
 
     // Private
+
+    _inspectorStyleSheetsForFrame(frame)
+    {
+        let styleSheets = [];
+
+        for (let styleSheet of this.styleSheets) {
+            if (styleSheet.isInspectorStyleSheet() && styleSheet.parentFrame === frame)
+                styleSheets.push(styleSheet);
+        }
+
+        return styleSheets;
+    }
 
     _nodePseudoClassesDidChange(event)
     {
@@ -427,3 +541,4 @@ WebInspector.CSSStyleManager.Event = {
 };
 
 WebInspector.CSSStyleManager.ForceablePseudoClasses = ["active", "focus", "hover", "visited"];
+WebInspector.CSSStyleManager.PreferredInspectorStyleSheetSymbol = Symbol("css-style-manager-preferred-inspector-stylesheet");

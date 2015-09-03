@@ -38,6 +38,7 @@
 #include "WebCoreSystemInterface.h"
 #include <Carbon/Carbon.h>
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/TemporaryChange.h>
 
@@ -77,11 +78,11 @@ static ScrollbarPainterMap* scrollbarMap()
 {
     UNUSED_PARAM(unusedNotification);
 
-    ScrollbarTheme* theme = ScrollbarTheme::theme();
-    if (theme->isMockTheme())
+    ScrollbarTheme& theme = ScrollbarTheme::theme();
+    if (theme.isMockTheme())
         return;
 
-    static_cast<ScrollbarThemeMac*>(ScrollbarTheme::theme())->preferencesChanged();
+    static_cast<ScrollbarThemeMac&>(theme).preferencesChanged();
     if (scrollbarMap()->isEmpty())
         return;
     ScrollbarPainterMap::iterator end = scrollbarMap()->end();
@@ -95,11 +96,11 @@ static ScrollbarPainterMap* scrollbarMap()
 {
     UNUSED_PARAM(unusedNotification);
 
-    ScrollbarTheme* theme = ScrollbarTheme::theme();
-    if (theme->isMockTheme())
+    ScrollbarTheme& theme = ScrollbarTheme::theme();
+    if (theme.isMockTheme())
         return;
 
-    static_cast<ScrollbarThemeMac*>(ScrollbarTheme::theme())->preferencesChanged();
+    static_cast<ScrollbarThemeMac&>(theme).preferencesChanged();
 }
 
 + (void)registerAsObserver
@@ -112,10 +113,10 @@ static ScrollbarPainterMap* scrollbarMap()
 
 namespace WebCore {
 
-ScrollbarTheme* ScrollbarTheme::nativeTheme()
+ScrollbarTheme& ScrollbarTheme::nativeTheme()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(ScrollbarThemeMac, theme, ());
-    return &theme;
+    static NeverDestroyed<ScrollbarThemeMac> theme;
+    return theme;
 }
 
 // FIXME: Get these numbers from CoreUI.
@@ -513,7 +514,7 @@ bool ScrollbarThemeMac::paint(Scrollbar& scrollbar, GraphicsContext& context, co
         GraphicsContextStateSaver stateSaver(context);
         context.clip(damageRect);
         context.translate(scrollbar.frameRect().x(), scrollbar.frameRect().y());
-        LocalCurrentGraphicsContext localContext(&context);
+        LocalCurrentGraphicsContext localContext(context);
         scrollbarPainterPaint(scrollbarMap()->get(&scrollbar).get(), scrollbar.enabled());
     }
 

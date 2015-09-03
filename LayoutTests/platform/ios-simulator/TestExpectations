@@ -108,11 +108,6 @@ storage/websql/quota-tracking.html
 inspector/ [ Skip ]
 http/tests/inspector/ [ Skip ]
 
-# ShadowDOM is not enabled on iOS
-fast/dom/shadow
-fast/dom/HTMLTemplateElement/cycles-in-shadow.html
-editing/shadow
-
 # Some CSS3 Text tests are not enabled on iOS
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
 webkit.org/b/99945 fast/css3-text/css3-text-justify
@@ -2708,3 +2703,100 @@ fast/text/softbank-emoji.html [ Failure Pass ]
 
 # This test hardcodes the result of the Mac font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
+
+# Media controls tests are OS X only
+media/controls [ Skip ]
+
+# Latest iOS failures as of Sept 1, 2015
+accessibility/ios-simulator/table-cell-ranges.html [ Failure ]
+canvas/philip/tests/2d.imageData.put.unchanged.html [ Failure ]
+compositing/backing/form-controls-backing.html [ Failure ]
+compositing/fixed-with-fixed-layout.html [ Failure ]
+compositing/geometry/ancestor-overflow-change.html [ Failure ]
+compositing/layer-creation/fixed-overlap-extent-rtl.html [ Failure ]
+compositing/layer-creation/fixed-overlap-extent.html [ Failure ]
+compositing/layer-creation/will-change-layer-creation.html [ Failure ]
+css3/scroll-snap/nested-elements.html [ Failure ]
+css3/scroll-snap/scroll-snap-coordinate.html [ Failure ]
+editing/execCommand/paste-1.html [ Failure ]
+fast/block/lineboxcontain/block-with-ideographs.xhtml [ Failure ]
+fast/css/text-overflow-ellipsis-text-align-center.html [ Failure ]
+fast/css/text-overflow-ellipsis-text-align-left.html [ Failure ]
+fast/css/text-overflow-ellipsis-text-align-right.html [ Failure ]
+fast/css/vertical-text-overflow-ellipsis-text-align-center.html [ Failure ]
+fast/css/vertical-text-overflow-ellipsis-text-align-right.html [ Failure ]
+fast/encoding/denormalised-voiced-japanese-chars.html [ Failure ]
+fast/forms/listbox-scrollbar-hit-test.html [ Failure ]
+fast/forms/plaintext-mode-2.html [ Failure ]
+fast/hidpi/video-controls-in-hidpi.html [ Failure ]
+fast/layers/video-layer.html [ Failure ]
+fast/parser/xml-colon-entity.html [ Failure ]
+fast/parser/xml-declaration-missing-ending-mark.html [ Failure ]
+fast/text/arabic-times-new-roman.html [ Failure ]
+http/tests/w3c/dom/events/EventTarget-dispatchEvent.html [ Failure ]
+http/tests/w3c/dom/nodes/Document-createEvent.html [ Failure ]
+imported/w3c/canvas/2d.imageData.put.unchanged.html [ Failure ]
+platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
+platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
+svg/custom/bug78807.svg [ Failure ]
+
+css3/line-break-language-sensitive/line-break-auto-hyphens.html [ ImageOnlyFailure ]
+css3/line-break-language-sensitive/line-break-loose-hyphens.html [ ImageOnlyFailure ]
+css3/line-break-language-sensitive/line-break-normal-hyphens.html [ ImageOnlyFailure ]
+css3/line-break-language-sensitive/line-break-strict-hyphens.html [ ImageOnlyFailure ]
+fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
+fast/filter-image/filter-image.html [ ImageOnlyFailure ]
+fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
+fast/text/han-generic-font-families.html [ ImageOnlyFailure ]
+fast/text/mark-matches-broken-line-rendering.html [ ImageOnlyFailure ]
+fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
+fast/text/synthetic-bold-transformed.html [ ImageOnlyFailure ]
+fast/text/word-break-keep-all.html [ ImageOnlyFailure ]
+
+# Skip tests that timeout:
+compositing/video/video-clip-change-src.html [ Skip ]
+fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Skip ]
+compositing/images/content-image-change.html [ Skip ]
+compositing/images/content-image.html [ Skip ]
+compositing/images/direct-image-background-color.html [ Skip ]
+compositing/layer-creation/fixed-overlap-extent-rtl.html [ Skip ]
+compositing/layer-creation/fixed-overlap-extent.html [ Skip ]
+compositing/layer-creation/fixed-position-and-transform.html [ Skip ]
+compositing/masks/cease-tiled-mask.html [ Skip ]
+compositing/masks/compositing-clip-path-mask-change.html [ Skip ]
+compositing/overflow/automatically-opt-into-composited-scrolling.html [ Skip ]
+compositing/overflow/clipping-ancestor-with-accelerated-scrolling-ancestor.html [ Skip ]
+compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2.html [ Skip ]
+compositing/overlap-blending/nested-overlap-overflow.html [ Skip ]
+compositing/overlap-blending/nested-overlap.html [ Skip ]
+compositing/patterns/direct-pattern-compositing-cover.html [ Skip ]
+compositing/patterns/direct-pattern-compositing-hidden-radial-gradient.html [ Skip ]
+compositing/reflections/nested-reflection-anchor-point.html [ Skip ]
+compositing/reflections/nested-reflection-mask-change.html [ Skip ]
+compositing/reflections/nested-reflection-on-overflow.html [ Skip ]
+compositing/regions/fixed-empty-region-scrolled.html [ Skip ]
+compositing/regions/fixed-in-diff-named-flows-zIndex.html [ Skip ]
+compositing/repaint/clipped-layer-size-change.html [ Skip ]
+compositing/repaint/fixed-background-scroll.html [ Skip ]
+compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html [ Skip ]
+compositing/repaint/iframes/compositing-iframe-scroll-repaint.html [ Skip ]
+compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint.html [ Skip ]
+compositing/rtl/rtl-absolute-overflow-scrolled.html [ Skip ]
+compositing/rtl/rtl-absolute-overflow.html [ Skip ]
+compositing/rtl/rtl-fixed-overflow-scrolled.html [ Skip ]
+http/tests/messaging/cross-domain-message-event-dispatch.html [ Skip ]
+http/tests/messaging/cross-domain-message-send.html [ Skip ]
+http/tests/ssl/ping-with-unsafe-redirect.html [ Skip ]
+http/tests/ssl/referer-301.html [ Skip ]
+http/tests/w3c/dom/events/Event-constants.html [ Skip ]
+
+# Tests that fail as of 09/02/2015:
+editing/deleting/delete-block-merge-contents-010.html [ Failure ]
+fast/parser/external-entities-in-xslt.xml [ Failure ]
+http/tests/navigation/page-cache-iframe-no-current-historyItem.html [ Failure ]
+
+# Skip tests that crash as of 09/02/2015:
+fast/dom/offset-position-writing-modes.html [ Skip ]
+http/tests/navigation/page-cache-pending-image-load-cache-partition.html [ Skip ]
+http/tests/security/mixedContent/websocket/insecure-websocket-in-iframe.html [ Skip ]
+http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame.html [ Skip ]

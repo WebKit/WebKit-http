@@ -1,5 +1,5 @@
 set(MiniBrowser_INCLUDE_DIRECTORIES
-    MiniBrowser.vcxproj
+    ../MiniBrowser.vcxproj
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit"
     "${DERIVED_SOURCES_DIR}"
@@ -62,3 +62,5 @@ add_executable(MiniBrowser WIN32 ${TOOLS_DIR}/win/DLLLauncher/DLLLauncherMain.cp
 target_link_libraries(MiniBrowser shlwapi)
 set_target_properties(MiniBrowser PROPERTIES FOLDER "Tools")
 set_target_properties(MiniBrowser PROPERTIES OUTPUT_NAME "MiniBrowser")
+
+add_dependencies(MiniBrowser MiniBrowserLib)

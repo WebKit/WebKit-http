@@ -108,6 +108,12 @@ void AbstractInterpreter<AbstractStateType>::executeEdges(unsigned indexInBlock)
 template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
 {
+    // Some use kinds are required to not have checks, because we know somehow that the incoming
+    // value will already have the type we want. In those cases, AI may not be smart enough to
+    // prove that this is indeed the case.
+    if (shouldNotHaveTypeCheck(edge.useKind()))
+        return;
+    
     if (!(forNode(edge).m_type & ~typeFilterFor(edge.useKind())))
         return;
     
@@ -420,7 +426,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
 
     case StrCat: {
-        clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(m_graph, SpecString);
         break;
     }
@@ -1575,7 +1580,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         clobberWorld(node->origin.semantic, clobberLimit);
         
-        forNode(node).setType(m_graph, (SpecHeapTop & ~SpecCell) | SpecString | SpecSymbol);
+        forNode(node).setType(m_graph, SpecHeapTop & ~SpecObject);
         break;
     }
         

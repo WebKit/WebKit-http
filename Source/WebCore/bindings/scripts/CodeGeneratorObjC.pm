@@ -420,6 +420,7 @@ sub GetImplClassName
 {
     my $name = shift;
 
+    return "NativeNodeFilter" if $name eq "NodeFilter";
     return "DOMWindow" if $name eq "AbstractView";
     return $name;
 }
@@ -577,7 +578,6 @@ sub GetObjCType
     return "float" if $type eq "unrestricted float";
     return "id <$name>" if IsProtocolType($type);
     return $name if $codeGenerator->IsPrimitiveType($type) or $type eq "DOMTimeStamp";
-    return "unsigned short" if $type eq "CompareHow";
     return $name if IsCoreFoundationType($name);
     return "$name *";
 }
@@ -594,7 +594,7 @@ sub GetPropertyAttributes
     # FIXME: <rdar://problem/5049934> Consider using 'nonatomic' on the DOM @property declarations.
     if ($codeGenerator->IsStringType($type) || IsNativeObjCType($type)) {
         push(@attributes, "copy");
-    } elsif (!$codeGenerator->IsStringType($type) && !$codeGenerator->IsPrimitiveType($type) && $type ne "DOMTimeStamp" && $type ne "CompareHow") {
+    } elsif (!$codeGenerator->IsStringType($type) && !$codeGenerator->IsPrimitiveType($type) && $type ne "DOMTimeStamp") {
         push(@attributes, "strong");
     }
 
@@ -616,7 +616,6 @@ sub GetObjCTypeGetter
 
     return $argName if $codeGenerator->IsPrimitiveType($type) or $codeGenerator->IsStringType($type) or IsNativeObjCType($type);
     return $argName . "Node" if $type eq "EventTarget";
-    return "static_cast<WebCore::Range::CompareHow>($argName)" if $type eq "CompareHow";
     return "WTF::getPtr(nativeEventListener)" if $type eq "EventListener";
     return "WTF::getPtr(nativeNodeFilter)" if $type eq "NodeFilter";
     return "WTF::getPtr(nativeResolver)" if $type eq "XPathNSResolver";
@@ -695,7 +694,7 @@ sub AddIncludesForType
     }
 
     if ($type eq "NodeFilter") {
-        $implIncludes{"NodeFilter.h"} = 1;
+        $implIncludes{"NativeNodeFilter.h"} = 1;
         $implIncludes{"ObjCNodeFilterCondition.h"} = 1;
         return;
     }
@@ -1559,7 +1558,7 @@ sub GenerateImplementation
                 my $paramName = $needsCustom{"NodeFilter"};
                 push(@functionContent, "    RefPtr<WebCore::NodeFilter> nativeNodeFilter;\n");
                 push(@functionContent, "    if ($paramName)\n");
-                push(@functionContent, "        nativeNodeFilter = WebCore::NodeFilter::create(WebCore::ObjCNodeFilterCondition::create($paramName));\n");
+                push(@functionContent, "        nativeNodeFilter = WebCore::NativeNodeFilter::create(WebCore::ObjCNodeFilterCondition::create($paramName));\n");
             }
 
             push(@parameterNames, "ec") if $raisesExceptions;

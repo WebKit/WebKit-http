@@ -43,8 +43,8 @@ namespace WebCore {
         }
         ~NodeIterator();
 
-        PassRefPtr<Node> nextNode(JSC::ExecState*, ExceptionCode&);
-        PassRefPtr<Node> previousNode(JSC::ExecState*, ExceptionCode&);
+        RefPtr<Node> nextNode();
+        RefPtr<Node> previousNode();
         void detach();
 
         Node* referenceNode() const { return m_referenceNode.node.get(); }
@@ -52,11 +52,6 @@ namespace WebCore {
 
         // This function is called before any node is removed from the document tree.
         void nodeWillBeRemoved(Node&);
-
-        // Do not call these functions. They are just scaffolding to support the Objective-C bindings.
-        // They operate in the main thread normal world, and they swallow JS exceptions.
-        PassRefPtr<Node> nextNode(ExceptionCode& ec) { return nextNode(execStateFromNode(mainThreadNormalWorld(), referenceNode()), ec); }
-        PassRefPtr<Node> previousNode(ExceptionCode& ec) { return previousNode(execStateFromNode(mainThreadNormalWorld(), referenceNode()), ec); }
 
     private:
         NodeIterator(PassRefPtr<Node>, unsigned long whatToShow, PassRefPtr<NodeFilter>, bool expandEntityReferences);
@@ -75,7 +70,6 @@ namespace WebCore {
 
         NodePointer m_referenceNode;
         NodePointer m_candidateNode;
-        bool m_detached;
     };
 
 } // namespace WebCore

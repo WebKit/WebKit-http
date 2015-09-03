@@ -2275,22 +2275,6 @@ void WebPageProxy::scaleView(double scale)
     m_process->send(Messages::WebPage::ScaleView(scale), m_pageID);
 }
 
-#if PLATFORM(COCOA)
-void WebPageProxy::scaleViewAndUpdateGeometryFenced(double scale, IntSize viewSize, std::function<void (const MachSendRight&, CallbackBase::Error)> callback)
-{
-    if (!isValid()) {
-        callback(MachSendRight(), CallbackBase::Error::OwnerWasInvalidated);
-        return;
-    }
-
-    m_viewScaleFactor = scale;
-    if (m_drawingArea)
-        m_drawingArea->willSendUpdateGeometry();
-    uint64_t callbackID = m_callbacks.put(WTF::move(callback), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::ScaleViewAndUpdateGeometryFenced(scale, viewSize, callbackID), m_pageID);
-}
-#endif
-
 void WebPageProxy::setIntrinsicDeviceScaleFactor(float scaleFactor)
 {
     if (m_intrinsicDeviceScaleFactor == scaleFactor)
@@ -4259,27 +4243,9 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
             continue;
         }
 
-        // Create the real Share menu item
-        URL absoluteLinkURL;
-        if (!contextMenuContextData.webHitTestResultData().absoluteLinkURL.isEmpty())
-            absoluteLinkURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteLinkURL);
-
-        URL downloadableMediaURL;
-        if (!contextMenuContextData.webHitTestResultData().absoluteMediaURL.isEmpty() && contextMenuContextData.webHitTestResultData().isDownloadableMedia)
-            downloadableMediaURL = URL(ParsedURLString, contextMenuContextData.webHitTestResultData().absoluteMediaURL);
-
-        RefPtr<Image> image;
-        if (contextMenuContextData.webHitTestResultData().imageSharedMemory && contextMenuContextData.webHitTestResultData().imageSize) {
-            image = BitmapImage::create();
-            RefPtr<SharedBuffer> imageData = SharedBuffer::create((unsigned char*)contextMenuContextData.webHitTestResultData().imageSharedMemory->data(), contextMenuContextData.webHitTestResultData().imageSize);
-            image->setData(imageData.release(), true);
-        }
-
-        ContextMenuItem coreItem = ContextMenuItem::shareMenuItem(absoluteLinkURL, downloadableMediaURL, image.get(), contextMenuContextData.selectedText());
-        if (!coreItem.isNull()) {
-            platformInitializeShareMenuItem(coreItem);
+        ContextMenuItem coreItem = platformInitializeShareMenuItem(contextMenuContextData);
+        if (!coreItem.isNull())
             proposedAPIItems.append(WebContextMenuItem::create(coreItem));
-        }
     }
 
     Vector<RefPtr<WebContextMenuItem>> clientItems;
@@ -4295,9 +4261,10 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const C
     m_contextMenuClient->contextMenuDismissed(*this);
 }
 
-#if !PLATFORM(MAC)
-void WebPageProxy::platformInitializeShareMenuItem(ContextMenuItem&)
+#if !ENABLE(SERVICE_CONTROLS)
+ContextMenuItem WebPageProxy::platformInitializeShareMenuItem(const ContextMenuContextData&)
 {
+    return ContextMenuItem();
 }
 #endif
 
@@ -5906,7 +5873,11 @@ void WebPageProxy::navigationGestureDidBegin()
 
     m_isShowingNavigationGestureSnapshot = true;
     m_pageClient.navigationGestureDidBegin();
-    m_loaderClient->navigationGestureDidBegin(*this);
+
+    if (m_navigationClient)
+        m_navigationClient->didBeginNavigationGesture(*this);
+    else
+        m_loaderClient->navigationGestureDidBegin(*this);
 }
 
 void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardListItem& item)
@@ -5914,7 +5885,11 @@ void WebPageProxy::navigationGestureWillEnd(bool willNavigate, WebBackForwardLis
     PageClientProtector protector(m_pageClient);
 
     m_pageClient.navigationGestureWillEnd(willNavigate, item);
-    m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
+
+    if (m_navigationClient)
+        m_navigationClient->willEndNavigationGesture(*this, willNavigate, item);
+    else
+        m_loaderClient->navigationGestureWillEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardListItem& item)
@@ -5922,7 +5897,10 @@ void WebPageProxy::navigationGestureDidEnd(bool willNavigate, WebBackForwardList
     PageClientProtector protector(m_pageClient);
 
     m_pageClient.navigationGestureDidEnd(willNavigate, item);
-    m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
+    if (m_navigationClient)
+        m_navigationClient->didEndNavigationGesture(*this, willNavigate, item);
+    else
+        m_loaderClient->navigationGestureDidEnd(*this, willNavigate, item);
 }
 
 void WebPageProxy::navigationGestureDidEnd()

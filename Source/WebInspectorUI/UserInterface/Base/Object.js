@@ -57,12 +57,13 @@ WebInspector.Object = class Object
 
     static singleFireEventListener(eventType, listener, thisObject)
     {
-        let wrappedCallback = function() {
+        let wrappedCallback = () => {
             this.removeEventListener(eventType, wrappedCallback, null);
             listener.apply(thisObject, arguments);
-        }.bind(this);
+        };
 
         this.addEventListener(eventType, wrappedCallback, null);
+        return wrappedCallback;
     }
 
     static removeEventListener(eventType, listener, thisObject)

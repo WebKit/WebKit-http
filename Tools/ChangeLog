@@ -1,3 +1,454 @@
+2015-09-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r188548): Some tests crash after r188548 because injected bundle messages are received after the test finishes
+        https://bugs.webkit.org/show_bug.cgi?id=148529
+
+        Reviewed by Darin Adler.
+
+        When there are pending EventSender messages after a test finishes,
+        they could be processed in the main loop started by the
+        resetStateToConsistentValues(), but the old EventSender has been
+        replaced by a new one at that point. The new Eventsender can crash
+        when processing messages that were sent to the old one. To avoid
+        this, we return early when receiving an EventSender message and
+        the TestController state is not RunningTest.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::didReceiveKeyDownMessageFromInjectedBundle):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+
+2015-09-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r188548): TestController state is Resseting while tests are running after r188548
+        https://bugs.webkit.org/show_bug.cgi?id=148528
+
+        Reviewed by Darin Adler.
+
+        Before r188548 resetStateToConsistentValues() was called in
+        TestController::run(), before tests are run, but now it's called
+        for every test in TestInvocation::invoke(), after m_status has
+        changed to RunningTest.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Use
+        TemporaryChange to reset m_state ot its previous value after reset
+        is done.
+
+2015-08-31  Jason Marcell  <jmarcell@apple.com>
+
+        Modify prepare-Changelog to be aware of files that are marked as tests as well as files
+        that are marked as requiring corresponding tests.
+        https://bugs.webkit.org/show_bug.cgi?id=148498
+        <rdar://problem/21555314>
+
+        Reviewed by Dan Bernstein and David Kilzer.
+
+        * Scripts/prepare-ChangeLog: Added "attributeCache" to cache Subversion properties in order to
+        simulate Git's attribute behevaior.
+        (main): Added "requiresTests" array to contain files that require tests.
+        (generateNewChangeLogs): Checks "requiresTests" array to determine whether to inject "tests"
+        section in ChangeLog.
+        (attributeCommand): Queries a given file for a given Git attribute value. If using Subversion,
+        however, we check if the file or any containing folder has the given property set to "1" and
+        return 1 if so; return 0 otherwise.
+        (generateFileList): Adds files to "requiresTests" array if Git attribute is set to "1". Also
+        adds files to "addedRegressionTests" array if "test" attribute is set to "1".
+
+2015-08-26  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Determine navigation and content policy before continuing to filter a load
+        https://bugs.webkit.org/show_bug.cgi?id=148506
+
+        Reviewed by Brady Eidson.
+
+        Added download API tests covering every decision and decision point.
+        Removed _WKDownload.AsynchronousDownloadPolicy in favor of these new tests.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig: Added $(BUILT_PRODUCTS_DIR)/WebCoreTestSupport to the header search path.
+        * TestWebKitAPI/Configurations/WebProcessPlugIn.xcconfig: Removed it from here.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParametersPlugIn.mm:
+        (-[BundleParametersPlugIn observeValueForKeyPath:ofObject:change:context:]): Called -valueForKeyPath:, which
+        returns an id, instead of -valueForKey:, which always returns an NSString even if the object is of another type.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm: Added a class that can send a MockContentFilter
+        decision and decision point as a bundle parameter.
+        (+[MockContentFilterEnabler supportsSecureCoding]):
+        (-[MockContentFilterEnabler copyWithZone:]):
+        (-[MockContentFilterEnabler initWithCoder:]):
+        (-[MockContentFilterEnabler initWithDecision:decisionPoint:]):
+        (-[MockContentFilterEnabler encodeWithCoder:]):
+        (configurationWithContentFilterSettings): Added a helper function to create a WKWebViewConfiguration with MockConentFilter settings.
+        (TEST): Renamed ContentFiltering.ServerRedirect to ContentFiltering.URLAfterServerRedirect.
+        (-[BecomeDownloadDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]): Decided _WKNavigationResponsePolicyBecomeDownload.
+        (-[BecomeDownloadDelegate webView:didFailProvisionalNavigation:withError:]): Set isDone to true.
+        (-[BecomeDownloadDelegate webView:didFinishNavigation:]): Ditto.
+        (-[ContentFilteringDownloadDelegate _downloadDidStart:]): Set downloadDidStart to true.
+        (downloadTest): Added a helper function to test downloads with a given decision and decision point.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFilteringPlugIn.mm: Added a corresponding bundle class that decodes
+        the MockContentFilter decision and decision point, and sets these values in the MockContentFilterSettings
+        singleton. This class is duplicated in the bundle to prevent TestWebKitAPI from having to link to WebCoreTestSupport.
+        (+[MockContentFilterEnabler supportsSecureCoding]):
+        (-[MockContentFilterEnabler copyWithZone:]):
+        (-[MockContentFilterEnabler initWithCoder:]):
+        (-[MockContentFilterEnabler dealloc]):
+        (-[MockContentFilterEnabler encodeWithCoder:]):
+        (-[ContentFilteringPlugIn webProcessPlugIn:initializeWithObject:]): Start observing changes to the MockContentFilterEnabler key path.
+        (-[ContentFilteringPlugIn dealloc]): Stop observing.
+        (-[ContentFilteringPlugIn observeValueForKeyPath:ofObject:change:context:]): Store a MockContentFilterEnabler in _contentFilterEnabler.
+        (+[ServerRedirectPlugIn initialize]): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (-[AsynchronousDownloadNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]): Deleted.
+        (-[AsynchronousDownloadDelegate _downloadDidStart:]): Deleted.
+        (TEST): Deleted.
+
+2015-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Skip slow lock tests on Windows/debug
+        https://bugs.webkit.org/show_bug.cgi?id=148643
+
+        Reviewed by Alexey Proskuryakov.
+
+        The lock tests simulate a critical section by doing some floating point math, and then either
+        make those critical sections very long or invoke them many times. This appears to be
+        particularly slow on Windows in debug mode, maybe because Visual Studio's debug build makes
+        that kind of computation slow.
+
+        These tests are almost as useful in release as they are in debug, so it's probably better to
+        just skip the in debug on platforms where this causes timeouts.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::runLockTest):
+        (TestWebKitAPI::skipSlow):
+        (TestWebKitAPI::TEST):
+
+2015-08-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: When navigating the elements of a scrollable element with VoiceOver, the scrollTop() position of the element does not permanently change
+        https://bugs.webkit.org/show_bug.cgi?id=125720
+
+        Reviewed by Daniel Bates.
+
+        Add support for scrollToMakeVisibleWithSubFocus and scrollToGlobalPoint.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (pressCallback):
+        (scrollToMakeVisibleWithSubFocusCallback):
+        (scrollToGlobalPointCallback):
+        (scrollToMakeVisibleCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::scrollToMakeVisible):
+        (AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (AccessibilityUIElement::scrollToGlobalPoint):
+        (AccessibilityUIElement::selectedTextRange):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::AccessibilityUIElement):
+        (AccessibilityUIElement::mathPrescriptsDescription):
+        (AccessibilityUIElement::scrollToMakeVisible):
+        (AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (AccessibilityUIElement::scrollToGlobalPoint):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::isTextMarkerValid):
+        (WTR::AccessibilityUIElement::textMarkerForIndex):
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::supportedActions):
+        (WTR::AccessibilityUIElement::mathPostscriptsDescription):
+        (WTR::AccessibilityUIElement::mathPrescriptsDescription):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::selectedTextRange):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::scrollToMakeVisible):
+        (WTR::AccessibilityUIElement::scrollToGlobalPoint):
+        (WTR::AccessibilityUIElement::scrollToMakeVisibleWithSubFocus):
+        (WTR::AccessibilityUIElement::selectedTextRange):
+
+2015-08-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a mysteriously nonproblematic missing comma.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._collect_matching_tests):
+        (TestExpectationParser):
+
+2015-08-28  Timothy Horton  <timothy_horton@apple.com>
+
+        Remove an old temporary script that has served its purpose
+
+        * Scripts/convert-test-expectations: Removed.
+
+2015-08-28  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Add WebKit/WebKit2 settings to control automatic data loading
+        https://bugs.webkit.org/show_bug.cgi?id=148579
+
+        Reviewed by Anders Carlsson.
+
+        In DumpRenderTree, set the new mediaDataLoadsAutomatically preference to YES.
+
+        In WebKitTestRunner, do the same for the new _mediaDataLoadsAutomatically configuration property,
+        and also set the existing requiresUserActionForMediaPlayback configuration property to NO.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        (resetWebViewToConsistentStateBeforeTesting): 
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2015-08-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix run-webkit-tests --additional-env-var="DYLD_INSERT_LIBRARIES=..."
+        https://bugs.webkit.org/show_bug.cgi?id=148592
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.setup_environ_for_server):
+        (Port.to):
+        (Port.to._append_value_colon_separated):
+        (Port.to.show_results_html_file):
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.setup_environ_for_server):
+
+2015-08-28  Filip Pizlo  <fpizlo@apple.com>
+
+        LICM should be sound even if the CFG has changed
+        https://bugs.webkit.org/show_bug.cgi?id=148259
+
+        Reviewed by Benjamin Poulain.
+
+        Add a utility for creating tests that set some uncommon option.
+
+        * Scripts/run-jsc-stress-tests:
+
+2015-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed EWS correction.
+
+        * EWSTools/start-queue-win.sh: Update settings to point to VS2015.
+
+2015-08-28  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Make the AllowsInlineMediaPlayback preference work in WebKit / WebKit2.
+        https://bugs.webkit.org/show_bug.cgi?id=147512
+
+        Reviewed by Anders Carlsson.
+
+        Set the value of WebKitAllowsInlineMediaPlayback / WKPreferencesSetMediaPlaybackAllowsInline()
+        to a consistent (true) value.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2015-08-28  Tim Horton  <timothy_horton@apple.com>
+
+        Add navigation gesture callbacks to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=148568
+        <rdar://problem/22371346>
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        Add some zeroes.
+
+2015-08-28  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] kill-old-processes should kill more processes
+        https://bugs.webkit.org/show_bug.cgi?id=148577
+
+        Reviewed by Tim Horton.
+
+        * BuildSlaveSupport/kill-old-processes:
+
+2015-08-28  Jason Marcell  <jmarcell@apple.com>
+
+        The status message for combined builder queues should say "all builds succeeded" if everything
+        built correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=148535
+
+        Reviewed by David Kilzer and Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Make status message for combined builder queues
+        say "all builds succeeded" if everything built correctly.
+
+2015-08-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Simplify the internal API to create a WebView
+        https://bugs.webkit.org/show_bug.cgi?id=148570
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/PlatformWebView.h: Add initialize method for GTK+ too.
+        * TestWebKitAPI/gtk/PlatformWebViewGtk.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView): Implement all
+        PlatformWebView constructors that end up calling initialize with a PageConfiguration.
+        (TestWebKitAPI::PlatformWebView::initialize): Create the WebView
+        passing the received PageConfiguration.
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Create the WebView
+        passing the received PageConfiguration.
+
+2015-08-27  Aakash Jain  <aakash_jain@apple.com>
+
+        iOS Simulator API tests fails as Simulator is not running
+        https://bugs.webkit.org/show_bug.cgi?id=148501
+        rdar://problem/22447525
+
+        Reviewed by Daniel Bates.
+
+        This change is a workaround for <rdar://problem/22388812>.
+
+         * Scripts/run-api-tests: Launch the iOS Simulator before starting the API Tests
+         and quit it on program termination when running tests on the iOS port.
+         * Scripts/webkitdirs.pm: Store string "For WebKit Development" in constant
+         SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT to make it consistently reusable.
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Make DLLLauncherMain executables dependent on dll
+        https://bugs.webkit.org/show_bug.cgi?id=148548
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/win/CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2015-08-27  Lucas Forschler  <lforschler@apple.com>
+
+        Remove Mac slaves 188/189 after being replaced with 400/401.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-08-27  Lucas Forschler  <lforschler@apple.com>
+
+        Add two bots to the Mac Yosemite queue.
+        This is to eventually replace bots188/189, which will be removed after 400/401 are vetted.
+        
+        Unreviewed.
+        
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        [Win CMake] Fix incremental build after r188673
+        https://bugs.webkit.org/show_bug.cgi?id=148539
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        Copy forwarding headers from WebCore before building in case that was not yet done.
+        It used to be done when running CMake, but now it's a build step.
+
+2015-08-27  Nan Wang  <n_wang@apple.com>
+
+        AX: Fix accessibility/select-element-at-index.html test
+        https://bugs.webkit.org/show_bug.cgi?id=148516
+
+        Reviewed by Chris Fleizach.
+
+        Implemented setSelectedChildAtIndex and removeSelectionAtIndex for mac.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (setSelectedChildCallback):
+        (setSelectedChildAtIndexCallback):
+        (removeSelectionAtIndexCallback):
+        (elementAtPointCallback):
+        (sentenceAtOffsetCallback):
+        (stringForSelectionCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setSelectedChild):
+        (AccessibilityUIElement::setSelectedChildAtIndex):
+        (AccessibilityUIElement::removeSelectionAtIndex):
+        (AccessibilityUIElement::accessibilityValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::wordAtOffset):
+        (WTR::AccessibilityUIElement::lineAtOffset):
+        (WTR::AccessibilityUIElement::sentenceAtOffset):
+        (WTR::AccessibilityUIElement::isSelectable):
+        (WTR::AccessibilityUIElement::isMultiSelectable):
+        (WTR::AccessibilityUIElement::setSelectedChild):
+        (WTR::AccessibilityUIElement::setSelectedChildAtIndex):
+        (WTR::AccessibilityUIElement::removeSelectionAtIndex):
+        (WTR::AccessibilityUIElement::selectedChildrenCount):
+        (WTR::AccessibilityUIElement::selectedChildAtIndex):
+        (WTR::AccessibilityUIElement::isExpanded):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setSelectedChild):
+        (WTR::AccessibilityUIElement::setSelectedChildAtIndex):
+        (WTR::AccessibilityUIElement::removeSelectionAtIndex):
+        (WTR::AccessibilityUIElement::accessibilityValue):
+
+2015-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r188982
+
+        * MiniBrowser/win/CMakeLists.txt:
+        The directory structure changed in the move.
+
+2015-08-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed, install-dependencies should install geoclue2 on Fedora
+
+        geoclue-devel is for obsolete geoclue. Install geoclue2-devel instead.
+
+        * gtk/install-dependencies:
+
+2015-08-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Mark WTF_WordLock.ContendedShortSection as slow too.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-08-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Fix GTK+ WTR crashes in initializeMainRunLoop()
+
+        Rubber-stamped by Žan Doberšek.
+
+        Initialize threading and main thread before
+        RunLoop::initializeMainRunLoop(), since the GLib implementation of
+        the RunLoop uses isMainThread() to decide whether to create a new
+        GMainContext or use the default one. Also use RunLoop::run() and
+        ::stop() instead of gtk_main/quit.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::notifyDone):
+        (WTR::TestController::platformRunUntil):
+
+2015-08-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, further shorten a test that times out because it's very long
+        running.
+
+        I've locally run these tests on repeat for 24 hours and found no genuine
+        failures, like deadlocks. So, the timeouts are probably because the test
+        machine is slow and debug is slow. We should just run this test for fewer
+        iterations.
+
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::TEST):
+
 2015-08-26  Ryuan Choi  <ryuan.choi@navercorp.com>
 
         Unreviewed build fix attempt on EFL

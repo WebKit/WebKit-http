@@ -1,3 +1,20 @@
+2015-08-28  Jonathan Davis  <jond@apple.com>
+
+        Add assets for Styles Sidebar Refinements in Web Inspector blog post.
+
+        * blog-files/styles-sidebar-refinements-in-web-inspector: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/ComputedToRules-1x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/ComputedToRules-2x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/Filter-1x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/Filter-2x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/FilterSelector-1x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/FilterSelector-2x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/SelectorHovering-1x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/SelectorHovering-2x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/Tabbing.mp4: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/WarningIcon-1x.png: Added.
+        * blog-files/styles-sidebar-refinements-in-web-inspector/WarningIcon-2x.png: Added.
+
 2015-08-26  Brent Fulgham  <bfulgham@apple.com>
 
         Update Windows tool install instructions.

@@ -102,9 +102,9 @@ void RenderScrollbar::styleChanged()
     updateScrollbarParts();
 }
 
-void RenderScrollbar::paint(GraphicsContext* context, const IntRect& damageRect)
+void RenderScrollbar::paint(GraphicsContext& context, const IntRect& damageRect)
 {
-    if (context->updatingControlTints()) {
+    if (context.updatingControlTints()) {
         updateScrollbarParts();
         return;
     }
@@ -218,7 +218,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType)
 
     if (needRenderer && partStyle->display() != BLOCK) {
         // See if we are a button that should not be visible according to OS settings.
-        ScrollbarButtonsPlacement buttonsPlacement = theme()->buttonsPlacement();
+        ScrollbarButtonsPlacement buttonsPlacement = theme().buttonsPlacement();
         switch (partType) {
             case BackButtonStartPart:
                 needRenderer = (buttonsPlacement == ScrollbarButtonsSingle || buttonsPlacement == ScrollbarButtonsDoubleStart ||
@@ -252,7 +252,7 @@ void RenderScrollbar::updateScrollbarPart(ScrollbarPart partType)
     }
 }
 
-void RenderScrollbar::paintPart(GraphicsContext* graphicsContext, ScrollbarPart partType, const IntRect& rect)
+void RenderScrollbar::paintPart(GraphicsContext& graphicsContext, ScrollbarPart partType, const IntRect& rect)
 {
     RenderScrollbarPart* partRenderer = m_parts.get(partType);
     if (!partRenderer)

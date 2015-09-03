@@ -562,7 +562,7 @@ void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
     m_size = size;
 }
 
-void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const FloatRect& rect)
+void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext& context, const FloatRect& rect)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
         return;
@@ -571,7 +571,7 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const Floa
         return;
 #endif
 
-    if (context->paintingDisabled())
+    if (context.paintingDisabled())
         return;
 
     if (!m_player->visible())
@@ -585,7 +585,7 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const Floa
     if (!gstImage)
         return;
 
-    context->drawImage(reinterpret_cast<Image*>(gstImage->image().get()), ColorSpaceSRGB,
+    context.drawImage(reinterpret_cast<Image*>(gstImage->image().get()), ColorSpaceSRGB,
         rect, gstImage->rect(), CompositeCopy);
 }
 
