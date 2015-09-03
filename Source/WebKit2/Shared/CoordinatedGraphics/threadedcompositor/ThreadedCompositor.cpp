@@ -230,10 +230,8 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
 
 void ThreadedCompositor::destroyBuffer(uint32_t handle)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnMainThread([protector, handle] {
-        protector->m_client->destroyPrimeBuffer(handle);
-    });
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    m_compositingManager.destroyPrimeBuffer(handle);
 }
 
 bool ThreadedCompositor::ensureGLContext()
@@ -308,11 +306,9 @@ void ThreadedCompositor::renderLayerTree()
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
     glContext()->swapBuffers();
+
     auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnMainThread([protector, bufferExport] {
-        protector->m_client->commitPrimeBuffer(bufferExport);
-    });
+    m_compositingManager.commitPrimeBuffer(bufferExport);
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
@@ -434,23 +430,19 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 #if PLATFORM(WPE)
 void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, handle] {
-        downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*protector->m_gbmSurface, handle);
-    });
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
 }
 
 void ThreadedCompositor::frameComplete()
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector] {
-        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
-        if (reportFPS)
-            debugThreadedCompositorFPS();
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+    if (reportFPS)
+        debugThreadedCompositorFPS();
 
-        protector->m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-        protector->m_compositingRunLoop->updateCompleted();
-    });
+    m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+    m_compositingRunLoop->updateCompleted();
 }
 #endif
 
