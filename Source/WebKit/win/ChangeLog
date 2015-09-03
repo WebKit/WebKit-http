@@ -1,3 +1,106 @@
+2015-09-02  Andreas Kling  <akling@apple.com>
+
+        ScrollbarThemes should be returned by reference.
+        <https://webkit.org/b/147551>
+
+        Reviewed by Zalan Bujtas.
+
+        * WebView.cpp:
+        (WebView::gestureNotify):
+        (WebView::WebViewWndProc):
+
+2015-08-31  Chris Dumez  <cdumez@apple.com>
+
+        Range API is throwing wrong exception type
+        https://bugs.webkit.org/show_bug.cgi?id=148648
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/DOMWindow.idl:
+        Drop outdated comment.
+
+2015-08-27  Andy Estes  <aestes@apple.com>
+
+        [Content Filtering] Determine navigation and content policy before continuing to filter a load
+        https://bugs.webkit.org/show_bug.cgi?id=148506
+
+        Reviewed by Brady Eidson.
+
+        Deleted part of r188851.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2015-08-31  Chris Dumez  <cdumez@apple.com>
+
+        Range.detach() / NodeIterator.detach() should be no-ops as per the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=148454
+
+        Reviewed by Ryosuke Niwa.
+
+        Update Range API call sites to reflect changes.
+
+        * DOMCoreClasses.cpp:
+        (DOMRange::startContainer):
+        (DOMRange::endContainer):
+        (DOMRange::collapsed):
+        (DOMRange::toString):
+        * WebView.cpp:
+        (WebView::prepareCandidateWindow):
+        (WebView::onIMERequestCharPosition):
+        (WebView::firstRectForCharacterRangeForTesting): Deleted.
+
+2015-08-31  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Fix the WinCairo build after landing of webkit.org/b/148561.
+        https://bugs.webkit.org/show_bug.cgi?id=148627
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::paintContents):
+
+2015-08-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix the Windows build more after r189144
+        https://bugs.webkit.org/show_bug.cgi?id=148561
+
+        Unreviewed.
+
+        * WebFrame.cpp:
+        (WebFrame::paintDocumentRectToContext):
+        (WebFrame::paintScrollViewRectToContextAtPoint):
+        (WebFrame::spoolPage):
+        (WebFrame::spoolPages):
+        * WebFrame.h:
+        * WebView.cpp:
+        (WebView::paintIntoBackingStore):
+        (WebView::paintContents):
+
+2015-08-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Fix the Windows build after r189144
+        https://bugs.webkit.org/show_bug.cgi?id=148561
+
+        Unreviewed.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::paintMissingPluginIcon):
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::paintWindowedPluginIntoContext):
+        (WebCore::PluginView::paint):
+
+2015-08-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: FrontendChannel should know its own connection type
+        https://bugs.webkit.org/show_bug.cgi?id=148482
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h: add connectionType().
+
 2015-08-23  Andy Estes  <aestes@apple.com>
 
         [Content Filtering] REGRESSION (r182356): Provisional URL is incorrect in didReceiveServerRedirectForProvisionalLoadForFrame when Content Filtering is enabled

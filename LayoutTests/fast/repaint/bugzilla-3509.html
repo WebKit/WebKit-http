@@ -1,15 +1,18 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html lang="en">
 <head>
-    <script src="resources/repaint.js" type="text/javascript"></script>
     <script type="text/javascript">
-       function repaintTest()
-       {
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        function runTest()
+        {
            document.getElementById('im').style.width = '100px';
-       }
+            if (window.testRunner)
+                testRunner.notifyDone();
+        }
     </script>
 </head>
-<body onload="runRepaintTest();">
+<body onload="setTimeout(runTest, 0)">
 <p><b>BUG ID:</b> <a href="https://bugs.webkit.org/show_bug.cgi?id=3509">Bugzilla bug 3509</a> REGRESSION(125-412) Portion of nested table is not painted correctly on cafepress site</p>
 
 <p id="success" style="background-color:palegreen; padding:3px;"><b>TEST PASS:</b> 

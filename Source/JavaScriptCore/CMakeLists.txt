@@ -63,6 +63,7 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssembler.cpp
     assembler/MacroAssemblerARM.cpp
     assembler/MacroAssemblerARMv7.cpp
+    assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
 
     bindings/ScriptFunctionCall.cpp
@@ -537,6 +538,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
     runtime/JSModuleRecord.cpp
+    runtime/JSNativeStdFunction.cpp
     runtime/JSNotAnObject.cpp
     runtime/JSONObject.cpp
     runtime/JSObject.cpp
@@ -574,6 +576,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/ModuleLoaderObject.cpp
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
+    runtime/NativeStdFunctionCell.cpp
     runtime/NullGetterFunction.cpp
     runtime/NullSetterFunction.cpp
     runtime/NumberConstructor.cpp

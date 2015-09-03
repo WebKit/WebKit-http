@@ -387,7 +387,13 @@ ContextMenuItem WebContextMenuClient::shareMenuItem(const HitTestResult& hitTest
     if (!hitTestResult.absoluteMediaURL().isEmpty() && hitTestResult.isDownloadableMedia())
         downloadableMediaURL = hitTestResult.absoluteMediaURL();
 
-    return ContextMenuItem::shareMenuItem(hitTestResult.absoluteLinkURL(), downloadableMediaURL, hitTestResult.image(), hitTestResult.selectedText());
+    RetainPtr<NSImage> nsImage;
+    if (Image* image = hitTestResult.image()) {
+        if (RefPtr<SharedBuffer> buffer = image->data())
+            nsImage = adoptNS([[NSImage alloc] initWithData:[NSData dataWithBytes:buffer->data() length:buffer->size()]]);
+    }
+
+    return ContextMenuItem::shareMenuItem(hitTestResult.absoluteLinkURL(), downloadableMediaURL, nsImage.get(), hitTestResult.selectedText());
 }
 
 bool WebContextMenuClient::clientFloatRectForNode(Node& node, FloatRect& rect) const
@@ -476,7 +482,7 @@ RetainPtr<NSImage> WebContextMenuClient::imageForCurrentSharingServicePickerItem
     PaintBehavior oldPaintBehavior = frameView->paintBehavior();
     frameView->setPaintBehavior(PaintBehaviorSelectionOnly);
 
-    buffer->context()->translate(-toFloatSize(rect.location()));
+    buffer->context().translate(-toFloatSize(rect.location()));
     frameView->paintContents(buffer->context(), roundedIntRect(rect));
 
     frameView->frame().selection().setSelection(oldSelection);

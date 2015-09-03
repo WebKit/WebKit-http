@@ -79,7 +79,6 @@ bool NodeIterator::NodePointer::moveToPrevious(Node* root)
 NodeIterator::NodeIterator(PassRefPtr<Node> rootNode, unsigned long whatToShow, PassRefPtr<NodeFilter> filter, bool expandEntityReferences)
     : NodeIteratorBase(rootNode, whatToShow, filter, expandEntityReferences)
     , m_referenceNode(root(), true)
-    , m_detached(false)
 {
     root()->document().attachNodeIterator(this);
 }
@@ -89,13 +88,8 @@ NodeIterator::~NodeIterator()
     root()->document().detachNodeIterator(this);
 }
 
-PassRefPtr<Node> NodeIterator::nextNode(JSC::ExecState* state, ExceptionCode& ec)
+RefPtr<Node> NodeIterator::nextNode()
 {
-    if (m_detached) {
-        ec = INVALID_STATE_ERR;
-        return 0;
-    }
-
     RefPtr<Node> result;
 
     m_candidateNode = m_referenceNode;
@@ -104,9 +98,7 @@ PassRefPtr<Node> NodeIterator::nextNode(JSC::ExecState* state, ExceptionCode& ec
         // In other words, FILTER_REJECT does not pass over descendants
         // of the rejected node. Hence, FILTER_REJECT is the same as FILTER_SKIP.
         RefPtr<Node> provisionalResult = m_candidateNode.node;
-        bool nodeWasAccepted = acceptNode(state, provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
-        if (state && state->hadException())
-            break;
+        bool nodeWasAccepted = acceptNode(provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
         if (nodeWasAccepted) {
             m_referenceNode = m_candidateNode;
             result = provisionalResult.release();
@@ -115,16 +107,11 @@ PassRefPtr<Node> NodeIterator::nextNode(JSC::ExecState* state, ExceptionCode& ec
     }
 
     m_candidateNode.clear();
-    return result.release();
+    return result;
 }
 
-PassRefPtr<Node> NodeIterator::previousNode(JSC::ExecState* state, ExceptionCode& ec)
+RefPtr<Node> NodeIterator::previousNode()
 {
-    if (m_detached) {
-        ec = INVALID_STATE_ERR;
-        return 0;
-    }
-
     RefPtr<Node> result;
 
     m_candidateNode = m_referenceNode;
@@ -133,9 +120,7 @@ PassRefPtr<Node> NodeIterator::previousNode(JSC::ExecState* state, ExceptionCode
         // In other words, FILTER_REJECT does not pass over descendants
         // of the rejected node. Hence, FILTER_REJECT is the same as FILTER_SKIP.
         RefPtr<Node> provisionalResult = m_candidateNode.node;
-        bool nodeWasAccepted = acceptNode(state, provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
-        if (state && state->hadException())
-            break;
+        bool nodeWasAccepted = acceptNode(provisionalResult.get()) == NodeFilter::FILTER_ACCEPT;
         if (nodeWasAccepted) {
             m_referenceNode = m_candidateNode;
             result = provisionalResult.release();
@@ -144,14 +129,12 @@ PassRefPtr<Node> NodeIterator::previousNode(JSC::ExecState* state, ExceptionCode
     }
 
     m_candidateNode.clear();
-    return result.release();
+    return result;
 }
 
 void NodeIterator::detach()
 {
-    root()->document().detachNodeIterator(this);
-    m_detached = true;
-    m_referenceNode.node = nullptr;
+    // This is now a no-op as per the DOM specification.
 }
 
 void NodeIterator::nodeWillBeRemoved(Node& removedNode)
@@ -162,7 +145,6 @@ void NodeIterator::nodeWillBeRemoved(Node& removedNode)
 
 void NodeIterator::updateForNodeRemoval(Node& removedNode, NodePointer& referenceNode) const
 {
-    ASSERT(!m_detached);
     ASSERT(&root()->document() == &removedNode.document());
 
     // Iterator is not affected if the removed node is the reference node and is the root.

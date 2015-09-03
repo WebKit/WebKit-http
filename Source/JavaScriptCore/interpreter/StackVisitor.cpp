@@ -181,6 +181,8 @@ StackVisitor::Frame::CodeType StackVisitor::Frame::codeType() const
     switch (codeBlock()->codeType()) {
     case EvalCode:
         return CodeType::Eval;
+    case ModuleCode:
+        return CodeType::Module;
     case FunctionCode:
         return CodeType::Function;
     case GlobalCode:
@@ -198,6 +200,9 @@ String StackVisitor::Frame::functionName()
     switch (codeType()) {
     case CodeType::Eval:
         traceLine = ASCIILiteral("eval code");
+        break;
+    case CodeType::Module:
+        traceLine = ASCIILiteral("module code");
         break;
     case CodeType::Native:
         if (callee)
@@ -219,9 +224,10 @@ String StackVisitor::Frame::sourceURL()
 
     switch (codeType()) {
     case CodeType::Eval:
+    case CodeType::Module:
     case CodeType::Function:
     case CodeType::Global: {
-        String sourceURL = codeBlock()->ownerExecutable()->sourceURL();
+        String sourceURL = codeBlock()->ownerScriptExecutable()->sourceURL();
         if (!sourceURL.isEmpty())
             traceLine = sourceURL.impl();
         break;
@@ -292,11 +298,11 @@ void StackVisitor::Frame::computeLineAndColumn(unsigned& line, unsigned& column)
     unsigned divotColumn = 0;
     retrieveExpressionInfo(divot, unusedStartOffset, unusedEndOffset, divotLine, divotColumn);
 
-    line = divotLine + codeBlock->ownerExecutable()->firstLine();
+    line = divotLine + codeBlock->ownerScriptExecutable()->firstLine();
     column = divotColumn + (divotLine ? 1 : codeBlock->firstLineColumnOffset());
 
-    if (codeBlock->ownerExecutable()->hasOverrideLineNumber())
-        line = codeBlock->ownerExecutable()->overrideLineNumber();
+    if (codeBlock->ownerScriptExecutable()->hasOverrideLineNumber())
+        line = codeBlock->ownerScriptExecutable()->overrideLineNumber();
 }
 
 void StackVisitor::Frame::retrieveExpressionInfo(int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column)

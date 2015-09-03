@@ -395,6 +395,9 @@ public:
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
+#else
+    bool allowsInlineMediaPlayback = WKGetDeviceClass() == WKDeviceClassiPad;
+    bool requiresPlaysInlineAttribute = !allowsInlineMediaPlayback;
 #endif
     InitWebCoreSystemInterface();
 
@@ -519,6 +522,7 @@ public:
 #if !PLATFORM(IOS)
         [NSNumber numberWithBool:NO],   WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAllowsInlineMediaPlaybackPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey,
         [NSNumber numberWithBool:YES],  WebKitMediaControlsScaleWithPageZoomPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitBackspaceKeyNavigationEnabledKey,
@@ -527,11 +531,14 @@ public:
         [NSNumber numberWithBool:NO],   WebKitShouldDisplayTextDescriptionsPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitNotificationsEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldRespectImageOrientationKey,
+        [NSNumber numberWithBool:YES],  WebKitMediaDataLoadsAutomaticallyPreferenceKey,
 #else
         [NSNumber numberWithBool:YES],  WebKitRequiresUserGestureForMediaPlaybackPreferenceKey,
-        [NSNumber numberWithBool:NO],   WebKitAllowsInlineMediaPlaybackPreferenceKey,
+        [NSNumber numberWithBool:allowsInlineMediaPlayback],   WebKitAllowsInlineMediaPlaybackPreferenceKey,
+        [NSNumber numberWithBool:requiresPlaysInlineAttribute], WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey,
         [NSNumber numberWithBool:NO],   WebKitMediaControlsScaleWithPageZoomPreferenceKey,
         [NSNumber numberWithUnsignedInt:AudioSession::None],  WebKitAudioSessionCategoryOverride,
+        [NSNumber numberWithBool:NO],   WebKitMediaDataLoadsAutomaticallyPreferenceKey,
 #if HAVE(AVKIT)
         [NSNumber numberWithBool:YES],  WebKitAVKitEnabled,
 #endif
@@ -2198,6 +2205,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitAllowsInlineMediaPlaybackPreferenceKey];
 }
 
+- (BOOL)inlineMediaPlaybackRequiresPlaysInlineAttribute
+{
+    return [self _boolValueForKey:WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey];
+}
+
+- (void)setInlineMediaPlaybackRequiresPlaysInlineAttribute:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitInlineMediaPlaybackRequiresPlaysInlineAttributeKey];
+}
+
 - (BOOL)mediaControlsScaleWithPageZoom
 {
     return [self _boolValueForKey:WebKitMediaControlsScaleWithPageZoomPreferenceKey];
@@ -2565,6 +2582,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setJavaScriptMarkupEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitJavaScriptMarkupEnabledPreferenceKey];
+}
+
+- (BOOL)mediaDataLoadsAutomatically
+{
+    return [self _boolValueForKey:WebKitMediaDataLoadsAutomaticallyPreferenceKey];
+}
+
+- (void)setMediaDataLoadsAutomatically:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaDataLoadsAutomaticallyPreferenceKey];
 }
 
 @end

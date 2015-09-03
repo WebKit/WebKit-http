@@ -54,9 +54,12 @@
 #include <algorithm>
 #include <cstdio>
 #include <ctype.h>
+#include <runtime/InitializeThreading.h>
 #include <stdlib.h>
 #include <string>
+#include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(COCOA)
@@ -289,6 +292,9 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
+        0, // didBeginNavigationGesture
+        0, // willEndNavigationGesture
+        0, // didEndNavigationGesture
     };
     WKPageSetPageNavigationClient(newPage, &pageNavigationClient.base);
 
@@ -313,7 +319,8 @@ const char* TestController::libraryPathForTesting()
 
 void TestController::initialize(int argc, const char* argv[])
 {
-    WTF::initializeThreading();
+    JSC::initializeThreading();
+    WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
     platformInitialize();
@@ -529,6 +536,9 @@ void TestController::createWebViewWithOptions(const ViewOptions& options)
         didReceiveAuthenticationChallenge,
         processDidCrash,
         copyWebCryptoMasterKey,
+        0, // didBeginNavigationGesture
+        0, // willEndNavigationGesture
+        0, // didEndNavigationGesture
     };
     WKPageSetPageNavigationClient(m_mainWebView->page(), &pageNavigationClient.base);
 
@@ -629,6 +639,9 @@ void TestController::resetPreferencesToConsistentValues()
     // FIXME: We should be testing the default.
     WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
 
+    WKPreferencesSetMediaPlaybackAllowsInline(preferences, true);
+    WKPreferencesSetInlineMediaPlaybackRequiresPlaysInlineAttribute(preferences, false);
+
     WKCookieManagerDeleteAllCookies(WKContextGetCookieManager(m_context.get()));
 
     platformResetPreferencesToConsistentValues();
@@ -636,8 +649,7 @@ void TestController::resetPreferencesToConsistentValues()
 
 bool TestController::resetStateToConsistentValues()
 {
-    m_state = Resetting;
-
+    TemporaryChange<State> changeState(m_state, Resetting);
     m_beforeUnloadReturnValue = true;
 
     // This setting differs between the antique and modern Mac WebKit2 API.
@@ -1007,6 +1019,9 @@ void TestController::didReceiveKeyDownMessageFromInjectedBundle(WKDictionaryRef 
 void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
+        if (m_state != RunningTest)
+            return;
+
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
@@ -1077,6 +1092,9 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
 WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody)
 {
     if (WKStringIsEqualToUTF8CString(messageName, "EventSender")) {
+        if (m_state != RunningTest)
+            return nullptr;
+
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 

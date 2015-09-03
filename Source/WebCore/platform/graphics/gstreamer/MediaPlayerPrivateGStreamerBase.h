@@ -105,7 +105,7 @@ public:
     void triggerDrain();
 
     void triggerRepaint(GstSample*);
-    virtual void paint(GraphicsContext*, const FloatRect&) override;
+    virtual void paint(GraphicsContext&, const FloatRect&) override;
 
     virtual bool hasSingleSecurityOrigin() const override { return true; }
     virtual float maxTimeLoaded() const { return 0.0; }

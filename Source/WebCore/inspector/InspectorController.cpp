@@ -86,16 +86,9 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     : m_instrumentingAgents(InstrumentingAgents::create(*this))
     , m_injectedScriptManager(std::make_unique<WebInjectedScriptManager>(*this, WebInjectedScriptHost::create()))
     , m_overlay(std::make_unique<InspectorOverlay>(page, inspectorClient))
-    , m_frontendChannel(nullptr)
     , m_executionStopwatch(Stopwatch::create())
     , m_page(page)
     , m_inspectorClient(inspectorClient)
-    , m_inspectorFrontendClient(nullptr)
-    , m_isUnderTest(false)
-    , m_isAutomaticInspection(false)
-#if ENABLE(REMOTE_INSPECTOR)
-    , m_hasRemoteFrontend(false)
-#endif
 {
     ASSERT_ARG(inspectorClient, inspectorClient);
 
@@ -109,12 +102,12 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_pageAgent = pageAgentPtr.get();
     m_agents.append(WTF::move(pageAgentPtr));
 
-    auto runtimeAgentPtr = std::make_unique<PageRuntimeAgent>(m_injectedScriptManager.get(), &page, pageAgent);
+    auto runtimeAgentPtr = std::make_unique<PageRuntimeAgent>(*m_injectedScriptManager, &page, pageAgent);
     PageRuntimeAgent* runtimeAgent = runtimeAgentPtr.get();
     m_instrumentingAgents->setPageRuntimeAgent(runtimeAgent);
     m_agents.append(WTF::move(runtimeAgentPtr));
 
-    auto domAgentPtr = std::make_unique<InspectorDOMAgent>(m_instrumentingAgents.get(), pageAgent, m_injectedScriptManager.get(), m_overlay.get());
+    auto domAgentPtr = std::make_unique<InspectorDOMAgent>(m_instrumentingAgents.get(), pageAgent, *m_injectedScriptManager, m_overlay.get());
     m_domAgent = domAgentPtr.get();
     m_agents.append(WTF::move(domAgentPtr));
 
@@ -125,7 +118,7 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_agents.append(WTF::move(databaseAgentPtr));
 
 #if ENABLE(INDEXED_DATABASE)
-    m_agents.append(std::make_unique<InspectorIndexedDBAgent>(m_instrumentingAgents.get(), m_injectedScriptManager.get(), pageAgent));
+    m_agents.append(std::make_unique<InspectorIndexedDBAgent>(m_instrumentingAgents.get(), *m_injectedScriptManager, pageAgent));
 #endif
 
 #if ENABLE(WEB_REPLAY)
@@ -144,12 +137,12 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_resourceAgent = resourceAgentPtr.get();
     m_agents.append(WTF::move(resourceAgentPtr));
 
-    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(m_injectedScriptManager.get(), m_domAgent);
+    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(*m_injectedScriptManager, m_domAgent);
     WebConsoleAgent* consoleAgent = consoleAgentPtr.get();
     m_instrumentingAgents->setWebConsoleAgent(consoleAgentPtr.get());
     m_agents.append(WTF::move(consoleAgentPtr));
 
-    auto debuggerAgentPtr = std::make_unique<PageDebuggerAgent>(m_injectedScriptManager.get(), m_instrumentingAgents.get(), pageAgent, m_overlay.get());
+    auto debuggerAgentPtr = std::make_unique<PageDebuggerAgent>(*m_injectedScriptManager, m_instrumentingAgents.get(), pageAgent, m_overlay.get());
     m_debuggerAgent = debuggerAgentPtr.get();
     m_agents.append(WTF::move(debuggerAgentPtr));
 
@@ -197,20 +190,12 @@ void InspectorController::setInspectorFrontendClient(InspectorFrontendClient* in
 
 bool InspectorController::hasLocalFrontend() const
 {
-#if ENABLE(REMOTE_INSPECTOR)
-    return hasFrontend() && !m_hasRemoteFrontend;
-#else
-    return hasFrontend();
-#endif
+    return m_frontendChannel && m_frontendChannel->connectionType() == FrontendChannel::ConnectionType::Local;
 }
 
 bool InspectorController::hasRemoteFrontend() const
 {
-#if ENABLE(REMOTE_INSPECTOR)
-    return m_hasRemoteFrontend;
-#else
-    return false;
-#endif
+    return m_frontendChannel && m_frontendChannel->connectionType() == FrontendChannel::ConnectionType::Remote;
 }
 
 bool InspectorController::hasInspectorFrontendClient() const
@@ -246,11 +231,11 @@ void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendCh
 
     m_agents.didCreateFrontendAndBackend(frontendChannel, m_backendDispatcher.get());
 
-    InspectorInstrumentation::registerInstrumentingAgents(*m_instrumentingAgents);
+    InspectorInstrumentation::registerInstrumentingAgents(m_instrumentingAgents.get());
     InspectorInstrumentation::frontendCreated();
 
 #if ENABLE(REMOTE_INSPECTOR)
-    if (!m_hasRemoteFrontend)
+    if (!hasRemoteFrontend())
         m_page.remoteInspectorInformationDidChange();
 #endif
 }
@@ -259,6 +244,11 @@ void InspectorController::disconnectFrontend(DisconnectReason reason)
 {
     if (!m_frontendChannel)
         return;
+
+#if ENABLE(REMOTE_INSPECTOR)
+    if (!hasRemoteFrontend())
+        m_page.remoteInspectorInformationDidChange();
+#endif
 
     m_agents.willDestroyFrontendAndBackend(reason);
 
@@ -271,12 +261,7 @@ void InspectorController::disconnectFrontend(DisconnectReason reason)
     // Release overlay page resources.
     m_overlay->freePage();
     InspectorInstrumentation::frontendDeleted();
-    InspectorInstrumentation::unregisterInstrumentingAgents(*m_instrumentingAgents);
-
-#if ENABLE(REMOTE_INSPECTOR)
-    if (!m_hasRemoteFrontend)
-        m_page.remoteInspectorInformationDidChange();
-#endif
+    InspectorInstrumentation::unregisterInstrumentingAgents(m_instrumentingAgents.get());
 }
 
 void InspectorController::show()

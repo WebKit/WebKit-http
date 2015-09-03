@@ -219,9 +219,9 @@ ImageBuffer::~ImageBuffer()
 {
 }
 
-GraphicsContext* ImageBuffer::context() const
+GraphicsContext& ImageBuffer::context() const
 {
-    return m_data.m_context.get();
+    return *m_data.m_context;
 }
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
@@ -238,20 +238,20 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-void ImageBuffer::clip(GraphicsContext* context, const FloatRect& maskRect) const
+void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const
 {
-    context->platformContext()->pushImageMask(m_data.m_surface.get(), maskRect);
+    context.platformContext()->pushImageMask(m_data.m_surface.get(), maskRect);
 }
 
-void ImageBuffer::draw(GraphicsContext* destinationContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBuffer::draw(GraphicsContext& destinationContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
 {
-    BackingStoreCopy copyMode = destinationContext == context() ? CopyBackingStore : DontCopyBackingStore;
+    BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
     RefPtr<Image> image = copyImage(copyMode);
-    destinationContext->drawImage(image.get(), styleColorSpace, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
+    destinationContext.drawImage(image.get(), styleColorSpace, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
 }
 
-void ImageBuffer::drawPattern(GraphicsContext* context, const FloatRect& srcRect, const AffineTransform& patternTransform,
+void ImageBuffer::drawPattern(GraphicsContext& context, const FloatRect& srcRect, const AffineTransform& patternTransform,
     const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect, BlendMode)
 {
     if (RefPtr<Image> image = copyImage(DontCopyBackingStore))
@@ -483,7 +483,7 @@ String ImageBuffer::toDataURL(const String& mimeType, const double* quality, Coo
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
-    cairo_surface_t* image = cairo_get_target(context()->platformContext()->cr());
+    cairo_surface_t* image = cairo_get_target(context().platformContext()->cr());
 
     Vector<char> encodedImage;
     if (!image || !encodeImage(image, mimeType, &encodedImage, quality))
@@ -529,6 +529,57 @@ void ImageBuffer::markBufferChanged()
     m_data.markBufferChanged();
 }
 #endif
+
+bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum target, Platform3DObject destinationTexture, GC3Denum internalformat, bool premultiplyAlpha, bool flipY)
+{
+#if ENABLE(ACCELERATED_2D_CANVAS)
+    if (premultiplyAlpha || flipY)
+        return false;
+
+    if (!m_data.m_texture)
+        return false;
+
+    GC3Denum bindTextureTarget;
+    switch (target) {
+    case GL_TEXTURE_2D:
+        bindTextureTarget = GL_TEXTURE_2D;
+        break;
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        bindTextureTarget = GL_TEXTURE_CUBE_MAP;
+        break;
+    default:
+        return false;
+    }
+
+    cairo_surface_flush(m_data.m_surface.get());
+
+    std::unique_ptr<GLContext> context = GLContext::createContextForWindow(0, GLContext::sharingContext());
+    context->makeContextCurrent();
+    uint32_t fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_data.m_texture, 0);
+    glBindTexture(bindTextureTarget, destinationTexture);
+    glCopyTexImage2D(target, 0, internalformat, 0, 0, m_size.width(), m_size.height(), 0);
+    glBindTexture(bindTextureTarget, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glFlush();
+    glDeleteFramebuffers(1, &fbo);
+    return true;
+#else
+    UNUSED_PARAM(target);
+    UNUSED_PARAM(destinationTexture);
+    UNUSED_PARAM(internalformat);
+    UNUSED_PARAM(premultiplyAlpha);
+    UNUSED_PARAM(flipY);
+    return false;
+#endif
+}
 
 } // namespace WebCore
 

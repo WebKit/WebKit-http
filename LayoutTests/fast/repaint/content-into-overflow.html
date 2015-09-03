@@ -10,17 +10,20 @@
         #main-content { float: left; width: 100px; height: 80px; }
         #target3 { display: none; clear: both; height: 20px; background: green; }
     </style>
-    <script src="resources/repaint.js" type="text/javascript"></script>
     <script>
-        function repaintTest()
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        function runTest()
         {
             document.getElementById('target1').style.width = 'auto';
             document.getElementById('target2').style.height = 'auto';
             document.getElementById('target3').style.display = 'block';
+            if (window.testRunner)
+                testRunner.notifyDone();
         }
     </script>
 </head>
-<body onload="runRepaintTest();">
+<body onload="setTimeout(runTest, 0);">
     <div style="position: absolute; border: medium solid green; top: 8px; height: 100px;">
         <div class="narrow" id="target1">
             <div class="wide"></div>
