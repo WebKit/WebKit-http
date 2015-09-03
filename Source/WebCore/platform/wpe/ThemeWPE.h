@@ -37,7 +37,7 @@ public:
 
     virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const override;
 
-    virtual void paint(ControlPart, ControlStates&, GraphicsContext*, const FloatRect&, float, ScrollView*, float, float) override;
+    virtual void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float, ScrollView*, float, float) override;
 
 private:
     void paintCheckbox(ControlStates&, GraphicsContext&, const FloatRect&, float);

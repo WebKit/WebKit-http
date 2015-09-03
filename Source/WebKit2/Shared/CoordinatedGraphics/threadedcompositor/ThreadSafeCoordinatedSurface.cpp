@@ -62,17 +62,17 @@ void ThreadSafeCoordinatedSurface::paintToSurface(const IntRect& rect, Coordinat
 GraphicsContext* ThreadSafeCoordinatedSurface::beginPaint(const IntRect& rect)
 {
     ASSERT(m_imageBuffer);
-    GraphicsContext* graphicsContext = m_imageBuffer->context();
-    graphicsContext->save();
-    graphicsContext->clip(rect);
-    graphicsContext->translate(rect.x(), rect.y());
-    return graphicsContext;
+    GraphicsContext& graphicsContext = m_imageBuffer->context();
+    graphicsContext.save();
+    graphicsContext.clip(rect);
+    graphicsContext.translate(rect.x(), rect.y());
+    return &graphicsContext;
 }
 
 void ThreadSafeCoordinatedSurface::endPaint()
 {
     ASSERT(m_imageBuffer);
-    m_imageBuffer->context()->restore();
+    m_imageBuffer->context().restore();
 }
 
 void ThreadSafeCoordinatedSurface::copyToTexture(PassRefPtr<BitmapTexture> passTexture, const IntRect& target, const IntPoint& sourceOffset)

@@ -144,11 +144,6 @@ void ContextMenuItem::setEnabled(bool)
     notImplemented();
 }
 
-ContextMenuItem ContextMenuItem::shareMenuItem(const URL&, const URL&, Image*, const String&)
-{
-    return ContextMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
-}
-
 } // namespace WebCore
 
 #endif // ENABLE(CONTEXT_MENUS)
