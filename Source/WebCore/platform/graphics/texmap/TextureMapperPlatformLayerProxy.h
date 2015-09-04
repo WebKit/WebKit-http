@@ -65,6 +65,7 @@ public:
 
     void setCompositor(MutexLocker&, Compositor*);
     void setTargetLayer(MutexLocker&, TextureMapperLayer*);
+    bool hasTargetLayer(MutexLocker&);
 
     void swapBuffer();
 
