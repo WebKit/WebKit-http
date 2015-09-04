@@ -108,9 +108,7 @@ void GraphicsContext3DPrivate::swapPlatformTexture()
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
-    unique_ptr<TextureMapperPlatformLayerBuffer> buffer = make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, m_context->m_attrs.alpha, true);
-
-    m_platformLayerProxy->pushNextBuffer(locker, WTF::move(buffer));
+    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, m_context->m_attrs.alpha, true));
 
     m_context->markLayerComposited();
 }
