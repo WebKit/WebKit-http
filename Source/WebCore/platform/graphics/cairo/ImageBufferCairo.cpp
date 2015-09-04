@@ -140,7 +140,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
         return;
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    MutexLocker locker(m_data.m_platformLayerProxy->mutex());
+    LockHolder locker(m_data.m_platformLayerProxy->mutex());
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)

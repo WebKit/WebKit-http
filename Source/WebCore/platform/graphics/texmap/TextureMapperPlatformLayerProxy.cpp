@@ -51,28 +51,28 @@ TextureMapperPlatformLayerProxy::~TextureMapperPlatformLayerProxy()
         m_targetLayer->setContentsLayer(nullptr);
 }
 
-void TextureMapperPlatformLayerProxy::setCompositor(MutexLocker&, Compositor* compositor)
+void TextureMapperPlatformLayerProxy::setCompositor(LockHolder&, Compositor* compositor)
 {
 #ifndef NDEBUG
     m_compositorThreadID = WTF::currentThread();
 #endif
     m_compositor = compositor;
-    m_pushCondition.signal();
+    m_condition.notifyOne();
 }
 
-void TextureMapperPlatformLayerProxy::setTargetLayer(MutexLocker&, TextureMapperLayer* layer)
+void TextureMapperPlatformLayerProxy::setTargetLayer(LockHolder&, TextureMapperLayer* layer)
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
     m_targetLayer = layer;
-    m_pushCondition.signal();
+    m_condition.notifyOne();
 }
 
-bool TextureMapperPlatformLayerProxy::hasTargetLayer(MutexLocker&)
+bool TextureMapperPlatformLayerProxy::hasTargetLayer(LockHolder&)
 {
     return !!m_targetLayer;
 }
 
-void TextureMapperPlatformLayerProxy::pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
+void TextureMapperPlatformLayerProxy::pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
 {
     m_pendingBuffer = WTF::move(newBuffer);
 
@@ -80,7 +80,7 @@ void TextureMapperPlatformLayerProxy::pushNextBuffer(MutexLocker&, std::unique_p
         m_compositor->onNewBufferAvailable();
 }
 
-std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(MutexLocker&, const IntSize& size, GC3Dint internalFormat)
+std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(LockHolder&, const IntSize& size, GC3Dint internalFormat)
 {
     std::unique_ptr<TextureMapperPlatformLayerBuffer> availableBuffer;
 
@@ -114,7 +114,7 @@ void TextureMapperPlatformLayerProxy::scheduleReleaseUnusedBuffers()
 
 void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
 {
-    MutexLocker locker(m_pushMutex);
+    LockHolder locker(m_mutex);
     if (m_usedBuffers.isEmpty())
         return;
 
@@ -132,7 +132,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     ASSERT(m_compositorThreadID == WTF::currentThread());
 
     {
-        MutexLocker locker(m_pushMutex);
+        LockHolder locker(m_mutex);
         if (!m_targetLayer || !m_pendingBuffer)
             return;
 
@@ -141,7 +141,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
 
         m_currentBuffer = WTF::move(m_pendingBuffer);
         m_targetLayer->setContentsLayer(m_currentBuffer.get());
-        m_pushCondition.signal();
+        m_condition.notifyOne();
     }
 }
 

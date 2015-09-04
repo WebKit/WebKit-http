@@ -191,7 +191,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
     auto result = m_platformLayerProxies.add(layer, nullptr);
     auto& existingProxy = result.iterator->value;
     if (existingProxy) {
-        MutexLocker locker(existingProxy->mutex());
+        LockHolder locker(existingProxy->mutex());
         existingProxy->setCompositor(locker, nullptr);
         existingProxy->setTargetLayer(locker, nullptr);
     }
@@ -199,7 +199,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
     auto& newProxy = state.platformLayerProxy;
     result.iterator->value = newProxy;
     {
-        MutexLocker locker(newProxy->mutex());
+        LockHolder locker(newProxy->mutex());
         state.platformLayerProxy->setCompositor(locker, this);
         state.platformLayerProxy->setTargetLayer(locker, layer);
     }
@@ -390,7 +390,7 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (auto* platformLayerProxy = m_platformLayerProxies.get(layer.get())) {
-        MutexLocker locker(platformLayerProxy->mutex());
+        LockHolder locker(platformLayerProxy->mutex());
         platformLayerProxy->setCompositor(locker, nullptr);
         platformLayerProxy->setTargetLayer(locker, nullptr);
     }
