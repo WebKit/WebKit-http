@@ -72,15 +72,13 @@ public:
 
     void scheduleUpdate()
     {
-        if (m_updateTimer.isActive())
-            return;
-
-        if (m_updateState.load() == UpdateState::Completed) {
+        if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
             m_updateTimer.startOneShot(0);
             return;
         }
 
-        m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::UpdateOnCompletion);
+        if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion))
+            return;
     }
 
     void stopUpdates()
@@ -91,13 +89,11 @@ public:
 
     void updateCompleted()
     {
-        ASSERT(&RunLoop::current() == &m_runLoop);
-
         if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
             return;
 
-        if (m_updateState.compareExchangeStrong(UpdateState::UpdateOnCompletion, UpdateState::Completed)) {
-            updateTimerFired();
+        if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::Completed)) {
+            m_updateTimer.startOneShot(0);
             return;
         }
 
@@ -113,17 +109,12 @@ private:
     enum class UpdateState {
         Completed,
         InProgress,
-        UpdateOnCompletion,
+        PendingAfterCompletion,
     };
 
     void updateTimerFired()
     {
-        if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
-            m_updateFunction();
-            return;
-        }
-
-        ASSERT_NOT_REACHED();
+        m_updateFunction();
     }
 
     RunLoop& m_runLoop;
