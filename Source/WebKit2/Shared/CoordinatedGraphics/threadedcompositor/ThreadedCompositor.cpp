@@ -253,7 +253,8 @@ GLContext* ThreadedCompositor::glContext()
 
     RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
 
-    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600), *this);
+    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
     if (!m_gbmSurface)
         return 0;
 
