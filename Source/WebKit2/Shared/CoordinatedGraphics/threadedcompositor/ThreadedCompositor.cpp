@@ -141,7 +141,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
     , m_threadIdentifier(0)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor))
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
 {
     createCompositingThread();
@@ -149,6 +149,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client)
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+    m_displayRefreshMonitor->invalidate();
     terminateCompositingThread();
 }
 
@@ -407,9 +408,10 @@ RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshM
     return m_displayRefreshMonitor;
 }
 
-ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor()
+ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor& compositor)
     : WebCore::DisplayRefreshMonitor(0)
     , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
+    , m_compositor(&compositor)
 {
 }
 
@@ -423,6 +425,11 @@ void ThreadedCompositor::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
 {
     if (isScheduled())
         m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::invalidate()
+{
+    m_compositor = nullptr;
 }
 
 void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
