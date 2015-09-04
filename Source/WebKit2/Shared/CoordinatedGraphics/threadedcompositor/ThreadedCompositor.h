@@ -138,10 +138,6 @@ private:
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
 
-#if 0
-    static const struct wl_callback_listener m_frameListener;
-#endif
-
     CompositingManager m_compositingManager;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
