@@ -512,7 +512,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
 
-    MutexLocker locker(m_platformLayerProxy->mutex());
+    LockHolder locker(m_platformLayerProxy->mutex());
     unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(locker, size);
     if (UNLIKELY(!buffer)) {
         if (UNLIKELY(!m_context3D))

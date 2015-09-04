@@ -104,7 +104,7 @@ void GraphicsContext3DPrivate::swapBuffersIfNeeded()
 void GraphicsContext3DPrivate::swapPlatformTexture()
 {
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    MutexLocker locker(m_platformLayerProxy->mutex());
+    LockHolder locker(m_platformLayerProxy->mutex());
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
