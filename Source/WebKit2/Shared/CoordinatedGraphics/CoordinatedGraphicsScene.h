@@ -202,8 +202,6 @@ private:
     WebCore::TextureMapperFPSCounter m_fpsCounter;
 
     RunLoop& m_clientRunLoop;
-
-    bool m_clientShouldRenderNextFrame { false };
 };
 
 } // namespace WebKit

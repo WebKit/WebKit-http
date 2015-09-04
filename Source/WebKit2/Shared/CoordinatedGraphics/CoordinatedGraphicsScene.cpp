@@ -730,7 +730,6 @@ void CoordinatedGraphicsScene::setActive(bool active)
 
     m_isActive = active;
     if (m_isActive) {
-        m_clientShouldRenderNextFrame = true;
         RefPtr<CoordinatedGraphicsScene> protector(this);
         dispatchOnMainThread([=] {
             protector->renderNextFrame();
