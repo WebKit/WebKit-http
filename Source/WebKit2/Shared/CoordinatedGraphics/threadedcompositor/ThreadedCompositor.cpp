@@ -136,6 +136,8 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
 {
+    m_clientRendersNextFrame.store(false);
+    m_coordinateUpdateCompletionWithClient.store(false);
     createCompositingThread();
     m_compositingManager.establishConnection(webPage, m_compositingRunLoop->runLoop());
 }
@@ -305,9 +307,17 @@ void ThreadedCompositor::renderLayerTree()
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
 {
+    RefPtr<ThreadedCompositor> protector(this);
     RefPtr<CoordinatedGraphicsScene> scene = m_scene;
-    m_scene->appendUpdate([scene, state] {
+    m_scene->appendUpdate([protector, scene, state] {
         scene->commitSceneState(state);
+
+        protector->m_clientRendersNextFrame.store(true);
+        bool coordinateUpdate = std::any_of(state.layersToUpdate.begin(), state.layersToUpdate.end(),
+            [](const std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState>& it) {
+                return it.second.platformLayerChanged;
+            });
+        protector->m_coordinateUpdateCompletionWithClient.store(coordinateUpdate);
     });
 
     setNeedsDisplay();
@@ -407,10 +417,15 @@ bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
     return true;
 }
 
+bool ThreadedCompositor::DisplayRefreshMonitor::requiresDisplayRefreshCallback()
+{
+    LockHolder locker(mutex());
+    return isScheduled() && isPreviousFrameDone();
+}
+
 void ThreadedCompositor::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
 {
-    if (isScheduled())
-        m_displayRefreshTimer.startOneShot(0);
+    m_displayRefreshTimer.startOneShot(0);
 }
 
 void ThreadedCompositor::DisplayRefreshMonitor::invalidate()
@@ -420,8 +435,25 @@ void ThreadedCompositor::DisplayRefreshMonitor::invalidate()
 
 void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 {
-    setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
-    DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+    bool shouldHandleDisplayRefreshNotification = false;
+    {
+        LockHolder locker(mutex());
+        shouldHandleDisplayRefreshNotification = isScheduled() && isPreviousFrameDone();
+        if (shouldHandleDisplayRefreshNotification) {
+            setIsPreviousFrameDone(false);
+            setMonotonicAnimationStartTime(monotonicallyIncreasingTime());
+        }
+    }
+
+    if (shouldHandleDisplayRefreshNotification)
+        DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
+
+    if (m_compositor) {
+        if (m_compositor->m_clientRendersNextFrame.compareExchangeStrong(true, false))
+            m_compositor->m_scene->renderNextFrame();
+        if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
+            m_compositor->m_compositingRunLoop->updateCompleted();
+    }
 }
 #endif
 
@@ -439,8 +471,14 @@ void ThreadedCompositor::frameComplete()
     if (reportFPS)
         debugThreadedCompositorFPS();
 
-    m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-    m_compositingRunLoop->updateCompleted();
+    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
+        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
+    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
+
+    if (shouldDispatchDisplayRefreshCallback)
+        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+    if (!shouldCoordinateUpdateCompletionWithClient)
+        m_compositingRunLoop->updateCompleted();
 }
 #endif
 

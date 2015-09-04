@@ -87,6 +87,7 @@ public:
     void setActive(bool);
 
     void commitSceneState(const WebCore::CoordinatedGraphicsState&);
+    void renderNextFrame();
 
     void setViewBackgroundColor(const WebCore::Color& color) { m_viewBackgroundColor = color; }
     WebCore::Color viewBackgroundColor() const { return m_viewBackgroundColor; }
@@ -134,7 +135,6 @@ private:
     void dispatchOnMainThread(std::function<void()>);
     void dispatchOnClientRunLoop(std::function<void()>);
     void updateViewport();
-    void renderNextFrame();
     void purgeBackingStores();
 
     void createLayer(WebCore::CoordinatedLayerID);

@@ -34,6 +34,7 @@
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
+#include <wtf/Atomics.h>
 #include <wtf/Condition.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Lock.h>
@@ -149,6 +150,8 @@ private:
         DisplayRefreshMonitor(ThreadedCompositor&);
 
         virtual bool requestRefreshCallback() override;
+
+        bool requiresDisplayRefreshCallback();
         void dispatchDisplayRefreshCallback();
         void invalidate();
 
@@ -159,6 +162,9 @@ private:
     };
     RefPtr<DisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
+
+    Atomic<bool> m_clientRendersNextFrame;
+    Atomic<bool> m_coordinateUpdateCompletionWithClient;
 };
 
 } // namespace WebKit
