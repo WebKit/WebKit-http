@@ -151,6 +151,7 @@ gpointer AtholShell::launchWPE(gpointer data)
     auto pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 
     auto context = adoptWK(WKContextCreate());
+    WKContextSetCacheModel(context.get(), kWKCacheModelPrimaryWebBrowser);
 
     if (!!g_getenv("WPE_SHELL_COOKIE_STORAGE")) {
         gchar *cookieDatabasePath = g_build_filename(g_get_user_cache_dir(), "cookies.db", nullptr);
