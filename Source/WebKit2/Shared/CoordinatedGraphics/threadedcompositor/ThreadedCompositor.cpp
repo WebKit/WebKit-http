@@ -92,7 +92,7 @@ public:
         if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
             return;
 
-        if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::Completed)) {
+        if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress)) {
             m_updateTimer.startOneShot(0);
             return;
         }
