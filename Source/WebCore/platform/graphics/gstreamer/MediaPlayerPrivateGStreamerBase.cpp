@@ -247,6 +247,12 @@ void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
     g_signal_connect(bus.get(), "sync-message::need-context", G_CALLBACK(mediaPlayerPrivateNeedContextMessageCallback), this);
 }
 
+void MediaPlayerPrivateGStreamerBase::clearSamples()
+{
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+    m_sample = 0;
+}
+
 void MediaPlayerPrivateGStreamerBase::handleNeedContextMessage(GstMessage* message)
 {
 #if USE(GSTREAMER_GL)

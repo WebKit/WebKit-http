@@ -325,6 +325,9 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
 #endif
 
+        // Ensure that neither this class nor the base class hold references to any sample
+        // as in the change to NULL the decoder needs to be able to free the buffers
+        clearSamples();
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 

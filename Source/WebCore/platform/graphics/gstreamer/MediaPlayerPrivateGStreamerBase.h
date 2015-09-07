@@ -150,6 +150,7 @@ protected:
     virtual GstElement* audioSink() const { return 0; }
 
     void setPipeline(GstElement*);
+    void clearSamples();
 
     virtual GRefPtr<GstCaps> currentDemuxerCaps() const { return nullptr; }
 
