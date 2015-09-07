@@ -373,7 +373,7 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2) AND ENABLE_DXDRM)
 
     if (ENABLE_PROVISIONING)
         list(APPEND WebCore_LIBRARIES
-            -lprovisioning
+            -lprovisionproxy
         )
     endif ()
 
