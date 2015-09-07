@@ -324,6 +324,11 @@ static void unlockSampleMutex(WebKitVideoSinkPrivate* priv)
         priv->sample = 0;
     }
 
+    if (priv->previousSample) {
+        gst_sample_unref(priv->previousSample);
+        priv->previousSample = 0;
+    }
+
     priv->unlocked = true;
 
     g_cond_signal(&priv->dataCondition);
