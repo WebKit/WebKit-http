@@ -1031,9 +1031,7 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
     g_object_thaw_notify(G_OBJECT(src));
 
     // notify size/duration
-    if (length > 0) {
-        gst_app_src_set_size(priv->appsrc, length);
-    } else
+    if (length <= 0)
         gst_app_src_set_size(priv->appsrc, -1);
 
     // icecast stuff
@@ -1112,7 +1110,6 @@ void StreamingClient::handleDataReceived(const char* data, int length)
     // priv->size == 0 if received length on didReceiveResponse < 0.
     if (priv->size > 0 && priv->offset > priv->size) {
         GST_DEBUG_OBJECT(src, "Updating internal size from %" G_GUINT64_FORMAT " to %" G_GUINT64_FORMAT, priv->size, priv->offset);
-        gst_app_src_set_size(priv->appsrc, priv->offset);
         priv->size = priv->offset;
     }
     GST_BUFFER_OFFSET_END(priv->buffer.get()) = priv->offset;
