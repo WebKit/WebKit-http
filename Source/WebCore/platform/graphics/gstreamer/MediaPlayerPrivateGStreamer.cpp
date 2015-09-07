@@ -1346,14 +1346,20 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             }
         }
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
-        else {
-            GstMpegtsSection* section = gst_message_parse_mpegts_section(message);
-            if (section) {
-                processMpegTsSection(section);
-                gst_mpegts_section_unref(section);
-            }
+        else if (GstMpegtsSection* section = gst_message_parse_mpegts_section(message)) {
+            processMpegTsSection(section);
+            gst_mpegts_section_unref(section);
         }
 #endif
+        else {
+            const GstStructure* structure = gst_message_get_structure(message);
+            if (gst_structure_has_name(structure, "adaptive-streaming-statistics") && gst_structure_has_field(structure, "fragment-download-time")) {
+                GUniqueOutPtr<gchar> uri;
+                GstClockTime time;
+                gst_structure_get(structure, "uri", G_TYPE_STRING, &uri.outPtr(), "fragment-download-time", GST_TYPE_CLOCK_TIME, &time, nullptr);
+                INFO_MEDIA_MESSAGE("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
+            }
+        }
         break;
 #if ENABLE(VIDEO_TRACK)
     case GST_MESSAGE_TOC:
