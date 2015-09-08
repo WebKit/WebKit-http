@@ -251,6 +251,14 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
 {
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
     m_sample = 0;
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    // Disconnect the repaint handler to ensure that new samples aren't going to arrive
+    // before the pipeline destruction
+    if (m_repaintHandler) {
+        g_signal_handler_disconnect(m_videoSink.get(), m_repaintHandler);
+        m_repaintHandler = 0;
+    }
+#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::handleNeedContextMessage(GstMessage* message)
