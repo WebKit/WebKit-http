@@ -39,8 +39,6 @@ namespace JSC {
 
 #if ENABLE(JIT)
 
-class RepatchBuffer;
-
 class CallLinkInfo : public BasicRawSentinelNode<CallLinkInfo> {
 public:
     enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs };
@@ -61,6 +59,7 @@ public:
         , m_hasSeenShouldRepatch(false)
         , m_hasSeenClosure(false)
         , m_clearedByGC(false)
+        , m_allowStubs(true)
         , m_callType(None)
         , m_maxNumArguments(0)
         , m_slowPathCount(0)
@@ -90,7 +89,7 @@ public:
     }
 
     bool isLinked() { return m_stub || m_callee; }
-    void unlink(RepatchBuffer&);
+    void unlink(VM&);
 
     void setUpCall(CallType callType, CodeOrigin codeOrigin, unsigned calleeGPR)
     {
@@ -107,11 +106,18 @@ public:
         m_hotPathOther = hotPathOther;
     }
 
+    bool allowStubs() const { return m_allowStubs; }
+
+    void disallowStubs()
+    {
+        m_allowStubs = false;
+    }
+
     void setUpCallFromFTL(CallType callType, CodeOrigin codeOrigin,
         CodeLocationNearCall callReturnLocation, CodeLocationDataLabelPtr hotPathBegin,
         CodeLocationNearCall hotPathOther, unsigned calleeGPR)
     {
-        m_registerPreservationMode = static_cast<unsigned>(MustPreserveRegisters);
+        m_registerPreservationMode = static_cast<unsigned>(RegisterPreservationNotRequired);
         m_callType = callType;
         m_codeOrigin = codeOrigin;
         m_callReturnLocation = callReturnLocation;
@@ -278,7 +284,7 @@ public:
         return m_codeOrigin;
     }
 
-    void visitWeak(RepatchBuffer&);
+    void visitWeak(VM&);
 
 private:
     CodeLocationNearCall m_callReturnLocation;
@@ -292,6 +298,7 @@ private:
     bool m_hasSeenShouldRepatch : 1;
     bool m_hasSeenClosure : 1;
     bool m_clearedByGC : 1;
+    bool m_allowStubs : 1;
     unsigned m_callType : 4; // CallType
     unsigned m_calleeGPR : 8;
     uint8_t m_maxNumArguments; // Only used for varargs calls.

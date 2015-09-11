@@ -387,7 +387,9 @@ enum MediaControlEvent {
 
     void setPageMuted(boolean muted);
     boolean isPagePlayingAudio();
-    
+
+    void setPageDefersLoading(boolean defersLoading);
+
     File createFile(DOMString url);
     void queueMicroTask(long testNumber);
     boolean testPreloaderSettingViewport();
@@ -400,5 +402,7 @@ enum MediaControlEvent {
 
     [RaisesException] DOMString pathStringWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
 
-    DOMString getCurrentMediaControlsStatusForElement(HTMLMediaElement element);
+    [Conditional=VIDEO] DOMString getCurrentMediaControlsStatusForElement(HTMLMediaElement element);
+
+    DOMString userVisibleString(DOMURL url);
 };

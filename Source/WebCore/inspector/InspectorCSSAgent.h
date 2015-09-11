@@ -51,7 +51,6 @@ class CSSStyleSheet;
 class ChangeRegionOversetTask;
 class Document;
 class Element;
-class InstrumentingAgents;
 class Node;
 class NodeList;
 class StyleResolver;
@@ -82,12 +81,12 @@ public:
         ContentSecurityPolicy* m_contentSecurityPolicy;
     };
 
-    InspectorCSSAgent(InstrumentingAgents&, InspectorDOMAgent*);
+    InspectorCSSAgent(WebAgentContext&, InspectorDOMAgent*);
     virtual ~InspectorCSSAgent();
 
     static CSSStyleRule* asCSSStyleRule(CSSRule&);
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
     virtual void discardAgent() override;
     virtual void enable(ErrorString&) override;

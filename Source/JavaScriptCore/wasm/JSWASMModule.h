@@ -37,6 +37,25 @@ class JSWASMModule : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
+    union GlobalVariable {
+        GlobalVariable(int32_t value)
+            : intValue(value)
+        {
+        }
+        GlobalVariable(float value)
+            : floatValue(value)
+        {
+        }
+        GlobalVariable(double value)
+            : doubleValue(value)
+        {
+        }
+
+        int32_t intValue;
+        float floatValue;
+        double doubleValue;
+    };
+
     static JSWASMModule* create(VM& vm, Structure* structure)
     {
         JSWASMModule* module = new (NotNull, allocateCell<JSWASMModule>(vm.heap)) JSWASMModule(vm, structure);
@@ -65,6 +84,9 @@ public:
     Vector<WASMFunctionPointerTable>& functionPointerTables() { return m_functionPointerTables; }
 
     Vector<WriteBarrier<JSFunction>>& functions() { return m_functions; }
+    Vector<unsigned>& functionStartOffsetsInSource() { return m_functionStartOffsetsInSource; }
+    Vector<unsigned>& functionStackHeights() { return m_functionStackHeights; }
+    Vector<GlobalVariable>& globalVariables() { return m_globalVariables; }
 
 private:
     JSWASMModule(VM& vm, Structure* structure)
@@ -83,6 +105,9 @@ private:
     Vector<WASMFunctionPointerTable> m_functionPointerTables;
 
     Vector<WriteBarrier<JSFunction>> m_functions;
+    Vector<unsigned> m_functionStartOffsetsInSource;
+    Vector<unsigned> m_functionStackHeights;
+    Vector<GlobalVariable> m_globalVariables;
 };
 
 } // namespace JSC

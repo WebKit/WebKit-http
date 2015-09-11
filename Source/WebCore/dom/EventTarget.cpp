@@ -74,9 +74,9 @@ bool EventTarget::isMessagePort() const
     return false;
 }
 
-bool EventTarget::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
+bool EventTarget::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
 {
-    return ensureEventTargetData().eventListenerMap.add(eventType, listener, useCapture);
+    return ensureEventTargetData().eventListenerMap.add(eventType, WTF::move(listener), useCapture);
 }
 
 bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
@@ -138,13 +138,13 @@ bool EventTarget::clearAttributeEventListener(const AtomicString& eventType)
 
 bool EventTarget::dispatchEvent(PassRefPtr<Event> event, ExceptionCode& ec)
 {
-    if (!event || event->type().isEmpty()) {
-        ec = EventException::UNSPECIFIED_EVENT_TYPE_ERR;
+    if (!event) {
+        ec = TypeError;
         return false;
     }
 
-    if (event->isBeingDispatched()) {
-        ec = EventException::DISPATCH_REQUEST_ERR;
+    if (!event->isInitialized() || event->isBeingDispatched()) {
+        ec = INVALID_STATE_ERR;
         return false;
     }
 
@@ -191,7 +191,7 @@ static const AtomicString& legacyType(const Event* event)
 bool EventTarget::fireEventListeners(Event* event)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
-    ASSERT(event && !event->type().isEmpty());
+    ASSERT(event && event->isInitialized());
 
     EventTargetData* d = eventTargetData();
     if (!d)

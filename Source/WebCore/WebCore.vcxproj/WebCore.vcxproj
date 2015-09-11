@@ -7268,7 +7268,6 @@
     <ClCompile Include="..\page\DragController.cpp" />
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingCoordinatorCoordinatedGraphics.cpp" />
     <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateNodeCoordinatedGraphics.cpp" />
-    <ClCompile Include="..\page\scrolling\coordinatedgraphics\ScrollingStateScrollingNodeCoordinatedGraphics.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateFixedNode.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateNode.cpp" />
     <ClCompile Include="..\page\scrolling\ScrollingStateScrollingNode.cpp" />
@@ -20336,6 +20335,7 @@
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorBackendDispatcher.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorEnvironment.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendChannel.h" />
+    <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendRouter.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorBackendDispatchers.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorFrontendDispatchers.h" />
     <ClInclude Include="..\ForwardingHeaders\inspector\InspectorProtocolObjects.h" />
@@ -22746,7 +22746,6 @@
     <ClInclude Include="..\inspector\InspectorDOMAgent.h" />
     <ClInclude Include="..\inspector\InspectorDOMDebuggerAgent.h" />
     <ClInclude Include="..\inspector\InspectorDOMStorageAgent.h" />
-    <ClInclude Include="..\inspector\InspectorForwarding.h" />
     <ClInclude Include="..\inspector\InspectorFrontendClient.h" />
     <ClInclude Include="..\inspector\InspectorFrontendClientLocal.h" />
     <ClInclude Include="..\inspector\InspectorFrontendHost.h" />

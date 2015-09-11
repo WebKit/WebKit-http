@@ -284,7 +284,6 @@ if (ENABLE_THREADED_COMPOSITOR)
     list(APPEND WebCore_SOURCES
         page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
         page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
-        page/scrolling/coordinatedgraphics/ScrollingStateScrollingNodeCoordinatedGraphics.cpp
         page/scrolling/ScrollingStateStickyNode.cpp
         page/scrolling/ScrollingThread.cpp
         page/scrolling/ScrollingTreeNode.cpp

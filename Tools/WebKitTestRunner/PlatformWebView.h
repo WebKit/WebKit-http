@@ -89,6 +89,7 @@ public:
     const ViewOptions& options() const { return m_options; }
 
     void changeWindowScaleIfNeeded(float newScale);
+    void setNavigationGesturesEnabled(bool);
 
 #if PLATFORM(GTK)
     void dismissAllPopupMenus();

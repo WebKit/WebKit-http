@@ -1009,7 +1009,7 @@ RefPtr<Node> Document::adoptNode(PassRefPtr<Node> source, ExceptionCode& ec)
             }
         }
         if (source->parentNode()) {
-            source->parentNode()->removeChild(source.get(), ec);
+            source->parentNode()->removeChild(*source, ec);
             if (ec)
                 return nullptr;
         }
@@ -1252,7 +1252,15 @@ AtomicString Document::encoding() const
 {
     if (TextResourceDecoder* d = decoder())
         return d->encoding().domName();
-    return String();
+    return nullAtom;
+}
+
+String Document::characterSetForBindings() const
+{
+    AtomicString name = encoding();
+    if (!name.isNull())
+        return name;
+    return UTF8Encoding().domName();
 }
 
 String Document::defaultCharset() const
@@ -1535,10 +1543,11 @@ void Document::setTitle(const String& title)
     if (!isHTMLDocument() && !isXHTMLDocument())
         m_titleElement = nullptr;
     else if (!m_titleElement) {
-        if (HTMLElement* headElement = head()) {
-            m_titleElement = createElement(titleTag, false);
-            headElement->appendChild(m_titleElement, ASSERT_NO_EXCEPTION);
-        }
+        auto* headElement = head();
+        if (!headElement)
+            return;
+        m_titleElement = createElement(titleTag, false);
+        headElement->appendChild(*m_titleElement, ASSERT_NO_EXCEPTION);
     }
 
     // The DOM API has no method of specifying direction, so assume LTR.
@@ -2081,7 +2090,7 @@ void Document::createStyleResolver()
     m_styleSheetCollection.combineCSSFeatureFlags();
 }
 
-void Document::fontsNeedUpdate(FontSelector*)
+void Document::fontsNeedUpdate(FontSelector&)
 {
     if (m_styleResolver)
         m_styleResolver->invalidateMatchedPropertiesCache();
@@ -2094,7 +2103,7 @@ CSSFontSelector& Document::fontSelector()
 {
     if (!m_fontSelector) {
         m_fontSelector = CSSFontSelector::create(*this);
-        m_fontSelector->registerForInvalidationCallbacks(this);
+        m_fontSelector->registerForInvalidationCallbacks(*this);
     }
     return *m_fontSelector;
 }
@@ -2106,7 +2115,7 @@ void Document::clearStyleResolver()
     // FIXME: It would be better if the FontSelector could survive this operation.
     if (m_fontSelector) {
         m_fontSelector->clearDocument();
-        m_fontSelector->unregisterForInvalidationCallbacks(this);
+        m_fontSelector->unregisterForInvalidationCallbacks(*this);
         m_fontSelector = nullptr;
     }
 }
@@ -2477,13 +2486,15 @@ HTMLBodyElement* Document::body() const
 
 HTMLElement* Document::bodyOrFrameset() const
 {
-    // If the document element contains both a frameset and a body, the frameset wins.
+    // Return the first body or frameset child of the html element.
     auto* element = documentElement();
     if (!element)
         return nullptr;
-    if (auto* frameset = childrenOfType<HTMLFrameSetElement>(*element).first())
-        return frameset;
-    return childrenOfType<HTMLBodyElement>(*element).first();
+    for (auto& child : childrenOfType<HTMLElement>(*element)) {
+        if (is<HTMLBodyElement>(child) || is<HTMLFrameSetElement>(child))
+            return &child;
+    }
+    return nullptr;
 }
 
 void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
@@ -2507,11 +2518,10 @@ void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCo
         newBody = downcast<HTMLElement>(node.get());
     }
 
-    HTMLElement* b = bodyOrFrameset();
-    if (!b)
-        documentElement()->appendChild(newBody.release(), ec);
+    if (auto* body = bodyOrFrameset())
+        documentElement()->replaceChild(newBody.releaseNonNull(), *body, ec);
     else
-        documentElement()->replaceChild(newBody.release(), b, ec);
+        documentElement()->appendChild(newBody.releaseNonNull(), ec);
 }
 
 HTMLHeadElement* Document::head()
@@ -3315,13 +3325,9 @@ bool Document::childTypeAllowed(NodeType type) const
     return false;
 }
 
-bool Document::canReplaceChild(Node* newChild, Node* oldChild)
+bool Document::canReplaceChild(Node& newChild, Node& oldChild)
 {
-    if (!oldChild)
-        // ContainerNode::replaceChild will raise a NOT_FOUND_ERR.
-        return true;
-
-    if (oldChild->nodeType() == newChild->nodeType())
+    if (oldChild.nodeType() == newChild.nodeType())
         return true;
 
     int numDoctypes = 0;
@@ -3330,7 +3336,7 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     // First, check how many doctypes and elements we have, not counting
     // the child we're about to remove.
     for (Node* c = firstChild(); c; c = c->nextSibling()) {
-        if (c == oldChild)
+        if (c == &oldChild)
             continue;
         
         switch (c->nodeType()) {
@@ -3346,8 +3352,8 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     }
     
     // Then, see how many doctypes and elements might be added by the new child.
-    if (newChild->isDocumentFragment()) {
-        for (Node* c = newChild->firstChild(); c; c = c->nextSibling()) {
+    if (newChild.isDocumentFragment()) {
+        for (Node* c = newChild.firstChild(); c; c = c->nextSibling()) {
             switch (c->nodeType()) {
             case ATTRIBUTE_NODE:
             case CDATA_SECTION_NODE:
@@ -3370,7 +3376,7 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
             }
         }
     } else {
-        switch (newChild->nodeType()) {
+        switch (newChild.nodeType()) {
         case ATTRIBUTE_NODE:
         case CDATA_SECTION_NODE:
         case DOCUMENT_FRAGMENT_NODE:
@@ -3398,7 +3404,7 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     return true;
 }
 
-RefPtr<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
+Ref<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
 {
     Ref<Document> clone = cloneDocumentWithoutChildren();
     clone->cloneDataFromDocument(*this);
@@ -3407,7 +3413,7 @@ RefPtr<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
     case CloningOperation::SelfWithTemplateContent:
         break;
     case CloningOperation::Everything:
-        cloneChildNodes(clone.ptr());
+        cloneChildNodes(clone);
         break;
     }
     return WTF::move(clone);

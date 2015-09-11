@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,8 +46,10 @@ using namespace Inspector;
 
 namespace WebCore {
 
-InspectorLayerTreeAgent::InspectorLayerTreeAgent(InstrumentingAgents& instrumentingAgents)
-    : InspectorAgentBase(ASCIILiteral("LayerTree"), instrumentingAgents)
+InspectorLayerTreeAgent::InspectorLayerTreeAgent(WebAgentContext& context)
+    : InspectorAgentBase(ASCIILiteral("LayerTree"), context)
+    , m_frontendDispatcher(std::make_unique<Inspector::LayerTreeFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::LayerTreeBackendDispatcher::create(context.backendDispatcher, this))
 {
 }
 
@@ -56,17 +58,12 @@ InspectorLayerTreeAgent::~InspectorLayerTreeAgent()
     reset();
 }
 
-void InspectorLayerTreeAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorLayerTreeAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::LayerTreeFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::LayerTreeBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorLayerTreeAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     ErrorString unused;
     disable(unused);
 }

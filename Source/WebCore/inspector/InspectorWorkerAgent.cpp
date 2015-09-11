@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,7 +32,6 @@
 #include "config.h"
 #include "InspectorWorkerAgent.h"
 
-#include "InspectorForwarding.h"
 #include "InstrumentingAgents.h"
 #include "URL.h"
 #include "WorkerGlobalScopeProxy.h"
@@ -101,8 +101,10 @@ private:
 
 int InspectorWorkerAgent::WorkerFrontendChannel::s_nextId = 1;
 
-InspectorWorkerAgent::InspectorWorkerAgent(InstrumentingAgents& instrumentingAgents)
-    : InspectorAgentBase(ASCIILiteral("Worker"), instrumentingAgents)
+InspectorWorkerAgent::InspectorWorkerAgent(WebAgentContext& context)
+    : InspectorAgentBase(ASCIILiteral("Worker"), context)
+    , m_frontendDispatcher(std::make_unique<Inspector::WorkerFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::WorkerBackendDispatcher::create(context.backendDispatcher, this))
 {
     m_instrumentingAgents.setInspectorWorkerAgent(this);
 }
@@ -112,10 +114,8 @@ InspectorWorkerAgent::~InspectorWorkerAgent()
     m_instrumentingAgents.setInspectorWorkerAgent(nullptr);
 }
 
-void InspectorWorkerAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorWorkerAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::WorkerFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::WorkerBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorWorkerAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
@@ -123,16 +123,11 @@ void InspectorWorkerAgent::willDestroyFrontendAndBackend(Inspector::DisconnectRe
     m_shouldPauseDedicatedWorkerOnStart = false;
     ErrorString unused;
     disable(unused);
-
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
 }
 
 void InspectorWorkerAgent::enable(ErrorString&)
 {
     m_enabled = true;
-    if (!m_frontendDispatcher)
-        return;
 
     createWorkerFrontendChannelsForExistingWorkers();
 }
@@ -140,8 +135,6 @@ void InspectorWorkerAgent::enable(ErrorString&)
 void InspectorWorkerAgent::disable(ErrorString&)
 {
     m_enabled = false;
-    if (!m_frontendDispatcher)
-        return;
 
     destroyWorkerFrontendChannels();
 }
@@ -191,7 +184,7 @@ bool InspectorWorkerAgent::shouldPauseDedicatedWorkerOnStart() const
 void InspectorWorkerAgent::didStartWorkerGlobalScope(WorkerGlobalScopeProxy* workerGlobalScopeProxy, const URL& url)
 {
     m_dedicatedWorkers.set(workerGlobalScopeProxy, url.string());
-    if (m_frontendDispatcher && m_enabled)
+    if (m_enabled)
         createWorkerFrontendChannel(workerGlobalScopeProxy, url.string());
 }
 
@@ -228,7 +221,6 @@ void InspectorWorkerAgent::createWorkerFrontendChannel(WorkerGlobalScopeProxy* w
     WorkerFrontendChannel* channel = new WorkerFrontendChannel(m_frontendDispatcher.get(), workerGlobalScopeProxy);
     m_idToChannel.set(channel->id(), channel);
 
-    ASSERT(m_frontendDispatcher);
     if (m_shouldPauseDedicatedWorkerOnStart)
         channel->connectToWorkerGlobalScope();
     m_frontendDispatcher->workerCreated(channel->id(), url, m_shouldPauseDedicatedWorkerOnStart);

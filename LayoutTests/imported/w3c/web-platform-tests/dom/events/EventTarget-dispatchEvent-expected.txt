@@ -1,0 +1,20 @@
+CONSOLE MESSAGE: line 60: Error
+
+PASS Calling dispatchEvent(null). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (CustomEvent). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (Event). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (Events). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (HTMLEvents). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (KeyboardEvent). 
+FAIL If the event's initialized flag is not set, an InvalidStateError must be thrown (KeyEvents). NotSupportedError: DOM Exception 9
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (MessageEvent). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (MouseEvent). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (MouseEvents). 
+FAIL If the event's initialized flag is not set, an InvalidStateError must be thrown (TouchEvent). NotSupportedError: DOM Exception 9
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (UIEvent). 
+PASS If the event's initialized flag is not set, an InvalidStateError must be thrown (UIEvents). 
+PASS If the event's dispatch flag is set, an InvalidStateError must be thrown. 
+PASS Exceptions from event listeners must not be propagated. 
+FAIL Event listeners added during dispatch should be called assert_array_equals: lengths differ, expected 2 got 0
+PASS Event listeners should be called in order of addition 
+

@@ -510,20 +510,6 @@ void Heap::didFinishIterating()
     m_objectSpace.didFinishIterating();
 }
 
-void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
-{
-    ASSERT(isValidThreadState(m_vm));
-    ConservativeRoots stackRoots(&m_objectSpace.blocks(), &m_storageSpace);
-    stack().gatherConservativeRoots(stackRoots);
-    size_t stackRootCount = stackRoots.size();
-    JSCell** registerRoots = stackRoots.roots();
-    for (size_t i = 0; i < stackRootCount; i++) {
-        setMarked(registerRoots[i]);
-        registerRoots[i]->setMarked();
-        roots.add(registerRoots[i]);
-    }
-}
-
 void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
 {
     SamplingRegion samplingRegion("Garbage Collection: Marking");
@@ -539,7 +525,7 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 #endif
 
 #if ENABLE(DFG_JIT)
-    DFG::clearCodeBlockMarks(*m_vm, m_codeBlocks);
+    DFG::clearCodeBlockMarks(*m_vm);
 #endif
     if (m_operationInProgress == EdenCollection)
         m_codeBlocks.clearMarksForEdenCollection(rememberedSet);
@@ -675,7 +661,7 @@ void Heap::visitCompilerWorklistWeakReferences()
 {
 #if ENABLE(DFG_JIT)
     for (auto worklist : m_suspendedCompilerWorklists)
-        worklist->visitWeakReferences(m_slotVisitor, m_codeBlocks);
+        worklist->visitWeakReferences(m_slotVisitor);
 
     if (Options::logGC() == GCLogging::Verbose)
         dataLog("DFG Worklists:\n", m_slotVisitor);
@@ -782,7 +768,6 @@ void Heap::visitWeakHandles(HeapRootVisitor& visitor)
         m_objectSpace.visitWeakSets(visitor);
         harvestWeakReferences();
         visitCompilerWorklistWeakReferences();
-        m_codeBlocks.traceMarked(m_slotVisitor); // New "executing" code blocks may be discovered.
         if (m_slotVisitor.isEmpty())
             break;
 

@@ -1896,25 +1896,42 @@ static void WebThreadLockAfterDelegateCallbacksHaveCompleted()
 }
 #endif
 
-static NSString *testPathFromURL(NSURL* url)
+static NSURL *computeTestURL(NSString *pathOrURLString, NSString **relativeTestPath)
 {
-    if ([url isFileURL]) {
-        NSString *filePath = [url path];
-        NSRange layoutTestsRange = [filePath rangeOfString:@"/LayoutTests/"];
-        if (layoutTestsRange.location == NSNotFound)
-            return nil;
+    *relativeTestPath = nil;
 
-        return [filePath substringFromIndex:NSMaxRange(layoutTestsRange)];
+    if ([pathOrURLString hasPrefix:@"http://"] || [pathOrURLString hasPrefix:@"https://"] || [pathOrURLString hasPrefix:@"file://"])
+        return [NSURL URLWithString:pathOrURLString];
+
+    NSString *absolutePath = [[[NSURL fileURLWithPath:pathOrURLString] absoluteURL] path];
+
+    NSRange layoutTestsRange = [absolutePath rangeOfString:@"/LayoutTests/"];
+    if (layoutTestsRange.location == NSNotFound)
+        return [NSURL fileURLWithPath:absolutePath];
+
+    *relativeTestPath = [absolutePath substringFromIndex:NSMaxRange(layoutTestsRange)];
+
+    // Convert file URLs in LayoutTests/http/tests to HTTP URLs, except for file URLs in LayoutTests/http/tests/local.
+
+    NSRange httpTestsRange = [absolutePath rangeOfString:@"/LayoutTests/http/tests/"];
+    if (httpTestsRange.location == NSNotFound || [absolutePath rangeOfString:@"/LayoutTests/http/tests/local/"].location != NSNotFound)
+        return [NSURL fileURLWithPath:absolutePath];
+
+    auto components = adoptNS([[NSURLComponents alloc] init]);
+    [components setPath:[absolutePath substringFromIndex:NSMaxRange(httpTestsRange) - 1]];
+    [components setHost:@"127.0.0.1"];
+
+    // Paths under /ssl/ should be loaded using HTTPS.
+    BOOL isSecure = [[components path] hasPrefix:@"/ssl/"];
+    if (isSecure) {
+        [components setScheme:@"https"];
+        [components setPort:@(8443)];
+    } else {
+        [components setScheme:@"http"];
+        [components setPort:@(8000)];
     }
-    
-    // HTTP test URLs look like: http://127.0.0.1:8000/inspector/resource-tree/resource-request-content-after-loading-and-clearing-cache.html
-    if (![[url scheme] isEqualToString:@"http"] && ![[url scheme] isEqualToString:@"https"])
-        return nil;
 
-    if ([[url host] isEqualToString:@"127.0.0.1"] && ([[url port] intValue] == 8000 || [[url port] intValue] == 8443))
-        return [url path];
-
-    return nil;
+    return [components URL];
 }
 
 static void runTest(const string& inputLine)
@@ -1931,19 +1948,15 @@ static void runTest(const string& inputLine)
         return;
     }
 
-    NSURL *url;
-    if ([pathOrURLString hasPrefix:@"http://"] || [pathOrURLString hasPrefix:@"https://"] || [pathOrURLString hasPrefix:@"file://"])
-        url = [NSURL URLWithString:pathOrURLString];
-    else
-        url = [NSURL fileURLWithPath:pathOrURLString];
+    NSString *testPath;
+    NSURL *url = computeTestURL(pathOrURLString, &testPath);
     if (!url) {
         fprintf(stderr, "Failed to parse \"%s\" as a URL\n", pathOrURL.c_str());
         return;
     }
-
-    NSString *testPath = testPathFromURL(url);
     if (!testPath)
         testPath = [url absoluteString];
+
     NSString *informationString = [@"CRASHING TEST: " stringByAppendingString:testPath];
     WKSetCrashReportApplicationSpecificInformation((CFStringRef)informationString);
 
@@ -2028,6 +2041,13 @@ static void runTest(const string& inputLine)
 
     workQueue.clear();
 
+    // If the test page could have possibly opened the Web Inspector frontend,
+    // then try to close it in case it was accidentally left open.
+    if (shouldEnableDeveloperExtras(pathOrURL.c_str())) {
+        gTestRunner->closeWebInspector();
+        gTestRunner->setDeveloperExtrasEnabled(false);
+    }
+
     if (gTestRunner->closeRemainingWindowsWhenComplete()) {
         NSArray* array = [DumpRenderTreeWindow openWindows];
 
@@ -2049,12 +2069,6 @@ static void runTest(const string& inputLine)
             [webView close];
             [window close];
         }
-    }
-
-    // If developer extras enabled Web Inspector may have been open by the test.
-    if (shouldEnableDeveloperExtras(pathOrURL.c_str())) {
-        gTestRunner->closeWebInspector();
-        gTestRunner->setDeveloperExtrasEnabled(false);
     }
 
     resetWebViewToConsistentStateBeforeTesting();

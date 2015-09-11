@@ -36,7 +36,6 @@
 #include "JSFunction.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
-#include "RepatchBuffer.h"
 #include "ResultType.h"
 #include "SamplingTool.h"
 #include "SetupVarargsFrame.h"
@@ -60,6 +59,7 @@ void JIT::emit_op_ret(Instruction* currentInstruction)
     emitLoad(dst, regT1, regT0);
 
     checkStackPointerAlignment();
+    emitRestoreCalleeSaves();
     emitFunctionEpilogue();
     ret();
 }

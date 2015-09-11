@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="assembler">
@@ -174,6 +174,9 @@
     <ClCompile Include="..\bytecode\CodeType.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
+    <ClCompile Include="..\bytecode\DataFormat.cpp">
+      <Filter>bytecode</Filter>
+    </ClCompile>
     <ClCompile Include="..\bytecode\ExecutionCounter.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
@@ -195,7 +198,7 @@
     <ClCompile Include="..\bytecode\Opcode.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\PolymorphicPutByIdList.cpp">
+    <ClCompile Include="..\bytecode\PolymorphicAccess.cpp">
       <Filter>bytecode</Filter>
     </ClCompile>
     <ClCompile Include="..\bytecode\PutByIdStatus.cpp">
@@ -717,6 +720,9 @@
     <ClCompile Include="..\runtime\JSGlobalObjectFunctions.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSGlobalLexicalEnvironment.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\JSJob.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -724,6 +730,12 @@
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSMap.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSModuleEnvironment.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\runtime\JSModuleNamespaceObject.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
     <ClCompile Include="..\runtime\JSModuleRecord.cpp">
@@ -1479,9 +1491,6 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\InspectorProtocolObjects.cpp">
       <Filter>Derived Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\jit\ArityCheckFailReturnThunks.cpp">
-      <Filter>jit</Filter>
-    </ClCompile>
     <ClCompile Include="..\jit\RegisterPreservationWrapperGenerator.cpp">
       <Filter>jit</Filter>
     </ClCompile>
@@ -1596,9 +1605,6 @@
     <ClCompile Include="..\ftl\FTLUnwindInfo.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
-    <ClCompile Include="..\ftl\FTLValueFormat.cpp">
-      <Filter>ftl</Filter>
-    </ClCompile>
     <ClCompile Include="..\ftl\FTLValueRange.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
@@ -1616,9 +1622,6 @@
     </ClCompile>
     <ClCompile Include="..\llvm\LLVMAPI.cpp">
       <Filter>llvm</Filter>
-    </ClCompile>
-    <ClCompile Include="..\jit\AccessorCallJITStubRoutine.cpp">
-      <Filter>jit</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\ConsoleMessage.cpp">
       <Filter>inspector</Filter>
@@ -1686,9 +1689,6 @@
     <ClCompile Include="..\inspector\JSJavaScriptCallFramePrototype.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\bytecode\PolymorphicGetByIdList.cpp">
-      <Filter>bytecode</Filter>
-    </ClCompile>
     <ClCompile Include="..\profiler\ProfilerJettisonReason.cpp">
       <Filter>profiler</Filter>
     </ClCompile>
@@ -1735,6 +1735,9 @@
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGMayExit.cpp">
+      <Filter>dfg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dfg\DFGMaximalFlushInsertionPhase.cpp">
       <Filter>dfg</Filter>
     </ClCompile>
     <ClCompile Include="..\dfg\DFGPureValue.cpp">
@@ -1998,9 +2001,6 @@
     <ClInclude Include="..\assembler\MaxFrameExtentForSlowPathCall.h">
       <Filter>assembler</Filter>
     </ClInclude>
-    <ClInclude Include="..\assembler\RepatchBuffer.h">
-      <Filter>assembler</Filter>
-    </ClInclude>
     <ClInclude Include="..\assembler\X86Assembler.h">
       <Filter>assembler</Filter>
     </ClInclude>
@@ -2091,7 +2091,7 @@
     <ClInclude Include="..\bytecode\Operands.h">
       <Filter>bytecode</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\PolymorphicPutByIdList.h">
+    <ClInclude Include="..\bytecode\PolymorphicAccess.h">
       <Filter>bytecode</Filter>
     </ClInclude>
     <ClInclude Include="..\bytecode\PutByIdStatus.h">
@@ -2757,6 +2757,9 @@
     <ClInclude Include="..\runtime\FunctionRareData.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\GetPutInfo.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\GetterSetter.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -2863,6 +2866,9 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSGlobalObjectFunctions.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSGlobalLexicalEnvironment.h">
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="..\runtime\JSJob.h">
@@ -3505,6 +3511,12 @@
     <ClInclude Include="..\runtime\JSMap.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\JSModuleEnvironment.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="..\runtime\JSModuleNamespaceObject.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSModuleRecord.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3949,6 +3961,9 @@
     <ClInclude Include="..\jit\Repatch.h">
       <Filter>jit</Filter>
     </ClInclude>
+    <ClInclude Include="..\jit\RegisterMap.h">
+      <Filter>jit</Filter>
+    </ClInclude>
     <ClInclude Include="..\jit\RegisterSet.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -4013,9 +4028,6 @@
       <Filter>runtime</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSDataViewPrototype.lut.h" />
-    <ClInclude Include="..\jit\ArityCheckFailReturnThunks.h">
-      <Filter>jit</Filter>
-    </ClInclude>
     <ClInclude Include="..\jit\RegisterPreservationWrapperGenerator.h">
       <Filter>jit</Filter>
     </ClInclude>
@@ -4157,9 +4169,6 @@
     <ClInclude Include="..\ftl\FTLUnwindInfo.h">
       <Filter>ftl</Filter>
     </ClInclude>
-    <ClInclude Include="..\ftl\FTLValueFormat.h">
-      <Filter>ftl</Filter>
-    </ClInclude>
     <ClInclude Include="..\ftl\FTLValueFromBlock.h">
       <Filter>ftl</Filter>
     </ClInclude>
@@ -4186,9 +4195,6 @@
     </ClInclude>
     <ClInclude Include="..\llvm\LLVMHeaders.h">
       <Filter>llvm</Filter>
-    </ClInclude>
-    <ClInclude Include="..\jit\AccessorCallJITStubRoutine.h">
-      <Filter>jit</Filter>
     </ClInclude>
     <ClInclude Include="..\assembler\AbortReason.h">
       <Filter>assembler</Filter>
@@ -4268,9 +4274,6 @@
     <ClInclude Include="..\runtime\JSCInlines.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\bytecode\PolymorphicGetByIdList.h">
-      <Filter>bytecode</Filter>
-    </ClInclude>
     <ClInclude Include="..\profiler\ProfilerJettisonReason.h">
       <Filter>profiler</Filter>
     </ClInclude>
@@ -4320,6 +4323,9 @@
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGMayExit.h">
+      <Filter>dfg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dfg\DFGMaximalFlushInsertionPhase.h">
       <Filter>dfg</Filter>
     </ClInclude>
     <ClInclude Include="..\dfg\DFGPureValue.h">
@@ -4446,6 +4452,9 @@
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFormat.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wasm\WASMFunctionCompiler.h">
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFunctionParser.h">

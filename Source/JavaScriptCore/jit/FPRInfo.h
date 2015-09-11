@@ -208,6 +208,14 @@ public:
     static const FPRReg fpRegT20 = ARM64Registers::q28;
     static const FPRReg fpRegT21 = ARM64Registers::q29;
     static const FPRReg fpRegT22 = ARM64Registers::q30;
+    static const FPRReg fpRegCS0 = ARM64Registers::q8;
+    static const FPRReg fpRegCS1 = ARM64Registers::q9;
+    static const FPRReg fpRegCS2 = ARM64Registers::q10;
+    static const FPRReg fpRegCS3 = ARM64Registers::q11;
+    static const FPRReg fpRegCS4 = ARM64Registers::q12;
+    static const FPRReg fpRegCS5 = ARM64Registers::q13;
+    static const FPRReg fpRegCS6 = ARM64Registers::q14;
+    static const FPRReg fpRegCS7 = ARM64Registers::q15;
 
     static const FPRReg argumentFPR0 = ARM64Registers::q0; // fpRegT0
     static const FPRReg argumentFPR1 = ARM64Registers::q1; // fpRegT1
@@ -268,15 +276,16 @@ public:
 class FPRInfo {
 public:
     typedef FPRReg RegisterType;
-    static const unsigned numberOfRegisters = 6;
+    static const unsigned numberOfRegisters = 7;
 
     // Temporary registers.
     static const FPRReg fpRegT0 = MIPSRegisters::f0;
-    static const FPRReg fpRegT1 = MIPSRegisters::f4;
-    static const FPRReg fpRegT2 = MIPSRegisters::f6;
-    static const FPRReg fpRegT3 = MIPSRegisters::f8;
-    static const FPRReg fpRegT4 = MIPSRegisters::f10;
-    static const FPRReg fpRegT5 = MIPSRegisters::f18;
+    static const FPRReg fpRegT1 = MIPSRegisters::f2;
+    static const FPRReg fpRegT2 = MIPSRegisters::f4;
+    static const FPRReg fpRegT3 = MIPSRegisters::f6;
+    static const FPRReg fpRegT4 = MIPSRegisters::f8;
+    static const FPRReg fpRegT5 = MIPSRegisters::f10;
+    static const FPRReg fpRegT6 = MIPSRegisters::f18;
 
     static const FPRReg returnValueFPR = MIPSRegisters::f0;
 
@@ -286,7 +295,7 @@ public:
     static FPRReg toRegister(unsigned index)
     {
         static const FPRReg registerForIndex[numberOfRegisters] = {
-            fpRegT0, fpRegT1, fpRegT2, fpRegT3, fpRegT4, fpRegT5 };
+            fpRegT0, fpRegT1, fpRegT2, fpRegT3, fpRegT4, fpRegT5, fpRegT6 };
 
         ASSERT(index < numberOfRegisters);
         return registerForIndex[index];
@@ -297,11 +306,11 @@ public:
         ASSERT(reg != InvalidFPRReg);
         ASSERT(reg < 20);
         static const unsigned indexForRegister[20] = {
-            0, InvalidIndex, InvalidIndex, InvalidIndex,
-            1, InvalidIndex, 2, InvalidIndex,
-            3, InvalidIndex, 4, InvalidIndex,
+            0, InvalidIndex, 1, InvalidIndex,
+            2, InvalidIndex, 3, InvalidIndex,
+            4, InvalidIndex, 5, InvalidIndex,
             InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
-            InvalidIndex, InvalidIndex, 5, InvalidIndex,
+            InvalidIndex, InvalidIndex, 6, InvalidIndex,
         };
         unsigned result = indexForRegister[reg];
         return result;

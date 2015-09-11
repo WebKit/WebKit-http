@@ -66,7 +66,6 @@ namespace JSC {
 
     struct Instruction;
     struct OperandTypes;
-    struct PolymorphicAccessStructureList;
     struct SimpleJumpTable;
     struct StringJumpTable;
     struct StructureStubInfo;
@@ -180,10 +179,7 @@ namespace JSC {
         CallLinkInfo* callLinkInfo;
     };
 
-    // Near calls can only be patched to other JIT code, regular calls can be patched to JIT code or relinked to stub functions.
-    void ctiPatchNearCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction);
-    void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction);
-    void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, FunctionPtr newCalleeFunction);
+    void ctiPatchCallByReturnAddress(ReturnAddressPtr, FunctionPtr newCalleeFunction);
 
     class JIT : private JSInterfaceJIT {
         friend class JITSlowPathCall;
@@ -570,6 +566,8 @@ namespace JSC {
         void emit_op_put_getter_by_id(Instruction*);
         void emit_op_put_setter_by_id(Instruction*);
         void emit_op_put_getter_setter(Instruction*);
+        void emit_op_put_getter_by_val(Instruction*);
+        void emit_op_put_setter_by_val(Instruction*);
         void emit_op_ret(Instruction*);
         void emit_op_rshift(Instruction*);
         void emit_op_strcat(Instruction*);
@@ -670,11 +668,19 @@ namespace JSC {
         void emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, unsigned depth);
         void emitLoadWithStructureCheck(int scope, Structure** structureSlot);
         void emitGetGlobalProperty(uintptr_t* operandSlot);
-        void emitGetGlobalVar(uintptr_t operand);
+#if USE(JSVALUE64)
+        void emitGetVarFromPointer(JSValue* operand, GPRReg);
+        void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg);
+#else
+        void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg tag, GPRReg payload);
+        void emitGetVarFromPointer(JSValue* operand, GPRReg tag, GPRReg payload);
+#endif
         void emitGetClosureVar(int scope, uintptr_t operand);
         void emitPutGlobalProperty(uintptr_t* operandSlot, int value);
         void emitNotifyWrite(WatchpointSet*);
-        void emitPutGlobalVar(uintptr_t operand, int value, WatchpointSet*);
+        void emitNotifyWrite(GPRReg pointerToSet);
+        void emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet*);
+        void emitPutGlobalVariableIndirect(JSValue** addressOfOperand, int value, WatchpointSet**);
         void emitPutClosureVar(int scope, uintptr_t operand, int value, WatchpointSet*);
 
         void emitInitRegister(int dst);
@@ -761,6 +767,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_ECC, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECIZC, RegisterID, const Identifier*, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECIZCC, RegisterID, const Identifier*, int32_t, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_ECJZC, RegisterID, RegisterID, RegisterID, int32_t, RegisterID);
         MacroAssembler::Call callOperation(J_JITOperation_EE, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EZSymtabJ, int, SymbolTable*, RegisterID);
         MacroAssembler::Call callOperation(J_JITOperation_EZSymtabJ, int, SymbolTable*, RegisterID);
@@ -772,6 +779,7 @@ namespace JSC {
 #endif
         MacroAssembler::Call callOperation(V_JITOperation_EJIdZJ, RegisterID, const Identifier*, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EJIdZJJ, RegisterID, const Identifier*, int32_t, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJJZJ, RegisterID, RegisterID, int32_t, RegisterID);
 #if USE(JSVALUE64)
         MacroAssembler::Call callOperation(F_JITOperation_EFJZZ, RegisterID, RegisterID, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, UniquedStringImpl*);

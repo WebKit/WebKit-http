@@ -191,26 +191,37 @@ void WASMModuleParser::parseGlobalSection()
 
     Vector<WASMType>& globalVariableTypes = m_module->globalVariableTypes();
     globalVariableTypes.reserveInitialCapacity(numberOfGlobalVariables);
-    for (uint32_t i = 0; i < numberOfInternalI32GlobalVariables; ++i)
+    Vector<JSWASMModule::GlobalVariable>& globalVariables = m_module->globalVariables();
+    globalVariables.reserveInitialCapacity(numberOfGlobalVariables);
+    for (uint32_t i = 0; i < numberOfInternalI32GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::I32);
-    for (uint32_t i = 0; i < numberOfInternalF32GlobalVariables; ++i)
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0));
+    }
+    for (uint32_t i = 0; i < numberOfInternalF32GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::F32);
-    for (uint32_t i = 0; i < numberOfInternalF64GlobalVariables; ++i)
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0f));
+    }
+    for (uint32_t i = 0; i < numberOfInternalF64GlobalVariables; ++i) {
         globalVariableTypes.uncheckedAppend(WASMType::F64);
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0));
+    }
     for (uint32_t i = 0; i < numberOfImportedI32GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of an int32 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::I32);
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0)); // FIXME: Import the value.
     }
     for (uint32_t i = 0; i < numberOfImportedF32GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of a float32 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::F32);
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0f)); // FIXME: Import the value.
     }
     for (uint32_t i = 0; i < numberOfImportedF64GlobalVariables; ++i) {
         String importName;
         READ_STRING_OR_FAIL(importName, "Cannot read the import name of a float64 global variable.");
         globalVariableTypes.uncheckedAppend(WASMType::F64);
+        globalVariables.uncheckedAppend(JSWASMModule::GlobalVariable(0.0)); // FIXME: Import the value.
     }
 }
 
@@ -220,6 +231,8 @@ void WASMModuleParser::parseFunctionDeclarationSection()
     READ_COMPACT_UINT32_OR_FAIL(numberOfFunctionDeclarations, "Cannot read the number of function declarations.");
     m_module->functionDeclarations().reserveInitialCapacity(numberOfFunctionDeclarations);
     m_module->functions().reserveInitialCapacity(numberOfFunctionDeclarations);
+    m_module->functionStartOffsetsInSource().reserveInitialCapacity(numberOfFunctionDeclarations);
+    m_module->functionStackHeights().reserveInitialCapacity(numberOfFunctionDeclarations);
     for (uint32_t i = 0; i < numberOfFunctionDeclarations; ++i) {
         WASMFunctionDeclaration functionDeclaration;
         READ_COMPACT_UINT32_OR_FAIL(functionDeclaration.signatureIndex, "Cannot read the signature index.");
@@ -262,8 +275,9 @@ void WASMModuleParser::parseFunctionDefinition(size_t functionIndex)
 {
     unsigned startOffsetInSource = m_reader.offset();
     unsigned endOffsetInSource;
+    unsigned stackHeight;
     String errorMessage;
-    if (!WASMFunctionParser::checkSyntax(m_module.get(), m_source, functionIndex, startOffsetInSource, endOffsetInSource, errorMessage)) {
+    if (!WASMFunctionParser::checkSyntax(m_module.get(), m_source, functionIndex, startOffsetInSource, endOffsetInSource, stackHeight, errorMessage)) {
         m_errorMessage = errorMessage;
         return;
     }
@@ -272,6 +286,8 @@ void WASMModuleParser::parseFunctionDefinition(size_t functionIndex)
     WebAssemblyExecutable* webAssemblyExecutable = WebAssemblyExecutable::create(m_vm, m_source, m_module.get(), functionIndex);
     JSFunction* function = JSFunction::create(m_vm, webAssemblyExecutable, m_globalObject.get());
     m_module->functions().uncheckedAppend(WriteBarrier<JSFunction>(m_vm, m_module.get(), function));
+    m_module->functionStartOffsetsInSource().uncheckedAppend(startOffsetInSource);
+    m_module->functionStackHeights().uncheckedAppend(stackHeight);
 }
 
 void WASMModuleParser::parseExportSection()
