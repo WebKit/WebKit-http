@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,24 +53,21 @@ using namespace Inspector;
 
 namespace WebCore {
 
-PageRuntimeAgent::PageRuntimeAgent(InjectedScriptManager& injectedScriptManager, Page* page, InspectorPageAgent* pageAgent)
-    : InspectorRuntimeAgent(injectedScriptManager)
+PageRuntimeAgent::PageRuntimeAgent(PageAgentContext& context, InspectorPageAgent* pageAgent)
+    : InspectorRuntimeAgent(context)
+    , m_frontendDispatcher(std::make_unique<Inspector::RuntimeFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::RuntimeBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
-    , m_inspectedPage(page)
+    , m_inspectedPage(context.inspectedPage)
 {
 }
 
-void PageRuntimeAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void PageRuntimeAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::RuntimeFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::RuntimeBackendDispatcher::create(backendDispatcher, this);
 }
 
 void PageRuntimeAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason reason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     String unused;
     disable(unused);
 
@@ -105,7 +103,6 @@ void PageRuntimeAgent::didCreateMainWorldContext(Frame& frame)
     if (!enabled())
         return;
 
-    ASSERT(m_frontendDispatcher);
     String frameId = m_pageAgent->frameId(&frame);
     JSC::ExecState* scriptState = mainWorldExecState(&frame);
     notifyContextCreated(frameId, scriptState, nullptr, true);
@@ -119,7 +116,7 @@ JSC::VM& PageRuntimeAgent::globalVM()
 InjectedScript PageRuntimeAgent::injectedScriptForEval(ErrorString& errorString, const int* executionContextId)
 {
     if (!executionContextId) {
-        JSC::ExecState* scriptState = mainWorldExecState(&m_inspectedPage->mainFrame());
+        JSC::ExecState* scriptState = mainWorldExecState(&m_inspectedPage.mainFrame());
         InjectedScript result = injectedScriptManager().injectedScriptFor(scriptState);
         if (result.hasNoValue())
             errorString = ASCIILiteral("Internal error: main world execution context not found.");
@@ -145,7 +142,7 @@ void PageRuntimeAgent::unmuteConsole()
 void PageRuntimeAgent::reportExecutionContextCreation()
 {
     Vector<std::pair<JSC::ExecState*, SecurityOrigin*>> isolatedContexts;
-    for (Frame* frame = &m_inspectedPage->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+    for (Frame* frame = &m_inspectedPage.mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->script().canExecuteScripts(NotAboutToExecuteScript))
             continue;
         String frameId = m_pageAgent->frameId(frame);

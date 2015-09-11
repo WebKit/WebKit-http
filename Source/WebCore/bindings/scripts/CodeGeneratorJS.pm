@@ -248,6 +248,7 @@ my %classesNeedingWebCoreExport = (
     "JSCSSStyleDeclaration" => 1,
     "JSDocument" => 1,
     "JSDOMPath" => 1,
+    "JSDOMURL" => 1,
     "JSDOMWindow" => 1,
     "JSElement" => 1,
     "JSFile" => 1,
@@ -3387,7 +3388,7 @@ sub GenerateParametersCheck
                 my $outer;
                 my $inner;
                 if ($optional && $defaultAttribute && $defaultAttribute eq "NullString") {
-                    $outer = "exec->argumentCount() <= $argsIndex ? String() : ";
+                    $outer = "exec->argument($argsIndex).isUndefined() ? String() : ";
                     $inner = "exec->uncheckedArgument($argsIndex)";
                 } else {
                     $outer = "";

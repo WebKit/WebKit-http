@@ -229,17 +229,25 @@ bool Range::isPointInRange(Node* refNode, int offset, ExceptionCode& ec)
         return false;
     }
 
-    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
+    if (&refNode->document() != &ownerDocument()) {
         return false;
     }
 
     ec = 0;
     checkNodeWOffset(refNode, offset, ec);
-    if (ec)
+    if (ec) {
+        // DOM4 spec requires us to check whether refNode and start container have the same root first
+        // but we do it in the reverse order to avoid O(n) operation here in common case.
+        if (!commonAncestorContainer(refNode, &startContainer()))
+            ec = 0;
         return false;
+    }
 
-    return compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) >= 0 && !ec
+    bool result = compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) >= 0 && !ec
         && compareBoundaryPoints(refNode, offset, &endContainer(), m_end.offset(), ec) <= 0 && !ec;
+    ASSERT(!ec || ec == WRONG_DOCUMENT_ERR);
+    ec = 0;
+    return result;
 }
 
 short Range::comparePoint(Node* refNode, int offset, ExceptionCode& ec) const
@@ -253,15 +261,20 @@ short Range::comparePoint(Node* refNode, int offset, ExceptionCode& ec) const
         return 0;
     }
 
-    if (!refNode->inDocument() || &refNode->document() != &ownerDocument()) {
+    if (&refNode->document() != &ownerDocument()) {
         ec = WRONG_DOCUMENT_ERR;
         return 0;
     }
 
     ec = 0;
     checkNodeWOffset(refNode, offset, ec);
-    if (ec)
+    if (ec) {
+        // DOM4 spec requires us to check whether refNode and start container have the same root first
+        // but we do it in the reverse order to avoid O(n) operation here in common case.
+        if (!refNode->inDocument() && !commonAncestorContainer(refNode, &startContainer()))
+            ec = WRONG_DOCUMENT_ERR;
         return 0;
+    }
 
     // compare to start, and point comes before
     if (compareBoundaryPoints(refNode, offset, &startContainer(), m_start.offset(), ec) < 0)
@@ -652,7 +665,7 @@ RefPtr<DocumentFragment> Range::processContents(ActionType action, ExceptionCode
     // (or just delete the stuff in between)
 
     if ((action == Extract || action == Clone) && leftContents)
-        fragment->appendChild(leftContents, ec);
+        fragment->appendChild(*leftContents, ec);
 
     if (processStart) {
         NodeVector nodes;
@@ -662,7 +675,7 @@ RefPtr<DocumentFragment> Range::processContents(ActionType action, ExceptionCode
     }
 
     if ((action == Extract || action == Clone) && rightContents)
-        fragment->appendChild(rightContents, ec);
+        fragment->appendChild(*rightContents, ec);
 
     return fragment;
 }
@@ -689,7 +702,7 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
         endOffset = std::min(endOffset, static_cast<CharacterData*>(container)->length());
         startOffset = std::min(startOffset, endOffset);
         if (action == Extract || action == Clone) {
-            RefPtr<CharacterData> c = static_pointer_cast<CharacterData>(container->cloneNode(true));
+            RefPtr<CharacterData> c = static_cast<CharacterData*>(container->cloneNode(true).ptr());
             deleteCharacterData(c, startOffset, endOffset, ec);
             if (fragment) {
                 result = fragment;
@@ -704,7 +717,7 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
         endOffset = std::min(endOffset, static_cast<ProcessingInstruction*>(container)->data().length());
         startOffset = std::min(startOffset, endOffset);
         if (action == Extract || action == Clone) {
-            RefPtr<ProcessingInstruction> c = static_pointer_cast<ProcessingInstruction>(container->cloneNode(true));
+            RefPtr<ProcessingInstruction> c = static_cast<ProcessingInstruction*>(container->cloneNode(true).ptr());
             c->setData(c->data().substring(startOffset, endOffset - startOffset), ec);
             if (fragment) {
                 result = fragment;
@@ -922,7 +935,7 @@ void Range::insertNode(PassRefPtr<Node> prpNewNode, ExceptionCode& ec)
             return;
         
         container = &startContainer();
-        container->parentNode()->insertBefore(newNode.release(), newText.get(), ec);
+        container->parentNode()->insertBefore(newNode.releaseNonNull(), newText.get(), ec);
         if (ec)
             return;
 
@@ -1290,7 +1303,7 @@ void Range::surroundContents(PassRefPtr<Node> passNewParent, ExceptionCode& ec)
 
     ec = 0;
     while (Node* n = newParent->firstChild()) {
-        downcast<ContainerNode>(*newParent).removeChild(n, ec);
+        downcast<ContainerNode>(*newParent).removeChild(*n, ec);
         if (ec)
             return;
     }

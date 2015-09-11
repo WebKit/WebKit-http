@@ -87,6 +87,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
     bytecode/ComplexGetStatus.cpp
+    bytecode/DataFormat.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
     bytecode/DeferredSourceDump.cpp
@@ -103,8 +104,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ObjectPropertyCondition.cpp
     bytecode/ObjectPropertyConditionSet.cpp
     bytecode/Opcode.cpp
-    bytecode/PolymorphicGetByIdList.cpp
-    bytecode/PolymorphicPutByIdList.cpp
+    bytecode/PolymorphicAccess.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/PropertyCondition.cpp
     bytecode/PutByIdStatus.cpp
@@ -203,6 +203,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLivenessAnalysisPhase.cpp
     dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
+    dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedGraph.cpp
     dfg/DFGMinifiedNode.cpp
@@ -323,6 +324,7 @@ set(JavaScriptCore_SOURCES
     inspector/InjectedScriptManager.cpp
     inspector/InjectedScriptModule.cpp
     inspector/InspectorAgentRegistry.cpp
+    inspector/InspectorFrontendRouter.cpp
     inspector/InspectorBackendDispatcher.cpp
     inspector/InspectorValues.cpp
     inspector/JSGlobalObjectConsoleClient.cpp
@@ -354,8 +356,6 @@ set(JavaScriptCore_SOURCES
     interpreter/ProtoCallFrame.cpp
     interpreter/StackVisitor.cpp
 
-    jit/AccessorCallJITStubRoutine.cpp
-    jit/ArityCheckFailReturnThunks.cpp
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
     jit/ExecutableAllocationFuzz.cpp
@@ -383,6 +383,8 @@ set(JavaScriptCore_SOURCES
     jit/JITToDFGDeferredCompilationCallback.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
+    jit/RegisterAtOffset.cpp
+    jit/RegisterAtOffsetList.cpp
     jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
@@ -525,6 +527,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSDateMath.cpp
     runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
+    runtime/JSGlobalLexicalEnvironment.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
@@ -537,6 +540,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSLock.cpp
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
+    runtime/JSModuleEnvironment.cpp
+    runtime/JSModuleNamespaceObject.cpp
     runtime/JSModuleRecord.cpp
     runtime/JSNativeStdFunction.cpp
     runtime/JSNotAnObject.cpp
@@ -898,7 +903,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLOperations.cpp
         ftl/FTLOutput.cpp
         ftl/FTLRecoveryOpcode.cpp
-        ftl/FTLRegisterAtOffset.cpp
         ftl/FTLSaveRestore.cpp
         ftl/FTLSlowPathCall.cpp
         ftl/FTLSlowPathCallKey.cpp
@@ -906,7 +910,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLState.cpp
         ftl/FTLThunks.cpp
         ftl/FTLUnwindInfo.cpp
-        ftl/FTLValueFormat.cpp
         ftl/FTLValueRange.cpp
 
         llvm/InitializeLLVM.cpp

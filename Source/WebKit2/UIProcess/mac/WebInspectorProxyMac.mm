@@ -42,21 +42,15 @@
 #import "WKViewInternal.h"
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
-#import "WebInspectorMessages.h"
 #import "WebInspectorUIMessages.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebPreferences.h"
 #import "WebProcessProxy.h"
-#import <QuartzCore/CoreAnimation.h>
 #import <WebCore/InspectorFrontendClientLocal.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/SoftLinking.h>
-#import <WebKitSystemInterface.h>
-#import <algorithm>
-#import <mach-o/dyld.h>
 #import <wtf/text/Base64.h>
-#import <wtf/text/WTFString.h>
 
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
@@ -106,16 +100,6 @@ static const unsigned webViewCloseTimeout = 60;
     _inspectorProxy = static_cast<void*>(inspectorProxy); // Not retained to prevent cycles
 
     return self;
-}
-
-- (IBAction)attachRight:(id)sender
-{
-    static_cast<WebInspectorProxy*>(_inspectorProxy)->attach(AttachmentSide::Right);
-}
-
-- (IBAction)attachBottom:(id)sender
-{
-    static_cast<WebInspectorProxy*>(_inspectorProxy)->attach(AttachmentSide::Bottom);
 }
 
 - (void)close
@@ -549,7 +533,7 @@ void WebInspectorProxy::platformDidClose()
 {
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 
@@ -572,7 +556,7 @@ void WebInspectorProxy::platformHide()
 
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 }
@@ -790,7 +774,7 @@ void WebInspectorProxy::platformAttach()
 
     if (m_inspectorWindow) {
         [m_inspectorWindow setDelegate:nil];
-        [m_inspectorWindow orderOut:nil];
+        [m_inspectorWindow close];
         m_inspectorWindow = nil;
     }
 
@@ -866,7 +850,7 @@ void WebInspectorProxy::platformStartWindowDrag()
 #endif
 }
 
-String WebInspectorProxy::inspectorPageURL() const
+String WebInspectorProxy::inspectorPageURL()
 {
     // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
     WebInspectorUILibrary();
@@ -877,7 +861,7 @@ String WebInspectorProxy::inspectorPageURL() const
     return [[NSURL fileURLWithPath:path] absoluteString];
 }
 
-String WebInspectorProxy::inspectorTestPageURL() const
+String WebInspectorProxy::inspectorTestPageURL()
 {
     // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
     WebInspectorUILibrary();
@@ -891,7 +875,7 @@ String WebInspectorProxy::inspectorTestPageURL() const
     return [[NSURL fileURLWithPath:path] absoluteString];
 }
 
-String WebInspectorProxy::inspectorBaseURL() const
+String WebInspectorProxy::inspectorBaseURL()
 {
     // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
     WebInspectorUILibrary();

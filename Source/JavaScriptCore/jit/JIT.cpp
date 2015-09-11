@@ -29,7 +29,6 @@
 
 #include "JIT.h"
 
-#include "ArityCheckFailReturnThunks.h"
 #include "CodeBlock.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGCapabilities.h"
@@ -42,7 +41,6 @@
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "JSCInlines.h"
 #include "ProfilerDatabase.h"
-#include "RepatchBuffer.h"
 #include "ResultType.h"
 #include "SamplingTool.h"
 #include "SlowPathCall.h"
@@ -54,22 +52,11 @@ using namespace std;
 
 namespace JSC {
 
-void ctiPatchNearCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction)
+void ctiPatchCallByReturnAddress(ReturnAddressPtr returnAddress, FunctionPtr newCalleeFunction)
 {
-    RepatchBuffer repatchBuffer(codeblock);
-    repatchBuffer.relinkNearCallerToTrampoline(returnAddress, newCalleeFunction);
-}
-
-void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction)
-{
-    RepatchBuffer repatchBuffer(codeblock);
-    repatchBuffer.relinkCallerToTrampoline(returnAddress, newCalleeFunction);
-}
-
-void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, FunctionPtr newCalleeFunction)
-{
-    RepatchBuffer repatchBuffer(codeblock);
-    repatchBuffer.relinkCallerToFunction(returnAddress, newCalleeFunction);
+    MacroAssembler::repatchCall(
+        CodeLocationCall(MacroAssemblerCodePtr(returnAddress)),
+        newCalleeFunction);
 }
 
 JIT::JIT(VM* vm, CodeBlock* codeBlock)
@@ -97,6 +84,9 @@ void JIT::emitEnterOptimizationCheck()
     
     skipOptimize.append(branchAdd32(Signed, TrustedImm32(Options::executionCounterIncrementForEntry()), AbsoluteAddress(m_codeBlock->addressOfJITExecuteCounter())));
     ASSERT(!m_bytecodeOffset);
+
+    copyCalleeSavesFromFrameOrRegisterToVMCalleeSavesBuffer();
+
     callOperation(operationOptimize, m_bytecodeOffset);
     skipOptimize.append(branchTestPtr(Zero, returnValueGPR));
     move(returnValueGPR2, stackPointerRegister);
@@ -111,6 +101,11 @@ void JIT::emitNotifyWrite(WatchpointSet* set)
         return;
     
     addSlowCase(branch8(NotEqual, AbsoluteAddress(set->addressOfState()), TrustedImm32(IsInvalidated)));
+}
+
+void JIT::emitNotifyWrite(GPRReg pointerToSet)
+{
+    addSlowCase(branch8(NotEqual, Address(pointerToSet, WatchpointSet::offsetOfState()), TrustedImm32(IsInvalidated)));
 }
 
 void JIT::assertStackPointerOffset()
@@ -286,6 +281,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_put_getter_by_id)
         DEFINE_OP(op_put_setter_by_id)
         DEFINE_OP(op_put_getter_setter)
+        DEFINE_OP(op_put_getter_by_val)
+        DEFINE_OP(op_put_setter_by_val)
 
         DEFINE_OP(op_ret)
         DEFINE_OP(op_rshift)
@@ -497,6 +494,8 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
         break;
     }
 
+    m_codeBlock->setCalleeSaveRegisters(RegisterSet::llintBaselineCalleeSaveRegisters()); // Might be able to remove as this is probably already set to this value.
+
     // This ensures that we have the most up to date type information when performing typecheck optimizations for op_profile_type.
     if (m_vm->typeProfiler())
         m_vm->typeProfilerLog()->processLogEntries(ASCIILiteral("Preparing for JIT compilation."));
@@ -554,6 +553,9 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
     move(regT1, stackPointerRegister);
     checkStackPointerAlignment();
 
+    emitSaveCalleeSaves();
+    emitMaterializeTagCheckRegisters();
+
     privateCompileMainPass();
     privateCompileLinkPass();
     privateCompileSlowCases();
@@ -584,19 +586,8 @@ CompilationResult JIT::privateCompile(JITCompilationEffort effort)
         callOperationWithCallFrameRollbackOnException(m_codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
         if (maxFrameExtentForSlowPathCall)
             addPtr(TrustedImm32(maxFrameExtentForSlowPathCall), stackPointerRegister);
-        if (returnValueGPR != regT0)
-            move(returnValueGPR, regT0);
-        branchTest32(Zero, regT0).linkTo(beginLabel, this);
-        GPRReg thunkReg;
-#if USE(JSVALUE64)
-        thunkReg = GPRInfo::regT7;
-#else
-        thunkReg = GPRInfo::regT5;
-#endif
-        CodeLocationLabel* failThunkLabels =
-            m_vm->arityCheckFailReturnThunks->returnPCsFor(*m_vm, m_codeBlock->numParameters());
-        move(TrustedImmPtr(failThunkLabels), thunkReg);
-        loadPtr(BaseIndex(thunkReg, regT0, timesPtr()), thunkReg);
+        branchTest32(Zero, returnValueGPR).linkTo(beginLabel, this);
+        move(returnValueGPR, GPRInfo::argumentGPR0);
         emitNakedCall(m_vm->getCTIStub(arityFixupGenerator).code());
 
 #if !ASSERT_DISABLED
@@ -733,6 +724,8 @@ void JIT::privateCompileExceptionHandlers()
     if (!m_exceptionChecksWithCallFrameRollback.empty()) {
         m_exceptionChecksWithCallFrameRollback.link(this);
 
+        copyCalleeSavesToVMCalleeSavesBuffer();
+
         // lookupExceptionHandlerFromCallerFrame is passed two arguments, the VM and the exec (the CallFrame*).
 
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);
@@ -749,6 +742,8 @@ void JIT::privateCompileExceptionHandlers()
 
     if (!m_exceptionChecks.empty()) {
         m_exceptionChecks.link(this);
+
+        copyCalleeSavesToVMCalleeSavesBuffer();
 
         // lookupExceptionHandler is passed two arguments, the VM and the exec (the CallFrame*).
         move(TrustedImmPtr(vm()), GPRInfo::argumentGPR0);

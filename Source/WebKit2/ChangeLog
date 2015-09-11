@@ -1,3 +1,455 @@
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused files
+        https://bugs.webkit.org/show_bug.cgi?id=149049
+
+        Reviewed by Brian Burg.
+
+        * WebProcess/WebPage/efl/WebInspectorEfl.cpp: Removed.
+        * WebProcess/WebPage/gtk/WebInspectorGtk.cpp: Removed.
+
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        WebInspectorUI should have a WebPage reference
+        https://bugs.webkit.org/show_bug.cgi?id=149046
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        * WebProcess/WebPage/WebInspectorUI.h:
+        (WebKit::WebInspectorUI::page): Deleted.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::inspectorUI):
+
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: WebInspectorUI does not need to be an API::Object
+        https://bugs.webkit.org/show_bug.cgi?id=149045
+
+        Reviewed by Timothy Hatcher.
+
+        * Shared/API/APIObject.h:
+        * WebProcess/WebPage/WebInspectorUI.h:
+
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused member in WebPage
+        https://bugs.webkit.org/show_bug.cgi?id=149040
+
+        Reviewed by Brian Burg.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+
+2015-09-10  Daniel Bates  <dabates@apple.com>
+
+        sendProcessWillSuspendImminently uses a wrong message flag
+        https://bugs.webkit.org/show_bug.cgi?id=148995
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove use of flag IPC::InterruptWaitingIfSyncMessageArrives as it does not make
+        sense when sending a sync message.
+
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::sendProcessWillSuspendImminently):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::sendProcessWillSuspendImminently):
+
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed build fix after r189572.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::inspectorPageURL):
+        (WebKit::WebInspectorProxy::inspectorTestPageURL):
+        (WebKit::WebInspectorProxy::inspectorBaseURL):
+        Remove the const on the now static methods.
+
+2015-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Node.appendChild(null) / replaceChild(null, null) / removeChild(null) / insertBefore(null, ref) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=148971
+        <rdar://problem/22560883>
+        <rdar://problem/22559225>
+
+        Reviewed by Ryosuke Niwa.
+
+        ContainerNode::appendChild() now takes a Ref<Node>&& parameter so we
+        need to update the call sites.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::PDFPlugin):
+        * WebProcess/Plugins/PDF/PDFPluginAnnotation.mm:
+        (WebKit::PDFPluginAnnotation::attach):
+        (WebKit::PDFPluginAnnotation::~PDFPluginAnnotation):
+        * WebProcess/Plugins/PDF/PDFPluginChoiceAnnotation.mm:
+        (WebKit::PDFPluginChoiceAnnotation::createAnnotationElement):
+
+2015-09-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make WebInspectorProxy inspectorURL path methods static
+        https://bugs.webkit.org/show_bug.cgi?id=149021
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::didRelaunchInspectorPageProcess):
+        (WebKit::isMainOrTestInspectorPage):
+        (WebKit::decidePolicyForNavigationAction):
+        (WebKit::WebInspectorProxy::eagerlyCreateInspectorPage):
+        (WebKit::WebInspectorProxy::createInspectorPage):
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/efl/WebInspectorProxyEfl.cpp:
+        (WebKit::WebInspectorProxy::inspectorPageURL):
+        (WebKit::WebInspectorProxy::inspectorTestPageURL):
+        (WebKit::WebInspectorProxy::inspectorBaseURL):
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::inspectorPageURL):
+        (WebKit::WebInspectorProxy::inspectorTestPageURL):
+        (WebKit::WebInspectorProxy::inspectorBaseURL):
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::inspectorPageURL):
+        (WebKit::WebInspectorProxy::inspectorTestPageURL):
+        (WebKit::WebInspectorProxy::inspectorBaseURL):
+
+2015-09-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove dead WebInspectorProxy related code
+        https://bugs.webkit.org/show_bug.cgi?id=149019
+
+        Reviewed by Timothy Hatcher.
+
+        * UIProcess/API/C/mac/WKInspectorPrivateMac.h:
+        * UIProcess/WebInspectorProxy.cpp:
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (-[WKWebInspectorProxyObjCAdapter attachRight:]): Deleted.
+        (-[WKWebInspectorProxyObjCAdapter attachBottom:]): Deleted.
+
+2015-09-09  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused NSString SPI constant
+        https://bugs.webkit.org/show_bug.cgi?id=149009
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2015-09-09  Dan Bernstein  <mitz@apple.com>
+
+        Updated availability annotations for iOS 9 and OS X El Capitan.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * Shared/API/Cocoa/_WKRenderingProgressEvents.h:
+        * UIProcess/API/Cocoa/WKError.h:
+        * UIProcess/API/Cocoa/WKErrorPrivate.h:
+        * UIProcess/API/Cocoa/WKFrameInfo.h:
+        * UIProcess/API/Cocoa/WKNavigationActionPrivate.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegate.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/API/Cocoa/WKSecurityOrigin.h:
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKUserContentControllerPrivate.h:
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataRecord.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataRecordPrivate.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/_WKDiagnosticLoggingDelegate.h:
+        * UIProcess/API/Cocoa/_WKElementAction.h:
+        * UIProcess/API/Cocoa/_WKLayoutMode.h:
+        * UIProcess/API/Cocoa/_WKOverlayScrollbarStyle.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKUserContentExtensionStore.h:
+        * UIProcess/API/Cocoa/_WKUserContentFilter.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataRecord.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataStore.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h:
+
+2015-09-09  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/dom/rtl-scroll-to-leftmost-and-resize.html is a flaky timeout - IPC drops messages
+        https://bugs.webkit.org/show_bug.cgi?id=148951
+
+        Reviewed by Anders Carlsson.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::waitForMessage): Don't modify m_waitingForMessage without holding
+        a lock. This is not part of this fix, but seems necessary for correctness.
+        (IPC::Connection::processIncomingMessage): Don't interrupt a wait that has already succeeded.
+
+2015-09-08  Daniel Bates  <dabates@apple.com>
+
+        [Mac] Expose Enable/Disable Accelerated Drawing in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=148980
+
+        Reviewed by Alexey Proskuryakov.
+
+        Expose SPI web preference to enable/disable- and query the state of- accelerated drawing
+        so that we can toggle this setting in MiniBrowser on Mac.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _acceleratedDrawingEnabled]): Added.
+        (-[WKPreferences _setAcceleratedDrawingEnabled:]): Added.
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2015-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused file: WebInspectorFrontendClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=148979
+
+        Reviewed by Brian Burg.
+
+        * WebProcess/WebCoreSupport/WebInspectorFrontendClient.h: Removed.
+        Unused now. WebInspectorUI subclasses InspectorFrontendClient itself.
+
+2015-09-07  Andy Estes  <aestes@apple.com>
+
+        [Mac] DebugRelease builds should link against libWebKitSystemInterfaceElCapitan.a on 10.11
+        https://bugs.webkit.org/show_bug.cgi?id=148946
+        <rdar://problem/22603981>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2015-09-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Leak in WebContextInjectedBundleClient::getInjectedBundleInitializationUserData
+        https://bugs.webkit.org/show_bug.cgi?id=148769
+
+        Fix suggested by Zan Dobersek.
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/WebContextInjectedBundleClient.cpp:
+        (WebKit::WebContextInjectedBundleClient::getInjectedBundleInitializationUserData):
+
+2015-09-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: agents should send messages through FrontendRouter instead of FrontendChannel
+        https://bugs.webkit.org/show_bug.cgi?id=148492
+
+        Reviewed by Joseph Pecoraro.
+
+        Stop using InspectorForwarding.h.
+
+        * WebProcess/WebPage/WebInspector.h:
+        * WebProcess/WebPage/WebInspectorUI.h:
+
+2015-09-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorController should support multiple frontend channels
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+
+        Reviewed by Joseph Pecoraro.
+
+        Explicitly disconnect the frontend channel when closing the frontend.
+
+        Rename createInspectorPage/closeFrontend to the symmetric and unambiguous
+        {open,close}FrontendConnection in the WebInspector class.
+
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        (WebKit::WebInspectorClient::openInspectorFrontend):
+        (WebKit::WebInspectorClient::closeInspectorFrontend):
+        * WebProcess/WebCoreSupport/WebInspectorClient.h: Stop using a forwarded type.
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openFrontendConnection):
+        (WebKit::WebInspector::closeFrontendConnection):
+        (WebKit::WebInspector::remoteFrontendConnected):
+        (WebKit::WebInspector::remoteFrontendDisconnected):
+        (WebKit::WebInspector::createInspectorPage): Deleted.
+        (WebKit::WebInspector::closeFrontend): Deleted.
+        * WebProcess/WebPage/WebInspector.h:
+
+2015-09-04  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Disable backspace key navigation by default
+        https://bugs.webkit.org/show_bug.cgi?id=148808
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebPreferencesDefinitions.h: Defined DEFAULT_BACKSPACE_KEY_NAVIGATION_ENABLED as
+          false on iOS, true elsewhere, and made it the default value of the
+          backspaceKeyNavigationEnabled preference key.
+
+2015-09-04  Beth Dakin  <bdakin@apple.com>
+
+        Need to be able to test default behaviors on force click
+        https://bugs.webkit.org/show_bug.cgi?id=148758
+
+        Reviewed by Tim Horton.
+
+        The hit test seems to return synchronously in WKTR, so we need to do the hit 
+        test last before we clear state otherwise we will trample the hit test 
+        result.
+        * UIProcess/mac/WKImmediateActionController.mm:
+        (-[WKImmediateActionController immediateActionRecognizerWillPrepare:]):
+        (-[WKImmediateActionController immediateActionRecognizerWillBeginAnimation:]):
+
+2015-09-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189338.
+        https://bugs.webkit.org/show_bug.cgi?id=148785
+
+        Caused tons of crashes (Requested by cdumez on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: InspectorController should support multiple
+        frontend channels"
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+        http://trac.webkit.org/changeset/189338
+
+2015-09-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorController should support multiple frontend channels
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+
+        Reviewed by Joseph Pecoraro.
+
+        Explicitly disconnect the frontend channel when closing the frontend.
+
+        Rename createInspectorPage/closeFrontend to the symmetric and unambiguous
+        {open,close}FrontendConnection in the WebInspector class.
+
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        (WebKit::WebInspectorClient::openInspectorFrontend):
+        (WebKit::WebInspectorClient::closeInspectorFrontend):
+        * WebProcess/WebCoreSupport/WebInspectorClient.h: Stop using a forwarded type.
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openFrontendConnection):
+        (WebKit::WebInspector::closeFrontendConnection):
+        (WebKit::WebInspector::remoteFrontendConnected):
+        (WebKit::WebInspector::remoteFrontendDisconnected):
+        (WebKit::WebInspector::createInspectorPage): Deleted.
+        (WebKit::WebInspector::closeFrontend): Deleted.
+        * WebProcess/WebPage/WebInspector.h:
+
+2015-09-03  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Closing the Safari window when the Web Inspector is one of the other windows in split screen mode can cause the entire screen to go black
+        https://bugs.webkit.org/show_bug.cgi?id=148777
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::platformDidClose):
+        (WebKit::WebInspectorProxy::platformHide):
+        (WebKit::WebInspectorProxy::platformAttach):
+        Call close instead of orderOut: to make fullscreen and tile modes with Web Inspector work as expected.
+
+2015-09-03  Brady Eidson  <beidson@apple.com>
+
+        Move SecurityOriginData from WK2 to WebCore.
+        https://bugs.webkit.org/show_bug.cgi?id=148739
+
+        Reviewed by Tim Horton.
+
+        This will be needed for upcoming IndexedDB work.
+
+        * CMakeLists.txt:
+        * DatabaseProcess/DatabaseProcess.h:
+        * DatabaseProcess/DatabaseProcess.messages.in:
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.h:
+        * DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.messages.in:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabase.h:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.cpp:
+        * DatabaseProcess/IndexedDB/UniqueIDBDatabaseIdentifier.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        * Shared/WebCrossThreadCopier.cpp:
+        * Shared/WebCrossThreadCopier.h:
+        * Shared/WebsiteData/WebsiteData.cpp:
+        * UIProcess/API/APINavigationClient.h:
+        * UIProcess/API/APIUIClient.h:
+        * UIProcess/API/C/WKPage.cpp:
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+        * UIProcess/API/gtk/WebKitUIClient.cpp:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        * UIProcess/Storage/StorageManager.cpp:
+        * UIProcess/Storage/StorageManager.h:
+        * UIProcess/Storage/StorageManager.messages.in:
+        * UIProcess/UserContent/WebScriptMessageHandler.h:
+        * UIProcess/UserContent/WebUserContentControllerProxy.cpp:
+        * UIProcess/UserContent/WebUserContentControllerProxy.h:
+        * UIProcess/UserContent/WebUserContentControllerProxy.messages.in:
+        * UIProcess/WebCookieManagerProxy.cpp:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.h:
+        * WebProcess/Storage/StorageAreaMap.cpp:
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebProcess/WebProcess.cpp:
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2015-09-03  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac] Add support for testing swipes
+        https://bugs.webkit.org/show_bug.cgi?id=148700
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/API/mac/WKView.mm:
+        (takeWindowSnapshot):
+        (-[WKView _takeViewSnapshot]):
+        Fall back to the non-hardware snapshotting path if the hardware path fails,
+        which usually happens if the view is fully off-screen (as in the case
+        of WebKitTestRunner).
+
+2015-09-02  Tim Horton  <timothy_horton@apple.com>
+
+        Add a modern API way to know that the navigation gesture snapshot was removed, for WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=148693
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::didRemoveNavigationGestureSnapshot):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/C/WKPageNavigationClient.h:
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        (WebKit::NavigationState::navigationGestureSnapshotWasRemoved):
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::navigationGestureDidEnd):
+        (WebKit::WebPageProxy::navigationGestureSnapshotWasRemoved):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didRemoveNavigationGestureSnapshot):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didRemoveNavigationGestureSnapshot):
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::didRemoveNavigationGestureSnapshot):
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/CoordinatedGraphics/WebView.h:
+        Add a callback for WKTR when the swipe snapshot is removed.
+
 2015-09-02  Andreas Kling  <akling@apple.com>
 
         ScrollbarThemes should be returned by reference.

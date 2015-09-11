@@ -269,10 +269,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
     if (!hasError()) {
         if (isArrowFunctionBodyExpression)
             sourceElements = parseArrowFunctionSingleExpressionBodySourceElements(context);
-#if ENABLE(ES6_MODULES)
         else if (isModuleParseMode(parseMode))
             sourceElements = parseModuleSourceElements(context, parseMode);
-#endif
         else
             sourceElements = parseSourceElements(context, CheckForStrictMode);
     }
@@ -1979,7 +1977,7 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
             ident = m_token.m_data.ident;
             ASSERT(ident);
             next();
-            if (match(IDENT) || match(STRING) || match(DOUBLE) || match(INTEGER)) {
+            if (match(IDENT) || match(STRING) || match(DOUBLE) || match(INTEGER) || match(OPENBRACKET)) {
                 isGetter = *ident == propertyNames.get;
                 isSetter = *ident == propertyNames.set;
             }
@@ -2912,18 +2910,28 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseGetterSetter(T
 {
     const Identifier* stringPropertyName = 0;
     double numericPropertyName = 0;
-    if (m_token.m_type == IDENT || m_token.m_type == STRING || isLETMaskedAsIDENT()) {
+    TreeExpression computedPropertyName = 0;
+
+    JSTokenLocation location(tokenLocation());
+
+    if (match(IDENT) || match(STRING) || isLETMaskedAsIDENT()) {
         stringPropertyName = m_token.m_data.ident;
         semanticFailIfTrue(superBinding == SuperBinding::Needed && *stringPropertyName == m_vm->propertyNames->prototype,
             "Cannot declare a static method named 'prototype'");
         semanticFailIfTrue(superBinding == SuperBinding::Needed && *stringPropertyName == m_vm->propertyNames->constructor,
             "Cannot declare a getter or setter named 'constructor'");
-    } else if (m_token.m_type == DOUBLE || m_token.m_type == INTEGER)
+        next();
+    } else if (match(DOUBLE) || match(INTEGER)) {
         numericPropertyName = m_token.m_data.doubleValue;
-    else
+        next();
+    } else if (match(OPENBRACKET)) {
+        next();
+        computedPropertyName = parseAssignmentExpression(context);
+        failIfFalse(computedPropertyName, "Cannot parse computed property name");
+        handleProductionOrFail(CLOSEBRACKET, "]", "end", "computed property name");
+    } else
         failDueToUnexpectedToken();
-    JSTokenLocation location(tokenLocation());
-    next();
+
     ParserFunctionInfo<TreeBuilder> info;
     if (type & PropertyNode::Getter) {
         failIfFalse(match(OPENPAREN), "Expected a parameter list for getter definition");
@@ -2934,8 +2942,13 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseGetterSetter(T
         failIfFalse((parseFunctionInfo(context, FunctionNoRequirements, SourceParseMode::SetterMode, false, constructorKind, superBinding,
             getterOrSetterStartOffset, info, StandardFunctionParseType)), "Cannot parse setter definition");
     }
+
     if (stringPropertyName)
         return context.createGetterOrSetterProperty(location, type, strict, stringPropertyName, info, superBinding);
+
+    if (computedPropertyName)
+        return context.createGetterOrSetterProperty(location, static_cast<PropertyNode::Type>(type | PropertyNode::Computed), strict, computedPropertyName, info, superBinding);
+
     return context.createGetterOrSetterProperty(const_cast<VM*>(m_vm), m_parserArena, location, type, strict, numericPropertyName, info, superBinding);
 }
 
@@ -3661,7 +3674,7 @@ template <typename LexerType> void Parser<LexerType>::printUnexpectedTokenText(W
     case INVALID_NUMERIC_LITERAL_ERRORTOK:
         out.print("Invalid numeric literal: '", getToken(), "'");
         return;
-    case INVALID_OCTAL_NUMBER_ERRORTOK:
+    case UNTERMINATED_OCTAL_NUMBER_ERRORTOK:
         out.print("Invalid use of octal: '", getToken(), "'");
         return;
     case INVALID_STRING_LITERAL_ERRORTOK:

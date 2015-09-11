@@ -41,11 +41,61 @@
 #include "OperandsInlines.h"
 #include "JSCInlines.h"
 #include "RegisterPreservationWrapperGenerator.h"
-#include "RepatchBuffer.h"
 
 namespace JSC { namespace FTL {
 
 using namespace DFG;
+
+static void reboxAccordingToFormat(
+    DataFormat format, AssemblyHelpers& jit, GPRReg value, GPRReg scratch1, GPRReg scratch2)
+{
+    switch (format) {
+    case DataFormatInt32: {
+        jit.zeroExtend32ToPtr(value, value);
+        jit.or64(GPRInfo::tagTypeNumberRegister, value);
+        break;
+    }
+
+    case DataFormatInt52: {
+        jit.rshift64(AssemblyHelpers::TrustedImm32(JSValue::int52ShiftAmount), value);
+        jit.moveDoubleTo64(FPRInfo::fpRegT0, scratch2);
+        jit.boxInt52(value, value, scratch1, FPRInfo::fpRegT0);
+        jit.move64ToDouble(scratch2, FPRInfo::fpRegT0);
+        break;
+    }
+
+    case DataFormatStrictInt52: {
+        jit.moveDoubleTo64(FPRInfo::fpRegT0, scratch2);
+        jit.boxInt52(value, value, scratch1, FPRInfo::fpRegT0);
+        jit.move64ToDouble(scratch2, FPRInfo::fpRegT0);
+        break;
+    }
+
+    case DataFormatBoolean: {
+        jit.zeroExtend32ToPtr(value, value);
+        jit.or32(MacroAssembler::TrustedImm32(ValueFalse), value);
+        break;
+    }
+
+    case DataFormatJS: {
+        // Done already!
+        break;
+    }
+
+    case DataFormatDouble: {
+        jit.moveDoubleTo64(FPRInfo::fpRegT0, scratch1);
+        jit.move64ToDouble(value, FPRInfo::fpRegT0);
+        jit.purifyNaN(FPRInfo::fpRegT0);
+        jit.boxDouble(FPRInfo::fpRegT0, value);
+        jit.move64ToDouble(scratch1, FPRInfo::fpRegT0);
+        break;
+    }
+
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
 
 static void compileRecovery(
     CCallHelpers& jit, const ExitValue& value, StackMaps::Record* record, StackMaps& stackmaps,
@@ -81,10 +131,10 @@ static void compileRecovery(
         switch (value.recoveryOpcode()) {
         case AddRecovery:
             switch (value.recoveryFormat()) {
-            case ValueFormatInt32:
+            case DataFormatInt32:
                 jit.add32(GPRInfo::regT1, GPRInfo::regT0);
                 break;
-            case ValueFormatInt52:
+            case DataFormatInt52:
                 jit.add64(GPRInfo::regT1, GPRInfo::regT0);
                 break;
             default:
@@ -94,10 +144,10 @@ static void compileRecovery(
             break;
         case SubRecovery:
             switch (value.recoveryFormat()) {
-            case ValueFormatInt32:
+            case DataFormatInt32:
                 jit.sub32(GPRInfo::regT1, GPRInfo::regT0);
                 break;
-            case ValueFormatInt52:
+            case DataFormatInt52:
                 jit.sub64(GPRInfo::regT1, GPRInfo::regT0);
                 break;
             default:
@@ -121,7 +171,7 @@ static void compileRecovery(
     }
         
     reboxAccordingToFormat(
-        value.valueFormat(), jit, GPRInfo::regT0, GPRInfo::regT1, GPRInfo::regT2);
+        value.dataFormat(), jit, GPRInfo::regT0, GPRInfo::regT1, GPRInfo::regT2);
 }
 
 static void compileStub(
@@ -161,7 +211,7 @@ static void compileStub(
         sizeof(EncodedJSValue) * (
             exit.m_values.size() + numMaterializations + maxMaterializationNumArguments) +
         requiredScratchMemorySizeInBytes() +
-        jitCode->unwindInfo.m_registers.size() * sizeof(uint64_t));
+        codeBlock->calleeSaveRegisters()->size() * sizeof(uint64_t));
     EncodedJSValue* scratch = scratchBuffer ? static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer()) : 0;
     EncodedJSValue* materializationPointers = scratch + exit.m_values.size();
     EncodedJSValue* materializationArguments = materializationPointers + numMaterializations;
@@ -204,10 +254,10 @@ static void compileStub(
     jit.move(MacroAssembler::TrustedImm64(TagMask), GPRInfo::tagMaskRegister);
     
     // Do some value profiling.
-    if (exit.m_profileValueFormat != InvalidValueFormat) {
+    if (exit.m_profileDataFormat != DataFormatNone) {
         record->locations[0].restoreInto(jit, jitCode->stackmaps, registerScratch, GPRInfo::regT0);
         reboxAccordingToFormat(
-            exit.m_profileValueFormat, jit, GPRInfo::regT0, GPRInfo::regT1, GPRInfo::regT2);
+            exit.m_profileDataFormat, jit, GPRInfo::regT0, GPRInfo::regT1, GPRInfo::regT2);
         
         if (exit.m_kind == BadCache || exit.m_kind == BadIndexingType) {
             CodeOrigin codeOrigin = exit.m_codeOriginForExitProfile;
@@ -334,8 +384,8 @@ static void compileStub(
     
     // Before we start messing with the frame, we need to set aside any registers that the
     // FTL code was preserving.
-    for (unsigned i = jitCode->unwindInfo.m_registers.size(); i--;) {
-        RegisterAtOffset entry = jitCode->unwindInfo.m_registers[i];
+    for (unsigned i = codeBlock->calleeSaveRegisters()->size(); i--;) {
+        RegisterAtOffset entry = codeBlock->calleeSaveRegisters()->at(i);
         jit.load64(
             MacroAssembler::Address(MacroAssembler::framePointerRegister, entry.offset()),
             GPRInfo::regT0);
@@ -382,10 +432,12 @@ static void compileStub(
     jit.add32(GPRInfo::regT3, GPRInfo::regT2);
     arityIntact.link(&jit);
 
+    CodeBlock* baselineCodeBlock = jit.baselineCodeBlockFor(exit.m_codeOrigin);
+
     // First set up SP so that our data doesn't get clobbered by signals.
     unsigned conservativeStackDelta =
         registerPreservationOffset() +
-        exit.m_values.numberOfLocals() * sizeof(Register) +
+        (exit.m_values.numberOfLocals() + baselineCodeBlock->calleeSaveSpaceAsVirtualRegisters()) * sizeof(Register) +
         maxFrameExtentForSlowPathCall;
     conservativeStackDelta = WTF::roundUpToMultipleOf(
         stackAlignmentBytes(), conservativeStackDelta);
@@ -407,67 +459,59 @@ static void compileStub(
     jit.store64(GPRInfo::regT0, GPRInfo::regT1);
     jit.addPtr(MacroAssembler::TrustedImm32(sizeof(Register)), GPRInfo::regT1);
     jit.branchTest32(MacroAssembler::NonZero, GPRInfo::regT2).linkTo(loop, &jit);
-    
-    // At this point regT1 points to where we would save our registers. Save them here.
-    ptrdiff_t currentOffset = 0;
-    for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
-        if (!toSave.get(reg))
-            continue;
-        currentOffset += sizeof(Register);
-        unsigned unwindIndex = jitCode->unwindInfo.indexOf(reg);
-        if (unwindIndex == UINT_MAX) {
-            // The FTL compilation didn't preserve this register. This means that it also
-            // didn't use the register. So its value at the beginning of OSR exit should be
-            // preserved by the thunk. Luckily, we saved all registers into the register
-            // scratch buffer, so we can restore them from there.
-            jit.load64(registerScratch + offsetOfReg(reg), GPRInfo::regT0);
-        } else {
-            // The FTL compilation preserved the register. Its new value is therefore
-            // irrelevant, but we can get the value that was preserved by using the unwind
-            // data. We've already copied all unwind-able preserved registers into the unwind
-            // scratch buffer, so we can get it from there.
-            jit.load64(unwindScratch + unwindIndex, GPRInfo::regT0);
-        }
-        jit.store64(GPRInfo::regT0, AssemblyHelpers::Address(GPRInfo::regT1, currentOffset));
-    }
-    
-    // We need to make sure that we return into the register restoration thunk. This works
-    // differently depending on whether or not we had arity issues.
-    MacroAssembler::Jump arityIntactForReturnPC = jit.branch32(
-        MacroAssembler::GreaterThanOrEqual,
-        CCallHelpers::payloadFor(JSStack::ArgumentCount),
-        MacroAssembler::TrustedImm32(codeBlock->numParameters()));
-    
-    // The return PC in the call frame header points at exactly the right arity restoration
-    // thunk. We don't want to change that. But the arity restoration thunk's frame has a
-    // return PC and we want to reroute that to our register restoration thunk. The arity
-    // restoration's return PC just just below regT1, and the register restoration's return PC
-    // is right at regT1.
-    jit.loadPtr(MacroAssembler::Address(GPRInfo::regT1, -static_cast<ptrdiff_t>(sizeof(Register))), GPRInfo::regT0);
-    jit.storePtr(GPRInfo::regT0, GPRInfo::regT1);
-    jit.storePtr(
-        MacroAssembler::TrustedImmPtr(vm->getCTIStub(registerRestorationThunkGenerator).code().executableAddress()),
-        MacroAssembler::Address(GPRInfo::regT1, -static_cast<ptrdiff_t>(sizeof(Register))));
-    
-    MacroAssembler::Jump arityReturnPCReady = jit.jump();
 
-    arityIntactForReturnPC.link(&jit);
-    
-    jit.loadPtr(MacroAssembler::Address(MacroAssembler::framePointerRegister, CallFrame::returnPCOffset()), GPRInfo::regT0);
-    jit.storePtr(GPRInfo::regT0, GPRInfo::regT1);
-    jit.storePtr(
-        MacroAssembler::TrustedImmPtr(vm->getCTIStub(registerRestorationThunkGenerator).code().executableAddress()),
-        MacroAssembler::Address(MacroAssembler::framePointerRegister, CallFrame::returnPCOffset()));
-    
-    arityReturnPCReady.link(&jit);
-    
+    RegisterAtOffsetList* baselineCalleeSaves = baselineCodeBlock->calleeSaveRegisters();
+
+    for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
+        if (!toSave.get(reg) || !reg.isGPR())
+            continue;
+        unsigned unwindIndex = codeBlock->calleeSaveRegisters()->indexOf(reg);
+        RegisterAtOffset* baselineRegisterOffset = baselineCalleeSaves->find(reg);
+
+        if (reg.isGPR()) {
+            GPRReg regToLoad = baselineRegisterOffset ? GPRInfo::regT0 : reg.gpr();
+
+            if (unwindIndex == UINT_MAX) {
+                // The FTL compilation didn't preserve this register. This means that it also
+                // didn't use the register. So its value at the beginning of OSR exit should be
+                // preserved by the thunk. Luckily, we saved all registers into the register
+                // scratch buffer, so we can restore them from there.
+                jit.load64(registerScratch + offsetOfReg(reg), regToLoad);
+            } else {
+                // The FTL compilation preserved the register. Its new value is therefore
+                // irrelevant, but we can get the value that was preserved by using the unwind
+                // data. We've already copied all unwind-able preserved registers into the unwind
+                // scratch buffer, so we can get it from there.
+                jit.load64(unwindScratch + unwindIndex, regToLoad);
+            }
+
+            if (baselineRegisterOffset)
+                jit.store64(regToLoad, MacroAssembler::Address(MacroAssembler::framePointerRegister, baselineRegisterOffset->offset()));
+        } else {
+            FPRReg fpRegToLoad = baselineRegisterOffset ? FPRInfo::fpRegT0 : reg.fpr();
+
+            if (unwindIndex == UINT_MAX)
+                jit.loadDouble(MacroAssembler::TrustedImmPtr(registerScratch + offsetOfReg(reg)), fpRegToLoad);
+            else
+                jit.loadDouble(MacroAssembler::TrustedImmPtr(unwindScratch + unwindIndex), fpRegToLoad);
+
+            if (baselineRegisterOffset)
+                jit.storeDouble(fpRegToLoad, MacroAssembler::Address(MacroAssembler::framePointerRegister, baselineRegisterOffset->offset()));
+        }
+    }
+
+    size_t baselineVirtualRegistersForCalleeSaves = baselineCodeBlock->calleeSaveSpaceAsVirtualRegisters();
+
     // Now get state out of the scratch buffer and place it back into the stack. The values are
     // already reboxed so we just move them.
     for (unsigned index = exit.m_values.size(); index--;) {
-        int operand = exit.m_values.operandForIndex(index);
-        
+        VirtualRegister reg = exit.m_values.virtualRegisterForIndex(index);
+
+        if (reg.isLocal() && reg.toLocal() < static_cast<int>(baselineVirtualRegistersForCalleeSaves))
+            continue;
+
         jit.load64(scratch + index, GPRInfo::regT0);
-        jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(static_cast<VirtualRegister>(operand)));
+        jit.store64(GPRInfo::regT0, AssemblyHelpers::addressFor(reg));
     }
     
     handleExitCounts(jit, exit);
@@ -523,8 +567,7 @@ extern "C" void* compileFTLOSRExit(ExecState* exec, unsigned exitID)
     
     compileStub(exitID, jitCode, exit, vm, codeBlock);
     
-    RepatchBuffer repatchBuffer(codeBlock);
-    repatchBuffer.relink(
+    MacroAssembler::repatchJump(
         exit.codeLocationForRepatch(codeBlock), CodeLocationLabel(exit.m_code.code()));
     
     return exit.m_code.code().executableAddress();

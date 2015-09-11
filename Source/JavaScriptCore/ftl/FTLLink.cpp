@@ -28,7 +28,6 @@
 
 #if ENABLE(FTL_JIT)
 
-#include "ArityCheckFailReturnThunks.h"
 #include "CCallHelpers.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGCommon.h"
@@ -54,9 +53,7 @@ void link(State& state)
     // LLVM will create its own jump tables as needed.
     codeBlock->clearSwitchJumpTables();
     
-    // FIXME: Need to know the real frame register count.
-    // https://bugs.webkit.org/show_bug.cgi?id=125727
-    state.jitCode->common.frameRegisterCount = 1000;
+    state.jitCode->common.frameRegisterCount = state.jitCode->stackmaps.stackSizeForLocals() / sizeof(void*);
     
     state.jitCode->common.requiredRegisterCountForExit = graph.requiredRegisterCountForExit();
     
@@ -165,14 +162,10 @@ void link(State& state)
         jit.load64(vm.addressOfException(), GPRInfo::regT1);
         jit.jitAssertIsNull(GPRInfo::regT1);
 #endif
-        jit.move(GPRInfo::returnValueGPR, GPRInfo::regT0);
+        jit.move(GPRInfo::returnValueGPR, GPRInfo::argumentGPR0);
         jit.emitFunctionEpilogue();
-        mainPathJumps.append(jit.branchTest32(CCallHelpers::Zero, GPRInfo::regT0));
+        mainPathJumps.append(jit.branchTest32(CCallHelpers::Zero, GPRInfo::argumentGPR0));
         jit.emitFunctionPrologue();
-        CodeLocationLabel* arityThunkLabels =
-            vm.arityCheckFailReturnThunks->returnPCsFor(vm, codeBlock->numParameters());
-        jit.move(CCallHelpers::TrustedImmPtr(arityThunkLabels), GPRInfo::regT7);
-        jit.loadPtr(CCallHelpers::BaseIndex(GPRInfo::regT7, GPRInfo::regT0, CCallHelpers::timesPtr()), GPRInfo::regT7);
         CCallHelpers::Call callArityFixup = jit.call();
         jit.emitFunctionEpilogue();
         mainPathJumps.append(jit.jump());

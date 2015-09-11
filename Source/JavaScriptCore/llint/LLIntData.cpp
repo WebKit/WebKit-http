@@ -26,6 +26,7 @@
 #include "config.h"
 #include "LLIntData.h"
 #include "BytecodeConventions.h"
+#include "CodeBlock.h"
 #include "CodeType.h"
 #include "Instruction.h"
 #include "JSScope.h"
@@ -131,6 +132,15 @@ void Data::performAssertions(VM& vm)
 #elif CPU(X86_64) && OS(WINDOWS)
     ASSERT(maxFrameExtentForSlowPathCall == 64);
 #endif
+
+#if !ENABLE(JIT) || USE(JSVALUE32_64)
+    ASSERT(!CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters());
+#elif (CPU(X86_64) && !OS(WINDOWS))  || CPU(ARM64)
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 3);
+#elif (CPU(X86_64) && OS(WINDOWS))
+    ASSERT(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters() == 3);
+#endif
+    
     ASSERT(StringType == 6);
     ASSERT(ObjectType == 21);
     ASSERT(FinalObjectType == 22);
@@ -145,14 +155,20 @@ void Data::performAssertions(VM& vm)
 
     static_assert(GlobalProperty == 0, "LLInt assumes GlobalProperty ResultType is == 0");
     static_assert(GlobalVar == 1, "LLInt assumes GlobalVar ResultType is == 1");
-    static_assert(ClosureVar == 2, "LLInt assumes ClosureVar ResultType is == 2");
-    static_assert(LocalClosureVar == 3, "LLInt assumes LocalClosureVar ResultType is == 3");
-    static_assert(GlobalPropertyWithVarInjectionChecks == 4, "LLInt assumes GlobalPropertyWithVarInjectionChecks ResultType is == 4");
-    static_assert(GlobalVarWithVarInjectionChecks == 5, "LLInt assumes GlobalVarWithVarInjectionChecks ResultType is == 5");
-    static_assert(ClosureVarWithVarInjectionChecks == 6, "LLInt assumes ClosureVarWithVarInjectionChecks ResultType is == 6");
-    static_assert(Dynamic == 7, "LLInt assumes Dynamic ResultType is == 7");
+    static_assert(GlobalLexicalVar == 2, "LLInt assumes GlobalLexicalVar ResultType is == 2");
+    static_assert(ClosureVar == 3, "LLInt assumes ClosureVar ResultType is == 3");
+    static_assert(LocalClosureVar == 4, "LLInt assumes LocalClosureVar ResultType is == 4");
+    static_assert(ModuleVar == 5, "LLInt assumes ModuleVar ResultType is == 5");
+    static_assert(GlobalPropertyWithVarInjectionChecks == 6, "LLInt assumes GlobalPropertyWithVarInjectionChecks ResultType is == 6");
+    static_assert(GlobalVarWithVarInjectionChecks == 7, "LLInt assumes GlobalVarWithVarInjectionChecks ResultType is == 7");
+    static_assert(GlobalLexicalVarWithVarInjectionChecks == 8, "LLInt assumes GlobalLexicalVarWithVarInjectionChecks ResultType is == 8");
+    static_assert(ClosureVarWithVarInjectionChecks == 9, "LLInt assumes ClosureVarWithVarInjectionChecks ResultType is == 9");
+
+    static_assert(InitializationMode::Initialization == 0, "LLInt assumes that InitializationMode::Initialization is 0");
     
-    ASSERT(ResolveModeAndType::mask == 0xffff);
+    ASSERT(GetPutInfo::typeBits == 0x3ff);
+    ASSERT(GetPutInfo::initializationShift == 10);
+    ASSERT(GetPutInfo::initializationBits == 0xffc00);
 
     ASSERT(MarkedBlock::blockMask == ~static_cast<decltype(MarkedBlock::blockMask)>(0x3fff));
 

@@ -33,6 +33,8 @@
 
 #define ContextExpression typename Context::Expression
 #define ContextStatement typename Context::Statement
+#define ContextExpressionList typename Context::ExpressionList
+#define ContextJumpTarget typename Context::JumpTarget
 
 namespace JSC {
 
@@ -42,7 +44,7 @@ class VM;
 
 class WASMFunctionParser {
 public:
-    static bool checkSyntax(JSWASMModule*, const SourceCode&, size_t functionIndex, unsigned startOffsetInSource, unsigned& endOffsetInSource, String& errorMessage);
+    static bool checkSyntax(JSWASMModule*, const SourceCode&, size_t functionIndex, unsigned startOffsetInSource, unsigned& endOffsetInSource, unsigned& stackHeight, String& errorMessage);
     static void compile(VM&, CodeBlock*, JSWASMModule*, const SourceCode&, size_t functionIndex);
 
 private:
@@ -62,6 +64,8 @@ private:
     template <class Context> ContextStatement parseStatement(Context&);
     template <class Context> ContextStatement parseSetLocalStatement(Context&, uint32_t localIndex);
     template <class Context> ContextStatement parseSetLocalStatement(Context&);
+    template <class Context> ContextStatement parseSetGlobalStatement(Context&, uint32_t globalIndex);
+    template <class Context> ContextStatement parseSetGlobalStatement(Context&);
     template <class Context> ContextStatement parseReturnStatement(Context&);
     template <class Context> ContextStatement parseBlockStatement(Context&);
     template <class Context> ContextStatement parseIfStatement(Context&);
@@ -78,8 +82,29 @@ private:
     template <class Context> ContextExpression parseExpression(Context&, WASMExpressionType);
 
     template <class Context> ContextExpression parseExpressionI32(Context&);
+    template <class Context> ContextExpression parseConstantPoolIndexExpressionI32(Context&, uint32_t constantPoolIndex);
+    template <class Context> ContextExpression parseConstantPoolIndexExpressionI32(Context&);
     template <class Context> ContextExpression parseImmediateExpressionI32(Context&, uint32_t immediate);
     template <class Context> ContextExpression parseImmediateExpressionI32(Context&);
+    template <class Context> ContextExpression parseGetLocalExpressionI32(Context&, uint32_t localIndex);
+    template <class Context> ContextExpression parseGetLocalExpressionI32(Context&);
+    template <class Context> ContextExpression parseGetGlobalExpressionI32(Context&);
+    template <class Context> ContextExpression parseCallInternalExpressionI32(Context&);
+    template <class Context> ContextExpression parseUnaryExpressionI32(Context&, WASMOpExpressionI32);
+    template <class Context> ContextExpression parseBinaryExpressionI32(Context&, WASMOpExpressionI32);
+    template <class Context> ContextExpression parseRelationalI32ExpressionI32(Context&, WASMOpExpressionI32);
+    template <class Context> ContextExpression parseRelationalF64ExpressionI32(Context&, WASMOpExpressionI32);
+
+    template <class Context> ContextExpression parseExpressionF64(Context&);
+    template <class Context> ContextExpression parseConstantPoolIndexExpressionF64(Context&, uint32_t constantIndex);
+    template <class Context> ContextExpression parseConstantPoolIndexExpressionF64(Context&);
+    template <class Context> ContextExpression parseImmediateExpressionF64(Context&);
+    template <class Context> ContextExpression parseGetLocalExpressionF64(Context&, uint32_t localIndex);
+    template <class Context> ContextExpression parseGetLocalExpressionF64(Context&);
+    template <class Context> ContextExpression parseGetGlobalExpressionF64(Context&);
+
+    template <class Context> ContextExpressionList parseCallArguments(Context&, const Vector<WASMType>& arguments);
+    template <class Context> ContextExpression parseCallInternal(Context&, WASMExpressionType returnType);
 
     JSWASMModule* m_module;
     WASMReader m_reader;

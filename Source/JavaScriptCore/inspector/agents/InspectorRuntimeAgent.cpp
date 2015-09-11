@@ -37,6 +37,7 @@
 #include "HeapIterationScope.h"
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
+#include "InspectorFrontendRouter.h"
 #include "InspectorValues.h"
 #include "JSLock.h"
 #include "ParserError.h"
@@ -56,9 +57,9 @@ static bool asBool(const bool* const b)
     return b ? *b : false;
 }
 
-InspectorRuntimeAgent::InspectorRuntimeAgent(InjectedScriptManager& injectedScriptManager)
+InspectorRuntimeAgent::InspectorRuntimeAgent(AgentContext& context)
     : InspectorAgentBase(ASCIILiteral("Runtime"))
-    , m_injectedScriptManager(injectedScriptManager)
+    , m_injectedScriptManager(context.injectedScriptManager)
 {
 }
 
