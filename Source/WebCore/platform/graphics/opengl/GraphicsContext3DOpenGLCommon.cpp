@@ -102,7 +102,7 @@ static void setCurrentNameHashMapForShader(ShaderNameHash* shaderNameHash)
 
 static uint64_t nameHashForShader(const char* name, size_t length)
 {
-    if (!currentNameHashMapForShader || !length)
+    if (!length)
         return 0;
 
     CString nameAsCString = CString(name);

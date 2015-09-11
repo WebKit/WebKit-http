@@ -223,6 +223,10 @@ void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem&)
 {
 }
 
+void PageClientImpl::didRemoveNavigationGestureSnapshot()
+{
+}
+
 void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 {
 }
