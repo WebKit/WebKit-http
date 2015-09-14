@@ -310,6 +310,15 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
     }
 #endif
 
+    // Ensure that neither this class nor the base class hold references to any sample
+    // as in the change to NULL the decoder needs to be able to free the buffers
+    clearSamples();
+
+    if (m_videoSink) {
+        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+        g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
+    }
+
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
@@ -325,16 +334,9 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
 #endif
 
-        // Ensure that neither this class nor the base class hold references to any sample
-        // as in the change to NULL the decoder needs to be able to free the buffers
-        clearSamples();
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 
-    if (m_videoSink) {
-        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
-        g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
-    }
 
     // Cancel pending mediaPlayerPrivateNotifyDurationChanged() delayed calls
     m_pendingAsyncOperationsLock.lock();

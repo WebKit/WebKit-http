@@ -110,20 +110,29 @@ struct _WebKitVideoSinkPrivate {
             gst_sample_unref(sample);
         sample = nullptr;
 
-        if (previousSample)
-            gst_sample_unref(previousSample);
-        previousSample = nullptr;
-
         if (currentCaps)
             gst_caps_unref(currentCaps);
         currentCaps = nullptr;
 
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
+        if (context) {
+            gst_gl_context_destroy(context);
+            gst_object_unref(context);
+        }
+        if (other_context) {
+            gst_gl_context_destroy(other_context);
+            gst_object_unref(context);
+        }
+
+        display = nullptr;
+        context = nullptr;
+        other_context = nullptr;
+#endif
         g_mutex_clear(&sampleMutex);
         g_cond_clear(&dataCondition);
     }
 
     GstSample* sample;
-    GstSample* previousSample;
     GSourceWrap::Dynamic timeoutSource;
     GMutex sampleMutex;
     GCond dataCondition;
@@ -290,7 +299,6 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     }
 #endif
 
-    GstSample* currentSample = gst_sample_ref(priv->sample);
 #if USE(COORDINATED_GRAPHICS_THREADED)
     webkitVideoSinkTimeoutCallback(sink);
 #else
@@ -303,9 +311,6 @@ static GstFlowReturn webkitVideoSinkRender(GstBaseSink* baseSink, GstBuffer* buf
     g_cond_wait(&priv->dataCondition, &priv->sampleMutex);
 #endif
 
-    if (priv->previousSample)
-        gst_sample_unref(priv->previousSample);
-    priv->previousSample = currentSample;
     return GST_FLOW_OK;
 }
 
@@ -322,11 +327,6 @@ static void unlockSampleMutex(WebKitVideoSinkPrivate* priv)
     if (priv->sample) {
         gst_sample_unref(priv->sample);
         priv->sample = 0;
-    }
-
-    if (priv->previousSample) {
-        gst_sample_unref(priv->previousSample);
-        priv->previousSample = 0;
     }
 
     priv->unlocked = true;
@@ -471,16 +471,10 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     {
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
         {
-#if !USE(COORDINATED_GRAPHICS_THREADED)
             WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
-#endif
             if (priv->sample)
                 gst_sample_unref(priv->sample);
             priv->sample = nullptr;
-
-            if (priv->previousSample)
-                gst_sample_unref(priv->previousSample);
-            priv->previousSample = nullptr;
         }
         GST_OBJECT_LOCK (sink);
         g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
