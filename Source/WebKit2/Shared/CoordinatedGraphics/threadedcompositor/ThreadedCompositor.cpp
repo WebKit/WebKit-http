@@ -245,7 +245,8 @@ GLContext* ThreadedCompositor::glContext()
         return m_context.get();
 
     RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
-    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(800, 600));
+    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()));
     if (!m_waylandSurface)
         return 0;
     downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
