@@ -355,6 +355,7 @@ void ThreadedCompositor::runCompositingThread()
         LockHolder locker(m_terminateRunLoopConditionLock);
         m_compositingRunLoop = nullptr;
         m_context = nullptr;
+        m_scene = nullptr;
         m_terminateRunLoopCondition.notifyOne();
     }
 
