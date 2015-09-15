@@ -53,10 +53,6 @@
 #include "PlatformProcessIdentifier.h"
 #endif
 
-namespace WTF {
-class RunLoop;
-}
-
 namespace IPC {
 
 struct WaitForMessageState;
