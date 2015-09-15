@@ -39,6 +39,7 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
+#include <wtf/RunLoop.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
 
@@ -142,8 +143,8 @@ public:
     static Connection::SocketPair createPlatformConnection(unsigned options = SetCloexecOnClient | SetCloexecOnServer);
 #endif
 
-    static Ref<Connection> createServerConnection(Identifier, Client&);
-    static Ref<Connection> createClientConnection(Identifier, Client&);
+    static Ref<Connection> createServerConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop = RunLoop::main());
+    static Ref<Connection> createClientConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop = RunLoop::main());
     ~Connection();
 
     Client* client() const { return m_client; }
@@ -209,7 +210,7 @@ public:
     void allowFullySynchronousModeForTesting() { m_fullySynchronousModeIsAllowedForTesting = true; }
 
 private:
-    Connection(Identifier, bool isServer, Client&);
+    Connection(Identifier, bool isServer, Client&, WTF::RunLoop& clientRunLoop);
     void platformInitialize(Identifier);
     void platformInvalidate();
     
@@ -253,6 +254,7 @@ private:
 
     bool m_isConnected;
     Ref<WorkQueue> m_connectionQueue;
+    WTF::RunLoop& m_clientRunLoop;
 
     HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>> m_workQueueMessageReceivers;
 
