@@ -215,9 +215,11 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createOffscreenContext(GLC
 {
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
+    auto contextData = std::make_unique<OffscreenContextData>(wlSurface, nativeWindow);
 
     auto context = GLContextEGL::createWindowContext(nativeWindow, sharingContext);
-    context->setContextData(std::make_unique<OffscreenContextData>(wlSurface, nativeWindow));
+    if (context)
+        context->setContextData(WTF::move(contextData));
     return context;
 }
 
