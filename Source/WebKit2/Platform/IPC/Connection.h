@@ -39,6 +39,7 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
+#include <wtf/RunLoop.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
 
@@ -146,8 +147,8 @@ public:
     static Connection::SocketPair createPlatformConnection(unsigned options = SetCloexecOnClient | SetCloexecOnServer);
 #endif
 
-    static Ref<Connection> createServerConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop);
-    static Ref<Connection> createClientConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop);
+    static Ref<Connection> createServerConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop = RunLoop::main());
+    static Ref<Connection> createClientConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop = RunLoop::main());
     ~Connection();
 
     Client* client() const { return m_client; }
