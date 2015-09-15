@@ -22,6 +22,7 @@
 
 #include "GraphicsContext3D.h"
 #include "Widget.h"
+#include <memory>
 #include <wtf/Noncopyable.h>
 
 // FIXME: WPE should use EGLNativeWindowType once we can use the Wayland EGL platform.
@@ -85,6 +86,15 @@ public:
 #if ENABLE(GRAPHICS_CONTEXT_3D)
     virtual PlatformGraphicsContext3D platformContext() = 0;
 #endif
+
+    class Data {
+    public:
+        virtual ~Data() = default;
+    };
+    void setContextData(std::unique_ptr<Data>&& data) { m_contextData = WTF::move(data); }
+
+private:
+    std::unique_ptr<Data> m_contextData;
 };
 
 } // namespace WebCore
