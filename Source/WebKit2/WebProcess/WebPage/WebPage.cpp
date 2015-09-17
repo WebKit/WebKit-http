@@ -880,7 +880,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         result.cursorRect = frame.view()->contentsToWindow(frame.editor().firstRectForRange(range.get()));
 
     // FIXME: We should only transfer innerText when it changes and do this on the UI side.
-    if (result.isContentEditable && !result.isInPasswordField) {
+    if (result.isContentEditable) {
         if (isHTMLTextFormControlElement(scope))
             result.surroundingText = toHTMLTextFormControlElement(scope)->innerTextValue();
         else
