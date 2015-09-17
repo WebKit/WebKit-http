@@ -97,8 +97,6 @@ Change determineChange(const RenderStyle& s1, const RenderStyle& s2)
     // a separate render region object.
     if (s1.hasFlowFrom() && (s1.specifiesColumns() != s2.specifiesColumns()))
         return Detach;
-    if (s1.alignItems() != s2.alignItems())
-        return Detach;
 
     if (s1 != s2) {
         if (s1.inheritedNotEqual(&s2))
@@ -820,7 +818,7 @@ void resolveTree(Element& current, RenderStyle& inheritedStyle, RenderTreePositi
                 if (childElement.styleIsAffectedByPreviousSibling())
                     childElement.setNeedsStyleRecalc();
                 elementNeedingStyleRecalcAffectsNextSiblingElementStyle = childElement.affectsNextSiblingElementStyle();
-            } else if (childElement.styleChangeType() >= FullStyleChange)
+            } else if (childElement.needsStyleRecalc())
                 elementNeedingStyleRecalcAffectsNextSiblingElementStyle = childElement.affectsNextSiblingElementStyle();
             if (change >= Inherit || childElement.childNeedsStyleRecalc() || childElement.needsStyleRecalc()) {
                 parentPusher.push();

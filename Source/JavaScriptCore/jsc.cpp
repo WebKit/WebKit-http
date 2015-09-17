@@ -176,12 +176,12 @@ private:
     WriteBarrier<Root> m_root;
 };
 
-class ElementHandleOwner : public WeakHandleOwner {
+class ElementHandleOwner final : public WeakHandleOwner {
 public:
-    virtual bool isReachableFromOpaqueRoots(Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+    virtual bool isReachableFromOpaqueRoots(JSCell& cell, void*, SlotVisitor& visitor)
     {
-        Element* element = jsCast<Element*>(handle.slot()->asCell());
-        return visitor.containsOpaqueRoot(element->root());
+        auto& element = jsCast<Element&>(cell);
+        return visitor.containsOpaqueRoot(element.root());
     }
 };
 
@@ -461,7 +461,6 @@ static EncodedJSValue JSC_HOST_CALL functionGCAndSweep(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionFullGC(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionAddressOf(ExecState*);
 #ifndef NDEBUG
 static EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState*);
@@ -621,7 +620,6 @@ protected:
         addFunction(vm, "fullGC", functionFullGC, 0);
         addFunction(vm, "edenGC", functionEdenGC, 0);
         addFunction(vm, "gcHeapSize", functionHeapSize, 0);
-        addFunction(vm, "deleteAllCompiledCode", functionDeleteAllCompiledCode, 0);
         addFunction(vm, "addressOf", functionAddressOf, 1);
 #ifndef NDEBUG
         addFunction(vm, "dumpCallFrame", functionDumpCallFrame, 0);
@@ -679,7 +677,7 @@ protected:
         addFunction(vm, "drainMicrotasks", functionDrainMicrotasks, 0);
 
 #if ENABLE(WEBASSEMBLY)
-        addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 1);
+        addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 2);
 #endif
         addFunction(vm, "loadModule", functionLoadModule, 1);
         addFunction(vm, "checkModuleSyntax", functionCheckModuleSyntax, 1);
@@ -1133,13 +1131,6 @@ EncodedJSValue JSC_HOST_CALL functionHeapSize(ExecState* exec)
     return JSValue::encode(jsNumber(exec->heap()->size()));
 }
 
-EncodedJSValue JSC_HOST_CALL functionDeleteAllCompiledCode(ExecState* exec)
-{
-    JSLockHolder lock(exec);
-    exec->heap()->deleteAllCodeBlocks();
-    return JSValue::encode(jsUndefined());
-}
-
 // This function is not generally very helpful in 64-bit code as the tag and payload
 // share a register. But in 32-bit JITed code the tag may not be checked if an
 // optimization removes type checking requirements, such as in ===.
@@ -1458,8 +1449,10 @@ EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState* exec)
         return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
     RefPtr<WebAssemblySourceProvider> sourceProvider = WebAssemblySourceProvider::create(reinterpret_cast<Vector<uint8_t>&>(buffer), fileName);
     SourceCode source(sourceProvider);
+    JSObject* imports = exec->argument(1).getObject();
+
     String errorMessage;
-    JSWASMModule* module = parseWebAssembly(exec, source, errorMessage);
+    JSWASMModule* module = parseWebAssembly(exec, source, imports, errorMessage);
     if (!module)
         return JSValue::encode(exec->vm().throwException(exec, createSyntaxError(exec, errorMessage)));
     return JSValue::encode(module);

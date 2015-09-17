@@ -560,12 +560,15 @@ void Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode&
     auto viableNextSibling = firstFollowingSiblingNotInNodeSet(*this, nodeSet);
 
     auto node = convertNodesOrStringsIntoNode(*this, WTF::move(nodeOrStringVector), ec);
-    if (ec || !node)
+    if (ec)
         return;
 
-    if (parentNode() == parent)
-        parent->replaceChild(node.releaseNonNull(), *this, ec);
-    else
+    if (parentNode() == parent) {
+        if (node)
+            parent->replaceChild(node.releaseNonNull(), *this, ec);
+        else
+            parent->removeChild(*this);
+    } else if (node)
         parent->insertBefore(node.releaseNonNull(), viableNextSibling.get(), ec);
 }
 
@@ -620,7 +623,7 @@ void Node::normalize()
 
             // Both non-empty text nodes. Merge them.
             unsigned offset = text->length();
-            text->appendData(nextText->data(), IGNORE_EXCEPTION);
+            text->appendData(nextText->data());
             document().textNodesMerged(nextText.get(), offset);
             nextText->remove(IGNORE_EXCEPTION);
         }
@@ -1071,7 +1074,7 @@ ShadowRoot* Node::containingShadowRoot() const
 bool Node::isInUserAgentShadowTree() const
 {
     auto* shadowRoot = containingShadowRoot();
-    return shadowRoot && shadowRoot->type() == ShadowRoot::UserAgentShadowRoot;
+    return shadowRoot && shadowRoot->type() == ShadowRoot::Type::UserAgent;
 }
 
 Node* Node::nonBoundaryShadowTreeRootNode()
@@ -1162,7 +1165,7 @@ Document* Node::ownerDocument() const
 
 URL Node::baseURI() const
 {
-    return parentNode() ? parentNode()->baseURI() : URL();
+    return document().baseURL();
 }
 
 bool Node::isEqualNode(Node* other) const

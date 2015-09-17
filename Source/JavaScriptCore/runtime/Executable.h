@@ -388,7 +388,7 @@ public:
 
     bool usesEval() const { return m_features & EvalFeature; }
     bool usesArguments() const { return m_features & ArgumentsFeature; }
-    bool needsActivation() const { return m_hasCapturedVariables || m_features & (EvalFeature | WithFeature | CatchFeature); }
+    bool needsActivation() const { return m_hasCapturedVariables || m_features & (EvalFeature | WithFeature); }
     bool isStrictMode() const { return m_features & StrictModeFeature; }
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
         
@@ -420,6 +420,7 @@ public:
     }
 
     void installCode(CodeBlock*);
+    void installCode(VM&, CodeBlock*, CodeType, CodeSpecializationKind);
     RefPtr<CodeBlock> newCodeBlockFor(CodeSpecializationKind, JSFunction*, JSScope*, JSObject*& exception);
     PassRefPtr<CodeBlock> newReplacementCodeBlockFor(CodeSpecializationKind);
     

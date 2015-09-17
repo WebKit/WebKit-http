@@ -552,7 +552,6 @@ webkit.org/b/118126 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailur
 webkit.org/b/142268 editing/pasteboard/copy-paste-attachment.html [ Failure ]
 webkit.org/b/142269 fast/attachment/attachment-dom.html [ Failure ]
 webkit.org/b/142270 fast/canvas/canvas-ellipse-zero-lineto.html [ Failure ]
-webkit.org/b/142142 media/video-volume-slider.html [ Failure ]
 
 webkit.org/b/127109 media/video-object-fit.html [ ImageOnlyFailure ]
 webkit.org/b/142283 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
@@ -612,6 +611,8 @@ webkit.org/b/146731 fast/hidpi/filters-hue-rotate.html [ ImageOnlyFailure ]
 webkit.org/b/146731 fast/hidpi/filters-invert.html [ ImageOnlyFailure ]
 webkit.org/b/146731 fast/hidpi/filters-multiple.html [ ImageOnlyFailure ]
 webkit.org/b/146731 fast/hidpi/filters-reference.html [ ImageOnlyFailure ]
+
+webkit.org/b/149016 accessibility/aria-current.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -1156,7 +1157,6 @@ webkit.org/b/145170 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [
 webkit.org/b/145170 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure Pass ]
 
 webkit.org/b/145256 media/video-controller-child-rate.html [ Failure Pass ]
-webkit.org/b/145257 http/tests/media/media-document-referer.html [ Failure Pass ]
 webkit.org/b/145258 media/video-controller-child-rate.html [ Failure Pass ]
 
 webkit.org/b/145261 fast/workers/stress-js-execution.html [ Failure Pass ]
@@ -2406,10 +2406,6 @@ webkit.org/b/143871 svg/W3C-SVG-1.1-SE/linking-uri-01-b.svg [ Failure ]
 
 webkit.org/b/143924 fast/text/hyphen-min-preferred-width.html [ Skip ]
 
-webkit.org/b/144494 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
-webkit.org/b/144494 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
-webkit.org/b/144494 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
-
 webkit.org/b/144575 http/tests/loading/promote-img-preload-priority.html [ Failure ]
 
 webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
@@ -2600,7 +2596,7 @@ fast/text/hangul-generic-font-families.html [ WontFix ]
 fast/text/fallback-language-han.html [ Skip ]
 
 # This test relies on iOS-specific font fallback.
-fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
 
 # This test uses an MPEG-4 video
 media/video-seek-to-current-time.html [ Skip ]
@@ -2610,3 +2606,8 @@ css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]
 
 # Media controls tests are OS X only
 media/controls [ Skip ]
+
+# Mocking the system language is not implemented in GTK.
+fast/text/international/system-language [ Failure ]
+
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]

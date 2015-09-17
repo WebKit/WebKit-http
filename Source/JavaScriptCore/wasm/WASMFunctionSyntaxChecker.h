@@ -73,6 +73,13 @@ public:
         return UNUSED;
     }
 
+    int buildImmediateF32(uint32_t)
+    {
+        m_tempStackTop++;
+        updateTempStackHeight();
+        return UNUSED;
+    }
+
     int buildImmediateF64(uint32_t)
     {
         m_tempStackTop++;
@@ -99,13 +106,30 @@ public:
         return UNUSED;
     }
 
+    int buildUnaryF32(int, WASMOpExpressionF32)
+    {
+        return UNUSED;
+    }
+
     int buildBinaryI32(int, int, WASMOpExpressionI32)
     {
         m_tempStackTop--;
         return UNUSED;
     }
 
+    int buildBinaryF32(int, int, WASMOpExpressionF32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
     int buildRelationalI32(int, int, WASMOpExpressionI32)
+    {
+        m_tempStackTop--;
+        return UNUSED;
+    }
+
+    int buildRelationalF32(int, int, WASMOpExpressionI32)
     {
         m_tempStackTop--;
         return UNUSED;
@@ -120,17 +144,34 @@ public:
     int buildCallInternal(uint32_t, int, const WASMSignature& signature, WASMExpressionType returnType)
     {
         size_t argumentCount = signature.arguments.size();
-
-        // Boxed arguments + this argument + call frame header + padding.
-        m_tempStackTop += argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
-        updateTempStackHeight();
-        m_tempStackTop -= argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
-
+        updateTempStackHeightForCall(argumentCount);
         m_tempStackTop -= argumentCount;
         if (returnType != WASMExpressionType::Void) {
             m_tempStackTop++;
             updateTempStackHeight();
         }
+        return UNUSED;
+    }
+
+    int buildCallImport(uint32_t, int, const WASMSignature& signature, WASMExpressionType returnType)
+    {
+        size_t argumentCount = signature.arguments.size();
+        updateTempStackHeightForCall(argumentCount);
+        m_tempStackTop -= argumentCount;
+        if (returnType != WASMExpressionType::Void) {
+            m_tempStackTop++;
+            updateTempStackHeight();
+        }
+        return UNUSED;
+    }
+
+    int buildCallIndirect(uint32_t, int, int, const WASMSignature& signature, WASMExpressionType returnType)
+    {
+        size_t argumentCount = signature.arguments.size();
+        updateTempStackHeightForCall(argumentCount);
+        m_tempStackTop -= argumentCount + 1;
+        if (returnType != WASMExpressionType::Void)
+            m_tempStackTop++;
         return UNUSED;
     }
 
@@ -170,6 +211,14 @@ private:
     {
         if (m_tempStackTop > m_tempStackHeight)
             m_tempStackHeight = m_tempStackTop;
+    }
+
+    void updateTempStackHeightForCall(size_t argumentCount)
+    {
+        // Boxed arguments + this argument + call frame header + maximum padding.
+        m_tempStackTop += argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
+        updateTempStackHeight();
+        m_tempStackTop -= argumentCount + 1 + JSStack::CallFrameHeaderSize + 1;
     }
 
     unsigned m_numberOfLocals;

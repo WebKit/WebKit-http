@@ -498,9 +498,6 @@ void VM::deleteAllCode()
     whenIdle([this]() {
         m_codeCache->clear();
         m_regExpCache->deleteAllCode();
-#if ENABLE(DFG_JIT)
-        DFG::completeAllPlansForVM(*this);
-#endif
         heap.deleteAllCodeBlocks();
         heap.deleteAllUnlinkedCodeBlocks();
         heap.reportAbandonedObjectGraph();
@@ -534,8 +531,11 @@ void VM::throwException(ExecState* exec, Exception* exception)
         dataLog("In call frame ", RawPointer(exec), " for code block ", *exec->codeBlock(), "\n");
         CRASH();
     }
-    
+
     ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
+
+    interpreter->notifyDebuggerOfExceptionToBeThrown(exec, exception);
+
     setException(exception);
 }
 

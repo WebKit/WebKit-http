@@ -39,6 +39,7 @@ namespace WebCore {
 class ClientRect;
 class ClientRectList;
 class DatasetDOMStringMap;
+class Dictionary;
 class DOMTokenList;
 class ElementRareData;
 class HTMLDocument;
@@ -197,8 +198,6 @@ public:
     virtual const AtomicString& prefix() const override final { return m_tagName.prefix(); }
     virtual const AtomicString& namespaceURI() const override final { return m_tagName.namespaceURI(); }
 
-    virtual URL baseURI() const override final;
-
     virtual String nodeName() const override;
 
     Ref<Element> cloneElementWithChildren(Document&);
@@ -248,6 +247,9 @@ public:
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
     WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+
+    ShadowRoot* bindingShadowRoot() const;
+    RefPtr<ShadowRoot> attachShadow(const Dictionary&, ExceptionCode&);
 
     ShadowRoot* userAgentShadowRoot() const;
     WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
@@ -502,6 +504,8 @@ protected:
     // svgAttributeChanged (called when element.className.baseValue is set)
     void classAttributeChanged(const AtomicString& newClassString);
 
+    void addShadowRoot(Ref<ShadowRoot>&&);
+
     static void mergeWithNextTextNode(Text& node, ExceptionCode&);
 
 private:
@@ -566,7 +570,6 @@ private:
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
     virtual Ref<Element> cloneElementWithoutAttributesAndChildren(Document&);
 
-    void addShadowRoot(Ref<ShadowRoot>&&);
     void removeShadowRoot();
 
     bool rareDataStyleAffectedByEmpty() const;

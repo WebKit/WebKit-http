@@ -40,7 +40,6 @@ quicklook [ Skip ]
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
-
 # pending functional patch and per-port verification
 webkit.org/b/109954 css3/line-break [ Skip ]
 
@@ -567,6 +566,8 @@ webkit.org/b/114280 svg/animations/smil-leak-element-instances-noBaseValRef.svg 
 webkit.org/b/114280 svg/animations/smil-leak-element-instances.svg [ Pass Failure ]
 webkit.org/b/114280 svg/animations/smil-leak-elements.svg [ Pass Failure ]
 
+webkit.org/b/149072 svg/animations/svgboolean-animation-1.html [ Pass Failure ]
+
 webkit.org/b/143085 media/track/track-mode.html [ Pass Timeout ]
 
 # In ES6, Object type restrictions on a first parameter of several Object.* functions are relaxed.
@@ -636,13 +637,9 @@ imported/w3c/css/css-multicol-1/multicol-span-all-child-002.xht [ WontFix ]
 webkit.org/b/148818 imported/w3c/css/css-multicol-1/multicol-fill-auto-block-children-002.xht [ ImageOnlyFailure ] # only scrollbar
 webkit.org/b/148818 imported/w3c/css/css-multicol-1/multicol-nested-column-rule-001.xht [ ImageOnlyFailure ] # only scrollbar
 
-webkit.org/b/148811 imported/w3c/css/css-multicol-1/multicol-rule-inset-000.xht [ ImageOnlyFailure ]
-webkit.org/b/148811 imported/w3c/css/css-multicol-1/multicol-rule-outset-000.xht [ ImageOnlyFailure ]
 webkit.org/b/148812 imported/w3c/css/css-multicol-1/multicol-width-small-001.xht [ ImageOnlyFailure ]
 webkit.org/b/148814 imported/w3c/css/css-multicol-1/multicol-break-000.xht [ ImageOnlyFailure ]
 webkit.org/b/148814 imported/w3c/css/css-multicol-1/multicol-break-001.xht [ ImageOnlyFailure ]
-webkit.org/b/148815 imported/w3c/css/css-multicol-1/multicol-rule-style-outset-001.xht [ ImageOnlyFailure ]
-webkit.org/b/148815 imported/w3c/css/css-multicol-1/multicol-rule-style-inset-001.xht [ ImageOnlyFailure ]
 webkit.org/b/148816 imported/w3c/css/css-multicol-1/multicol-rule-004.xht [ ImageOnlyFailure ]
 webkit.org/b/148823 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-003.xht [ ImageOnlyFailure ]
 
@@ -673,3 +670,7 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/148922 svg/as-object/svg-in-object-dynamic-attribute-change.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/148925 svg/dom/svg-root-lengths.html [ Pass Failure ]
+
+webkit.org/b/149082 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html [ Pass Failure ]
+
+webkit.org/b/148695 fast/shadow-dom [ Failure ]

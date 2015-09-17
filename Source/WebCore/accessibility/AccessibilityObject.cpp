@@ -376,9 +376,10 @@ bool AccessibilityObject::isBlockquote() const
 bool AccessibilityObject::isTextControl() const
 {
     switch (roleValue()) {
+    case ComboBoxRole:
+    case SearchFieldRole:
     case TextAreaRole:
     case TextFieldRole:
-    case ComboBoxRole:
         return true;
     default:
         return false;
@@ -632,9 +633,10 @@ void AccessibilityObject::findMatchingObjects(AccessibilitySearchCriteria* crite
 // Returns the range that is fewer positions away from the reference range.
 // NOTE: The after range is expected to ACTUALLY be after the reference range and the before
 // range is expected to ACTUALLY be before. These are not checked for performance reasons.
-static PassRefPtr<Range> rangeClosestToRange(Range* referenceRange, PassRefPtr<Range> afterRange, PassRefPtr<Range> beforeRange)
+static RefPtr<Range> rangeClosestToRange(Range* referenceRange, RefPtr<Range>&& afterRange, RefPtr<Range>&& beforeRange)
 {
-    ASSERT(referenceRange);
+    if (!referenceRange)
+        return nullptr;
     
     // The treeScope for shadow nodes may not be the same scope as another element in a document.
     // Comparisons may fail in that case, which are expected behavior and should not assert.
@@ -646,7 +648,7 @@ static PassRefPtr<Range> rangeClosestToRange(Range* referenceRange, PassRefPtr<R
         return nullptr;
     ASSERT(!beforeRange || beforeRange->endPosition() <= referenceRange->startPosition());
     
-    if (!referenceRange || (!afterRange && !beforeRange))
+    if (!afterRange && !beforeRange)
         return nullptr;
     if (afterRange && !beforeRange)
         return afterRange;
@@ -659,7 +661,7 @@ static PassRefPtr<Range> rangeClosestToRange(Range* referenceRange, PassRefPtr<R
     return positionsToAfterRange < positionsToBeforeRange ? afterRange : beforeRange;
 }
 
-PassRefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range* referenceRange, AccessibilitySearchDirection searchDirection, Vector<String>& searchStrings) const
+RefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range* referenceRange, AccessibilitySearchDirection searchDirection, Vector<String>& searchStrings) const
 {
     Frame* frame = this->frame();
     if (!frame)
@@ -699,7 +701,7 @@ PassRefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Ra
 }
 
 // Returns the range of the entire document if there is no selection.
-PassRefPtr<Range> AccessibilityObject::selectionRange() const
+RefPtr<Range> AccessibilityObject::selectionRange() const
 {
     Frame* frame = this->frame();
     if (!frame)
@@ -742,7 +744,7 @@ String AccessibilityObject::selectText(AccessibilitySelectTextCriteria* criteria
         closestBeforeStringRange = rangeOfStringClosestToRangeInDirection(selectedStringRange.get(), SearchDirectionPrevious, searchStrings);
     
     // Determine which candidate is closest to the selection and perform the activity.
-    if (RefPtr<Range> closestStringRange = rangeClosestToRange(selectedStringRange.get(), closestAfterStringRange, closestBeforeStringRange)) {
+    if (RefPtr<Range> closestStringRange = rangeClosestToRange(selectedStringRange.get(), WTF::move(closestAfterStringRange), WTF::move(closestBeforeStringRange))) {
         // If the search started within a text control, ensure that the result is inside that element.
         if (element() && element()->isTextFormControl()) {
             if (!closestStringRange->startContainer().isDescendantOrShadowDescendantOf(element()) || !closestStringRange->endContainer().isDescendantOrShadowDescendantOf(element()))
@@ -1820,6 +1822,30 @@ String AccessibilityObject::invalidStatus() const
     return trueValue;
 }
  
+AccessibilityARIACurrentState AccessibilityObject::ariaCurrentState() const
+{
+    // aria-current can return false (default), true, page, step, location, date or time.
+    String currentStateValue = stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_currentAttr));
+    
+    // If "false", empty, or missing, return false state.
+    if (currentStateValue.isEmpty() || currentStateValue == "false")
+        return ARIACurrentFalse;
+    
+    if (currentStateValue == "page")
+        return ARIACurrentPage;
+    if (currentStateValue == "step")
+        return ARIACurrentStep;
+    if (currentStateValue == "location")
+        return ARIACurrentLocation;
+    if (currentStateValue == "date")
+        return ARIACurrentDate;
+    if (currentStateValue == "time")
+        return ARIACurrentTime;
+    
+    // Any value not included in the list of allowed values should be treated as "true".
+    return ARIACurrentTrue;
+}
+
 bool AccessibilityObject::hasTagName(const QualifiedName& tagName) const
 {
     Node* node = this->node();
