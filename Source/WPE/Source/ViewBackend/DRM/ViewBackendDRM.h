@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendDRM_h
 #define WPE_ViewBackend_ViewBackendDRM_h
 
+#if WPE_PLATFORM_DRM
+
 #include <WPE/ViewBackend/ViewBackend.h>
 
 #include <unordered_map>
@@ -44,7 +46,7 @@ class Client;
 class ViewBackendDRM final : public ViewBackend {
 public:
     ViewBackendDRM();
-    ~ViewBackendDRM();
+    virtual ~ViewBackendDRM();
 
 
     void setClient(Client*) override;
@@ -78,5 +80,7 @@ private:
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_PLATFORM_DRM
 
 #endif // WPE_ViewBackend_ViewBackendDRM_h

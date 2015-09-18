@@ -25,6 +25,8 @@
 
 #include "ViewBackendWayland.h"
 
+#if WPE_PLATFORM_WAYLAND
+
 #include "WaylandDisplay.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
@@ -304,3 +306,5 @@ void ViewBackendWayland::setInputClient(Input::Client* client)
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_PLATFORM_WAYLAND

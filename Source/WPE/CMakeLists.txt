@@ -7,12 +7,18 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
+add_definitions(-DWPE_PLATFORM_BCM_RPI=1)
+add_definitions(-DWPE_PLATFORM_DRM=0)
+add_definitions(-DWPE_PLATFORM_WAYLAND=0)
+
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
+    ${BCM_HOST_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
@@ -20,6 +26,7 @@ set(WPE_INCLUDE_DIRECTORIES
 )
 
 set(WPE_LIBRARIES
+    ${BCM_HOST_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
@@ -37,6 +44,8 @@ set(WPE_SOURCES
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
 
     Source/ViewBackend/ViewBackend.cpp
+
+    Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
 
     Source/ViewBackend/DRM/ViewBackendDRM.cpp
 

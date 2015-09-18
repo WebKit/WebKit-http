@@ -63,8 +63,13 @@ private:
     IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
 
     void establishConnection(IPC::Attachment);
-    virtual void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment) final;
-    virtual void destroyPrimeBuffer(uint32_t) final;
+#if PLATFORM(GBM)
+    void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment);
+    void destroyPrimeBuffer(uint32_t);
+#endif
+#if PLATFORM(BCM_RPI)
+    void commitBCMBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+#endif
 
     // WPE::ViewBackend::Client
     void releaseBuffer(uint32_t) override;

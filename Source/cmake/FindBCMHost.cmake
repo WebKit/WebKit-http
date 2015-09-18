@@ -1,8 +1,8 @@
-# - Try to find wayland-egl.
+# - Try to find bcm_host.
 # Once done, this will define
 #
-#  WAYLAND_EGL_INCLUDE_DIRS - the wayland-egl include directories
-#  WAYLAND_EGL_LIBRARIES - link these to use wayland-egl.
+#  BCM_HOST_INCLUDE_DIRS - the bcm_host include directories
+#  BCM_HOST_LIBRARIES - link these to use bcm_host.
 #
 # Copyright (C) 2015 Igalia S.L.
 #
@@ -28,19 +28,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_WAYLAND_EGL wayland-egl bcm_host)
-
-find_path(WAYLAND_EGL_INCLUDE_DIRS
-    NAMES wayland-egl.h
-    HINTS ${PC_WAYLAND_EGL_INCLUDE_DIRS} ${PC_WAYLAND_EGL_INCUDEDIR}
-)
-
-find_library(WAYLAND_EGL_LIBRARIES
-    NAMES wayland-egl
-    HINTS ${PC_WAYLAND_EGL_LIBRARY_DIRS} ${PC_WAYLAND_EGL_LIBDIR}
-)
+pkg_check_modules(BCM_HOST bcm_host)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(WAYLAND_EGL DEFAULT_MSG WAYLAND_EGL_LIBRARIES)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(BCM_HOST DEFAULT_MSG BCM_HOST_LIBRARIES)
 
-mark_as_advanced(WAYLAND_EGL_INCLUDE_DIRS WAYLAND_EGL_LIBRARIES)
+mark_as_advanced(BCM_HOST_INCLUDE_DIRS BCM_HOST_LIBRARIES)

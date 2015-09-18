@@ -25,10 +25,18 @@
 
 #include <WPE/ViewBackend/ViewBackend.h>
 
-#include "ViewBackendDRM.h"
-#include "ViewBackendWayland.h"
 #include <cstring>
 #include <cstdlib>
+
+#if WPE_PLATFORM_BCM_RPI
+#include "ViewBackendBCMRPi.h"
+#endif
+#if WPE_PLATFORM_DRM
+#include "ViewBackendDRM.h"
+#endif
+#if WPE_PLATFORM_WAYLAND
+#include "ViewBackendWayland.h"
+#endif
 
 namespace WPE {
 
@@ -38,11 +46,20 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 {
     auto* backendEnv = std::getenv("WPE_BACKEND");
 
+#if WPE_PLATFORM_WAYLAND
     if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland")))
         return std::unique_ptr<ViewBackendWayland>(new ViewBackendWayland);
+#endif
 
+#if WPE_PLATFORM_DRM
     if (backendEnv && !std::strcmp(backendEnv, "drm"))
         return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+#endif
+
+#if WPE_PLATFORM_BCM_RPI
+    if (!backendEnv || !std::strcmp(backendEnv, "rpi"))
+        return std::unique_ptr<ViewBackendBCMRPi>(new ViewBackendBCMRPi);
+#endif
 
     return nullptr;
 }
@@ -56,6 +73,10 @@ void ViewBackend::commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t,
 }
 
 void ViewBackend::destroyPrimeBuffer(uint32_t)
+{
+}
+
+void ViewBackend::commitBCMBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
 {
 }
 

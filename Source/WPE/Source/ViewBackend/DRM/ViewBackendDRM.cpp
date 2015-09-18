@@ -25,6 +25,8 @@
 
 #include "ViewBackendDRM.h"
 
+#if WPE_PLATFORM_DRM
+
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
@@ -226,3 +228,5 @@ void ViewBackendDRM::destroyPrimeBuffer(uint32_t handle)
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_PLATFORM_DRM

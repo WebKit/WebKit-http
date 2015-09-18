@@ -46,6 +46,11 @@
 #include <WebCore/PlatformDisplayGBM.h>
 #endif
 
+#if PLATFORM(BCM_RPI)
+#include <WebCore/BCMRPiSurface.h>
+#include <WebCore/PlatformDisplayBCMRPi.h>
+#endif
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
@@ -61,7 +66,7 @@ class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::GBMSurface::Client, public CompositingManager::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, /* public WebCore::GBMSurface::Client, */ public CompositingManager::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -99,8 +104,10 @@ private:
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
+#if PLATFORM(GBM)
     // GBMSurface::Client
     virtual void destroyBuffer(uint32_t) override;
+#endif
 
     // CompositingManager::Client
     virtual void releaseBuffer(uint32_t) override;
@@ -124,7 +131,12 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
+#if PLATFORM(GBM)
     std::unique_ptr<WebCore::GBMSurface> m_gbmSurface;
+#endif
+#if PLATFORM(BCM_RPI)
+    std::unique_ptr<WebCore::BCMRPiSurface> m_surface;
+#endif
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;

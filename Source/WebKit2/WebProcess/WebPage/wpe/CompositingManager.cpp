@@ -50,6 +50,7 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
+#if PLATFORM(GBM)
 void CompositingManager::commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport& bufferExport)
 {
     m_connection->send(Messages::CompositingManagerProxy::CommitPrimeBuffer(
@@ -65,6 +66,19 @@ void CompositingManager::destroyPrimeBuffer(uint32_t handle)
 {
     m_connection->send(Messages::CompositingManagerProxy::DestroyPrimeBuffer(handle), 0);
 }
+#endif // PLATFORM(GBM)
+
+#if PLATFORM(BCM_RPI)
+void CompositingManager::commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport& bufferExport)
+{
+    m_connection->send(Messages::CompositingManagerProxy::CommitBCMBuffer(
+        std::get<0>(bufferExport),
+        std::get<1>(bufferExport),
+        std::get<2>(bufferExport),
+        std::get<3>(bufferExport),
+        std::get<4>(bufferExport)), 0);
+}
+#endif // PLATFORM(BCM_RPI)
 
 void CompositingManager::releaseBuffer(uint32_t handle)
 {

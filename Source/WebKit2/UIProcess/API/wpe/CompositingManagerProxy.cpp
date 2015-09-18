@@ -50,6 +50,7 @@ void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnect
     m_connection->open();
 }
 
+#if PLATFORM(GBM)
 void CompositingManagerProxy::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
 {
     m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
@@ -59,6 +60,14 @@ void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
 {
     m_viewBackend.destroyPrimeBuffer(handle);
 }
+#endif
+
+#if PLATFORM(BCM_RPI)
+void CompositingManagerProxy::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint32_t width, uint32_t height, uint32_t format)
+{
+    m_viewBackend.commitBCMBuffer(handle1, handle2, width, height, format);
+}
+#endif
 
 void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 {

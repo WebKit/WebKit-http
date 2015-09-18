@@ -22,6 +22,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/geoclue"
+    "${WEBCORE_DIR}/platform/graphics/bcm"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
@@ -68,6 +69,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
+    platform/graphics/bcm/BCMRPiSurface.cpp
+    platform/graphics/bcm/PlatformDisplayBCMRPi.cpp
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
@@ -204,6 +207,7 @@ set(WebCore_USER_AGENT_SCRIPTS
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/wpe/RenderThemeWPE.cpp)
 
 list(APPEND WebCore_LIBRARIES
+    ${BCM_HOST_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${EGL_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
@@ -236,6 +240,7 @@ list(APPEND WebCore_LIBRARIES
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+    ${BCM_HOST_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIRS}

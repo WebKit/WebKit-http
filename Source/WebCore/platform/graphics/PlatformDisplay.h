@@ -51,6 +51,9 @@ public:
 #if PLATFORM(GBM)
         GBM,
 #endif
+#if PLATFORM(BCM_RPI)
+        BCMRPi,
+#endif
 #if PLATFORM(WIN)
         Windows,
 #endif

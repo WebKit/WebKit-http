@@ -41,7 +41,7 @@ namespace WKWPE {
 View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
-    , m_size{800, 600}
+    , m_size{ 1280, 720 }
 {
     m_viewBackend->setInputClient(this);
 

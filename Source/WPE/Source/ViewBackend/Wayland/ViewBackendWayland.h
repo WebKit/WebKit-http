@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendWayland_h
 #define WPE_ViewBackend_ViewBackendWayland_h
 
+#if WPE_PLATFORM_WAYLAND
+
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
 #include <utility>
@@ -52,7 +54,7 @@ class WaylandDisplay;
 class ViewBackendWayland final : public ViewBackend {
 public:
     ViewBackendWayland();
-    ~ViewBackendWayland();
+    virtual ~ViewBackendWayland();
 
     void setClient(Client* client) override;
     void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
@@ -104,5 +106,7 @@ private:
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_PLATFORM_WAYLAND
 
 #endif // WPE_ViewBackend_ViewBackendWayland_h
