@@ -2217,6 +2217,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamer::addKey(const String&
         unsigned short errorCode;
         unsigned long systemCode;
 
+        if (!m_dxdrmSession)
+            return MediaPlayer::InvalidPlayerState;
+
         bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
         if (errorCode || !result) {
             LOG_MEDIA_MESSAGE("Error processing key: errorCode: %u, result: %d", errorCode, result);

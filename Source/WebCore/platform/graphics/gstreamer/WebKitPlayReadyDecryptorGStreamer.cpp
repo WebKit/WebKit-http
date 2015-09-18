@@ -228,7 +228,7 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     GstCaps* caps;
     GstMapInfo boxMap;
     GstBuffer* box = nullptr;
-    GstProtectionMeta* protectionMeta;
+    GstProtectionMeta* protectionMeta = 0;
     gboolean boxMapped = FALSE;
     gboolean bufferMapped = FALSE;
 
