@@ -47,6 +47,7 @@ struct _WebKitMediaPlayReadyDecryptClass {
 static GstCaps* webkitMediaPlayReadyDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps* filter);
 static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
+static GstStateChangeReturn webKitMediaPlayReadyDecryptChangeState(GstElement* element, GstStateChange transition);
 
 GST_DEBUG_CATEGORY(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
@@ -86,6 +87,8 @@ static void webkit_media_playready_decrypt_class_init(WebKitMediaPlayReadyDecryp
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_playready_decrypt_debug_category,
         "webkitplayready", 0, "PlayReady decryptor");
+
+    elementClass->change_state = webKitMediaPlayReadyDecryptChangeState;
 
     baseTransformClass->transform_ip = GST_DEBUG_FUNCPTR(webkitMediaPlayReadyDecryptTransformInPlace);
     baseTransformClass->transform_caps = GST_DEBUG_FUNCPTR(webkitMediaPlayReadyDecryptTransformCaps);
@@ -225,6 +228,9 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     GstCaps* caps;
     GstMapInfo boxMap;
     GstBuffer* box = nullptr;
+    GstProtectionMeta* protectionMeta;
+    gboolean boxMapped = FALSE;
+    gboolean bufferMapped = FALSE;
 
     g_mutex_lock(&self->mutex);
 
@@ -232,7 +238,13 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     if (!self->streamReceived)
         g_cond_wait(&self->condition, &self->mutex);
 
-    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
+    if (!self->streamReceived) {
+        GST_DEBUG_OBJECT(self, "Condition signaled from state change transition. Aborting.");
+        result = GST_FLOW_NOT_SUPPORTED;
+        goto beach;
+    }
+
+    protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta || !buffer) {
         if (!protectionMeta)
             GST_ERROR_OBJECT(self, "Failed to get GstProtection metadata from buffer %p", buffer);
@@ -244,7 +256,8 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
         goto beach;
     }
 
-    if (!gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE))) {
+    bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
+    if (!bufferMapped) {
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         result = GST_FLOW_NOT_SUPPORTED;
         goto beach;
@@ -273,7 +286,8 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     }
 
     box = gst_value_get_buffer(value);
-    if (!gst_buffer_map(box, &boxMap, GST_MAP_READ)) {
+    boxMapped = gst_buffer_map(box, &boxMap, GST_MAP_READ);
+    if (!boxMapped) {
         GST_ERROR_OBJECT(self, "Failed to map encryption box");
         result = GST_FLOW_NOT_SUPPORTED;
         goto beach;
@@ -289,10 +303,11 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     }
 
 beach:
-    if (box)
+    if (boxMapped)
         gst_buffer_unmap(box, &boxMap);
 
-    gst_buffer_unmap(buffer, &map);
+    if (bufferMapped)
+        gst_buffer_unmap(buffer, &map);
 
     if (protectionMeta)
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
@@ -303,6 +318,9 @@ beach:
 
 static gboolean requestKey(gpointer userData)
 {
+    if (!WEBKIT_IS_MEDIA_PLAYREADY_DECRYPT(userData))
+        return G_SOURCE_REMOVE;
+
     WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(userData);
     gst_element_post_message(GST_ELEMENT(self),
         gst_message_new_element(GST_OBJECT(self),
@@ -364,4 +382,24 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
     return result;
 }
 
+static GstStateChangeReturn webKitMediaPlayReadyDecryptChangeState(GstElement* element, GstStateChange transition)
+{
+    GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
+    WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(element);
+
+    switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+        GST_DEBUG_OBJECT(self, "PAUSED->READY");
+        g_cond_signal(&self->condition);
+        break;
+    default:
+        break;
+    }
+
+    ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
+
+    // Add post-transition code here.
+
+    return ret;
+}
 #endif
