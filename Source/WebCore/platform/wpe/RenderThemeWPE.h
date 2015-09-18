@@ -47,7 +47,7 @@ private:
     RenderThemeWPE() = default;
     virtual ~RenderThemeWPE() = default;
 
-    virtual void updateCachedSystemFontDescription(CSSValueID, FontDescription&) const override;
+    virtual void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
 };
 
 } // namespace WebCore
