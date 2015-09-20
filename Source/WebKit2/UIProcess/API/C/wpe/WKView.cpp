@@ -26,17 +26,16 @@
 #include "config.h"
 #include "WKView.h"
 
+#include "APIPageConfiguration.h"
 #include "PageClientImpl.h"
 #include "WKAPICast.h"
 #include "WPEView.h"
-#include "WebPageGroup.h"
-#include "WebProcessPool.h"
 
 using namespace WebKit;
 
-WKViewRef WKViewCreate(WKContextRef context, WKPageGroupRef pageGroup)
+WKViewRef WKViewCreate(WKPageConfigurationRef configuration)
 {
-    return toAPI(WKWPE::View::create(toImpl(context), toImpl(pageGroup)));
+    return toAPI(WKWPE::View::create(*toImpl(configuration)));
 }
 
 WKPageRef WKViewGetPage(WKViewRef view)

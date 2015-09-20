@@ -43,9 +43,9 @@ namespace WKWPE {
 
 class View : public API::ObjectImpl<API::Object::Type::View>, public WPE::Input::Client {
 public:
-    static View* create(WebKit::WebProcessPool* pool, WebKit::WebPageGroup* pageGroup)
+    static View* create(const API::PageConfiguration& configuration)
     {
-        return new View(pool, pageGroup);
+        return new View(configuration);
     }
 
     WebKit::WebPageProxy& page()
@@ -65,7 +65,7 @@ public:
     void handleTouchEvent(WPE::Input::TouchEvent&&) override;
 
 private:
-    View(WebKit::WebProcessPool*, WebKit::WebPageGroup*);
+    View(const API::PageConfiguration&);
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
