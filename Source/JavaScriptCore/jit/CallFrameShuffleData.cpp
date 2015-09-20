@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,29 +23,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RegisterPreservationWrapperGenerator_h
-#define RegisterPreservationWrapperGenerator_h
+#include "config.h"
+#include "CallFrameShuffleData.h"
 
 #if ENABLE(JIT)
 
-#include "ArityCheckMode.h"
-#include "AssemblyHelpers.h"
-#include "MacroAssemblerCodeRef.h"
-#include "VM.h"
+#include "CCallHelpers.h"
+#include "CodeBlock.h"
 
 namespace JSC {
 
-RegisterSet registersToPreserve();
+#if USE(JSVALUE64)
 
-ptrdiff_t registerPreservationOffset();
+void CallFrameShuffleData::setupCalleeSaveRegisters(CodeBlock* codeBlock)
+{
+    RegisterSet calleeSaveRegisters { RegisterSet::vmCalleeSaveRegisters() };
+    RegisterAtOffsetList* registerSaveLocations = codeBlock->calleeSaveRegisters();
 
-MacroAssemblerCodeRef generateRegisterPreservationWrapper(VM&, ExecutableBase*, MacroAssemblerCodePtr target);
+    for (size_t i = 0; i < registerSaveLocations->size(); ++i) {
+        RegisterAtOffset entry { registerSaveLocations->at(i) };
+        if (!calleeSaveRegisters.get(entry.reg()))
+            continue;
 
-MacroAssemblerCodeRef registerRestorationThunkGenerator(VM*);
+        VirtualRegister saveSlot { entry.offsetAsIndex() };
+        registers[entry.reg()]
+            = ValueRecovery::displacedInJSStack(saveSlot, DataFormatJS);
+    }
+
+    for (Reg reg = Reg::first(); reg <= Reg::last(); reg = reg.next()) {
+        if (!calleeSaveRegisters.get(reg))
+            continue;
+
+        if (registers[reg])
+            continue;
+
+        registers[reg] = ValueRecovery::inRegister(reg, DataFormatJS);
+    }
+}
+
+#endif // USE(JSVALUE64)
 
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // RegisterPreservationWrapperGenerator_h
-

@@ -1,3 +1,1030 @@
+2015-09-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Unreviewed, should check the result of fread
+        https://bugs.webkit.org/show_bug.cgi?id=148917
+
+        Suppress the build warning on GTK with GCC.
+
+        * jsc.cpp:
+        (fillBufferWithContentsOfFile):
+        (fetchModuleFromLocalFileSystem):
+
+2015-09-19  Saam barati  <sbarati@apple.com>
+
+        VariableEnvironmentNode should inherit from ParserArenaDeletable because VariableEnvironment's must have their destructors run
+        https://bugs.webkit.org/show_bug.cgi?id=149359
+
+        Reviewed by Andreas Kling.
+
+        VariableEnvironment must have its destructor run.
+        Therefore, VariableEnvironmentNode should inherit from ParserArenaDeletable.
+        Also, anything that inherits from VariableEnvironmentNode must use
+        ParserArenaDeletable's operator new. Also, any other nodes that own
+        a VariableEnvironment must also have their destructors run.
+
+        * parser/Nodes.h:
+        (JSC::VariableEnvironmentNode::VariableEnvironmentNode):
+
+2015-09-18  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Remove duplicate code in the WebAssembly parser
+        https://bugs.webkit.org/show_bug.cgi?id=149361
+
+        Reviewed by Saam Barati.
+
+        Refactor the methods for parsing GetLocal and GetGlobal in WebAssembly
+        to remove duplicate code.
+
+        * wasm/WASMFunctionParser.cpp:
+        (JSC::nameOfType):
+        (JSC::WASMFunctionParser::parseExpressionI32):
+        (JSC::WASMFunctionParser::parseExpressionF32):
+        (JSC::WASMFunctionParser::parseExpressionF64):
+        (JSC::WASMFunctionParser::parseUnaryExpressionF64):
+        (JSC::WASMFunctionParser::parseBinaryExpressionF64):
+        (JSC::WASMFunctionParser::parseGetLocalExpression):
+        (JSC::WASMFunctionParser::parseGetGlobalExpression):
+        (JSC::WASMFunctionParser::parseGetLocalExpressionI32): Deleted.
+        (JSC::WASMFunctionParser::parseGetGlobalExpressionI32): Deleted.
+        (JSC::WASMFunctionParser::parseGetLocalExpressionF32): Deleted.
+        (JSC::WASMFunctionParser::parseGetGlobalExpressionF32): Deleted.
+        (JSC::WASMFunctionParser::parseGetLocalExpressionF64): Deleted.
+        (JSC::WASMFunctionParser::parseGetGlobalExpressionF64): Deleted.
+        * wasm/WASMFunctionParser.h:
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        Refactor common code between GetCatchHandlerFunctor and UnwindFunctor
+        https://bugs.webkit.org/show_bug.cgi?id=149276
+
+        Reviewed by Mark Lam.
+
+        There is currently code copy-pasted between these
+        two functors. Lets not do that. It's better to write
+        a function, even if the function is small.
+
+        I also did a bit of renaming to make the intent of the
+        unwindCallFrame function clear. The name of the function
+        didn't really indicate what it did. It decided if it was
+        okay to unwind further, and it also notified the debugger.
+        I've renamed the function to notifyDebuggerOfUnwinding.
+        And I've inlined the logic of deciding if it's okay
+        to unwind further into UnwindFunctor itself.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::isOpcode):
+        (JSC::getStackFrameCodeType):
+        (JSC::Interpreter::stackTraceAsString):
+        (JSC::findExceptionHandler):
+        (JSC::GetCatchHandlerFunctor::GetCatchHandlerFunctor):
+        (JSC::GetCatchHandlerFunctor::operator()):
+        (JSC::notifyDebuggerOfUnwinding):
+        (JSC::UnwindFunctor::UnwindFunctor):
+        (JSC::UnwindFunctor::operator()):
+        (JSC::Interpreter::notifyDebuggerOfExceptionToBeThrown):
+        (JSC::unwindCallFrame): Deleted.
+
+2015-09-18  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Implement the arithmetic instructions for doubles in WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=148945
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements the arithmetic instructions for doubles (float64)
+        in WebAssembly.
+
+        * tests/stress/wasm-arithmetic-float64.js:
+        * tests/stress/wasm/arithmetic-float64.wasm:
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::buildUnaryF64):
+        (JSC::WASMFunctionCompiler::buildBinaryF64):
+        (JSC::WASMFunctionCompiler::callOperation):
+        * wasm/WASMFunctionParser.cpp:
+        (JSC::WASMFunctionParser::parseExpressionF64):
+        (JSC::WASMFunctionParser::parseUnaryExpressionF64):
+        (JSC::WASMFunctionParser::parseBinaryExpressionF64):
+        * wasm/WASMFunctionParser.h:
+        * wasm/WASMFunctionSyntaxChecker.h:
+        (JSC::WASMFunctionSyntaxChecker::buildUnaryF64):
+        (JSC::WASMFunctionSyntaxChecker::buildBinaryF32):
+        (JSC::WASMFunctionSyntaxChecker::buildBinaryF64):
+
+2015-09-18  Basile Clement  <basile_clement@apple.com>
+
+        [ES6] Tail call fast path should efficiently reuse the frame's stack space
+        https://bugs.webkit.org/show_bug.cgi?id=148662
+
+        Reviewed by Geoffrey Garen.
+
+        This introduces a new class (CallFrameShuffler) that is responsible for
+        efficiently building the new frames when performing a tail call. In
+        order for Repatch to know about the position of arguments on the
+        stack/registers (e.g. for polymorphic call inline caches), we store a
+        CallFrameShuffleData in the CallLinkInfo. Otherwise, the JIT and DFG
+        compiler are now using CallFrameShuffler instead of
+        CCallHelpers::prepareForTailCallSlow() to build the frame for a tail
+        call.
+
+        When taking a slow path, we still build the frame as if doing a regular
+        call, because we could throw an exception and need the caller's frame
+        at that point. This means that for virtual calls, we don't benefit from
+        the efficient frame move for now.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::firstRegister):
+        (JSC::ARMv7Assembler::lastRegister):
+        (JSC::ARMv7Assembler::firstFPRegister):
+        (JSC::ARMv7Assembler::lastFPRegister):
+        * assembler/AbortReason.h:
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::setFrameShuffleData):
+        (JSC::CallLinkInfo::frameShuffleData):
+        * bytecode/ValueRecovery.h:
+        (JSC::ValueRecovery::inRegister):
+        * dfg/DFGGenerationInfo.h:
+        (JSC::DFG::GenerationInfo::recovery):
+        * jit/CachedRecovery.cpp: Added.
+        (JSC::CachedRecovery::loadsIntoFPR):
+        (JSC::CachedRecovery::loadsIntoGPR):
+        * jit/CachedRecovery.h: Added.
+        (JSC::CachedRecovery::CachedRecovery):
+        (JSC::CachedRecovery::targets):
+        (JSC::CachedRecovery::addTarget):
+        (JSC::CachedRecovery::removeTarget):
+        (JSC::CachedRecovery::clearTargets):
+        (JSC::CachedRecovery::setWantedJSValueRegs):
+        (JSC::CachedRecovery::setWantedFPR):
+        (JSC::CachedRecovery::boxingRequiresGPR):
+        (JSC::CachedRecovery::boxingRequiresFPR):
+        (JSC::CachedRecovery::recovery):
+        (JSC::CachedRecovery::setRecovery):
+        (JSC::CachedRecovery::wantedJSValueRegs):
+        (JSC::CachedRecovery::wantedFPR):
+        * jit/CallFrameShuffleData.cpp: Added.
+        (JSC::CallFrameShuffleData::setupCalleeSaveRegisters):
+        * jit/CallFrameShuffleData.h: Added.
+        * jit/CallFrameShuffler.cpp: Added.
+        (JSC::CallFrameShuffler::CallFrameShuffler):
+        (JSC::CallFrameShuffler::dump):
+        (JSC::CallFrameShuffler::getCachedRecovery):
+        (JSC::CallFrameShuffler::setCachedRecovery):
+        (JSC::CallFrameShuffler::spill):
+        (JSC::CallFrameShuffler::emitDeltaCheck):
+        (JSC::CallFrameShuffler::prepareForSlowPath):
+        (JSC::CallFrameShuffler::prepareForTailCall):
+        (JSC::CallFrameShuffler::tryWrites):
+        (JSC::CallFrameShuffler::performSafeWrites):
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/CallFrameShuffler.h: Added.
+        (JSC::CallFrameShuffler::lockGPR):
+        (JSC::CallFrameShuffler::acquireGPR):
+        (JSC::CallFrameShuffler::releaseGPR):
+        (JSC::CallFrameShuffler::snapshot):
+        (JSC::CallFrameShuffler::setCalleeJSValueRegs):
+        (JSC::CallFrameShuffler::assumeCalleeIsCell):
+        (JSC::CallFrameShuffler::canBox):
+        (JSC::CallFrameShuffler::ensureBox):
+        (JSC::CallFrameShuffler::ensureLoad):
+        (JSC::CallFrameShuffler::canLoadAndBox):
+        (JSC::CallFrameShuffler::updateRecovery):
+        (JSC::CallFrameShuffler::clearCachedRecovery):
+        (JSC::CallFrameShuffler::addCachedRecovery):
+        (JSC::CallFrameShuffler::numLocals):
+        (JSC::CallFrameShuffler::getOld):
+        (JSC::CallFrameShuffler::setOld):
+        (JSC::CallFrameShuffler::firstOld):
+        (JSC::CallFrameShuffler::lastOld):
+        (JSC::CallFrameShuffler::isValidOld):
+        (JSC::CallFrameShuffler::argCount):
+        (JSC::CallFrameShuffler::getNew):
+        (JSC::CallFrameShuffler::setNew):
+        (JSC::CallFrameShuffler::addNew):
+        (JSC::CallFrameShuffler::firstNew):
+        (JSC::CallFrameShuffler::lastNew):
+        (JSC::CallFrameShuffler::isValidNew):
+        (JSC::CallFrameShuffler::newAsOld):
+        (JSC::CallFrameShuffler::getFreeRegister):
+        (JSC::CallFrameShuffler::getFreeGPR):
+        (JSC::CallFrameShuffler::getFreeFPR):
+        (JSC::CallFrameShuffler::hasFreeRegister):
+        (JSC::CallFrameShuffler::ensureRegister):
+        (JSC::CallFrameShuffler::ensureGPR):
+        (JSC::CallFrameShuffler::ensureFPR):
+        (JSC::CallFrameShuffler::addressForOld):
+        (JSC::CallFrameShuffler::isUndecided):
+        (JSC::CallFrameShuffler::isSlowPath):
+        (JSC::CallFrameShuffler::addressForNew):
+        (JSC::CallFrameShuffler::dangerFrontier):
+        (JSC::CallFrameShuffler::isDangerNew):
+        (JSC::CallFrameShuffler::updateDangerFrontier):
+        (JSC::CallFrameShuffler::hasOnlySafeWrites):
+        * jit/CallFrameShuffler32_64.cpp: Added.
+        (JSC::CallFrameShuffler::emitStore):
+        (JSC::CallFrameShuffler::emitBox):
+        (JSC::CallFrameShuffler::emitLoad):
+        (JSC::CallFrameShuffler::canLoad):
+        (JSC::CallFrameShuffler::emitDisplace):
+        * jit/CallFrameShuffler64.cpp: Added.
+        (JSC::CallFrameShuffler::emitStore):
+        (JSC::CallFrameShuffler::emitBox):
+        (JSC::CallFrameShuffler::emitLoad):
+        (JSC::CallFrameShuffler::canLoad):
+        (JSC::CallFrameShuffler::emitDisplace):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        * jit/RegisterMap.cpp:
+        (JSC::RegisterMap::RegisterMap):
+        (JSC::GPRMap::GPRMap):
+        (JSC::FPRMap::FPRMap):
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements try/catch inside the DFG JIT.
+        It also prevents tier up to the FTL for any functions
+        that have an op_catch in them that are DFG compiled.
+
+        This patch accomplishes implementing try/catch inside
+        the DFG by OSR exiting to op_catch when an exception is thrown.
+        We can OSR exit from an exception inside the DFG in two ways:
+        1) We have a JS call (can also be via implicit getter/setter in GetById/PutById)
+        2) We have an exception when returing from a callOperation
+
+        In the case of (1), we get to the OSR exit from genericUnwind because
+        the exception was thrown in a child call frame. This means these
+        OSR exits must act as defacto op_catches (even though we will still OSR
+        exit to a baseline op_catch). That means they must restore the stack pointer
+        and call frame.
+
+        In the case of (2), we can skip genericUnwind because we know the exception 
+        check will take us to a particular OSR exit. Instead, we link these
+        exception checks as jumps to a particular OSR exit.
+
+        Both types of OSR exits will exit into op_catch inside the baseline JIT.
+        Because they exit to op_catch, these OSR exits must set callFrameForCatch
+        to the proper call frame pointer.
+
+        We "handle" all exceptions inside the machine frame of the DFG code
+        block. This means the machine code block is responsible for "catching"
+        exceptions of any inlined frames' try/catch. OSR exit will then exit to 
+        the proper baseline CodeBlock after reifying the inlined frames
+        (DFG::OSRExit::m_codeOrigin corresponds to the op_catch we will exit to). 
+        Also, genericUnwind will never consult an inlined call frame's CodeBlock to 
+        see if they can catch the exception because they can't. We always unwind to the 
+        next machine code block frame. The DFG CodeBlock changes how the exception 
+        handler table is keyed: it is now keyed by CallSiteIndex for DFG code blocks. 
+
+        So, when consulting call sites that throw, we keep track of the CallSiteIndex,
+        and the HandlerInfo for the corresponding baseline exception handler for
+        that particular CallSiteIndex (if an exception at that call site will be caught). 
+        Then, when we're inside DFG::JITCompiler::link(), we install new HandlerInfo's
+        inside the DFG CodeBlock and key it by the corresponding CallSiteIndex.
+        (The CodeBlock only has HandlerInfos for the OSR exits that are to be arrived
+        at from genericUnwind).
+
+        Also, each OSR exit will know if it acting as an exception handler, and
+        whether or not it will be arrived at from genericUnwind. When we know we 
+        will arrive at an OSR exit from genericUnwind, we set the corresponding 
+        HandlerInfo's nativeCode CodeLocationLabel field to be the OSR exit.
+
+        This patch also introduces a new Phase inside the DFG that ensures
+        that DFG CodeBlocks that handle exceptions take the necessary
+        steps to keep live variables at "op_catch" live according the
+        OSR exit value recovery machinery. We accomplish this by flushing
+        all live op_catch variables to the stack when inside a "try" block.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::handlerForBytecodeOffset):
+        (JSC::CodeBlock::handlerForIndex):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::clearExceptionHandlers):
+        (JSC::CodeBlock::appendExceptionHandler):
+        * bytecode/PreciseJumpTargets.cpp:
+        (JSC::computePreciseJumpTargets):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getLocal):
+        (JSC::DFG::ByteCodeParser::setLocal):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGCommonData.cpp:
+        (JSC::DFG::CommonData::addCodeOrigin):
+        (JSC::DFG::CommonData::lastCallSite):
+        (JSC::DFG::CommonData::shrinkToFit):
+        * dfg/DFGCommonData.h:
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::linkOSRExits):
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::noticeOSREntry):
+        (JSC::DFG::JITCompiler::appendExceptionHandlingOSRExit):
+        (JSC::DFG::JITCompiler::willCatchExceptionInMachineFrame):
+        (JSC::DFG::JITCompiler::exceptionCheck):
+        (JSC::DFG::JITCompiler::recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::emitStoreCodeOrigin):
+        (JSC::DFG::JITCompiler::emitStoreCallSiteIndex):
+        (JSC::DFG::JITCompiler::appendCall):
+        (JSC::DFG::JITCompiler::exceptionCheckWithCallFrameRollback):
+        (JSC::DFG::JITCompiler::blockHeads):
+        (JSC::DFG::JITCompiler::exceptionCheck): Deleted.
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp: Added.
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::FlushLiveCatchVariablesInsertionPhase):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::run):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::willCatchException):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::handleBlock):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::newVariableAccessData):
+        (JSC::DFG::performLiveCatchVariablePreservationPhase):
+        * dfg/DFGLiveCatchVariablePreservationPhase.h: Added.
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::OSRExit):
+        (JSC::DFG::OSRExit::setPatchableCodeOffset):
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitCompiler.cpp:
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::osrWriteBarrier):
+        (JSC::DFG::adjustAndJumpToTarget):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGSlowPathGenerator.h:
+        (JSC::DFG::SlowPathGenerator::SlowPathGenerator):
+        (JSC::DFG::SlowPathGenerator::~SlowPathGenerator):
+        (JSC::DFG::SlowPathGenerator::generate):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * interpreter/Interpreter.cpp:
+        (JSC::GetCatchHandlerFunctor::operator()):
+        (JSC::UnwindFunctor::operator()):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::gotoNextFrame):
+        (JSC::StackVisitor::unwindToMachineCodeBlockFrame):
+        (JSC::StackVisitor::readFrame):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::operator*):
+        (JSC::StackVisitor::operator->):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitExceptionCheck):
+        (JSC::AssemblyHelpers::emitNonPatchableExceptionCheck):
+        (JSC::AssemblyHelpers::emitStoreStructureWithTypeInfo):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitCount):
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_catch):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        (JSC::VM::clearException):
+        (JSC::VM::clearLastException):
+        (JSC::VM::addressOfCallFrameForCatch):
+        (JSC::VM::exception):
+        (JSC::VM::addressOfException):
+        * tests/stress/dfg-exception-try-catch-in-constructor-with-inlined-throw.js: Added.
+        (f):
+        (bar):
+        (Foo):
+        * tests/stress/es6-for-of-loop-exception.js: Added.
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (baz):
+        (foo):
+        * tests/stress/exception-dfg-inlined-frame-not-strict-equal.js: Added.
+        (assert):
+        (o.valueOf):
+        (o.toString):
+        (read):
+        (bar):
+        (foo):
+        * tests/stress/exception-dfg-not-strict-equal.js: Added.
+        (foo):
+        (o.valueOf):
+        (o.toString):
+        (assert):
+        (shouldDoSomethingInFinally):
+        (catch):
+        * tests/stress/exception-dfg-operation-read-value.js: Added.
+        (assert):
+        (o.valueOf):
+        (o.toString):
+        (read):
+        (foo):
+        * tests/stress/exception-dfg-throw-from-catch-block.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (foo):
+
+2015-09-18  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Implement linear memory instructions in WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=149326
+
+        Reviewed by Geoffrey Garen.
+
+        This patch implements linear memory instructions in WebAssembly.[1] To
+        use the linear memory, an ArrayBuffer must be passed to loadWebAssembly().
+
+        Notes:
+        - We limit the ArrayBuffer's byte length to 2^31 - 1. This enables us to
+          use only one comparison (unsigned greater than) to check for
+          out-of-bounds access.
+        - There is no consensus yet on what should happen when an out-of-bounds
+          access occurs.[2] For now, we throw an error when that happens.
+        - In asm.js, a heap access looks like this: int32Array[i >> 2]. Note
+          that ">> 2" is part of the syntax and is required. pack-asmjs will
+          produce bytecodes that look something like "LoadI32, i" (not
+          "LoadI32, ShiftRightI32, i, 2"). The requirement of the shift operator
+          prevents unaligned accesses in asm.js. (There is a proposal to support
+          unaligned accesses in the future version of asm.js using DataView.[3])
+          The WebAssembly spec allows unaligned accesses.[4] But since we use
+          asm.js for testing, we follow asm.js's behaviors for now.
+
+        [1]: https://github.com/WebAssembly/design/blob/master/AstSemantics.md#linear-memory
+        [2]: https://github.com/WebAssembly/design/blob/master/AstSemantics.md#out-of-bounds
+        [3]: https://wiki.mozilla.org/Javascript:SpiderMonkey:OdinMonkey#Possible_asm.js_extensions_that_don.27t_require_new_JS_features
+        [4]: https://github.com/WebAssembly/design/blob/master/AstSemantics.md#alignment
+
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionLoadWebAssembly):
+        * tests/stress/wasm-linear-memory.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        * tests/stress/wasm/linear-memory.wasm: Added.
+        * wasm/JSWASMModule.cpp:
+        (JSC::JSWASMModule::JSWASMModule):
+        (JSC::JSWASMModule::visitChildren):
+        * wasm/JSWASMModule.h:
+        (JSC::JSWASMModule::create):
+        (JSC::JSWASMModule::arrayBuffer):
+        (JSC::JSWASMModule::JSWASMModule): Deleted.
+        * wasm/WASMConstants.h:
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::sizeOfMemoryType):
+        (JSC::WASMFunctionCompiler::MemoryAddress::MemoryAddress):
+        (JSC::WASMFunctionCompiler::endFunction):
+        (JSC::WASMFunctionCompiler::buildLoad):
+        (JSC::WASMFunctionCompiler::buildStore):
+        * wasm/WASMFunctionParser.cpp:
+        (JSC::WASMFunctionParser::parseStatement):
+        (JSC::WASMFunctionParser::parseExpressionI32):
+        (JSC::WASMFunctionParser::parseExpressionF32):
+        (JSC::WASMFunctionParser::parseExpressionF64):
+        (JSC::WASMFunctionParser::parseMemoryAddress):
+        (JSC::WASMFunctionParser::parseLoad):
+        (JSC::WASMFunctionParser::parseStore):
+        * wasm/WASMFunctionParser.h:
+        * wasm/WASMFunctionSyntaxChecker.h:
+        (JSC::WASMFunctionSyntaxChecker::MemoryAddress::MemoryAddress):
+        (JSC::WASMFunctionSyntaxChecker::buildLoad):
+        (JSC::WASMFunctionSyntaxChecker::buildStore):
+        * wasm/WASMModuleParser.cpp:
+        (JSC::WASMModuleParser::WASMModuleParser):
+        (JSC::WASMModuleParser::parseModule):
+        (JSC::parseWebAssembly):
+        (JSC::WASMModuleParser::parse): Deleted.
+        * wasm/WASMModuleParser.h:
+
+2015-09-18  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Implement type conversion instructions in WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=149340
+
+        Reviewed by Mark Lam.
+
+        This patch implements some type conversion instructions in WebAssembly.
+        The WebAssembly spec has a lot more type conversion instructions than
+        what are available in asm.js.[1] We only implement the ones that are in
+        asm.js for now because we can only test those.
+
+        [1]: https://github.com/WebAssembly/design/blob/master/AstSemantics.md
+
+        * tests/stress/wasm-type-conversion.js:
+        * tests/stress/wasm/type-conversion.wasm:
+        * wasm/WASMConstants.h:
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::operationConvertUnsignedInt32ToDouble):
+        (JSC::WASMFunctionCompiler::buildConvertType):
+        (JSC::WASMFunctionCompiler::callOperation):
+        * wasm/WASMFunctionParser.cpp:
+        (JSC::WASMFunctionParser::parseExpressionI32):
+        (JSC::WASMFunctionParser::parseExpressionF32):
+        (JSC::WASMFunctionParser::parseExpressionF64):
+        (JSC::WASMFunctionParser::parseConvertType):
+        * wasm/WASMFunctionParser.h:
+        * wasm/WASMFunctionSyntaxChecker.h:
+        (JSC::WASMFunctionSyntaxChecker::buildConvertType):
+
+2015-09-18  Alex Christensen  <achristensen@webkit.org>
+
+        Fix tests on Windows after switching to CMake.
+        https://bugs.webkit.org/show_bug.cgi?id=149339
+
+        Reviewed by Brent Fulgham.
+
+        * shell/PlatformWin.cmake:
+        Build testapi and testRegExp (which doesn't seem to be used any more).
+
+2015-09-17  Brian Burg  <bburg@apple.com>
+
+        ASSERT(!m_frontendRouter->hasLocalFrontend()) when running Web Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=149006
+
+        Reviewed by Joseph Pecoraro.
+
+        Prior to disconnecting, we need to know how many frontends remain connected.
+
+        * inspector/InspectorFrontendRouter.h: Add frontendCount().
+
+2015-09-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Explicitly specify builtin JS files dependency
+        https://bugs.webkit.org/show_bug.cgi?id=149323
+
+        Reviewed by Alex Christensen.
+
+        JSCBuiltins.{h,cpp} in CMakeLists.txt and DerivedSources.make just depend on the builtins directory.
+        As a result, even if we modify builtins/*.js code, regenerating JSCBuiltins.{h,cpp} does not occur.
+        As the same to the cpp sources, let's list up the JS files explicitly.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+
+2015-09-18  Michael Saboff  <msaboff@apple.com>
+
+        Remove register preservation and restoration stub code
+        https://bugs.webkit.org/show_bug.cgi?id=149335
+
+        Reviewed by Mark Lam.
+
+        Delete the register preservation and restoration thunks and related plumbing.
+
+        Much of this change is removing the unneeded RegisterPreservationMode parameter
+        from various functions.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::isVarargsCallType):
+        (JSC::CallLinkInfo::CallLinkInfo):
+        (JSC::CallLinkInfo::isVarargs):
+        (JSC::CallLinkInfo::isLinked):
+        (JSC::CallLinkInfo::setUpCallFromFTL):
+        (JSC::CallLinkInfo::registerPreservationMode): Deleted.
+        * ftl/FTLJITCode.cpp:
+        (JSC::FTL::JITCode::initializeAddressForCall):
+        (JSC::FTL::JITCode::addressForCall):
+        * ftl/FTLJITCode.h:
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * jit/JITCode.cpp:
+        (JSC::JITCode::execute):
+        (JSC::DirectJITCode::initializeCodeRef):
+        (JSC::DirectJITCode::addressForCall):
+        (JSC::NativeJITCode::initializeCodeRef):
+        (JSC::NativeJITCode::addressForCall):
+        (JSC::DirectJITCode::ensureWrappers): Deleted.
+        * jit/JITCode.h:
+        (JSC::JITCode::jitTypeFor):
+        (JSC::JITCode::executableAddress):
+        * jit/JITOperations.cpp:
+        * jit/RegisterPreservationWrapperGenerator.cpp: Removed.
+        * jit/RegisterPreservationWrapperGenerator.h: Removed.
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualThunkFor):
+        * jit/ThunkGenerators.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::entryOSR):
+        (JSC::LLInt::setUpCall):
+        * runtime/Executable.cpp:
+        (JSC::ExecutableBase::clearCode):
+        (JSC::ScriptExecutable::installCode):
+        (JSC::WebAssemblyExecutable::prepareForExecution):
+        * runtime/Executable.h:
+        (JSC::ExecutableBase::generatedJITCodeFor):
+        (JSC::ExecutableBase::entrypointFor):
+        (JSC::ExecutableBase::offsetOfJITCodeWithArityCheckFor):
+        * runtime/RegisterPreservationMode.h: Removed.
+
+2015-09-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused canClearBrowserCookies / canClearBrowserCache protocol methods
+        https://bugs.webkit.org/show_bug.cgi?id=149307
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Network.json:
+        Remove unused protocol methods.
+
+2015-09-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189938, r189952, and r189956.
+        https://bugs.webkit.org/show_bug.cgi?id=149329
+
+        Broke Web Workers (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Implement try/catch in the DFG."
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+        http://trac.webkit.org/changeset/189938
+
+        "CLoop build fix after r189938."
+        http://trac.webkit.org/changeset/189952
+
+        "add a regress test for richards with try/catch."
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+        http://trac.webkit.org/changeset/189956
+
+2015-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        CLoop build fix after r189938.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::unwindToMachineCodeBlockFrame):
+
+2015-09-17  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Convert return values from JavaScript functions to the expected types in WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=149200
+
+        Reviewed by Mark Lam.
+
+        When a WebAssembly function calls a JavaScript function, there is no
+        guarantee that the JavaScript function will always return values of the
+        type we expect. This patch converts the return values to the expected
+        types.
+
+        (The reverse is also true: When a WebAssembly function is called from a
+        JavaScript function, there is no guarantee that the arguments to the
+        WebAssembly function will always be of the types we expect. We have
+        fixed this in Bug 149033.)
+
+        We don't need to type check the return values if the callee is a
+        WebAssembly function. We don't need to type check the arguments if the
+        caller is a WebAssembly function. This optimization will be
+        implemented in the future. See https://bugs.webkit.org/show_bug.cgi?id=149310
+
+        * tests/stress/wasm-type-conversion.js:
+        * tests/stress/wasm/type-conversion.wasm:
+        * wasm/WASMFunctionCompiler.h:
+        (JSC::WASMFunctionCompiler::startFunction):
+        (JSC::WASMFunctionCompiler::buildReturn):
+        (JSC::WASMFunctionCompiler::boxArgumentsAndAdjustStackPointer):
+        (JSC::WASMFunctionCompiler::callAndUnboxResult):
+        (JSC::WASMFunctionCompiler::convertValueToInt32):
+        (JSC::WASMFunctionCompiler::convertValueToDouble):
+        (JSC::WASMFunctionCompiler::convertDoubleToValue):
+        (JSC::WASMFunctionCompiler::loadValueAndConvertToInt32): Deleted.
+        (JSC::WASMFunctionCompiler::loadValueAndConvertToDouble): Deleted.
+        * wasm/WASMFunctionParser.cpp:
+        (JSC::WASMFunctionParser::parseExpressionI32):
+        (JSC::WASMFunctionParser::parseExpressionF32):
+        (JSC::WASMFunctionParser::parseExpressionF64):
+        (JSC::WASMFunctionParser::parseCallInternalExpressionI32): Deleted.
+        * wasm/WASMFunctionParser.h:
+
+2015-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add more fine-grained APIs and additional hooks to control module loader from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=149129
+
+        Reviewed by Saam Barati.
+
+        No behavior change.
+
+        Module tag `<script type="module>` will be executed asynchronously.
+        But we would like to fetch the resources before when the postTask-ed task is performed.
+        So instead of 1 API that fetch, instantiate and execute the module,
+        we need 2 fine-grained APIs.
+
+        1. Fetch and initialize a module, but not execute it yet.
+        2. Link and execute a module specified by the key (this will be invoked asynchronously).
+
+        And to instrument the script execution (like reporting the execution time of the module to
+        the inspector), we need a hook to inject code around an execution of a module body.
+
+        * builtins/ModuleLoaderObject.js:
+        (moduleEvaluation):
+        (loadAndEvaluateModule):
+        (loadModule):
+        (linkAndEvaluateModule):
+        * jsc.cpp:
+        (functionLoadModule):
+        (runWithScripts):
+        * runtime/Completion.cpp:
+        (JSC::identifierToJSValue):
+        (JSC::createSymbolForEntryPointModule):
+        (JSC::rejectPromise):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        (JSC::evaluateModule): Deleted.
+        * runtime/Completion.h:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::evaluate):
+        (JSC::JSModuleRecord::execute): Deleted.
+        * runtime/JSModuleRecord.h:
+        * runtime/ModuleLoaderObject.cpp:
+        (JSC::ModuleLoaderObject::loadAndEvaluateModule):
+        (JSC::ModuleLoaderObject::linkAndEvaluateModule):
+        (JSC::ModuleLoaderObject::evaluate):
+        (JSC::moduleLoaderObjectEvaluate):
+        * runtime/ModuleLoaderObject.h:
+
+2015-09-17  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements try/catch inside the DFG JIT.
+        It also prevents tier up to the FTL for any functions
+        that have an op_catch in them that are DFG compiled.
+
+        This patch accomplishes implementing try/catch inside
+        the DFG by OSR exiting to op_catch when an exception is thrown.
+        We can OSR exit from an exception inside the DFG in two ways:
+        1) We have a JS call (can also be via implicit getter/setter in GetById/PutById)
+        2) We have an exception when returing from a callOperation
+
+        In the case of (1), we get to the OSR exit from genericUnwind because
+        the exception was thrown in a child call frame. This means these
+        OSR exits must act as defacto op_catches (even though we will still OSR
+        exit to a baseline op_catch). That means they must restore the stack pointer
+        and call frame.
+
+        In the case of (2), we can skip genericUnwind because we know the exception 
+        check will take us to a particular OSR exit. Instead, we link these
+        exception checks as jumps to a particular OSR exit.
+
+        Both types of OSR exits will exit into op_catch inside the baseline JIT.
+        Because they exit to op_catch, these OSR exits must set callFrameForCatch
+        to the proper call frame pointer.
+
+        We "handle" all exceptions inside the machine frame of the DFG code
+        block. This means the machine code block is responsible for "catching"
+        exceptions of any inlined frames' try/catch. OSR exit will then exit to 
+        the proper baseline CodeBlock after reifying the inlined frames
+        (DFG::OSRExit::m_codeOrigin corresponds to the op_catch we will exit to). 
+        Also, genericUnwind will never consult an inlined call frame's CodeBlock to 
+        see if they can catch the exception because they can't. We always unwind to the 
+        next machine code block frame. The DFG CodeBlock changes how the exception 
+        handler table is keyed: it is now keyed by CallSiteIndex for DFG code blocks. 
+
+        So, when consulting call sites that throw, we keep track of the CallSiteIndex,
+        and the HandlerInfo for the corresponding baseline exception handler for
+        that particular CallSiteIndex (if an exception at that call site will be caught). 
+        Then, when we're inside DFG::JITCompiler::link(), we install new HandlerInfo's
+        inside the DFG CodeBlock and key it by the corresponding CallSiteIndex.
+        (The CodeBlock only has HandlerInfos for the OSR exits that are to be arrived
+        at from genericUnwind).
+
+        Also, each OSR exit will know if it acting as an exception handler, and
+        whether or not it will be arrived at from genericUnwind. When we know we 
+        will arrive at an OSR exit from genericUnwind, we set the corresponding 
+        HandlerInfo's nativeCode CodeLocationLabel field to be the OSR exit.
+
+        This patch also introduces a new Phase inside the DFG that ensures
+        that DFG CodeBlocks that handle exceptions take the necessary
+        steps to keep live variables at "op_catch" live according the
+        OSR exit value recovery machinery. We accomplish this by flushing
+        all live op_catch variables to the stack when inside a "try" block.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::handlerForBytecodeOffset):
+        (JSC::CodeBlock::handlerForIndex):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::clearExceptionHandlers):
+        (JSC::CodeBlock::appendExceptionHandler):
+        * bytecode/PreciseJumpTargets.cpp:
+        (JSC::computePreciseJumpTargets):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getLocal):
+        (JSC::DFG::ByteCodeParser::setLocal):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGCommonData.cpp:
+        (JSC::DFG::CommonData::addCodeOrigin):
+        (JSC::DFG::CommonData::lastCallSite):
+        (JSC::DFG::CommonData::shrinkToFit):
+        * dfg/DFGCommonData.h:
+        * dfg/DFGGraph.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::linkOSRExits):
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::noticeOSREntry):
+        (JSC::DFG::JITCompiler::appendExceptionHandlingOSRExit):
+        (JSC::DFG::JITCompiler::willCatchExceptionInMachineFrame):
+        (JSC::DFG::JITCompiler::exceptionCheck):
+        (JSC::DFG::JITCompiler::recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::emitStoreCodeOrigin):
+        (JSC::DFG::JITCompiler::emitStoreCallSiteIndex):
+        (JSC::DFG::JITCompiler::appendCall):
+        (JSC::DFG::JITCompiler::exceptionCheckWithCallFrameRollback):
+        (JSC::DFG::JITCompiler::blockHeads):
+        (JSC::DFG::JITCompiler::exceptionCheck): Deleted.
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp: Added.
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::FlushLiveCatchVariablesInsertionPhase):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::run):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::willCatchException):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::handleBlock):
+        (JSC::DFG::FlushLiveCatchVariablesInsertionPhase::newVariableAccessData):
+        (JSC::DFG::performLiveCatchVariablePreservationPhase):
+        * dfg/DFGLiveCatchVariablePreservationPhase.h: Added.
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::OSRExit):
+        (JSC::DFG::OSRExit::setPatchableCodeOffset):
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitCompiler.cpp:
+        * dfg/DFGOSRExitCompiler32_64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompiler64.cpp:
+        (JSC::DFG::OSRExitCompiler::compileExit):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::osrWriteBarrier):
+        (JSC::DFG::adjustAndJumpToTarget):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGSlowPathGenerator.h:
+        (JSC::DFG::SlowPathGenerator::SlowPathGenerator):
+        (JSC::DFG::SlowPathGenerator::~SlowPathGenerator):
+        (JSC::DFG::SlowPathGenerator::generate):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::cachedPutById):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * interpreter/Interpreter.cpp:
+        (JSC::GetCatchHandlerFunctor::operator()):
+        (JSC::UnwindFunctor::operator()):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::gotoNextFrame):
+        (JSC::StackVisitor::unwindToMachineCodeBlockFrame):
+        (JSC::StackVisitor::readFrame):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::operator*):
+        (JSC::StackVisitor::operator->):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitExceptionCheck):
+        (JSC::AssemblyHelpers::emitNonPatchableExceptionCheck):
+        (JSC::AssemblyHelpers::emitStoreStructureWithTypeInfo):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitCount):
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_catch):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/VM.h:
+        (JSC::VM::clearException):
+        (JSC::VM::clearLastException):
+        (JSC::VM::addressOfCallFrameForCatch):
+        (JSC::VM::exception):
+        (JSC::VM::addressOfException):
+        * tests/stress/dfg-exception-try-catch-in-constructor-with-inlined-throw.js: Added.
+        (f):
+        (bar):
+        (Foo):
+        * tests/stress/es6-for-of-loop-exception.js: Added.
+        (assert):
+        (shouldThrowInvalidConstAssignment):
+        (baz):
+        (foo):
+        * tests/stress/exception-dfg-inlined-frame-not-strict-equal.js: Added.
+        (assert):
+        (o.valueOf):
+        (o.toString):
+        (read):
+        (bar):
+        (foo):
+        * tests/stress/exception-dfg-not-strict-equal.js: Added.
+        (foo):
+        (o.valueOf):
+        (o.toString):
+        (assert):
+        (shouldDoSomethingInFinally):
+        (catch):
+        * tests/stress/exception-dfg-operation-read-value.js: Added.
+        (assert):
+        (o.valueOf):
+        (o.toString):
+        (read):
+        (foo):
+        * tests/stress/exception-dfg-throw-from-catch-block.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (foo):
+
+2015-09-17  Filip Pizlo  <fpizlo@apple.com>
+
+        0.0 should really be 0.0
+        https://bugs.webkit.org/show_bug.cgi?id=149283
+
+        Reviewed by Mark Lam.
+
+        A while ago (http://trac.webkit.org/changeset/180813) we introduced the idea that if the
+        user wrote a number with a decimal point (like "0.0") then we should treat that number as
+        a double. That's probably a pretty good idea. But, we ended up doing it inconsistently.
+        The DFG would indeed treat such a number as a double by consulting the
+        SourceCodeRepresentation, but the other execution engines would still see Int32:0.
+
+        This patch makes it consistent.
+
+        This is necessary for property type inference to perform well. Otherwise, a store of a
+        constant would change type from the baseline engine to the DFG, which would then cause
+        a storm of property type invalidations and recompilations.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addConstantValue):
+
+2015-09-17  Filip Pizlo  <fpizlo@apple.com>
+
+        stress/exit-from-getter.js.ftl-eager occasionally traps in debug
+        https://bugs.webkit.org/show_bug.cgi?id=149096
+
+        Reviewed by Geoffrey Garen.
+
+        JS calls to getters/setters in get/put inline caches need to reset SP after the call, as our
+        calling convention requires.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate): Fix the bug.
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link): Adds some verbiage about why the FTL stack offset logic is correct.
+        * tests/stress/getter-arity.js: Added. Other tests would flaky crash before the patch. This test instacrashes before the patch.
+
 2015-09-17  Saam barati  <sbarati@apple.com>
 
         Interpreter::unwind() shouldn't be responsible for filtering out uncatchable exceptions

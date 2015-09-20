@@ -336,7 +336,7 @@ sub IsScriptProfileType
 sub IsReadonly
 {
     my $attribute = shift;
-    return $attribute->isReadOnly && !$attribute->signature->extendedAttributes->{"Replaceable"};
+    return $attribute->isReadOnly && !$attribute->signature->extendedAttributes->{"Replaceable"} && !$attribute->signature->extendedAttributes->{"PutForwards"};
 }
 
 sub AddTypedefForScriptProfileType
@@ -2648,7 +2648,17 @@ sub GenerateImplementation
                 push(@implContent, "    castedThis->putDirect(exec->vm(), Identifier::fromString(exec, \"$name\"), value);\n");
             } else {
                 if (!$attribute->isStatic) {
-                    push(@implContent, "    auto& impl = castedThis->impl();\n");
+                    my $putForwards = $attribute->signature->extendedAttributes->{"PutForwards"};
+                    if ($putForwards) {
+                        my $implGetterFunctionName = $codeGenerator->WK_lcfirst($attribute->signature->extendedAttributes->{"ImplementedAs"} || $name);
+                        push(@implContent, "    auto* forwardedImpl = castedThis->impl().${implGetterFunctionName}();\n");
+                        push(@implContent, "    if (!forwardedImpl)\n");
+                        push(@implContent, "        return;\n");
+                        push(@implContent, "    auto& impl = *forwardedImpl;\n");
+                        $attribute = $codeGenerator->GetAttributeFromInterface($interface, $attribute->signature->type, $putForwards);
+                    } else {
+                        push(@implContent, "    auto& impl = castedThis->impl();\n");
+                    }
                 }
                 push(@implContent, "    ExceptionCode ec = 0;\n") if $setterRaisesException;
 
@@ -2733,6 +2743,7 @@ sub GenerateImplementation
                         $functionName = "impl.${functionName}";
                     }
 
+                    unshift(@arguments, GenerateCallWith($attribute->signature->extendedAttributes->{"SetterCallWith"}, \@implContent, ""));
                     unshift(@arguments, GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, \@implContent, ""));
 
                     push(@arguments, "ec") if $setterRaisesException;
@@ -3176,9 +3187,7 @@ sub GenerateCallWith
     my $function = shift;
 
     my @callWithArgs;
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptState")) {
-        push(@callWithArgs, "exec");
-    }
+    push(@callWithArgs, "exec") if $codeGenerator->ExtendedAttributeContains($callWith, "ScriptState");
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptExecutionContext")) {
         push(@$outputArray, "    auto* scriptContext = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject())->scriptExecutionContext();\n");
         push(@$outputArray, "    if (!scriptContext)\n");
@@ -3191,6 +3200,9 @@ sub GenerateCallWith
         $implIncludes{"<inspector/ScriptCallStackFactory.h>"} = 1;
         push(@callWithArgs, "scriptArguments.release()");
     }
+    push(@callWithArgs, "activeDOMWindow(exec)") if $codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow");
+    push(@callWithArgs, "firstDOMWindow(exec)") if $codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow");
+
     return @callWithArgs;
 }
 
@@ -3357,26 +3369,46 @@ sub GenerateParametersCheck
         } elsif ($codeGenerator->IsEnumType($argType)) {
             $implIncludes{"<runtime/Error.h>"} = 1;
 
-            my $argValue = "exec->argument($argsIndex)";
-            push(@$outputArray, "    // Keep pointer to the JSString in a local so we don't need to ref the String.\n");
-            push(@$outputArray, "    auto* ${name}String = ${argValue}.toString(exec);\n");
-            push(@$outputArray, "    if (UNLIKELY(exec->hadException()))\n");
-            push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
-            push(@$outputArray, "    auto& $name = ${name}String->value(exec);\n");
+            my $exceptionCheck = sub {
+                my $indent = shift;
+                push(@$outputArray, $indent . "    if (UNLIKELY(exec->hadException()))\n");
+                push(@$outputArray, $indent . "        return JSValue::encode(jsUndefined());\n");
+            };
 
-            my @enumValues = $codeGenerator->ValidEnumValues($argType);
-            my @enumChecks = ();
-            my $enums = 0;
-            foreach my $enumValue (@enumValues) {
-                push(@enumChecks, "${name} != \"$enumValue\"");
-                if (!$enums) {
-                    $enums = "\\\"$enumValue\\\"";
-                } else {
-                    $enums = $enums . ", \\\"" . $enumValue . "\\\"";
+            my $enumValueCheck = sub {
+                my $indent = shift;
+                my @enumValues = $codeGenerator->ValidEnumValues($argType);
+                my @enumChecks = ();
+                my $enums = 0;
+                foreach my $enumValue (@enumValues) {
+                    push(@enumChecks, "${name} != \"$enumValue\"");
+                    if (!$enums) {
+                        $enums = "\\\"$enumValue\\\"";
+                    } else {
+                        $enums = $enums . ", \\\"" . $enumValue . "\\\"";
+                    }
                 }
+                push(@$outputArray, $indent . "    if (" . join(" && ", @enumChecks) . ")\n");
+                push(@$outputArray, $indent . "        return throwArgumentMustBeEnumError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$enums\");\n");
+            };
+
+            my $argValue = "exec->argument($argsIndex)";
+            if ($parameter->isOptional && $parameter->default) {
+                push(@$outputArray, "    String $name;\n");
+                push(@$outputArray, "    if (${argValue}.isUndefined())\n");
+                push(@$outputArray, "        $name = ASCIILiteral(" . $parameter->default . ");\n");
+                push(@$outputArray, "    else {\n");
+                push(@$outputArray, "        $name = exec->uncheckedArgument($argsIndex).toString(exec)->value(exec);\n");
+                &$exceptionCheck("    ");
+                &$enumValueCheck("    ");
+                push(@$outputArray, "    }\n");
+            } else {
+                push(@$outputArray, "    // Keep pointer to the JSString in a local so we don't need to ref the String.\n");
+                push(@$outputArray, "    auto* ${name}String = ${argValue}.toString(exec);\n");
+                push(@$outputArray, "    auto& $name = ${name}String->value(exec);\n");
+                &$exceptionCheck("");
+                &$enumValueCheck("");
             }
-            push (@$outputArray, "    if (" . join(" && ", @enumChecks) . ")\n");
-            push (@$outputArray, "        return throwArgumentMustBeEnumError(*exec, $argsIndex, \"$name\", \"$interfaceName\", $quotedFunctionName, \"$enums\");\n");
         } else {
             # If the "StrictTypeChecking" extended attribute is present, and the argument's type is an
             # interface type, then if the incoming value does not implement that interface, a TypeError
@@ -3403,6 +3435,9 @@ sub GenerateParametersCheck
                 my $inner;
                 if ($optional && $defaultAttribute && $defaultAttribute eq "NullString") {
                     $outer = "exec->argument($argsIndex).isUndefined() ? String() : ";
+                    $inner = "exec->uncheckedArgument($argsIndex)";
+                } elsif ($optional && $parameter->default) {
+                    $outer = "exec->argument($argsIndex).isUndefined() ? " . $parameter->default  . " : ";
                     $inner = "exec->uncheckedArgument($argsIndex)";
                 } else {
                     $outer = "";

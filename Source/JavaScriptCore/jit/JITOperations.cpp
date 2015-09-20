@@ -105,6 +105,17 @@ void JIT_OPERATION operationThrowDivideError(ExecState* exec)
     ErrorHandlingScope errorScope(*vm);
     vm->throwException(callerFrame, createError(callerFrame, ASCIILiteral("Division by zero or division overflow.")));
 }
+
+void JIT_OPERATION operationThrowOutOfBoundsAccessError(ExecState* exec)
+{
+    VM* vm = &exec->vm();
+    VMEntryFrame* vmEntryFrame = vm->topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
+
+    NativeCallFrameTracerWithRestore tracer(vm, vmEntryFrame, callerFrame);
+    ErrorHandlingScope errorScope(*vm);
+    vm->throwException(callerFrame, createError(callerFrame, ASCIILiteral("Out-of-bounds access.")));
+}
 #endif
 
 int32_t JIT_OPERATION operationCallArityCheck(ExecState* exec)
@@ -767,7 +778,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
     MacroAssemblerCodePtr codePtr;
     CodeBlock* codeBlock = 0;
     if (executable->isHostFunction()) {
-        codePtr = executable->entrypointFor(*vm, kind, MustCheckArity, callLinkInfo->registerPreservationMode());
+        codePtr = executable->entrypointFor(kind, MustCheckArity);
 #if ENABLE(WEBASSEMBLY)
     } else if (executable->isWebAssemblyExecutable()) {
         WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
@@ -779,7 +790,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = webAssemblyExecutable->entrypointFor(*vm, kind, arity, callLinkInfo->registerPreservationMode());
+        codePtr = webAssemblyExecutable->entrypointFor(kind, arity);
 #endif
     } else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
@@ -804,7 +815,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
             arity = MustCheckArity;
         else
             arity = ArityCheckNotRequired;
-        codePtr = functionExecutable->entrypointFor(*vm, kind, arity, callLinkInfo->registerPreservationMode());
+        codePtr = functionExecutable->entrypointFor(kind, arity);
     }
     if (!callLinkInfo->seenOnce())
         callLinkInfo->setSeen();
@@ -867,7 +878,7 @@ inline SlowPathReturnType virtualForWithFunction(
         }
     }
     return encodeResult(executable->entrypointFor(
-        *vm, kind, MustCheckArity, callLinkInfo->registerPreservationMode()).executableAddress(),
+        kind, MustCheckArity).executableAddress(),
         reinterpret_cast<void*>(callLinkInfo->callMode() == CallMode::Tail ? ReuseTheFrame : KeepTheFrame));
 }
 

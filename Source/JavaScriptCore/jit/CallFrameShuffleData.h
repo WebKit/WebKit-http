@@ -10,7 +10,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
@@ -20,47 +20,32 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaDevicesPrivate_h
-#define MediaDevicesPrivate_h
+#ifndef CallFrameShuffleData_h
+#define CallFrameShuffleData_h
 
-#if ENABLE(MEDIA_STREAM)
+#if ENABLE(JIT)
 
-#include "MediaDeviceInfo.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
+#include "RegisterMap.h"
+#include "ValueRecovery.h"
 
-#include <wtf/Forward.h>
-#include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
+namespace JSC {
 
-namespace WebCore {
+struct CallFrameShuffleData {
+    unsigned numLocals;
+    ValueRecovery callee;
+    Vector<ValueRecovery> args;
+#if USE(JSVALUE64)
+    RegisterMap<ValueRecovery> registers;
 
-class MediaDevicesPrivate : public MediaStreamTrackSourcesRequestClient {
-public:
-    static Ref<MediaDevicesPrivate> create();
-    
-    MediaDevicesPrivate();
-
-    ~MediaDevicesPrivate() { }
-
-    Vector<RefPtr<MediaDeviceInfo>> availableMediaDevices(ScriptExecutionContext&);
-    
-    // FIXME(148041): requestOrigin inside of getMediaStreamTrackSources not used
-    const String& requestOrigin() const override { return emptyString(); }
-    
-    void didCompleteRequest(const Vector<RefPtr<TrackSourceInfo>>&) override;
-    
-    Vector<RefPtr<TrackSourceInfo>> capturedDevices() const { return m_capturedDevices; }
-    
-private:
-    Vector<RefPtr<TrackSourceInfo>> m_capturedDevices;
+    void setupCalleeSaveRegisters(CodeBlock*);
+#endif
 };
 
-}
+} // namespace JSC
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(JIT)
 
-#endif // MediaDevicesPrivate_h
+#endif // CallFrameShuffleData_h

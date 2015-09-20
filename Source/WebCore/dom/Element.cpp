@@ -1236,6 +1236,14 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
             elementData()->setHasNameAttribute(!newValue.isNull());
         else if (name == HTMLNames::pseudoAttr)
             shouldInvalidateStyle |= testShouldInvalidateStyle && isInShadowTree();
+#if ENABLE(SHADOW_DOM)
+        else if (name == HTMLNames::slotAttr) {
+            if (auto* parent = parentElement()) {
+                if (auto* shadowRoot = parent->shadowRoot())
+                    shadowRoot->invalidateSlotAssignments();
+            }
+        }
+#endif
     }
 
     parseAttribute(name, newValue);
@@ -1373,6 +1381,19 @@ URL Element::absoluteLinkURL() const
     return document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkAttribute));
 }
 
+StyleResolver& Element::styleResolver()
+{
+    if (auto* shadowRoot = containingShadowRoot())
+        return shadowRoot->styleResolver();
+
+    return document().ensureStyleResolver();
+}
+
+Ref<RenderStyle> Element::resolveStyle(RenderStyle* parentStyle)
+{
+    return styleResolver().styleForElement(this, parentStyle);
+}
+
 // Returns true is the given attribute is an event handler.
 // We consider an event handler any attribute that begins with "on".
 // It is a simple solution that has the advantage of not requiring any
@@ -1500,6 +1521,9 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     if (!insertionPoint.isInTreeScope())
         return InsertionDone;
 
+    // This function could be called when this element's shadow root's host or its ancestor is inserted.
+    // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
+    // or its ancestor is inserted belongs to the same tree scope as this element's.
     TreeScope* newScope = &insertionPoint.treeScope();
     HTMLDocument* newDocument = !wasInDocument && inDocument() && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
     if (newScope != &treeScope())
@@ -1545,7 +1569,10 @@ void Element::removedFrom(ContainerNode& insertionPoint)
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
         HTMLDocument* oldDocument = inDocument() && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
-        if (oldScope != &treeScope() || !isInTreeScope())
+
+        // ContainerNode::removeBetween always sets the removed chid's tree scope to Document's but InTreeScope flag is unset in Node::removedFrom.
+        // So this element has been removed from the old tree scope only if InTreeScope flag is set and this element's tree scope is Document's.
+        if (!isInTreeScope() || &treeScope() != &document())
             oldScope = nullptr;
 
         const AtomicString& idValue = getIdAttribute();
@@ -1615,19 +1642,10 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     shadowRoot.setHost(this);
     shadowRoot.setParentTreeScope(&treeScope());
 
-    auto shadowRootInsertionResult = shadowRoot.insertedInto(*this);
-    ASSERT_UNUSED(shadowRootInsertionResult, shadowRootInsertionResult == InsertionDone);
-    if (auto* firstChild = shadowRoot.firstChild()) {
-        NodeVector postInsertionNotificationTargets;
-        {
-            NoEventDispatchAssertion assertNoEventDispatch;
-            for (auto* child = firstChild; child; child = child->nextSibling())
-                notifyChildNodeInserted(shadowRoot, *child, postInsertionNotificationTargets);
-        }
-
-        for (auto& target : postInsertionNotificationTargets)
-            target->finishedInsertingSubtree();
-    }
+    NodeVector postInsertionNotificationTargets;
+    notifyChildNodeInserted(*this, shadowRoot, postInsertionNotificationTargets);
+    for (auto& target : postInsertionNotificationTargets)
+        target->finishedInsertingSubtree();
 
     resetNeedsNodeRenderingTraversalSlowPath();
 
@@ -1654,13 +1672,7 @@ void Element::removeShadowRoot()
     oldRoot->setHost(nullptr);
     oldRoot->setParentTreeScope(&document());
 
-    {
-        NoEventDispatchAssertion assertNoEventDispatch;
-        for (auto* child = oldRoot->firstChild(); child; child = child->nextSibling())
-            notifyChildNodeRemoved(*oldRoot, *child);
-    }
-
-    oldRoot->removedFrom(*this);
+    notifyChildNodeRemoved(*this, *oldRoot);
 }
 
 RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
@@ -1851,6 +1863,9 @@ void Element::childrenChanged(const ChildChange& change)
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
         if (auto* distributor = shadowRoot->distributor())
             distributor->invalidateDistribution(this);
+#if ENABLE(SHADOW_DOM)
+        shadowRoot->invalidateSlotAssignments();
+#endif
     }
 }
 

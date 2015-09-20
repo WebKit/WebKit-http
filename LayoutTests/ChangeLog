@@ -1,3 +1,932 @@
+2015-09-19  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Specify default parameter values where it is useful
+        https://bugs.webkit.org/show_bug.cgi?id=149331
+        <rdar://problem/22545600>
+
+        Reviewed by Darin Adler.
+
+        Add test to check the behavior of passing undefined for various optional
+        parameters that have a default value in the HTML specification.
+
+        * fast/html/undefined-parameter-default-value-expected.txt: Added.
+        * fast/html/undefined-parameter-default-value.html: Added.
+
+2015-09-18  Dean Jackson  <dino@apple.com>
+
+        Null dereference loading Blink layout test svg/filters/feImage-failed-load-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149316
+        <rdar://problem/22749532>
+
+        Reviewed by Tim Horton.
+
+        Merge Blink commit:
+        https://chromium.googlesource.com/chromium/blink/+/9cbcfd7866bbaff0c4b3c4c8508b7c97b46d6e6a
+
+        * svg/filters/feImage-failed-load-crash-expected.txt: Added.
+        * svg/filters/feImage-failed-load-crash.html: Added.
+
+2015-09-18  Dean Jackson  <dino@apple.com>
+
+        Null dereference loading Blink layout test svg/custom/use-href-attr-removal-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149315
+        <rdar://problem/22749358>
+
+        Reviewed by Tim Horton.
+
+        These tests, copied from Blink, should not crash.
+        The originals come from:
+        https://chromium.googlesource.com/chromium/blink/+/e2f1087f32bb088160ab7d59a715a1403ef267c7
+
+        * svg/custom/use-href-attr-removal-crash.html: Added.
+        * svg/custom/use-href-attr-removal-crash-expected.txt: Added.
+        * svg/custom/use-href-attr-removal-crash2.svg: Added.
+        * svg/custom/use-href-attr-removal-crash2-expected.txt: Added.
+        * svg/custom/use-href-change-local-to-invalid-remote.html: Added.
+        * svg/custom/use-href-change-local-to-invalid-remote-expected.txt: Added.
+
+2015-09-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Update Mac expectations for http/tests/cache/iframe-304-crash.html.
+        This test is flaky everywhere, not just on Mavericks and Yosemite.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-09-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189908.
+        https://bugs.webkit.org/show_bug.cgi?id=149368
+
+        Broke run-webkit-tests --pixel (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "printing does not use minimum page zoom factor"
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+        http://trac.webkit.org/changeset/189908
+
+2015-09-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Inserting or removing slot elements can cause a crash
+        https://bugs.webkit.org/show_bug.cgi?id=149365
+
+        Reviewed by Antti Koivisto.
+
+        Added regression tests.
+
+        * fast/shadow-dom/slot-removal-crash.html: Added.
+
+2015-09-18  Antti Koivisto  <antti@apple.com>
+
+        Don't create renderers for children of shadow host
+        https://bugs.webkit.org/show_bug.cgi?id=149363
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-shadow-root-hides-children-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-root-hides-children.html: Added.
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Adds more flaky tests to TestExpecations for iOS and WK2
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        add a regress test for richards with try/catch.
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+
+        Reviewed by Filip Pizlo.
+
+        This adds two variants of Octane/richards benchmark using
+        try/catch. One try/catch variant that actually throws.
+        Another that never throws. I've included try/catch inside
+        every function and every loop.
+
+        * js/regress/richards-empty-try-catch-expected.txt: Added.
+        * js/regress/richards-empty-try-catch.html: Added.
+        * js/regress/richards-try-catch-expected.txt: Added.
+        * js/regress/richards-try-catch.html: Added.
+        * js/regress/script-tests/richards-empty-try-catch.js: Added.
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+        * js/regress/script-tests/richards-try-catch.js: Added.
+        (randomException):
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-empty-try-catch.html: Added.
+        * js/regress/raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-try-catch.html: Added.
+        * js/regress/script-tests/raytrace-with-empty-try-catch.js: Added.
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/raytrace-with-try-catch.js: Added.
+        (randomException):
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/v8-raytrace-with-empty-try-catch.js: Added.
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/script-tests/v8-raytrace-with-try-catch.js: Added.
+        (randomException):
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/v8-raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-empty-try-catch.html: Added.
+        * js/regress/v8-raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-try-catch.html: Added.
+
+2015-09-18  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement ARIA 1.1 @aria-current on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149297
+
+        Reviewed by Chris Fleizach.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        REGRESSION: http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overrides.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132388
+
+        * TestExpectations:
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        line-break-language-sensitive tests should be marked as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149349
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Finish implementing MediaDevices.enumerateDevices
+        https://bugs.webkit.org/show_bug.cgi?id=149322
+        <rdar://problem/22750866>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt: Added.
+        * fast/mediastream/MediaDevices-enumerateDevices.html: Added.
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Updates to include change to iOS test expectations after bug 149187
+
+        * platform/ios-simulator/js/dom/constructor-length-expected.txt:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r182449, Mavericks ONLY): Pages re-open empty after swiping back and scrolling on them
+        https://bugs.webkit.org/show_bug.cgi?id=149317
+        <rdar://problem/22521514>
+
+        Reviewed by Tim Horton.
+
+        Skip a couple of PageCache layout tests on Mavericks now that a PageCache
+        optimization has been disabled.
+
+        * platform/mac/TestExpectations:
+
+2015-09-18  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed iOS gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for Entity Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149239
+
+        Reviewed by Darin Adler.
+
+        Rebaseline / update layout tests now that we no longer expose the
+        Entity type to the Web.
+
+        * fast/dom/Window/get-set-properties-expected.txt:
+        * fast/dom/Window/get-set-properties.html:
+        * fast/dom/Window/resources/window-properties.js:
+        * fast/dom/Window/window-lookup-precedence-expected.txt:
+        * fast/dom/dom-constructors-expected.txt:
+        * fast/dom/dom-constructors.html:
+        * platform/gtk/fast/dom/Window/window-lookup-precedence-expected.txt:
+        * platform/mac/fast/dom/Window/window-lookup-precedence-expected.txt:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        classList.toggle(name, force) treats undefined `force` argument as false
+        https://bugs.webkit.org/show_bug.cgi?id=148582
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add decent test coverage for DOMTokenList.toggle() via Element.classList.
+
+        * fast/dom/Element/class-list-toggle-expected.txt: Added.
+        * fast/dom/Element/class-list-toggle.html: Added.
+
+2015-09-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189962.
+        https://bugs.webkit.org/show_bug.cgi?id=149334
+
+        These new tests uncovered a crash (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add some tests for shadow DOM rendering"
+        https://bugs.webkit.org/show_bug.cgi?id=149330
+        http://trac.webkit.org/changeset/189962
+
+2015-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add some tests for shadow DOM rendering
+        https://bugs.webkit.org/show_bug.cgi?id=149330
+
+        Reviewed by Antti Koivisto.
+
+        Added some ref tests for new shadow DOM API rendering with failing expectations everywhere.
+
+        * fast/shadow-dom/css-scoping-shadow-invisible-slot-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-invisible-slot.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-rendering-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-rendering.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-slot-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-slot.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-with-rules-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-with-rules.html: Added.
+        * platform/mac/TestExpectations:
+
+2015-09-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189938, r189952, and r189956.
+        https://bugs.webkit.org/show_bug.cgi?id=149329
+
+        Broke Web Workers (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Implement try/catch in the DFG."
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+        http://trac.webkit.org/changeset/189938
+
+        "CLoop build fix after r189938."
+        http://trac.webkit.org/changeset/189952
+
+        "add a regress test for richards with try/catch."
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+        http://trac.webkit.org/changeset/189956
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Add support for default parameter values
+        https://bugs.webkit.org/show_bug.cgi?id=149263
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several NodeIterator / TreeWalker tests now that more checks
+        are passing.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+
+2015-09-17  Saam barati  <sbarati@apple.com>
+
+        add a regress test for richards with try/catch.
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+
+        Reviewed by Filip Pizlo.
+
+        This adds two variants of Octane/richards benchmark using
+        try/catch. One try/catch variant that actually throws.
+        Another that never throws. I've included try/catch inside
+        every function and every loop.
+
+        * js/regress/richards-empty-try-catch-expected.txt: Added.
+        * js/regress/richards-empty-try-catch.html: Added.
+        * js/regress/richards-try-catch-expected.txt: Added.
+        * js/regress/richards-try-catch.html: Added.
+        * js/regress/script-tests/richards-empty-try-catch.js: Added.
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+        * js/regress/script-tests/richards-try-catch.js: Added.
+        (randomException):
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+
+2015-09-17  Dean Jackson  <dino@apple.com>
+
+        Multi-hop reference cycles not detected.
+        https://bugs.webkit.org/show_bug.cgi?id=149181
+
+        Reviewed by Jon Honeycutt.
+
+        Test comes from:
+        https://chromium.googlesource.com/chromium/blink/+/master/LayoutTests/svg/custom/pattern-3-step-cycle.html
+
+        * svg/custom/pattern-3-step-cycle-expected.txt: Added.
+        * svg/custom/pattern-3-step-cycle.html: Added.
+
+2015-09-17  Dean Jackson  <dino@apple.com>
+
+        Cyclic resources were not detected if the reference had deep containers
+        https://bugs.webkit.org/show_bug.cgi?id=149182
+
+        Reviewed by Jon Honeycutt.
+
+        This test was ported from Blink. I believe it originally
+        came from:
+        https://code.google.com/p/chromium/issues/detail?id=351713
+
+        * svg/custom/pattern-content-cycle-w-resourceless-container-expected.txt: Added.
+        * svg/custom/pattern-content-cycle-w-resourceless-container.html: Added.
+
+2015-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add HTMLSlotElement and NonDocumentTypeChildNode.assignedSlot
+        https://bugs.webkit.org/show_bug.cgi?id=149241
+
+        Reviewed by Antti Koivisto.
+
+        Added new conformance tests and rebaselined tests as needed.
+
+        In particular, inspector/model/remote-object.html was rebaselined since "assignedSlot" now appears as one of the first five
+        properties on Comment node that this test outputs.
+
+        * fast/shadow-dom/HTMLSlotElement-interface-expected.txt: Added.
+        * fast/shadow-dom/HTMLSlotElement-interface.html: Added.
+        * fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot-expected.txt: Added.
+        * fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/inspector/model: Added.
+        * platform/mac/inspector/model/remote-object-expected.txt: Copied from LayoutTests/inspector/model/remote-object-expected.txt.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-17  Zalan Bujtas  <zalan@apple.com>
+
+        CSS WG multicol-1 tests failures with 1px differences due to baseline difference.
+        https://bugs.webkit.org/show_bug.cgi?id=149245
+
+        Reviewed by Ryosuke Niwa.
+
+        Turn off font-aliasing for multicol tests where the reference tests' inline content
+        end up on a different baseline (fractional difference). (It's not considered a bug, they don't
+        necessarily match.)
+
+        * TestExpectations:
+
+2015-09-17  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-empty-try-catch.html: Added.
+        * js/regress/raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-try-catch.html: Added.
+        * js/regress/script-tests/raytrace-with-empty-try-catch.js: Added.
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/raytrace-with-try-catch.js: Added.
+        (randomException):
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/v8-raytrace-with-empty-try-catch.js: Added.
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/script-tests/v8-raytrace-with-try-catch.js: Added.
+        (randomException):
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/v8-raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-empty-try-catch.html: Added.
+        * js/regress/v8-raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-try-catch.html: Added.
+
+2015-09-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip a media test that fails when an AppleTV is around.
+
+        This will be fixed soon by https://bugs.webkit.org/show_bug.cgi?id=148912
+
+        * platform/mac/TestExpectations:
+
+2015-09-17  Tim Horton  <timothy_horton@apple.com>
+
+        Add a test ensuring that scrolling in the middle of a page can't start a swipe gesture
+        https://bugs.webkit.org/show_bug.cgi?id=148904
+
+        Reviewed by Myles Maxfield.
+
+        * swipe/main-frame-pinning-requirement.html: Added.
+
 2015-09-17  Zalan Bujtas  <zalan@apple.com>
 
         column-rule-style: outset/inset doesn't work

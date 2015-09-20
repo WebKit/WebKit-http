@@ -677,7 +677,7 @@ protected:
         addFunction(vm, "drainMicrotasks", functionDrainMicrotasks, 0);
 
 #if ENABLE(WEBASSEMBLY)
-        addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 2);
+        addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 3);
 #endif
         addFunction(vm, "loadModule", functionLoadModule, 1);
         addFunction(vm, "checkModuleSyntax", functionCheckModuleSyntax, 1);
@@ -707,7 +707,7 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -879,13 +879,14 @@ static void convertShebangToJSComment(Vector<char>& buffer)
     }
 }
 
-static void fillBufferWithContentsOfFile(FILE* file, Vector<char>& buffer)
+static bool fillBufferWithContentsOfFile(FILE* file, Vector<char>& buffer)
 {
     fseek(file, 0, SEEK_END);
     size_t bufferCapacity = ftell(file);
     fseek(file, 0, SEEK_SET);
     buffer.resize(bufferCapacity);
-    fread(buffer.data(), 1, bufferCapacity, file);
+    size_t readSize = fread(buffer.data(), 1, buffer.size(), file);
+    return readSize == buffer.size();
 }
 
 static bool fillBufferWithContentsOfFile(const String& fileName, Vector<char>& buffer)
@@ -896,10 +897,10 @@ static bool fillBufferWithContentsOfFile(const String& fileName, Vector<char>& b
         return false;
     }
 
-    fillBufferWithContentsOfFile(f, buffer);
+    bool result = fillBufferWithContentsOfFile(f, buffer);
     fclose(f);
 
-    return true;
+    return result;
 }
 
 static bool fetchScriptFromLocalFileSystem(const String& fileName, Vector<char>& buffer)
@@ -928,11 +929,12 @@ static bool fetchModuleFromLocalFileSystem(const String& fileName, Vector<char>&
         return false;
     }
 
-    fillBufferWithContentsOfFile(f, buffer);
-    convertShebangToJSComment(buffer);
+    bool result = fillBufferWithContentsOfFile(f, buffer);
+    if (result)
+        convertShebangToJSComment(buffer);
     fclose(f);
 
-    return true;
+    return result;
 }
 
 JSInternalPromise* GlobalObject::moduleLoaderFetch(JSGlobalObject* globalObject, ExecState* exec, JSValue key)
@@ -1450,9 +1452,10 @@ EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState* exec)
     RefPtr<WebAssemblySourceProvider> sourceProvider = WebAssemblySourceProvider::create(reinterpret_cast<Vector<uint8_t>&>(buffer), fileName);
     SourceCode source(sourceProvider);
     JSObject* imports = exec->argument(1).getObject();
+    JSArrayBuffer* arrayBuffer = jsDynamicCast<JSArrayBuffer*>(exec->argument(2));
 
     String errorMessage;
-    JSWASMModule* module = parseWebAssembly(exec, source, imports, errorMessage);
+    JSWASMModule* module = parseWebAssembly(exec, source, imports, arrayBuffer, errorMessage);
     if (!module)
         return JSValue::encode(exec->vm().throwException(exec, createSyntaxError(exec, errorMessage)));
     return JSValue::encode(module);
@@ -1466,7 +1469,7 @@ EncodedJSValue JSC_HOST_CALL functionLoadModule(ExecState* exec)
     if (!fetchScriptFromLocalFileSystem(fileName, script))
         return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
 
-    JSInternalPromise* promise = evaluateModule(exec, fileName);
+    JSInternalPromise* promise = loadAndEvaluateModule(exec, fileName);
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
@@ -1639,7 +1642,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
         if (scripts[i].isFile) {
             fileName = scripts[i].argument;
             if (module)
-                promise = evaluateModule(globalObject->globalExec(), fileName);
+                promise = loadAndEvaluateModule(globalObject->globalExec(), fileName);
             else {
                 if (!fetchScriptFromLocalFileSystem(fileName, scriptBuffer))
                     return false; // fail early so we can catch missing files
@@ -1655,7 +1658,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
 
         if (module) {
             if (!promise)
-                promise = evaluateModule(globalObject->globalExec(), jscSource(scriptBuffer, fileName));
+                promise = loadAndEvaluateModule(globalObject->globalExec(), jscSource(scriptBuffer, fileName));
             globalObject->globalExec()->clearException();
             promise->then(globalObject->globalExec(), nullptr, errorHandler);
             globalObject->vm().drainMicrotasks();

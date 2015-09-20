@@ -462,6 +462,18 @@
     IMPL->setWithScriptStateAttribute(newWithScriptStateAttribute);
 }
 
+- (int)withCallWithAndSetterCallWithAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->withCallWithAndSetterCallWithAttribute();
+}
+
+- (void)setWithCallWithAndSetterCallWithAttribute:(int)newWithCallWithAndSetterCallWithAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setWithCallWithAndSetterCallWithAttribute(newWithCallWithAndSetterCallWithAttribute);
+}
+
 - (DOMTestObj *)withScriptExecutionContextAttribute
 {
     WebCore::JSMainThreadNullState state;
@@ -818,6 +830,12 @@
     return IMPL->attribute();
 }
 
+- (DOMTestNode *)putForwardsAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->putForwardsAttribute()));
+}
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -882,6 +900,12 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->methodWithEnumArg(core(enumArg));
+}
+
+- (void)methodWithOptionalEnumArgAndDefaultValue:(DOMTestEnumType *)enumArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalEnumArgAndDefaultValue(core(enumArg));
 }
 
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg
@@ -1007,6 +1031,12 @@
     IMPL->methodWithOptionalArg(opt);
 }
 
+- (void)methodWithOptionalArgAndDefaultValue:(int)opt
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalArgAndDefaultValue(opt);
+}
+
 - (void)methodWithNonOptionalArgAndOptionalArg:(int)nonOpt opt:(int)opt
 {
     WebCore::JSMainThreadNullState state;
@@ -1023,6 +1053,12 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->methodWithOptionalString(str);
+}
+
+- (void)methodWithOptionalStringAndDefaultValue:(NSString *)str
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithOptionalStringAndDefaultValue(str);
 }
 
 - (void)methodWithOptionalStringIsUndefined:(NSString *)str

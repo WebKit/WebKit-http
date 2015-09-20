@@ -10,7 +10,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
@@ -21,42 +21,30 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
-#include "config.h"
-#include "MediaDevicesPrivate.h"
+#ifndef HTMLSlotElement_h
+#define HTMLSlotElement_h
 
-#if ENABLE(MEDIA_STREAM)
+#include "HTMLElement.h"
+#include "InsertionPoint.h"
+#include "Range.h"
 
 namespace WebCore {
 
-Ref<MediaDevicesPrivate> MediaDevicesPrivate::create()
-{
-    return adoptRef(*new MediaDevicesPrivate);
-}
+class HTMLSlotElement final : public HTMLElement {
+public:
+    static Ref<HTMLSlotElement> create(const QualifiedName&, Document&);
 
-MediaDevicesPrivate::MediaDevicesPrivate()
-    : m_capturedDevices()
-{
-}
-    
-void MediaDevicesPrivate::didCompleteRequest(const Vector<RefPtr<TrackSourceInfo>>& capturedDevices)
-{
-    m_capturedDevices = capturedDevices;
-}
+    Vector<RefPtr<Node>> getDistributedNodes() const;
 
-Vector<RefPtr<MediaDeviceInfo>> MediaDevicesPrivate::availableMediaDevices(ScriptExecutionContext& context)
-{
-    Vector<RefPtr<MediaDeviceInfo>> mediaDevicesInfo;
-    for (auto device : m_capturedDevices) {
-        TrackSourceInfo* trackInfo = device.get();
-        String deviceType = trackInfo->kind() == TrackSourceInfo::SourceKind::Audio ? MediaDeviceInfo::audioInputType() : MediaDeviceInfo::videoInputType();
-        mediaDevicesInfo.append(MediaDeviceInfo::create(&context, trackInfo->label(), trackInfo->deviceId(), trackInfo->groupId(), deviceType));
-    }
-    
-    return mediaDevicesInfo;
-}
+private:
+    HTMLSlotElement(const QualifiedName&, Document&);
+
+    virtual InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    virtual void removedFrom(ContainerNode&) override;
+    virtual void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason) override;
+};
 
 }
 

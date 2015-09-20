@@ -51,13 +51,13 @@
 #include "JSDocument.h"
 #include "JSDocumentFragment.h"
 #include "JSDocumentType.h"
-#include "JSEntity.h"
 #include "JSEntityReference.h"
 #include "JSEventListener.h"
 #include "JSHTMLElement.h"
 #include "JSHTMLElementWrapperFactory.h"
 #include "JSProcessingInstruction.h"
 #include "JSSVGElementWrapperFactory.h"
+#include "JSShadowRoot.h"
 #include "JSText.h"
 #include "Node.h"
 #include "ProcessingInstruction.h"
@@ -189,9 +189,6 @@ static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObj
         case Node::CDATA_SECTION_NODE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, CDATASection, node);
             break;
-        case Node::ENTITY_NODE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, Entity, node);
-            break;
         case Node::PROCESSING_INSTRUCTION_NODE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, ProcessingInstruction, node);
             break;
@@ -205,7 +202,12 @@ static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObj
             wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentType, node);
             break;
         case Node::DOCUMENT_FRAGMENT_NODE:
-            wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentFragment, node);
+#if ENABLE(SHADOW_DOM)
+            if (node->isShadowRoot())
+                wrapper = CREATE_DOM_WRAPPER(globalObject, ShadowRoot, node);
+            else
+#endif
+                wrapper = CREATE_DOM_WRAPPER(globalObject, DocumentFragment, node);
             break;
         case Node::ENTITY_REFERENCE_NODE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, EntityReference, node);
@@ -214,7 +216,7 @@ static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObj
             wrapper = CREATE_DOM_WRAPPER(globalObject, Node, node);
     }
 
-    return wrapper;    
+    return wrapper;
 }
 
 JSValue createWrapper(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)

@@ -132,14 +132,19 @@ void TestInvocation::setIsPixelTest(const std::string& expectedPixelHash)
     m_expectedPixelHash = expectedPixelHash;
 }
 
-bool TestInvocation::shouldLogFrameLoadDelegates()
+bool TestInvocation::shouldLogFrameLoadDelegates() const
 {
     return urlContains("loading/");
 }
 
-bool TestInvocation::shouldLogHistoryClientCallbacks()
+bool TestInvocation::shouldLogHistoryClientCallbacks() const
 {
     return urlContains("globalhistory/");
+}
+
+bool TestInvocation::shouldMakeViewportFlexible() const
+{
+    return urlContains("viewport/");
 }
 
 void TestInvocation::invoke()
@@ -162,6 +167,10 @@ void TestInvocation::invoke()
     WKRetainPtr<WKStringRef> dumpFrameLoadDelegatesKey = adoptWK(WKStringCreateWithUTF8CString("DumpFrameLoadDelegates"));
     WKRetainPtr<WKBooleanRef> dumpFrameLoadDelegatesValue = adoptWK(WKBooleanCreate(shouldLogFrameLoadDelegates()));
     WKDictionarySetItem(beginTestMessageBody.get(), dumpFrameLoadDelegatesKey.get(), dumpFrameLoadDelegatesValue.get());
+
+    WKRetainPtr<WKStringRef> useFlexibleViewportKey = adoptWK(WKStringCreateWithUTF8CString("UseFlexibleViewport"));
+    WKRetainPtr<WKBooleanRef> useFlexibleViewportValue = adoptWK(WKBooleanCreate(shouldMakeViewportFlexible()));
+    WKDictionarySetItem(beginTestMessageBody.get(), useFlexibleViewportKey.get(), useFlexibleViewportValue.get());
 
     WKRetainPtr<WKStringRef> dumpPixelsKey = adoptWK(WKStringCreateWithUTF8CString("DumpPixels"));
     WKRetainPtr<WKBooleanRef> dumpPixelsValue = adoptWK(WKBooleanCreate(m_dumpPixels));
@@ -267,22 +276,16 @@ void TestInvocation::dumpResults()
     else
         dumpAudio(m_audioResult.get());
 
-    if (m_dumpPixels) {
-        if (m_pixelResult)
-            dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get(), TestInvocation::SnapshotResultType::WebContents);
-        else {
-            m_gotRepaint = false;
-            WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
-            TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
-            if (!m_gotRepaint) {
-                m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
-                m_webProcessIsUnresponsive = true;
-                return;
-            }
-            WKRetainPtr<WKImageRef> windowSnapshot = TestController::singleton().mainWebView()->windowSnapshotImage();
-            ASSERT(windowSnapshot);
-            dumpPixelsAndCompareWithExpected(windowSnapshot.get(), m_repaintRects.get(), TestInvocation::SnapshotResultType::WebView);
+    if (m_dumpPixels && m_pixelResult) {
+        m_gotRepaint = false;
+        WKPageForceRepaint(TestController::singleton().mainWebView()->page(), this, TestInvocation::forceRepaintDoneCallback);
+        TestController::singleton().runUntil(m_gotRepaint, TestController::shortTimeout);
+        if (!m_gotRepaint) {
+            m_errorMessage = "Timed out waiting for pre-pixel dump repaint\n";
+            m_webProcessIsUnresponsive = true;
+            return;
         }
+        dumpPixelsAndCompareWithExpected(m_pixelResult.get(), m_repaintRects.get());
     }
 
     fputs("#EOF\n", stdout);

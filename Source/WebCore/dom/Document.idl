@@ -93,11 +93,11 @@
     // DOM Level 2 Tranversal and Range (DocumentTraversal interface)
 
     [ObjCLegacyUnnamedParameters, RaisesException, NewObject] NodeIterator createNodeIterator(Node root,
-        optional unsigned long whatToShow,
+        optional unsigned long whatToShow = 0xFFFFFFFF,
         optional NodeFilter? filter,
         optional boolean expandEntityReferences);
     [ObjCLegacyUnnamedParameters, RaisesException, NewObject] TreeWalker createTreeWalker(Node root,
-        optional unsigned long whatToShow,
+        optional unsigned long whatToShow = 0xFFFFFFFF,
         optional NodeFilter? filter,
         optional boolean expandEntityReferences);
 
@@ -170,7 +170,7 @@
     NodeList getElementsByName([Default=Undefined,AtomicString] optional DOMString elementName);
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Custom, Unforgeable] attribute Location location;
+    [PutForwards=href, Unforgeable] readonly attribute Location location;
 #endif
 
     // IE extensions

@@ -60,18 +60,19 @@ public:
     void didEndSwipe();
     void didRemoveSwipeSnapshot();
 
+    bool shouldMakeViewportFlexible() const;
+
 private:
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
-    enum class SnapshotResultType { WebView, WebContents };
-    void dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef repaintRects, SnapshotResultType);
+    void dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef repaintRects);
     void dumpAudio(WKDataRef);
     bool compareActualHashToExpectedAndDumpResults(const char[33]);
 
     static void forceRepaintDoneCallback(WKErrorRef, void* context);
 
-    bool shouldLogFrameLoadDelegates();
-    bool shouldLogHistoryClientCallbacks();
+    bool shouldLogFrameLoadDelegates() const;
+    bool shouldLogHistoryClientCallbacks() const;
 
     WKRetainPtr<WKURLRef> m_url;
     WTF::String m_urlString;

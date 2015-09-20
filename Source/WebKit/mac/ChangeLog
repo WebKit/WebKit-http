@@ -1,3 +1,49 @@
+2015-09-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189908.
+        https://bugs.webkit.org/show_bug.cgi?id=149368
+
+        Broke run-webkit-tests --pixel (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "printing does not use minimum page zoom factor"
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+        http://trac.webkit.org/changeset/189908
+
+2015-09-17  Brian Burg  <bburg@apple.com>
+
+        ASSERT(!m_frontendRouter->hasLocalFrontend()) when running Web Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=149006
+
+        Reviewed by Joseph Pecoraro.
+
+        WK1 WebInspectorClient was connecting to the wrong controllers. Fix this, and
+        remove extra code paths for closing the frontend.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController destroyInspectorView]):
+
+            Disconnect the FrontendClient from the frontend page's inspector controller.
+            Do this teardown before releasing the frontend, otherwise we can't use it.
+
+        (WebInspectorClient::inspectedPageDestroyed): Deleted.
+        (WebInspectorClient::closeLocalFrontend): Deleted.
+        (WebInspectorFrontendClient::disconnectFromBackend): Deleted.
+        * WebInspector/WebInspector.mm:
+        (-[WebInspector inspectedWebViewClosed]):
+
+            Make sure to close ourself if the inspected page closes.
+
+        (-[WebInspector close:]):
+
+            Go through the frontend instead of InspectorController.
+
+        * WebInspector/WebInspectorFrontend.h:
+        * WebInspector/WebInspectorFrontend.mm:
+        (-[WebInspectorFrontend close]):
+
 2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         printing does not use minimum page zoom factor
