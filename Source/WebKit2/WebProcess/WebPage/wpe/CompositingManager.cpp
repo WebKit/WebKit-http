@@ -46,7 +46,7 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
 
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this, runLoop);
     m_connection->open();
-    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::CompositingManagerProxy::EstablishConnection(connectionClientPort),
+    webPage.sendSync(Messages::CompositingManagerProxy::EstablishConnection(connectionClientPort),
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
