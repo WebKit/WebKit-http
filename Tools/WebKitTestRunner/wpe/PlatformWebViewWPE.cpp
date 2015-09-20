@@ -31,7 +31,7 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const ViewOptions& options)
+PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const TestOptions& options)
     : m_view(WKViewCreate(WKPageConfigurationGetContext(configuration), WKPageConfigurationGetPageGroup(configuration)))
     , m_window(nullptr)
     , m_windowIsKey(true)
@@ -90,7 +90,7 @@ void PlatformWebView::changeWindowScaleIfNeeded(float)
 {
 }
 
-bool PlatformWebView::viewSupportsOptions(const ViewOptions&) const
+bool PlatformWebView::viewSupportsOptions(const TestOptions&) const
 {
     return true;
 }

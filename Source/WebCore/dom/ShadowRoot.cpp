@@ -31,6 +31,7 @@
 #include "InsertionPoint.h"
 #include "RenderElement.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SlotAssignment.h"
 #include "StyleResolver.h"
 #include "markup.h"
 
@@ -38,24 +39,21 @@ namespace WebCore {
 
 struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
     unsigned countersAndFlags[1];
-    ContentDistributor distributor;
+    void* styleResolver;
     void* host;
+#if ENABLE(SHADOW_DOM)
+    void* slotAssignment;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(ShadowRoot) == sizeof(SameSizeAsShadowRoot), shadowroot_should_stay_small);
 
-enum ShadowRootUsageOriginType {
-    ShadowRootUsageOriginWeb = 0,
-    ShadowRootUsageOriginNotWeb,
-    ShadowRootUsageOriginMax
-};
-
-ShadowRoot::ShadowRoot(Document& document, ShadowRootType type)
+ShadowRoot::ShadowRoot(Document& document, Type type)
     : DocumentFragment(document, CreateShadowRoot)
     , TreeScope(*this, document)
     , m_resetStyleInheritance(false)
     , m_type(type)
-    , m_host(0)
+    , m_host(nullptr)
 {
 }
 
@@ -71,6 +69,14 @@ ShadowRoot::~ShadowRoot()
     // runs so we don't go through TreeScopeAdopter for each child with a
     // destructed tree scope in each descendant.
     removeDetachedChildren();
+}
+
+StyleResolver& ShadowRoot::styleResolver()
+{
+    if (m_styleResolver)
+        return *m_styleResolver;
+
+    return document().ensureStyleResolver();
 }
 
 PassRefPtr<Node> ShadowRoot::cloneNode(bool, ExceptionCode& ec)
@@ -122,15 +128,6 @@ void ShadowRoot::setResetStyleInheritance(bool value)
     }
 }
 
-void ShadowRoot::childrenChanged(const ChildChange& change)
-{
-    if (isOrphan())
-        return;
-
-    ContainerNode::childrenChanged(change);
-    invalidateDistribution();
-}
-
 Ref<Node> ShadowRoot::cloneNodeInternal(Document&, CloningOperation)
 {
     RELEASE_ASSERT_NOT_REACHED();
@@ -143,5 +140,42 @@ void ShadowRoot::removeAllEventListeners()
     for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
 }
+
+#if ENABLE(SHADOW_DOM)
+
+HTMLSlotElement* ShadowRoot::findAssignedSlot(const Node& node)
+{
+    if (!m_slotAssignments)
+        return nullptr;
+    return m_slotAssignments->findAssignedSlot(node, *this);
+}
+
+void ShadowRoot::addSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
+{
+    if (!m_slotAssignments)
+        m_slotAssignments = std::make_unique<SlotAssignment>();
+
+    return m_slotAssignments->addSlotElementByName(name, slot);
+}
+
+void ShadowRoot::removeSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
+{
+    return m_slotAssignments->removeSlotElementByName(name, slot);
+}
+
+void ShadowRoot::invalidateSlotAssignments()
+{
+    if (m_slotAssignments)
+        m_slotAssignments->invalidate();
+}
+
+const Vector<Node*>* ShadowRoot::assignedNodesForSlot(const HTMLSlotElement& slot)
+{
+    if (!m_slotAssignments)
+        return nullptr;
+    return m_slotAssignments->assignedNodesForSlot(slot, *this);
+}
+
+#endif
 
 }

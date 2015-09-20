@@ -392,9 +392,9 @@ public:
         return OBJECT_OFFSETOF(VM, m_exception);
     }
 
-    static ptrdiff_t callFrameForThrowOffset()
+    static ptrdiff_t callFrameForCatchOffset()
     {
-        return OBJECT_OFFSETOF(VM, callFrameForThrow);
+        return OBJECT_OFFSETOF(VM, callFrameForCatch);
     }
 
     static ptrdiff_t targetMachinePCForThrowOffset()
@@ -402,14 +402,12 @@ public:
         return OBJECT_OFFSETOF(VM, targetMachinePCForThrow);
     }
 
+    void restorePreviousException(Exception* exception) { setException(exception); }
+
     void clearException() { m_exception = nullptr; }
     void clearLastException() { m_lastException = nullptr; }
 
-    void setException(Exception* exception)
-    {
-        m_exception = exception;
-        m_lastException = exception;
-    }
+    ExecState** addressOfCallFrameForCatch() { return &callFrameForCatch; }
 
     Exception* exception() const { return m_exception; }
     JSCell** addressOfException() { return reinterpret_cast<JSCell**>(&m_exception); }
@@ -456,7 +454,7 @@ public:
     JSValue hostCallReturnValue;
     unsigned varargsLength;
     ExecState* newCallFrameReturnValue;
-    ExecState* callFrameForThrow;
+    ExecState* callFrameForCatch;
     void* targetMachinePCForThrow;
     Instruction* targetInterpreterPCForThrow;
     uint32_t osrExitIndex;
@@ -588,6 +586,12 @@ private:
     void createNativeThunk();
 
     void updateStackLimit();
+
+    void setException(Exception* exception)
+    {
+        m_exception = exception;
+        m_lastException = exception;
+    }
 
 #if ENABLE(ASSEMBLER)
     bool m_canUseAssembler;

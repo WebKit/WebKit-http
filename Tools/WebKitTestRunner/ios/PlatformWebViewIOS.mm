@@ -55,9 +55,10 @@
 
     return self;
 }
+
 - (BOOL)isKeyWindow
 {
-    return _platformWebView ? _platformWebView->windowIsKey() : YES;
+    return [super isKeyWindow] && (_platformWebView ? _platformWebView->windowIsKey() : YES);
 }
 
 - (void)setFrameOrigin:(CGPoint)point
@@ -100,19 +101,32 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const ViewOptions& options)
+PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const TestOptions& options)
     : m_windowIsKey(true)
     , m_options(options)
 {
     CGRect rect = CGRectMake(0, 0, TestController::viewWidth, TestController::viewHeight);
     m_view = [[WKWebView alloc] initWithFrame:rect configuration:configuration];
 
-    CGRect windowRect = rect;
-    m_window = [[WebKitTestRunnerWindow alloc] initWithFrame:windowRect];
+    m_window = [[WebKitTestRunnerWindow alloc] initWithFrame:rect];
     m_window.platformWebView = this;
 
     [m_window addSubview:m_view];
     [m_window makeKeyAndVisible];
+}
+
+PlatformWebView::~PlatformWebView()
+{
+    m_window.platformWebView = nil;
+    [m_view release];
+    [m_window release];
+}
+
+void PlatformWebView::setWindowIsKey(bool isKey)
+{
+    m_windowIsKey = isKey;
+    if (isKey)
+        [m_window makeKeyWindow];
 }
 
 void PlatformWebView::resizeTo(unsigned width, unsigned height)
@@ -121,13 +135,6 @@ void PlatformWebView::resizeTo(unsigned width, unsigned height)
     frame.size.width = width;
     frame.size.height = height;
     setWindowFrame(frame);
-}
-
-PlatformWebView::~PlatformWebView()
-{
-    m_window.platformWebView = 0;
-    [m_view release];
-    [m_window release];
 }
 
 WKPageRef PlatformWebView::page()
@@ -202,8 +209,11 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     return nullptr;
 }
 
-bool PlatformWebView::viewSupportsOptions(const ViewOptions& options) const
+bool PlatformWebView::viewSupportsOptions(const TestOptions& options) const
 {
+    if (m_options.overrideLanguages != options.overrideLanguages)
+        return false;
+
     return true;
 }
 

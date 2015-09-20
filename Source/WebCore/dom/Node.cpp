@@ -45,6 +45,7 @@
 #include "HTMLCollection.h"
 #include "HTMLElement.h"
 #include "HTMLImageElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
 #include "InsertionPoint.h"
 #include "InspectorController.h"
@@ -560,12 +561,15 @@ void Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode&
     auto viableNextSibling = firstFollowingSiblingNotInNodeSet(*this, nodeSet);
 
     auto node = convertNodesOrStringsIntoNode(*this, WTF::move(nodeOrStringVector), ec);
-    if (ec || !node)
+    if (ec)
         return;
 
-    if (parentNode() == parent)
-        parent->replaceChild(node.releaseNonNull(), *this, ec);
-    else
+    if (parentNode() == parent) {
+        if (node)
+            parent->replaceChild(node.releaseNonNull(), *this, ec);
+        else
+            parent->removeChild(*this);
+    } else if (node)
         parent->insertBefore(node.releaseNonNull(), viableNextSibling.get(), ec);
 }
 
@@ -620,7 +624,7 @@ void Node::normalize()
 
             // Both non-empty text nodes. Merge them.
             unsigned offset = text->length();
-            text->appendData(nextText->data(), IGNORE_EXCEPTION);
+            text->appendData(nextText->data());
             document().textNodesMerged(nextText.get(), offset);
             nextText->remove(IGNORE_EXCEPTION);
         }
@@ -1068,10 +1072,25 @@ ShadowRoot* Node::containingShadowRoot() const
     return is<ShadowRoot>(root) ? downcast<ShadowRoot>(&root) : nullptr;
 }
 
+#if ENABLE(SHADOW_DOM)
+HTMLSlotElement* Node::assignedSlot() const
+{
+    auto* parent = parentElement();
+    if (!parent)
+        return nullptr;
+
+    auto* shadowRoot = parent->shadowRoot();
+    if (!shadowRoot || shadowRoot->type() != ShadowRoot::Type::Open)
+        return nullptr;
+
+    return shadowRoot->findAssignedSlot(*this);
+}
+#endif
+
 bool Node::isInUserAgentShadowTree() const
 {
     auto* shadowRoot = containingShadowRoot();
-    return shadowRoot && shadowRoot->type() == ShadowRoot::UserAgentShadowRoot;
+    return shadowRoot && shadowRoot->type() == ShadowRoot::Type::UserAgent;
 }
 
 Node* Node::nonBoundaryShadowTreeRootNode()
@@ -1162,7 +1181,7 @@ Document* Node::ownerDocument() const
 
 URL Node::baseURI() const
 {
-    return parentNode() ? parentNode()->baseURI() : URL();
+    return document().baseURL();
 }
 
 bool Node::isEqualNode(Node* other) const
@@ -1252,7 +1271,6 @@ bool Node::isDefaultNamespace(const AtomicString& namespaceURIMaybeEmpty) const
             if (Element* documentElement = downcast<Document>(*this).documentElement())
                 return documentElement->isDefaultNamespace(namespaceURI);
             return false;
-        case ENTITY_NODE:
         case DOCUMENT_TYPE_NODE:
         case DOCUMENT_FRAGMENT_NODE:
             return false;
@@ -1284,7 +1302,6 @@ String Node::lookupPrefix(const AtomicString &namespaceURI) const
             if (Element* documentElement = downcast<Document>(*this).documentElement())
                 return documentElement->lookupPrefix(namespaceURI);
             return String();
-        case ENTITY_NODE:
         case DOCUMENT_FRAGMENT_NODE:
         case DOCUMENT_TYPE_NODE:
             return String();
@@ -1341,7 +1358,6 @@ String Node::lookupNamespaceURI(const String &prefix) const
             if (Element* documentElement = downcast<Document>(*this).documentElement())
                 return documentElement->lookupNamespaceURI(prefix);
             return String();
-        case ENTITY_NODE:
         case DOCUMENT_TYPE_NODE:
         case DOCUMENT_FRAGMENT_NODE:
             return String();
@@ -1406,7 +1422,6 @@ static void appendTextContent(const Node* node, bool convertBRsToNewlines, bool&
         }
         FALLTHROUGH;
     case Node::ATTRIBUTE_NODE:
-    case Node::ENTITY_NODE:
     case Node::ENTITY_REFERENCE_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
         isNullString = false;
@@ -1443,7 +1458,6 @@ void Node::setTextContent(const String& text, ExceptionCode& ec)
             return;
         case ELEMENT_NODE:
         case ATTRIBUTE_NODE:
-        case ENTITY_NODE:
         case ENTITY_REFERENCE_NODE:
         case DOCUMENT_FRAGMENT_NODE: {
             Ref<ContainerNode> container(downcast<ContainerNode>(*this));

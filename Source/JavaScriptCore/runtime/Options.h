@@ -118,7 +118,7 @@ typedef const char* optionString;
     v(bool, crashIfCantAllocateJITMemory, false, nullptr) \
     v(unsigned, jitMemoryReservationSize, 0, nullptr) \
     \
-    v(bool, forceDFGCodeBlockLiveness, false, nullptr) \
+    v(bool, forceCodeBlockLiveness, false, nullptr) \
     v(bool, forceICFailure, false, nullptr) \
     \
     v(bool, dumpGeneratedBytecodes, false, nullptr) \
@@ -128,7 +128,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, enableFunctionDotArguments, true, nullptr) \
-    v(bool, enableTailCalls, true, nullptr) \
+    v(bool, enableTailCalls, false, nullptr) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \

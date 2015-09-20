@@ -212,6 +212,7 @@ WebInspector.contentLoaded = function()
 
     this.tabBar = new WebInspector.TabBar(document.getElementById("tab-bar"));
     this.tabBar.addEventListener(WebInspector.TabBar.Event.NewTabItemClicked, this._newTabItemClicked, this);
+    this.tabBar.addEventListener(WebInspector.TabBar.Event.OpenDefaultTab, this._openDefaultTab, this);
 
     var contentElement = document.getElementById("content");
     contentElement.setAttribute("role", "main");
@@ -237,6 +238,9 @@ WebInspector.contentLoaded = function()
     this.detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
 
     this.searchKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "F", this._focusSearchField.bind(this));
+    this._findKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "F", this._find.bind(this));
+    this._saveKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "S", this._save.bind(this));
+    this._saveAsKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Shift | WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "S", this._saveAs.bind(this));
 
     this.navigationSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "0", this.toggleNavigationSidebar.bind(this));
     this.detailsSidebarKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Option, "0", this.toggleDetailsSidebar.bind(this));
@@ -371,6 +375,9 @@ WebInspector.contentLoaded = function()
     if (!this.tabBar.selectedTabBarItem)
         this.tabBar.selectedTabBarItem = 0;
 
+    if (!this.tabBar.hasNormalTab())
+        this.showNewTabTab();
+
     // Listen to the events after restoring the saved tabs to avoid recursion.
     this.tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemAdded, this._rememberOpenTabs, this);
     this.tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemRemoved, this._rememberOpenTabs, this);
@@ -469,10 +476,21 @@ WebInspector._updateNewTabButtonState = function(event)
 
 WebInspector._newTabItemClicked = function(event)
 {
+    const shouldAnimate = true;
+    this.showNewTabTab(shouldAnimate);
+};
+
+WebInspector._openDefaultTab = function(event)
+{
+    this.showNewTabTab();
+};
+
+WebInspector.showNewTabTab = function(shouldAnimate)
+{
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.NewTabContentView);
     if (!tabContentView)
         tabContentView = new WebInspector.NewTabContentView;
-    this.tabBrowser.showTabForContentView(tabContentView);
+    this.tabBrowser.showTabForContentView(tabContentView, !shouldAnimate);
 };
 
 WebInspector.isNewTabWithTypeAllowed = function(tabType)
@@ -492,20 +510,24 @@ WebInspector.isNewTabWithTypeAllowed = function(tabType)
     return true;
 };
 
-WebInspector.createNewTab = function(tabType, newTabContentViewToReplace)
+WebInspector.createNewTabWithType = function(tabType, options = {})
 {
     console.assert(this.isNewTabWithTypeAllowed(tabType));
 
-    var tabContentView = this._tabContentViewForType(tabType);
+    let {referencedView, shouldReplaceTab, shouldShowNewTab} = options;
+    console.assert(!referencedView || referencedView instanceof WebInspector.TabContentView, referencedView);
+    console.assert(!shouldReplaceTab || referencedView, "Must provide a reference view to replace a tab.");
 
-    if (newTabContentViewToReplace) {
-        var insertionIndex = this.tabBar.tabBarItems.indexOf(newTabContentViewToReplace.tabBarItem);
-        this.tabBrowser.closeTabForContentView(newTabContentViewToReplace, true);
-        this.tabBrowser.showTabForContentView(tabContentView, true, insertionIndex);
-        return;
-    }
+    let tabContentView = this._tabContentViewForType(tabType);
+    const suppressAnimations = true;
+    let insertionIndex = referencedView ? this.tabBar.tabBarItems.indexOf(referencedView.tabBarItem) : undefined;
+    this.tabBrowser.addTabForContentView(tabContentView, suppressAnimations, insertionIndex);
 
-    this.tabBrowser.showTabForContentView(tabContentView);
+    if (shouldReplaceTab)
+        this.tabBrowser.closeTabForContentView(referencedView, suppressAnimations);
+
+    if (shouldShowNewTab)
+        this.tabBrowser.showTabForContentView(tabContentView);
 };
 
 WebInspector.activateExtraDomains = function(domains)
@@ -1090,8 +1112,15 @@ WebInspector._focusChanged = function(event)
     // a caret selection inside. This is needed (at least) to remove caret from console when focus is moved.
     // The selection change should not apply to text fields and text areas either.
 
-    if (WebInspector.isEventTargetAnEditableField(event))
+    if (WebInspector.isEventTargetAnEditableField(event)) {
+        // Still update the currentFocusElement if inside of a CodeMirror editor.
+        var codeMirrorEditorElement = event.target.enclosingNodeOrSelfWithClass("CodeMirror");
+        if (codeMirrorEditorElement && codeMirrorEditorElement !== this.currentFocusElement) {
+            this.previousFocusElement = this.currentFocusElement;
+            this.currentFocusElement = codeMirrorEditorElement;
+        }
         return;
+    }
 
     var selection = window.getSelection();
     if (!selection.isCollapsed)
@@ -1637,17 +1666,61 @@ WebInspector._focusConsolePrompt = function(event)
     this.quickConsole.prompt.focus();
 };
 
+WebInspector._focusedContentBrowser = function()
+{
+    if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
+        var tabContentView = this.tabBrowser.selectedTabContentView;
+        if (tabContentView instanceof WebInspector.ContentBrowserTabContentView)
+            return tabContentView.contentBrowser;
+        return null;
+    }
+
+    if (this.splitContentBrowser.element.isSelfOrAncestor(this.currentFocusElement)
+        || (WebInspector.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
+        return this.splitContentBrowser;
+
+    return null;
+};
+
 WebInspector._focusedContentView = function()
 {
-    if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement)) {
+    if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
         var tabContentView = this.tabBrowser.selectedTabContentView;
         if (tabContentView instanceof WebInspector.ContentBrowserTabContentView)
             return tabContentView.contentBrowser.currentContentView;
         return tabContentView;
     }
-    if (this.splitContentBrowser.element.isSelfOrAncestor(this.currentFocusElement))
-        return  this.splitContentBrowser.currentContentView;
+
+    if (this.splitContentBrowser.element.isSelfOrAncestor(this.currentFocusElement)
+        || (WebInspector.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
+        return this.splitContentBrowser.currentContentView;
+
     return null;
+};
+
+WebInspector._focusedOrVisibleContentBrowser = function()
+{
+    let focusedContentBrowser = this._focusedContentBrowser();
+    if (focusedContentBrowser)
+        return focusedContentBrowser;
+
+    var tabContentView = this.tabBrowser.selectedTabContentView;
+    if (tabContentView instanceof WebInspector.ContentBrowserTabContentView)
+        return tabContentView.contentBrowser;
+
+    return null;
+};
+
+WebInspector._focusedOrVisibleContentView = function()
+{
+    let focusedContentView = this._focusedContentView();
+    if (focusedContentView)
+        return focusedContentView;
+
+    var tabContentView = this.tabBrowser.selectedTabContentView;
+    if (tabContentView instanceof WebInspector.ContentBrowserTabContentView)
+        return tabContentView.contentBrowser.currentContentView;
+    return tabContentView;
 };
 
 WebInspector._beforecopy = function(event)
@@ -1677,6 +1750,33 @@ WebInspector._beforecopy = function(event)
 
     // Say we can handle it (by preventing default) to remove word break characters.
     event.preventDefault();
+};
+
+WebInspector._find = function(event)
+{
+    var contentBrowser = this._focusedOrVisibleContentBrowser();
+    if (!contentBrowser || typeof contentBrowser.handleFindEvent !== "function")
+        return;
+    
+    contentBrowser.handleFindEvent(event);
+};
+
+WebInspector._save = function(event)
+{
+    var contentView = this._focusedOrVisibleContentView();
+    if (!contentView || !contentView.supportsSave)
+        return;
+
+    WebInspector.saveDataToFile(contentView.saveData);
+};
+
+WebInspector._saveAs = function(event)
+{
+    var contentView = this._focusedOrVisibleContentView();
+    if (!contentView || !contentView.supportsSave)
+        return;
+
+    WebInspector.saveDataToFile(contentView.saveData, true);
 };
 
 WebInspector._copy = function(event)

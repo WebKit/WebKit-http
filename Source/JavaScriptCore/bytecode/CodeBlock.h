@@ -126,7 +126,6 @@ public:
     static ptrdiff_t offsetOfNumParameters() { return OBJECT_OFFSETOF(CodeBlock, m_numParameters); }
 
     CodeBlock* alternative() { return m_alternative.get(); }
-    PassRefPtr<CodeBlock> releaseAlternative() { return m_alternative.release(); }
     void setAlternative(PassRefPtr<CodeBlock> alternative) { m_alternative = alternative; }
 
     template <typename Functor> void forEachRelatedCodeBlock(Functor&& functor)
@@ -196,6 +195,7 @@ public:
         AnyHandler
     };
     HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
+    HandlerInfo* handlerForIndex(unsigned, RequiredHandler = RequiredHandler::AnyHandler);
     unsigned lineNumberForBytecodeOffset(unsigned bytecodeOffset);
     unsigned columnNumberForBytecodeOffset(unsigned bytecodeOffset);
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
@@ -265,9 +265,6 @@ public:
 
     unsigned instructionCount() const { return m_instructions.size(); }
 
-    // Exactly equivalent to codeBlock->ownerExecutable()->installCode(codeBlock);
-    void install();
-    
     // Exactly equivalent to codeBlock->ownerExecutable()->newReplacementCodeBlockFor(codeBlock->specializationKind())
     PassRefPtr<CodeBlock> newReplacement();
     
@@ -914,9 +911,23 @@ public:
         EvalCodeCache m_evalCodeCache;
     };
 
+    void clearExceptionHandlers()
+    {
+        if (m_rareData)
+            m_rareData->m_exceptionHandlers.clear();
+    }
+
+    void appendExceptionHandler(const HandlerInfo& handler)
+    {
+        createRareDataIfNecessary(); // We may be handling the exception of an inlined call frame.
+        m_rareData->m_exceptionHandlers.append(handler);
+    }
+
 protected:
     virtual void visitWeakReferences(SlotVisitor&) override;
     virtual void finalizeUnconditionally() override;
+    void finalizeLLIntInlineCaches();
+    void finalizeBaselineJITInlineCaches();
 
 #if ENABLE(DFG_JIT)
     void tallyFrequentExitSites();
@@ -965,7 +976,7 @@ private:
     enum CacheDumpMode { DumpCaches, DontDumpCaches };
     void printCallOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op, CacheDumpMode, bool& hasPrintedProfiling, const CallLinkInfoMap&);
     void printPutByIdOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op);
-    void printPutByIdCacheStatus(PrintStream&, ExecState*, int location, const StubInfoMap&);
+    void printPutByIdCacheStatus(PrintStream&, int location, const StubInfoMap&);
     void printLocationAndOp(PrintStream&, ExecState*, int location, const Instruction*&, const char* op);
     void printLocationOpAndRegisterOperand(PrintStream&, ExecState*, int location, const Instruction*& it, const char* op, int operand);
 
@@ -974,7 +985,9 @@ private:
     void dumpArrayProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
         
-    bool shouldImmediatelyAssumeLivenessDuringScan();
+    bool shouldVisitStrongly();
+    bool shouldJettisonDueToWeakReference();
+    bool shouldJettisonDueToOldAge();
     
     void propagateTransitions(SlotVisitor&);
     void determineLiveness(SlotVisitor&);
@@ -982,6 +995,12 @@ private:
     void stronglyVisitStrongReferences(SlotVisitor&);
     void stronglyVisitWeakReferences(SlotVisitor&);
     void visitOSRExitTargets(SlotVisitor&);
+
+    std::chrono::milliseconds timeSinceCreation()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_creationTime);
+    }
 
     void createRareDataIfNecessary()
     {
@@ -1064,7 +1083,9 @@ private:
     uint32_t m_osrExitCounter;
     uint16_t m_optimizationDelayCounter;
     uint16_t m_reoptimizationRetryCounter;
-    
+
+    std::chrono::steady_clock::time_point m_creationTime;
+
     mutable CodeBlockHash m_hash;
 
     std::unique_ptr<BytecodeLivenessAnalysis> m_livenessAnalysis;

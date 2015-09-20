@@ -240,18 +240,18 @@ EncodedJSValue JSC_HOST_CALL jsTestActiveDOMObjectPrototypeFunctionPostMessage(E
     return JSValue::encode(jsUndefined());
 }
 
-bool JSTestActiveDOMObjectOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+bool JSTestActiveDOMObjectOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
 {
-    UNUSED_PARAM(handle);
+    UNUSED_PARAM(cell);
     UNUSED_PARAM(visitor);
     return false;
 }
 
-void JSTestActiveDOMObjectOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
+void JSTestActiveDOMObjectOwner::finalize(JSC::JSCell*& cell, void* context)
 {
-    auto* jsTestActiveDOMObject = jsCast<JSTestActiveDOMObject*>(handle.slot()->asCell());
+    auto& wrapper = jsCast<JSTestActiveDOMObject&>(*cell);
     auto& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, &jsTestActiveDOMObject->impl(), jsTestActiveDOMObject);
+    uncacheWrapper(world, &wrapper.impl(), &wrapper);
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -262,6 +262,14 @@ extern "C" { extern void (*const __identifier("??_7TestActiveDOMObject@WebCore@@
 extern "C" { extern void* _ZTVN7WebCore19TestActiveDOMObjectE[]; }
 #endif
 #endif
+
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestActiveDOMObject* impl)
+{
+    if (!impl)
+        return jsNull();
+    return createNewWrapper<JSTestActiveDOMObject>(globalObject, impl);
+}
+
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestActiveDOMObject* impl)
 {
     if (!impl)

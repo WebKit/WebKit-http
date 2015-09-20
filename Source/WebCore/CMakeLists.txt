@@ -10,6 +10,8 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/gamepad/deprecated"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
+    "${WEBCORE_DIR}/Modules/indexeddb/client"
+    "${WEBCORE_DIR}/Modules/indexeddb/legacy"
     "${WEBCORE_DIR}/Modules/indieui"
     "${WEBCORE_DIR}/Modules/mediacontrols/"
     "${WEBCORE_DIR}/Modules/mediasession"
@@ -389,7 +391,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DocumentFragment.idl
     dom/DocumentType.idl
     dom/Element.idl
-    dom/Entity.idl
     dom/EntityReference.idl
     dom/ErrorEvent.idl
     dom/Event.idl
@@ -422,6 +423,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/Range.idl
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
+    dom/ShadowRoot.idl
     dom/StringCallback.idl
     dom/Text.idl
     dom/TextEvent.idl
@@ -507,6 +509,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLQuoteElement.idl
     html/HTMLScriptElement.idl
     html/HTMLSelectElement.idl
+    html/HTMLSlotElement.idl
     html/HTMLSourceElement.idl
     html/HTMLSpanElement.idl
     html/HTMLStyleElement.idl
@@ -844,13 +847,10 @@ set(WebCore_SOURCES
     Modules/indexeddb/DOMWindowIndexedDatabase.cpp
     Modules/indexeddb/IDBAny.cpp
     Modules/indexeddb/IDBCursor.cpp
-    Modules/indexeddb/IDBCursorBackend.cpp
-    Modules/indexeddb/IDBCursorBackendOperations.cpp
     Modules/indexeddb/IDBCursorWithValue.cpp
     Modules/indexeddb/IDBDatabase.cpp
-    Modules/indexeddb/IDBDatabaseBackend.cpp
-    Modules/indexeddb/IDBDatabaseCallbacksImpl.cpp
     Modules/indexeddb/IDBDatabaseException.cpp
+    Modules/indexeddb/IDBDatabaseIdentifier.cpp
     Modules/indexeddb/IDBDatabaseMetadata.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
@@ -862,14 +862,34 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBKeyRangeData.cpp
     Modules/indexeddb/IDBObjectStore.cpp
     Modules/indexeddb/IDBOpenDBRequest.cpp
-    Modules/indexeddb/IDBPendingTransactionMonitor.cpp
     Modules/indexeddb/IDBRequest.cpp
     Modules/indexeddb/IDBTransaction.cpp
-    Modules/indexeddb/IDBTransactionBackend.cpp
-    Modules/indexeddb/IDBTransactionBackendOperations.cpp
-    Modules/indexeddb/IDBTransactionCoordinator.cpp
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
+
+    Modules/indexeddb/client/IDBFactoryImpl.cpp
+    Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp
+    Modules/indexeddb/client/IDBRequestImpl.cpp
+
+    Modules/indexeddb/legacy/IDBCursorBackend.cpp
+    Modules/indexeddb/legacy/IDBCursorBackendOperations.cpp
+    Modules/indexeddb/legacy/IDBDatabaseBackend.cpp
+    Modules/indexeddb/legacy/IDBDatabaseCallbacksImpl.cpp
+    Modules/indexeddb/legacy/IDBPendingTransactionMonitor.cpp
+    Modules/indexeddb/legacy/IDBTransactionBackend.cpp
+    Modules/indexeddb/legacy/IDBTransactionBackendOperations.cpp
+    Modules/indexeddb/legacy/IDBTransactionCoordinator.cpp
+    Modules/indexeddb/legacy/LegacyAny.cpp
+    Modules/indexeddb/legacy/LegacyCursor.cpp
+    Modules/indexeddb/legacy/LegacyCursorWithValue.cpp
+    Modules/indexeddb/legacy/LegacyDatabase.cpp
+    Modules/indexeddb/legacy/LegacyFactory.cpp
+    Modules/indexeddb/legacy/LegacyIndex.cpp
+    Modules/indexeddb/legacy/LegacyObjectStore.cpp
+    Modules/indexeddb/legacy/LegacyOpenDBRequest.cpp
+    Modules/indexeddb/legacy/LegacyRequest.cpp
+    Modules/indexeddb/legacy/LegacyTransaction.cpp
+    Modules/indexeddb/legacy/LegacyVersionChangeEvent.cpp
 
     Modules/mediacontrols/MediaControlsHost.cpp
 
@@ -891,6 +911,7 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaConstraintsImpl.cpp
     Modules/mediastream/MediaDeviceInfo.cpp
     Modules/mediastream/MediaDevices.cpp
+    Modules/mediastream/MediaDevicesRequest.cpp
     Modules/mediastream/MediaSourceStates.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamCapabilities.cpp
@@ -1069,7 +1090,6 @@ set(WebCore_SOURCES
     bindings/js/JSAudioTrackListCustom.cpp
     bindings/js/JSBiquadFilterNodeCustom.cpp
     bindings/js/JSBlobCustom.cpp
-    bindings/js/JSCDATASectionCustom.cpp
     bindings/js/JSCSSRuleCustom.cpp
     bindings/js/JSCSSRuleListCustom.cpp
     bindings/js/JSCSSStyleDeclarationCustom.cpp
@@ -1101,6 +1121,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMPromise.cpp
     bindings/js/JSDOMStringListCustom.cpp
     bindings/js/JSDOMStringMapCustom.cpp
+    bindings/js/JSDOMTokenListCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
     bindings/js/JSDOMWindowShell.cpp
@@ -1184,12 +1205,9 @@ set(WebCore_SOURCES
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
-    bindings/js/JSTextCustom.cpp
     bindings/js/JSTextTrackCueCustom.cpp
     bindings/js/JSTextTrackCustom.cpp
     bindings/js/JSTextTrackListCustom.cpp
-    bindings/js/JSTouchCustom.cpp
-    bindings/js/JSTouchListCustom.cpp
     bindings/js/JSTrackCustom.cpp
     bindings/js/JSTrackEventCustom.cpp
     bindings/js/JSTreeWalkerCustom.cpp
@@ -1232,6 +1250,7 @@ set(WebCore_SOURCES
 
     bridge/jsc/BridgeJSC.cpp
 
+    contentextensions/CombinedFiltersAlphabet.cpp
     contentextensions/CombinedURLFilters.cpp
     contentextensions/CompiledContentExtension.cpp
     contentextensions/ContentExtension.cpp
@@ -1239,10 +1258,14 @@ set(WebCore_SOURCES
     contentextensions/ContentExtensionError.cpp
     contentextensions/ContentExtensionParser.cpp
     contentextensions/ContentExtensionRule.cpp
+    contentextensions/ContentExtensionStyleSheet.cpp
     contentextensions/ContentExtensionsBackend.cpp
     contentextensions/DFA.cpp
     contentextensions/DFABytecodeCompiler.cpp
     contentextensions/DFABytecodeInterpreter.cpp
+    contentextensions/DFACombiner.cpp
+    contentextensions/DFAMinimizer.cpp
+    contentextensions/DFANode.cpp
     contentextensions/NFA.cpp
     contentextensions/NFAToDFA.cpp
     contentextensions/URLFilterParser.cpp
@@ -1573,6 +1596,7 @@ set(WebCore_SOURCES
     history/HistoryItem.cpp
     history/PageCache.cpp
 
+    html/AttributeDOMTokenList.cpp
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
     html/BaseChooserOnlyDateAndTimeInputType.cpp
@@ -1581,7 +1605,6 @@ set(WebCore_SOURCES
     html/BaseTextInputType.cpp
     html/ButtonInputType.cpp
     html/CheckboxInputType.cpp
-    html/ClassList.cpp
     html/ColorInputType.cpp
     html/DOMFormData.cpp
     html/DOMSettableTokenList.cpp
@@ -1705,7 +1728,6 @@ set(WebCore_SOURCES
     html/RadioInputType.cpp
     html/RadioNodeList.cpp
     html/RangeInputType.cpp
-    html/RelList.cpp
     html/ResetInputType.cpp
     html/RubyElement.cpp
     html/RubyTextElement.cpp
@@ -2021,6 +2043,7 @@ set(WebCore_SOURCES
     page/animation/ImplicitAnimation.cpp
     page/animation/KeyframeAnimation.cpp
 
+    page/scrolling/AxisScrollSnapOffsets.cpp
     page/scrolling/ScrollLatchingState.cpp
     page/scrolling/ScrollingConstraints.cpp
     page/scrolling/ScrollingCoordinator.cpp
@@ -2031,6 +2054,13 @@ set(WebCore_SOURCES
     page/scrolling/ScrollingStateScrollingNode.cpp
     page/scrolling/ScrollingStateStickyNode.cpp
     page/scrolling/ScrollingStateTree.cpp
+    page/scrolling/ScrollingThread.cpp
+    page/scrolling/ScrollingTree.cpp
+    page/scrolling/ScrollingTreeFrameScrollingNode.cpp
+    page/scrolling/ScrollingTreeNode.cpp
+    page/scrolling/ScrollingTreeOverflowScrollingNode.cpp
+    page/scrolling/ScrollingTreeScrollingNode.cpp
+    page/scrolling/ThreadedScrollingTree.cpp
 
     platform/CalculationValue.cpp
     platform/Clock.cpp
@@ -2228,7 +2258,6 @@ set(WebCore_SOURCES
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
-    platform/mediastream/MediaDevicesPrivate.cpp
     platform/mediastream/MediaStreamPrivate.cpp
     platform/mediastream/MediaStreamTrackPrivate.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
@@ -2566,7 +2595,6 @@ set(WebCore_SOURCES
     style/StyleResolveForDocument.cpp
     style/StyleResolveTree.cpp
 
-    svg/ColorDistance.cpp
     svg/SVGAElement.cpp
     svg/SVGAltGlyphDefElement.cpp
     svg/SVGAltGlyphElement.cpp

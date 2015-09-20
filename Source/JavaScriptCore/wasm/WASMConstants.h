@@ -170,6 +170,42 @@ enum class WASMOpExpressionI32WithImmediate : uint8_t {
     NumberOfWASMOpExpressionI32WithImmediates
 };
 
+enum class WASMOpExpressionF32 : uint8_t {
+    ConstantPoolIndex,
+    Immediate,
+    GetLocal,
+    GetGlobal,
+    SetLocal,
+    SetGlobal,
+    Load,
+    LoadWithOffset,
+    Store,
+    StoreWithOffset,
+    CallInternal,
+    CallIndirect,
+    Conditional,
+    Comma,
+    FromS32,
+    FromU32,
+    FromF64,
+    Negate,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Abs,
+    Ceil,
+    Floor,
+    Sqrt,
+    NumberOfWASMOpExpressionF32s
+};
+
+enum class WASMOpExpressionF32WithImmediate : uint8_t {
+    ConstantPoolIndex,
+    GetLocal,
+    NumberOfWASMOpExpressionF32WithImmediates
+};
+
 enum class WASMOpExpressionF64 : uint8_t {
     ConstantPoolIndex,
     Immediate,
@@ -247,6 +283,24 @@ enum class WASMExportFormat : uint8_t {
     Record,
     NumberOfExportFormats
 };
+
+enum class WASMTypeConversion {
+    ConvertSigned,
+    ConvertUnsigned,
+    Promote,
+    Demote,
+};
+
+enum class WASMMemoryType {
+    I8,
+    I16,
+    I32,
+    F32,
+    F64
+};
+
+enum class MemoryAccessOffsetMode { NoOffset, WithOffset };
+enum class MemoryAccessConversion { NoConversion, SignExtend, ZeroExtend };
 
 static const uint8_t hasImmediateInOpFlag = 0x80;
 

@@ -28,17 +28,20 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "JSCJSValueInlines.h"
 #include "JSWASMModule.h"
 #include "WASMFunctionCompiler.h"
 #include "WASMFunctionSyntaxChecker.h"
 
 #define PROPAGATE_ERROR() do { if (!m_errorMessage.isNull()) return 0; } while (0)
 #define FAIL_WITH_MESSAGE(errorMessage) do {  m_errorMessage = errorMessage; return 0; } while (0)
+#define READ_FLOAT_OR_FAIL(result, errorMessage) do { if (!m_reader.readFloat(result)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_DOUBLE_OR_FAIL(result, errorMessage) do { if (!m_reader.readDouble(result)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_COMPACT_INT32_OR_FAIL(result, errorMessage) do { if (!m_reader.readCompactInt32(result)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_COMPACT_UINT32_OR_FAIL(result, errorMessage) do { if (!m_reader.readCompactUInt32(result)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_OP_STATEMENT_OR_FAIL(hasImmediate, op, opWithImmediate, immediate, errorMessage) do { if (!m_reader.readOpStatement(hasImmediate, op, opWithImmediate, immediate)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_OP_EXPRESSION_I32_OR_FAIL(hasImmediate, op, opWithImmediate, immediate, errorMessage) do { if (!m_reader.readOpExpressionI32(hasImmediate, op, opWithImmediate, immediate)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
+#define READ_OP_EXPRESSION_F32_OR_FAIL(hasImmediate, op, opWithImmediate, immediate, errorMessage) do { if (!m_reader.readOpExpressionF32(hasImmediate, op, opWithImmediate, immediate)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_OP_EXPRESSION_F64_OR_FAIL(hasImmediate, op, opWithImmediate, immediate, errorMessage) do { if (!m_reader.readOpExpressionF64(hasImmediate, op, opWithImmediate, immediate)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_VARIABLE_TYPES_OR_FAIL(hasImmediate, variableTypes, variableTypesWithImmediate, immediate, errorMessage) do { if (!m_reader.readVariableTypes(hasImmediate, variableTypes, variableTypesWithImmediate, immediate)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
 #define READ_SWITCH_CASE_OR_FAIL(result, errorMessage) do { if (!m_reader.readSwitchCase(result)) FAIL_WITH_MESSAGE(errorMessage); } while (0)
@@ -47,6 +50,20 @@
 #define UNUSED 0
 
 namespace JSC {
+
+static String nameOfType(WASMType type)
+{
+    switch (type) {
+    case WASMType::I32:
+        return "int32";
+    case WASMType::F32:
+        return "float32";
+    case WASMType::F64:
+        return "float64";
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
 
 bool WASMFunctionParser::checkSyntax(JSWASMModule* module, const SourceCode& source, size_t functionIndex, unsigned startOffsetInSource, unsigned& endOffsetInSource, unsigned& stackHeight, String& errorMessage)
 {
@@ -140,6 +157,36 @@ ContextStatement WASMFunctionParser::parseStatement(Context& context)
         case WASMOpStatement::SetGlobal:
             parseSetGlobalStatement(context);
             break;
+        case WASMOpStatement::I32Store8:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::NoOffset);
+            break;
+        case WASMOpStatement::I32StoreWithOffset8:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::WithOffset);
+            break;
+        case WASMOpStatement::I32Store16:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::NoOffset);
+            break;
+        case WASMOpStatement::I32StoreWithOffset16:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::WithOffset);
+            break;
+        case WASMOpStatement::I32Store32:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I32, MemoryAccessOffsetMode::NoOffset);
+            break;
+        case WASMOpStatement::I32StoreWithOffset32:
+            parseStore(context, WASMExpressionType::I32, WASMMemoryType::I32, MemoryAccessOffsetMode::WithOffset);
+            break;
+        case WASMOpStatement::F32Store:
+            parseStore(context, WASMExpressionType::F32, WASMMemoryType::F32, MemoryAccessOffsetMode::NoOffset);
+            break;
+        case WASMOpStatement::F32StoreWithOffset:
+            parseStore(context, WASMExpressionType::F32, WASMMemoryType::F32, MemoryAccessOffsetMode::WithOffset);
+            break;
+        case WASMOpStatement::F64Store:
+            parseStore(context, WASMExpressionType::F64, WASMMemoryType::F64, MemoryAccessOffsetMode::NoOffset);
+            break;
+        case WASMOpStatement::F64StoreWithOffset:
+            parseStore(context, WASMExpressionType::F64, WASMMemoryType::F64, MemoryAccessOffsetMode::WithOffset);
+            break;
         case WASMOpStatement::Return:
             parseReturnStatement(context);
             break;
@@ -176,16 +223,6 @@ ContextStatement WASMFunctionParser::parseStatement(Context& context)
         case WASMOpStatement::Switch:
             parseSwitchStatement(context);
             break;
-        case WASMOpStatement::I32Store8:
-        case WASMOpStatement::I32StoreWithOffset8:
-        case WASMOpStatement::I32Store16:
-        case WASMOpStatement::I32StoreWithOffset16:
-        case WASMOpStatement::I32Store32:
-        case WASMOpStatement::I32StoreWithOffset32:
-        case WASMOpStatement::F32Store:
-        case WASMOpStatement::F32StoreWithOffset:
-        case WASMOpStatement::F64Store:
-        case WASMOpStatement::F64StoreWithOffset:
         case WASMOpStatement::CallInternal:
         case WASMOpStatement::CallIndirect:
         case WASMOpStatement::CallImport:
@@ -494,9 +531,10 @@ ContextExpression WASMFunctionParser::parseExpression(Context& context, WASMExpr
     switch (expressionType) {
     case WASMExpressionType::I32:
         return parseExpressionI32(context);
+    case WASMExpressionType::F32:
+        return parseExpressionF32(context);
     case WASMExpressionType::F64:
         return parseExpressionF64(context);
-    case WASMExpressionType::F32:
     case WASMExpressionType::Void:
         // FIXME: Implement these instructions.
         FAIL_WITH_MESSAGE("Unsupported instruction.");
@@ -521,11 +559,39 @@ ContextExpression WASMFunctionParser::parseExpressionI32(Context& context)
         case WASMOpExpressionI32::Immediate:
             return parseImmediateExpressionI32(context);
         case WASMOpExpressionI32::GetLocal:
-            return parseGetLocalExpressionI32(context);
+            return parseGetLocalExpression(context, WASMType::I32);
         case WASMOpExpressionI32::GetGlobal:
-            return parseGetGlobalExpressionI32(context);
+            return parseGetGlobalExpression(context, WASMType::I32);
+        case WASMOpExpressionI32::SLoad8:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::NoOffset, MemoryAccessConversion::SignExtend);
+        case WASMOpExpressionI32::SLoadWithOffset8:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::WithOffset, MemoryAccessConversion::SignExtend);
+        case WASMOpExpressionI32::ULoad8:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::NoOffset, MemoryAccessConversion::ZeroExtend);
+        case WASMOpExpressionI32::ULoadWithOffset8:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I8, MemoryAccessOffsetMode::WithOffset, MemoryAccessConversion::ZeroExtend);
+        case WASMOpExpressionI32::SLoad16:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::NoOffset, MemoryAccessConversion::SignExtend);
+        case WASMOpExpressionI32::SLoadWithOffset16:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::WithOffset, MemoryAccessConversion::SignExtend);
+        case WASMOpExpressionI32::ULoad16:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::NoOffset, MemoryAccessConversion::ZeroExtend);
+        case WASMOpExpressionI32::ULoadWithOffset16:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I16, MemoryAccessOffsetMode::WithOffset, MemoryAccessConversion::ZeroExtend);
+        case WASMOpExpressionI32::Load32:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I32, MemoryAccessOffsetMode::NoOffset);
+        case WASMOpExpressionI32::LoadWithOffset32:
+            return parseLoad(context, WASMExpressionType::I32, WASMMemoryType::I32, MemoryAccessOffsetMode::WithOffset);
         case WASMOpExpressionI32::CallInternal:
-            return parseCallInternalExpressionI32(context);
+            return parseCallInternal(context, WASMExpressionType::I32);
+        case WASMOpExpressionI32::CallIndirect:
+            return parseCallIndirect(context, WASMExpressionType::I32);
+        case WASMOpExpressionI32::CallImport:
+            return parseCallImport(context, WASMExpressionType::I32);
+        case WASMOpExpressionI32::FromF32:
+            return parseConvertType(context, WASMExpressionType::F32, WASMExpressionType::I32, WASMTypeConversion::ConvertSigned);
+        case WASMOpExpressionI32::FromF64:
+            return parseConvertType(context, WASMExpressionType::F64, WASMExpressionType::I32, WASMTypeConversion::ConvertSigned);
         case WASMOpExpressionI32::Negate:
         case WASMOpExpressionI32::BitNot:
         case WASMOpExpressionI32::CountLeadingZeros:
@@ -557,6 +623,13 @@ ContextExpression WASMFunctionParser::parseExpressionI32(Context& context)
         case WASMOpExpressionI32::SGreaterThanOrEqualI32:
         case WASMOpExpressionI32::UGreaterThanOrEqualI32:
             return parseRelationalI32ExpressionI32(context, op);
+        case WASMOpExpressionI32::EqualF32:
+        case WASMOpExpressionI32::NotEqualF32:
+        case WASMOpExpressionI32::LessThanF32:
+        case WASMOpExpressionI32::LessThanOrEqualF32:
+        case WASMOpExpressionI32::GreaterThanF32:
+        case WASMOpExpressionI32::GreaterThanOrEqualF32:
+            return parseRelationalF32ExpressionI32(context, op);
         case WASMOpExpressionI32::EqualF64:
         case WASMOpExpressionI32::NotEqualF64:
         case WASMOpExpressionI32::LessThanF64:
@@ -566,34 +639,14 @@ ContextExpression WASMFunctionParser::parseExpressionI32(Context& context)
             return parseRelationalF64ExpressionI32(context, op);
         case WASMOpExpressionI32::SetLocal:
         case WASMOpExpressionI32::SetGlobal:
-        case WASMOpExpressionI32::SLoad8:
-        case WASMOpExpressionI32::SLoadWithOffset8:
-        case WASMOpExpressionI32::ULoad8:
-        case WASMOpExpressionI32::ULoadWithOffset8:
-        case WASMOpExpressionI32::SLoad16:
-        case WASMOpExpressionI32::SLoadWithOffset16:
-        case WASMOpExpressionI32::ULoad16:
-        case WASMOpExpressionI32::ULoadWithOffset16:
-        case WASMOpExpressionI32::Load32:
-        case WASMOpExpressionI32::LoadWithOffset32:
         case WASMOpExpressionI32::Store8:
         case WASMOpExpressionI32::StoreWithOffset8:
         case WASMOpExpressionI32::Store16:
         case WASMOpExpressionI32::StoreWithOffset16:
         case WASMOpExpressionI32::Store32:
         case WASMOpExpressionI32::StoreWithOffset32:
-        case WASMOpExpressionI32::CallIndirect:
-        case WASMOpExpressionI32::CallImport:
         case WASMOpExpressionI32::Conditional:
         case WASMOpExpressionI32::Comma:
-        case WASMOpExpressionI32::FromF32:
-        case WASMOpExpressionI32::FromF64:
-        case WASMOpExpressionI32::EqualF32:
-        case WASMOpExpressionI32::NotEqualF32:
-        case WASMOpExpressionI32::LessThanF32:
-        case WASMOpExpressionI32::LessThanOrEqualF32:
-        case WASMOpExpressionI32::GreaterThanF32:
-        case WASMOpExpressionI32::GreaterThanOrEqualF32:
         case WASMOpExpressionI32::SMin:
         case WASMOpExpressionI32::UMin:
         case WASMOpExpressionI32::SMax:
@@ -610,7 +663,7 @@ ContextExpression WASMFunctionParser::parseExpressionI32(Context& context)
         case WASMOpExpressionI32WithImmediate::Immediate:
             return parseImmediateExpressionI32(context, immediate);
         case WASMOpExpressionI32WithImmediate::GetLocal:
-            return parseGetLocalExpressionI32(context, immediate);
+            return parseGetLocalExpression(context, WASMType::I32, immediate);
         default:
             ASSERT_NOT_REACHED();
         }
@@ -648,38 +701,6 @@ ContextExpression WASMFunctionParser::parseImmediateExpressionI32(Context& conte
 }
 
 template <class Context>
-ContextExpression WASMFunctionParser::parseGetLocalExpressionI32(Context& context, uint32_t localIndex)
-{
-    FAIL_IF_FALSE(localIndex < m_localTypes.size(), "The local index is incorrect.");
-    FAIL_IF_FALSE(m_localTypes[localIndex] == WASMType::I32, "Expected a local of type int32.");
-    return context.buildGetLocal(localIndex, WASMType::I32);
-}
-
-template <class Context>
-ContextExpression WASMFunctionParser::parseGetLocalExpressionI32(Context& context)
-{
-    uint32_t localIndex;
-    READ_COMPACT_UINT32_OR_FAIL(localIndex, "Cannot read the local index.");
-    return parseGetLocalExpressionI32(context, localIndex);
-}
-
-template <class Context>
-ContextExpression WASMFunctionParser::parseGetGlobalExpressionI32(Context& context)
-{
-    uint32_t globalIndex;
-    READ_COMPACT_UINT32_OR_FAIL(globalIndex, "Cannot read the global index.");
-    FAIL_IF_FALSE(globalIndex < m_module->globalVariableTypes().size(), "The global index is incorrect.");
-    FAIL_IF_FALSE(m_module->globalVariableTypes()[globalIndex] == WASMType::I32, "Expected a global variable of type int32.");
-    return context.buildGetGlobal(globalIndex, WASMType::I32);
-}
-
-template <class Context>
-ContextExpression WASMFunctionParser::parseCallInternalExpressionI32(Context& context)
-{
-    return parseCallInternal(context, WASMExpressionType::I32);
-}
-
-template <class Context>
 ContextExpression WASMFunctionParser::parseUnaryExpressionI32(Context& context, WASMOpExpressionI32 op)
 {
     ContextExpression expression = parseExpressionI32(context);
@@ -708,6 +729,16 @@ ContextExpression WASMFunctionParser::parseRelationalI32ExpressionI32(Context& c
 }
 
 template <class Context>
+ContextExpression WASMFunctionParser::parseRelationalF32ExpressionI32(Context& context, WASMOpExpressionI32 op)
+{
+    ContextExpression left = parseExpressionF32(context);
+    PROPAGATE_ERROR();
+    ContextExpression right = parseExpressionF32(context);
+    PROPAGATE_ERROR();
+    return context.buildRelationalF32(left, right, op);
+}
+
+template <class Context>
 ContextExpression WASMFunctionParser::parseRelationalF64ExpressionI32(Context& context, WASMOpExpressionI32 op)
 {
     ContextExpression left = parseExpressionF64(context);
@@ -715,6 +746,114 @@ ContextExpression WASMFunctionParser::parseRelationalF64ExpressionI32(Context& c
     ContextExpression right = parseExpressionF64(context);
     PROPAGATE_ERROR();
     return context.buildRelationalF64(left, right, op);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseExpressionF32(Context& context)
+{
+    bool hasImmediate;
+    WASMOpExpressionF32 op;
+    WASMOpExpressionF32WithImmediate opWithImmediate;
+    uint8_t immediate;
+    READ_OP_EXPRESSION_F32_OR_FAIL(hasImmediate, op, opWithImmediate, immediate, "Cannot read the float32 expression opcode.");
+    if (!hasImmediate) {
+        switch (op) {
+        case WASMOpExpressionF32::ConstantPoolIndex:
+            return parseConstantPoolIndexExpressionF32(context);
+        case WASMOpExpressionF32::Immediate:
+            return parseImmediateExpressionF32(context);
+        case WASMOpExpressionF32::GetLocal:
+            return parseGetLocalExpression(context, WASMType::F32);
+        case WASMOpExpressionF32::GetGlobal:
+            return parseGetGlobalExpression(context, WASMType::F32);
+        case WASMOpExpressionF32::Load:
+            return parseLoad(context, WASMExpressionType::F32, WASMMemoryType::F32, MemoryAccessOffsetMode::NoOffset);
+        case WASMOpExpressionF32::LoadWithOffset:
+            return parseLoad(context, WASMExpressionType::F32, WASMMemoryType::F32, MemoryAccessOffsetMode::WithOffset);
+        case WASMOpExpressionF32::CallInternal:
+            return parseCallInternal(context, WASMExpressionType::F32);
+        case WASMOpExpressionF32::CallIndirect:
+            return parseCallIndirect(context, WASMExpressionType::F32);
+        case WASMOpExpressionF32::FromS32:
+            return parseConvertType(context, WASMExpressionType::I32, WASMExpressionType::F32, WASMTypeConversion::ConvertSigned);
+        case WASMOpExpressionF32::FromU32:
+            return parseConvertType(context, WASMExpressionType::I32, WASMExpressionType::F32, WASMTypeConversion::ConvertUnsigned);
+        case WASMOpExpressionF32::FromF64:
+            return parseConvertType(context, WASMExpressionType::F64, WASMExpressionType::F32, WASMTypeConversion::Demote);
+        case WASMOpExpressionF32::Negate:
+        case WASMOpExpressionF32::Abs:
+        case WASMOpExpressionF32::Ceil:
+        case WASMOpExpressionF32::Floor:
+        case WASMOpExpressionF32::Sqrt:
+            return parseUnaryExpressionF32(context, op);
+        case WASMOpExpressionF32::Add:
+        case WASMOpExpressionF32::Sub:
+        case WASMOpExpressionF32::Mul:
+        case WASMOpExpressionF32::Div:
+            return parseBinaryExpressionF32(context, op);
+        case WASMOpExpressionF32::SetLocal:
+        case WASMOpExpressionF32::SetGlobal:
+        case WASMOpExpressionF32::Store:
+        case WASMOpExpressionF32::StoreWithOffset:
+        case WASMOpExpressionF32::Conditional:
+        case WASMOpExpressionF32::Comma:
+            // FIXME: Implement these instructions.
+            FAIL_WITH_MESSAGE("Unsupported instruction.");
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    } else {
+        switch (opWithImmediate) {
+        case WASMOpExpressionF32WithImmediate::ConstantPoolIndex:
+            return parseConstantPoolIndexExpressionF32(context, immediate);
+        case WASMOpExpressionF32WithImmediate::GetLocal:
+            return parseGetLocalExpression(context, WASMType::F32, immediate);
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+    return 0;
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseConstantPoolIndexExpressionF32(Context& context, uint32_t constantIndex)
+{
+    FAIL_IF_FALSE(constantIndex < m_module->f32Constants().size(), "The constant pool index is incorrect.");
+    return context.buildImmediateF32(m_module->f32Constants()[constantIndex]);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseConstantPoolIndexExpressionF32(Context& context)
+{
+    uint32_t constantIndex;
+    READ_COMPACT_UINT32_OR_FAIL(constantIndex, "Cannot read the constant pool index.");
+    return parseConstantPoolIndexExpressionF32(context, constantIndex);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseImmediateExpressionF32(Context& context)
+{
+    float immediate;
+    READ_FLOAT_OR_FAIL(immediate, "Cannot read the immediate.");
+    return context.buildImmediateF32(immediate);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseUnaryExpressionF32(Context& context, WASMOpExpressionF32 op)
+{
+    ContextExpression expression = parseExpressionF32(context);
+    PROPAGATE_ERROR();
+    return context.buildUnaryF32(expression, op);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseBinaryExpressionF32(Context& context, WASMOpExpressionF32 op)
+{
+    ContextExpression left = parseExpressionF32(context);
+    PROPAGATE_ERROR();
+    ContextExpression right = parseExpressionF32(context);
+    PROPAGATE_ERROR();
+    return context.buildBinaryF32(left, right, op);
 }
 
 template <class Context>
@@ -732,31 +871,26 @@ ContextExpression WASMFunctionParser::parseExpressionF64(Context& context)
         case WASMOpExpressionF64::Immediate:
             return parseImmediateExpressionF64(context);
         case WASMOpExpressionF64::GetLocal:
-            return parseGetLocalExpressionF64(context);
+            return parseGetLocalExpression(context, WASMType::F64);
         case WASMOpExpressionF64::GetGlobal:
-            return parseGetGlobalExpressionF64(context);
-        case WASMOpExpressionF64::SetLocal:
-        case WASMOpExpressionF64::SetGlobal:
+            return parseGetGlobalExpression(context, WASMType::F64);
         case WASMOpExpressionF64::Load:
+            return parseLoad(context, WASMExpressionType::F64, WASMMemoryType::F64, MemoryAccessOffsetMode::NoOffset);
         case WASMOpExpressionF64::LoadWithOffset:
-        case WASMOpExpressionF64::Store:
-        case WASMOpExpressionF64::StoreWithOffset:
+            return parseLoad(context, WASMExpressionType::F64, WASMMemoryType::F64, MemoryAccessOffsetMode::WithOffset);
         case WASMOpExpressionF64::CallInternal:
-        case WASMOpExpressionF64::CallIndirect:
+            return parseCallInternal(context, WASMExpressionType::F64);
         case WASMOpExpressionF64::CallImport:
-        case WASMOpExpressionF64::Conditional:
-        case WASMOpExpressionF64::Comma:
+            return parseCallImport(context, WASMExpressionType::F64);
+        case WASMOpExpressionF64::CallIndirect:
+            return parseCallIndirect(context, WASMExpressionType::F64);
         case WASMOpExpressionF64::FromS32:
+            return parseConvertType(context, WASMExpressionType::I32, WASMExpressionType::F64, WASMTypeConversion::ConvertSigned);
         case WASMOpExpressionF64::FromU32:
+            return parseConvertType(context, WASMExpressionType::I32, WASMExpressionType::F64, WASMTypeConversion::ConvertUnsigned);
         case WASMOpExpressionF64::FromF32:
+            return parseConvertType(context, WASMExpressionType::F32, WASMExpressionType::F64, WASMTypeConversion::Promote);
         case WASMOpExpressionF64::Negate:
-        case WASMOpExpressionF64::Add:
-        case WASMOpExpressionF64::Sub:
-        case WASMOpExpressionF64::Mul:
-        case WASMOpExpressionF64::Div:
-        case WASMOpExpressionF64::Mod:
-        case WASMOpExpressionF64::Min:
-        case WASMOpExpressionF64::Max:
         case WASMOpExpressionF64::Abs:
         case WASMOpExpressionF64::Ceil:
         case WASMOpExpressionF64::Floor:
@@ -767,10 +901,25 @@ ContextExpression WASMFunctionParser::parseExpressionF64(Context& context)
         case WASMOpExpressionF64::ACos:
         case WASMOpExpressionF64::ASin:
         case WASMOpExpressionF64::ATan:
-        case WASMOpExpressionF64::ATan2:
         case WASMOpExpressionF64::Exp:
         case WASMOpExpressionF64::Ln:
+            return parseUnaryExpressionF64(context, op);
+        case WASMOpExpressionF64::Add:
+        case WASMOpExpressionF64::Sub:
+        case WASMOpExpressionF64::Mul:
+        case WASMOpExpressionF64::Div:
+        case WASMOpExpressionF64::Mod:
+        case WASMOpExpressionF64::ATan2:
         case WASMOpExpressionF64::Pow:
+            return parseBinaryExpressionF64(context, op);
+        case WASMOpExpressionF64::SetLocal:
+        case WASMOpExpressionF64::SetGlobal:
+        case WASMOpExpressionF64::Store:
+        case WASMOpExpressionF64::StoreWithOffset:
+        case WASMOpExpressionF64::Conditional:
+        case WASMOpExpressionF64::Comma:
+        case WASMOpExpressionF64::Min:
+        case WASMOpExpressionF64::Max:
             // FIXME: Implement these instructions.
             FAIL_WITH_MESSAGE("Unsupported instruction.");
         default:
@@ -781,7 +930,7 @@ ContextExpression WASMFunctionParser::parseExpressionF64(Context& context)
         case WASMOpExpressionF64WithImmediate::ConstantPoolIndex:
             return parseConstantPoolIndexExpressionF64(context, immediate);
         case WASMOpExpressionF64WithImmediate::GetLocal:
-            return parseGetLocalExpressionF64(context, immediate);
+            return parseGetLocalExpression(context, WASMType::F64, immediate);
         default:
             ASSERT_NOT_REACHED();
         }
@@ -813,29 +962,79 @@ ContextExpression WASMFunctionParser::parseImmediateExpressionF64(Context& conte
 }
 
 template <class Context>
-ContextExpression WASMFunctionParser::parseGetLocalExpressionF64(Context& context, uint32_t localIndex)
+ContextExpression WASMFunctionParser::parseUnaryExpressionF64(Context& context, WASMOpExpressionF64 op)
 {
-    FAIL_IF_FALSE(localIndex < m_localTypes.size(), "The local variable index is incorrect.");
-    FAIL_IF_FALSE(m_localTypes[localIndex] == WASMType::F64, "Expected a local variable of type float64.");
-    return context.buildGetLocal(localIndex, WASMType::F64);
+    ContextExpression expression = parseExpressionF64(context);
+    PROPAGATE_ERROR();
+    return context.buildUnaryF64(expression, op);
 }
 
 template <class Context>
-ContextExpression WASMFunctionParser::parseGetLocalExpressionF64(Context& context)
+ContextExpression WASMFunctionParser::parseBinaryExpressionF64(Context& context, WASMOpExpressionF64 op)
+{
+    ContextExpression left = parseExpressionF64(context);
+    PROPAGATE_ERROR();
+    ContextExpression right = parseExpressionF64(context);
+    PROPAGATE_ERROR();
+    return context.buildBinaryF64(left, right, op);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseGetLocalExpression(Context& context, WASMType type, uint32_t localIndex)
+{
+    FAIL_IF_FALSE(localIndex < m_localTypes.size(), "The local index is incorrect.");
+    FAIL_IF_FALSE(m_localTypes[localIndex] == type, "Expected a local of type " + nameOfType(type) + '.');
+    return context.buildGetLocal(localIndex, type);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseGetLocalExpression(Context& context, WASMType type)
 {
     uint32_t localIndex;
     READ_COMPACT_UINT32_OR_FAIL(localIndex, "Cannot read the local index.");
-    return parseGetLocalExpressionF64(context, localIndex);
+    return parseGetLocalExpression(context, type, localIndex);
 }
 
 template <class Context>
-ContextExpression WASMFunctionParser::parseGetGlobalExpressionF64(Context& context)
+ContextExpression WASMFunctionParser::parseGetGlobalExpression(Context& context, WASMType type)
 {
     uint32_t globalIndex;
     READ_COMPACT_UINT32_OR_FAIL(globalIndex, "Cannot read the global index.");
     FAIL_IF_FALSE(globalIndex < m_module->globalVariableTypes().size(), "The global index is incorrect.");
-    FAIL_IF_FALSE(m_module->globalVariableTypes()[globalIndex] == WASMType::F64, "Expected a global variable of type float64.");
-    return context.buildGetGlobal(globalIndex, WASMType::F64);
+    FAIL_IF_FALSE(m_module->globalVariableTypes()[globalIndex] == type, "Expected a global of type " + nameOfType(type) + '.');
+    return context.buildGetGlobal(globalIndex, type);
+}
+
+template <class Context>
+ContextMemoryAddress WASMFunctionParser::parseMemoryAddress(Context& context, MemoryAccessOffsetMode offsetMode)
+{
+    uint32_t offset = 0;
+    if (offsetMode == MemoryAccessOffsetMode::WithOffset)
+        READ_COMPACT_UINT32_OR_FAIL(offset, "Cannot read the address offset.");
+    ContextExpression index = parseExpressionI32(context);
+    PROPAGATE_ERROR();
+    return ContextMemoryAddress(index, offset);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseLoad(Context& context, WASMExpressionType expressionType, WASMMemoryType memoryType, MemoryAccessOffsetMode offsetMode, MemoryAccessConversion conversion)
+{
+    FAIL_IF_FALSE(m_module->arrayBuffer(), "An ArrayBuffer is not provided.");
+    const ContextMemoryAddress& memoryAddress = parseMemoryAddress(context, offsetMode);
+    PROPAGATE_ERROR();
+    return context.buildLoad(memoryAddress, expressionType, memoryType, conversion);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseStore(Context& context, WASMExpressionType expressionType, WASMMemoryType memoryType, MemoryAccessOffsetMode offsetMode)
+{
+    FAIL_IF_FALSE(m_module->arrayBuffer(), "An ArrayBuffer is not provided.");
+    const ContextMemoryAddress& memoryAddress = parseMemoryAddress(context, offsetMode);
+    PROPAGATE_ERROR();
+
+    ContextExpression value = parseExpression(context, expressionType);
+    PROPAGATE_ERROR();
+    return context.buildStore(memoryAddress, expressionType, memoryType, value);
 }
 
 template <class Context>
@@ -862,6 +1061,48 @@ ContextExpression WASMFunctionParser::parseCallInternal(Context& context, WASMEx
     ContextExpressionList argumentList = parseCallArguments(context, signature.arguments);
     PROPAGATE_ERROR();
     return context.buildCallInternal(functionIndex, argumentList, signature, returnType);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseCallIndirect(Context& context, WASMExpressionType returnType)
+{
+    uint32_t functionPointerTableIndex;
+    READ_COMPACT_UINT32_OR_FAIL(functionPointerTableIndex, "Cannot read the function pointer table index.");
+    FAIL_IF_FALSE(functionPointerTableIndex < m_module->functionPointerTables().size(), "The function pointer table index is incorrect.");
+    const WASMFunctionPointerTable& functionPointerTable = m_module->functionPointerTables()[functionPointerTableIndex];
+    const WASMSignature& signature = m_module->signatures()[functionPointerTable.signatureIndex];
+    FAIL_IF_FALSE(signature.returnType == returnType, "Wrong return type.");
+
+    ContextExpression index = parseExpressionI32(context);
+    PROPAGATE_ERROR();
+
+    ContextExpressionList argumentList = parseCallArguments(context, signature.arguments);
+    PROPAGATE_ERROR();
+    return context.buildCallIndirect(functionPointerTableIndex, index, argumentList, signature, returnType);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseCallImport(Context& context, WASMExpressionType returnType)
+{
+    uint32_t functionImportSignatureIndex;
+    READ_COMPACT_UINT32_OR_FAIL(functionImportSignatureIndex, "Cannot read the function import signature index.");
+    FAIL_IF_FALSE(functionImportSignatureIndex < m_module->functionImportSignatures().size(), "The function import signature index is incorrect.");
+    const WASMFunctionImportSignature& functionImportSignature = m_module->functionImportSignatures()[functionImportSignatureIndex];
+    const WASMSignature& signature = m_module->signatures()[functionImportSignature.signatureIndex];
+    FAIL_IF_FALSE(signature.returnType == returnType, "Wrong return type.");
+
+    ContextExpressionList argumentList = parseCallArguments(context, signature.arguments);
+    PROPAGATE_ERROR();
+    return context.buildCallImport(functionImportSignature.functionImportIndex, argumentList, signature, returnType);
+}
+
+template <class Context>
+ContextExpression WASMFunctionParser::parseConvertType(Context& context, WASMExpressionType fromType, WASMExpressionType toType, WASMTypeConversion conversion)
+{
+    ContextExpression expression = parseExpression(context, fromType);
+    PROPAGATE_ERROR();
+
+    return context.buildConvertType(expression, fromType, toType, conversion);
 }
 
 } // namespace JSC

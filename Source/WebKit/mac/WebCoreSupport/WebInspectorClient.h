@@ -51,12 +51,11 @@ class WebInspectorFrontendClient;
 
 class WebInspectorClient : public WebCore::InspectorClient, public Inspector::FrontendChannel {
 public:
-    explicit WebInspectorClient(WebView *);
+    explicit WebInspectorClient(WebView *inspectedWebView);
 
-    virtual void inspectorDestroyed() override;
+    virtual void inspectedPageDestroyed() override;
 
-    virtual Inspector::FrontendChannel* openInspectorFrontend(WebCore::InspectorController*) override;
-    virtual void closeInspectorFrontend() override;
+    virtual Inspector::FrontendChannel* openLocalFrontend(WebCore::InspectorController*) override;
     virtual void bringFrontendToFront() override;
     virtual void didResizeMainFrame(WebCore::Frame*) override;
 
@@ -92,9 +91,9 @@ public:
 private:
     std::unique_ptr<WebCore::InspectorFrontendClientLocal::Settings> createFrontendSettings();
 
-    WebView *m_webView;
+    WebView *m_inspectedWebView { nullptr };
     RetainPtr<WebNodeHighlighter> m_highlighter;
-    WebCore::Page* m_frontendPage;
+    WebCore::Page* m_frontendPage { nullptr };
     std::unique_ptr<WebInspectorFrontendClient> m_frontendClient;
 };
 
@@ -114,7 +113,6 @@ public:
 
     virtual void bringToFront() override;
     virtual void closeWindow() override;
-    void disconnectFromBackend();
 
     virtual void attachWindow(DockSide) override;
     virtual void detachWindow() override;
@@ -133,8 +131,8 @@ private:
     virtual void append(const String& url, const String& content) override;
 
 #if !PLATFORM(IOS)
-    WebView* m_inspectedWebView;
-    RetainPtr<WebInspectorWindowController> m_windowController;
+    WebView *m_inspectedWebView;
+    RetainPtr<WebInspectorWindowController> m_frontendWindowController;
     String m_inspectedURL;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
 #endif

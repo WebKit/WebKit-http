@@ -44,6 +44,7 @@
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
 #include "PreciseJumpTargets.h"
+#include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
 #include "StackAlignment.h"
 #include "StringConstructor.h"
@@ -433,7 +434,6 @@ private:
         m_currentBlock->variablesAtTail.local(local) = node;
         return node;
     }
-
     Node* setLocal(const CodeOrigin& semanticOrigin, VirtualRegister operand, Node* value, SetMode setMode = NormalSet)
     {
         CodeOrigin oldSemanticOrigin = m_currentSemanticOrigin;
@@ -740,7 +740,10 @@ private:
         SpeculatedType prediction)
     {
         addVarArgChild(callee);
-        size_t parameterSlots = JSStack::CallFrameHeaderSize - JSStack::CallerFrameAndPCSize + argCount;
+        size_t frameSize = JSStack::CallFrameHeaderSize + argCount;
+        size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+        size_t parameterSlots = alignedFrameSize - JSStack::CallerFrameAndPCSize;
+
         if (parameterSlots > m_parameterSlots)
             m_parameterSlots = parameterSlots;
 
@@ -3513,7 +3516,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_get_by_id:
-        case op_get_by_id_out_of_line:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             
@@ -3531,16 +3533,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
             NEXT_OPCODE(op_get_by_id);
         }
-        case op_put_by_id:
-        case op_put_by_id_out_of_line:
-        case op_put_by_id_transition_direct:
-        case op_put_by_id_transition_normal:
-        case op_put_by_id_transition_direct_out_of_line:
-        case op_put_by_id_transition_normal_out_of_line: {
+        case op_put_by_id: {
             Node* value = get(VirtualRegister(currentInstruction[3].u.operand));
             Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
-            bool direct = currentInstruction[8].u.operand;
+            bool direct = currentInstruction[8].u.putByIdFlags & PutByIdIsDirect;
 
             PutByIdStatus putByIdStatus = PutByIdStatus::computeFor(
                 m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
@@ -3782,6 +3779,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             flushForTerminal();
             addToGraph(Unreachable);
             LAST_OPCODE(op_throw_static_error);
+
+        case op_catch:
+            m_graph.m_hasExceptionHandlers = true;
+            NEXT_OPCODE(op_catch);
             
         case op_call:
             handleCall(currentInstruction, Call, CodeForCall);

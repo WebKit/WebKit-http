@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007, 2015 Apple Inc.  All rights reserved.
  * Copyright (C) 2011 Google Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,10 +46,9 @@ class InspectorClient {
 public:
     virtual ~InspectorClient() { }
 
-    virtual void inspectorDestroyed() = 0;
+    virtual void inspectedPageDestroyed() = 0;
 
-    virtual Inspector::FrontendChannel* openInspectorFrontend(InspectorController*) = 0;
-    virtual void closeInspectorFrontend() = 0;
+    virtual Inspector::FrontendChannel* openLocalFrontend(InspectorController*) = 0;
     virtual void bringFrontendToFront() = 0;
     virtual void didResizeMainFrame(Frame*) { }
 
@@ -58,11 +57,6 @@ public:
 
     virtual void showInspectorIndication() { }
     virtual void hideInspectorIndication() { }
-
-    virtual bool canClearBrowserCache() { return false; }
-    virtual void clearBrowserCache() { }
-    virtual bool canClearBrowserCookies() { return false; }
-    virtual void clearBrowserCookies() { }
 
     virtual bool overridesShowPaintRects() const { return false; }
     virtual void setShowPaintRects(bool) { }

@@ -93,11 +93,6 @@ void computeUsesForBytecodeOffset(
         return;
     }
     case op_put_by_index:
-    case op_put_by_id_transition_direct:
-    case op_put_by_id_transition_direct_out_of_line:
-    case op_put_by_id_transition_normal:
-    case op_put_by_id_transition_normal_out_of_line:
-    case op_put_by_id_out_of_line:
     case op_put_by_id:
     case op_put_to_scope:
     case op_put_to_arguments: {
@@ -134,7 +129,6 @@ void computeUsesForBytecodeOffset(
     case op_get_from_scope:
     case op_to_primitive:
     case op_get_by_id:
-    case op_get_by_id_out_of_line:
     case op_get_array_length:
     case op_typeof:
     case op_is_undefined:
@@ -197,7 +191,8 @@ void computeUsesForBytecodeOffset(
     }
     case op_has_structure_property:
     case op_construct_varargs:
-    case op_call_varargs: {
+    case op_call_varargs:
+    case op_tail_call_varargs: {
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[4].u.operand);
@@ -226,7 +221,8 @@ void computeUsesForBytecodeOffset(
     }
     case op_construct:
     case op_call_eval:
-    case op_call: {
+    case op_call:
+    case op_tail_call: {
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
         int argCount = instruction[3].u.operand;
         int registerOffset = -instruction[4].u.operand;
@@ -277,11 +273,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_switch_char:
     case op_switch_string:
     case op_put_by_id:
-    case op_put_by_id_out_of_line:
-    case op_put_by_id_transition_direct:
-    case op_put_by_id_transition_direct_out_of_line:
-    case op_put_by_id_transition_normal:
-    case op_put_by_id_transition_normal_out_of_line:
     case op_put_getter_by_id:
     case op_put_setter_by_id:
     case op_put_getter_setter:
@@ -322,13 +313,14 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_new_func_exp:
     case op_new_arrow_func_exp:
     case op_call_varargs:
+    case op_tail_call_varargs:
     case op_construct_varargs:
     case op_get_from_scope:
     case op_call:
+    case op_tail_call:
     case op_call_eval:
     case op_construct:
     case op_get_by_id:
-    case op_get_by_id_out_of_line:
     case op_get_array_length:
     case op_check_has_instance:
     case op_instanceof:

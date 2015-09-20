@@ -88,8 +88,10 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 @property int attrWithSetterException;
 @property (copy) NSString *stringAttrWithGetterException;
 @property (copy) NSString *stringAttrWithSetterException;
+@property (strong) DOMTestObj *strictTypeCheckingAttribute;
 @property int customAttr;
 @property int withScriptStateAttribute;
+@property int withCallWithAndSetterCallWithAttribute;
 @property (strong) DOMTestObj *withScriptExecutionContextAttribute;
 @property (strong) DOMTestObj *withScriptStateAttributeRaises;
 @property (strong) DOMTestObj *withScriptExecutionContextAttributeRaises;
@@ -120,6 +122,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 @property int nullableLongSettableAttribute;
 @property int nullableStringValue;
 @property (readonly, copy) NSString *attribute;
+@property (readonly, strong) DOMTestNode *putForwardsAttribute;
 
 - (void)voidMethod;
 - (void)voidMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
@@ -132,6 +135,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMTestObj *)objMethod;
 - (DOMTestObj *)objMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (void)methodWithEnumArg:(DOMTestEnumType *)enumArg;
+- (void)methodWithOptionalEnumArgAndDefaultValue:(DOMTestEnumType *)enumArg;
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (void)serializedValue:(NSString *)serializedArg;
 - (void)optionsObject:(DOMDictionary *)oo ooo:(DOMDictionary *)ooo;
@@ -150,9 +154,11 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMTestObj *)withScriptExecutionContextAndScriptStateWithSpaces;
 - (void)withScriptArgumentsAndCallStack;
 - (void)methodWithOptionalArg:(int)opt;
+- (void)methodWithOptionalArgAndDefaultValue:(int)opt;
 - (void)methodWithNonOptionalArgAndOptionalArg:(int)nonOpt opt:(int)opt;
 - (void)methodWithNonOptionalArgAndTwoOptionalArgs:(int)nonOpt opt1:(int)opt1 opt2:(int)opt2;
 - (void)methodWithOptionalString:(NSString *)str;
+- (void)methodWithOptionalStringAndDefaultValue:(NSString *)str;
 - (void)methodWithOptionalStringIsUndefined:(NSString *)str;
 - (void)methodWithOptionalStringIsNullString:(NSString *)str;
 - (void)classMethod;

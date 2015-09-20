@@ -32,12 +32,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.Object
         this._element = element || document.createElement("div");
         this._element.classList.add("text-editor", WebInspector.SyntaxHighlightedStyleClassName);
 
+        // FIXME: <https://webkit.org/b/149120> Web Inspector: Preferences for Text Editor behavior
         this._codeMirror = CodeMirror(this.element, {
             readOnly: true,
             indentWithTabs: true,
             indentUnit: 4,
             lineNumbers: true,
-            lineWrapping: true,
+            lineWrapping: false,
             matchBrackets: true,
             autoCloseBrackets: true
         });
@@ -619,16 +620,12 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.Object
 
     get markers()
     {
-        return this._codeMirror.getAllMarks().map(function(codeMirrorTextMarker) {
-            return WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker(codeMirrorTextMarker);
-        });
+        return this._codeMirror.getAllMarks().map(WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker);
     }
 
     markersAtPosition(position)
     {
-        return this._codeMirror.findMarksAt(position).map(function(codeMirrorTextMarker) {
-            return WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker(codeMirrorTextMarker);
-        });
+        return this._codeMirror.findMarksAt(position).map(WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker);
     }
 
     createColorMarkers(range)

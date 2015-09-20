@@ -34,7 +34,6 @@
 #include "JSAudioTrackCustom.cpp"
 #include "JSAudioTrackListCustom.cpp"
 #include "JSBlobCustom.cpp"
-#include "JSCDATASectionCustom.cpp"
 #if ENABLE(STREAMS_API)
 #include "JSCountQueuingStrategyCustom.cpp"
 #endif
@@ -62,6 +61,7 @@
 #include "JSDOMPromise.cpp"
 #include "JSDOMStringListCustom.cpp"
 #include "JSDOMStringMapCustom.cpp"
+#include "JSDOMTokenListCustom.cpp"
 #include "JSDOMWindowBase.cpp"
 #include "JSDOMWindowCustom.cpp"
 #include "JSDOMWindowShell.cpp"
@@ -133,12 +133,9 @@
 #include "JSStorageCustom.cpp"
 #include "JSStyleSheetCustom.cpp"
 #include "JSStyleSheetListCustom.cpp"
-#include "JSTextCustom.cpp"
 #include "JSTextTrackCueCustom.cpp"
 #include "JSTextTrackCustom.cpp"
 #include "JSTextTrackListCustom.cpp"
-#include "JSTouchCustom.cpp"
-#include "JSTouchListCustom.cpp"
 #include "JSTrackCustom.cpp"
 #include "JSTrackEventCustom.cpp"
 #include "JSTreeWalkerCustom.cpp"

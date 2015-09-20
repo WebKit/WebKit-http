@@ -88,7 +88,6 @@ public:
     Page& inspectedPage() const;
 
     WEBCORE_EXPORT void show();
-    WEBCORE_EXPORT void close();
 
     WEBCORE_EXPORT void setInspectorFrontendClient(InspectorFrontendClient*);
     bool hasInspectorFrontendClient() const;
@@ -120,8 +119,6 @@ public:
 
     WEBCORE_EXPORT bool profilerEnabled() const;
     WEBCORE_EXPORT void setProfilerEnabled(bool);
-
-    void resume();
 
     InspectorClient* inspectorClient() const { return m_inspectorClient; }
     InspectorPageAgent* pageAgent() const { return m_pageAgent; }
@@ -156,7 +153,6 @@ private:
     InspectorDOMAgent* m_domAgent { nullptr };
     InspectorResourceAgent* m_resourceAgent { nullptr };
     InspectorPageAgent* m_pageAgent { nullptr };
-    PageDebuggerAgent* m_debuggerAgent { nullptr };
     InspectorDOMDebuggerAgent* m_domDebuggerAgent { nullptr };
     InspectorTimelineAgent* m_timelineAgent { nullptr };
 

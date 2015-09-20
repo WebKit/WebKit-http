@@ -35,6 +35,7 @@
 #include "ClientRectList.h"
 #include "ContainerNodeAlgorithms.h"
 #include "DOMTokenList.h"
+#include "Dictionary.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -760,7 +761,7 @@ Element* Element::bindingsOffsetParent()
     Element* element = offsetParent();
     if (!element || !element->isInShadowTree())
         return element;
-    return element->containingShadowRoot()->type() == ShadowRoot::UserAgentShadowRoot ? 0 : element;
+    return element->containingShadowRoot()->type() == ShadowRoot::Type::UserAgent ? nullptr : element;
 }
 
 Element* Element::offsetParent()
@@ -1235,6 +1236,14 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
             elementData()->setHasNameAttribute(!newValue.isNull());
         else if (name == HTMLNames::pseudoAttr)
             shouldInvalidateStyle |= testShouldInvalidateStyle && isInShadowTree();
+#if ENABLE(SHADOW_DOM)
+        else if (name == HTMLNames::slotAttr) {
+            if (auto* parent = parentElement()) {
+                if (auto* shadowRoot = parent->shadowRoot())
+                    shadowRoot->invalidateSlotAssignments();
+            }
+        }
+#endif
     }
 
     parseAttribute(name, newValue);
@@ -1346,8 +1355,10 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
         elementData()->clearClass();
     }
 
-    if (hasRareData())
-        elementRareData()->clearClassListValueForQuirksMode();
+    if (hasRareData()) {
+        if (auto* classList = elementRareData()->classList())
+            classList->attributeValueChanged(newClassString);
+    }
 
     if (shouldInvalidateStyle)
         setNeedsStyleRecalc();
@@ -1368,6 +1379,19 @@ URL Element::absoluteLinkURL() const
         return URL();
 
     return document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkAttribute));
+}
+
+StyleResolver& Element::styleResolver()
+{
+    if (auto* shadowRoot = containingShadowRoot())
+        return shadowRoot->styleResolver();
+
+    return document().ensureStyleResolver();
+}
+
+Ref<RenderStyle> Element::resolveStyle(RenderStyle* parentStyle)
+{
+    return styleResolver().styleForElement(this, parentStyle);
 }
 
 // Returns true is the given attribute is an event handler.
@@ -1466,24 +1490,6 @@ void Element::setPrefix(const AtomicString& prefix, ExceptionCode& ec)
     m_tagName.setPrefix(prefix.isEmpty() ? AtomicString() : prefix);
 }
 
-URL Element::baseURI() const
-{
-    const AtomicString& baseAttribute = getAttribute(baseAttr);
-    URL base(URL(), baseAttribute);
-    if (!base.protocol().isEmpty())
-        return base;
-
-    ContainerNode* parent = parentNode();
-    if (!parent)
-        return base;
-
-    const URL& parentBase = parent->baseURI();
-    if (parentBase.isNull())
-        return base;
-
-    return URL(parentBase, baseAttribute);
-}
-
 const AtomicString& Element::imageSourceURL() const
 {
     return fastGetAttribute(srcAttr);
@@ -1515,9 +1521,9 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     if (!insertionPoint.isInTreeScope())
         return InsertionDone;
 
-    if (hasRareData())
-        elementRareData()->clearClassListValueForQuirksMode();
-
+    // This function could be called when this element's shadow root's host or its ancestor is inserted.
+    // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
+    // or its ancestor is inserted belongs to the same tree scope as this element's.
     TreeScope* newScope = &insertionPoint.treeScope();
     HTMLDocument* newDocument = !wasInDocument && inDocument() && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
     if (newScope != &treeScope())
@@ -1563,7 +1569,10 @@ void Element::removedFrom(ContainerNode& insertionPoint)
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
         HTMLDocument* oldDocument = inDocument() && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
-        if (oldScope != &treeScope() || !isInTreeScope())
+
+        // ContainerNode::removeBetween always sets the removed chid's tree scope to Document's but InTreeScope flag is unset in Node::removedFrom.
+        // So this element has been removed from the old tree scope only if InTreeScope flag is set and this element's tree scope is Document's.
+        if (!isInTreeScope() || &treeScope() != &document())
             oldScope = nullptr;
 
         const AtomicString& idValue = getIdAttribute();
@@ -1632,11 +1641,9 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 
     shadowRoot.setHost(this);
     shadowRoot.setParentTreeScope(&treeScope());
-    shadowRoot.distributor().didShadowBoundaryChange(this);
 
     NodeVector postInsertionNotificationTargets;
-    ChildNodeInsertionNotifier(*this).notify(shadowRoot, postInsertionNotificationTargets);
-
+    notifyChildNodeInserted(*this, shadowRoot, postInsertionNotificationTargets);
     for (auto& target : postInsertionNotificationTargets)
         target->finishedInsertingSubtree();
 
@@ -1645,6 +1652,9 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     setNeedsStyleRecalc(ReconstructRenderTree);
 
     InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
+
+    if (shadowRoot.type() == ShadowRoot::Type::UserAgent)
+        didAddUserAgentShadowRoot(&shadowRoot);
 }
 
 void Element::removeShadowRoot()
@@ -1662,9 +1672,7 @@ void Element::removeShadowRoot()
     oldRoot->setHost(nullptr);
     oldRoot->setParentTreeScope(&document());
 
-    ChildNodeRemovalNotifier(*this).notify(*oldRoot);
-
-    oldRoot->distributor().invalidateDistribution(this);
+    notifyChildNodeRemoved(*this, *oldRoot);
 }
 
 RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
@@ -1676,10 +1684,49 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
+RefPtr<ShadowRoot> Element::attachShadow(const Dictionary& dictionary, ExceptionCode& ec)
+{
+    String mode;
+    dictionary.get("mode", mode);
+
+    auto type = ShadowRoot::Type::Closed;
+    if (mode == "open")
+        type = ShadowRoot::Type::Open;
+    else if (mode != "closed") {
+        ec = TypeError;
+        return nullptr;
+    }
+
+    // FIXME: The current spec allows attachShadow on non-HTML elements.
+    if (!is<HTMLElement>(this) || downcast<HTMLElement>(this)->canHaveUserAgentShadowRoot()) {
+        ec = NOT_SUPPORTED_ERR;
+        return nullptr;
+    }
+
+    if (shadowRoot()) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    addShadowRoot(ShadowRoot::create(document(), type));
+
+    return shadowRoot();
+}
+
+ShadowRoot* Element::bindingShadowRoot() const
+{
+    ShadowRoot* root = shadowRoot();
+    if (!root)
+        return nullptr;
+    if (root->type() != ShadowRoot::Type::Open)
+        return nullptr;
+    return root;
+}
+
 ShadowRoot* Element::userAgentShadowRoot() const
 {
     if (ShadowRoot* shadowRoot = this->shadowRoot()) {
-        ASSERT(shadowRoot->type() == ShadowRoot::UserAgentShadowRoot);
+        ASSERT(shadowRoot->type() == ShadowRoot::Type::UserAgent);
         return shadowRoot;
     }
     return nullptr;
@@ -1689,9 +1736,8 @@ ShadowRoot& Element::ensureUserAgentShadowRoot()
 {
     ShadowRoot* shadowRoot = userAgentShadowRoot();
     if (!shadowRoot) {
-        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::UserAgentShadowRoot));
+        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::Type::UserAgent));
         shadowRoot = userAgentShadowRoot();
-        didAddUserAgentShadowRoot(shadowRoot);
     }
     return *shadowRoot;
 }
@@ -1814,8 +1860,13 @@ void Element::childrenChanged(const ChildChange& change)
         checkForSiblingStyleChanges(*this, checkType, change.previousSiblingElement, change.nextSiblingElement);
     }
 
-    if (ShadowRoot* shadowRoot = this->shadowRoot())
-        shadowRoot->invalidateDistribution();
+    if (ShadowRoot* shadowRoot = this->shadowRoot()) {
+        if (auto* distributor = shadowRoot->distributor())
+            distributor->invalidateDistribution(this);
+#if ENABLE(SHADOW_DOM)
+        shadowRoot->invalidateSlotAssignments();
+#endif
+    }
 }
 
 void Element::removeAllEventListeners()
@@ -2287,9 +2338,7 @@ void Element::mergeWithNextTextNode(Text& node, ExceptionCode& ec)
 
     Ref<Text> textNode(node);
     Ref<Text> textNext(downcast<Text>(*next));
-    textNode->appendData(textNext->data(), ec);
-    if (ec)
-        return;
+    textNode->appendData(textNext->data());
     textNext->remove(ec);
 }
 
@@ -2654,7 +2703,7 @@ DOMTokenList& Element::classList()
 {
     ElementRareData& data = ensureElementRareData();
     if (!data.classList())
-        data.setClassList(std::make_unique<ClassList>(*this));
+        data.setClassList(std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::classAttr));
     return *data.classList();
 }
 

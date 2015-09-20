@@ -1,3 +1,1943 @@
+2015-09-19  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Specify default parameter values where it is useful
+        https://bugs.webkit.org/show_bug.cgi?id=149331
+        <rdar://problem/22545600>
+
+        Reviewed by Darin Adler.
+
+        Add test to check the behavior of passing undefined for various optional
+        parameters that have a default value in the HTML specification.
+
+        * fast/html/undefined-parameter-default-value-expected.txt: Added.
+        * fast/html/undefined-parameter-default-value.html: Added.
+
+2015-09-18  Dean Jackson  <dino@apple.com>
+
+        Null dereference loading Blink layout test svg/filters/feImage-failed-load-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149316
+        <rdar://problem/22749532>
+
+        Reviewed by Tim Horton.
+
+        Merge Blink commit:
+        https://chromium.googlesource.com/chromium/blink/+/9cbcfd7866bbaff0c4b3c4c8508b7c97b46d6e6a
+
+        * svg/filters/feImage-failed-load-crash-expected.txt: Added.
+        * svg/filters/feImage-failed-load-crash.html: Added.
+
+2015-09-18  Dean Jackson  <dino@apple.com>
+
+        Null dereference loading Blink layout test svg/custom/use-href-attr-removal-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149315
+        <rdar://problem/22749358>
+
+        Reviewed by Tim Horton.
+
+        These tests, copied from Blink, should not crash.
+        The originals come from:
+        https://chromium.googlesource.com/chromium/blink/+/e2f1087f32bb088160ab7d59a715a1403ef267c7
+
+        * svg/custom/use-href-attr-removal-crash.html: Added.
+        * svg/custom/use-href-attr-removal-crash-expected.txt: Added.
+        * svg/custom/use-href-attr-removal-crash2.svg: Added.
+        * svg/custom/use-href-attr-removal-crash2-expected.txt: Added.
+        * svg/custom/use-href-change-local-to-invalid-remote.html: Added.
+        * svg/custom/use-href-change-local-to-invalid-remote-expected.txt: Added.
+
+2015-09-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Update Mac expectations for http/tests/cache/iframe-304-crash.html.
+        This test is flaky everywhere, not just on Mavericks and Yosemite.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-09-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189908.
+        https://bugs.webkit.org/show_bug.cgi?id=149368
+
+        Broke run-webkit-tests --pixel (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "printing does not use minimum page zoom factor"
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+        http://trac.webkit.org/changeset/189908
+
+2015-09-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Inserting or removing slot elements can cause a crash
+        https://bugs.webkit.org/show_bug.cgi?id=149365
+
+        Reviewed by Antti Koivisto.
+
+        Added regression tests.
+
+        * fast/shadow-dom/slot-removal-crash.html: Added.
+
+2015-09-18  Antti Koivisto  <antti@apple.com>
+
+        Don't create renderers for children of shadow host
+        https://bugs.webkit.org/show_bug.cgi?id=149363
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-shadow-root-hides-children-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-root-hides-children.html: Added.
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Adds more flaky tests to TestExpecations for iOS and WK2
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        add a regress test for richards with try/catch.
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+
+        Reviewed by Filip Pizlo.
+
+        This adds two variants of Octane/richards benchmark using
+        try/catch. One try/catch variant that actually throws.
+        Another that never throws. I've included try/catch inside
+        every function and every loop.
+
+        * js/regress/richards-empty-try-catch-expected.txt: Added.
+        * js/regress/richards-empty-try-catch.html: Added.
+        * js/regress/richards-try-catch-expected.txt: Added.
+        * js/regress/richards-try-catch.html: Added.
+        * js/regress/script-tests/richards-empty-try-catch.js: Added.
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+        * js/regress/script-tests/richards-try-catch.js: Added.
+        (randomException):
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+
+2015-09-18  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-empty-try-catch.html: Added.
+        * js/regress/raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-try-catch.html: Added.
+        * js/regress/script-tests/raytrace-with-empty-try-catch.js: Added.
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/raytrace-with-try-catch.js: Added.
+        (randomException):
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/v8-raytrace-with-empty-try-catch.js: Added.
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/script-tests/v8-raytrace-with-try-catch.js: Added.
+        (randomException):
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/v8-raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-empty-try-catch.html: Added.
+        * js/regress/v8-raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-try-catch.html: Added.
+
+2015-09-18  Nan Wang  <n_wang@apple.com>
+
+        AX: Implement ARIA 1.1 @aria-current on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149297
+
+        Reviewed by Chris Fleizach.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        REGRESSION: http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overrides.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132388
+
+        * TestExpectations:
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        line-break-language-sensitive tests should be marked as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149349
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Finish implementing MediaDevices.enumerateDevices
+        https://bugs.webkit.org/show_bug.cgi?id=149322
+        <rdar://problem/22750866>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt: Added.
+        * fast/mediastream/MediaDevices-enumerateDevices.html: Added.
+
+2015-09-18  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Updates to include change to iOS test expectations after bug 149187
+
+        * platform/ios-simulator/js/dom/constructor-length-expected.txt:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r182449, Mavericks ONLY): Pages re-open empty after swiping back and scrolling on them
+        https://bugs.webkit.org/show_bug.cgi?id=149317
+        <rdar://problem/22521514>
+
+        Reviewed by Tim Horton.
+
+        Skip a couple of PageCache layout tests on Mavericks now that a PageCache
+        optimization has been disabled.
+
+        * platform/mac/TestExpectations:
+
+2015-09-18  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed iOS gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for Entity Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149239
+
+        Reviewed by Darin Adler.
+
+        Rebaseline / update layout tests now that we no longer expose the
+        Entity type to the Web.
+
+        * fast/dom/Window/get-set-properties-expected.txt:
+        * fast/dom/Window/get-set-properties.html:
+        * fast/dom/Window/resources/window-properties.js:
+        * fast/dom/Window/window-lookup-precedence-expected.txt:
+        * fast/dom/dom-constructors-expected.txt:
+        * fast/dom/dom-constructors.html:
+        * platform/gtk/fast/dom/Window/window-lookup-precedence-expected.txt:
+        * platform/mac/fast/dom/Window/window-lookup-precedence-expected.txt:
+
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        classList.toggle(name, force) treats undefined `force` argument as false
+        https://bugs.webkit.org/show_bug.cgi?id=148582
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add decent test coverage for DOMTokenList.toggle() via Element.classList.
+
+        * fast/dom/Element/class-list-toggle-expected.txt: Added.
+        * fast/dom/Element/class-list-toggle.html: Added.
+
+2015-09-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189962.
+        https://bugs.webkit.org/show_bug.cgi?id=149334
+
+        These new tests uncovered a crash (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add some tests for shadow DOM rendering"
+        https://bugs.webkit.org/show_bug.cgi?id=149330
+        http://trac.webkit.org/changeset/189962
+
+2015-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add some tests for shadow DOM rendering
+        https://bugs.webkit.org/show_bug.cgi?id=149330
+
+        Reviewed by Antti Koivisto.
+
+        Added some ref tests for new shadow DOM API rendering with failing expectations everywhere.
+
+        * fast/shadow-dom/css-scoping-shadow-invisible-slot-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-invisible-slot.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-rendering-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-rendering.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-slot-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-slot.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-with-rules-expected.html: Added.
+        * fast/shadow-dom/css-scoping-shadow-with-rules.html: Added.
+        * platform/mac/TestExpectations:
+
+2015-09-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189938, r189952, and r189956.
+        https://bugs.webkit.org/show_bug.cgi?id=149329
+
+        Broke Web Workers (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Implement try/catch in the DFG."
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+        http://trac.webkit.org/changeset/189938
+
+        "CLoop build fix after r189938."
+        http://trac.webkit.org/changeset/189952
+
+        "add a regress test for richards with try/catch."
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+        http://trac.webkit.org/changeset/189956
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Add support for default parameter values
+        https://bugs.webkit.org/show_bug.cgi?id=149263
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several NodeIterator / TreeWalker tests now that more checks
+        are passing.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+
+2015-09-17  Saam barati  <sbarati@apple.com>
+
+        add a regress test for richards with try/catch.
+        https://bugs.webkit.org/show_bug.cgi?id=149301
+
+        Reviewed by Filip Pizlo.
+
+        This adds two variants of Octane/richards benchmark using
+        try/catch. One try/catch variant that actually throws.
+        Another that never throws. I've included try/catch inside
+        every function and every loop.
+
+        * js/regress/richards-empty-try-catch-expected.txt: Added.
+        * js/regress/richards-empty-try-catch.html: Added.
+        * js/regress/richards-try-catch-expected.txt: Added.
+        * js/regress/richards-try-catch.html: Added.
+        * js/regress/script-tests/richards-empty-try-catch.js: Added.
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+        * js/regress/script-tests/richards-try-catch.js: Added.
+        (randomException):
+        (runRichards):
+        (Scheduler):
+        (Scheduler.prototype.addIdleTask):
+        (Scheduler.prototype.addWorkerTask):
+        (Scheduler.prototype.addHandlerTask):
+        (Scheduler.prototype.addDeviceTask):
+        (Scheduler.prototype.addRunningTask):
+        (Scheduler.prototype.addTask):
+        (Scheduler.prototype.schedule):
+        (Scheduler.prototype.release):
+        (Scheduler.prototype.holdCurrent):
+        (Scheduler.prototype.suspendCurrent):
+        (Scheduler.prototype.queue):
+        (TaskControlBlock):
+        (TaskControlBlock.prototype.setRunning):
+        (TaskControlBlock.prototype.markAsNotHeld):
+        (TaskControlBlock.prototype.markAsHeld):
+        (TaskControlBlock.prototype.isHeldOrSuspended):
+        (TaskControlBlock.prototype.markAsSuspended):
+        (TaskControlBlock.prototype.markAsRunnable):
+        (TaskControlBlock.prototype.run):
+        (TaskControlBlock.prototype.checkPriorityAdd):
+        (TaskControlBlock.prototype.toString):
+        (IdleTask):
+        (IdleTask.prototype.run):
+        (IdleTask.prototype.toString):
+        (DeviceTask):
+        (DeviceTask.prototype.run):
+        (DeviceTask.prototype.toString):
+        (WorkerTask):
+        (WorkerTask.prototype.run):
+        (WorkerTask.prototype.toString):
+        (HandlerTask):
+        (HandlerTask.prototype.run):
+        (HandlerTask.prototype.toString):
+        (Packet):
+        (Packet.prototype.addTo):
+        (Packet.prototype.toString):
+
+2015-09-17  Dean Jackson  <dino@apple.com>
+
+        Multi-hop reference cycles not detected.
+        https://bugs.webkit.org/show_bug.cgi?id=149181
+
+        Reviewed by Jon Honeycutt.
+
+        Test comes from:
+        https://chromium.googlesource.com/chromium/blink/+/master/LayoutTests/svg/custom/pattern-3-step-cycle.html
+
+        * svg/custom/pattern-3-step-cycle-expected.txt: Added.
+        * svg/custom/pattern-3-step-cycle.html: Added.
+
+2015-09-17  Dean Jackson  <dino@apple.com>
+
+        Cyclic resources were not detected if the reference had deep containers
+        https://bugs.webkit.org/show_bug.cgi?id=149182
+
+        Reviewed by Jon Honeycutt.
+
+        This test was ported from Blink. I believe it originally
+        came from:
+        https://code.google.com/p/chromium/issues/detail?id=351713
+
+        * svg/custom/pattern-content-cycle-w-resourceless-container-expected.txt: Added.
+        * svg/custom/pattern-content-cycle-w-resourceless-container.html: Added.
+
+2015-09-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add HTMLSlotElement and NonDocumentTypeChildNode.assignedSlot
+        https://bugs.webkit.org/show_bug.cgi?id=149241
+
+        Reviewed by Antti Koivisto.
+
+        Added new conformance tests and rebaselined tests as needed.
+
+        In particular, inspector/model/remote-object.html was rebaselined since "assignedSlot" now appears as one of the first five
+        properties on Comment node that this test outputs.
+
+        * fast/shadow-dom/HTMLSlotElement-interface-expected.txt: Added.
+        * fast/shadow-dom/HTMLSlotElement-interface.html: Added.
+        * fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot-expected.txt: Added.
+        * fast/shadow-dom/NonDocumentTypeChildNode-interface-assignedSlot.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/inspector/model: Added.
+        * platform/mac/inspector/model/remote-object-expected.txt: Copied from LayoutTests/inspector/model/remote-object-expected.txt.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-17  Zalan Bujtas  <zalan@apple.com>
+
+        CSS WG multicol-1 tests failures with 1px differences due to baseline difference.
+        https://bugs.webkit.org/show_bug.cgi?id=149245
+
+        Reviewed by Ryosuke Niwa.
+
+        Turn off font-aliasing for multicol tests where the reference tests' inline content
+        end up on a different baseline (fractional difference). (It's not considered a bug, they don't
+        necessarily match.)
+
+        * TestExpectations:
+
+2015-09-17  Saam barati  <sbarati@apple.com>
+
+        Implement try/catch in the DFG.
+        https://bugs.webkit.org/show_bug.cgi?id=147374
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-empty-try-catch.html: Added.
+        * js/regress/raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/raytrace-with-try-catch.html: Added.
+        * js/regress/script-tests/raytrace-with-empty-try-catch.js: Added.
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/raytrace-with-try-catch.js: Added.
+        (randomException):
+        (createVector):
+        (sqrLengthVector):
+        (lengthVector):
+        (addVector):
+        (subVector):
+        (scaleVector):
+        (normaliseVector):
+        (add):
+        (sub):
+        (scalev):
+        (dot):
+        (scale):
+        (cross):
+        (normalise):
+        (transformMatrix):
+        (invertMatrix):
+        (Triangle):
+        (Triangle.prototype.intersect):
+        (Scene):
+        (Scene.prototype.intersect):
+        (Scene.prototype.blocked):
+        (Camera):
+        (Camera.prototype.generateRayPair):
+        (renderRows):
+        (Camera.prototype.render):
+        (raytraceScene.floorShader):
+        (raytraceScene):
+        (arrayToCanvasCommands):
+        * js/regress/script-tests/v8-raytrace-with-empty-try-catch.js: Added.
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/script-tests/v8-raytrace-with-try-catch.js: Added.
+        (randomException):
+        (Class.create):
+        (Object.extend):
+        (Flog.RayTracer.Color.prototype.initialize):
+        (Flog.RayTracer.Color.prototype.add):
+        (Flog.RayTracer.Color.prototype.addScalar):
+        (Flog.RayTracer.Color.prototype.subtract):
+        (Flog.RayTracer.Color.prototype.multiply):
+        (Flog.RayTracer.Color.prototype.multiplyScalar):
+        (Flog.RayTracer.Color.prototype.divideFactor):
+        (Flog.RayTracer.Color.prototype.limit):
+        (Flog.RayTracer.Color.prototype.distance):
+        (Flog.RayTracer.Color.prototype.blend):
+        (Flog.RayTracer.Color.prototype.brightness):
+        (Flog.RayTracer.Color.prototype.toString):
+        (Flog.RayTracer.Light.prototype.initialize):
+        (Flog.RayTracer.Light.prototype.toString):
+        (Flog.RayTracer.Vector.prototype.initialize):
+        (Flog.RayTracer.Vector.prototype.copy):
+        (Flog.RayTracer.Vector.prototype.normalize):
+        (Flog.RayTracer.Vector.prototype.magnitude):
+        (Flog.RayTracer.Vector.prototype.cross):
+        (Flog.RayTracer.Vector.prototype.dot):
+        (Flog.RayTracer.Vector.prototype.add):
+        (Flog.RayTracer.Vector.prototype.subtract):
+        (Flog.RayTracer.Vector.prototype.multiplyVector):
+        (Flog.RayTracer.Vector.prototype.multiplyScalar):
+        (Flog.RayTracer.Vector.prototype.toString):
+        (Flog.RayTracer.Ray.prototype.initialize):
+        (Flog.RayTracer.Ray.prototype.toString):
+        (Flog.RayTracer.Scene.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.initialize):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.getColor):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.wrapUp):
+        (Flog.RayTracer.Material.BaseMaterial.prototype.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Solid.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.initialize):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.getColor):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial.toString):
+        (Flog.RayTracer.Material.Chessboard.prototype.Object.extend.new.Flog.RayTracer.Material.BaseMaterial):
+        (Flog.RayTracer.Shape.Sphere.prototype.initialize):
+        (Flog.RayTracer.Shape.Sphere.prototype.intersect):
+        (Flog.RayTracer.Shape.Sphere.prototype.toString):
+        (Flog.RayTracer.Shape.Plane.prototype.initialize):
+        (Flog.RayTracer.Shape.Plane.prototype.intersect):
+        (Flog.RayTracer.Shape.Plane.prototype.toString):
+        (Flog.RayTracer.IntersectionInfo.prototype.initialize):
+        (Flog.RayTracer.IntersectionInfo.prototype.toString):
+        (Flog.RayTracer.Camera.prototype.initialize):
+        (Flog.RayTracer.Camera.prototype.getRay):
+        (Flog.RayTracer.Camera.prototype.toString):
+        (Flog.RayTracer.Background.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.initialize):
+        (Flog.RayTracer.Engine.prototype.setPixel):
+        (Flog.RayTracer.Engine.prototype.renderScene):
+        (Flog.RayTracer.Engine.prototype.getPixelColor):
+        (Flog.RayTracer.Engine.prototype.testIntersection):
+        (Flog.RayTracer.Engine.prototype.getReflectionRay):
+        (Flog.RayTracer.Engine.prototype.rayTrace):
+        (renderScene):
+        * js/regress/v8-raytrace-with-empty-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-empty-try-catch.html: Added.
+        * js/regress/v8-raytrace-with-try-catch-expected.txt: Added.
+        * js/regress/v8-raytrace-with-try-catch.html: Added.
+
+2015-09-17  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip a media test that fails when an AppleTV is around.
+
+        This will be fixed soon by https://bugs.webkit.org/show_bug.cgi?id=148912
+
+        * platform/mac/TestExpectations:
+
+2015-09-17  Tim Horton  <timothy_horton@apple.com>
+
+        Add a test ensuring that scrolling in the middle of a page can't start a swipe gesture
+        https://bugs.webkit.org/show_bug.cgi?id=148904
+
+        Reviewed by Myles Maxfield.
+
+        * swipe/main-frame-pinning-requirement.html: Added.
+
+2015-09-17  Zalan Bujtas  <zalan@apple.com>
+
+        column-rule-style: outset/inset doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=148815
+
+        Reviewed by David Hyatt.
+
+        https://drafts.csswg.org/css-multicol-1/#crs
+        The <‘border-style’> values are interpreted as in the collapsing border model.
+
+        * TestExpectations:
+
+2015-09-17  Alex Christensen  <achristensen@webkit.org>
+
+        Make Windows tests green.
+
+        * platform/win/TestExpectations:
+        Skip new IndexedDB test on Windows after r189879 because IndexedDB is not enabled on Windows yet.
+        Also skip new accessibility test after r189862 because stringValue is not implemented.
+
+2015-09-15  Sergio Villar Senin  <svillar@igalia.com>
+
+        [CSS Grid Layout]  Using automatic (instead of min-content) minimums for 'auto' tracks
+        https://bugs.webkit.org/show_bug.cgi?id=142329
+
+        Reviewed by Darin Adler.
+
+        Based on Blink's r198697 by <svillar@igalia.com> and r200478 by <jfernandez@igalia.com>
+
+        New tests to verify that auto is a valid keyword inside
+        minmax. Updated the expectations of existing tests to
+        reflect the new status of auto.
+
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-auto-columns-rows-get-set.html:
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns-expected.txt: Added.
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-columns.html: Added.
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows-expected.txt: Added.
+        * fast/css-grid-layout/grid-automatic-minimum-for-auto-rows.html: Added.
+        * fast/css-grid-layout/grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-expected.txt:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-multiple-expected.txt:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set-multiple.html:
+        * fast/css-grid-layout/non-grid-columns-rows-get-set.html:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set-multiple.js:
+        * fast/css-grid-layout/resources/grid-columns-rows-get-set.js:
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set-multiple.js:
+        * fast/css-grid-layout/resources/non-grid-columns-rows-get-set.js:
+
+2015-09-17  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Relayout whenever Box Alignment properties change
+        https://bugs.webkit.org/show_bug.cgi?id=148070
+
+        Reviewed by Darin Adler.
+
+        Tests to verify we force a layout of grid container or grid items, as appropriated,
+        whenever Box Alignment properties change their value.
+
+        This patch also adds some repaint tests, so we can ensure we generate the correct
+        repaint rects as well.
+
+        * fast/css-grid-layout/relayout-align-items-changed-expected.txt: Added.
+        * fast/css-grid-layout/relayout-align-items-changed.html: Added.
+        * fast/css-grid-layout/relayout-align-self-changed-expected.txt: Added.
+        * fast/css-grid-layout/relayout-align-self-changed.html: Added.
+        * fast/css-grid-layout/relayout-justify-items-changed-expected.txt: Added.
+        * fast/css-grid-layout/relayout-justify-items-changed.html: Added.
+        * fast/css-grid-layout/relayout-justify-self-changed-expected.txt: Added.
+        * fast/css-grid-layout/relayout-justify-self-changed.html: Added.
+        * fast/repaint/align-items-change-expected.txt: Added.
+        * fast/repaint/align-items-change.html: Added.
+        * fast/repaint/align-items-overflow-change-expected.txt: Added.
+        * fast/repaint/align-items-overflow-change.html: Added.
+        * fast/repaint/align-self-change-expected.txt: Added.
+        * fast/repaint/align-self-change.html: Added.
+        * fast/repaint/align-self-overflow-change-expected.txt: Added.
+        * fast/repaint/align-self-overflow-change.html: Added.
+        * fast/repaint/justify-items-change-expected.txt: Added.
+        * fast/repaint/justify-items-change.html: Added.
+        * fast/repaint/justify-items-legacy-change-expected.txt: Added.
+        * fast/repaint/justify-items-legacy-change.html: Added.
+        * fast/repaint/justify-items-overflow-change-expected.txt: Added.
+        * fast/repaint/justify-items-overflow-change.html: Added.
+        * fast/repaint/justify-self-change-expected.txt: Added.
+        * fast/repaint/justify-self-change.html: Added.
+        * fast/repaint/justify-self-overflow-change-expected.txt: Added.
+        * fast/repaint/justify-self-overflow-change.html: Added.
+
+2015-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        printing does not use minimum page zoom factor
+        https://bugs.webkit.org/show_bug.cgi?id=108507
+
+        Reviewed by Darin Adler.
+
+        Unskip printing reftests that should pass now.
+
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2015-09-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add failing expectation to css3/font-feature-settings-rendering-2.html on Mavericks.
+        The test failure is tracked by webkit.org/b/149246.
+
+        Also rebaseline js/dom/global-constructors-attributes-idb.html on WK1 after r189879.
+
+        * js/dom/global-constructors-attributes-idb-expected.txt: Replaced with LayoutTests/platform/wk2/js/dom/global-constructors-attributes-idb-expected.txt.
+        * platform/mac/TestExpectations:
+        * platform/wk2/js/dom/global-constructors-attributes-idb-expected.txt: Removed.
+
+2015-09-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add failing expectation to css3/font-feature-settings-rendering-2.html on Mavericks.
+        The test failure is tracked by webkit.org/b/149246.
+
+        * platform/mac/TestExpectations:
+
+2015-09-16  Brady Eidson  <beidson@apple.com>
+
+        Have window.indexedDB.open return an IDBOpenDBRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=149234
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/opendatabase-request-expected.txt: Added.
+        * storage/indexeddb/modern/opendatabase-request.html: Added.
+
+2015-09-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Create a font which can be used for testing font features
+        https://bugs.webkit.org/show_bug.cgi?id=149237
+
+        Reviewed by Simon Fraser.
+
+        * css3/font-feature-settings-rendering-2-expected.html: Added.
+        * css3/font-feature-settings-rendering-2.html: Added.
+        * css3/resources/FontWithFeatures.otf: Added.
+        * platform/efl/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-09-16  Brady Eidson  <beidson@apple.com>
+
+        Have window.indexedDB.deleteDatabase return an IDBOpenDBRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=149229
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-null-name-exception.html: Added.
+        * storage/indexeddb/modern/deletedatabase-request-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-request.html: Added.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop dom/xhtml/level3/core/nodegetbaseuri03.xhtml test.
+
+        This test is outdated and we have more recent DOM tests covering
+        the newly expected behavior.
+
+        * dom/xhtml/level3/core/nodegetbaseuri03.js: Removed.
+        * dom/xhtml/level3/core/nodegetbaseuri03.xhtml: Removed.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for [Unforgeable] IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=149147
+
+        Reviewed by Darin Adler.
+
+        New test that verifies that well-known [Unforgeable] attributes
+        are on the instance rather than the prototype and that they are
+        non-configurable.
+
+        * fast/dom/unforgeable-attributes-expected.txt: Added.
+        * fast/dom/unforgeable-attributes.html: Added.
+
+2015-09-16  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Glitch selecting long text.
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        rdar://problem/22646472
+
+        Reviewed by Antti Koivisto.
+
+        When long text is split into multiple RenderText objects, we ignore renderer boundaries while
+        collecting wrapping positions (so that we don't end up wrapping unbreakable fragments at the end of each renderer).
+        This patch ensures that fragments with hypen character ignore renderer boundaries too.
+
+        * fast/text/multiple-renderers-with-hypen-on-boundary-expected.html: Added.
+        * fast/text/multiple-renderers-with-hypen-on-boundary.html: Added.
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/events/mouse-cursor-change.html is flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=149216
+
+        Reviewed by Darin Adler.
+
+        * fast/events/mouse-cursor-change.html: Increase the timeout. I don't see a way to make
+        this test 100% reliable, but this change makes it work in my local testing.
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline W3C html/dom test for iOS after r189842.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        More test result fixing after r189841.
+
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html as flaky, because it is.
+
+        It was already marked as flaky on mac-wk2.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2015-09-16  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: No VO typing feedback in some text fields
+        https://bugs.webkit.org/show_bug.cgi?id=149177
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/ax-value-with-search-expected.txt: Added.
+        * accessibility/ax-value-with-search.html: Added.
+
+2015-09-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Grid container's height should include scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=149210
+
+        Reviewed by Sergio Villar Senin.
+
+        Add test to check both height and width (which was already working as
+        expected) with margins, borders, paddings and scrollbars.
+
+        * fast/css-grid-layout/grid-container-margin-border-padding-scrollbar-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-margin-border-padding-scrollbar.html: Added.
+
+2015-09-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Mac rebaseline after r189841.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189847.
+        https://bugs.webkit.org/show_bug.cgi?id=149208
+
+        Asserts on all the tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Simple line layout: Glitch selecting long text."
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        http://trac.webkit.org/changeset/189847
+
+2015-09-15  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Glitch selecting long text.
+        https://bugs.webkit.org/show_bug.cgi?id=149204
+        rdar://problem/22646472
+
+        Reviewed by Antti Koivisto.
+
+        When long text is split into multiple RenderText objects, we ignore renderer boundaries while
+        collecting wrapping positions (so that we don't end up wrapping unbreakable fragments at the end of each renderer).
+        This patch ensures that fragments with hypen character ignore renderer boundaries too.
+
+        * fast/text/multiple-renderers-with-hypen-on-boundary-expected.html: Added.
+        * fast/text/multiple-renderers-with-hypen-on-boundary.html: Added.
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Document.createElement(localName) does not handle correctly missing or null parameter
+        https://bugs.webkit.org/show_bug.cgi?id=149184
+        <rdar://problem/22565070>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline existing tests now that our behavior has changed.
+
+        * fast/dom/Document/createElementNS-namespace-err-expected.txt:
+        * fast/dom/Document/script-tests/createElementNS-namespace-err.js:
+        * fast/dom/dom-method-document-change.html:
+        * fast/dom/element-removed-while-inserting-parent-crash.html:
+        * fast/inspector-support/uncaught-dom3-exception-expected.txt:
+
+2015-09-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add ShadowRoot interface and Element.prototype.attachShadow
+        https://bugs.webkit.org/show_bug.cgi?id=149187
+
+        Reviewed by Antti Koivisto.
+
+        Add new tests for Shadow DOM with failing expectations on all platforms but Mac.
+
+        * TestExpectations:
+        * fast/shadow-dom: Added.
+        * fast/shadow-dom/Element-interface-attachShadow-expected.txt: Added.
+        * fast/shadow-dom/Element-interface-attachShadow.html: Added.
+        * fast/shadow-dom/Element-interface-shadowRoot-attribute-expected.txt: Added.
+        * fast/shadow-dom/Element-interface-shadowRoot-attribute.html: Added.
+        * fast/shadow-dom/ShadowRoot-interface-expected.txt: Added.
+        * fast/shadow-dom/ShadowRoot-interface.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/TestExpectations:
+        * platform/mac/js/dom/constructor-length-expected.txt:
+
+2015-09-15  Jinyoung Hur  <hur.ims@navercorp.com>
+
+        [WebGL] Only require that the stencil value and write masks have as many bits set as the stencil buffer is deep
+        https://bugs.webkit.org/show_bug.cgi?id=149174
+
+        Reviewed by Dean Jackson.
+
+        Copied the stencil mask related tests from the webgl/1.0.2/resources/webgl_test_files/conformance/state/gl-get-calls.html.
+
+        It seems that there is a difference in the way that glGetIntegerV returns an unsigned int type value among 
+        OpenGL implementatios. Some return the whole bits of value(e.g., 0xffffffff -> 0xffffffff), whereas some(e.g., ANGLE) 
+        return a max-int-clamped value(e.g., 0xffffffff -> 0x7fffffff).
+
+        It would be good to make this test independent on the OpenGL implementations.
+
+        * fast/canvas/webgl/gl-get-calls-expected.txt:
+        * fast/canvas/webgl/gl-get-calls.html:
+
+2015-09-15  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed gardening 16th Sep.
+
+        Mark fast/css, fast/form tests to failure. Besides some tests of imported/w3c/web-platform-tests/html
+        are marked to pass on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-09-15  Benjamin Poulain  <bpoulain@apple.com>
+
+        Style invalidation affecting siblings does not work with inline-style changes
+        https://bugs.webkit.org/show_bug.cgi?id=149189
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/style-attribute-invalidation-propagates-to-counted-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-counted-siblings.html: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-direct-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-direct-siblings.html: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-indirect-siblings-expected.txt: Added.
+        * fast/css/style-attribute-invalidation-propagates-to-indirect-siblings.html: Added.
+
+2015-09-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r155554): Nested isolates can cause an infinite loop when laying out bidi runs
+        https://bugs.webkit.org/show_bug.cgi?id=149153
+
+        Reviewed by David Hyatt.
+
+        * fast/text/international/unicode-bidi-isolate-nested-crash-expected.html: Added.
+        * fast/text/international/unicode-bidi-isolate-nested-crash.html: Added.
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Element.getAttributeNS() should return null if the attribute does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=149180
+        <rdar://problem/22561011>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline / update existing tests now that our behavior has changed.
+
+        * fast/dom/Element/attribute-uppercase-expected.txt:
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702-expected.txt:
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702.html:
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-expected.txt:
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-2-expected.txt:
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline several W3C HTML tests on iOS after r189762.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt:
+
+2015-09-14  David Hyatt  <hyatt@apple.com>
+
+        2015-09-14  David Hyatt  <hyatt@apple.com>
+
+        [New Block-Inside-Inline Model] Implement margin collapsing across contiguous anonymous inline blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=149132
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/block/inside-inlines/new-model/margin-collapse: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/001-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/001.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/002-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/002.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/003-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/003.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/004-expected.html: Added.
+        * fast/block/inside-inlines/new-model/margin-collapse/004.html: Added.
+
+2015-09-15  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement supportedLocalesOf on Intl Constructors
+        https://bugs.webkit.org/show_bug.cgi?id=147599
+
+        Reviewed by Benjamin Poulain.
+
+        * js/intl-collator-expected.txt: Added tests for supportedLocalesOf
+        * js/intl-datetimeformat-expected.txt: Added tests for supportedLocalesOf
+        * js/intl-numberformat-expected.txt: Added tests for supportedLocalesOf
+        * js/script-tests/intl-collator.js: Added tests for supportedLocalesOf
+        * js/script-tests/intl-datetimeformat.js: Added tests for supportedLocalesOf
+        * js/script-tests/intl-numberformat.js: Added tests for supportedLocalesOf
+
+2015-09-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed gardening.
+
+        * platform/win/TestExpectations:
+        Fix Windows tests after r189769.
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Layout Test http/tests/media/media-document-referer.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145257
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/media/media-document-referer.html: Increase the timeout, one second is not much.
+
+        * platform/gtk/TestExpectations: Fingers crossed, this will help Gtk as well.
+
+2015-09-14  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, EFL gardening on 15th Sep.
+
+        Mark tests of css1/box_properties to flaky and tests of editing, fast are set to timeout.
+
+        * platform/efl/TestExpectations:
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/events/frame-scroll-fake-mouse-move.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149140
+
+        Reviewed by Darin Adler.
+
+        * fast/events/frame-scroll-fake-mouse-move.html:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard [IsIndex] WebKit IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=149122
+        <rdar://problem/22547139>
+
+        Reviewed by Darin Adler.
+
+        * dom/html/level1/core/hc_characterdataindexsizeerrdeletedatacountnegative-expected.txt:
+        * dom/html/level1/core/hc_characterdataindexsizeerrreplacedatacountnegative-expected.txt:
+        * dom/html/level1/core/hc_characterdataindexsizeerrsubstringcountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrdeletedatacountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrreplacedatacountnegative-expected.txt:
+        * dom/xhtml/level1/core/hc_characterdataindexsizeerrsubstringcountnegative-expected.txt:
+        Rebaseline outdated DOM tests that are now failing.
+
+        * svg/custom/getSubStringLength-expected.txt:
+        * svg/custom/script-tests/getSubStringLength.js:
+        * svg/custom/script-tests/selectSubString.js:
+        * svg/custom/selectSubString-expected.txt:
+        Update existing SVG tests that were expecting an exception if the nchars
+        parameter in the SVGTextContentElement API is negative. I have verified
+        that Chrome and Firefox do not throw for these either.
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add tests for control characters being rendered visibly
+        https://bugs.webkit.org/show_bug.cgi?id=149142
+
+        Reviewed by Alexey Proskuryakov.
+
+        According to [1] and [2], all browsers are migrating to rendering control characters. This patch
+        adds tests for this behavior. Because we do not implement the behavior yet [3], these tests are
+        marked as failing.
+
+        [1] http://logs.csswg.org/irc.w3.org/css/2015-02-08/#e520447
+        [2] https://lists.w3.org/Archives/Public/www-style/2015Sep/0076.html
+        [3] https://bugs.webkit.org/show_bug.cgi?id=149128
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+        * fast/text/control-characters/visible-control-characters-1-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-1.html: Added.
+        * fast/text/control-characters/visible-control-characters-2-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-2.html: Added.
+        * fast/text/control-characters/visible-control-characters-3-expected-mismatch.html: Added.
+        * fast/text/control-characters/visible-control-characters-3.html: Added.
+        * fast/text/control-characters/visible-control-characters-2-expected-mismatch.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-2.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-3-expected-mismatch.xhtml: Added.
+        * fast/text/control-characters/visible-control-characters-3.xhtml: Added.
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WebKitTestRunner declarative language setting is broken for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=149119
+
+        Unreviewed.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Document.createNodeIterator(null) / Document.createTreeWalker(null) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=149126
+        <rdar://problem/22564891>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing tests to add test coverage for this case.
+
+        * fast/dom/createNodeIterator-parameters-expected.txt:
+        * fast/dom/createNodeIterator-parameters.html:
+        * fast/dom/createTreeWalker-parameters-expected.txt:
+        * fast/dom/createTreeWalker-parameters.html:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        window.HTMLDetailsElement should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149139
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test now that HTMLDetailsElement is exposed on the global
+        Window object.
+
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-09-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: backend command promises are not rejected when a protocol error occurs
+        https://bugs.webkit.org/show_bug.cgi?id=141403
+
+        Reviewed by Joseph Pecoraro.
+
+        Expand coverage of an existing protocol layer test to cover success and failure modes.
+
+        * inspector/protocol/inspector-backend-invocation-return-value-expected.txt:
+        * inspector/protocol/inspector-backend-invocation-return-value.html:
+
+2015-09-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r189670
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Disable PICTURE_SIZES on AppleWin
+        https://bugs.webkit.org/show_bug.cgi?id=149125
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/win/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/parse-a-srcset-attribute-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/srcset/select-an-image-source-expected.txt: Removed.
+        * platform/win/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/update-the-source-set-expected.txt: Removed.
+
+2015-09-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed, skip fast/text/international/system-language for now.
+        WebKitTestRunner declarative language setting is broken for iOS.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Unreviewed, expect css3/flexbox/image-percent-max-height.html to fail on iOS.
+        The test is already expected to fail on mac, windows and gtk.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html on iOS.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Skip fast/text/international/system-language where unsupported.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-09-09  Sergio Villar Senin  <svillar@igalia.com>
+
+        min-width/height should default to auto for grid items
+        https://bugs.webkit.org/show_bug.cgi?id=146021
+
+        Reviewed by Darin Adler.
+
+        Based on Blink's r194408, r194863 and r194887 by <rego@igalia.com>.
+
+        Apart from the original tests this includes some extra ones to
+        verify that we behave correctly with vertical writing modes.
+
+        * fast/css-grid-layout/min-width-height-auto-expected.txt: Added.
+        * fast/css-grid-layout/min-width-height-auto-overflow-expected.html: Added.
+        * fast/css-grid-layout/min-width-height-auto-overflow.html: Added.
+        * fast/css-grid-layout/min-width-height-auto.html: Added.
+        * fast/css/auto-min-size-expected.txt:
+        * fast/css/auto-min-size.html:
+
+2015-09-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Percentage columns should remove scrollbar's width
+        https://bugs.webkit.org/show_bug.cgi?id=149116
+
+        Reviewed by Sergio Villar Senin.
+
+        Added test to check the behavior for both columns and rows.
+        Note that rows (height) were already working fine.
+
+        * fast/css-grid-layout/grid-percent-track-scrollbar-expected.txt: Added.
+        * fast/css-grid-layout/grid-percent-track-scrollbar.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] pipe-to writable stream tests
+        https://bugs.webkit.org/show_bug.cgi?id=148296
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/pipe-to-expected.txt: Added.
+        * streams/reference-implementation/pipe-to.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add readable stream templated tests for writable streams
+        https://bugs.webkit.org/show_bug.cgi?id=148304
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/readable-stream-templated-expected.txt: Added new expectations.
+        * streams/reference-implementation/readable-stream-templated.html: New writable stream tests.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add pipe-to-options writable stream tests
+        https://bugs.webkit.org/show_bug.cgi?id=148297
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/pipe-to-options-expected.txt: Added.
+        * streams/reference-implementation/pipe-to-options.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add tests about abort on writable streams
+        https://bugs.webkit.org/show_bug.cgi?id=148298
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/writable-stream-abort-expected.txt: Added.
+        * streams/reference-implementation/writable-stream-abort.html: Added.
+
+2015-09-14  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add general writable streams tests
+        https://bugs.webkit.org/show_bug.cgi?id=148299
+
+        Reviewed by Darin Adler.
+
+        * streams/reference-implementation/writable-stream-expected.txt: Added.
+        * streams/reference-implementation/writable-stream.html: Added.
+
+2015-09-14  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Layout Test media/video-volume-slider.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=149032
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: media/video-volume-slider.html is removed.
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Document.adoptNode() should be able to explicitly adopt a DocumentType node
+        https://bugs.webkit.org/show_bug.cgi?id=149097
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline DOM3 tests, those seem to be outdated now.
+
+        * dom/xhtml/level3/core/documentadoptnode10-expected.txt:
+        * dom/xhtml/level3/core/documentadoptnode11-expected.txt:
+        * dom/xhtml/level3/core/documentadoptnode12-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        document.lastModified should use the user's local time zone
+        https://bugs.webkit.org/show_bug.cgi?id=149092
+
+        Reviewed by Ryosuke Niwa.
+
+        Update test so that it converts document.lastModified to UTF before
+        printing it. This is so that we can consistent layout tests results, no
+        matter the system's timezone.
+
+        * http/tests/misc/last-modified-parsing-expected.txt:
+        * http/tests/resources/last-modified.php:
+
+2015-09-13  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Mark fast/text/international/system-language/system-font-punctuation.html to *Missing* since r188377.
+        Additionally some tests have been passed since r188693. Removed the tests in TestExpectation.
+
+        * platform/efl/TestExpectations:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Node.baseURI should not return null for detached nodes
+        https://bugs.webkit.org/show_bug.cgi?id=149104
+        <rdar://problem/22559535>
+
+        Reviewed by Sam Weinig.
+
+        * dom/xhtml/level3/core/nodegetbaseuri03-expected.txt:
+        Rebaseline outdated DOM3 test.
+
+        * svg/custom/image-base-uri-expected.txt: Removed.
+        * svg/custom/image-base-uri.svg: Removed.
+        Drop outdated SVG test. SVG2 no longer support xml:base.
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        CharacterData API parameters should not be optional
+        https://bugs.webkit.org/show_bug.cgi?id=149101
+        <rdar://problem/22546954>
+
+        Reviewed by Sam Weinig.
+
+        Update existing test to reflect our web-exposed behavior change.
+
+        * fast/dom/non-numeric-values-numeric-parameters-expected.txt:
+        * fast/dom/script-tests/non-numeric-values-numeric-parameters.js:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Another test fix after r189670.
+
+        Unreviewed.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test fix after r189670.
+
+        Unreviewed.
+
+        * platform/mac/TestExpectations:
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Add system-language-specific tests
+        https://bugs.webkit.org/show_bug.cgi?id=148775
+
+        Reviewed by Alexey Proskuryakov.
+
+        This patch adds (or rewrites) tests to take advantage of our new ability to mock
+        the system language for testing (https://bugs.webkit.org/show_bug.cgi?id=148671).
+
+        It tests these patches:
+        https://bugs.webkit.org/show_bug.cgi?id=148164
+        https://bugs.webkit.org/show_bug.cgi?id=147504
+        https://bugs.webkit.org/show_bug.cgi?id=147862
+        https://bugs.webkit.org/show_bug.cgi?id=147964
+
+        * fast/text/international/system-language/arabic-glyph-cache-fill-combine-expected.html: Renamed from LayoutTests/fast/text/arabic-glyph-cache-fill-combine-expected.html.
+        * fast/text/international/system-language/arabic-glyph-cache-fill-combine.html: Renamed from LayoutTests/fast/text/arabic-glyph-cache-fill-combine.html.
+        * fast/text/international/system-language/han-quotes-expected-mismatch.html: Added.
+        * fast/text/international/system-language/han-quotes.html: Added.
+        * fast/text/international/system-language/hindi-system-font-punctuation-expected.html: Renamed from LayoutTests/fast/text/hindi-system-font-punctuation-expected.html.
+        * fast/text/international/system-language/hindi-system-font-punctuation.html: Renamed from LayoutTests/fast/text/hindi-system-font-punctuation.html.
+        * fast/text/international/system-language/system-font-punctuation.html: Renamed from LayoutTests/fast/text/system-font-punctuation.html.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/text/system-font-punctuation-expected.txt.
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/mac/fast/text/system-font-punctuation-expected.txt.
+        * platform/win/TestExpectations:
+        * platform/win/fast/text/international/system-language/system-font-punctuation-expected.txt: Renamed from LayoutTests/platform/win/fast/text/system-font-punctuation-expected.txt.
+
+2015-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Allow testing with the system language
+        https://bugs.webkit.org/show_bug.cgi?id=148671
+
+        Reviewed by Anders Carlsson and Alexey Proskuryakov.
+
+        Add a test for the declarative form of setting the system language.
+
+        * fast/text/international/system-language/declarative-language-expected.txt: Added.
+        * fast/text/international/system-language/declarative-language.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        window.EventTarget should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149085
+        <rdar://problem/22546774>
+
+        Reviewed by Sam Weinig.
+
+        Update / rebaseline existing test as window.EventTarget now exists.
+
+        * fast/dom/dom-constructors-expected.txt:
+        * fast/dom/dom-constructors.html:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        ChildNode.replaceWith() without argument should replace the node with an empty DocumentFragment
+        https://bugs.webkit.org/show_bug.cgi?id=149073
+        <rdar://problem/22547801>
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix / rebaseline test now that our behavior has changed.
+
+        * fast/dom/ChildNode-replaceWith-expected.txt:
+        * fast/dom/ChildNode-replaceWith.html:
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/cache/disk-cache/disk-cache-cancel.html as flaky for 
+        https://bugs.webkit.org/show_bug.cgi?id=149087
+
+        * platform/wk2/TestExpectations:
+
+2015-09-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGColor custom text format is different from the CSS color custom text format
+        https://bugs.webkit.org/show_bug.cgi?id=148879
+
+        Reviewed by Daniel Bates.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/parse-color-int-or-percent-crash.html:
+        * platform/mac/svg/webarchive/svg-script-subresouces-expected.txt:
+        * svg/css/case-sensitive-tags-expected.txt:
+        * svg/css/case-sensitive-tags.html:
+        * svg/css/getComputedStyle-basic-expected.txt:
+        * svg/css/script-tests/svg-attribute-parser-mode.js:
+        * svg/css/svg-attribute-parser-mode-expected.txt:
+        * svg/dom/SVGColor-expected.txt:
+        * svg/dom/SVGPaint-expected.txt:
+        * svg/dom/SVGStyleElement/disable-svg-style-element-expected.txt:
+        * svg/dom/SVGStyleElement/script-tests/disable-svg-style-element.js:
+        * svg/dom/script-tests/SVGColor.js:
+        * svg/dom/script-tests/SVGPaint.js:
+        * svg/webarchive/svg-script-subresouces-expected.webarchive:
+        * transitions/svg-transitions-expected.txt:
+        Fix expected results for existing tests
+        
+        * svg/css/computed-style-rgb-color-expected.txt: Added.
+        * svg/css/computed-style-rgb-color.html: Added.
+        Ensure that the correct format is returned when getComputedStyle() is
+        called for an SVG color.        
+
+2015-09-11  Nan Wang  <n_wang@apple.com>
+
+        AX: ARIA 1.1 @aria-current
+        https://bugs.webkit.org/show_bug.cgi?id=146012
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-current-expected.txt: Added.
+        * accessibility/aria-current.html: Added.
+        * inspector/dom/getAccessibilityPropertiesForNode_ariaCurrent-expected.txt: Added.
+        * inspector/dom/getAccessibilityPropertiesForNode_ariaCurrent.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html as flaky for
+        https://bugs.webkit.org/show_bug.cgi?id=149082
+
+        * TestExpectations:
+
+2015-09-11  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update test for bug 148971
+        https://bugs.webkit.org/show_bug.cgi?id=149076
+
+        Reviewed by Chris Dumez.
+
+        * platform/win/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt: Updated.
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList update steps for classList don't follow the spec
+        https://bugs.webkit.org/show_bug.cgi?id=148589
+        <rdar://problem/22547443>
+
+        Reviewed by Ryosuke Niwa and Darin Adler.
+
+        Update / rebaseline existing tests as our behavior changed.
+
+        * fast/dom/HTMLElement/class-list-expected.txt:
+        * fast/dom/HTMLElement/class-list-quirks-expected.txt:
+        * fast/dom/HTMLElement/script-tests/class-list.js:
+        * fast/dom/HTMLOutputElement/dom-settable-token-list-expected.txt:
+        * fast/dom/HTMLOutputElement/htmloutputelement-expected.txt:
+        * fast/dom/HTMLOutputElement/htmloutputelement.html:
+        * fast/dom/HTMLOutputElement/script-tests/dom-settable-token-list.js:
+        * fast/dom/rel-list-expected.txt:
+        * fast/dom/rel-list.html:
+
+2015-09-11  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed gardening to make Windows bot green.
+
+        * platform/win/TestExpectations:
+        imported/w3c/web-platform-tests/html/dom/interfaces.html is newly imported and fails on Windows.
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark svg/animations/svgboolean-animation-1 as flaky for
+        https://bugs.webkit.org/show_bug.cgi?id=149072
+
+        * TestExpectations:
+
+2015-09-11  Tim Horton  <timothy_horton@apple.com>
+
+        fast/hidpi/image-set-without-specified-width.html flakily tries to install multiple callbacks for the same event
+        https://bugs.webkit.org/show_bug.cgi?id=149067
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/hidpi/image-set-without-specified-width.html:
+        Wait until we've successfully set the deviceScaleFactor
+        before reloading the page; otherwise, we can end up trying to set it
+        again after the reload (and depending on how long it takes the callback
+        to return, again, and again, and again...)
+
+2015-09-11  Alexey Proskuryakov  <ap@apple.com>
+
+        El Capitan test result gardening.
+
+        * platform/mac/TestExpectations: Remove a test that should pass now.
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        Element.tagName should be upper-case for HTML elements in HTML documents
+        https://bugs.webkit.org/show_bug.cgi?id=148843
+        <rdar://problem/22559081>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update / rebaseline test now that our behavior has changed.
+
+        * fast/dom/Node/initial-values-expected.txt:
+        * fast/dom/Node/script-tests/initial-values.js:
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        document.body = "text" should throw a TypeError, not a HierarchyRequestError
+        https://bugs.webkit.org/show_bug.cgi?id=149057
+        <rdar://problem/22567157>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test as we now throw a different exception.
+
+        * fast/dom/setter-type-enforcement-expected.txt:
+
 2015-09-10  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r189595.

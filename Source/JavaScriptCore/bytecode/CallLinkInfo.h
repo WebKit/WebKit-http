@@ -26,6 +26,8 @@
 #ifndef CallLinkInfo_h
 #define CallLinkInfo_h
 
+#include "CallFrameShuffleData.h"
+#include "CallMode.h"
 #include "CodeLocation.h"
 #include "CodeSpecializationKind.h"
 #include "JITWriteBarrier.h"
@@ -41,22 +43,38 @@ namespace JSC {
 
 class CallLinkInfo : public BasicRawSentinelNode<CallLinkInfo> {
 public:
-    enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs };
+    enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs, TailCall, TailCallVarargs };
     static CallType callTypeFor(OpcodeID opcodeID)
     {
         if (opcodeID == op_call || opcodeID == op_call_eval)
             return Call;
+        if (opcodeID == op_call_varargs)
+            return CallVarargs;
         if (opcodeID == op_construct)
             return Construct;
         if (opcodeID == op_construct_varargs)
             return ConstructVarargs;
-        ASSERT(opcodeID == op_call_varargs);
-        return CallVarargs;
+        if (opcodeID == op_tail_call)
+            return TailCall;
+        ASSERT(opcodeID == op_tail_call_varargs);
+        return TailCallVarargs;
     }
-    
+
+    static bool isVarargsCallType(CallType callType)
+    {
+        switch (callType) {
+        case CallVarargs:
+        case ConstructVarargs:
+        case TailCallVarargs:
+            return true;
+
+        default:
+            return false;
+        }
+    }
+
     CallLinkInfo()
-        : m_registerPreservationMode(static_cast<unsigned>(RegisterPreservationNotRequired))
-        , m_hasSeenShouldRepatch(false)
+        : m_hasSeenShouldRepatch(false)
         , m_hasSeenClosure(false)
         , m_clearedByGC(false)
         , m_allowStubs(true)
@@ -83,9 +101,38 @@ public:
         return specializationKindFor(static_cast<CallType>(m_callType));
     }
 
-    RegisterPreservationMode registerPreservationMode() const
+    static CallMode callModeFor(CallType callType)
     {
-        return static_cast<RegisterPreservationMode>(m_registerPreservationMode);
+        switch (callType) {
+        case Call:
+        case CallVarargs:
+            return CallMode::Regular;
+        case TailCall:
+        case TailCallVarargs:
+            return CallMode::Tail;
+        case Construct:
+        case ConstructVarargs:
+            return CallMode::Construct;
+        case None:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+
+    CallMode callMode() const
+    {
+        return callModeFor(static_cast<CallType>(m_callType));
+    }
+
+    bool isTailCall() const
+    {
+        return callMode() == CallMode::Tail;
+    }
+
+    bool isVarargs() const
+    {
+        return isVarargsCallType(static_cast<CallType>(m_callType));
     }
 
     bool isLinked() { return m_stub || m_callee; }
@@ -117,7 +164,6 @@ public:
         CodeLocationNearCall callReturnLocation, CodeLocationDataLabelPtr hotPathBegin,
         CodeLocationNearCall hotPathOther, unsigned calleeGPR)
     {
-        m_registerPreservationMode = static_cast<unsigned>(RegisterPreservationNotRequired);
         m_callType = callType;
         m_codeOrigin = codeOrigin;
         m_callReturnLocation = callReturnLocation;
@@ -286,6 +332,16 @@ public:
 
     void visitWeak(VM&);
 
+    void setFrameShuffleData(const CallFrameShuffleData& shuffleData)
+    {
+        m_frameShuffleData = std::make_unique<CallFrameShuffleData>(shuffleData);
+    }
+
+    const CallFrameShuffleData* frameShuffleData()
+    {
+        return m_frameShuffleData.get();
+    }
+
 private:
     CodeLocationNearCall m_callReturnLocation;
     CodeLocationDataLabelPtr m_hotPathBegin;
@@ -294,7 +350,7 @@ private:
     WriteBarrier<JSFunction> m_lastSeenCallee;
     RefPtr<PolymorphicCallStubRoutine> m_stub;
     RefPtr<JITStubRoutine> m_slowStub;
-    unsigned m_registerPreservationMode : 1; // Real type is RegisterPreservationMode
+    std::unique_ptr<CallFrameShuffleData> m_frameShuffleData;
     bool m_hasSeenShouldRepatch : 1;
     bool m_hasSeenClosure : 1;
     bool m_clearedByGC : 1;

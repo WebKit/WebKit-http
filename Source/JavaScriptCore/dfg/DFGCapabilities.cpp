@@ -152,14 +152,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_put_by_val:
     case op_put_by_val_direct:
     case op_get_by_id:
-    case op_get_by_id_out_of_line:
     case op_get_array_length:
     case op_put_by_id:
-    case op_put_by_id_out_of_line:
-    case op_put_by_id_transition_direct:
-    case op_put_by_id_transition_direct_out_of_line:
-    case op_put_by_id_transition_normal:
-    case op_put_by_id_transition_normal_out_of_line:
     case op_jmp:
     case op_jtrue:
     case op_jfalse:
@@ -217,6 +211,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_new_arrow_func_exp:
     case op_create_lexical_environment:
     case op_get_parent_scope:
+    case op_catch:
         return CanCompileAndInline;
 
     case op_put_to_scope: {

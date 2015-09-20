@@ -74,8 +74,6 @@
 #import <UIKit/_UINavigationInteractiveTransition.h>
 #import <UIKit/_UINavigationParallaxTransition.h>
 
-#import <WebKitAdditions/LinkPreviewDefines.h>
-
 #if HAVE(LINK_PREVIEW)
 #import <UIKit/UIPreviewItemController.h>
 #endif
@@ -211,6 +209,7 @@ typedef enum {
 @interface UILongPressGestureRecognizer ()
 @property (nonatomic) CFTimeInterval delay;
 @property (nonatomic, readonly) CGPoint startPoint;
+@property (nonatomic, assign, setter=_setRequiresQuietImpulse:) BOOL _requiresQuietImpulse;
 @end
 
 @interface _UIWebHighlightLongPressGestureRecognizer : UILongPressGestureRecognizer
@@ -756,6 +755,13 @@ typedef enum {
 - (void)didBeginEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView;
 - (void)didEndEditingPassword:(UITextField *)passwordField inView:(UIDocumentPasswordView *)passwordView;
 
+@end
+
+@interface UIViewControllerPreviewAction : NSObject <NSCopying>
+@end
+
+@interface UIViewControllerPreviewAction ()
++ (instancetype)actionWithTitle:(NSString *)title handler:(void (^)(UIViewControllerPreviewAction *action, UIViewController *previewViewController))handler;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)

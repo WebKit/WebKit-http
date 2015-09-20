@@ -190,18 +190,18 @@ JSValue JSTestException::getConstructor(VM& vm, JSGlobalObject* globalObject)
     return getDOMConstructor<JSTestExceptionConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
-bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
 {
-    UNUSED_PARAM(handle);
+    UNUSED_PARAM(cell);
     UNUSED_PARAM(visitor);
     return false;
 }
 
-void JSTestExceptionOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
+void JSTestExceptionOwner::finalize(JSC::JSCell*& cell, void* context)
 {
-    auto* jsTestException = jsCast<JSTestException*>(handle.slot()->asCell());
+    auto& wrapper = jsCast<JSTestException&>(*cell);
     auto& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, &jsTestException->impl(), jsTestException);
+    uncacheWrapper(world, &wrapper.impl(), &wrapper);
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -212,6 +212,14 @@ extern "C" { extern void (*const __identifier("??_7TestException@WebCore@@6B@")[
 extern "C" { extern void* _ZTVN7WebCore13TestExceptionE[]; }
 #endif
 #endif
+
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestException* impl)
+{
+    if (!impl)
+        return jsNull();
+    return createNewWrapper<JSTestException>(globalObject, impl);
+}
+
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestException* impl)
 {
     if (!impl)

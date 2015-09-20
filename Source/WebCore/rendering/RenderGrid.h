@@ -49,6 +49,7 @@ public:
 
     Element& element() const { return downcast<Element>(nodeForNonAnonymous()); }
 
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
 
     virtual bool avoidsFloats() const override { return true; }
@@ -94,6 +95,7 @@ private:
     };
     enum TrackSizeComputationPhase {
         ResolveIntrinsicMinimums,
+        ResolveContentBasedMinimums,
         ResolveMaxContentMinimums,
         ResolveIntrinsicMaximums,
         ResolveMaxContentMaximums,
@@ -116,12 +118,13 @@ private:
     GridTrackSize gridTrackSize(GridTrackSizingDirection, unsigned) const;
 
     LayoutUnit logicalContentHeightForChild(RenderBox&, Vector<GridTrack>&);
+    LayoutUnit minSizeForChild(RenderBox&, GridTrackSizingDirection, Vector<GridTrack>& columnTracks);
     LayoutUnit minContentForChild(RenderBox&, GridTrackSizingDirection, Vector<GridTrack>& columnTracks);
     LayoutUnit maxContentForChild(RenderBox&, GridTrackSizingDirection, Vector<GridTrack>& columnTracks);
     GridAxisPosition columnAxisPositionForChild(const RenderBox&) const;
     GridAxisPosition rowAxisPositionForChild(const RenderBox&) const;
-    LayoutUnit rowPositionForChild(const RenderBox&) const;
-    LayoutUnit columnPositionForChild(const RenderBox&) const;
+    LayoutUnit columnAxisOffsetForChild(const RenderBox&) const;
+    LayoutUnit rowAxisOffsetForChild(const RenderBox&) const;
     LayoutPoint findChildLogicalPosition(const RenderBox&) const;
     GridCoordinate cachedGridCoordinate(const RenderBox&) const;
 

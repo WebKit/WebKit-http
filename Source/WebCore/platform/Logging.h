@@ -52,6 +52,7 @@ namespace WebCore {
     M(Gamepad) \
     M(History) \
     M(IconDatabase) \
+    M(IndexedDB) \
     M(Layout) \
     M(Loading) \
     M(Media) \
@@ -68,6 +69,7 @@ namespace WebCore {
     M(RemoteInspector) \
     M(ResourceLoading) \
     M(SQLDatabase) \
+    M(SVG) \
     M(Services) \
     M(SpellingAndGrammar) \
     M(StorageAPI) \

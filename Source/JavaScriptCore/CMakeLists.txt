@@ -80,6 +80,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CallEdge.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
+    bytecode/CallMode.cpp
     bytecode/CallVariant.cpp
     bytecode/CodeBlock.cpp
     bytecode/CodeBlockHash.cpp
@@ -107,6 +108,7 @@ set(JavaScriptCore_SOURCES
     bytecode/PolymorphicAccess.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/PropertyCondition.cpp
+    bytecode/PutByIdFlags.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
     bytecode/ReduceWhitespace.cpp
@@ -183,6 +185,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFixupPhase.cpp
     dfg/DFGFlushFormat.cpp
     dfg/DFGFlushedAt.cpp
+    dfg/DFGLiveCatchVariablePreservationPhase.cpp
     dfg/DFGFrozenValue.cpp
     dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
@@ -358,6 +361,11 @@ set(JavaScriptCore_SOURCES
 
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
+    jit/CachedRecovery.cpp
+    jit/CallFrameShuffleData.cpp
+    jit/CallFrameShuffler.cpp
+    jit/CallFrameShuffler32_64.cpp
+    jit/CallFrameShuffler64.cpp
     jit/ExecutableAllocationFuzz.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
@@ -385,7 +393,6 @@ set(JavaScriptCore_SOURCES
     jit/Reg.cpp
     jit/RegisterAtOffset.cpp
     jit/RegisterAtOffsetList.cpp
-    jit/RegisterPreservationWrapperGenerator.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
     jit/ScratchRegisterAllocator.cpp
@@ -950,6 +957,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     llint
     parser
     profiler
+    replay
     runtime
     yarr
 
@@ -1059,10 +1067,29 @@ add_custom_command(
     VERBATIM)
 
 # JSCBuiltins
+set(JavaScriptCore_BUILTINS_SOURCES
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayIterator.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Array.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Function.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/GlobalObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/InspectorInstrumentationObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Iterator.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Operations.Promise.js
+    ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Promise.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringIterator.prototype.js
+)
+
 add_custom_command(
    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
-   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/builtins
+   DEPENDS ${JavaScriptCore_BUILTINS_SOURCES}
    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins --input-directory ${CMAKE_CURRENT_SOURCE_DIR}/builtins --output ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
    VERBATIM)
 

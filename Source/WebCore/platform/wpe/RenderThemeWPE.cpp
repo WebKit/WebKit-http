@@ -39,7 +39,7 @@ PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
     return theme;
 }
 
-void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontDescription&) const
+void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const
 {
     notImplemented();
 }

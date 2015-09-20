@@ -252,6 +252,7 @@ fast/overflow/scrollbar-restored-and-then-locked.html [ Skip ]
 # TODO IndexedDB is not yet enabled.
 storage/indexeddb/ [ Skip ]
 imported/w3c/indexeddb [ Skip ]
+js/dom/global-constructors-attributes-idb.html [ Skip ]
 http/tests/security/cross-origin-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-indexeddb.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
@@ -471,6 +472,7 @@ fast/css/draggable-region-parser.html [ Skip ]
 
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html [ Skip ]
+css3/font-feature-settings-rendering-2.html [ Skip ]
 
 # TODO HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
 # https://bugs.webkit.org/show_bug.cgi?id=87919
@@ -617,6 +619,9 @@ animations/trigger-computed-style.html [ Skip ]
 animations/trigger-parsing.html [ Skip ]
 animations/trigger-container-scroll-simple.html [ Skip ]
 animations/trigger-container-scroll-boundaries.html [ Skip ]
+
+# TODO aria-current is not supported
+webkit.org/b/149018 accessibility/aria-current.html [ Skip ]
 
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
@@ -1279,6 +1284,9 @@ accessibility/svg-element-press.html [ Skip ]
 # Missing cellForColumnAndRow implementation in DRT
 webkit.org/b/143081 accessibility/table-cell-display-block.html [ Skip ]
 accessibility/aria-table-with-presentational-elements.html [ Skip ]
+
+# stringValue is not implemented.
+webkit.org/b/149177 accessibility/ax-value-with-search.html [ Skip ]
 
 # Accessibility tests for notifications that don't exist or aren't needed on Mac OS X (or Windows)
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
@@ -2724,6 +2732,7 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/pageshow-pagehide-on-back-uncached.html [ Skip ]
 
 # Newly imported W3C tests that are failing on Windows only.
+imported/w3c/web-platform-tests/html/dom/interfaces.html [ Skip ]
 imported/w3c/web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_css.html [ Skip ]
 imported/w3c/web-platform-tests/dom/nodes/Document-URL.sub.html [ Skip ]
 
@@ -3171,8 +3180,9 @@ fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
 
-# This test relies on iOS-specific font fallback.
-fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+# Changing system language is not supported.
+fast/text/international/system-language [ Skip ]
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
 fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]

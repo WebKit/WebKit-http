@@ -436,21 +436,6 @@ bool Interpreter::isOpcode(Opcode opcode)
 #endif
 }
 
-static bool unwindCallFrame(StackVisitor& visitor)
-{
-    CallFrame* callFrame = visitor->callFrame();
-    if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
-        SuspendExceptionScope scope(&callFrame->vm());
-        if (jsDynamicCast<JSFunction*>(callFrame->callee()))
-            debugger->returnEvent(callFrame);
-        else
-            debugger->didExecuteProgram(callFrame);
-        ASSERT(!callFrame->hadException());
-    }
-
-    return !visitor->callerIsVMEntryFrame();
-}
-
 static StackFrameCodeType getStackFrameCodeType(StackVisitor& visitor)
 {
     switch (visitor->codeType()) {
@@ -602,6 +587,23 @@ JSString* Interpreter::stackTraceAsString(ExecState* exec, Vector<StackFrame> st
     return jsString(&exec->vm(), builder.toString());
 }
 
+ALWAYS_INLINE static HandlerInfo* findExceptionHandler(StackVisitor& visitor, CodeBlock* codeBlock, CodeBlock::RequiredHandler requiredHandler)
+{
+    ASSERT(codeBlock);
+#if ENABLE(DFG_JIT)
+    ASSERT(!visitor->isInlinedFrame());
+#endif
+
+    CallFrame* callFrame = visitor->callFrame();
+    unsigned exceptionHandlerIndex;
+    if (codeBlock->jitType() != JITCode::DFGJIT)
+        exceptionHandlerIndex = callFrame->bytecodeOffset();
+    else
+        exceptionHandlerIndex = callFrame->callSiteIndex().bits();
+
+    return codeBlock->handlerForIndex(exceptionHandlerIndex, requiredHandler);
+}
+
 class GetCatchHandlerFunctor {
 public:
     GetCatchHandlerFunctor()
@@ -613,12 +615,13 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor)
     {
+        visitor.unwindToMachineCodeBlockFrame();
+
         CodeBlock* codeBlock = visitor->codeBlock();
         if (!codeBlock)
             return StackVisitor::Continue;
 
-        unsigned bytecodeOffset = visitor->bytecodeOffset();
-        m_handler = codeBlock->handlerForBytecodeOffset(bytecodeOffset, CodeBlock::RequiredHandler::CatchHandler);
+        m_handler = findExceptionHandler(visitor, codeBlock, CodeBlock::RequiredHandler::CatchHandler);
         if (m_handler)
             return StackVisitor::Done;
 
@@ -628,6 +631,18 @@ public:
 private:
     HandlerInfo* m_handler;
 };
+
+ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
+{
+    if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
+        SuspendExceptionScope scope(&callFrame->vm());
+        if (jsDynamicCast<JSFunction*>(callFrame->callee()))
+            debugger->returnEvent(callFrame);
+        else
+            debugger->didExecuteProgram(callFrame);
+        ASSERT(!callFrame->hadException());
+    }
+}
 
 class UnwindFunctor {
 public:
@@ -641,22 +656,31 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor)
     {
+        visitor.unwindToMachineCodeBlockFrame();
         VM& vm = m_callFrame->vm();
         m_callFrame = visitor->callFrame();
         m_codeBlock = visitor->codeBlock();
-        unsigned bytecodeOffset = visitor->bytecodeOffset();
 
-        if (m_isTermination || !(m_handler = (m_codeBlock && !isWebAssemblyExecutable(m_codeBlock->ownerExecutable())) ? m_codeBlock->handlerForBytecodeOffset(bytecodeOffset) : nullptr)) {
-            if (!unwindCallFrame(visitor)) {
-                if (LegacyProfiler* profiler = vm.enabledProfiler())
-                    profiler->exceptionUnwind(m_callFrame);
+        m_handler = nullptr;
+        if (!m_isTermination) {
+            if (m_codeBlock && !isWebAssemblyExecutable(m_codeBlock->ownerExecutable()))
+                m_handler = findExceptionHandler(visitor, m_codeBlock, CodeBlock::RequiredHandler::AnyHandler);
+        }
 
-                copyCalleeSavesToVMCalleeSavesBuffer(visitor);
-
-                return StackVisitor::Done;
-            }
-        } else
+        if (m_handler)
             return StackVisitor::Done;
+
+        notifyDebuggerOfUnwinding(m_callFrame);
+
+        bool shouldStopUnwinding = visitor->callerIsVMEntryFrame();
+        if (shouldStopUnwinding) {
+            if (LegacyProfiler* profiler = vm.enabledProfiler())
+                profiler->exceptionUnwind(m_callFrame);
+
+            copyCalleeSavesToVMCalleeSavesBuffer(visitor);
+
+            return StackVisitor::Done;
+        }
 
         copyCalleeSavesToVMCalleeSavesBuffer(visitor);
 
@@ -716,7 +740,6 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
     }
 
     CodeBlock* codeBlock = callFrame->codeBlock();
-    bool isTermination = false;
 
     JSValue exceptionValue = exception->value();
     ASSERT(!exceptionValue.isEmpty());
@@ -726,22 +749,29 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
     if (exceptionValue.isEmpty() || (exceptionValue.isCell() && !exceptionValue.asCell()))
         exceptionValue = jsNull();
 
-    if (exceptionValue.isObject())
-        isTermination = isTerminatedExecutionException(exception);
-
     ASSERT(vm.exception() && vm.exception()->stack().size());
 
+    // Calculate an exception handler vPC, unwinding call frames as necessary.
+    HandlerInfo* handler = nullptr;
+    UnwindFunctor functor(callFrame, isTerminatedExecutionException(exception), codeBlock, handler);
+    callFrame->iterate(functor);
+    if (!handler)
+        return nullptr;
+
+    return handler;
+}
+
+void Interpreter::notifyDebuggerOfExceptionToBeThrown(CallFrame* callFrame, Exception* exception)
+{
     Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger();
     if (debugger && debugger->needsExceptionCallbacks() && !exception->didNotifyInspectorOfThrow()) {
-        // We need to clear the exception here in order to see if a new exception happens.
-        // Afterwards, the values are put back to continue processing this error.
-        SuspendExceptionScope scope(&vm);
         // This code assumes that if the debugger is enabled then there is no inlining.
         // If that assumption turns out to be false then we'll ignore the inlined call
         // frames.
         // https://bugs.webkit.org/show_bug.cgi?id=121754
 
         bool hasCatchHandler;
+        bool isTermination = isTerminatedExecutionException(exception);
         if (isTermination)
             hasCatchHandler = false;
         else {
@@ -752,22 +782,9 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
             hasCatchHandler = !!handler;
         }
 
-        debugger->exception(callFrame, exceptionValue, hasCatchHandler);
-        ASSERT(!callFrame->hadException());
+        debugger->exception(callFrame, exception->value(), hasCatchHandler);
     }
     exception->setDidNotifyInspectorOfThrow();
-
-    // Calculate an exception handler vPC, unwinding call frames as necessary.
-    HandlerInfo* handler = nullptr;
-    UnwindFunctor functor(callFrame, isTermination, codeBlock, handler);
-    callFrame->iterate(functor);
-    if (!handler)
-        return nullptr;
-
-    if (LegacyProfiler* profiler = vm.enabledProfiler())
-        profiler->exceptionUnwind(callFrame);
-
-    return handler;
 }
 
 static inline JSValue checkedReturn(JSValue returnValue)

@@ -29,6 +29,7 @@
 #if USE(JSVALUE64)
 #include "JIT.h"
 
+#include "CallFrameShuffler.h"
 #include "CodeBlock.h"
 #include "JITInlines.h"
 #include "JSArray.h"
@@ -145,10 +146,12 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
     COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_construct), call_and_construct_opcodes_must_be_same_length);
     COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_call_varargs), call_and_call_varargs_opcodes_must_be_same_length);
     COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_construct_varargs), call_and_construct_varargs_opcodes_must_be_same_length);
+    COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_tail_call), call_and_tail_call_opcodes_must_be_same_length);
+    COMPILE_ASSERT(OPCODE_LENGTH(op_call) == OPCODE_LENGTH(op_tail_call_varargs), call_and_tail_call_varargs_opcodes_must_be_same_length);
     CallLinkInfo* info;
     if (opcodeID != op_call_eval)
         info = m_codeBlock->addCallLinkInfo();
-    if (opcodeID == op_call_varargs || opcodeID == op_construct_varargs)
+    if (opcodeID == op_call_varargs || opcodeID == op_construct_varargs || opcodeID == op_tail_call_varargs)
         compileSetupVarargsFrame(instruction, info);
     else {
         int argCount = instruction[3].u.operand;
@@ -172,7 +175,7 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
     emitGetVirtualRegister(callee, regT0); // regT0 holds callee.
 
     store64(regT0, Address(stackPointerRegister, JSStack::Callee * static_cast<int>(sizeof(Register)) - sizeof(CallerFrameAndPC)));
-    
+
     if (opcodeID == op_call_eval) {
         compileCallEval(instruction);
         return;
@@ -187,6 +190,33 @@ void JIT::compileOpCall(OpcodeID opcodeID, Instruction* instruction, unsigned ca
     m_callCompilationInfo.append(CallCompilationInfo());
     m_callCompilationInfo[callLinkInfoIndex].hotPathBegin = addressOfLinkedFunctionCheck;
     m_callCompilationInfo[callLinkInfoIndex].callLinkInfo = info;
+
+    if (opcodeID == op_tail_call) {
+        CallFrameShuffleData shuffleData;
+        shuffleData.numLocals =
+            instruction[4].u.operand - sizeof(CallerFrameAndPC) / sizeof(Register);
+        shuffleData.args.resize(instruction[3].u.operand);
+        for (int i = 0; i < instruction[3].u.operand; ++i) {
+            shuffleData.args[i] =
+                ValueRecovery::displacedInJSStack(
+                    virtualRegisterForArgument(i) - instruction[4].u.operand,
+                    DataFormatJS);
+        }
+        shuffleData.callee =
+            ValueRecovery::inGPR(regT0, DataFormatJS);
+        shuffleData.setupCalleeSaveRegisters(m_codeBlock);
+        info->setFrameShuffleData(shuffleData);
+        CallFrameShuffler(*this, shuffleData).prepareForTailCall();
+        m_callCompilationInfo[callLinkInfoIndex].hotPathOther = emitNakedTailCall();
+        return;
+    }
+
+    if (opcodeID == op_tail_call_varargs) {
+        emitRestoreCalleeSaves();
+        prepareForTailCallSlow();
+        m_callCompilationInfo[callLinkInfoIndex].hotPathOther = emitNakedTailCall();
+        return;
+    }
 
     m_callCompilationInfo[callLinkInfoIndex].hotPathOther = emitNakedCall();
 
@@ -207,8 +237,17 @@ void JIT::compileOpCallSlowCase(OpcodeID opcodeID, Instruction* instruction, Vec
 
     linkSlowCase(iter);
 
+    if (opcodeID == op_tail_call || opcodeID == op_tail_call_varargs)
+        emitRestoreCalleeSaves();
+
     move(TrustedImmPtr(m_callCompilationInfo[callLinkInfoIndex].callLinkInfo), regT2);
+
     m_callCompilationInfo[callLinkInfoIndex].callReturnLocation = emitNakedCall(m_vm->getCTIStub(linkCallThunkGenerator).code());
+
+    if (opcodeID == op_tail_call || opcodeID == op_tail_call_varargs) {
+        abortWithReason(JITDidReturnFromTailCall);
+        return;
+    }
 
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
@@ -223,6 +262,11 @@ void JIT::emit_op_call(Instruction* currentInstruction)
     compileOpCall(op_call, currentInstruction, m_callLinkInfoIndex++);
 }
 
+void JIT::emit_op_tail_call(Instruction* currentInstruction)
+{
+    compileOpCall(op_tail_call, currentInstruction, m_callLinkInfoIndex++);
+}
+
 void JIT::emit_op_call_eval(Instruction* currentInstruction)
 {
     compileOpCall(op_call_eval, currentInstruction, m_callLinkInfoIndex);
@@ -232,7 +276,12 @@ void JIT::emit_op_call_varargs(Instruction* currentInstruction)
 {
     compileOpCall(op_call_varargs, currentInstruction, m_callLinkInfoIndex++);
 }
-    
+
+void JIT::emit_op_tail_call_varargs(Instruction* currentInstruction)
+{
+    compileOpCall(op_tail_call_varargs, currentInstruction, m_callLinkInfoIndex++);
+}
+
 void JIT::emit_op_construct_varargs(Instruction* currentInstruction)
 {
     compileOpCall(op_construct_varargs, currentInstruction, m_callLinkInfoIndex++);
@@ -248,6 +297,11 @@ void JIT::emitSlow_op_call(Instruction* currentInstruction, Vector<SlowCaseEntry
     compileOpCallSlowCase(op_call, currentInstruction, iter, m_callLinkInfoIndex++);
 }
 
+void JIT::emitSlow_op_tail_call(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    compileOpCallSlowCase(op_tail_call, currentInstruction, iter, m_callLinkInfoIndex++);
+}
+
 void JIT::emitSlow_op_call_eval(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     compileOpCallSlowCase(op_call_eval, currentInstruction, iter, m_callLinkInfoIndex);
@@ -256,6 +310,11 @@ void JIT::emitSlow_op_call_eval(Instruction* currentInstruction, Vector<SlowCase
 void JIT::emitSlow_op_call_varargs(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     compileOpCallSlowCase(op_call_varargs, currentInstruction, iter, m_callLinkInfoIndex++);
+}
+
+void JIT::emitSlow_op_tail_call_varargs(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    compileOpCallSlowCase(op_tail_call_varargs, currentInstruction, iter, m_callLinkInfoIndex++);
 }
     
 void JIT::emitSlow_op_construct_varargs(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)

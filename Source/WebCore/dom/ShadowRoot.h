@@ -28,7 +28,6 @@
 #define ShadowRoot_h
 
 #include "ContainerNode.h"
-#include "ContentDistributor.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
@@ -37,18 +36,26 @@
 
 namespace WebCore {
 
-class ShadowRoot final : public DocumentFragment, public TreeScope {
+class ContentDistributor;
+class HTMLSlotElement;
+class SlotAssignment;
+
+class ShadowRoot : public DocumentFragment, public TreeScope {
 public:
-    enum ShadowRootType {
-        UserAgentShadowRoot = 0,
+    enum class Type : uint8_t {
+        UserAgent = 0,
+        Closed,
+        Open,
     };
 
-    static Ref<ShadowRoot> create(Document& document, ShadowRootType type)
+    static Ref<ShadowRoot> create(Document& document, Type type)
     {
         return adoptRef(*new ShadowRoot(document, type));
     }
 
     virtual ~ShadowRoot();
+
+    StyleResolver& styleResolver();
 
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
@@ -61,32 +68,46 @@ public:
 
     Element* activeElement() const;
 
-    ShadowRootType type() const { return static_cast<ShadowRootType>(m_type); }
+    Type type() const { return m_type; }
 
     PassRefPtr<Node> cloneNode(bool, ExceptionCode&);
 
-    ContentDistributor& distributor() { return m_distributor; }
-    void invalidateDistribution() { m_distributor.invalidateDistribution(m_host); }
-
     virtual void removeAllEventListeners() override;
 
-private:
-    ShadowRoot(Document&, ShadowRootType);
+    virtual ContentDistributor* distributor() { return nullptr; }
 
-    virtual bool childTypeAllowed(NodeType) const override;
-    virtual void childrenChanged(const ChildChange&) override;
+#if ENABLE(SHADOW_DOM)
+    HTMLSlotElement* findAssignedSlot(const Node&);
 
-    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+    void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
+    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&);
+
+    void invalidateSlotAssignments();
+
+    const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
+#endif
+
+protected:
+    ShadowRoot(Document&, Type);
 
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !m_host; }
 
-    unsigned m_resetStyleInheritance : 1;
-    unsigned m_type : 1;
+private:
+    virtual bool childTypeAllowed(NodeType) const override;
+
+    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
+
+    bool m_resetStyleInheritance;
+    Type m_type;
+
+    std::unique_ptr<StyleResolver> m_styleResolver;
 
     Element* m_host;
 
-    ContentDistributor m_distributor;
+#if ENABLE(SHADOW_DOM)
+    std::unique_ptr<SlotAssignment> m_slotAssignments;
+#endif
 };
 
 inline Element* ShadowRoot::activeElement() const

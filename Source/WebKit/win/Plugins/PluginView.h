@@ -128,7 +128,7 @@ namespace WebCore {
 #if ENABLE(NETSCAPE_PLUGIN_API)
         NPObject* npObject();
 #endif
-        virtual PassRefPtr<JSC::Bindings::Instance> bindingInstance() override;
+        virtual RefPtr<JSC::Bindings::Instance> bindingInstance() override;
 
         PluginStatus status() const { return m_status; }
 
@@ -293,6 +293,8 @@ namespace WebCore {
 
         void paintIntoTransformedContext(HDC);
         PassRefPtr<Image> snapshot();
+
+        float deviceScaleFactor() const;
 
         int m_mode;
         int m_paramCount;

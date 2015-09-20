@@ -300,7 +300,7 @@ inline FontMetrics CanvasRenderingContext2D::FontProxy::fontMetrics() const
     return m_font.fontMetrics();
 }
 
-inline const FontDescription& CanvasRenderingContext2D::FontProxy::fontDescription() const
+inline const FontCascadeDescription& CanvasRenderingContext2D::FontProxy::fontDescription() const
 {
     return m_font.fontDescription();
 }
@@ -2094,7 +2094,7 @@ String CanvasRenderingContext2D::font() const
         return defaultFont;
 
     StringBuilder serializedFont;
-    const FontDescription& fontDescription = state().font.fontDescription();
+    const auto& fontDescription = state().font.fontDescription();
 
     if (fontDescription.italic())
         serializedFont.appendLiteral("italic ");
@@ -2153,7 +2153,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     if (RenderStyle* computedStyle = canvas()->computedStyle())
         newStyle->setFontDescription(computedStyle->fontDescription());
     else {
-        FontDescription defaultFontDescription;
+        FontCascadeDescription defaultFontDescription;
         defaultFontDescription.setOneFamily(defaultFontFamily);
         defaultFontDescription.setSpecifiedSize(defaultFontSize);
         defaultFontDescription.setComputedSize(defaultFontSize);
@@ -2164,7 +2164,7 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     newStyle->fontCascade().update(&document.fontSelector());
 
     // Now map the font property longhands into the style.
-    StyleResolver& styleResolver = canvas()->document().ensureStyleResolver();
+    StyleResolver& styleResolver = canvas()->styleResolver();
     styleResolver.applyPropertyToStyle(CSSPropertyFontFamily, parsedStyle->getPropertyCSSValue(CSSPropertyFontFamily).get(), &newStyle.get());
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyFontStyle, parsedStyle->getPropertyCSSValue(CSSPropertyFontStyle).get());
     styleResolver.applyPropertyToCurrentStyle(CSSPropertyFontVariant, parsedStyle->getPropertyCSSValue(CSSPropertyFontVariant).get());

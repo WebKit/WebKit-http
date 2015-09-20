@@ -30,6 +30,7 @@
 
 #include "BinarySwitch.h"
 #include "CCallHelpers.h"
+#include "CallFrameShuffler.h"
 #include "DFGOperations.h"
 #include "DFGSpeculativeJIT.h"
 #include "FTLThunks.h"
@@ -211,9 +212,14 @@ static InlineCacheAction actionForCell(VM& vm, JSCell* cell)
     return AttemptToCache;
 }
 
+static bool forceICFailure(ExecState*)
+{
+    return Options::forceICFailure();
+}
+
 static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
-    if (Options::forceICFailure())
+    if (forceICFailure(exec))
         return GiveUpOnCache;
     
     // FIXME: Cache property access for immediates.
@@ -236,20 +242,6 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 
         JSCell* baseCell = baseValue.asCell();
         Structure* structure = baseCell->structure(vm);
-        
-        // Optimize self access.
-        if (stubInfo.cacheType == CacheType::Unset
-            && slot.isCacheableValue()
-            && slot.slotBase() == baseValue
-            && !slot.watchpointSet()
-            && MacroAssembler::isCompactPtrAlignedAddressOffset(maxOffsetRelativeToPatchedStorage(slot.cachedOffset()))
-            && actionForCell(vm, baseCell) == AttemptToCache
-            && !structure->needImpurePropertyWatchpoint()) {
-            structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
-            repatchByIdSelfAccess(codeBlock, stubInfo, structure, slot.cachedOffset(), operationGetByIdOptimize, true);
-            stubInfo.initGetByIdSelf(vm, codeBlock->ownerExecutable(), structure, slot.cachedOffset());
-            return RetryCacheLater;
-        }
 
         bool loadTargetFromProxy = false;
         if (baseCell->type() == PureForwardingProxyType) {
@@ -262,6 +254,21 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         InlineCacheAction action = actionForCell(vm, baseCell);
         if (action != AttemptToCache)
             return action;
+        
+        // Optimize self access.
+        if (stubInfo.cacheType == CacheType::Unset
+            && slot.isCacheableValue()
+            && slot.slotBase() == baseValue
+            && !slot.watchpointSet()
+            && MacroAssembler::isCompactPtrAlignedAddressOffset(maxOffsetRelativeToPatchedStorage(slot.cachedOffset()))
+            && action == AttemptToCache
+            && !structure->needImpurePropertyWatchpoint()
+            && !loadTargetFromProxy) {
+            structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
+            repatchByIdSelfAccess(codeBlock, stubInfo, structure, slot.cachedOffset(), operationGetByIdOptimize, true);
+            stubInfo.initGetByIdSelf(vm, codeBlock->ownerExecutable(), structure, slot.cachedOffset());
+            return RetryCacheLater;
+        }
 
         PropertyOffset offset = slot.isUnset() ? invalidOffset : slot.cachedOffset();
         
@@ -346,7 +353,7 @@ static V_JITOperation_ESsiJJI appropriateOptimizingPutByIdFunction(const PutProp
 
 static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& ident, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
 {
-    if (Options::forceICFailure())
+    if (forceICFailure(exec))
         return GiveUpOnCache;
     
     CodeBlock* codeBlock = exec->codeBlock();
@@ -372,7 +379,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
             if (stubInfo.cacheType == CacheType::Unset
                 && MacroAssembler::isPtrAlignedAddressOffset(offsetToPatchedStorage)
                 && !structure->needImpurePropertyWatchpoint()) {
-                
+
                 repatchByIdSelfAccess(
                     codeBlock, stubInfo, structure, slot.cachedOffset(),
                     appropriateOptimizingPutByIdFunction(slot, putKind), false);
@@ -471,7 +478,7 @@ static InlineCacheAction tryRepatchIn(
     ExecState* exec, JSCell* base, const Identifier& ident, bool wasFound,
     const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
-    if (Options::forceICFailure())
+    if (forceICFailure(exec))
         return GiveUpOnCache;
     
     if (!base->structure()->propertyAccessesAreCacheable())
@@ -603,7 +610,7 @@ void linkVirtualFor(
 {
     CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
     VM* vm = callerCodeBlock->vm();
-    
+
     if (shouldShowDisassemblyFor(callerCodeBlock))
         dataLog("Linking virtual call at ", *callerCodeBlock, " ", exec->callerFrame()->codeOrigin(), "\n");
     
@@ -674,7 +681,7 @@ void linkPolymorphicCall(
                 codeBlock = jsCast<FunctionExecutable*>(executable)->codeBlockForCall();
             // If we cannot handle a callee, assume that it's better for this whole thing to be a
             // virtual call.
-            if (exec->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()) || callLinkInfo.callType() == CallLinkInfo::CallVarargs || callLinkInfo.callType() == CallLinkInfo::ConstructVarargs) {
+            if (exec->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()) || callLinkInfo.isVarargs()) {
                 linkVirtualFor(exec, callLinkInfo);
                 return;
             }
@@ -700,26 +707,32 @@ void linkPolymorphicCall(
     
     CCallHelpers::JumpList slowPath;
     
-    ptrdiff_t offsetToFrame = -sizeof(CallerFrameAndPC);
-
-    if (!ASSERT_DISABLED) {
-        CCallHelpers::Jump okArgumentCount = stubJit.branch32(
-            CCallHelpers::Below, CCallHelpers::Address(CCallHelpers::stackPointerRegister, static_cast<ptrdiff_t>(sizeof(Register) * JSStack::ArgumentCount) + offsetToFrame + PayloadOffset), CCallHelpers::TrustedImm32(10000000));
-        stubJit.abortWithReason(RepatchInsaneArgumentCount);
-        okArgumentCount.link(&stubJit);
+    std::unique_ptr<CallFrameShuffler> frameShuffler;
+    if (callLinkInfo.frameShuffleData()) {
+        ASSERT(callLinkInfo.isTailCall());
+        frameShuffler = std::make_unique<CallFrameShuffler>(stubJit, *callLinkInfo.frameShuffleData());
+#if USE(JSVALUE32_64)
+        // We would have already checked that the callee is a cell, and we can
+        // use the additional register this buys us.
+        frameShuffler->assumeCalleeIsCell();
+#endif
+        frameShuffler->lockGPR(calleeGPR);
     }
-    
-    GPRReg scratch = AssemblyHelpers::selectScratchGPR(calleeGPR);
     GPRReg comparisonValueGPR;
     
     if (isClosureCall) {
-        // Verify that we have a function and stash the executable in scratch.
+        GPRReg scratchGPR;
+        if (frameShuffler)
+            scratchGPR = frameShuffler->acquireGPR();
+        else
+            scratchGPR = AssemblyHelpers::selectScratchGPR(calleeGPR);
+        // Verify that we have a function and stash the executable in scratchGPR.
 
 #if USE(JSVALUE64)
-        // We can safely clobber everything except the calleeGPR. We can't rely on tagMaskRegister
-        // being set. So we do this the hard way.
-        stubJit.move(MacroAssembler::TrustedImm64(TagMask), scratch);
-        slowPath.append(stubJit.branchTest64(CCallHelpers::NonZero, calleeGPR, scratch));
+        // We can't rely on tagMaskRegister being set, so we do this the hard
+        // way.
+        stubJit.move(MacroAssembler::TrustedImm64(TagMask), scratchGPR);
+        slowPath.append(stubJit.branchTest64(CCallHelpers::NonZero, calleeGPR, scratchGPR));
 #else
         // We would have already checked that the callee is a cell.
 #endif
@@ -732,9 +745,9 @@ void linkPolymorphicCall(
     
         stubJit.loadPtr(
             CCallHelpers::Address(calleeGPR, JSFunction::offsetOfExecutable()),
-            scratch);
+            scratchGPR);
         
-        comparisonValueGPR = scratch;
+        comparisonValueGPR = scratchGPR;
     } else
         comparisonValueGPR = calleeGPR;
     
@@ -776,8 +789,13 @@ void linkPolymorphicCall(
         caseValues[i] = newCaseValue;
     }
     
-    GPRReg fastCountsBaseGPR =
-        AssemblyHelpers::selectScratchGPR(calleeGPR, comparisonValueGPR, GPRInfo::regT3);
+    GPRReg fastCountsBaseGPR;
+    if (frameShuffler)
+        fastCountsBaseGPR = frameShuffler->acquireGPR();
+    else {
+        fastCountsBaseGPR =
+            AssemblyHelpers::selectScratchGPR(calleeGPR, comparisonValueGPR, GPRInfo::regT3);
+    }
     stubJit.move(CCallHelpers::TrustedImmPtr(fastCounts.get()), fastCountsBaseGPR);
     
     BinarySwitch binarySwitch(comparisonValueGPR, caseValues, BinarySwitch::IntPtr);
@@ -789,25 +807,45 @@ void linkPolymorphicCall(
         
         ASSERT(variant.executable()->hasJITCodeForCall());
         MacroAssemblerCodePtr codePtr =
-            variant.executable()->generatedJITCodeForCall()->addressForCall(
-                *vm, variant.executable(), ArityCheckNotRequired, callLinkInfo.registerPreservationMode());
+            variant.executable()->generatedJITCodeForCall()->addressForCall(ArityCheckNotRequired);
         
         if (fastCounts) {
             stubJit.add32(
                 CCallHelpers::TrustedImm32(1),
                 CCallHelpers::Address(fastCountsBaseGPR, caseIndex * sizeof(uint32_t)));
         }
-        calls[caseIndex].call = stubJit.nearCall();
+        if (frameShuffler) {
+            CallFrameShuffler(stubJit, frameShuffler->snapshot()).prepareForTailCall();
+            calls[caseIndex].call = stubJit.nearTailCall();
+        } else if (callLinkInfo.isTailCall()) {
+            stubJit.emitRestoreCalleeSaves();
+            stubJit.prepareForTailCallSlow();
+            calls[caseIndex].call = stubJit.nearTailCall();
+        } else
+            calls[caseIndex].call = stubJit.nearCall();
         calls[caseIndex].codePtr = codePtr;
         done.append(stubJit.jump());
     }
     
     slowPath.link(&stubJit);
     binarySwitch.fallThrough().link(&stubJit);
-    stubJit.move(calleeGPR, GPRInfo::regT0);
+
+    if (frameShuffler) {
+        frameShuffler->releaseGPR(calleeGPR);
+        frameShuffler->releaseGPR(comparisonValueGPR);
+        frameShuffler->releaseGPR(fastCountsBaseGPR);
 #if USE(JSVALUE32_64)
-    stubJit.move(CCallHelpers::TrustedImm32(JSValue::CellTag), GPRInfo::regT1);
+        frameShuffler->setCalleeJSValueRegs(JSValueRegs(GPRInfo::regT1, GPRInfo::regT0));
+#else
+        frameShuffler->setCalleeJSValueRegs(JSValueRegs(GPRInfo::regT0));
 #endif
+        frameShuffler->prepareForSlowPath();
+    } else {
+        stubJit.move(calleeGPR, GPRInfo::regT0);
+#if USE(JSVALUE32_64)
+        stubJit.move(CCallHelpers::TrustedImm32(JSValue::CellTag), GPRInfo::regT1);
+#endif
+    }
     stubJit.move(CCallHelpers::TrustedImmPtr(&callLinkInfo), GPRInfo::regT2);
     stubJit.move(CCallHelpers::TrustedImmPtr(callLinkInfo.callReturnLocation().executableAddress()), GPRInfo::regT4);
     
