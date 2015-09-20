@@ -76,16 +76,6 @@ find_package(WaylandEGL REQUIRED)
 find_package(LibGBM REQUIRED)
 find_package(LibDRM REQUIRED)
 
-find_package(Weston 1.6.0 REQUIRED)
-if (WESTON_FOUND)
-    set(ENABLE_WESTON_SHELL ON)
-endif ()
-
-find_package(Athol 0.1)
-if (ATHOL_FOUND)
-    set(ENABLE_ATHOL_SHELL ON)
-endif ()
-
 if (ENABLE_SUBTLE_CRYPTO)
     find_package(GnuTLS 3.0.0)
     if (NOT GNUTLS_FOUND)
