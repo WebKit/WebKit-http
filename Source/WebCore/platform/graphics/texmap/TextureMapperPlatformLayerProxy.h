@@ -64,7 +64,7 @@ public:
     Lock& mutex() { return m_mutex; }
     std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(LockHolder&, const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
     void pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
-    void requestUpdate(MutexLocker&);
+    void requestUpdate(LockHolder&);
 
     void setCompositor(LockHolder&, Compositor*);
     void setTargetLayer(LockHolder&, TextureMapperLayer*);

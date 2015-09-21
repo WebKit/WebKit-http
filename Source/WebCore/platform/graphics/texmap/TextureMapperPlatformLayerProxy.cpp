@@ -68,11 +68,6 @@ void TextureMapperPlatformLayerProxy::setTargetLayer(LockHolder&, TextureMapperL
     m_condition.notifyOne();
 }
 
-bool TextureMapperPlatformLayerProxy::hasTargetLayer(MutexLocker&)
-{
-    return !!m_targetLayer;
-}
-
 bool TextureMapperPlatformLayerProxy::hasTargetLayer(LockHolder&)
 {
     return !!m_targetLayer;
@@ -156,7 +151,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
 
 bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
 {
-    MutexLocker locker(m_pushMutex);
+    LockHolder locker(m_mutex);
     if (!m_compositorThreadUpdateTimer)
         return false;
 
@@ -169,7 +164,7 @@ void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
 {
     std::function<void()> updateFunction;
     {
-        MutexLocker locker(m_pushMutex);
+        LockHolder locker(m_mutex);
         if (!m_compositorThreadUpdateFunction)
             return;
         updateFunction = WTF::move(m_compositorThreadUpdateFunction);

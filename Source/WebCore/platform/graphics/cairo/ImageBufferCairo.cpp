@@ -119,7 +119,7 @@ void ImageBufferData::swapBuffersIfNeeded()
     if (!m_compositorTexture) {
         createCompositorBuffer();
 
-        MutexLocker locker(m_platformLayerProxy->mutex());
+        LockHolder locker(m_platformLayerProxy->mutex());
         m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, true, false));
     }
 
