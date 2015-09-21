@@ -75,7 +75,6 @@ static WKPageUIClientV6 createPageUIClient()
         nullptr, // mediaSessionMetadataDidChange
         // createNewPage
         [](WKPageRef, WKPageConfigurationRef pageConfiguration, WKNavigationActionRef, WKWindowFeaturesRef, const void*) -> WKPageRef {
-            fprintf(stderr, "createNewPage()\n");
             auto view = createView(pageConfiguration);
             auto page = WKViewGetPage(view);
             WKRetain(page);
