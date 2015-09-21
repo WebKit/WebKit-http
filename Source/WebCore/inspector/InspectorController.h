@@ -45,6 +45,7 @@
 namespace Inspector {
 class BackendDispatcher;
 class FrontendChannel;
+class FrontendRouter;
 class InspectorAgent;
 class InspectorObject;
 
@@ -87,7 +88,6 @@ public:
     Page& inspectedPage() const;
 
     WEBCORE_EXPORT void show();
-    WEBCORE_EXPORT void close();
 
     WEBCORE_EXPORT void setInspectorFrontendClient(InspectorFrontendClient*);
     bool hasInspectorFrontendClient() const;
@@ -98,8 +98,9 @@ public:
     bool hasLocalFrontend() const;
     bool hasRemoteFrontend() const;
 
-    WEBCORE_EXPORT void connectFrontend(Inspector::FrontendChannel*, bool isAutomaticInspection);
-    WEBCORE_EXPORT void disconnectFrontend(Inspector::DisconnectReason);
+    WEBCORE_EXPORT void connectFrontend(Inspector::FrontendChannel*, bool isAutomaticInspection = false);
+    WEBCORE_EXPORT void disconnectFrontend(Inspector::FrontendChannel*);
+    WEBCORE_EXPORT void disconnectAllFrontends();
     void setProcessId(long);
 
     void inspect(Node*);
@@ -118,8 +119,6 @@ public:
 
     WEBCORE_EXPORT bool profilerEnabled() const;
     WEBCORE_EXPORT void setProfilerEnabled(bool);
-
-    void resume();
 
     InspectorClient* inspectorClient() const { return m_inspectorClient; }
     InspectorPageAgent* pageAgent() const { return m_pageAgent; }
@@ -140,8 +139,8 @@ private:
 
     Ref<InstrumentingAgents> m_instrumentingAgents;
     std::unique_ptr<WebInjectedScriptManager> m_injectedScriptManager;
-    RefPtr<Inspector::BackendDispatcher> m_backendDispatcher;
-    Inspector::FrontendChannel* m_frontendChannel { nullptr };
+    Ref<Inspector::FrontendRouter> m_frontendRouter;
+    Ref<Inspector::BackendDispatcher> m_backendDispatcher;
     std::unique_ptr<InspectorOverlay> m_overlay;
     Ref<WTF::Stopwatch> m_executionStopwatch;
     Inspector::AgentRegistry m_agents;
@@ -154,7 +153,6 @@ private:
     InspectorDOMAgent* m_domAgent { nullptr };
     InspectorResourceAgent* m_resourceAgent { nullptr };
     InspectorPageAgent* m_pageAgent { nullptr };
-    PageDebuggerAgent* m_debuggerAgent { nullptr };
     InspectorDOMDebuggerAgent* m_domDebuggerAgent { nullptr };
     InspectorTimelineAgent* m_timelineAgent { nullptr };
 

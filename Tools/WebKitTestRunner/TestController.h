@@ -41,7 +41,7 @@ namespace WTR {
 class TestInvocation;
 class PlatformWebView;
 class EventSenderProxy;
-struct ViewOptions;
+struct TestOptions;
 
 // FIXME: Rename this TestRunner?
 class TestController {
@@ -62,8 +62,8 @@ public:
 
     bool verbose() const { return m_verbose; }
 
-    WKStringRef injectedBundlePath() { return m_injectedBundlePath.get(); }
-    WKStringRef testPluginDirectory() { return m_testPluginDirectory.get(); }
+    WKStringRef injectedBundlePath() const { return m_injectedBundlePath.get(); }
+    WKStringRef testPluginDirectory() const { return m_testPluginDirectory.get(); }
 
     PlatformWebView* mainWebView() { return m_mainWebView.get(); }
     WKContextRef context() { return m_context.get(); }
@@ -126,9 +126,13 @@ public:
 
     void setShouldDecideNavigationPolicyAfterDelay(bool value) { m_shouldDecideNavigationPolicyAfterDelay = value; }
 
+    void setNavigationGesturesEnabled(bool value);
+
 private:
+    WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(WKContextConfigurationRef);
+    WKRetainPtr<WKContextConfigurationRef> generateContextConfiguration() const;
     void initialize(int argc, const char* argv[]);
-    void createWebViewWithOptions(const ViewOptions&);
+    void createWebViewWithOptions(const TestOptions&);
     void run();
 
     void runTestingServerLoop();
@@ -138,10 +142,13 @@ private:
     void platformDestroy();
     WKContextRef platformAdjustContext(WKContextRef, WKContextConfigurationRef);
     void platformInitializeContext();
-    void platformCreateWebView(WKPageConfigurationRef, const ViewOptions&);
-    static PlatformWebView* platformCreateOtherPage(PlatformWebView* parentView, WKPageConfigurationRef, const ViewOptions&);
+    void platformCreateWebView(WKPageConfigurationRef, const TestOptions&);
+    static PlatformWebView* platformCreateOtherPage(PlatformWebView* parentView, WKPageConfigurationRef, const TestOptions&);
     void platformResetPreferencesToConsistentValues();
     void platformResetStateToConsistentValues();
+#if PLATFORM(COCOA)
+    void cocoaResetStateToConsistentValues();
+#endif
     void platformConfigureViewForTest(const TestInvocation&);
     void platformWillRunTest(const TestInvocation&);
     void platformRunUntil(bool& done, double timeout);
@@ -151,8 +158,8 @@ private:
     void initializeTestPluginDirectory();
 
     void ensureViewSupportsOptionsForTest(const TestInvocation&);
-    ViewOptions viewOptionsForTest(const TestInvocation&) const;
-    void updatePlatformSpecificViewOptionsForTest(ViewOptions&, const TestInvocation&) const;
+    TestOptions testOptionsForTest(const TestInvocation&) const;
+    void updatePlatformSpecificTestOptionsForTest(TestOptions&, const TestInvocation&) const;
 
     void updateWebViewSizeForTest(const TestInvocation&);
     void updateWindowScaleForTest(PlatformWebView*, const TestInvocation&);
@@ -185,6 +192,15 @@ private:
 
     static void processDidCrash(WKPageRef, const void* clientInfo);
     void processDidCrash();
+
+    static void didBeginNavigationGesture(WKPageRef, const void*);
+    static void willEndNavigationGesture(WKPageRef, WKBackForwardListItemRef, const void*);
+    static void didEndNavigationGesture(WKPageRef, WKBackForwardListItemRef, const void*);
+    static void didRemoveNavigationGestureSnapshot(WKPageRef, const void*);
+    void didBeginNavigationGesture(WKPageRef);
+    void willEndNavigationGesture(WKPageRef, WKBackForwardListItemRef);
+    void didEndNavigationGesture(WKPageRef, WKBackForwardListItemRef);
+    void didRemoveNavigationGestureSnapshot(WKPageRef);
 
     static WKPluginLoadPolicy decidePolicyForPluginLoad(WKPageRef, WKPluginLoadPolicy currentPluginLoadPolicy, WKDictionaryRef pluginInformation, WKStringRef* unavailabilityDescription, const void* clientInfo);
     WKPluginLoadPolicy decidePolicyForPluginLoad(WKPageRef, WKPluginLoadPolicy currentPluginLoadPolicy, WKDictionaryRef pluginInformation, WKStringRef* unavailabilityDescription);
@@ -244,7 +260,6 @@ private:
     std::unique_ptr<PlatformWebView> m_mainWebView;
     WKRetainPtr<WKContextRef> m_context;
     WKRetainPtr<WKPageGroupRef> m_pageGroup;
-    WKRetainPtr<WKPageConfigurationRef> m_configuration;
 
     enum State {
         Initial,

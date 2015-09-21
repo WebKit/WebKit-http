@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
 
 set(WebKit_SOURCES
+    WebCoreSupport/WebViewGroup.cpp
 )
 
 set(WebKit_INCLUDE_DIRECTORIES
+    WebCoreSupport
     "${CMAKE_BINARY_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${DERIVED_SOURCES_DIR}"
@@ -29,6 +31,7 @@ include_directories(SYSTEM ${WebKit_SYSTEM_INCLUDE_DIRECTORIES})
 
 if (MSVC)
     ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKit_SOURCES)
+    list(APPEND WebKit_SOURCES win/WebKit.resources/WebKit.rc)
 endif ()
 
 add_library(WebKit ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})

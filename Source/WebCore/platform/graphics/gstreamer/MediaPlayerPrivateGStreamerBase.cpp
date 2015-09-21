@@ -698,7 +698,7 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
             return;
         }
 
-        MutexLocker locker(m_platformLayerProxy->mutex());
+        LockHolder locker(m_platformLayerProxy->mutex());
         if (!m_platformLayerProxy->hasTargetLayer(locker)) {
             g_cond_signal(&m_updateCondition);
             return;

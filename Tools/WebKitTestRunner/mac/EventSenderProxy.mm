@@ -40,25 +40,60 @@
 - (void)_setCurrentEvent:(NSEvent *)event;
 @end
 
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-@interface EventSenderPressureEvent : NSEvent {
+@interface NSEvent (ForTestRunner)
+- (void)_postDelayed;
+@end
+
+#if defined(__LP64__)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+struct WKTRCGSEventRecord {
+    char offset1[150];
+    uint8_t phase;
+    char offset2[13];
+    float deltaX;
+    float deltaY;
+    char offset3[76];
+} __attribute__((packed));
+#else
+struct WKTRCGSEventRecord {
+    char offset1[154];
+    uint8_t phase;
+    char offset2[5];
+    float deltaX;
+    float deltaY;
+    char offset3[80];
+} __attribute__((packed));
+#endif
+#endif
+
+@interface EventSenderSyntheticEvent : NSEvent {
 @public
     NSPoint _eventSender_locationInWindow;
     NSPoint _eventSender_location;
     NSInteger _eventSender_stage;
     float _eventSender_pressure;
+    CGFloat _eventSender_stageTransition;
     NSEventPhase _eventSender_phase;
+    NSEventPhase _eventSender_momentumPhase;
     NSTimeInterval _eventSender_timestamp;
     NSInteger _eventSender_eventNumber;
+    short _eventSender_subtype;
+    NSEventType _eventSender_type;
+    NSWindow *_eventSender_window;
+
+
+#if defined(__LP64__)
+    WKTRCGSEventRecord _eventSender_cgsEventRecord;
+#endif
 }
 
-- (id)initAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber;
+- (id)initPressureEventAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure stageTransition:(float)stageTransition phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber window:(NSWindow *)window;
 - (NSTimeInterval)timestamp;
 @end
 
-@implementation EventSenderPressureEvent
+@implementation EventSenderSyntheticEvent
 
-- (id)initAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber
+- (id)initPressureEventAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure stageTransition:(float)stageTransition phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber window:(NSWindow *)window
 {
     self = [super init];
 
@@ -69,11 +104,21 @@
     _eventSender_locationInWindow = globalLocation;
     _eventSender_stage = stage;
     _eventSender_pressure = pressure;
+    _eventSender_stageTransition = stageTransition;
     _eventSender_phase = phase;
     _eventSender_timestamp = time;
     _eventSender_eventNumber = eventNumber;
+    _eventSender_window = window;
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
+    _eventSender_type = NSEventTypePressure;
+#endif
 
     return self;
+}
+
+- (CGFloat)stageTransition
+{
+    return _eventSender_stageTransition;
 }
 
 - (NSTimeInterval)timestamp
@@ -83,17 +128,29 @@
 
 - (NSEventType)type
 {
-    return NSEventTypePressure;
+    return _eventSender_type;
 }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+- (NSEventSubtype)subtype
+{
+    return (NSEventSubtype)_eventSender_subtype;
+}
+#else
+- (short)subtype
+{
+    return _eventSender_subtype;
+}
+#endif
 
 - (NSPoint)locationInWindow
 {
-    return self->_eventSender_location;
+    return _eventSender_location;
 }
 
 - (NSPoint)location
 {
-    return self->_eventSender_locationInWindow;
+    return _eventSender_locationInWindow;
 }
 
 - (NSInteger)stage
@@ -111,13 +168,34 @@
     return _eventSender_phase;
 }
 
+- (NSEventPhase)momentumPhase
+{
+    return _eventSender_momentumPhase;
+}
+
 - (NSInteger)eventNumber
 {
     return _eventSender_eventNumber;
 }
 
+- (BOOL)_isTouchesEnded
+{
+    return false;
+}
+
+#if defined(__LP64__)
+- (WKTRCGSEventRecord)_cgsEventRecord
+{
+    return _eventSender_cgsEventRecord;
+}
+#endif
+
+- (NSWindow *)window
+{
+    return _eventSender_window;
+}
+
 @end
-#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
 
 namespace WTR {
 
@@ -290,34 +368,96 @@ void EventSenderProxy::mouseUp(unsigned buttonNumber, WKEventModifiers modifiers
     m_clickPosition = m_position;
 }
 
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-void EventSenderProxy::mouseForceDown()
+#if defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
+void EventSenderProxy::sendMouseDownToStartPressureEvents()
 {
-    EventSenderPressureEvent *firstEvent = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
-        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
-        stage:1
-        pressure:0.9
-        phase:NSEventPhaseChanged
-        time:absoluteTimeForEventTime(currentEventTime())
-        eventNumber:++eventNumber];
-    EventSenderPressureEvent *secondEvent = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
-        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
-        stage:2
-        pressure:0.1
-        phase:NSEventPhaseChanged
-        time:absoluteTimeForEventTime(currentEventTime())
-        eventNumber:++eventNumber];
+    updateClickCountForButton(0);
 
-    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[firstEvent locationInWindow]];
+    NSEvent *event = [NSEvent mouseEventWithType:NSLeftMouseDown
+        location:NSMakePoint(m_position.x, m_position.y)
+        modifierFlags:NSEventMaskPressure
+        timestamp:absoluteTimeForEventTime(currentEventTime())
+        windowNumber:[m_testController->mainWebView()->platformWindow() windowNumber]
+        context:[NSGraphicsContext currentContext]
+        eventNumber:++eventNumber
+        clickCount:m_clickCount
+        pressure:0.0];
+
+    [NSApp sendEvent:event];
+}
+
+static void handleForceEventSynchronously(NSEvent *event)
+{
+    // Force events have to be pushed onto the queue, then popped off right away and handled synchronously in order
+    // to get the NSImmediateActionGestureRecognizer to do the right thing.
+    [event _postDelayed];
+    [NSApp sendEvent:[NSApp nextEventMatchingMask:NSEventMaskPressure untilDate:[NSDate dateWithTimeIntervalSinceNow:0.05] inMode:NSDefaultRunLoopMode dequeue:YES]];
+}
+
+RetainPtr<NSEvent> EventSenderProxy::beginPressureEvent(int stage)
+{
+    RetainPtr<EventSenderSyntheticEvent> event = adoptNS([[EventSenderSyntheticEvent alloc] initPressureEventAtLocation:NSMakePoint(m_position.x, m_position.y)
+        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
+        stage:stage
+        pressure:0.5
+        stageTransition:0
+        phase:NSEventPhaseBegan
+        time:absoluteTimeForEventTime(currentEventTime())
+        eventNumber:++eventNumber
+        window:[m_testController->mainWebView()->platformView() window]]);
+
+    return event;
+}
+
+RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int stage, float pressure, EventSenderProxy::PressureChangeDirection direction)
+{
+    RetainPtr<EventSenderSyntheticEvent> event = adoptNS([[EventSenderSyntheticEvent alloc] initPressureEventAtLocation:NSMakePoint(m_position.x, m_position.y)
+        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
+        stage:stage
+        pressure:pressure
+        stageTransition:direction == PressureChangeDirection::Increasing ? 0.5 : -0.5
+        phase:NSEventPhaseChanged
+        time:absoluteTimeForEventTime(currentEventTime())
+        eventNumber:++eventNumber
+        window:[m_testController->mainWebView()->platformView() window]]);
+
+    return event;
+}
+
+RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int stage, EventSenderProxy::PressureChangeDirection direction)
+{
+    return pressureChangeEvent(stage, 0.5, direction);
+}
+
+void EventSenderProxy::mouseForceClick()
+{
+    sendMouseDownToStartPressureEvents();
+
+    RetainPtr<NSEvent> beginPressure = beginPressureEvent(1);
+    RetainPtr<NSEvent> preForceClick = pressureChangeEvent(1, PressureChangeDirection::Increasing);
+    RetainPtr<NSEvent> forceClick = pressureChangeEvent(2, PressureChangeDirection::Increasing);
+    RetainPtr<NSEvent> releasingPressure = pressureChangeEvent(1, PressureChangeDirection::Decreasing);
+    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSLeftMouseUp
+        location:NSMakePoint(m_position.x, m_position.y)
+        modifierFlags:0
+        timestamp:absoluteTimeForEventTime(currentEventTime())
+        windowNumber:[m_testController->mainWebView()->platformWindow() windowNumber]
+        context:[NSGraphicsContext currentContext]
+        eventNumber:++eventNumber
+        clickCount:m_clickCount
+        pressure:0.0];
+
+    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[preForceClick.get() locationInWindow]];
     targetView = targetView ? targetView : m_testController->mainWebView()->platformView();
     ASSERT(targetView);
 
     // Since AppKit does not implement forceup/down as mouse events, we need to send two pressure events to detect
     // the change in stage that marks those moments.
-    [NSApp _setCurrentEvent:firstEvent];
-    [targetView pressureChangeWithEvent:firstEvent];
-    [NSApp _setCurrentEvent:secondEvent];
-    [targetView pressureChangeWithEvent:secondEvent];
+    handleForceEventSynchronously(beginPressure.get());
+    handleForceEventSynchronously(preForceClick.get());
+    handleForceEventSynchronously(forceClick.get());
+    handleForceEventSynchronously(releasingPressure.get());
+    [NSApp sendEvent:mouseUp];
 
     [NSApp _setCurrentEvent:nil];
 #pragma clang diagnostic push
@@ -325,38 +465,85 @@ void EventSenderProxy::mouseForceDown()
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
     [targetView pressureChangeWithEvent:nil];
 #pragma clang diagnostic pop
-
-    [firstEvent release];
-    [secondEvent release];
 }
 
-void EventSenderProxy::mouseForceUp()
+void EventSenderProxy::startAndCancelMouseForceClick()
 {
-    EventSenderPressureEvent *firstEvent = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
-        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
-        stage:2
-        pressure:0.1
-        phase:NSEventPhaseChanged
-        time:absoluteTimeForEventTime(currentEventTime())
-        eventNumber:++eventNumber];
-    EventSenderPressureEvent *secondEvent = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
-        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
-        stage:1
-        pressure:0.9
-        phase:NSEventPhaseChanged
-        time:absoluteTimeForEventTime(currentEventTime())
-        eventNumber:++eventNumber];
+    sendMouseDownToStartPressureEvents();
 
-    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[firstEvent locationInWindow]];
+    RetainPtr<NSEvent> beginPressure = beginPressureEvent(1);
+    RetainPtr<NSEvent> increasingPressure = pressureChangeEvent(1, PressureChangeDirection::Increasing);
+    RetainPtr<NSEvent> releasingPressure = pressureChangeEvent(1, PressureChangeDirection::Decreasing);
+    NSEvent *mouseUp = [NSEvent mouseEventWithType:NSLeftMouseUp
+        location:NSMakePoint(m_position.x, m_position.y)
+        modifierFlags:0
+        timestamp:absoluteTimeForEventTime(currentEventTime())
+        windowNumber:[m_testController->mainWebView()->platformWindow() windowNumber]
+        context:[NSGraphicsContext currentContext]
+        eventNumber:++eventNumber
+        clickCount:m_clickCount
+        pressure:0.0];
+
+    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[beginPressure.get() locationInWindow]];
     targetView = targetView ? targetView : m_testController->mainWebView()->platformView();
     ASSERT(targetView);
 
     // Since AppKit does not implement forceup/down as mouse events, we need to send two pressure events to detect
     // the change in stage that marks those moments.
-    [NSApp _setCurrentEvent:firstEvent];
-    [targetView pressureChangeWithEvent:firstEvent];
-    [NSApp _setCurrentEvent:secondEvent];
-    [targetView pressureChangeWithEvent:secondEvent];
+    handleForceEventSynchronously(beginPressure.get());
+    handleForceEventSynchronously(increasingPressure.get());
+    handleForceEventSynchronously(releasingPressure.get());
+    [NSApp sendEvent:mouseUp];
+
+    [NSApp _setCurrentEvent:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+    // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    [targetView pressureChangeWithEvent:nil];
+#pragma clang diagnostic pop
+}
+
+void EventSenderProxy::mouseForceDown()
+{
+    sendMouseDownToStartPressureEvents();
+
+    RetainPtr<NSEvent> beginPressure = beginPressureEvent(1);
+    RetainPtr<NSEvent> preForceClick = pressureChangeEvent(1, PressureChangeDirection::Increasing);
+    RetainPtr<NSEvent> forceMouseDown = pressureChangeEvent(2, PressureChangeDirection::Increasing);
+
+    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[beginPressure locationInWindow]];
+    targetView = targetView ? targetView : m_testController->mainWebView()->platformView();
+    ASSERT(targetView);
+
+    // Since AppKit does not implement forceup/down as mouse events, we need to send two pressure events to detect
+    // the change in stage that marks those moments.
+    handleForceEventSynchronously(beginPressure.get());
+    handleForceEventSynchronously(preForceClick.get());
+    [forceMouseDown _postDelayed];
+
+    [NSApp _setCurrentEvent:nil];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+    // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    [targetView pressureChangeWithEvent:nil];
+#pragma clang diagnostic pop
+}
+
+void EventSenderProxy::mouseForceUp()
+{
+    RetainPtr<NSEvent> beginPressure = beginPressureEvent(2);
+    RetainPtr<NSEvent> stageTwoEvent = pressureChangeEvent(2, PressureChangeDirection::Decreasing);
+    RetainPtr<NSEvent> stageOneEvent = pressureChangeEvent(1, PressureChangeDirection::Decreasing);
+
+    // Since AppKit does not implement forceup/down as mouse events, we need to send two pressure events to detect
+    // the change in stage that marks those moments.
+    [NSApp sendEvent:beginPressure.get()];
+    [NSApp sendEvent:stageTwoEvent.get()];
+    [NSApp sendEvent:stageOneEvent.get()];
+
+    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[beginPressure locationInWindow]];
+    targetView = targetView ? targetView : m_testController->mainWebView()->platformView();
+    ASSERT(targetView);
 
     [NSApp _setCurrentEvent:nil];
 
@@ -365,37 +552,51 @@ void EventSenderProxy::mouseForceUp()
 // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
     [targetView pressureChangeWithEvent:nil];
 #pragma clang diagnostic pop
-
-    [firstEvent release];
-    [secondEvent release];
 }
 
 void EventSenderProxy::mouseForceChanged(float force)
 {
-    EventSenderPressureEvent *event = [[EventSenderPressureEvent alloc] initAtLocation:NSMakePoint(m_position.x, m_position.y)
-        globalLocation:([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin)
-        stage:force < 1 ? 1 : 2
-        pressure:force
-        phase:NSEventPhaseChanged
-        time:absoluteTimeForEventTime(currentEventTime())
-        eventNumber:++eventNumber];
+    int stage = force < 1 ? 1 : 2;
+    float pressure = force < 1 ? force : force - 1;
+    RetainPtr<NSEvent> beginPressure = beginPressureEvent(stage);
+    RetainPtr<NSEvent> pressureChangedEvent = pressureChangeEvent(stage, pressure, PressureChangeDirection::Increasing);
 
-    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[event locationInWindow]];
+    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[beginPressure locationInWindow]];
     targetView = targetView ? targetView : m_testController->mainWebView()->platformView();
     ASSERT(targetView);
-    [NSApp _setCurrentEvent:event];
-    [targetView pressureChangeWithEvent:event];
-    [NSApp _setCurrentEvent:nil];
+
+    [NSApp sendEvent:beginPressure.get()];
+    [NSApp sendEvent:pressureChangedEvent.get()];
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnonnull"
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
     [targetView pressureChangeWithEvent:nil];
 #pragma clang diagnostic pop
-
-    [event release];
 }
 #else
+
+#if PLATFORM(COCOA)
+RetainPtr<NSEvent> EventSenderProxy::beginPressureEvent(int)
+{
+    return nil;
+}
+
+RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int, PressureChangeDirection)
+{
+    return nil;
+}
+
+RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int, float, PressureChangeDirection)
+{
+    return nil;
+}
+#endif // PLATFORM(COCOA)
+
+void EventSenderProxy::sendMouseDownToStartPressureEvents()
+{
+}
+
 void EventSenderProxy::mouseForceDown()
 {
 }
@@ -407,7 +608,15 @@ void EventSenderProxy::mouseForceUp()
 void EventSenderProxy::mouseForceChanged(float)
 {
 }
-#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
+
+void EventSenderProxy::mouseForceClick()
+{
+}
+
+void EventSenderProxy::startAndCancelMouseForceClick()
+{
+}
+#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
 
 void EventSenderProxy::mouseMoveTo(double x, double y)
 {
@@ -703,6 +912,52 @@ void EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases(int x, int y, int
         NSPoint windowLocation = [event locationInWindow];
         WTFLogAlways("mouseScrollByWithWheelAndMomentumPhases failed to find the target view at %f,%f\n", windowLocation.x, windowLocation.y);
     }
+}
+
+static NSEventPhase nsEventPhaseFromCGEventPhase(int phase)
+{
+    switch (phase) {
+    case 0: // kCGSGesturePhaseNone
+        return NSEventPhaseNone;
+    case 1: // kCGSGesturePhaseBegan
+        return NSEventPhaseBegan;
+    case 2: // kCGSGesturePhaseChanged
+        return NSEventPhaseChanged;
+    case 4: // kCGSGesturePhaseEnded
+        return NSEventPhaseEnded;
+    case 8: // kCGSGesturePhaseCancelled
+        return NSEventPhaseCancelled;
+    case 128: // kCGSGesturePhaseMayBegin
+        return NSEventPhaseMayBegin;
+    }
+
+    ASSERT_NOT_REACHED();
+    return NSEventPhaseNone;
+}
+
+void EventSenderProxy::swipeGestureWithWheelAndMomentumPhases(int x, int y, int phase, int momentum)
+{
+    EventSenderSyntheticEvent *event = [[EventSenderSyntheticEvent alloc] init];
+
+    // "mayBegin" a swipe is actually a scroll wheel event.
+    event->_eventSender_type = (phase == 128) ? NSScrollWheel : NSEventTypeGesture;
+    event->_eventSender_subtype = 6; // kIOHIDEventTypeScroll
+    event->_eventSender_locationInWindow = NSMakePoint(m_position.x, m_position.y);
+    event->_eventSender_location = ([m_testController->mainWebView()->platformWindow() convertRectToScreen:NSMakeRect(m_position.x, m_position.y, 1, 1)].origin);
+    event->_eventSender_phase = nsEventPhaseFromCGEventPhase(phase);
+    event->_eventSender_momentumPhase = nsEventPhaseFromCGEventPhase(momentum);
+    event->_eventSender_timestamp = absoluteTimeForEventTime(currentEventTime());
+    event->_eventSender_eventNumber = ++eventNumber;
+
+#if defined(__LP64__)
+    event->_eventSender_cgsEventRecord.phase = phase;
+    event->_eventSender_cgsEventRecord.deltaX = (float)x;
+    event->_eventSender_cgsEventRecord.deltaY = (float)y;
+#else
+    NSLog(@"Synthetic swipe gestures are not implemented for 32-bit WebKitTestRunner.");
+#endif
+
+    [NSApp sendEvent:event];
 }
 
 } // namespace WTR

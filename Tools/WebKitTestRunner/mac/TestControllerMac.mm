@@ -86,11 +86,20 @@ void TestController::platformResetPreferencesToConsistentValues()
 {
 }
 
-void TestController::updatePlatformSpecificViewOptionsForTest(ViewOptions& viewOptions, const TestInvocation& test) const
+void TestController::platformResetStateToConsistentValues()
 {
-    viewOptions.useThreadedScrolling = shouldUseThreadedScrolling(test);
-    viewOptions.useRemoteLayerTree = shouldUseRemoteLayerTree();
-    viewOptions.shouldShowWebView = shouldShowWebView();
+    cocoaResetStateToConsistentValues();
+
+    while ([NSApp nextEventMatchingMask:NSEventMaskGesture | NSScrollWheelMask untilDate:nil inMode:NSDefaultRunLoopMode dequeue:YES]) {
+        // Clear out (and ignore) any pending gesture and scroll wheel events.
+    }
+}
+
+void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& options, const TestInvocation& test) const
+{
+    options.useThreadedScrolling = shouldUseThreadedScrolling(test);
+    options.useRemoteLayerTree = shouldUseRemoteLayerTree();
+    options.shouldShowWebView = shouldShowWebView();
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)

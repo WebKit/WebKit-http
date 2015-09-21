@@ -29,13 +29,15 @@
 #include "TextureMapper.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 #include "TransformationMatrix.h"
+#include <wtf/Condition.h>
+#include <wtf/Lock.h>
 #include <wtf/RunLoop.h>
+#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/Vector.h>
+
 #ifndef NDEBUG
 #include <wtf/Threading.h>
 #endif
-#include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/ThreadingPrimitives.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -59,14 +61,14 @@ public:
     TextureMapperPlatformLayerProxy();
     virtual ~TextureMapperPlatformLayerProxy();
 
-    Mutex& mutex() { return m_pushMutex; }
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(MutexLocker&, const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
-    void pushNextBuffer(MutexLocker&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
+    Lock& mutex() { return m_mutex; }
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(LockHolder&, const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
+    void pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
     void requestUpdate(MutexLocker&);
 
-    void setCompositor(MutexLocker&, Compositor*);
-    void setTargetLayer(MutexLocker&, TextureMapperLayer*);
-    bool hasTargetLayer(MutexLocker&);
+    void setCompositor(LockHolder&, Compositor*);
+    void setTargetLayer(LockHolder&, TextureMapperLayer*);
+    bool hasTargetLayer(LockHolder&);
 
     void swapBuffer();
 
@@ -82,8 +84,8 @@ private:
     std::unique_ptr<TextureMapperPlatformLayerBuffer> m_currentBuffer;
     std::unique_ptr<TextureMapperPlatformLayerBuffer> m_pendingBuffer;
 
-    Mutex m_pushMutex;
-    ThreadCondition m_pushCondition;
+    Lock m_mutex;
+    Condition m_condition;
 
     Vector<std::unique_ptr<TextureMapperPlatformLayerBuffer>> m_usedBuffers;
 

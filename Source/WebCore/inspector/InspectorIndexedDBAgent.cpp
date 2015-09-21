@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -64,6 +65,7 @@
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorFrontendDispatchers.h>
+#include <inspector/InspectorFrontendRouter.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
@@ -120,7 +122,7 @@ public:
             m_requestCallback->sendFailure("Could not get result in callback.");
             return;
         }
-        if (requestResult->type() != IDBAny::DOMStringListType) {
+        if (requestResult->type() != IDBAny::Type::DOMStringList) {
             m_requestCallback->sendFailure("Unexpected result type.");
             return;
         }
@@ -182,7 +184,7 @@ public:
             m_executableWithDatabase->requestCallback().sendFailure("Could not get result in callback.");
             return;
         }
-        if (requestResult->type() != IDBAny::IDBDatabaseType) {
+        if (requestResult->type() != IDBAny::Type::IDBDatabase) {
             m_executableWithDatabase->requestCallback().sendFailure("Unexpected result type.");
             return;
         }
@@ -360,7 +362,7 @@ static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
             return nullptr;
         idbKey = IDBKey::createDate(date);
     } else if (type == arrayType) {
-        IDBKey::KeyArray keyArray;
+        Vector<RefPtr<IDBKey>> keyArray;
         RefPtr<InspectorArray> array;
         if (!key->getArray("array", array))
             return nullptr;
@@ -437,11 +439,11 @@ public:
             m_requestCallback->sendFailure("Could not get result in callback.");
             return;
         }
-        if (requestResult->type() == IDBAny::ScriptValueType) {
+        if (requestResult->type() == IDBAny::Type::ScriptValue) {
             end(false);
             return;
         }
-        if (requestResult->type() != IDBAny::IDBCursorWithValueType) {
+        if (requestResult->type() != IDBAny::Type::IDBCursorWithValue) {
             m_requestCallback->sendFailure("Unexpected result type.");
             return;
         }
@@ -564,9 +566,10 @@ public:
 
 } // namespace
 
-InspectorIndexedDBAgent::InspectorIndexedDBAgent(InstrumentingAgents& instrumentingAgents, InjectedScriptManager& injectedScriptManager, InspectorPageAgent* pageAgent)
-    : InspectorAgentBase(ASCIILiteral("IndexedDB"), instrumentingAgents)
-    , m_injectedScriptManager(injectedScriptManager)
+InspectorIndexedDBAgent::InspectorIndexedDBAgent(WebAgentContext& context, InspectorPageAgent* pageAgent)
+    : InspectorAgentBase(ASCIILiteral("IndexedDB"), context)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_backendDispatcher(Inspector::IndexedDBBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
 {
 }
@@ -575,15 +578,12 @@ InspectorIndexedDBAgent::~InspectorIndexedDBAgent()
 {
 }
 
-void InspectorIndexedDBAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorIndexedDBAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_backendDispatcher = Inspector::IndexedDBBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorIndexedDBAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_backendDispatcher = nullptr;
-
     ErrorString unused;
     disable(unused);
 }

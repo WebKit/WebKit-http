@@ -153,8 +153,10 @@ GPRReg SpeculativeJIT::fillJSValue(Edge edge)
 
 void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
+    CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(codeOrigin, m_stream->size());
+
     JITGetByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(), JSValueRegs(baseGPR),
+        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters(), JSValueRegs(baseGPR),
         JSValueRegs(resultGPR), spillMode);
     gen.generateFastPath(m_jit);
     
@@ -173,8 +175,10 @@ void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
 
 void SpeculativeJIT::cachedPutById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg valueGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind putKind, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
+    CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(codeOrigin, m_stream->size());
+
     JITPutByIdGenerator gen(
-        m_jit.codeBlock(), codeOrigin, m_jit.addCallSite(codeOrigin), usedRegisters(), JSValueRegs(baseGPR),
+        m_jit.codeBlock(), codeOrigin, callSite, usedRegisters(), JSValueRegs(baseGPR),
         JSValueRegs(valueGPR), scratchGPR, spillMode, m_jit.ecmaModeFor(codeOrigin), putKind);
 
     gen.generateFastPath(m_jit);
@@ -752,7 +756,8 @@ void SpeculativeJIT::emitCall(Node* node)
     JITCompiler::DataLabelPtr targetToCheck;
     JITCompiler::Jump slowPath;
 
-    m_jit.emitStoreCodeOrigin(node->origin.semantic);
+    CallSiteIndex callSite = m_jit.recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(node->origin.semantic, m_stream->size());
+    m_jit.emitStoreCallSiteIndex(callSite);
     
     CallLinkInfo* callLinkInfo = m_jit.codeBlock()->addCallLinkInfo();
     
@@ -776,10 +781,11 @@ void SpeculativeJIT::emitCall(Node* node)
     
     callLinkInfo->setUpCall(callType, m_currentNode->origin.semantic,  calleeGPR);    
     m_jit.addJSCall(fastCall, slowCall, targetToCheck, callLinkInfo);
-    
-    // If we were varargs, then after the calls are done, we need to reestablish our stack pointer.
-    if (isVarargs || isForwardVarargs)
-        m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
+
+    // After the calls are done, we need to reestablish our stack
+    // pointer. We rely on this for varargs calls, calls with arity
+    // mismatch (the callframe is slided) and tail calls.
+    m_jit.addPtr(TrustedImm32(m_jit.graph().stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, JITCompiler::stackPointerRegister);
 }
 
 // Clang should allow unreachable [[clang::fallthrough]] in template functions if any template expansion uses it
@@ -3189,6 +3195,7 @@ void SpeculativeJIT::compile(Node* node)
         JSValueOperand op1(this, node->child1());
         m_jit.move(op1.gpr(), GPRInfo::returnValueGPR);
 
+        m_jit.emitRestoreCalleeSaves();
         m_jit.emitFunctionEpilogue();
         m_jit.ret();
         
@@ -4105,6 +4112,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case GetGlobalLexicalVariable:
     case GetGlobalVar: {
         GPRTemporary result(this);
 
@@ -4114,7 +4122,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case PutGlobalVar: {
+    case PutGlobalVariable: {
         JSValueOperand value(this, node->child2());
 
         m_jit.store64(value.gpr(), node->variablePointer());
@@ -4788,6 +4796,7 @@ void SpeculativeJIT::compile(Node* node)
             TrustedImm32(m_stream->size()));
         appendCallSetResult(triggerOSREntryNow, tempGPR);
         MacroAssembler::Jump dontEnter = m_jit.branchTestPtr(MacroAssembler::Zero, tempGPR);
+        m_jit.emitRestoreCalleeSaves();
         m_jit.jump(tempGPR);
         dontEnter.link(&m_jit);
         silentFillAllRegisters(tempGPR);

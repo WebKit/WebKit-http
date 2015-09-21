@@ -27,6 +27,8 @@
 #include "WebEventFactory.h"
 
 #include <WPE/Input/KeyMapping.h>
+#include <WebCore/Scrollbar.h>
+#include <cstdlib>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {
@@ -95,10 +97,25 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(WPE::Input::PointerEvent&& ev
         ASSERT_NOT_REACHED();
     }
 
+    WebMouseEvent::Button button = WebMouseEvent::NoButton;
+    switch (event.type) {
+    case WPE::Input::PointerEvent::Motion:
+        break;
+    case WPE::Input::PointerEvent::Button:
+        if (event.button == 1)
+            button = WebMouseEvent::LeftButton;
+        else if (event.button == 2)
+            button = WebMouseEvent::RightButton;
+        else if (event.button == 3)
+            button = WebMouseEvent::MiddleButton;
+        break;
+    case WPE::Input::PointerEvent::Null:
+        ASSERT_NOT_REACHED();
+    }
+
     // FIXME: Proper button support. Modifiers. deltaX/Y/Z. Click count.
     WebCore::IntPoint position(event.x, event.y);
-    return WebMouseEvent(type, WebMouseEvent::LeftButton /* FIXME: HAH! */,
-        position, position,
+    return WebMouseEvent(type, button, position, position,
         0, 0, 0, 1, static_cast<WebEvent::Modifiers>(0), event.time);
 }
 
@@ -123,7 +140,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(WPE::Input::AxisEvent&& event
     };
 
     WebCore::FloatSize delta = wheelTicks;
-    delta.scale(event.value);
+    delta.scale(event.value / std::abs(event.value) * WebCore::Scrollbar::pixelsPerLineStep());
 
     WebCore::IntPoint position(event.x, event.y);
     return WebWheelEvent(WebEvent::Wheel, position, position,
@@ -144,8 +161,10 @@ static WebKit::WebPlatformTouchPoint::TouchPointState stateForTouchPoint(int mai
         return WebKit::WebPlatformTouchPoint::TouchReleased;
     case WPE::Input::TouchEvent::Null:
         ASSERT_NOT_REACHED();
-        return WebKit::WebPlatformTouchPoint::TouchStationary;
+        break;
     };
+
+    return WebKit::WebPlatformTouchPoint::TouchStationary;
 }
 
 WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::Input::TouchEvent&& event)

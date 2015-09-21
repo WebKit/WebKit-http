@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,7 +69,6 @@
 #include "IconController.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
-#include "InspectorForwarding.h"
 #include "InspectorFrontendClientLocal.h"
 #include "InspectorInstrumentation.h"
 #include "InspectorOverlay.h"
@@ -120,6 +119,7 @@
 #include <JavaScriptCore/Profile.h>
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
+#include <inspector/InspectorFrontendChannel.h>
 #include <inspector/InspectorValues.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
@@ -208,50 +208,75 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-class InspectorFrontendClientDummy : public InspectorFrontendClientLocal {
+class InspectorStubFrontend : public InspectorFrontendClientLocal, public FrontendChannel {
 public:
-    InspectorFrontendClientDummy(InspectorController*, Page*);
-    virtual ~InspectorFrontendClientDummy() { }
+    InspectorStubFrontend(Page* inspectedPage, RefPtr<DOMWindow>&& frontendWindow);
+    virtual ~InspectorStubFrontend();
+
+    // InspectorFrontendClient API
     virtual void attachWindow(DockSide) override { }
     virtual void detachWindow() override { }
-
-    virtual String localizedStringsURL() override { return String(); }
-
+    virtual void closeWindow() override;
     virtual void bringToFront() override { }
-    virtual void closeWindow() override { }
-
+    virtual String localizedStringsURL() override { return String(); }
     virtual void inspectedURLChanged(const String&) override { }
-
 protected:
     virtual void setAttachedWindowHeight(unsigned) override { }
     virtual void setAttachedWindowWidth(unsigned) override { }
     virtual void setToolbarHeight(unsigned) override { }
-};
 
-InspectorFrontendClientDummy::InspectorFrontendClientDummy(InspectorController* controller, Page* page)
-    : InspectorFrontendClientLocal(controller, page, std::make_unique<InspectorFrontendClientLocal::Settings>())
-{
-}
-
-class InspectorFrontendChannelDummy : public InspectorFrontendChannel {
 public:
-    explicit InspectorFrontendChannelDummy(Page*);
-    virtual ~InspectorFrontendChannelDummy() { }
+    // Inspector::FrontendChannel API
     virtual bool sendMessageToFrontend(const String& message) override;
     virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
 
 private:
-    Page* m_frontendPage;
+    Page* frontendPage() const
+    {
+        if (!m_frontendWindow || !m_frontendWindow->document())
+            return nullptr;
+
+        return m_frontendWindow->document()->page();
+    }
+
+    RefPtr<DOMWindow> m_frontendWindow;
+    InspectorController& m_frontendController;
 };
 
-InspectorFrontendChannelDummy::InspectorFrontendChannelDummy(Page* page)
-    : m_frontendPage(page)
+InspectorStubFrontend::InspectorStubFrontend(Page* inspectedPage, RefPtr<DOMWindow>&& frontendWindow)
+    : InspectorFrontendClientLocal(&inspectedPage->inspectorController(), frontendWindow->document()->page(), std::make_unique<InspectorFrontendClientLocal::Settings>())
+    , m_frontendWindow(frontendWindow.copyRef())
+    , m_frontendController(frontendPage()->inspectorController())
 {
+    ASSERT_ARG(inspectedPage, inspectedPage);
+    ASSERT_ARG(frontendWindow, frontendWindow);
+
+    m_frontendController.setInspectorFrontendClient(this);
+    inspectedPage->inspectorController().connectFrontend(this);
 }
 
-bool InspectorFrontendChannelDummy::sendMessageToFrontend(const String& message)
+InspectorStubFrontend::~InspectorStubFrontend()
 {
-    return InspectorClient::doDispatchMessageOnFrontendPage(m_frontendPage, message);
+    closeWindow();
+}
+
+void InspectorStubFrontend::closeWindow()
+{
+    if (!m_frontendWindow)
+        return;
+
+    m_frontendController.setInspectorFrontendClient(nullptr);
+    inspectedPage()->inspectorController().disconnectFrontend(this);
+
+    m_frontendWindow->close(m_frontendWindow->scriptExecutionContext());
+    m_frontendWindow = nullptr;
+}
+
+bool InspectorStubFrontend::sendMessageToFrontend(const String& message)
+{
+    ASSERT_ARG(message, !message.isEmpty());
+
+    return InspectorClient::doDispatchMessageOnFrontendPage(frontendPage(), message);
 }
 
 static bool markerTypesFrom(const String& markerType, DocumentMarker::MarkerTypes& result)
@@ -305,6 +330,8 @@ void Internals::resetToConsistentState(Page* page)
 
     page->setPageScaleFactor(1, IntPoint(0, 0));
     page->setPagination(Pagination());
+
+    page->setDefersLoading(false);
     
     page->mainFrame().setTextZoomFactor(1.0f);
     
@@ -333,6 +360,7 @@ void Internals::resetToConsistentState(Page* page)
     ApplicationCacheStorage::singleton().setDefaultOriginQuota(ApplicationCacheStorage::noQuota());
 #if ENABLE(VIDEO)
     PlatformMediaSessionManager::sharedManager().resetRestrictions();
+    PlatformMediaSessionManager::sharedManager().setWillIgnoreSystemInterruptions(true);
 #endif
 #if HAVE(ACCESSIBILITY)
     AXObjectCache::setEnhancedUserInterfaceAccessibility(false);
@@ -767,8 +795,12 @@ String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
     }
 
     switch (downcast<ShadowRoot>(*root).type()) {
-    case ShadowRoot::UserAgentShadowRoot:
+    case ShadowRoot::Type::UserAgent:
         return String("UserAgentShadowRoot");
+    case ShadowRoot::Type::Closed:
+        return String("ClosedShadowRoot");
+    case ShadowRoot::Type::Open:
+        return String("OpenShadowRoot");
     default:
         ASSERT_NOT_REACHED();
         return String("Unknown");
@@ -1717,43 +1749,19 @@ Vector<String> Internals::consoleMessageArgumentCounts() const
     return result;
 }
 
-PassRefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
+RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
 {
-    Page* page = contextDocument()->frame()->page();
-    ASSERT(page);
+    Page* inspectedPage = contextDocument()->frame()->page();
+    RefPtr<DOMWindow> window = inspectedPage->mainFrame().document()->domWindow();
+    RefPtr<DOMWindow> frontendWindow = window->open(url, "", "", *window, *window);
+    m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(inspectedPage, frontendWindow.copyRef());
 
-    DOMWindow* window = page->mainFrame().document()->domWindow();
-    ASSERT(window);
-
-    m_frontendWindow = window->open(url, "", "", *window, *window);
-    ASSERT(m_frontendWindow);
-
-    Page* frontendPage = m_frontendWindow->document()->page();
-    ASSERT(frontendPage);
-
-    m_frontendClient = std::make_unique<InspectorFrontendClientDummy>(&page->inspectorController(), frontendPage);
-    frontendPage->inspectorController().setInspectorFrontendClient(m_frontendClient.get());
-
-    bool isAutomaticInspection = false;
-    m_frontendChannel = std::make_unique<InspectorFrontendChannelDummy>(frontendPage);
-    page->inspectorController().connectFrontend(m_frontendChannel.get(), isAutomaticInspection);
-
-    return m_frontendWindow;
+    return WTF::move(frontendWindow);
 }
 
 void Internals::closeDummyInspectorFrontend()
 {
-    Page* page = contextDocument()->frame()->page();
-    ASSERT(page);
-    ASSERT(m_frontendWindow);
-
-    page->inspectorController().disconnectFrontend(Inspector::DisconnectReason::InspectorDestroyed);
-
-    m_frontendClient = nullptr;
-    m_frontendChannel = nullptr;
-
-    m_frontendWindow->close(m_frontendWindow->scriptExecutionContext());
-    m_frontendWindow = nullptr;
+    m_inspectorFrontend = nullptr;
 }
 
 void Internals::setJavaScriptProfilingEnabled(bool enabled, ExceptionCode& ec)
@@ -2931,6 +2939,15 @@ bool Internals::isPagePlayingAudio()
     return !!(document->page()->mediaState() & MediaProducer::IsPlayingAudio);
 }
 
+void Internals::setPageDefersLoading(bool defersLoading)
+{
+    Document* document = contextDocument();
+    if (!document)
+        return;
+    if (Page* page = document->page())
+        page->setDefersLoading(defersLoading);
+}
+
 RefPtr<File> Internals::createFile(const String& path)
 {
     Document* document = contextDocument();
@@ -3070,5 +3087,13 @@ String Internals::getCurrentMediaControlsStatusForElement(HTMLMediaElement* medi
     return mediaElement->getCurrentMediaControlsStatus();
 #endif
 }
+
+#if !PLATFORM(COCOA)
+String Internals::userVisibleString(const DOMURL*)
+{
+    // Not implemented in WebCore.
+    return String();
+}
+#endif
 
 }

@@ -84,6 +84,8 @@
 #include "JSLock.h"
 #include "JSMap.h"
 #include "JSMapIterator.h"
+#include "JSModuleEnvironment.h"
+#include "JSModuleNamespaceObject.h"
 #include "JSModuleRecord.h"
 #include "JSNativeStdFunction.h"
 #include "JSONObject.h"
@@ -145,6 +147,9 @@
 
 #if ENABLE(INTL)
 #include "IntlObject.h"
+#include <unicode/ucol.h>
+#include <unicode/udat.h>
+#include <unicode/unum.h>
 #endif // ENABLE(INTL)
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -163,7 +168,7 @@ namespace JSC {
 
 const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &Base::s_info, &globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
 
-const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, nullptr, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr };
+const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, nullptr, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr, nullptr };
 
 /* Source for JSGlobalObject.lut.h
 @begin globalObjectTable
@@ -262,8 +267,9 @@ void JSGlobalObject::init(VM& vm)
     m_functionPrototype.set(vm, this, FunctionPrototype::create(vm, FunctionPrototype::createStructure(vm, this, jsNull()))); // The real prototype will be set once ObjectPrototype is created.
     m_calleeStructure.set(vm, this, JSCallee::createStructure(vm, this, jsNull()));
 
+    m_globalLexicalEnvironment.set(vm, this, JSGlobalLexicalEnvironment::create(vm, JSGlobalLexicalEnvironment::createStructure(vm, this), this));
     // Need to create the callee structure (above) before creating the callee.
-    m_globalCallee.set(vm, this, JSCallee::create(vm, this, this));
+    m_globalCallee.set(vm, this, JSCallee::create(vm, this, globalScope()));
     exec->setCallee(m_globalCallee.get());
 
     m_functionStructure.set(vm, this, JSFunction::createStructure(vm, this, m_functionPrototype.get()));
@@ -312,6 +318,7 @@ void JSGlobalObject::init(VM& vm)
     m_typedArrays[toIndex(TypeDataView)].structure.set(vm, this, JSDataView::createStructure(vm, this, m_typedArrays[toIndex(TypeDataView)].prototype.get()));
     
     m_lexicalEnvironmentStructure.set(vm, this, JSLexicalEnvironment::createStructure(vm, this));
+    m_moduleEnvironmentStructure.set(vm, this, JSModuleEnvironment::createStructure(vm, this));
     m_strictEvalActivationStructure.set(vm, this, StrictEvalActivation::createStructure(vm, this, jsNull()));
     m_debuggerScopeStructure.set(m_vm, this, DebuggerScope::createStructure(m_vm, this));
     m_withScopeStructure.set(vm, this, JSWithScope::createStructure(vm, this, jsNull()));
@@ -348,6 +355,7 @@ void JSGlobalObject::init(VM& vm)
     m_regExpMatchesArrayStructure.set(vm, this, createRegExpMatchesArrayStructure(vm, *this));
 
     m_moduleRecordStructure.set(vm, this, JSModuleRecord::createStructure(vm, this, m_objectPrototype.get()));
+    m_moduleNamespaceObjectStructure.set(vm, this, JSModuleNamespaceObject::createStructure(vm, this, jsNull()));
     
 #if ENABLE(WEBASSEMBLY)
     m_wasmModuleStructure.set(vm, this, JSWASMModule::createStructure(vm, this));
@@ -552,7 +560,9 @@ void JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyNam
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
-    if (symbolTablePut(thisObject, exec, propertyName, value, slot.isStrictMode()))
+    bool shouldThrowReadOnlyError = slot.isStrictMode();
+    bool ignoreReadOnlyErrors = false;
+    if (symbolTablePutTouchWatchpointSet(thisObject, exec, propertyName, value, shouldThrowReadOnlyError, ignoreReadOnlyErrors))
         return;
     Base::put(thisObject, exec, propertyName, value, slot);
 }
@@ -579,7 +589,7 @@ void JSGlobalObject::addGlobalVar(const Identifier& ident)
     newEntry.prepareToWatch();
     symbolTable()->add(locker, ident.impl(), newEntry);
     
-    ScopeOffset offsetForAssert = addVariables(1);
+    ScopeOffset offsetForAssert = addVariables(1, jsUndefined());
     RELEASE_ASSERT(offsetForAssert == offset);
 }
 
@@ -754,6 +764,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     visitor.append(&thisObject->m_globalThis);
 
+    visitor.append(&thisObject->m_globalLexicalEnvironment);
     visitor.append(&thisObject->m_globalCallee);
     visitor.append(&thisObject->m_regExpConstructor);
     visitor.append(&thisObject->m_errorConstructor);
@@ -791,6 +802,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_withScopeStructure);
     visitor.append(&thisObject->m_strictEvalActivationStructure);
     visitor.append(&thisObject->m_lexicalEnvironmentStructure);
+    visitor.append(&thisObject->m_moduleEnvironmentStructure);
     visitor.append(&thisObject->m_directArgumentsStructure);
     visitor.append(&thisObject->m_scopedArgumentsStructure);
     visitor.append(&thisObject->m_outOfBandArgumentsStructure);
@@ -819,6 +831,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_regExpStructure);
     visitor.append(&thisObject->m_regExpMatchesArrayStructure);
     visitor.append(&thisObject->m_moduleRecordStructure);
+    visitor.append(&thisObject->m_moduleNamespaceObjectStructure);
     visitor.append(&thisObject->m_consoleStructure);
     visitor.append(&thisObject->m_dollarVMStructure);
     visitor.append(&thisObject->m_internalFunctionStructure);
@@ -855,7 +868,7 @@ ExecState* JSGlobalObject::globalExec()
 
 void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 {
-    ScopeOffset startOffset = addVariables(count);
+    ScopeOffset startOffset = addVariables(count, jsUndefined());
 
     for (int i = 0; i < count; ++i) {
         GlobalPropertyInfo& global = globals[i];
@@ -996,6 +1009,50 @@ void JSGlobalObject::setName(const String& name)
     m_inspectorDebuggable->update();
 #endif
 }
+
+# if ENABLE(INTL)
+const HashSet<String>& JSGlobalObject::intlCollatorAvailableLocales()
+{
+    if (m_intlCollatorAvailableLocales.isEmpty()) {
+        int32_t count = ucol_countAvailable();
+        for (int32_t i = 0; i < count; ++i) {
+            String locale(ucol_getAvailable(i));
+            // Change from ICU format to BCP47.
+            locale.replace('_', '-');
+            m_intlCollatorAvailableLocales.add(locale);
+        }
+    }
+    return m_intlCollatorAvailableLocales;
+}
+
+const HashSet<String>& JSGlobalObject::intlDateTimeFormatAvailableLocales()
+{
+    if (m_intlDateTimeFormatAvailableLocales.isEmpty()) {
+        int32_t count = udat_countAvailable();
+        for (int32_t i = 0; i < count; ++i) {
+            String locale(udat_getAvailable(i));
+            // Change from ICU format to BCP47.
+            locale.replace('_', '-');
+            m_intlDateTimeFormatAvailableLocales.add(locale);
+        }
+    }
+    return m_intlDateTimeFormatAvailableLocales;
+}
+
+const HashSet<String>& JSGlobalObject::intlNumberFormatAvailableLocales()
+{
+    if (m_intlNumberFormatAvailableLocales.isEmpty()) {
+        int32_t count = unum_countAvailable();
+        for (int32_t i = 0; i < count; ++i) {
+            String locale(unum_getAvailable(i));
+            // Change from ICU format to BCP47.
+            locale.replace('_', '-');
+            m_intlNumberFormatAvailableLocales.add(locale);
+        }
+    }
+    return m_intlNumberFormatAvailableLocales;
+}
+#endif // ENABLE(INTL)
 
 void JSGlobalObject::queueMicrotask(PassRefPtr<Microtask> task)
 {

@@ -13,6 +13,8 @@ fast/scrolling/latching [ Pass ]
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
 
+fast/url/user-visible [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -258,6 +260,13 @@ fast/css/draggable-region-parser.html
 
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html
+
+webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering-2.html
+
+# This feature is disabled on Mavericks.
+[ Mavericks ] http/tests/navigation/page-cache-pending-image-load.html [ Skip ]
+[ Mavericks ] http/tests/navigation/page-cache-pending-image-load-cache-partition.html [ Skip ]
+[ Mavericks ] http/tests/navigation/page-cache-xhr.html [ Skip ]
 
 webkit.org/b/68278 http/tests/history/back-with-fragment-change.php [ Failure ]
 
@@ -1188,16 +1197,23 @@ webkit.org/b/142142 fullscreen/video-controls-override.html [ Skip ]
 webkit.org/b/142142 http/tests/media/hls/video-controls-live-stream.html [ Skip ]
 webkit.org/b/142142 media/video-volume-slider-drag.html [ Skip ]
 
-# Test uses Yosemite blurs
-[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
+# Fails when an actual AppleTV is nearby.
+webkit.org/b/148912 media/controls/airplay-picker.html [ Pass Failure ]
 
 # Mavericks and prior do not support APNG.
 webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Skip ]
 
+# Pre-Capitan does not support asynchronous attribute setting.
+[ Mavericks ] accessibility/mac/setting-attributes-is-asynchronous.html [ Skip ]
+[ Mavericks ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
+
 # OS X 10.10.3+ has the necessary glyphs.
 webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html [ Pass ]
 
-media/accessiblity-describes-video.html [ Pass Failure ]
+# No support for non-HLS Media Selection Group
+[ Mavericks ] media/accessiblity-describes-video.html [ Skip ]
+
+[ Yosemite+ ] media/accessiblity-describes-video.html [ Pass Failure ]
 
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
@@ -1223,16 +1239,13 @@ http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
 
 [ Yosemite ] fast/canvas/webgl/oes-texture-half-float-linear.html [ Pass Failure ]
 
-# <rdar://problem/21857102>
-[ ElCapitan+ ] fast/canvas/canvas-too-large-to-draw.html [ Crash ]
-
 webkit.org/b/147763 [ Mavericks Yosemite ] accessibility/mac/loaded-notification.html [ Skip ]
 
 # Language-specific font fallback is disabled on certain versions of OS X
 webkit.org/b/147390 [ Mavericks Yosemite ElCapitan ] fast/text/fallback-language-han.html [ ImageOnlyFailure ]
 
 # This test relies on iOS-specific font fallback.
-[ Mavericks Yosemite ElCapitan ] fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]
+[ Mavericks Yosemite ElCapitan ] fast/text/international/system-language/arabic-glyph-cache-fill-combine.html [ Pass ImageOnlyFailure ]
 
 # Started to fail after r188390
 webkit.org/b/148042 http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Failure ]
@@ -1259,7 +1272,34 @@ webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
+webkit.org/b/148636 inspector/indexeddb/requestDatabaseNames.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
+
+# Resource priorities are not enabled.
+webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Skip ]
+
+# No support for Filters Level 2
+[ Mavericks ] compositing/media-controls-bar-appearance.html [ Skip ]
+[ Mavericks ] compositing/media-controls-bar-appearance-big.html [ Skip ]
+[ Mavericks ] fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
+
+# Reftests have different expected results in Mavericks and Yosemite
+[ Mavericks ] fast/ruby/ruby-expansion-cjk.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-3.html [ ImageOnlyFailure ]
+[ Mavericks ] fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
+
+# Colorspaces on CA OpenGL layers not available in Mavericks and Yosemite
+[ Mavericks Yosemite ] fast/canvas/webgl/match-page-color-space.html [ Skip ]
+
+# Mocking the system language relies on Bootstrap XPC messages, which are not supported in Mavericks.
+[ Mavericks ] fast/text/international/system-language [ Pass Failure ImageOnlyFailure ]
+# Han quotes are not different on Mavericks nor Yosemite.
+[ Mavericks Yosemite ] fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
+
+webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+webkit.org/b/148695 fast/shadow-dom [ Pass ]

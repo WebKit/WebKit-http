@@ -6,6 +6,12 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 tiled-drawing [ Pass ]
+swipe [ Pass ]
+
+fast/events/cancelled-force-click-link-navigation.html [ Pass ]
+fast/events/force-click-link-selection-behavior.html [ Pass ]
+fast/events/force-click-on-link-navigation.html [ Pass ]
+fast/events/force-click-text-selection-behavior.html [ Failure ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -233,7 +239,7 @@ webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initializa
 # uiElementForSearchPredicate() is not returning an undefined object when the search returns no results
 webkit.org/b/125996 accessibility/mac/search-when-element-starts-in-table.html [ Failure ]
 
-webkit.org/b/134550 [ Mavericks Yosemite ] http/tests/cache/iframe-304-crash.html [ Pass Failure ]
+webkit.org/b/134550 http/tests/cache/iframe-304-crash.html [ Pass Failure ]
 
 # testRunner.setUseDeferredFrameLoading is not implemented.
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
@@ -264,8 +270,6 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 webkit.org/b/147075 [ Release Yosemite ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure ]
 
-webkit.org/b/148684 http/tests/contentfiltering/block-after-redirect.html [ Pass ImageOnlyFailure ]
-
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -283,11 +287,6 @@ editing/spelling/spellcheck-async-mutation.html [ Skip ]
 editing/spelling/spellcheck-async.html [ Skip ]
 editing/spelling/spellcheck-queue.html [ Skip ]
 editing/spelling/spelling-insert-html.html [ Skip ]
-
-# These should work on 10.10.3 and later, but our bots need to get the 10.10.3 SDK first. 
-fast/events/mouse-force-changed.html [ Skip ]
-fast/events/mouse-force-down.html [ Skip ]
-fast/events/mouse-force-up.html [ Skip ]
 
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################

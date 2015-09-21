@@ -346,7 +346,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     // schedule the timer if we've never done a collection.
     , m_lastFullGCLength(0.01)
     , m_lastEdenGCLength(0.01)
-    , m_lastCodeDiscardTime(WTF::monotonicallyIncreasingTime())
     , m_fullActivityCallback(GCActivityCallback::createFullTimer(this))
 #if ENABLE(GGC)
     , m_edenActivityCallback(GCActivityCallback::createEdenTimer(this))
@@ -511,20 +510,6 @@ void Heap::didFinishIterating()
     m_objectSpace.didFinishIterating();
 }
 
-void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
-{
-    ASSERT(isValidThreadState(m_vm));
-    ConservativeRoots stackRoots(&m_objectSpace.blocks(), &m_storageSpace);
-    stack().gatherConservativeRoots(stackRoots);
-    size_t stackRootCount = stackRoots.size();
-    JSCell** registerRoots = stackRoots.roots();
-    for (size_t i = 0; i < stackRootCount; i++) {
-        setMarked(registerRoots[i]);
-        registerRoots[i]->setMarked();
-        roots.add(registerRoots[i]);
-    }
-}
-
 void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, MachineThreads::RegisterState& calleeSavedRegisters)
 {
     SamplingRegion samplingRegion("Garbage Collection: Marking");
@@ -540,7 +525,7 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 #endif
 
 #if ENABLE(DFG_JIT)
-    DFG::clearCodeBlockMarks(*m_vm, m_codeBlocks);
+    DFG::clearCodeBlockMarks(*m_vm);
 #endif
     if (m_operationInProgress == EdenCollection)
         m_codeBlocks.clearMarksForEdenCollection(rememberedSet);
@@ -676,7 +661,7 @@ void Heap::visitCompilerWorklistWeakReferences()
 {
 #if ENABLE(DFG_JIT)
     for (auto worklist : m_suspendedCompilerWorklists)
-        worklist->visitWeakReferences(m_slotVisitor, m_codeBlocks);
+        worklist->visitWeakReferences(m_slotVisitor);
 
     if (Options::logGC() == GCLogging::Verbose)
         dataLog("DFG Worklists:\n", m_slotVisitor);
@@ -783,7 +768,6 @@ void Heap::visitWeakHandles(HeapRootVisitor& visitor)
         m_objectSpace.visitWeakSets(visitor);
         harvestWeakReferences();
         visitCompilerWorklistWeakReferences();
-        m_codeBlocks.traceMarked(m_slotVisitor); // New "executing" code blocks may be discovered.
         if (m_slotVisitor.isEmpty())
             break;
 
@@ -908,26 +892,13 @@ std::unique_ptr<TypeCountSet> Heap::objectTypeCounts()
 
 void Heap::deleteAllCodeBlocks()
 {
-    // If JavaScript is running, it's not safe to delete JavaScript code, since
+    // If JavaScript is running, it's not safe to delete all JavaScript code, since
     // we'll end up returning to deleted code.
-    if (m_vm->entryScope)
-        return;
-    
-    // If we have things on any worklist, then don't delete code. This is kind of
-    // a weird heuristic. It's definitely not safe to throw away code that is on
-    // the worklist. But this change was made in a hurry so we just avoid throwing
-    // away any code if there is any code on any worklist. I suspect that this
-    // might not actually be too dumb: if there is code on worklists then that
-    // means that we are running some hot JS code right now. Maybe causing
-    // recompilations isn't a good idea.
+    RELEASE_ASSERT(!m_vm->entryScope);
+
 #if ENABLE(DFG_JIT)
-    for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
-            if (worklist->isActiveForVM(*vm()))
-                return;
-        }
-    }
-#endif // ENABLE(DFG_JIT)
+    DFG::completeAllPlansForVM(*m_vm);
+#endif
 
     for (ExecutableBase* current : m_executables) {
         if (!current->isFunctionExecutable())
@@ -999,8 +970,6 @@ void Heap::collectAndSweep(HeapOperation collectionType)
     sweepAllLogicallyEmptyWeakBlocks();
 }
 
-static double minute = 60.0;
-
 NEVER_INLINE void Heap::collect(HeapOperation collectionType)
 {
     void* stackTop;
@@ -1051,7 +1020,6 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
         m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
     }
 
-    deleteOldCode(gcStartTime);
     flushOldStructureIDTables();
     stopAllocation();
     flushWriteBarrierBuffer();
@@ -1139,19 +1107,6 @@ void Heap::willStartCollection(HeapOperation collectionType)
 
     if (m_edenActivityCallback)
         m_edenActivityCallback->willCollect();
-}
-
-void Heap::deleteOldCode(double gcStartTime)
-{
-    if (m_operationInProgress == EdenCollection)
-        return;
-
-    GCPHASE(DeleteOldCode);
-    if (gcStartTime - m_lastCodeDiscardTime > minute) {
-        m_vm->regExpCache()->deleteAllCode();
-        deleteAllCodeBlocks();
-        m_lastCodeDiscardTime = WTF::monotonicallyIncreasingTime();
-    }
 }
 
 void Heap::flushOldStructureIDTables()
@@ -1399,15 +1354,14 @@ bool Heap::isValidAllocation(size_t)
 
 void Heap::addFinalizer(JSCell* cell, Finalizer finalizer)
 {
-    WeakSet::allocate(cell, &m_finalizerOwner, reinterpret_cast<void*>(finalizer)); // Balanced by FinalizerOwner::finalize().
+    WeakSet::allocate(*cell, &m_finalizerOwner, reinterpret_cast<void*>(finalizer)); // Balanced by FinalizerOwner::finalize().
 }
 
-void Heap::FinalizerOwner::finalize(Handle<Unknown> handle, void* context)
+void Heap::FinalizerOwner::finalize(JSCell*& cell, void* context)
 {
-    HandleSlot slot = handle.slot();
     Finalizer finalizer = reinterpret_cast<Finalizer>(context);
-    finalizer(slot->asCell());
-    WeakSet::deallocate(WeakImpl::asWeakImpl(slot));
+    finalizer(cell);
+    WeakSet::deallocate(WeakImpl::asWeakImpl(&cell));
 }
 
 void Heap::addExecutable(ExecutableBase* executable)

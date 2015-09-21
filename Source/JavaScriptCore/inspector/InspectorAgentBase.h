@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,33 @@
 
 #include <wtf/text/WTFString.h>
 
+namespace JSC {
+class JSGlobalObject;
+}
+
 namespace Inspector {
 
 class BackendDispatcher;
-class FrontendChannel;
+class FrontendRouter;
+class InjectedScriptManager;
+class InspectorEnvironment;
+
+struct AgentContext {
+    InspectorEnvironment& environment;
+    InjectedScriptManager& injectedScriptManager;
+    FrontendRouter& frontendRouter;
+    BackendDispatcher& backendDispatcher;
+};
+
+struct JSAgentContext : public AgentContext {
+    JSAgentContext(AgentContext& context, JSC::JSGlobalObject& globalObject)
+        : AgentContext(context)
+        , inspectedGlobalObject(globalObject)
+    {
+    }
+
+    JSC::JSGlobalObject& inspectedGlobalObject;
+};
 
 enum class DisconnectReason {
     InspectedTargetDestroyed,
@@ -45,7 +68,7 @@ public:
 
     String domainName() const { return m_name; }
 
-    virtual void didCreateFrontendAndBackend(FrontendChannel*, BackendDispatcher*) = 0;
+    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) = 0;
     virtual void willDestroyFrontendAndBackend(DisconnectReason) = 0;
     virtual void discardAgent() { }
 

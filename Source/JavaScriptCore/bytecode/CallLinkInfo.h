@@ -26,6 +26,8 @@
 #ifndef CallLinkInfo_h
 #define CallLinkInfo_h
 
+#include "CallFrameShuffleData.h"
+#include "CallMode.h"
 #include "CodeLocation.h"
 #include "CodeSpecializationKind.h"
 #include "JITWriteBarrier.h"
@@ -39,28 +41,43 @@ namespace JSC {
 
 #if ENABLE(JIT)
 
-class RepatchBuffer;
-
 class CallLinkInfo : public BasicRawSentinelNode<CallLinkInfo> {
 public:
-    enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs };
+    enum CallType { None, Call, CallVarargs, Construct, ConstructVarargs, TailCall, TailCallVarargs };
     static CallType callTypeFor(OpcodeID opcodeID)
     {
         if (opcodeID == op_call || opcodeID == op_call_eval)
             return Call;
+        if (opcodeID == op_call_varargs)
+            return CallVarargs;
         if (opcodeID == op_construct)
             return Construct;
         if (opcodeID == op_construct_varargs)
             return ConstructVarargs;
-        ASSERT(opcodeID == op_call_varargs);
-        return CallVarargs;
+        if (opcodeID == op_tail_call)
+            return TailCall;
+        ASSERT(opcodeID == op_tail_call_varargs);
+        return TailCallVarargs;
     }
-    
+
+    static bool isVarargsCallType(CallType callType)
+    {
+        switch (callType) {
+        case CallVarargs:
+        case ConstructVarargs:
+        case TailCallVarargs:
+            return true;
+
+        default:
+            return false;
+        }
+    }
+
     CallLinkInfo()
-        : m_registerPreservationMode(static_cast<unsigned>(RegisterPreservationNotRequired))
-        , m_hasSeenShouldRepatch(false)
+        : m_hasSeenShouldRepatch(false)
         , m_hasSeenClosure(false)
         , m_clearedByGC(false)
+        , m_allowStubs(true)
         , m_callType(None)
         , m_maxNumArguments(0)
         , m_slowPathCount(0)
@@ -84,13 +101,42 @@ public:
         return specializationKindFor(static_cast<CallType>(m_callType));
     }
 
-    RegisterPreservationMode registerPreservationMode() const
+    static CallMode callModeFor(CallType callType)
     {
-        return static_cast<RegisterPreservationMode>(m_registerPreservationMode);
+        switch (callType) {
+        case Call:
+        case CallVarargs:
+            return CallMode::Regular;
+        case TailCall:
+        case TailCallVarargs:
+            return CallMode::Tail;
+        case Construct:
+        case ConstructVarargs:
+            return CallMode::Construct;
+        case None:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+
+    CallMode callMode() const
+    {
+        return callModeFor(static_cast<CallType>(m_callType));
+    }
+
+    bool isTailCall() const
+    {
+        return callMode() == CallMode::Tail;
+    }
+
+    bool isVarargs() const
+    {
+        return isVarargsCallType(static_cast<CallType>(m_callType));
     }
 
     bool isLinked() { return m_stub || m_callee; }
-    void unlink(RepatchBuffer&);
+    void unlink(VM&);
 
     void setUpCall(CallType callType, CodeOrigin codeOrigin, unsigned calleeGPR)
     {
@@ -107,11 +153,17 @@ public:
         m_hotPathOther = hotPathOther;
     }
 
+    bool allowStubs() const { return m_allowStubs; }
+
+    void disallowStubs()
+    {
+        m_allowStubs = false;
+    }
+
     void setUpCallFromFTL(CallType callType, CodeOrigin codeOrigin,
         CodeLocationNearCall callReturnLocation, CodeLocationDataLabelPtr hotPathBegin,
         CodeLocationNearCall hotPathOther, unsigned calleeGPR)
     {
-        m_registerPreservationMode = static_cast<unsigned>(MustPreserveRegisters);
         m_callType = callType;
         m_codeOrigin = codeOrigin;
         m_callReturnLocation = callReturnLocation;
@@ -278,7 +330,17 @@ public:
         return m_codeOrigin;
     }
 
-    void visitWeak(RepatchBuffer&);
+    void visitWeak(VM&);
+
+    void setFrameShuffleData(const CallFrameShuffleData& shuffleData)
+    {
+        m_frameShuffleData = std::make_unique<CallFrameShuffleData>(shuffleData);
+    }
+
+    const CallFrameShuffleData* frameShuffleData()
+    {
+        return m_frameShuffleData.get();
+    }
 
 private:
     CodeLocationNearCall m_callReturnLocation;
@@ -288,10 +350,11 @@ private:
     WriteBarrier<JSFunction> m_lastSeenCallee;
     RefPtr<PolymorphicCallStubRoutine> m_stub;
     RefPtr<JITStubRoutine> m_slowStub;
-    unsigned m_registerPreservationMode : 1; // Real type is RegisterPreservationMode
+    std::unique_ptr<CallFrameShuffleData> m_frameShuffleData;
     bool m_hasSeenShouldRepatch : 1;
     bool m_hasSeenClosure : 1;
     bool m_clearedByGC : 1;
+    bool m_allowStubs : 1;
     unsigned m_callType : 4; // CallType
     unsigned m_calleeGPR : 8;
     uint8_t m_maxNumArguments; // Only used for varargs calls.

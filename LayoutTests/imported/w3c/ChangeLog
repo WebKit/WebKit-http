@@ -1,3 +1,1070 @@
+2015-09-18  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for Entity Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149239
+
+        Reviewed by Darin Adler.
+
+        Rebaseline W3C DOM test now that a new check is passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] Add support for default parameter values
+        https://bugs.webkit.org/show_bug.cgi?id=149263
+        <rdar://problem/22545600>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more NodeIterator / TreeWalker
+        checks are passing.
+
+        * web-platform-tests/dom/traversal/NodeIterator-expected.txt:
+        * web-platform-tests/dom/traversal/TreeWalker-basic-expected.txt:
+
+2015-09-17  Zalan Bujtas  <zalan@apple.com>
+
+        CSS WG multicol-1 tests failures with 1px differences due to baseline difference.
+        https://bugs.webkit.org/show_bug.cgi?id=149245
+
+        Reviewed by Ryosuke Niwa.
+
+        Turn off font-aliasing for multicol tests where the reference tests' inline content
+        end up on a different baseline (fractional difference). (It's not considered a bug, they don't
+        necessarily match.)
+
+        * css/css-multicol-1/multicol-basic-001-expected.html:
+        * css/css-multicol-1/multicol-basic-001.html:
+        * css/css-multicol-1/multicol-basic-002-expected.html:
+        * css/css-multicol-1/multicol-basic-002.html:
+        * css/css-multicol-1/multicol-basic-003-expected.html:
+        * css/css-multicol-1/multicol-basic-003.html:
+        * css/css-multicol-1/multicol-basic-004-expected.html:
+        * css/css-multicol-1/multicol-basic-004.html:
+        * css/css-multicol-1/multicol-rule-002-expected.xht:
+        * css/css-multicol-1/multicol-rule-002.xht:
+        * css/css-multicol-1/multicol-rule-px-001-expected.xht:
+        * css/css-multicol-1/multicol-rule-px-001.xht:
+        * css/css-multicol-1/multicol-rule-stacking-001-expected.xht:
+        * css/css-multicol-1/multicol-rule-stacking-001.xht:
+        * css/css-multicol-1/multicol-shorthand-001-expected.xht:
+        * css/css-multicol-1/multicol-shorthand-001.xht:
+        * css/css-multicol-1/multicol-span-all-block-sibling-003-expected.xht:
+        * css/css-multicol-1/multicol-span-all-block-sibling-003.xht:
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001-expected.xht:
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht:
+
+2015-09-17  Chris Dumez  <cdumez@apple.com>
+
+        Range.deleteContents cannot delete DocType
+        https://bugs.webkit.org/show_bug.cgi?id=148773
+        <rdar://problem/22571280>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test now that more checks are passing.
+
+        * web-platform-tests/dom/ranges/Range-deleteContents-expected.txt:
+
+2015-09-16  Chris Dumez  <cdumez@apple.com>
+
+        Element's attribute NS API should treat defined undefined namespace as null
+        https://bugs.webkit.org/show_bug.cgi?id=149238
+        <rdar://problem/22562204>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C DOM test that one more check is passing.
+
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Document.createElement(localName) does not handle correctly missing or null parameter
+        https://bugs.webkit.org/show_bug.cgi?id=149184
+        <rdar://problem/22565070>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElement-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        new Event() without parameter should throw
+        https://bugs.webkit.org/show_bug.cgi?id=149146
+        <rdar://problem/22565070>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that a new check is passing.
+
+        * web-platform-tests/dom/events/Event-constructors-expected.txt:
+
+2015-09-15  Chris Dumez  <cdumez@apple.com>
+
+        Element.getAttributeNS() should return null if the attribute does not exist
+        https://bugs.webkit.org/show_bug.cgi?id=149180
+        <rdar://problem/22561011>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C DOM tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/attributes-expected.txt:
+        * web-platform-tests/dom/nodes/case-expected.txt:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard [IsIndex] WebKit IDL extended attribute
+        https://bugs.webkit.org/show_bug.cgi?id=149122
+        <rdar://problem/22547139>
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C DOM tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/CharacterData-deleteData-expected.txt:
+        * web-platform-tests/dom/nodes/CharacterData-replaceData-expected.txt:
+        * web-platform-tests/dom/nodes/CharacterData-substringData-expected.txt:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        Document.createNodeIterator(null) / Document.createTreeWalker(null) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=149126
+        <rdar://problem/22564891>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that a new check is passing.
+
+        * web-platform-tests/dom/traversal/TreeWalker-basic-expected.txt:
+
+2015-09-14  Chris Dumez  <cdumez@apple.com>
+
+        window.HTMLDetailsElement should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149139
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/details-expected.txt:
+        * web-platform-tests/html/semantics/interfaces-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Improve Node pre-insertion validation when the parent is a Document
+        https://bugs.webkit.org/show_bug.cgi?id=149109
+        <rdar://problem/22560436>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Node-insertBefore-expected.txt:
+        * web-platform-tests/dom/nodes/Node-replaceChild-expected.txt:
+        * web-platform-tests/dom/nodes/append-on-Document-expected.txt:
+        * web-platform-tests/dom/nodes/prepend-on-Document-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Document.adoptNode() should be able to explicitly adopt a DocumentType node
+        https://bugs.webkit.org/show_bug.cgi?id=149097
+        <rdar://problem/22549345>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that a new check is passing. 
+
+        * web-platform-tests/dom/nodes/Document-adoptNode-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Document.title does not behave according to specification
+        https://bugs.webkit.org/show_bug.cgi?id=149098
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.title-01-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.title-02-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        document.lastModified should use the user's local time zone
+        https://bugs.webkit.org/show_bug.cgi?id=149092
+        <rdar://problem/22567705>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline a couple of W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/documents/resource-metadata-management/document-lastModified-01-expected.txt:
+        * web-platform-tests/html/dom/documents/resource-metadata-management/document-lastModified-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        Node.baseURI should not return null for detached nodes
+        https://bugs.webkit.org/show_bug.cgi?id=149104
+        <rdar://problem/22559535>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Node-baseURI-expected.txt:
+
+2015-09-13  Chris Dumez  <cdumez@apple.com>
+
+        CharacterData API parameters should not be optional
+        https://bugs.webkit.org/show_bug.cgi?id=149101
+        <rdar://problem/22546954>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/CharacterData-appendData-expected.txt:
+        * web-platform-tests/dom/nodes/CharacterData-substringData-expected.txt:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        window.EventTarget should exist
+        https://bugs.webkit.org/show_bug.cgi?id=149085
+        <rdar://problem/22546774>
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interface-objects-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-12  Chris Dumez  <cdumez@apple.com>
+
+        ChildNode.replaceWith() without argument should replace the node with an empty DocumentFragment
+        https://bugs.webkit.org/show_bug.cgi?id=149073
+        <rdar://problem/22547801>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/ChildNode-replaceWith-expected.txt:
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList update steps for classList don't follow the spec
+        https://bugs.webkit.org/show_bug.cgi?id=148589
+        <rdar://problem/22547443>
+
+        Reviewed by Ryosuke Niwa and Darin Adler.
+
+        Rebaseline W3C tests for DOMTokenList now that more checks are passing.
+
+        * web-platform-tests/dom/lists/DOMTokenList-stringifier-expected.txt:
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        Element.tagName should be upper-case for HTML elements in HTML documents
+        https://bugs.webkit.org/show_bug.cgi?id=148843
+        <rdar://problem/22559081>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/nodes/Document-createElementNS-expected.txt:
+        * web-platform-tests/dom/nodes/Element-tagName-expected.txt:
+        * web-platform-tests/dom/nodes/Node-nodeName-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/table-insertRow-expected.txt:
+
+2015-09-11  Chris Dumez  <cdumez@apple.com>
+
+        document.body = "text" should throw a TypeError, not a HierarchyRequestError
+        https://bugs.webkit.org/show_bug.cgi?id=149057
+        <rdar://problem/22567157>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline test now that a new check is passing.
+
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.body-setter-01-expected.txt:
+
+2015-09-10  Chris Dumez  <cdumez@apple.com>
+
+        Node.appendChild(null) / replaceChild(null, null) / removeChild(null) / insertBefore(null, ref) should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=148971
+        <rdar://problem/22560883>
+        <rdar://problem/22559225>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C tests now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/Node-appendChild-expected.txt:
+        * web-platform-tests/dom/nodes/Node-insertBefore-expected.txt:
+        * web-platform-tests/dom/nodes/Node-removeChild-expected.txt:
+        * web-platform-tests/dom/nodes/Node-replaceChild-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-09  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Document.characterSet should return "UTF-8" by default.
+        https://bugs.webkit.org/show_bug.cgi?id=148810
+        <rdar://problem/22548727>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update the tests which test the default encoding of document.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+        * web-platform-tests/dom/nodes/Node-properties-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-09-09  Chris Dumez  <cdumez@apple.com>
+
+        Setting document.title when there is no title and no head element should no nothing
+        https://bugs.webkit.org/show_bug.cgi?id=149005
+        <rdar://problem/22567524>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.title-01-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.title-02-expected.txt:
+
+2015-09-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/location-of-the-media-resource/currentSrc.html.
+
+        This recently imported test is flaky.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/location-of-the-media-resource/currentSrc-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/location-of-the-media-resource/currentSrc.html: Removed.
+
+2015-09-08  Chris Dumez  <cdumez@apple.com>
+
+        new Comment(undefined) / new Text(undefined) should use default's empty string
+        https://bugs.webkit.org/show_bug.cgi?id=148973
+        <rdar://problem/22548042>
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/dom/nodes/Comment-constructor-expected.txt:
+        * web-platform-tests/dom/nodes/Text-constructor-expected.txt:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/document.title-07-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-audio-element/audio_constructor-expected.txt:
+        Rebaseline tests now that new checks are passing.
+
+2015-09-08  Chris Dumez  <cdumez@apple.com>
+
+        document.importNode(node, deep): deep's default value should be false
+        https://bugs.webkit.org/show_bug.cgi?id=148959
+        <rdar://problem/22558915>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/dom/nodes/Document-importNode-expected.txt:
+        Rebaseline now that an additional check is passing.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fixup a few recently imported W3C HTML tests.
+
+        A few support files were missing.
+
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/blank.htm: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/sandbox_allow_script.html: Added.
+        * web-platform-tests/html/semantics/forms/attributes-common-to-form-controls/dirname-ltr.html:
+        * web-platform-tests/html/semantics/forms/attributes-common-to-form-controls/resources/dirname-ltr-iframe.html: Added.
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/focus-expected.txt:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/focus.html:
+        * web-platform-tests/html/semantics/selectors/pseudo-classes/resources/focus-iframe.html: Added.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop unfinished W3C DOM tests.
+
+        Those were not meant to be imported.
+
+        * web-platform-tests/dom/traversal/unfinished/001-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/001.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/002-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/002.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/003-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/003.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/004-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/004.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/005-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/005.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/006-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/006.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/007-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/007.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/008-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/008.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/009-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/009.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/010-expected.txt: Removed.
+        * web-platform-tests/dom/traversal/unfinished/010.xml: Removed.
+        * web-platform-tests/dom/traversal/unfinished/TODO: Removed.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop several W3C html media that were recently imported as they are flaky.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-insert-before-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-insert-before.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-moved-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-moved.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-remove-addEventListener-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-remove-no-listener-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-candidate-remove-no-listener.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor-no-src-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor-no-src.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-in-sync-event-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-in-sync-event.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-fragment-into-document-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-fragment-into-document.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-into-document-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-into-document.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-parent-into-document-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-parent-into-document.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-div-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-div.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-namespace-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-namespace.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-networkState-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-networkState.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-not-in-document-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-not-in-document.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-load-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-load.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause-networkState-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause-networkState.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-play-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-play.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document-networkState-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document-networkState.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-src-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-src.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-in-namespace-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-in-namespace.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-networkState-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-networkState.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-br-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-br.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-source-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-source.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-text-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-text.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source-after-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source-after.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-text-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-text.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-remove-source-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-remove-source.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-remove-src-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-remove-src.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-source-media-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-source-media.html: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/networkState_during_progress-expected.txt: Removed.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/networkState_during_progress.html: Removed.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed fixup after r189471 and r189472.
+
+        * web-platform-tests/common/blank.html: Added.
+        Add missing file used by some tests.
+
+        * web-platform-tests/dom/nodes/Node-parentNode-iframe-expected.txt: Removed.
+        * web-platform-tests/dom/nodes/Node-parentNode.html:
+        * web-platform-tests/dom/nodes/resources/Node-parentNode-iframe.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Node-parentNode-iframe.html.
+        Move html file to resources folder so that WRT does not think it is a test.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, move html/semantics W3C tests to imported/w3c/web-platform-tests/html/semantics
+        https://bugs.webkit.org/show_bug.cgi?id=148949
+
+        * web-platform-tests/html/semantics/*: Added.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix-up for r189472.
+
+        - Add a few missing test expectations.
+        - Rename ref-tests expected results to use proper format: -expected.html
+
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/nested-document-write-1-expected.txt: Added.
+        * web-platform-tests/html/dom/dynamic-markup-insertion/document-write/nested-document-write-2-expected.txt: Added.
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/004-1-expected.txt: Added.
+        * web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/016-1-expected.txt: Added.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-N-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-bdi-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-bdi-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-bdi-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-bdi-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir_auto-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir_auto-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir_auto-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-dir_auto-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-script-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-script-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-script-L-expected.txt: Removed.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-script-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-script-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-style-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-style-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-style-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-style-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-textarea-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-textarea-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-textarea-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-textarea-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-N-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-L-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-L-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-N-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-R-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-input-script-R-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-isolate-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-isolate-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-between-Rs-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-N-between-Rs-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-mixed-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-pre-mixed-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-between-Rs-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-between-Rs-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-mixed-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-mixed-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-EN-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-N-EN-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-between-Rs-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-N-between-Rs-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-script-mixed-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-textarea-mixed-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/lang-xmllang-01-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/lang-xmllang-01-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/lang-xyzzy-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/lang-xyzzy-ref.html.
+        * web-platform-tests/html/dom/elements/global-attributes/style-01-expected.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/html/dom/elements/global-attributes/style-01-ref.html.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, move html/dom W3C tests to imported/w3c/web-platform-tests/html/dom/
+        https://bugs.webkit.org/show_bug.cgi?id=148948
+
+        * web-platform-tests/html/dom/*: Added.
+
+2015-09-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, move W3C DOM tests to imported/w3c/web-platform-tests/dom
+        https://bugs.webkit.org/show_bug.cgi?id=148947
+
+        Move W3C DOM tests with other web-platform-tests under:
+        imported/w3c/web-platform-tests/dom.
+
+        * web-platform-tests/dom/*: Added.
+
+2015-09-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import new multicolumn layout tests from CSS WG testss
+        https://bugs.webkit.org/show_bug.cgi?id=148805
+
+        Remove a test that didn't have any expected result.
+
+        * css/css-multicol-1/multicol-rule-shorthand-2.xht: Removed.
+
+2015-09-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import new multicolumn layout tests from CSS WG testss
+        https://bugs.webkit.org/show_bug.cgi?id=148805
+
+        Reviewed by Chris Dumez.
+
+        Imported tests from https://github.com/w3c/csswg-test/tree/master/css-multicol-1 as of
+        46a095b681f997bef518ebe0a704c0a343a14a05 and removed the old tests in css/multicol directory.
+
+        This patch imports 136 new tests.
+
+        * css/css-multicol-1: Added.
+        * css/css-multicol-1/multicol-basic-001-expected.html: Added.
+        * css/css-multicol-1/multicol-basic-001.html: Added.
+        * css/css-multicol-1/multicol-basic-002-expected.html: Added.
+        * css/css-multicol-1/multicol-basic-002.html: Added.
+        * css/css-multicol-1/multicol-basic-003-expected.html: Added.
+        * css/css-multicol-1/multicol-basic-003.html: Added.
+        * css/css-multicol-1/multicol-basic-004-expected.html: Added.
+        * css/css-multicol-1/multicol-basic-004.html: Added.
+        * css/css-multicol-1/multicol-block-clip-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-block-clip-001.xht: Added.
+        * css/css-multicol-1/multicol-block-clip-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-block-clip-002.xht: Added.
+        * css/css-multicol-1/multicol-br-inside-avoidcolumn-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-br-inside-avoidcolumn-001.xht: Added.
+        * css/css-multicol-1/multicol-break-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-break-000.xht: Added.
+        * css/css-multicol-1/multicol-break-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-break-001.xht: Added.
+        * css/css-multicol-1/multicol-clip-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-clip-001.xht: Added.
+        * css/css-multicol-1/multicol-clip-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-clip-002.xht: Added.
+        * css/css-multicol-1/multicol-collapsing-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-collapsing-001.xht: Added.
+        * css/css-multicol-1/multicol-columns-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-001.xht: Added.
+        * css/css-multicol-1/multicol-columns-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-002.xht: Added.
+        * css/css-multicol-1/multicol-columns-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-003.xht: Added.
+        * css/css-multicol-1/multicol-columns-004-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-004.xht: Added.
+        * css/css-multicol-1/multicol-columns-005-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-005.xht: Added.
+        * css/css-multicol-1/multicol-columns-006-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-006.xht: Added.
+        * css/css-multicol-1/multicol-columns-007-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-007.xht: Added.
+        * css/css-multicol-1/multicol-columns-invalid-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-invalid-001.xht: Added.
+        * css/css-multicol-1/multicol-columns-invalid-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-invalid-002.xht: Added.
+        * css/css-multicol-1/multicol-columns-toolong-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-columns-toolong-001.xht: Added.
+        * css/css-multicol-1/multicol-containing-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-containing-001.xht: Added.
+        * css/css-multicol-1/multicol-containing-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-containing-002.xht: Added.
+        * css/css-multicol-1/multicol-count-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-001.xht: Added.
+        * css/css-multicol-1/multicol-count-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-002.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-001.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-002.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-003.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-004-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-004.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-005-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-computed-005.xht: Added.
+        * css/css-multicol-1/multicol-count-large-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-large-001.xht: Added.
+        * css/css-multicol-1/multicol-count-large-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-large-002.xht: Added.
+        * css/css-multicol-1/multicol-count-negative-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-negative-001.xht: Added.
+        * css/css-multicol-1/multicol-count-negative-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-negative-002.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-001.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-002.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-count-non-integer-003.xht: Added.
+        * css/css-multicol-1/multicol-fill-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-000.xht: Added.
+        * css/css-multicol-1/multicol-fill-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-001.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-001.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-002.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-003.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-block-children-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-block-children-001.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-block-children-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-block-children-002.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-auto.xht: Added.
+        * css/css-multicol-1/multicol-fill-balance-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-fill-balance-001.xht: Added.
+        * css/css-multicol-1/multicol-gap-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-000.xht: Added.
+        * css/css-multicol-1/multicol-gap-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-001.xht: Added.
+        * css/css-multicol-1/multicol-gap-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-002.xht: Added.
+        * css/css-multicol-1/multicol-gap-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-003.xht: Added.
+        * css/css-multicol-1/multicol-gap-fraction-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-fraction-001.xht: Added.
+        * css/css-multicol-1/multicol-gap-large-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-large-001.xht: Added.
+        * css/css-multicol-1/multicol-gap-large-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-large-002.xht: Added.
+        * css/css-multicol-1/multicol-gap-negative-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-gap-negative-001.xht: Added.
+        * css/css-multicol-1/multicol-height-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-height-001.xht: Added.
+        * css/css-multicol-1/multicol-height-block-child-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-height-block-child-001.xht: Added.
+        * css/css-multicol-1/multicol-inherit-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-inherit-001.xht: Added.
+        * css/css-multicol-1/multicol-inherit-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-inherit-002.xht: Added.
+        * css/css-multicol-1/multicol-inherit-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-inherit-003.xht: Added.
+        * css/css-multicol-1/multicol-inherit-004-expected.xht: Added.
+        * css/css-multicol-1/multicol-inherit-004.xht: Added.
+        * css/css-multicol-1/multicol-list-item-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-list-item-001.xht: Added.
+        * css/css-multicol-1/multicol-margin-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-margin-001.xht: Added.
+        * css/css-multicol-1/multicol-margin-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-margin-002.xht: Added.
+        * css/css-multicol-1/multicol-margin-child-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-margin-child-001.xht: Added.
+        * css/css-multicol-1/multicol-nested-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-002.xht: Added.
+        * css/css-multicol-1/multicol-nested-005-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-005.xht: Added.
+        * css/css-multicol-1/multicol-nested-column-rule-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-column-rule-001.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-001.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-002.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-003.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-004-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-004.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-005-expected.xht: Added.
+        * css/css-multicol-1/multicol-nested-margin-005.xht: Added.
+        * css/css-multicol-1/multicol-overflow-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-overflow-000.xht: Added.
+        * css/css-multicol-1/multicol-overflowing-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-overflowing-001.xht: Added.
+        * css/css-multicol-1/multicol-red.png: Added.
+        * css/css-multicol-1/multicol-reduce-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-reduce-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-002.xht: Added.
+        * css/css-multicol-1/multicol-rule-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-003.xht: Added.
+        * css/css-multicol-1/multicol-rule-004-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-004.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-inherit-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-inherit-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-inherit-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-color-inherit-002.xht: Added.
+        * css/css-multicol-1/multicol-rule-dashed-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-dashed-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-dotted-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-dotted-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-double-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-double-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-002.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-fraction-003.xht: Added.
+        * css/css-multicol-1/multicol-rule-groove-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-groove-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-hidden-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-hidden-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-inset-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-inset-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-large-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-large-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-none-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-none-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-outset-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-outset-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-percent-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-percent-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-px-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-px-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-ridge-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-ridge-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-samelength-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-samelength-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-shorthand-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-shorthand-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-shorthand-2.xht: Added.
+        * css/css-multicol-1/multicol-rule-solid-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-solid-000.xht: Added.
+        * css/css-multicol-1/multicol-rule-stacking-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-stacking-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-groove-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-groove-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-inset-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-inset-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-outset-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-outset-001.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-ridge-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-rule-style-ridge-001.xht: Added.
+        * css/css-multicol-1/multicol-shorthand-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-shorthand-001.xht: Added.
+        * css/css-multicol-1/multicol-span-000-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-000.xht: Added.
+        * css/css-multicol-1/multicol-span-all-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-001.xht: Added.
+        * css/css-multicol-1/multicol-span-all-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-002.xht: Added.
+        * css/css-multicol-1/multicol-span-all-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-003.xht: Added.
+        * css/css-multicol-1/multicol-span-all-block-sibling-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-block-sibling-003.xht: Added.
+        * css/css-multicol-1/multicol-span-all-child-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-child-001.xht: Added.
+        * css/css-multicol-1/multicol-span-all-child-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-child-002.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-001.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-002.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-bottom-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-bottom-001.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-001.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-002.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-003.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht: Added.
+        * css/css-multicol-1/multicol-span-float-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-float-001.xht: Added.
+        * css/css-multicol-1/multicol-span-none-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-span-none-001.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-001.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-height-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-height-001.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-height-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-height-002.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-vertical-align-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-table-cell-vertical-align-001.xht: Added.
+        * css/css-multicol-1/multicol-width-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-001.xht: Added.
+        * css/css-multicol-1/multicol-width-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-002.xht: Added.
+        * css/css-multicol-1/multicol-width-003-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-003.xht: Added.
+        * css/css-multicol-1/multicol-width-count-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-count-001.xht: Added.
+        * css/css-multicol-1/multicol-width-count-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-count-002.xht: Added.
+        * css/css-multicol-1/multicol-width-ems-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-ems-001.xht: Added.
+        * css/css-multicol-1/multicol-width-invalid-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-invalid-001.xht: Added.
+        * css/css-multicol-1/multicol-width-large-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-large-001.xht: Added.
+        * css/css-multicol-1/multicol-width-large-002-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-large-002.xht: Added.
+        * css/css-multicol-1/multicol-width-negative-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-negative-001.xht: Added.
+        * css/css-multicol-1/multicol-width-small-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-width-small-001.xht: Added.
+        * css/css-multicol-1/multicol-zero-height-001-expected.xht: Added.
+        * css/css-multicol-1/multicol-zero-height-001.xht: Added.
+        * css/css-multicol-1/support: Added.
+        * css/css-multicol-1/support/1x1-green.png: Added.
+        * css/css-multicol-1/support/1x1-lime.png: Added.
+        * css/css-multicol-1/support/1x1-maroon.png: Added.
+        * css/css-multicol-1/support/1x1-navy.png: Added.
+        * css/css-multicol-1/support/1x1-red.png: Added.
+        * css/css-multicol-1/support/1x1-white.png: Added.
+        * css/css-multicol-1/support/60x60-gg-rr.png: Added.
+        * css/css-multicol-1/support/60x60-green.png: Added.
+        * css/css-multicol-1/support/60x60-red.png: Added.
+        * css/css-multicol-1/support/a-green.css: Added.
+        * css/css-multicol-1/support/b-green.css: Added.
+        * css/css-multicol-1/support/black20x20.png: Added.
+        * css/css-multicol-1/support/c-red.css: Added.
+        * css/css-multicol-1/support/cat.png: Added.
+        * css/css-multicol-1/support/import-green.css: Added.
+        * css/css-multicol-1/support/import-red.css: Added.
+        * css/css-multicol-1/support/pattern-gg-gr.png: Added.
+        * css/css-multicol-1/support/pattern-grg-rgr-grg.png: Added.
+        * css/css-multicol-1/support/pattern-grg-rrg-rgg.png: Added.
+        * css/css-multicol-1/support/pattern-rgr-grg-rgr.png: Added.
+        * css/css-multicol-1/support/pattern-tr.png: Added.
+        * css/css-multicol-1/support/red20x20.png: Added.
+        * css/css-multicol-1/support/square-purple.png: Added.
+        * css/css-multicol-1/support/square-teal.png: Added.
+        * css/css-multicol-1/support/square-white.png: Added.
+        * css/css-multicol-1/support/swatch-blue.png: Added.
+        * css/css-multicol-1/support/swatch-gray.png: Added.
+        * css/css-multicol-1/support/swatch-green.png: Added.
+        * css/css-multicol-1/support/swatch-lime.png: Added.
+        * css/css-multicol-1/support/swatch-navy.png: Added.
+        * css/css-multicol-1/support/swatch-orange.png: Added.
+        * css/css-multicol-1/support/swatch-pink.png: Added.
+        * css/css-multicol-1/support/swatch-purple.png: Added.
+        * css/css-multicol-1/support/swatch-red.png: Added.
+        * css/css-multicol-1/support/swatch-white.png: Added.
+        * css/css-multicol-1/support/swatch-yellow.png: Added.
+        * css/css-multicol-1/support/test-bl.png: Added.
+        * css/css-multicol-1/support/test-br.png: Added.
+        * css/css-multicol-1/support/test-outer.png: Added.
+        * css/css-multicol-1/support/test-tl.png: Added.
+        * css/css-multicol-1/support/test-tr.png: Added.
+        * css/multicol: Removed.
+        * css/multicol/multicol-basic-001-expected.html: Removed.
+        * css/multicol/multicol-basic-001.html: Removed.
+        * css/multicol/multicol-basic-002-expected.html: Removed.
+        * css/multicol/multicol-basic-002.html: Removed.
+        * css/multicol/multicol-basic-003-expected.html: Removed.
+        * css/multicol/multicol-basic-003.html: Removed.
+        * css/multicol/multicol-basic-004-expected.html: Removed.
+        * css/multicol/multicol-basic-004.html: Removed.
+
+2015-09-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import css/css-color-3
+        https://bugs.webkit.org/show_bug.cgi?id=148803
+
+        Reviewed by Chris Dumez.
+
+        Imported tests from https://github.com/w3c/csswg-test/tree/master/css-color-3 as of
+        46a095b681f997bef518ebe0a704c0a343a14a05.
+
+        * css/css-color-3: Added.
+        * css/css-color-3/LICENSE: Added.
+        * css/css-color-3/htaccess: Added.
+        * css/css-color-3/t31-color-currentColor-b-expected.html: Added.
+        * css/css-color-3/t31-color-currentColor-b.xht: Added.
+        * css/css-color-3/t32-opacity-offscreen-multiple-boxes-1-c-expected.html: Added.
+        * css/css-color-3/t32-opacity-offscreen-multiple-boxes-1-c.xht: Added.
+        * css/css-color-3/t32-opacity-offscreen-multiple-boxes-2-c-expected.html: Added.
+        * css/css-color-3/t32-opacity-offscreen-multiple-boxes-2-c.xht: Added.
+        * css/css-color-3/t421-rgb-func-int-a-expected.html: Added.
+        * css/css-color-3/t421-rgb-func-int-a.xht: Added.
+        * css/css-color-3/t421-rgb-func-no-mixed-f-expected.html: Added.
+        * css/css-color-3/t421-rgb-func-no-mixed-f.xht: Added.
+        * css/css-color-3/t421-rgb-func-pct-a-expected.html: Added.
+        * css/css-color-3/t421-rgb-func-pct-a.xht: Added.
+        * css/css-color-3/t421-rgb-func-whitespace-b-expected.html: Added.
+        * css/css-color-3/t421-rgb-func-whitespace-b.xht: Added.
+        * css/css-color-3/t421-rgb-hex-parsing-f-expected.html: Added.
+        * css/css-color-3/t421-rgb-hex-parsing-f.xht: Added.
+        * css/css-color-3/t421-rgb-hex3-a-expected.html: Added.
+        * css/css-color-3/t421-rgb-hex3-a.xht: Added.
+        * css/css-color-3/t421-rgb-hex6-a-expected.html: Added.
+        * css/css-color-3/t421-rgb-hex6-a.xht: Added.
+        * css/css-color-3/t422-rgba-a1.0-a-expected.html: Added.
+        * css/css-color-3/t422-rgba-a1.0-a.xht: Added.
+        * css/css-color-3/t422-rgba-clamping-a0.0-b-expected.html: Added.
+        * css/css-color-3/t422-rgba-clamping-a0.0-b.xht: Added.
+        * css/css-color-3/t422-rgba-clamping-a1.0-b-expected.html: Added.
+        * css/css-color-3/t422-rgba-clamping-a1.0-b.xht: Added.
+        * css/css-color-3/t422-rgba-clip-outside-device-gamut-b-expected.html: Added.
+        * css/css-color-3/t422-rgba-clip-outside-device-gamut-b.xht: Added.
+        * css/css-color-3/t422-rgba-func-int-a-expected.html: Added.
+        * css/css-color-3/t422-rgba-func-int-a.xht: Added.
+        * css/css-color-3/t422-rgba-func-no-mixed-f-expected.html: Added.
+        * css/css-color-3/t422-rgba-func-no-mixed-f.xht: Added.
+        * css/css-color-3/t422-rgba-func-pct-a-expected.html: Added.
+        * css/css-color-3/t422-rgba-func-pct-a.xht: Added.
+        * css/css-color-3/t422-rgba-func-whitespace-b-expected.html: Added.
+        * css/css-color-3/t422-rgba-func-whitespace-b.xht: Added.
+        * css/css-color-3/t422-rgba-onscreen-b-expected.html: Added.
+        * css/css-color-3/t422-rgba-onscreen-b.xht: Added.
+        * css/css-color-3/t422-rgba-onscreen-multiple-boxes-c-expected.html: Added.
+        * css/css-color-3/t422-rgba-onscreen-multiple-boxes-c.xht: Added.
+        * css/css-color-3/t423-transparent-1-a-expected.html: Added.
+        * css/css-color-3/t423-transparent-1-a.xht: Added.
+        * css/css-color-3/t423-transparent-2-a-expected.html: Added.
+        * css/css-color-3/t423-transparent-2-a.xht: Added.
+        * css/css-color-3/t424-hsl-basic-a-expected.html: Added.
+        * css/css-color-3/t424-hsl-basic-a.xht: Added.
+        * css/css-color-3/t424-hsl-clip-outside-gamut-b-expected.html: Added.
+        * css/css-color-3/t424-hsl-clip-outside-gamut-b.xht: Added.
+        * css/css-color-3/t424-hsl-parsing-f-expected.html: Added.
+        * css/css-color-3/t424-hsl-parsing-f.xht: Added.
+        * css/css-color-3/t424-hsl-values-b-1-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-1.html: Added.
+        * css/css-color-3/t424-hsl-values-b-10-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-10.html: Added.
+        * css/css-color-3/t424-hsl-values-b-11-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-11.html: Added.
+        * css/css-color-3/t424-hsl-values-b-12-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-12.html: Added.
+        * css/css-color-3/t424-hsl-values-b-13-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-13.html: Added.
+        * css/css-color-3/t424-hsl-values-b-14-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-14.html: Added.
+        * css/css-color-3/t424-hsl-values-b-15-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-15.html: Added.
+        * css/css-color-3/t424-hsl-values-b-2-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-2.html: Added.
+        * css/css-color-3/t424-hsl-values-b-3-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-3.html: Added.
+        * css/css-color-3/t424-hsl-values-b-4-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-4.html: Added.
+        * css/css-color-3/t424-hsl-values-b-5-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-5.html: Added.
+        * css/css-color-3/t424-hsl-values-b-6-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-6.html: Added.
+        * css/css-color-3/t424-hsl-values-b-7-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-7.html: Added.
+        * css/css-color-3/t424-hsl-values-b-8-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-8.html: Added.
+        * css/css-color-3/t424-hsl-values-b-9-expected.html: Added.
+        * css/css-color-3/t424-hsl-values-b-9.html: Added.
+        * css/css-color-3/t425-hsla-clip-outside-device-gamut-b-expected.html: Added.
+        * css/css-color-3/t425-hsla-clip-outside-device-gamut-b.xht: Added.
+        * css/css-color-3/t425-hsla-onscreen-multiple-boxes-c-expected.html: Added.
+        * css/css-color-3/t425-hsla-onscreen-multiple-boxes-c.xht: Added.
+        * css/css-color-3/t425-hsla-parsing-f-expected.html: Added.
+        * css/css-color-3/t425-hsla-parsing-f.xht: Added.
+        * css/css-color-3/t425-hsla-values-b-expected.html: Added.
+        * css/css-color-3/t425-hsla-values-b.xht: Added.
+        * css/css-color-3/t44-currentcolor-background-b-expected.html: Added.
+        * css/css-color-3/t44-currentcolor-background-b.xht: Added.
+        * css/css-color-3/t44-currentcolor-border-b-expected.html: Added.
+        * css/css-color-3/t44-currentcolor-border-b.xht: Added.
+        * css/css-color-3/w3c-import.log: Added.
+
 2015-09-02  Brady Eidson  <beidson@apple.com>
 
         Import W3C IndexedDB tests.

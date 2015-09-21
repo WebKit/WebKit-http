@@ -36,13 +36,6 @@ class NodeOrString;
 class QualifiedName;
 class RenderElement;
 
-typedef void (*NodeCallback)(Node&, unsigned);
-
-namespace Private { 
-    template<class GenericNode, class GenericNodeContainer>
-    void addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer&);
-};
-
 class NoEventDispatchAssertion {
 public:
     NoEventDispatchAssertion()
@@ -102,22 +95,22 @@ public:
     WEBCORE_EXPORT unsigned countChildNodes() const;
     WEBCORE_EXPORT Node* traverseToChildAt(unsigned) const;
 
-    bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT bool removeChild(Node* child, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT bool appendChild(PassRefPtr<Node> newChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    bool insertBefore(Ref<Node>&& newChild, Node* refChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    bool replaceChild(Ref<Node>&& newChild, Node& oldChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    WEBCORE_EXPORT bool removeChild(Node& child, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    WEBCORE_EXPORT bool appendChild(Ref<Node>&& newChild, ExceptionCode& = ASSERT_NO_EXCEPTION);
 
     // These methods are only used during parsing.
     // They don't send DOM mutation events or handle reparenting.
     // However, arbitrary code may be run by beforeload handlers.
-    void parserAppendChild(PassRefPtr<Node>);
+    void parserAppendChild(Ref<Node>&&);
     void parserRemoveChild(Node&);
-    void parserInsertBefore(PassRefPtr<Node> newChild, Node* refChild);
+    void parserInsertBefore(Ref<Node>&& newChild, Node& refChild);
 
     void removeChildren();
     void takeAllChildrenFrom(ContainerNode*);
 
-    void cloneChildNodes(ContainerNode* clone);
+    void cloneChildNodes(ContainerNode& clone);
 
     enum ChildChangeType { ElementInserted, ElementRemoved, TextInserted, TextRemoved, TextChanged, AllChildrenRemoved, NonContentsChildChanged };
     enum ChildChangeSource { ChildChangeSourceParser, ChildChangeSourceAPI };
@@ -163,11 +156,7 @@ public:
 protected:
     explicit ContainerNode(Document&, ConstructionType = CreateContainer);
 
-    template<class GenericNode, class GenericNodeContainer>
-    friend void appendChildToContainer(GenericNode* child, GenericNodeContainer&);
-
-    template<class GenericNode, class GenericNodeContainer>
-    friend void Private::addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer&);
+    friend void addChildNodesToDeletionQueue(Node*& head, Node*& tail, ContainerNode&);
 
     void removeDetachedChildren();
     void setFirstChild(Node* child) { m_firstChild = child; }
@@ -178,6 +167,7 @@ protected:
 private:
     void removeBetween(Node* previousChild, Node* nextChild, Node& oldChild);
     void insertBeforeCommon(Node& nextChild, Node& oldChild);
+    void appendChildCommon(Node&);
 
     void notifyChildInserted(Node& child, ChildChangeSource);
     void notifyChildRemoved(Node& child, Node* previousSibling, Node* nextSibling, ChildChangeSource);

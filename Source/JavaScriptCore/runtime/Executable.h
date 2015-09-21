@@ -37,7 +37,6 @@
 #include "InferredValue.h"
 #include "JITCode.h"
 #include "JSGlobalObject.h"
-#include "RegisterPreservationMode.h"
 #include "SamplingTool.h"
 #include "SourceCode.h"
 #include "TypeSet.h"
@@ -57,6 +56,9 @@ class ProgramCodeBlock;
 class ModuleProgramCodeBlock;
 class JSScope;
 class WebAssemblyCodeBlock;
+class ModuleProgramCodeBlock;
+class JSModuleRecord;
+class JSScope;
 
 enum CompilationKind { FirstCompilation, OptimizingCompilation };
 
@@ -160,8 +162,7 @@ public:
         return generatedJITCodeForConstruct();
     }
     
-    MacroAssemblerCodePtr entrypointFor(
-        VM& vm, CodeSpecializationKind kind, ArityCheckMode arity, RegisterPreservationMode registers)
+    MacroAssemblerCodePtr entrypointFor(CodeSpecializationKind kind, ArityCheckMode arity)
     {
         // Check if we have a cached result. We only have it for arity check because we use the
         // no-arity entrypoint in non-virtual calls, which will "cache" this value directly in
@@ -169,55 +170,25 @@ public:
         if (arity == MustCheckArity) {
             switch (kind) {
             case CodeForCall:
-                switch (registers) {
-                case RegisterPreservationNotRequired:
-                    if (MacroAssemblerCodePtr result = m_jitCodeForCallWithArityCheck)
-                        return result;
-                    break;
-                case MustPreserveRegisters:
-                    if (MacroAssemblerCodePtr result = m_jitCodeForCallWithArityCheckAndPreserveRegs)
-                        return result;
-                    break;
-                }
+                if (MacroAssemblerCodePtr result = m_jitCodeForCallWithArityCheck)
+                    return result;
                 break;
             case CodeForConstruct:
-                switch (registers) {
-                case RegisterPreservationNotRequired:
-                    if (MacroAssemblerCodePtr result = m_jitCodeForConstructWithArityCheck)
-                        return result;
-                    break;
-                case MustPreserveRegisters:
-                    if (MacroAssemblerCodePtr result = m_jitCodeForConstructWithArityCheckAndPreserveRegs)
-                        return result;
-                    break;
-                }
+                if (MacroAssemblerCodePtr result = m_jitCodeForConstructWithArityCheck)
+                    return result;
                 break;
             }
         }
         MacroAssemblerCodePtr result =
-            generatedJITCodeFor(kind)->addressForCall(vm, this, arity, registers);
+            generatedJITCodeFor(kind)->addressForCall(arity);
         if (arity == MustCheckArity) {
             // Cache the result; this is necessary for the JIT's virtual call optimizations.
             switch (kind) {
             case CodeForCall:
-                switch (registers) {
-                case RegisterPreservationNotRequired:
-                    m_jitCodeForCallWithArityCheck = result;
-                    break;
-                case MustPreserveRegisters:
-                    m_jitCodeForCallWithArityCheckAndPreserveRegs = result;
-                    break;
-                }
+                m_jitCodeForCallWithArityCheck = result;
                 break;
             case CodeForConstruct:
-                switch (registers) {
-                case RegisterPreservationNotRequired:
-                    m_jitCodeForConstructWithArityCheck = result;
-                    break;
-                case MustPreserveRegisters:
-                    m_jitCodeForConstructWithArityCheckAndPreserveRegs = result;
-                    break;
-                }
+                m_jitCodeForConstructWithArityCheck = result;
                 break;
             }
         }
@@ -225,23 +196,13 @@ public:
     }
 
     static ptrdiff_t offsetOfJITCodeWithArityCheckFor(
-        CodeSpecializationKind kind, RegisterPreservationMode registers)
+        CodeSpecializationKind kind)
     {
         switch (kind) {
         case CodeForCall:
-            switch (registers) {
-            case RegisterPreservationNotRequired:
-                return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForCallWithArityCheck);
-            case MustPreserveRegisters:
-                return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForCallWithArityCheckAndPreserveRegs);
-            }
+            return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForCallWithArityCheck);
         case CodeForConstruct:
-            switch (registers) {
-            case RegisterPreservationNotRequired:
-                return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForConstructWithArityCheck);
-            case MustPreserveRegisters:
-                return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForConstructWithArityCheckAndPreserveRegs);
-            }
+            return OBJECT_OFFSETOF(ExecutableBase, m_jitCodeForConstructWithArityCheck);
         }
         RELEASE_ASSERT_NOT_REACHED();
         return 0;
@@ -290,8 +251,6 @@ protected:
     RefPtr<JITCode> m_jitCodeForConstruct;
     MacroAssemblerCodePtr m_jitCodeForCallWithArityCheck;
     MacroAssemblerCodePtr m_jitCodeForConstructWithArityCheck;
-    MacroAssemblerCodePtr m_jitCodeForCallWithArityCheckAndPreserveRegs;
-    MacroAssemblerCodePtr m_jitCodeForConstructWithArityCheckAndPreserveRegs;
 };
 
 class NativeExecutable final : public ExecutableBase {
@@ -385,7 +344,7 @@ public:
 
     bool usesEval() const { return m_features & EvalFeature; }
     bool usesArguments() const { return m_features & ArgumentsFeature; }
-    bool needsActivation() const { return m_hasCapturedVariables || m_features & (EvalFeature | WithFeature | CatchFeature); }
+    bool needsActivation() const { return m_hasCapturedVariables || m_features & (EvalFeature | WithFeature); }
     bool isStrictMode() const { return m_features & StrictModeFeature; }
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
         
@@ -417,6 +376,7 @@ public:
     }
 
     void installCode(CodeBlock*);
+    void installCode(VM&, CodeBlock*, CodeType, CodeSpecializationKind);
     RefPtr<CodeBlock> newCodeBlockFor(CodeSpecializationKind, JSFunction*, JSScope*, JSObject*& exception);
     PassRefPtr<CodeBlock> newReplacementCodeBlockFor(CodeSpecializationKind);
     
@@ -589,6 +549,8 @@ public:
     ExecutableInfo executableInfo() const { return ExecutableInfo(needsActivation(), usesEval(), isStrictMode(), false, false, ConstructorKind::None, false); }
     UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock() { return m_unlinkedModuleProgramCodeBlock.get(); }
 
+    SymbolTable* moduleEnvironmentSymbolTable() { return m_moduleEnvironmentSymbolTable.get(); }
+
 private:
     friend class ScriptExecutable;
 
@@ -597,6 +559,7 @@ private:
     static void visitChildren(JSCell*, SlotVisitor&);
 
     WriteBarrier<UnlinkedModuleProgramCodeBlock> m_unlinkedModuleProgramCodeBlock;
+    WriteBarrier<SymbolTable> m_moduleEnvironmentSymbolTable;
     RefPtr<ModuleProgramCodeBlock> m_moduleProgramCodeBlock;
 };
 

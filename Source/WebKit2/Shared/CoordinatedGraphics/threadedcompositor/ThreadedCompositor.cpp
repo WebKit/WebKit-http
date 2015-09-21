@@ -132,7 +132,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
     , m_threadIdentifier(0)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(this)))
+    , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
 {
     m_clientRendersNextFrame.store(false);
@@ -142,6 +142,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client)
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+    m_displayRefreshMonitor->invalidate();
     terminateCompositingThread();
 }
 
@@ -244,8 +245,8 @@ GLContext* ThreadedCompositor::glContext()
         return m_context.get();
 
     RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
-
-    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createSurface(IntSize(viewportController()->visibleContentsRect().size()));
+    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()));
     if (!m_waylandSurface)
         return nullptr;
 
@@ -358,6 +359,7 @@ void ThreadedCompositor::runCompositingThread()
         LockHolder locker(m_terminateRunLoopConditionLock);
         m_compositingRunLoop = nullptr;
         m_context = nullptr;
+        m_scene = nullptr;
         m_terminateRunLoopCondition.notifyOne();
     }
 
@@ -415,10 +417,10 @@ RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshM
     return m_displayRefreshMonitor;
 }
 
-ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor* compositor)
+ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedCompositor& compositor)
     : WebCore::DisplayRefreshMonitor(0)
     , m_displayRefreshTimer(RunLoop::main(), this, &ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback)
-    , m_compositor(compositor)
+    , m_compositor(&compositor)
 {
 }
 
@@ -438,6 +440,11 @@ bool ThreadedCompositor::DisplayRefreshMonitor::requiresDisplayRefreshCallback()
 void ThreadedCompositor::DisplayRefreshMonitor::dispatchDisplayRefreshCallback()
 {
     m_displayRefreshTimer.startOneShot(0);
+}
+
+void ThreadedCompositor::DisplayRefreshMonitor::invalidate()
+{
+    m_compositor = nullptr;
 }
 
 void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()

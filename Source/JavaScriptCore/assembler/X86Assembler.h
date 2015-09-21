@@ -123,8 +123,8 @@ class X86Assembler {
 public:
     typedef X86Registers::RegisterID RegisterID;
     
-    static RegisterID firstRegister() { return X86Registers::eax; }
-    static RegisterID lastRegister()
+    static constexpr RegisterID firstRegister() { return X86Registers::eax; }
+    static constexpr RegisterID lastRegister()
     {
 #if CPU(X86_64)
         return X86Registers::r15;
@@ -136,8 +136,8 @@ public:
     typedef X86Registers::XMMRegisterID XMMRegisterID;
     typedef XMMRegisterID FPRegisterID;
     
-    static FPRegisterID firstFPRegister() { return X86Registers::xmm0; }
-    static FPRegisterID lastFPRegister()
+    static constexpr FPRegisterID firstFPRegister() { return X86Registers::xmm0; }
+    static constexpr FPRegisterID lastFPRegister()
     {
 #if CPU(X86_64)
         return X86Registers::xmm15;
@@ -227,6 +227,7 @@ private:
         OP_INT3                         = 0xCC,
         OP_GROUP2_Ev1                   = 0xD1,
         OP_GROUP2_EvCL                  = 0xD3,
+        OP_ESCAPE_D9                    = 0xD9,
         OP_ESCAPE_DD                    = 0xDD,
         OP_CALL_rel32                   = 0xE8,
         OP_JMP_rel32                    = 0xE9,
@@ -311,6 +312,7 @@ private:
         GROUP3_OP_TEST = 0,
         GROUP3_OP_NOT  = 2,
         GROUP3_OP_NEG  = 3,
+        GROUP3_OP_DIV = 6,
         GROUP3_OP_IDIV = 7,
 
         GROUP5_OP_CALLN = 2,
@@ -322,6 +324,7 @@ private:
         GROUP14_OP_PSLLQ = 6,
         GROUP14_OP_PSRLQ = 2,
 
+        ESCAPE_D9_FSTP_singleReal = 3,
         ESCAPE_DD_FSTP_doubleReal = 3,
     } GroupOpcodeID;
     
@@ -932,6 +935,11 @@ public:
         m_formatter.immediate32(value);
     }
 
+    void divl_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp(OP_GROUP3_Ev, GROUP3_OP_DIV, dst);
+    }
+
     void idivl_r(RegisterID dst)
     {
         m_formatter.oneByteOp(OP_GROUP3_Ev, GROUP3_OP_IDIV, dst);
@@ -1257,6 +1265,11 @@ public:
     void cdq()
     {
         m_formatter.oneByteOp(OP_CDQ);
+    }
+
+    void fstps(int offset, RegisterID base)
+    {
+        m_formatter.oneByteOp(OP_ESCAPE_D9, ESCAPE_D9_FSTP_singleReal, base, offset);
     }
 
     void fstpl(int offset, RegisterID base)

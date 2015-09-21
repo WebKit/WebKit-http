@@ -36,7 +36,7 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const ViewOptions& options)
+PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const TestOptions& options)
     : m_view(WKViewCreate(configuration))
     , m_window(gtk_window_new(GTK_WINDOW_POPUP))
     , m_windowIsKey(true)
@@ -56,6 +56,11 @@ PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const Vie
 PlatformWebView::~PlatformWebView()
 {
     gtk_widget_destroy(m_window);
+}
+
+void PlatformWebView::setWindowIsKey(bool isKey)
+{
+    m_windowIsKey = isKey;
 }
 
 void PlatformWebView::resizeTo(unsigned width, unsigned height)
@@ -142,7 +147,7 @@ void PlatformWebView::didInitializeClients()
 {
 }
 
-bool PlatformWebView::viewSupportsOptions(const ViewOptions&) const
+bool PlatformWebView::viewSupportsOptions(const TestOptions&) const
 {
     return true;
 }
@@ -156,6 +161,10 @@ void PlatformWebView::dismissAllPopupMenus()
         ASSERT(data);
         gtk_menu_popdown(GTK_MENU(data));
     }, nullptr);
+}
+
+void PlatformWebView::setNavigationGesturesEnabled(bool)
+{
 }
 
 } // namespace WTR

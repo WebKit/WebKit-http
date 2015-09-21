@@ -331,10 +331,12 @@ private:
     enum AutoCompleteSetting { Uninitialized, On, Off };
 
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) override final;
+    virtual bool canHaveUserAgentShadowRoot() const override final { return true; }
 
     virtual void willChangeForm() override final;
     virtual void didChangeForm() override final;
     virtual InsertionNotificationRequest insertedInto(ContainerNode&) override final;
+    void finishedInsertingSubtree() override final;
     virtual void removedFrom(ContainerNode&) override final;
     virtual void didMoveToNewDocument(Document* oldDocument) override final;
 

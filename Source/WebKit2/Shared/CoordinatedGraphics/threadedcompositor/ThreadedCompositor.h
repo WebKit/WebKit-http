@@ -130,12 +130,17 @@ private:
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
     public:
+<<<<<<< HEAD
         DisplayRefreshMonitor(ThreadedCompositor*);
+=======
+        DisplayRefreshMonitor(ThreadedCompositor&);
+>>>>>>> e7f423b82f5519d8d663c00b0e3e63ebd62838cc
 
         virtual bool requestRefreshCallback() override;
 
         bool requiresDisplayRefreshCallback();
         void dispatchDisplayRefreshCallback();
+        void invalidate();
 
     private:
         void displayRefreshCallback();

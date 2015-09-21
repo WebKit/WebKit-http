@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2010-2011 Google Inc. All rights reserved.
+ * Copyright (C) 2010, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,7 +65,7 @@ public:
 
     virtual ~InspectorDebuggerAgent();
 
-    virtual void didCreateFrontendAndBackend(FrontendChannel*, BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(DisconnectReason) override;
 
     virtual void enable(ErrorString&) override;
@@ -88,7 +88,9 @@ public:
     virtual void setOverlayMessage(ErrorString&, const String*) override;
 
     bool isPaused();
-    
+
+    void setSuppressAllPauses(bool);
+
     void handleConsoleAssert(const String& message);
 
     void schedulePauseOnNextStatement(DebuggerFrontendDispatcher::Reason breakReason, RefPtr<InspectorObject>&& data);
@@ -109,7 +111,7 @@ public:
     virtual ScriptDebugServer& scriptDebugServer() = 0;
 
 protected:
-    InspectorDebuggerAgent(InjectedScriptManager&);
+    InspectorDebuggerAgent(AgentContext&);
 
     InjectedScriptManager& injectedScriptManager() const { return m_injectedScriptManager; }
     virtual InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) = 0;

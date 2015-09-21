@@ -415,7 +415,7 @@ LayoutUnit RenderMultiColumnSet::calculateMaxColumnHeight() const
     LayoutUnit availableHeight = multiColumnFlowThread()->columnHeightAvailable();
     LayoutUnit maxColumnHeight = availableHeight ? availableHeight : RenderFlowThread::maxLogicalHeight();
     if (!multicolStyle.logicalMaxHeight().isUndefined())
-        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(multicolStyle.logicalMaxHeight(), Nullopt).valueOr(maxColumnHeight));
+        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(MaxSize, multicolStyle.logicalMaxHeight(), Nullopt).valueOr(maxColumnHeight));
     return heightAdjustedForSetOffset(maxColumnHeight);
 }
 
@@ -577,7 +577,7 @@ void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPo
     const RenderStyle& blockStyle = parent()->style();
     const Color& ruleColor = blockStyle.visitedDependentColor(CSSPropertyColumnRuleColor);
     bool ruleTransparent = blockStyle.columnRuleIsTransparent();
-    EBorderStyle ruleStyle = blockStyle.columnRuleStyle();
+    EBorderStyle ruleStyle = collapsedBorderStyle(blockStyle.columnRuleStyle());
     LayoutUnit ruleThickness = blockStyle.columnRuleWidth();
     LayoutUnit colGap = columnGap();
     bool renderRule = ruleStyle > BHIDDEN && !ruleTransparent;

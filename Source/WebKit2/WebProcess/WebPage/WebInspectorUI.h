@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,21 +26,22 @@
 #ifndef WebInspectorUI_h
 #define WebInspectorUI_h
 
-#include "APIObject.h"
 #include "Connection.h"
-#include <WebCore/InspectorForwarding.h>
+#include "WebInspectorFrontendAPIDispatcher.h"
 #include <WebCore/InspectorFrontendClient.h>
 #include <WebCore/InspectorFrontendHost.h>
+
+namespace WebCore {
+class InspectorController;
+}
 
 namespace WebKit {
 
 class WebPage;
 
-class WebInspectorUI : public API::ObjectImpl<API::Object::Type::BundleInspectorUI>, public IPC::Connection::Client, public WebCore::InspectorFrontendClient {
+class WebInspectorUI : public RefCounted<WebInspectorUI>, public IPC::Connection::Client, public WebCore::InspectorFrontendClient {
 public:
-    static Ref<WebInspectorUI> create(WebPage*);
-
-    WebPage* page() const { return m_page; }
+    static Ref<WebInspectorUI> create(WebPage&);
 
     // Implemented in generated WebInspectorUIMessageReceiver.cpp
     void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
@@ -105,30 +106,24 @@ public:
     bool isUnderTest() override { return m_underTest; }
 
 private:
-    explicit WebInspectorUI(WebPage*);
+    explicit WebInspectorUI(WebPage&);
 
-    void evaluateCommandOnLoad(const String& command, const String& argument = String());
-    void evaluateCommandOnLoad(const String& command, const ASCIILiteral& argument) { evaluateCommandOnLoad(command, String(argument)); }
-    void evaluateCommandOnLoad(const String& command, bool argument);
-    void evaluateExpressionOnLoad(const String& expression);
-    void evaluatePendingExpressions();
-
-    WebPage* m_page;
-
-    RefPtr<IPC::Connection> m_backendConnection;
-    uint64_t m_inspectedPageIdentifier;
-
-    bool m_underTest;
-    bool m_frontendLoaded;
-    Deque<String> m_queue;
-
+    WebPage& m_page;
+    WebInspectorFrontendAPIDispatcher m_frontendAPIDispatcher;
     RefPtr<WebCore::InspectorFrontendHost> m_frontendHost;
+    RefPtr<IPC::Connection> m_backendConnection;
 
-    DockSide m_dockSide;
+    // Keep a pointer to the frontend's inspector controller rather than going through
+    // corePage(), since we may need it after the frontend's page has started destruction.
+    WebCore::InspectorController* m_frontendController { nullptr };
+
+    uint64_t m_inspectedPageIdentifier { 0 };
+    bool m_underTest { false };
+    DockSide m_dockSide { DockSide::Undocked };
 
 #if PLATFORM(COCOA)
     mutable String m_localizedStringsURL;
-    mutable bool m_hasLocalizedStringsURL;
+    mutable bool m_hasLocalizedStringsURL { false };
 #endif
 };
 

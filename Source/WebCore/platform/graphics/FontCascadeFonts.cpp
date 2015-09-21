@@ -35,6 +35,66 @@
 
 namespace WebCore {
 
+class MixedFontGlyphPage {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    MixedFontGlyphPage(const GlyphPage* initialPage)
+    {
+        if (initialPage) {
+            for (unsigned i = 0; i < GlyphPage::size; ++i)
+                setGlyphDataForIndex(i, initialPage->glyphDataForIndex(i));
+        }
+    }
+
+    GlyphData glyphDataForCharacter(UChar32 c) const
+    {
+        unsigned index = GlyphPage::indexForCharacter(c);
+        ASSERT_WITH_SECURITY_IMPLICATION(index < GlyphPage::size);
+        return { m_glyphs[index], m_fonts[index] };
+    }
+
+    void setGlyphDataForCharacter(UChar32 c, GlyphData glyphData)
+    {
+        setGlyphDataForIndex(GlyphPage::indexForCharacter(c), glyphData);
+    }
+
+private:
+    void setGlyphDataForIndex(unsigned index, const GlyphData& glyphData)
+    {
+        ASSERT_WITH_SECURITY_IMPLICATION(index < GlyphPage::size);
+        m_glyphs[index] = glyphData.glyph;
+        m_fonts[index] = glyphData.font;
+    }
+
+    Glyph m_glyphs[GlyphPage::size] { };
+    const Font* m_fonts[GlyphPage::size] { };
+};
+
+GlyphData FontCascadeFonts::GlyphPageCacheEntry::glyphDataForCharacter(UChar32 character)
+{
+    ASSERT(!(m_singleFont && m_mixedFont));
+    if (m_singleFont)
+        return m_singleFont->glyphDataForCharacter(character);
+    if (m_mixedFont)
+        return m_mixedFont->glyphDataForCharacter(character);
+    return 0;
+}
+
+void FontCascadeFonts::GlyphPageCacheEntry::setGlyphDataForCharacter(UChar32 character, GlyphData glyphData)
+{
+    ASSERT(!glyphDataForCharacter(character).glyph);
+    if (!m_mixedFont) {
+        m_mixedFont = std::make_unique<MixedFontGlyphPage>(m_singleFont.get());
+        m_singleFont = nullptr;
+    }
+    m_mixedFont->setGlyphDataForCharacter(character, glyphData);
+}
+
+void FontCascadeFonts::GlyphPageCacheEntry::setSingleFontPage(RefPtr<GlyphPage>&& page)
+{
+    ASSERT(isNull());
+    m_singleFont = page;
+}
 
 FontCascadeFonts::FontCascadeFonts(RefPtr<FontSelector>&& fontSelector)
     : m_cachedPrimaryFont(nullptr)
@@ -57,7 +117,7 @@ FontCascadeFonts::~FontCascadeFonts()
 {
 }
 
-void FontCascadeFonts::determinePitch(const FontDescription& description)
+void FontCascadeFonts::determinePitch(const FontCascadeDescription& description)
 {
     auto& primaryRanges = realizeFallbackRangesAt(description, 0);
     unsigned numRanges = primaryRanges.size();
@@ -76,7 +136,7 @@ bool FontCascadeFonts::isLoadingCustomFonts() const
     return false;
 }
 
-static FontRanges realizeNextFallback(const FontDescription& description, unsigned& index, FontSelector* fontSelector)
+static FontRanges realizeNextFallback(const FontCascadeDescription& description, unsigned& index, FontSelector* fontSelector)
 {
     ASSERT(index < description.familyCount());
 
@@ -96,10 +156,14 @@ static FontRanges realizeNextFallback(const FontDescription& description, unsign
     // We didn't find a font. Try to find a similar font using our own specific knowledge about our platform.
     // For example on OS X, we know to map any families containing the words Arabic, Pashto, or Urdu to the
     // Geeza Pro font.
-    return FontRanges(fontCache.similarFont(description));
+    for (auto& family : description.families()) {
+        if (auto font = fontCache.similarFont(description, family))
+            return FontRanges(WTF::move(font));
+    }
+    return { };
 }
 
-const FontRanges& FontCascadeFonts::realizeFallbackRangesAt(const FontDescription& description, unsigned index)
+const FontRanges& FontCascadeFonts::realizeFallbackRangesAt(const FontCascadeDescription& description, unsigned index)
 {
     if (index < m_realizedFallbackRanges.size())
         return m_realizedFallbackRanges[index];
@@ -252,7 +316,7 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
     return data;
 }
 
-GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 c, const FontDescription& description, FontVariant variant)
+GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 c, const FontCascadeDescription& description, FontVariant variant)
 {
     // System fallback is character-dependent.
     auto& primaryRanges = realizeFallbackRangesAt(description, 0);
@@ -289,7 +353,7 @@ GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 c, const FontDesc
     return fallbackGlyphData;
 }
 
-GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 c, const FontDescription& description, FontVariant variant, unsigned fallbackIndex)
+GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 c, const FontCascadeDescription& description, FontVariant variant, unsigned fallbackIndex)
 {
     while (true) {
         auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex++);
@@ -310,7 +374,7 @@ GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 c, const FontDescription
     return glyphDataForSystemFallback(c, description, variant);
 }
 
-GlyphData FontCascadeFonts::glyphDataForNormalVariant(UChar32 c, const FontDescription& description)
+GlyphData FontCascadeFonts::glyphDataForNormalVariant(UChar32 c, const FontCascadeDescription& description)
 {
     for (unsigned fallbackIndex = 0; ; ++fallbackIndex) {
         auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex);
@@ -361,7 +425,7 @@ static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const Font
     return const_cast<GlyphPage*>(font->glyphPage(pageNumber));
 }
 
-GlyphData FontCascadeFonts::glyphDataForCharacter(UChar32 c, const FontDescription& description, FontVariant variant)
+GlyphData FontCascadeFonts::glyphDataForCharacter(UChar32 c, const FontCascadeDescription& description, FontVariant variant)
 {
     ASSERT(isMainThread());
     ASSERT(variant != AutoVariant);
@@ -371,20 +435,20 @@ GlyphData FontCascadeFonts::glyphDataForCharacter(UChar32 c, const FontDescripti
 
     const unsigned pageNumber = c / GlyphPage::size;
 
-    RefPtr<GlyphPage>& cachedPage = pageNumber ? m_cachedPages.add(pageNumber, nullptr).iterator->value : m_cachedPageZero;
-    if (!cachedPage)
-        cachedPage = glyphPageFromFontRanges(pageNumber, realizeFallbackRangesAt(description, 0));
+    auto& cacheEntry = pageNumber ? m_cachedPages.add(pageNumber, GlyphPageCacheEntry()).iterator->value : m_cachedPageZero;
 
-    GlyphData glyphData = cachedPage ? cachedPage->glyphDataForCharacter(c) : GlyphData();
+    // Initialize cache with a full page of glyph mappings from a single font.
+    if (cacheEntry.isNull())
+        cacheEntry.setSingleFontPage(glyphPageFromFontRanges(pageNumber, realizeFallbackRangesAt(description, 0)));
+
+    GlyphData glyphData = cacheEntry.glyphDataForCharacter(c);
     if (!glyphData.glyph) {
-        if (!cachedPage)
-            cachedPage = GlyphPage::createForMixedFonts();
-        else if (cachedPage->isImmutable())
-            cachedPage = GlyphPage::createCopyForMixedFonts(*cachedPage);
-
+        // No glyph, resolve per-character.
         glyphData = glyphDataForNormalVariant(c, description);
-        cachedPage->setGlyphDataForCharacter(c, glyphData.glyph, glyphData.font);
+        // Cache the results.
+        cacheEntry.setGlyphDataForCharacter(c, glyphData);
     }
+
     return glyphData;
 }
 
@@ -393,10 +457,10 @@ void FontCascadeFonts::pruneSystemFallbacks()
     if (m_systemFallbackFontSet.isEmpty())
         return;
     // Mutable glyph pages may reference fallback fonts.
-    if (m_cachedPageZero && !m_cachedPageZero->isImmutable())
-        m_cachedPageZero = nullptr;
+    if (m_cachedPageZero.isMixedFont())
+        m_cachedPageZero = { };
     m_cachedPages.removeIf([](decltype(m_cachedPages)::KeyValuePairType& keyAndValue) {
-        return !keyAndValue.value->isImmutable();
+        return keyAndValue.value.isMixedFont();
     });
     m_systemFallbackFontSet.clear();
 }

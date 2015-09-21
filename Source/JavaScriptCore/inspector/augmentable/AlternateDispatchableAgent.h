@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,23 +39,26 @@ template<typename TBackendDispatcher, typename TAlternateDispatcher>
 class AlternateDispatchableAgent final : public InspectorAgentBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    AlternateDispatchableAgent(const String& domainName, std::unique_ptr<TAlternateDispatcher> alternateDispatcher)
+    AlternateDispatchableAgent(const String& domainName, AugmentableInspectorController& controller, std::unique_ptr<TAlternateDispatcher> alternateDispatcher)
         : InspectorAgentBase(domainName)
         , m_alternateDispatcher(WTF::move(alternateDispatcher))
+        , m_backendDispatcher(TBackendDispatcher::create(controller.backendDispatcher(), nullptr))
     {
+        m_backendDispatcher->setAlternateDispatcher(m_alternateDispatcher.get());
+        m_alternateDispatcher->setBackendDispatcher(&controller.backendDispatcher());
     }
 
-    virtual void didCreateFrontendAndBackend(FrontendChannel*, BackendDispatcher* backendDispatcher) override
+    virtual ~AlternateDispatchableAgent()
     {
-        m_backendDispatcher = TBackendDispatcher::create(backendDispatcher, nullptr);
-        m_backendDispatcher->setAlternateDispatcher(m_alternateDispatcher.get());
-        m_alternateDispatcher->setBackendDispatcher(backendDispatcher);
+        m_alternateDispatcher->setBackendDispatcher(nullptr);
+    }
+
+    virtual void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override
+    {
     }
 
     virtual void willDestroyFrontendAndBackend(DisconnectReason) override
     {
-        m_backendDispatcher = nullptr;
-        m_alternateDispatcher->setBackendDispatcher(nullptr);
     }
 
 private:

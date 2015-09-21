@@ -236,7 +236,9 @@ public:
     void didFlushLayerTreeAtTime(std::chrono::milliseconds);
 #endif
 
-    WebInspector* inspector();
+    enum class LazyCreationPolicy { UseExistingOnly, CreateIfNeeded };
+
+    WebInspector* inspector(LazyCreationPolicy = LazyCreationPolicy::CreateIfNeeded);
     WebInspectorUI* inspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI; }
 
@@ -1380,8 +1382,6 @@ private:
     WebCore::FloatRect m_previousExposedContentRect;
     WebCore::Timer m_volatilityTimer;
 #endif
-
-    WebInspectorClient* m_inspectorClient;
 
     HashSet<String, CaseFoldingHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;

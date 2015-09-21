@@ -29,6 +29,9 @@
 
 #include "APIProcessPoolConfiguration.h"
 #include "APIURLRequest.h"
+#include "WKArray.h"
+#include "WKContextMenuItem.h"
+#include "WKMutableArray.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebFrameProxy.h"
 #include "WebInspectorMessages.h"
@@ -42,7 +45,6 @@
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorServer.h"
@@ -179,7 +181,7 @@ void WebInspectorProxy::close()
 void WebInspectorProxy::didRelaunchInspectorPageProcess()
 {
     m_inspectorPage->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID(), *this);
-    m_inspectorPage->process().assumeReadAccessToBaseURL(inspectorBaseURL());
+    m_inspectorPage->process().assumeReadAccessToBaseURL(WebInspectorProxy::inspectorBaseURL());
 
     // When didRelaunchInspectorPageProcess is called we can assume it is during a load request.
     // Any messages we would have sent to a terminated process need to be re-sent.
@@ -330,24 +332,24 @@ bool WebInspectorProxy::isInspectorPage(WebPageProxy& webPage)
     return pageLevelMap().contains(&webPage);
 }
 
-static bool isMainOrTestInspectorPage(const WebInspectorProxy* webInspectorProxy, WKURLRequestRef requestRef)
+static bool isMainOrTestInspectorPage(WKURLRequestRef requestRef)
 {
     URL requestURL(URL(), toImpl(requestRef)->resourceRequest().url());
     if (!WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(requestURL.protocol()))
         return false;
 
     // Use URL so we can compare just the paths.
-    URL mainPageURL(URL(), webInspectorProxy->inspectorPageURL());
+    URL mainPageURL(URL(), WebInspectorProxy::inspectorPageURL());
     ASSERT(WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(mainPageURL.protocol()));
     if (decodeURLEscapeSequences(requestURL.path()) == decodeURLEscapeSequences(mainPageURL.path()))
         return true;
 
     // We might not have a Test URL in Production builds.
-    String testPageURLString = webInspectorProxy->inspectorTestPageURL();
+    String testPageURLString = WebInspectorProxy::inspectorTestPageURL();
     if (testPageURLString.isNull())
         return false;
 
-    URL testPageURL(URL(), webInspectorProxy->inspectorTestPageURL());
+    URL testPageURL(URL(), testPageURLString);
     ASSERT(WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(testPageURL.protocol()));
     return decodeURLEscapeSequences(requestURL.path()) == decodeURLEscapeSequences(testPageURL.path());
 }
@@ -371,7 +373,7 @@ static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef frameRef, WKFr
     ASSERT(webInspectorProxy);
 
     // Allow loading of the main inspector file.
-    if (isMainOrTestInspectorPage(webInspectorProxy, requestRef)) {
+    if (isMainOrTestInspectorPage(requestRef)) {
         toImpl(listenerRef)->use();
         return;
     }
@@ -381,6 +383,30 @@ static void decidePolicyForNavigationAction(WKPageRef, WKFrameRef frameRef, WKFr
 
     // And instead load it in the inspected page.
     webInspectorProxy->inspectedPage()->loadRequest(toImpl(requestRef)->resourceRequest());
+}
+
+static void getContextMenuFromProposedMenu(WKPageRef pageRef, WKArrayRef proposedMenuRef, WKArrayRef* newMenuRef, WKHitTestResultRef, WKTypeRef, const void*)
+{
+    WKMutableArrayRef menuItems = WKMutableArrayCreate();
+
+    size_t count = WKArrayGetSize(proposedMenuRef);
+    for (size_t i = 0; i < count; ++i) {
+        WKContextMenuItemRef contextMenuItem = static_cast<WKContextMenuItemRef>(WKArrayGetItemAtIndex(proposedMenuRef, i));
+        switch (WKContextMenuItemGetTag(contextMenuItem)) {
+        case kWKContextMenuItemTagOpenLinkInNewWindow:
+        case kWKContextMenuItemTagOpenImageInNewWindow:
+        case kWKContextMenuItemTagOpenFrameInNewWindow:
+        case kWKContextMenuItemTagOpenMediaInNewWindow:
+        case kWKContextMenuItemTagDownloadLinkToDisk:
+        case kWKContextMenuItemTagDownloadImageToDisk:
+            break;
+        default:
+            WKArrayAppendItem(menuItems, contextMenuItem);
+            break;
+        }
+    }
+
+    *newMenuRef = menuItems;
 }
 
 #if ENABLE(INSPECTOR_SERVER)
@@ -471,11 +497,22 @@ void WebInspectorProxy::eagerlyCreateInspectorPage()
         nullptr, // shouldKeepCurrentBackForwardListItemInList
     };
 
+    WKPageContextMenuClientV3 contextMenuClient = {
+        { 3, this },
+        0, // getContextMenuFromProposedMenu_deprecatedForUseWithV0
+        0, // customContextMenuItemSelected
+        0, // contextMenuDismissed
+        getContextMenuFromProposedMenu,
+        0, // showContextMenu
+        0, // hideContextMenu
+    };
+
     WKPageSetPagePolicyClient(toAPI(m_inspectorPage), &policyClient.base);
     WKPageSetPageLoaderClient(toAPI(m_inspectorPage), &loaderClient.base);
+    WKPageSetPageContextMenuClient(toAPI(m_inspectorPage), &contextMenuClient.base);
 
     m_inspectorPage->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID(), *this);
-    m_inspectorPage->process().assumeReadAccessToBaseURL(inspectorBaseURL());
+    m_inspectorPage->process().assumeReadAccessToBaseURL(WebInspectorProxy::inspectorBaseURL());
 }
 
 // Called by WebInspectorProxy messages
@@ -518,7 +555,7 @@ void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier
         m_inspectorPage->process().send(Messages::WebInspectorUI::SetDockingUnavailable(!m_canAttach), m_inspectorPage->pageID());
     }
 
-    m_inspectorPage->loadRequest(URL(URL(), m_underTest ? inspectorTestPageURL() : inspectorPageURL()));
+    m_inspectorPage->loadRequest(URL(URL(), m_underTest ? WebInspectorProxy::inspectorTestPageURL() : WebInspectorProxy::inspectorPageURL()));
 }
 
 void WebInspectorProxy::open()
@@ -706,19 +743,19 @@ void WebInspectorProxy::platformStartWindowDrag()
     notImplemented();
 }
 
-String WebInspectorProxy::inspectorPageURL() const
+String WebInspectorProxy::inspectorPageURL()
 {
     notImplemented();
     return String();
 }
 
-String WebInspectorProxy::inspectorTestPageURL() const
+String WebInspectorProxy::inspectorTestPageURL()
 {
     notImplemented();
     return String();
 }
 
-String WebInspectorProxy::inspectorBaseURL() const
+String WebInspectorProxy::inspectorBaseURL()
 {
     notImplemented();
     return String();

@@ -251,11 +251,7 @@ EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* e
     auto& impl = castedThis->impl();
     if (UNLIKELY(exec->argumentCount() < 1))
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    int index = toUInt32(exec, exec->argument(0), NormalConversion);
-    if (index < 0) {
-        setDOMException(exec, INDEX_SIZE_ERR);
-        return JSValue::encode(jsUndefined());
-    }
+    unsigned index = toUInt32(exec, exec->argument(0), NormalConversion);
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
     JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(impl.item(index)));
@@ -320,20 +316,20 @@ void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->impl().visitJSEventListeners(visitor);
 }
 
-bool JSTestEventTargetOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+bool JSTestEventTargetOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
 {
-    auto* jsTestEventTarget = jsCast<JSTestEventTarget*>(handle.slot()->asCell());
-    if (jsTestEventTarget->impl().isFiringEventListeners())
+    auto& jsTestEventTarget = jsCast<JSTestEventTarget&>(cell);
+    if (jsTestEventTarget.impl().isFiringEventListeners())
         return true;
     UNUSED_PARAM(visitor);
     return false;
 }
 
-void JSTestEventTargetOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
+void JSTestEventTargetOwner::finalize(JSC::JSCell*& cell, void* context)
 {
-    auto* jsTestEventTarget = jsCast<JSTestEventTarget*>(handle.slot()->asCell());
+    auto& wrapper = jsCast<JSTestEventTarget&>(*cell);
     auto& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, &jsTestEventTarget->impl(), jsTestEventTarget);
+    uncacheWrapper(world, &wrapper.impl(), &wrapper);
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -344,6 +340,14 @@ extern "C" { extern void (*const __identifier("??_7TestEventTarget@WebCore@@6B@"
 extern "C" { extern void* _ZTVN7WebCore15TestEventTargetE[]; }
 #endif
 #endif
+
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestEventTarget* impl)
+{
+    if (!impl)
+        return jsNull();
+    return createNewWrapper<JSTestEventTarget>(globalObject, impl);
+}
+
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestEventTarget* impl)
 {
     if (!impl)

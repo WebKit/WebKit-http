@@ -388,7 +388,17 @@ public:
         FuncExprNode* funcExpr = new (m_parserArena) FuncExprNode(location, m_vm->propertyNames->nullIdentifier, functionInfo.body, source);
         return new (m_parserArena) PropertyNode(*name, funcExpr, type, PropertyNode::Unknown, superBinding);
     }
-    
+
+    NEVER_INLINE PropertyNode* createGetterOrSetterProperty(const JSTokenLocation& location, PropertyNode::Type type, bool,
+        ExpressionNode* name, const ParserFunctionInfo<ASTBuilder>& functionInfo, SuperBinding superBinding)
+    {
+        ASSERT(name);
+        functionInfo.body->setLoc(functionInfo.startLine, functionInfo.endLine, location.startOffset, location.lineStartOffset);
+        SourceCode source = m_sourceCode->subExpression(functionInfo.startOffset, functionInfo.endOffset, functionInfo.startLine, functionInfo.bodyStartColumn);
+        FuncExprNode* funcExpr = new (m_parserArena) FuncExprNode(location, m_vm->propertyNames->nullIdentifier, functionInfo.body, source);
+        return new (m_parserArena) PropertyNode(name, funcExpr, type, PropertyNode::Unknown, superBinding);
+    }
+
     NEVER_INLINE PropertyNode* createGetterOrSetterProperty(VM* vm, ParserArena& parserArena, const JSTokenLocation& location, PropertyNode::Type type, bool,
         double name, const ParserFunctionInfo<ASTBuilder>& functionInfo, SuperBinding superBinding)
     {
@@ -561,8 +571,6 @@ public:
     StatementNode* createTryStatement(const JSTokenLocation& location, StatementNode* tryBlock, const Identifier* ident, StatementNode* catchBlock, StatementNode* finallyBlock, int startLine, int endLine, VariableEnvironment& catchEnvironment)
     {
         TryNode* result = new (m_parserArena) TryNode(location, tryBlock, *ident, catchBlock, catchEnvironment, finallyBlock);
-        if (catchBlock)
-            usesCatch();
         result->setLoc(startLine, endLine, location.startOffset, location.lineStartOffset);
         return result;
     }
@@ -868,7 +876,6 @@ private:
 
     void incConstants() { m_scope.m_numConstants++; }
     void usesThis() { m_scope.m_features |= ThisFeature; }
-    void usesCatch() { m_scope.m_features |= CatchFeature; }
     void usesArguments() { m_scope.m_features |= ArgumentsFeature; }
     void usesWith() { m_scope.m_features |= WithFeature; }
     void usesEval() 

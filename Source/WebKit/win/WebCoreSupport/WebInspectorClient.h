@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2007, 2014, 2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,9 +31,9 @@
 
 #include <WebCore/COMPtr.h>
 #include <WebCore/InspectorClient.h>
-#include <WebCore/InspectorForwarding.h>
 #include <WebCore/InspectorFrontendClientLocal.h>
 #include <WebCore/WindowMessageListener.h>
+#include <inspector/InspectorFrontendChannel.h>
 #include <windows.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -41,31 +41,29 @@
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
 class Page;
-
 }
 
 class WebInspectorFrontendClient;
 class WebNodeHighlight;
 class WebView;
 
-class WebInspectorClient : public WebCore::InspectorClient, public WebCore::InspectorFrontendChannel {
+class WebInspectorClient final : public WebCore::InspectorClient, public Inspector::FrontendChannel {
 public:
     explicit WebInspectorClient(WebView*);
 
-    // InspectorClient
-    virtual void inspectorDestroyed();
+    // InspectorClient API.
+    virtual void inspectedPageDestroyed() override;
 
-    virtual WebCore::InspectorFrontendChannel* openInspectorFrontend(WebCore::InspectorController*);
-    virtual void closeInspectorFrontend();
-    virtual void bringFrontendToFront();
+    virtual Inspector::FrontendChannel* openLocalFrontend(WebCore::InspectorController*) override;
+    virtual void bringFrontendToFront() override;
 
-    virtual void highlight();
-    virtual void hideHighlight();
+    virtual void highlight() override;
+    virtual void hideHighlight() override;
 
-    virtual bool sendMessageToFrontend(const WTF::String&) override;
+    // FrontendChannel API.
     virtual ConnectionType connectionType() const override { return ConnectionType::Local; }
+    virtual bool sendMessageToFrontend(const WTF::String&) override;
 
     bool inspectorStartsAttached();
     void setInspectorStartsAttached(bool);
@@ -92,28 +90,30 @@ private:
     std::unique_ptr<WebNodeHighlight> m_highlight;
 };
 
-class WebInspectorFrontendClient : public WebCore::InspectorFrontendClientLocal, WebCore::WindowMessageListener {
+class WebInspectorFrontendClient final : public WebCore::InspectorFrontendClientLocal, WebCore::WindowMessageListener {
 public:
     WebInspectorFrontendClient(WebView* inspectedWebView, HWND inspectedWebViewHwnd, HWND frontendHwnd, const COMPtr<WebView>& frotnendWebView, HWND frontendWebViewHwnd, WebInspectorClient*, std::unique_ptr<Settings>);
     virtual ~WebInspectorFrontendClient();
 
-    virtual void frontendLoaded();
+    // InspectorFrontendClient API.
+    virtual void frontendLoaded() override;
 
-    virtual WTF::String localizedStringsURL();
+    virtual WTF::String localizedStringsURL() override;
 
-    virtual void bringToFront();
-    virtual void closeWindow();
+    virtual void bringToFront() override;
+    virtual void closeWindow() override;
 
-    virtual void attachWindow(DockSide);
-    virtual void detachWindow();
-
-    virtual void setAttachedWindowHeight(unsigned height);
-    virtual void setAttachedWindowWidth(unsigned);
+    virtual void setAttachedWindowHeight(unsigned) override;
+    virtual void setAttachedWindowWidth(unsigned) override;
     virtual void setToolbarHeight(unsigned) override;
 
-    virtual void inspectedURLChanged(const WTF::String& newURL);
+    virtual void inspectedURLChanged(const WTF::String& newURL) override;
 
-    void destroyInspectorView(bool notifyInspectorController);
+    // InspectorFrontendClientLocal API.
+    virtual void attachWindow(DockSide) override;
+    virtual void detachWindow() override;
+
+    void destroyInspectorView();
 
 private:
     void closeWindowWithoutNotifications();

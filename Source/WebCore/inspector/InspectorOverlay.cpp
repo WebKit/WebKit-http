@@ -259,10 +259,10 @@ void InspectorOverlay::hideHighlight()
     update();
 }
 
-void InspectorOverlay::highlightNodeList(PassRefPtr<NodeList> nodes, const HighlightConfig& highlightConfig)
+void InspectorOverlay::highlightNodeList(RefPtr<NodeList>&& nodes, const HighlightConfig& highlightConfig)
 {
     m_nodeHighlightConfig = highlightConfig;
-    m_highlightNodeList = nodes;
+    m_highlightNodeList = WTF::move(nodes);
     m_highlightNode = nullptr;
     update();
 }
@@ -277,7 +277,7 @@ void InspectorOverlay::highlightNode(Node* node, const HighlightConfig& highligh
 
 void InspectorOverlay::highlightQuad(std::unique_ptr<FloatQuad> quad, const HighlightConfig& highlightConfig)
 {
-    if (m_quadHighlightConfig.usePageCoordinates)
+    if (highlightConfig.usePageCoordinates)
         *quad -= m_page.mainFrame().view()->scrollOffset();
 
     m_quadHighlightConfig = highlightConfig;
@@ -947,7 +947,7 @@ void InspectorOverlay::evaluateInOverlay(const String& method, RefPtr<InspectorV
 
 void InspectorOverlay::freePage()
 {
-    m_overlayPage.reset();
+    m_overlayPage = nullptr;
 }
 
 } // namespace WebCore

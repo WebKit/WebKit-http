@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2008, 2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@
 SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 using namespace WebCore;
+using namespace Inspector;
 
 static const CGFloat minimumWindowWidth = 500;
 static const CGFloat minimumWindowHeight = 400;
@@ -67,7 +68,7 @@ static const CGFloat initialWindowHeight = 650;
 @interface WebInspectorWindowController : NSWindowController <NSWindowDelegate, WebPolicyDelegate, WebUIDelegate> {
 @private
     RetainPtr<WebView> _inspectedWebView;
-    WebView *_webView;
+    WebView* _frontendWebView;
     WebInspectorFrontendClient* _frontendClient;
     WebInspectorClient* _inspectorClient;
     BOOL _attachedToInspectedWebView;
@@ -75,10 +76,10 @@ static const CGFloat initialWindowHeight = 650;
     BOOL _visible;
     BOOL _destroyingInspectorView;
 }
-- (id)initWithInspectedWebView:(WebView *)webView isUnderTest:(BOOL)isUnderTest;
+- (id)initWithInspectedWebView:(WebView *)inspectedWebView isUnderTest:(BOOL)isUnderTest;
 - (NSString *)inspectorPagePath;
 - (NSString *)inspectorTestPagePath;
-- (WebView *)webView;
+- (WebView *)frontendWebView;
 - (void)attach;
 - (void)detach;
 - (BOOL)attached;
@@ -87,49 +88,42 @@ static const CGFloat initialWindowHeight = 650;
 - (WebInspectorClient*)inspectorClient;
 - (void)setAttachedWindowHeight:(unsigned)height;
 - (void)setDockingUnavailable:(BOOL)unavailable;
-- (void)destroyInspectorView:(bool)notifyInspectorController;
+- (void)destroyInspectorView;
 @end
 
 
 // MARK: -
 
-WebInspectorClient::WebInspectorClient(WebView *webView)
-    : m_webView(webView)
-    , m_highlighter(adoptNS([[WebNodeHighlighter alloc] initWithInspectedWebView:webView]))
-    , m_frontendPage(nullptr)
+WebInspectorClient::WebInspectorClient(WebView* inspectedWebView)
+    : m_inspectedWebView(inspectedWebView)
+    , m_highlighter(adoptNS([[WebNodeHighlighter alloc] initWithInspectedWebView:inspectedWebView]))
 {
 }
 
-void WebInspectorClient::inspectorDestroyed()
+void WebInspectorClient::inspectedPageDestroyed()
 {
-    closeInspectorFrontend();
     delete this;
 }
 
-InspectorFrontendChannel* WebInspectorClient::openInspectorFrontend(InspectorController* inspectorController)
+FrontendChannel* WebInspectorClient::openLocalFrontend(InspectorController* inspectedPageController)
 {
-    RetainPtr<WebInspectorWindowController> windowController = adoptNS([[WebInspectorWindowController alloc] initWithInspectedWebView:m_webView isUnderTest:inspectorController->isUnderTest()]);
+    RetainPtr<WebInspectorWindowController> windowController = adoptNS([[WebInspectorWindowController alloc] initWithInspectedWebView:m_inspectedWebView isUnderTest:inspectedPageController->isUnderTest()]);
     [windowController.get() setInspectorClient:this];
 
-    m_frontendPage = core([windowController.get() webView]);
-    m_frontendClient = std::make_unique<WebInspectorFrontendClient>(m_webView, windowController.get(), inspectorController, m_frontendPage, createFrontendSettings());
+    m_frontendPage = core([windowController.get() frontendWebView]);
+    m_frontendClient = std::make_unique<WebInspectorFrontendClient>(m_inspectedWebView, windowController.get(), inspectedPageController, m_frontendPage, createFrontendSettings());
 
     RetainPtr<WebInspectorFrontend> webInspectorFrontend = adoptNS([[WebInspectorFrontend alloc] initWithFrontendClient:m_frontendClient.get()]);
-    [[m_webView inspector] setFrontend:webInspectorFrontend.get()];
+    [[m_inspectedWebView inspector] setFrontend:webInspectorFrontend.get()];
 
     m_frontendPage->inspectorController().setInspectorFrontendClient(m_frontendClient.get());
 
     return this;
 }
 
-void WebInspectorClient::closeInspectorFrontend()
-{
-    if (m_frontendClient)
-        m_frontendClient->disconnectFromBackend();
-}
-
 void WebInspectorClient::bringFrontendToFront()
 {
+    ASSERT(m_frontendClient);
     m_frontendClient->bringToFront();
 }
 
@@ -162,7 +156,7 @@ void WebInspectorClient::hideHighlight()
 
 void WebInspectorClient::didSetSearchingForNode(bool enabled)
 {
-    WebInspector *inspector = [m_webView inspector];
+    WebInspector *inspector = [m_inspectedWebView inspector];
 
     ASSERT(isMainThread());
 
@@ -179,23 +173,23 @@ void WebInspectorClient::releaseFrontend()
 }
 
 
-WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView, WebInspectorWindowController* windowController, InspectorController* inspectorController, Page* frontendPage, std::unique_ptr<Settings> settings)
-    : InspectorFrontendClientLocal(inspectorController,  frontendPage, WTF::move(settings))
+WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView, WebInspectorWindowController* frontendWindowController, InspectorController* inspectedPageController, Page* frontendPage, std::unique_ptr<Settings> settings)
+    : InspectorFrontendClientLocal(inspectedPageController, frontendPage, WTF::move(settings))
     , m_inspectedWebView(inspectedWebView)
-    , m_windowController(windowController)
+    , m_frontendWindowController(frontendWindowController)
 {
-    [windowController setFrontendClient:this];
+    [frontendWindowController setFrontendClient:this];
 }
 
 void WebInspectorFrontendClient::attachAvailabilityChanged(bool available)
 {
     setDockingUnavailable(!available);
-    [m_windowController.get() setDockingUnavailable:!available];
+    [m_frontendWindowController.get() setDockingUnavailable:!available];
 }
 
 bool WebInspectorFrontendClient::canAttach()
 {
-    if ([[m_windowController window] styleMask] & NSFullScreenWindowMask)
+    if ([[m_frontendWindowController window] styleMask] & NSFullScreenWindowMask)
         return false;
 
     return canAttachWindow();
@@ -203,8 +197,8 @@ bool WebInspectorFrontendClient::canAttach()
 
 void WebInspectorFrontendClient::frontendLoaded()
 {
-    [m_windowController.get() showWindow:nil];
-    if ([m_windowController.get() attached])
+    [m_frontendWindowController.get() showWindow:nil];
+    if ([m_frontendWindowController.get() attached])
         restoreAttachedWindowHeight();
 
     InspectorFrontendClientLocal::frontendLoaded();
@@ -216,14 +210,14 @@ void WebInspectorFrontendClient::frontendLoaded()
         CallFrameLoadDelegate(implementations->didClearInspectorWindowObjectForFrameFunc, m_inspectedWebView,
                               @selector(webView:didClearInspectorWindowObject:forFrame:), [frame windowObject], frame);
 
-    bool attached = [m_windowController.get() attached];
+    bool attached = [m_frontendWindowController.get() attached];
     setAttachedWindow(attached ? DockSide::Bottom : DockSide::Undocked);
 }
 
 void WebInspectorFrontendClient::startWindowDrag()
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
-    [[m_windowController window] performWindowDragWithEvent:[NSApp currentEvent]];
+    [[m_frontendWindowController window] performWindowDragWithEvent:[NSApp currentEvent]];
 #endif
 }
 
@@ -242,40 +236,35 @@ void WebInspectorFrontendClient::bringToFront()
 {
     updateWindowTitle();
 
-    [m_windowController.get() showWindow:nil];
+    [m_frontendWindowController.get() showWindow:nil];
 
-    // Use the window from the WebView since m_windowController's window
+    // Use the window from the WebView since m_frontendWindowController's window
     // is not the same when the Inspector is docked.
-    WebView *webView = [m_windowController.get() webView];
-    [[webView window] makeFirstResponder:webView];
+    WebView *frontendWebView = [m_frontendWindowController.get() frontendWebView];
+    [[frontendWebView window] makeFirstResponder:frontendWebView];
 }
 
 void WebInspectorFrontendClient::closeWindow()
 {
-    [m_windowController.get() destroyInspectorView:true];
-}
-
-void WebInspectorFrontendClient::disconnectFromBackend()
-{
-    [m_windowController.get() destroyInspectorView:false];
+    [m_frontendWindowController.get() destroyInspectorView];
 }
 
 void WebInspectorFrontendClient::attachWindow(DockSide)
 {
-    if ([m_windowController.get() attached])
+    if ([m_frontendWindowController.get() attached])
         return;
-    [m_windowController.get() attach];
+    [m_frontendWindowController.get() attach];
     restoreAttachedWindowHeight();
 }
 
 void WebInspectorFrontendClient::detachWindow()
 {
-    [m_windowController.get() detach];
+    [m_frontendWindowController.get() detach];
 }
 
 void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)
 {
-    [m_windowController.get() setAttachedWindowHeight:height];
+    [m_frontendWindowController.get() setAttachedWindowHeight:height];
 }
 
 void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
@@ -286,7 +275,7 @@ void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
 void WebInspectorFrontendClient::setToolbarHeight(unsigned height)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
-    [[m_windowController window] setContentBorderThickness:height forEdge:NSMaxYEdge];
+    [[m_frontendWindowController window] setContentBorderThickness:height forEdge:NSMaxYEdge];
 #endif
 }
 
@@ -299,7 +288,7 @@ void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
 void WebInspectorFrontendClient::updateWindowTitle() const
 {
     NSString *title = [NSString stringWithFormat:UI_STRING_INTERNAL("Web Inspector — %@", "Web Inspector window title"), (NSString *)m_inspectedURL];
-    [[m_windowController.get() window] setTitle:title];
+    [[m_frontendWindowController.get() window] setTitle:title];
 }
 
 void WebInspectorFrontendClient::save(const String& suggestedURL, const String& content, bool base64Encoded, bool forceSaveDialog)
@@ -335,7 +324,7 @@ void WebInspectorFrontendClient::save(const String& suggestedURL, const String& 
         } else
             [contentCopy writeToURL:actualURL atomically:YES encoding:NSUTF8StringEncoding error:NULL];
 
-        core([m_windowController webView])->mainFrame().script().executeScript([NSString stringWithFormat:@"InspectorFrontendAPI.savedURL(\"%@\")", actualURL.absoluteString]);
+        core([m_frontendWindowController frontendWebView])->mainFrame().script().executeScript([NSString stringWithFormat:@"InspectorFrontendAPI.savedURL(\"%@\")", actualURL.absoluteString]);
     };
 
     if (!forceSaveDialog) {
@@ -354,9 +343,9 @@ void WebInspectorFrontendClient::save(const String& suggestedURL, const String& 
         saveToURL(panel.URL);
     };
 
-    NSWindow *window = [[m_windowController webView] window];
-    if (window)
-        [panel beginSheetModalForWindow:window completionHandler:completionHandler];
+    NSWindow *frontendWindow = [[m_frontendWindowController frontendWebView] window];
+    if (frontendWindow)
+        [panel beginSheetModalForWindow:frontendWindow completionHandler:completionHandler];
     else
         completionHandler([panel runModal]);
 }
@@ -375,7 +364,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     [handle writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
     [handle closeFile];
 
-    core([m_windowController webView])->mainFrame().script().executeScript([NSString stringWithFormat:@"InspectorFrontendAPI.appendedToURL(\"%@\")", [actualURL absoluteString]]);
+    core([m_frontendWindowController frontendWebView])->mainFrame().script().executeScript([NSString stringWithFormat:@"InspectorFrontendAPI.appendedToURL(\"%@\")", [actualURL absoluteString]]);
 }
 
 // MARK: -
@@ -403,14 +392,14 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     [preferences setTabsToLinks:NO];
     [preferences setUserStyleSheetEnabled:NO];
 
-    _webView = [[WebView alloc] init];
-    [_webView setPreferences:preferences];
-    [_webView setProhibitsMainFrameScrolling:YES];
-    [_webView setUIDelegate:self];
-    [_webView setPolicyDelegate:self];
+    _frontendWebView = [[WebView alloc] init];
+    [_frontendWebView setPreferences:preferences];
+    [_frontendWebView setProhibitsMainFrameScrolling:YES];
+    [_frontendWebView setUIDelegate:self];
+    [_frontendWebView setPolicyDelegate:self];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1090
-    [_webView setDrawsBackground:NO];
+    [_frontendWebView setDrawsBackground:NO];
 #endif
 
     [preferences release];
@@ -428,7 +417,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     NSString *pagePath = isUnderTest ? [self inspectorTestPagePath] : [self inspectorPagePath];
     NSURLRequest *request = [[NSURLRequest alloc] initWithURL:[NSURL fileURLWithPath: pagePath]];
-    [[_webView mainFrame] loadRequest:request];
+    [[_frontendWebView mainFrame] loadRequest:request];
     [request release];
 
     return self;
@@ -436,7 +425,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (void)dealloc
 {
-    [_webView release];
+    [_frontendWebView release];
     [super dealloc];
 }
 
@@ -468,9 +457,9 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 // MARK: -
 
-- (WebView *)webView
+- (WebView *)frontendWebView
 {
-    return _webView;
+    return _frontendWebView;
 }
 
 - (NSWindow *)window
@@ -522,7 +511,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (BOOL)windowShouldClose:(id)sender
 {
-    [self destroyInspectorView:true];
+    [self destroyInspectorView];
 
     return YES;
 }
@@ -548,7 +537,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         if ([_inspectedWebView.get() _isClosed])
             return;
 
-        [_webView removeFromSuperview];
+        [_frontendWebView removeFromSuperview];
 
         WebFrameView *frameView = [[_inspectedWebView.get() mainFrame] frameView];
         NSRect frameViewRect = [frameView frame];
@@ -586,11 +575,11 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     if (_shouldAttach) {
         WebFrameView *frameView = [[_inspectedWebView.get() mainFrame] frameView];
 
-        [_webView removeFromSuperview];
-        [_inspectedWebView.get() addSubview:_webView positioned:NSWindowBelow relativeTo:(NSView *)frameView];
-        [[_inspectedWebView.get() window] makeFirstResponder:_webView];
+        [_frontendWebView removeFromSuperview];
+        [_inspectedWebView.get() addSubview:_frontendWebView positioned:NSWindowBelow relativeTo:(NSView *)frameView];
+        [[_inspectedWebView.get() window] makeFirstResponder:_frontendWebView];
 
-        [_webView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable | NSViewMaxYMargin)];
+        [_frontendWebView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable | NSViewMaxYMargin)];
         [frameView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable | NSViewMinYMargin)];
 
         _attachedToInspectedWebView = YES;
@@ -598,10 +587,10 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         _attachedToInspectedWebView = NO;
 
         NSView *contentView = [[self window] contentView];
-        [_webView setFrame:[contentView frame]];
-        [_webView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
-        [_webView removeFromSuperview];
-        [contentView addSubview:_webView];
+        [_frontendWebView setFrame:[contentView frame]];
+        [_frontendWebView setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+        [_frontendWebView removeFromSuperview];
+        [contentView addSubview:_frontendWebView];
 
         [super showWindow:nil];
     }
@@ -667,7 +656,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     frameViewRect.size.height += heightDifference;
     frameViewRect.origin.y = height;
 
-    [_webView setFrame:NSMakeRect(0.0, 0.0, NSWidth(frameViewRect), height)];
+    [_frontendWebView setFrame:NSMakeRect(0.0, 0.0, NSWidth(frameViewRect), height)];
     [frameView setFrame:frameViewRect];
 }
 
@@ -676,9 +665,14 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     // Do nothing.
 }
 
-- (void)destroyInspectorView:(bool)notifyInspectorController
+- (void)destroyInspectorView
 {
     RetainPtr<WebInspectorWindowController> protect(self);
+
+    if (Page* frontendPage = _frontendClient->frontendPage())
+        frontendPage->inspectorController().setInspectorFrontendClient(nullptr);
+    if (Page* inspectedPage = [_inspectedWebView.get() page])
+        inspectedPage->inspectorController().disconnectFrontend(_inspectorClient);
 
     [[_inspectedWebView.get() inspector] releaseFrontend];
     _inspectorClient->releaseFrontend();
@@ -692,12 +686,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     _visible = NO;
 
-    if (notifyInspectorController) {
-        if (Page* inspectedPage = [_inspectedWebView.get() page])
-            inspectedPage->inspectorController().disconnectFrontend(Inspector::DisconnectReason::InspectorDestroyed);
-    }
-
-    [_webView close];
+    [_frontendWebView close];
 }
 
 // MARK: -
@@ -725,8 +714,8 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         [resultListener chooseFilenames:filenames];
     };
 
-    if (_webView.window)
-        [panel beginSheetModalForWindow:_webView.window completionHandler:completionHandler];
+    if (_frontendWebView.window)
+        [panel beginSheetModalForWindow:_frontendWebView.window completionHandler:completionHandler];
     else
         completionHandler([panel runModal]);
 }

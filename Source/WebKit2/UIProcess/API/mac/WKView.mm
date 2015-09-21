@@ -3343,6 +3343,24 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     return _data->_rootLayer.get();
 }
 
+static RetainPtr<CGImageRef> takeWindowSnapshot(CGSWindowID windowID, bool captureAtNominalResolution)
+{
+    CGSWindowCaptureOptions options = kCGSCaptureIgnoreGlobalClipShape;
+    if (captureAtNominalResolution)
+        options |= kCGSWindowCaptureNominalResolution;
+    RetainPtr<CFArrayRef> windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
+
+    if (windowSnapshotImages && CFArrayGetCount(windowSnapshotImages.get()))
+        return (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
+
+    // Fall back to the non-hardware capture path if we didn't get a snapshot
+    // (which usually happens if the window is fully off-screen).
+    CGWindowImageOption imageOptions = kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque;
+    if (captureAtNominalResolution)
+        imageOptions |= kCGWindowImageNominalResolution;
+    return adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowID, imageOptions));
+}
+
 - (PassRefPtr<ViewSnapshot>)_takeViewSnapshot
 {
     NSWindow *window = self.window;
@@ -3351,22 +3369,17 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     if (!windowID || ![window isVisible])
         return nullptr;
 
-    CGSWindowCaptureOptions options = kCGSCaptureIgnoreGlobalClipShape;
-    RetainPtr<CFArrayRef> windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
-    if (!windowSnapshotImages || !CFArrayGetCount(windowSnapshotImages.get()))
+    RetainPtr<CGImageRef> windowSnapshotImage = takeWindowSnapshot(windowID, false);
+    if (!windowSnapshotImage)
         return nullptr;
-
-    RetainPtr<CGImageRef> windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
 
     // Work around <rdar://problem/17084993>; re-request the snapshot at kCGWindowImageNominalResolution if it was captured at the wrong scale.
     CGFloat desiredSnapshotWidth = window.frame.size.width * window.screen.backingScaleFactor;
-    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth) {
-        options |= kCGSWindowCaptureNominalResolution;
-        windowSnapshotImages = adoptCF(CGSHWCaptureWindowList(CGSMainConnectionID(), &windowID, 1, options));
-        if (!windowSnapshotImages || !CFArrayGetCount(windowSnapshotImages.get()))
-            return nullptr;
-        windowSnapshotImage = (CGImageRef)CFArrayGetValueAtIndex(windowSnapshotImages.get(), 0);
-    }
+    if (CGImageGetWidth(windowSnapshotImage.get()) != desiredSnapshotWidth)
+        windowSnapshotImage = takeWindowSnapshot(windowID, true);
+
+    if (!windowSnapshotImage)
+        return nullptr;
 
     [self _ensureGestureController];
 

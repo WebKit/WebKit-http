@@ -215,6 +215,26 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidBeginSwipeCallback")) {
+        m_testRunner->callDidBeginSwipeCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallWillEndSwipeCallback")) {
+        m_testRunner->callWillEndSwipeCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidEndSwipeCallback")) {
+        m_testRunner->callDidEndSwipeCallback();
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidRemoveSwipeSnapshotCallback")) {
+        m_testRunner->callDidRemoveSwipeSnapshotCallback();
+        return;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "WorkQueueProcessedCallback")) {
         if (!topLoadingFrame() && !m_testRunner->waitToDump())
             InjectedBundle::page()->dump();
@@ -263,12 +283,17 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
 
     WKBundlePageRemoveAllUserContent(page()->page());
 
+#if PLATFORM(IOS)
+    WKBundlePageSetUseTestingViewportConfiguration(page()->page(), !booleanForKey(settings, "UseFlexibleViewport"));
+#endif
+
     m_testRunner->setShouldDumpFrameLoadCallbacks(booleanForKey(settings, "DumpFrameLoadDelegates"));
     m_testRunner->setUserStyleSheetEnabled(false);
     m_testRunner->setXSSAuditorEnabled(false);
     m_testRunner->setCloseRemainingWindowsWhenComplete(false);
     m_testRunner->setAcceptsEditing(true);
     m_testRunner->setTabKeyCyclesThroughElements(true);
+    m_testRunner->clearTestRunnerCallbacks();
 
     if (m_timeout > 0)
         m_testRunner->setCustomTimeout(m_timeout);

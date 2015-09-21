@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +45,6 @@ namespace WebCore {
 
 class Frame;
 class InspectorPageAgent;
-class InstrumentingAgents;
 class Page;
 class SecurityOrigin;
 class Storage;
@@ -54,10 +54,10 @@ typedef String ErrorString;
 class InspectorDOMStorageAgent final : public InspectorAgentBase, public Inspector::DOMStorageBackendDispatcherHandler {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    InspectorDOMStorageAgent(InstrumentingAgents&, InspectorPageAgent*);
+    InspectorDOMStorageAgent(WebAgentContext&, InspectorPageAgent*);
     virtual ~InspectorDOMStorageAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     // Called from the front-end.

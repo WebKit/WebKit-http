@@ -699,7 +699,7 @@ public:
 
     WEBCORE_EXPORT const FontCascade& fontCascade() const;
     WEBCORE_EXPORT const FontMetrics& fontMetrics() const;
-    WEBCORE_EXPORT const FontDescription& fontDescription() const;
+    WEBCORE_EXPORT const FontCascadeDescription& fontDescription() const;
     float specifiedFontSize() const;
     float computedFontSize() const;
     int fontSize() const;
@@ -1334,7 +1334,7 @@ public:
     void setClear(EClear v) { noninherited_flags.setClear(v); }
     void setTableLayout(ETableLayout v) { noninherited_flags.setTableLayout(v); }
 
-    bool setFontDescription(const FontDescription&);
+    bool setFontDescription(const FontCascadeDescription&);
     // Only used for blending font sizes when animating, for MathML anonymous blocks, and for text autosizing.
     void setFontSize(float);
 
@@ -1903,7 +1903,7 @@ public:
     static float initialLetterSpacing() { return 0; }
     static Length initialWordSpacing() { return Length(Fixed); }
     static Length initialSize() { return Length(); }
-    static Length initialMinSize() { return Length(Fixed); }
+    static Length initialMinSize() { return Length(); }
     static Length initialMaxSize() { return Length(Undefined); }
     static Length initialOffset() { return Length(); }
     static Length initialMargin() { return Length(Fixed); }
@@ -2225,6 +2225,15 @@ inline float adjustFloatForAbsoluteZoom(float value, const RenderStyle& style)
 inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const RenderStyle& style)
 {
     return value / style.effectiveZoom();
+}
+
+inline EBorderStyle collapsedBorderStyle(EBorderStyle style)
+{
+    if (style == OUTSET)
+        return GROOVE;
+    if (style == INSET)
+        return RIDGE;
+    return style;
 }
 
 inline bool RenderStyle::setZoom(float f)

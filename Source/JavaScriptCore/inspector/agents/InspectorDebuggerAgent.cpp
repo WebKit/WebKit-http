@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
- * Copyright (C) 2010-2011 Google Inc. All rights reserved.
+ * Copyright (C) 2010, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "ContentSearchUtilities.h"
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
+#include "InspectorFrontendRouter.h"
 #include "InspectorValues.h"
 #include "RegularExpression.h"
 #include "ScriptDebugServer.h"
@@ -55,9 +56,11 @@ static String objectGroupForBreakpointAction(const ScriptBreakpointAction& actio
     return makeString(objectGroup, String::number(action.identifier));
 }
 
-InspectorDebuggerAgent::InspectorDebuggerAgent(InjectedScriptManager& injectedScriptManager)
+InspectorDebuggerAgent::InspectorDebuggerAgent(AgentContext& context)
     : InspectorAgentBase(ASCIILiteral("Debugger"))
-    , m_injectedScriptManager(injectedScriptManager)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_frontendDispatcher(std::make_unique<DebuggerFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(DebuggerBackendDispatcher::create(context.backendDispatcher, this))
     , m_continueToLocationBreakpointID(JSC::noBreakpointID)
 {
     // FIXME: make breakReason optional so that there was no need to init it with "other".
@@ -68,17 +71,12 @@ InspectorDebuggerAgent::~InspectorDebuggerAgent()
 {
 }
 
-void InspectorDebuggerAgent::didCreateFrontendAndBackend(FrontendChannel* frontendChannel, BackendDispatcher* backendDispatcher)
+void InspectorDebuggerAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<DebuggerFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = DebuggerBackendDispatcher::create(backendDispatcher, this);
 }
 
 void InspectorDebuggerAgent::willDestroyFrontendAndBackend(DisconnectReason reason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     bool skipRecompile = reason == DisconnectReason::InspectedTargetDestroyed;
     disable(skipRecompile);
 }
@@ -134,6 +132,11 @@ void InspectorDebuggerAgent::setBreakpointsActive(ErrorString&, bool active)
 bool InspectorDebuggerAgent::isPaused()
 {
     return scriptDebugServer().isPaused();
+}
+
+void InspectorDebuggerAgent::setSuppressAllPauses(bool suppress)
+{
+    scriptDebugServer().setSuppressAllPauses(suppress);
 }
 
 static RefPtr<InspectorObject> buildAssertPauseReason(const String& message)
@@ -798,8 +801,7 @@ void InspectorDebuggerAgent::didClearGlobalObject()
     // pages have what breakpoints, as the mapping is only sent to DebuggerAgent once.
     clearDebuggerBreakpointState();
 
-    if (m_frontendDispatcher)
-        m_frontendDispatcher->globalObjectCleared();
+    m_frontendDispatcher->globalObjectCleared();
 }
 
 bool InspectorDebuggerAgent::assertPaused(ErrorString& errorString)

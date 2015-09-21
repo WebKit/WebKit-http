@@ -42,7 +42,9 @@
 #include "Heap.h"
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
+#include "JSModuleEnvironment.h"
 #include "PreciseJumpTargets.h"
+#include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
 #include "StackAlignment.h"
 #include "StringConstructor.h"
@@ -432,7 +434,6 @@ private:
         m_currentBlock->variablesAtTail.local(local) = node;
         return node;
     }
-
     Node* setLocal(const CodeOrigin& semanticOrigin, VirtualRegister operand, Node* value, SetMode setMode = NormalSet)
     {
         CodeOrigin oldSemanticOrigin = m_currentSemanticOrigin;
@@ -739,7 +740,10 @@ private:
         SpeculatedType prediction)
     {
         addVarArgChild(callee);
-        size_t parameterSlots = JSStack::CallFrameHeaderSize - JSStack::CallerFrameAndPCSize + argCount;
+        size_t frameSize = JSStack::CallFrameHeaderSize + argCount;
+        size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+        size_t parameterSlots = alignedFrameSize - JSStack::CallerFrameAndPCSize;
+
         if (parameterSlots > m_parameterSlots)
             m_parameterSlots = parameterSlots;
 
@@ -3512,7 +3516,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_get_by_id:
-        case op_get_by_id_out_of_line:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
             
@@ -3530,16 +3533,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
             NEXT_OPCODE(op_get_by_id);
         }
-        case op_put_by_id:
-        case op_put_by_id_out_of_line:
-        case op_put_by_id_transition_direct:
-        case op_put_by_id_transition_normal:
-        case op_put_by_id_transition_direct_out_of_line:
-        case op_put_by_id_transition_normal_out_of_line: {
+        case op_put_by_id: {
             Node* value = get(VirtualRegister(currentInstruction[3].u.operand));
             Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
-            bool direct = currentInstruction[8].u.operand;
+            bool direct = currentInstruction[8].u.putByIdFlags & PutByIdIsDirect;
 
             PutByIdStatus putByIdStatus = PutByIdStatus::computeFor(
                 m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
@@ -3781,6 +3779,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             flushForTerminal();
             addToGraph(Unreachable);
             LAST_OPCODE(op_throw_static_error);
+
+        case op_catch:
+            m_graph.m_hasExceptionHandlers = true;
+            NEXT_OPCODE(op_catch);
             
         case op_call:
             handleCall(currentInstruction, Call, CodeForCall);
@@ -3819,6 +3821,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int dst = currentInstruction[1].u.operand;
             ResolveType resolveType = static_cast<ResolveType>(currentInstruction[4].u.operand);
             unsigned depth = currentInstruction[5].u.operand;
+            int scope = currentInstruction[2].u.operand;
 
             // get_from_scope and put_to_scope depend on this watchpoint forcing OSR exit, so they don't add their own watchpoints.
             if (needsVarInjectionChecks(resolveType))
@@ -3829,14 +3832,27 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             case GlobalVar:
             case GlobalPropertyWithVarInjectionChecks:
             case GlobalVarWithVarInjectionChecks:
-                set(VirtualRegister(dst), weakJSConstant(m_inlineStackTop->m_codeBlock->globalObject()));
-                if (resolveType == GlobalPropertyWithVarInjectionChecks || resolveType == GlobalVarWithVarInjectionChecks)
-                    addToGraph(Phantom, getDirect(m_inlineStackTop->remapOperand(VirtualRegister(currentInstruction[2].u.operand))));
+            case GlobalLexicalVar:
+            case GlobalLexicalVarWithVarInjectionChecks: {
+                JSScope* constantScope = JSScope::constantScopeForCodeBlock(resolveType, m_inlineStackTop->m_codeBlock);
+                RELEASE_ASSERT(constantScope);
+                RELEASE_ASSERT(static_cast<JSScope*>(currentInstruction[6].u.pointer) == constantScope);
+                set(VirtualRegister(dst), weakJSConstant(constantScope));
+                addToGraph(Phantom, get(VirtualRegister(scope)));
                 break;
+            }
+            case ModuleVar: {
+                // Since the value of the "scope" virtual register is not used in LLInt / baseline op_resolve_scope with ModuleVar,
+                // we need not to keep it alive by the Phantom node.
+                JSModuleEnvironment* moduleEnvironment = jsCast<JSModuleEnvironment*>(currentInstruction[6].u.jsCell.get());
+                // Module environment is already strongly referenced by the CodeBlock.
+                set(VirtualRegister(dst), weakJSConstant(moduleEnvironment));
+                break;
+            }
             case LocalClosureVar:
             case ClosureVar:
             case ClosureVarWithVarInjectionChecks: {
-                Node* localBase = get(VirtualRegister(currentInstruction[2].u.operand));
+                Node* localBase = get(VirtualRegister(scope));
                 addToGraph(Phantom, localBase); // OSR exit cannot handle resolve_scope on a DCE'd scope.
                 
                 // We have various forms of constant folding here. This is necessary to avoid
@@ -3860,6 +3876,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 set(VirtualRegister(dst), localBase);
                 break;
             }
+            case UnresolvedProperty:
+            case UnresolvedPropertyWithVarInjectionChecks: {
+                addToGraph(Phantom, get(VirtualRegister(scope)));
+                addToGraph(ForceOSRExit);
+                set(VirtualRegister(dst), addToGraph(JSConstant, OpInfo(m_constantNull)));
+                break;
+            }
             case Dynamic:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
@@ -3872,16 +3895,16 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int scope = currentInstruction[2].u.operand;
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
             UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
-            ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
+            ResolveType resolveType = GetPutInfo(currentInstruction[4].u.operand).resolveType();
 
             Structure* structure = 0;
             WatchpointSet* watchpoints = 0;
             uintptr_t operand;
             {
                 ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
-                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks)
+                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
-                else
+                else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
                     structure = currentInstruction[5].u.structure.get();
                 operand = reinterpret_cast<uintptr_t>(currentInstruction[6].u.pointer);
             }
@@ -3910,13 +3933,16 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 break;
             }
             case GlobalVar:
-            case GlobalVarWithVarInjectionChecks: {
+            case GlobalVarWithVarInjectionChecks:
+            case GlobalLexicalVar:
+            case GlobalLexicalVarWithVarInjectionChecks: {
                 addToGraph(Phantom, get(VirtualRegister(scope)));
                 WatchpointSet* watchpointSet;
                 ScopeOffset offset;
+                JSSegmentedVariableObject* scopeObject = jsCast<JSSegmentedVariableObject*>(JSScope::constantScopeForCodeBlock(resolveType, m_inlineStackTop->m_codeBlock));
                 {
-                    ConcurrentJITLocker locker(globalObject->symbolTable()->m_lock);
-                    SymbolTableEntry entry = globalObject->symbolTable()->get(locker, uid);
+                    ConcurrentJITLocker locker(scopeObject->symbolTable()->m_lock);
+                    SymbolTableEntry entry = scopeObject->symbolTable()->get(locker, uid);
                     watchpointSet = entry.watchpointSet();
                     offset = entry.scopeOffset();
                 }
@@ -3961,7 +3987,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     // reading are added, we might access freed memory if we do variableAt().
                     WriteBarrier<Unknown>* pointer = bitwise_cast<WriteBarrier<Unknown>*>(operand);
                     
-                    ASSERT(globalObject->findVariableIndex(pointer) == offset);
+                    ASSERT(scopeObject->findVariableIndex(pointer) == offset);
                     
                     JSValue value = pointer->get();
                     if (value) {
@@ -3972,7 +3998,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
                 
                 SpeculatedType prediction = getPrediction();
-                set(VirtualRegister(dst), addToGraph(GetGlobalVar, OpInfo(operand), OpInfo(prediction)));
+                NodeType nodeType;
+                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks)
+                    nodeType = GetGlobalVar;
+                else
+                    nodeType = GetGlobalLexicalVariable;
+                Node* value = addToGraph(nodeType, OpInfo(operand), OpInfo(prediction));
+                if (resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
+                    addToGraph(CheckNotEmpty, value);
+                set(VirtualRegister(dst), value);
                 break;
             }
             case LocalClosureVar:
@@ -4002,6 +4036,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     addToGraph(GetClosureVar, OpInfo(operand), OpInfo(prediction), scopeNode));
                 break;
             }
+            case UnresolvedProperty:
+            case UnresolvedPropertyWithVarInjectionChecks: {
+                addToGraph(ForceOSRExit);
+                Node* scopeNode = get(VirtualRegister(scope));
+                addToGraph(Phantom, scopeNode);
+                set(VirtualRegister(dst), addToGraph(JSConstant, OpInfo(m_constantUndefined)));
+                break;
+            }
+            case ModuleVar:
             case Dynamic:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
@@ -4015,7 +4058,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (identifierNumber != UINT_MAX)
                 identifierNumber = m_inlineStackTop->m_identifierRemap[identifierNumber];
             unsigned value = currentInstruction[3].u.operand;
-            ResolveType resolveType = ResolveModeAndType(currentInstruction[4].u.operand).type();
+            GetPutInfo getPutInfo = GetPutInfo(currentInstruction[4].u.operand);
+            ResolveType resolveType = getPutInfo.resolveType();
             UniquedStringImpl* uid;
             if (identifierNumber != UINT_MAX)
                 uid = m_graph.identifiers()[identifierNumber];
@@ -4027,9 +4071,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             uintptr_t operand;
             {
                 ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
-                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == LocalClosureVar)
+                if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == LocalClosureVar || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
-                else
+                else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
                     structure = currentInstruction[5].u.structure.get();
                 operand = reinterpret_cast<uintptr_t>(currentInstruction[6].u.pointer);
             }
@@ -4056,14 +4100,23 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 addToGraph(Phantom, get(VirtualRegister(scope)));
                 break;
             }
+            case GlobalLexicalVar:
+            case GlobalLexicalVarWithVarInjectionChecks:
             case GlobalVar:
             case GlobalVarWithVarInjectionChecks: {
+                if (getPutInfo.initializationMode() != Initialization && (resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)) {
+                    SpeculatedType prediction = SpecEmpty;
+                    Node* value = addToGraph(GetGlobalLexicalVariable, OpInfo(operand), OpInfo(prediction));
+                    addToGraph(CheckNotEmpty, value);
+                }
+
+                JSSegmentedVariableObject* scopeObject = jsCast<JSSegmentedVariableObject*>(JSScope::constantScopeForCodeBlock(resolveType, m_inlineStackTop->m_codeBlock));
                 if (watchpoints) {
-                    SymbolTableEntry entry = globalObject->symbolTable()->get(uid);
+                    SymbolTableEntry entry = scopeObject->symbolTable()->get(uid);
                     ASSERT_UNUSED(entry, watchpoints == entry.watchpointSet());
                 }
                 Node* valueNode = get(VirtualRegister(value));
-                addToGraph(PutGlobalVar, OpInfo(operand), weakJSConstant(globalObject), valueNode);
+                addToGraph(PutGlobalVariable, OpInfo(operand), weakJSConstant(scopeObject), valueNode);
                 if (watchpoints && watchpoints->state() != IsInvalidated) {
                     // Must happen after the store. See comment for GetGlobalVar.
                     addToGraph(NotifyWrite, OpInfo(watchpoints));
@@ -4086,6 +4139,21 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 }
                 break;
             }
+
+            case UnresolvedProperty:
+            case UnresolvedPropertyWithVarInjectionChecks: {
+                addToGraph(ForceOSRExit);
+                Node* scopeNode = get(VirtualRegister(scope));
+                addToGraph(Phantom, scopeNode);
+                break;
+            }
+
+            case ModuleVar:
+                // Need not to keep "scope" and "value" register values here by Phantom because
+                // they are not used in LLInt / baseline op_put_to_scope with ModuleVar.
+                addToGraph(ForceOSRExit);
+                break;
+
             case Dynamic:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;

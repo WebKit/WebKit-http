@@ -103,11 +103,11 @@ public:
     typedef typename AssemblerType::RegisterID RegisterID;
     typedef typename AssemblerType::FPRegisterID FPRegisterID;
     
-    static RegisterID firstRegister() { return AssemblerType::firstRegister(); }
-    static RegisterID lastRegister() { return AssemblerType::lastRegister(); }
+    static constexpr RegisterID firstRegister() { return AssemblerType::firstRegister(); }
+    static constexpr RegisterID lastRegister() { return AssemblerType::lastRegister(); }
 
-    static FPRegisterID firstFPRegister() { return AssemblerType::firstFPRegister(); }
-    static FPRegisterID lastFPRegister() { return AssemblerType::lastFPRegister(); }
+    static constexpr FPRegisterID firstFPRegister() { return AssemblerType::firstFPRegister(); }
+    static constexpr FPRegisterID lastFPRegister() { return AssemblerType::lastFPRegister(); }
 
     // Section 1: MacroAssembler operand types
     //
@@ -507,7 +507,9 @@ public:
             None = 0x0,
             Linkable = 0x1,
             Near = 0x2,
+            Tail = 0x4,
             LinkableNear = 0x3,
+            LinkableNearTail = 0x7,
         };
 
         Call()
@@ -935,6 +937,74 @@ public:
 
     AssemblerType m_assembler;
     
+    static void linkJump(void* code, Jump jump, CodeLocationLabel target)
+    {
+        AssemblerType::linkJump(code, jump.m_label, target.dataLocation());
+    }
+
+    static void linkPointer(void* code, AssemblerLabel label, void* value)
+    {
+        AssemblerType::linkPointer(code, label, value);
+    }
+
+    static void* getLinkerAddress(void* code, AssemblerLabel label)
+    {
+        return AssemblerType::getRelocatedAddress(code, label);
+    }
+
+    static unsigned getLinkerCallReturnOffset(Call call)
+    {
+        return AssemblerType::getCallReturnOffset(call.m_label);
+    }
+
+    static void repatchJump(CodeLocationJump jump, CodeLocationLabel destination)
+    {
+        AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
+    }
+
+    static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)
+    {
+        switch (nearCall.callMode()) {
+        case NearCallMode::Tail:
+            AssemblerType::relinkJump(nearCall.dataLocation(), destination.executableAddress());
+            return;
+        case NearCallMode::Regular:
+            AssemblerType::relinkCall(nearCall.dataLocation(), destination.executableAddress());
+            return;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+    }
+
+    static void repatchCompact(CodeLocationDataLabelCompact dataLabelCompact, int32_t value)
+    {
+        AssemblerType::repatchCompact(dataLabelCompact.dataLocation(), value);
+    }
+    
+    static void repatchInt32(CodeLocationDataLabel32 dataLabel32, int32_t value)
+    {
+        AssemblerType::repatchInt32(dataLabel32.dataLocation(), value);
+    }
+
+    static void repatchPointer(CodeLocationDataLabelPtr dataLabelPtr, void* value)
+    {
+        AssemblerType::repatchPointer(dataLabelPtr.dataLocation(), value);
+    }
+    
+    static void* readPointer(CodeLocationDataLabelPtr dataLabelPtr)
+    {
+        return AssemblerType::readPointer(dataLabelPtr.dataLocation());
+    }
+    
+    static void replaceWithLoad(CodeLocationConvertibleLoad label)
+    {
+        AssemblerType::replaceWithLoad(label.dataLocation());
+    }
+    
+    static void replaceWithAddressComputation(CodeLocationConvertibleLoad label)
+    {
+        AssemblerType::replaceWithAddressComputation(label.dataLocation());
+    }
+
 protected:
     AbstractMacroAssembler()
         : m_randomSource(cryptographicallyRandomNumber())
@@ -1031,67 +1101,6 @@ protected:
     unsigned m_tempRegistersValidBits;
 
     friend class LinkBuffer;
-    friend class RepatchBuffer;
-
-    static void linkJump(void* code, Jump jump, CodeLocationLabel target)
-    {
-        AssemblerType::linkJump(code, jump.m_label, target.dataLocation());
-    }
-
-    static void linkPointer(void* code, AssemblerLabel label, void* value)
-    {
-        AssemblerType::linkPointer(code, label, value);
-    }
-
-    static void* getLinkerAddress(void* code, AssemblerLabel label)
-    {
-        return AssemblerType::getRelocatedAddress(code, label);
-    }
-
-    static unsigned getLinkerCallReturnOffset(Call call)
-    {
-        return AssemblerType::getCallReturnOffset(call.m_label);
-    }
-
-    static void repatchJump(CodeLocationJump jump, CodeLocationLabel destination)
-    {
-        AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
-    }
-
-    static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)
-    {
-        AssemblerType::relinkCall(nearCall.dataLocation(), destination.executableAddress());
-    }
-
-    static void repatchCompact(CodeLocationDataLabelCompact dataLabelCompact, int32_t value)
-    {
-        AssemblerType::repatchCompact(dataLabelCompact.dataLocation(), value);
-    }
-    
-    static void repatchInt32(CodeLocationDataLabel32 dataLabel32, int32_t value)
-    {
-        AssemblerType::repatchInt32(dataLabel32.dataLocation(), value);
-    }
-
-    static void repatchPointer(CodeLocationDataLabelPtr dataLabelPtr, void* value)
-    {
-        AssemblerType::repatchPointer(dataLabelPtr.dataLocation(), value);
-    }
-    
-    static void* readPointer(CodeLocationDataLabelPtr dataLabelPtr)
-    {
-        return AssemblerType::readPointer(dataLabelPtr.dataLocation());
-    }
-    
-    static void replaceWithLoad(CodeLocationConvertibleLoad label)
-    {
-        AssemblerType::replaceWithLoad(label.dataLocation());
-    }
-    
-    static void replaceWithAddressComputation(CodeLocationConvertibleLoad label)
-    {
-        AssemblerType::replaceWithAddressComputation(label.dataLocation());
-    }
 
 private:
 

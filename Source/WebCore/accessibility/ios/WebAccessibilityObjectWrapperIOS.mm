@@ -1988,7 +1988,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return NSMakeRange(startPosition, endPosition - startPosition);
 }
 
-- (PassRefPtr<Range>)_convertToDOMRange:(NSRange)nsrange
+- (RefPtr<Range>)_convertToDOMRange:(NSRange)nsrange
 {
     if (nsrange.location > INT_MAX)
         return nullptr;
@@ -2096,7 +2096,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     if (![self _prepareAccessibilityCall])
         return nil;
 
-    PassRefPtr<Range> range = [self _convertToDOMRange:NSMakeRange(position, 0)];
+    RefPtr<Range> range = [self _convertToDOMRange:NSMakeRange(position, 0)];
     if (!range)
         return nil;
     
@@ -2409,6 +2409,30 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return nil;
     
     return m_object->invalidStatus();
+}
+
+- (NSString *)accessibilityARIACurrentStatus
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    switch (m_object->ariaCurrentState()) {
+    case ARIACurrentFalse:
+        return @"false";
+    case ARIACurrentPage:
+        return @"page";
+    case ARIACurrentStep:
+        return @"step";
+    case ARIACurrentLocation:
+        return @"location";
+    case ARIACurrentTime:
+        return @"time";
+    case ARIACurrentDate:
+        return @"date";
+    default:
+    case ARIACurrentTrue:
+        return @"true";
+    }
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathRootIndexObject

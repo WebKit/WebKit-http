@@ -135,7 +135,7 @@ EncodedJSValue JSC_HOST_CALL JSTestNamedConstructorNamedConstructor::constructJS
     String str2 = exec->argument(1).toString(exec)->value(exec);
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
-    String str3 = exec->argumentCount() <= 2 ? String() : exec->uncheckedArgument(2).toString(exec)->value(exec);
+    String str3 = exec->argument(2).isUndefined() ? String() : exec->uncheckedArgument(2).toString(exec)->value(exec);
     if (UNLIKELY(exec->hadException()))
         return JSValue::encode(jsUndefined());
     RefPtr<TestNamedConstructor> object = TestNamedConstructor::createForJSConstructor(*castedThis->document(), str1, str2, str3, ec);
@@ -230,20 +230,20 @@ JSValue JSTestNamedConstructor::getNamedConstructor(VM& vm, JSGlobalObject* glob
     return getDOMConstructor<JSTestNamedConstructorNamedConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
-bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+bool JSTestNamedConstructorOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
 {
-    auto* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.slot()->asCell());
-    if (jsTestNamedConstructor->impl().hasPendingActivity())
+    auto& jsTestNamedConstructor = jsCast<JSTestNamedConstructor&>(cell);
+    if (jsTestNamedConstructor.impl().hasPendingActivity())
         return true;
     UNUSED_PARAM(visitor);
     return false;
 }
 
-void JSTestNamedConstructorOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
+void JSTestNamedConstructorOwner::finalize(JSC::JSCell*& cell, void* context)
 {
-    auto* jsTestNamedConstructor = jsCast<JSTestNamedConstructor*>(handle.slot()->asCell());
+    auto& wrapper = jsCast<JSTestNamedConstructor&>(*cell);
     auto& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, &jsTestNamedConstructor->impl(), jsTestNamedConstructor);
+    uncacheWrapper(world, &wrapper.impl(), &wrapper);
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -254,6 +254,14 @@ extern "C" { extern void (*const __identifier("??_7TestNamedConstructor@WebCore@
 extern "C" { extern void* _ZTVN7WebCore20TestNamedConstructorE[]; }
 #endif
 #endif
+
+JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestNamedConstructor* impl)
+{
+    if (!impl)
+        return jsNull();
+    return createNewWrapper<JSTestNamedConstructor>(globalObject, impl);
+}
+
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestNamedConstructor* impl)
 {
     if (!impl)

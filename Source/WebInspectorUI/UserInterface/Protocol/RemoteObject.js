@@ -345,6 +345,16 @@ WebInspector.RemoteObject = class RemoteObject
         }
     }
 
+    isUndefined()
+    {
+        return this._type === "undefined";
+    }
+
+    isNode()
+    {
+        return this._subtype === "node";
+    }
+
     isArray()
     {
         return this._subtype === "array";
@@ -381,7 +391,7 @@ WebInspector.RemoteObject = class RemoteObject
         var objectGroup = this.isWeakCollection() ? this._weakCollectionObjectGroup() : "";
 
         RuntimeAgent.getCollectionEntries(this._objectId, objectGroup, start, numberToFetch, function(error, entries) {
-            entries = entries.map(function(entry) { return WebInspector.CollectionEntry.fromPayload(entry); });
+            entries = entries.map(WebInspector.CollectionEntry.fromPayload);
             callback(entries);
         });
     }

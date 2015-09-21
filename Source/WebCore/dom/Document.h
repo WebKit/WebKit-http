@@ -47,6 +47,7 @@
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
 #include "StyleResolveTree.h"
+#include "TextResourceDecoder.h"
 #include "Timer.h"
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
@@ -122,6 +123,7 @@ class LayoutRect;
 class LiveNodeList;
 class JSNode;
 class Locale;
+class Location;
 class MediaCanStartListener;
 class MediaPlaybackTarget;
 class MediaPlaybackTargetClient;
@@ -375,7 +377,7 @@ public:
     RefPtr<Attr> createAttribute(const String& name, ExceptionCode&);
     RefPtr<Attr> createAttributeNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&, bool shouldIgnoreNamespaceChecks = false);
     RefPtr<EntityReference> createEntityReference(const String& name, ExceptionCode&);
-    RefPtr<Node> importNode(Node* importedNode, ExceptionCode& ec) { return importNode(importedNode, true, ec); }
+    RefPtr<Node> importNode(Node* importedNode, ExceptionCode& ec) { return importNode(importedNode, false, ec); }
     RefPtr<Node> importNode(Node* importedNode, bool deep, ExceptionCode&);
     WEBCORE_EXPORT RefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     WEBCORE_EXPORT Ref<Element> createElement(const QualifiedName&, bool createdByParser);
@@ -400,11 +402,11 @@ public:
 
     String defaultCharset() const;
 
-    String inputEncoding() const { return Document::encoding(); }
     String charset() const { return Document::encoding(); }
-    String characterSet() const { return Document::encoding(); }
+    String characterSetWithUTF8Fallback() const;
+    TextEncoding textEncoding() const;
 
-    AtomicString encoding() const;
+    AtomicString encoding() const { return textEncoding().domName(); }
 
     void setCharset(const String&);
 
@@ -432,8 +434,6 @@ public:
 
     String documentURI() const { return m_documentURI; }
     void setDocumentURI(const String&);
-
-    virtual URL baseURI() const override final;
 
 #if ENABLE(WEB_REPLAY)
     JSC::InputCursor& inputCursor() const { return *m_inputCursor; }
@@ -536,9 +536,15 @@ public:
 
     WEBCORE_EXPORT Ref<Range> createRange();
 
-    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned long whatToShow = 0xFFFFFFFF, PassRefPtr<NodeFilter> = nullptr, bool expandEntityReferences = false);
+    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&&, bool expandEntityReferences, ExceptionCode&);
+    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&&, ExceptionCode&);
+    RefPtr<NodeIterator> createNodeIterator(Node* root, unsigned long whatToShow, ExceptionCode&);
+    RefPtr<NodeIterator> createNodeIterator(Node* root, ExceptionCode&);
 
-    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned long whatToShow = 0xFFFFFFFF, PassRefPtr<NodeFilter> = nullptr, bool expandEntityReferences = false);
+    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&&, bool expandEntityReferences, ExceptionCode&);
+    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned long whatToShow, RefPtr<NodeFilter>&&, ExceptionCode&);
+    RefPtr<TreeWalker> createTreeWalker(Node* root, unsigned long whatToShow, ExceptionCode&);
+    RefPtr<TreeWalker> createTreeWalker(Node* root, ExceptionCode&);
 
     // Special support for editing
     Ref<CSSStyleDeclaration> createCSSStyleDeclaration();
@@ -747,7 +753,8 @@ public:
     void nodeChildrenWillBeRemoved(ContainerNode&);
     // nodeWillBeRemoved is only safe when removing one node at a time.
     void nodeWillBeRemoved(Node&);
-    bool canReplaceChild(Node* newChild, Node* oldChild);
+    enum class AcceptChildOperation { Replace, InsertOrAdd };
+    bool canAcceptChild(const Node& newChild, const Node* refChild, AcceptChildOperation) const;
 
     void textInserted(Node*, unsigned offset, unsigned length);
     void textRemoved(Node*, unsigned offset, unsigned length);
@@ -835,8 +842,9 @@ public:
     String title() const { return m_title.string(); }
     void setTitle(const String&);
 
-    void setTitleElement(const StringWithDirection&, Element* titleElement);
-    void removeTitle(Element* titleElement);
+    void titleElementAdded(Element& titleElement);
+    void titleElementRemoved(Element& titleElement);
+    void titleElementTextChanged(Element& titleElement);
 
     String cookie(ExceptionCode&);
     void setCookie(const String&, ExceptionCode&);
@@ -893,6 +901,8 @@ public:
     HTMLBodyElement* body() const;
     WEBCORE_EXPORT HTMLElement* bodyOrFrameset() const;
     void setBodyOrFrameset(PassRefPtr<HTMLElement>, ExceptionCode&);
+
+    Location* location() const;
 
     WEBCORE_EXPORT HTMLHeadElement* head();
 
@@ -1290,6 +1300,8 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
+    void updateTitleElement(Element* newTitleElement);
+
     void commonTeardown();
 
     RenderObject* renderer() const = delete;
@@ -1302,7 +1314,7 @@ private:
     void processArguments(const String& features, void* data, ArgumentsCallback);
 
     // FontSelectorClient
-    virtual void fontsNeedUpdate(FontSelector*) override final;
+    virtual void fontsNeedUpdate(FontSelector&) override final;
 
     virtual bool isDocument() const override final { return true; }
 
@@ -1311,7 +1323,7 @@ private:
     virtual String nodeName() const override final;
     virtual NodeType nodeType() const override final;
     virtual bool childTypeAllowed(NodeType) const override final;
-    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) override final;
+    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override final;
     void cloneDataFromDocument(const Document&);
 
     virtual void refScriptExecutionContext() override final { ref(); }
@@ -1323,6 +1335,7 @@ private:
 
     virtual double timerAlignmentInterval(bool hasReachedMaxNestingLevel) const override final;
 
+    void updateTitleFromTitleElement();
     void updateTitle(const StringWithDirection&);
     void updateFocusAppearanceTimerFired();
     void updateBaseURL();
@@ -1479,7 +1492,6 @@ private:
 
     StringWithDirection m_title;
     StringWithDirection m_rawTitle;
-    bool m_titleSetExplicitly;
     RefPtr<Element> m_titleElement;
 
     std::unique_ptr<AXObjectCache> m_axObjectCache;
@@ -1741,6 +1753,13 @@ inline void Document::notifyRemovePendingSheetIfNeeded()
 {
     if (m_needsNotifyRemoveAllPendingStylesheet)
         didRemoveAllPendingStylesheet();
+}
+
+inline TextEncoding Document::textEncoding() const
+{
+    if (auto* decoder = this->decoder())
+        return decoder->encoding();
+    return TextEncoding();
 }
 
 #if ENABLE(TEMPLATE_ELEMENT)

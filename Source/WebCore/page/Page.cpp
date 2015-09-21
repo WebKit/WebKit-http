@@ -157,7 +157,7 @@ Page::Page(PageConfiguration& pageConfiguration)
 #endif
     , m_settings(Settings::create(this))
     , m_progress(std::make_unique<ProgressTracker>(*pageConfiguration.progressTrackerClient))
-    , m_backForwardController(std::make_unique<BackForwardController>(*this, pageConfiguration.backForwardClient))
+    , m_backForwardController(std::make_unique<BackForwardController>(*this, WTF::move(pageConfiguration.backForwardClient)))
     , m_mainFrame(MainFrame::create(*this, pageConfiguration))
     , m_theme(RenderTheme::themeForPage(this))
     , m_editorClient(*pageConfiguration.editorClient)
@@ -253,6 +253,8 @@ Page::~Page()
     
     m_settings->pageDestroyed();
 
+    m_inspectorController->inspectedPageDestroyed();
+
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         frame->willDetachPage();
         frame->detachFromPage();
@@ -263,8 +265,6 @@ Page::~Page()
         m_plugInClient->pageDestroyed();
     if (m_alternativeTextClient)
         m_alternativeTextClient->pageDestroyed();
-
-    m_inspectorController->inspectedPageDestroyed();
 
     if (m_scrollingCoordinator)
         m_scrollingCoordinator->pageDestroyed();

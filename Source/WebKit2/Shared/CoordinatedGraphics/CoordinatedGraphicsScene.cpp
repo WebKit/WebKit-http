@@ -185,7 +185,7 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 
     if (state.platformLayerProxy) {
         m_platformLayerProxies.set(layer, state.platformLayerProxy);
-        MutexLocker locker(state.platformLayerProxy->mutex());
+        LockHolder locker(state.platformLayerProxy->mutex());
         state.platformLayerProxy->setCompositor(locker, this);
         state.platformLayerProxy->setTargetLayer(locker, layer);
     } else
@@ -377,7 +377,7 @@ void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (auto* platformLayerProxy = m_platformLayerProxies.get(layer.get())) {
-        MutexLocker locker(platformLayerProxy->mutex());
+        LockHolder locker(platformLayerProxy->mutex());
         platformLayerProxy->setTargetLayer(locker, nullptr);
     }
     m_platformLayerProxies.remove(layer.get());

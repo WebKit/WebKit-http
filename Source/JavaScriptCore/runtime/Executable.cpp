@@ -57,8 +57,6 @@ void ExecutableBase::clearCode()
     m_jitCodeForConstruct = nullptr;
     m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
     m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr();
-    m_jitCodeForCallWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
-    m_jitCodeForConstructWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
 #endif
     m_numParametersForCall = NUM_PARAMETERS_NOT_COMPILED;
     m_numParametersForConstruct = NUM_PARAMETERS_NOT_COMPILED;
@@ -116,41 +114,18 @@ void ScriptExecutable::destroy(JSCell* cell)
     static_cast<ScriptExecutable*>(cell)->ScriptExecutable::~ScriptExecutable();
 }
 
-void ScriptExecutable::installCode(CodeBlock* genericCodeBlock)
+void ScriptExecutable::installCode(CodeBlock* codeBlock)
 {
-    RELEASE_ASSERT(genericCodeBlock->ownerExecutable() == this);
-    RELEASE_ASSERT(JITCode::isExecutableScript(genericCodeBlock->jitType()));
-    
-    if (Options::verboseOSR())
-        dataLog("Installing ", *genericCodeBlock, "\n");
-    
-    VM& vm = *genericCodeBlock->vm();
-    
-    if (vm.m_perBytecodeProfiler)
-        vm.m_perBytecodeProfiler->ensureBytecodesFor(genericCodeBlock);
-    
+    installCode(*codeBlock->vm(), codeBlock, codeBlock->codeType(), codeBlock->specializationKind());
+}
+
+void ScriptExecutable::installCode(VM& vm, CodeBlock* genericCodeBlock, CodeType codeType, CodeSpecializationKind kind)
+{
     ASSERT(vm.heap.isDeferred());
-    
-    CodeSpecializationKind kind = genericCodeBlock->specializationKind();
     
     RefPtr<CodeBlock> oldCodeBlock;
     
-    switch (kind) {
-    case CodeForCall:
-        m_jitCodeForCall = genericCodeBlock->jitCode();
-        m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
-        m_jitCodeForCallWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
-        m_numParametersForCall = genericCodeBlock->numParameters();
-        break;
-    case CodeForConstruct:
-        m_jitCodeForConstruct = genericCodeBlock->jitCode();
-        m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr();
-        m_jitCodeForConstructWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
-        m_numParametersForConstruct = genericCodeBlock->numParameters();
-        break;
-    }
-    
-    switch (genericCodeBlock->codeType()) {
+    switch (codeType) {
     case GlobalCode: {
         ProgramExecutable* executable = jsCast<ProgramExecutable*>(this);
         ProgramCodeBlock* codeBlock = static_cast<ProgramCodeBlock*>(genericCodeBlock);
@@ -199,16 +174,40 @@ void ScriptExecutable::installCode(CodeBlock* genericCodeBlock)
             break;
         }
         break;
-    } }
+    }
+    }
+
+    switch (kind) {
+    case CodeForCall:
+        m_jitCodeForCall = genericCodeBlock ? genericCodeBlock->jitCode() : nullptr;
+        m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
+        m_numParametersForCall = genericCodeBlock ? genericCodeBlock->numParameters() : NUM_PARAMETERS_NOT_COMPILED;
+        break;
+    case CodeForConstruct:
+        m_jitCodeForConstruct = genericCodeBlock ? genericCodeBlock->jitCode() : nullptr;
+        m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr();
+        m_numParametersForConstruct = genericCodeBlock ? genericCodeBlock->numParameters() : NUM_PARAMETERS_NOT_COMPILED;
+        break;
+    }
+
+    if (genericCodeBlock) {
+        RELEASE_ASSERT(genericCodeBlock->ownerExecutable() == this);
+        RELEASE_ASSERT(JITCode::isExecutableScript(genericCodeBlock->jitType()));
+        
+        if (Options::verboseOSR())
+            dataLog("Installing ", *genericCodeBlock, "\n");
+        
+        if (vm.m_perBytecodeProfiler)
+            vm.m_perBytecodeProfiler->ensureBytecodesFor(genericCodeBlock);
+        
+        if (Debugger* debugger = genericCodeBlock->globalObject()->debugger())
+            debugger->registerCodeBlock(genericCodeBlock);
+    }
 
     if (oldCodeBlock)
         oldCodeBlock->unlinkIncomingCalls();
 
-    Debugger* debugger = genericCodeBlock->globalObject()->debugger();
-    if (debugger)
-        debugger->registerCodeBlock(genericCodeBlock);
-
-    Heap::heap(this)->writeBarrier(this);
+    vm.heap.writeBarrier(this);
 }
 
 RefPtr<CodeBlock> ScriptExecutable::newCodeBlockFor(
@@ -365,7 +364,7 @@ JSObject* ScriptExecutable::prepareForExecutionImpl(
     else
         setupJIT(vm, codeBlock.get());
     
-    installCode(codeBlock.get());
+    installCode(*codeBlock->vm(), codeBlock.get(), codeBlock->codeType(), codeBlock->specializationKind());
     return 0;
 }
 
@@ -438,6 +437,8 @@ ModuleProgramExecutable* ModuleProgramExecutable::create(ExecState* exec, const 
     if (!unlinkedModuleProgramCode)
         return nullptr;
     executable->m_unlinkedModuleProgramCodeBlock.set(exec->vm(), executable, unlinkedModuleProgramCode);
+
+    executable->m_moduleEnvironmentSymbolTable.set(exec->vm(), executable, jsCast<SymbolTable*>(unlinkedModuleProgramCode->constantRegister(unlinkedModuleProgramCode->moduleEnvironmentSymbolTableConstantRegisterOffset()).get())->cloneScopePart(exec->vm()));
 
     return executable;
 }
@@ -539,6 +540,40 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
     if (exception)
         return exception;
 
+    JSGlobalLexicalEnvironment* globalLexicalEnvironment = globalObject->globalLexicalEnvironment();
+    const VariableEnvironment& variableDeclarations = unlinkedCodeBlock->variableDeclarations();
+    const VariableEnvironment& lexicalDeclarations = unlinkedCodeBlock->lexicalDeclarations();
+    // The ES6 spec says that no vars/global properties/let/const can be duplicated in the global scope.
+    // This carried out section 15.1.8 of the ES6 spec: http://www.ecma-international.org/ecma-262/6.0/index.html#sec-globaldeclarationinstantiation
+    {
+        ExecState* exec = globalObject->globalExec();
+        // Check for intersection of "var" and "let"/"const"/"class"
+        for (auto& entry : lexicalDeclarations) {
+            if (variableDeclarations.contains(entry.key))
+                return createSyntaxError(exec, makeString("Can't create duplicate variable: '", String(entry.key.get()), "'"));
+        }
+
+        // Check if any new "let"/"const"/"class" will shadow any pre-existing global property names, or "var"/"let"/"const" variables.
+        // It's an error to introduce a shadow.
+        for (auto& entry : lexicalDeclarations) {
+            if (globalObject->hasProperty(exec, entry.key.get()))
+                return createSyntaxError(exec, makeString("Can't create duplicate variable that shadows a global property: '", String(entry.key.get()), "'"));
+
+            if (globalLexicalEnvironment->hasProperty(exec, entry.key.get()))
+                return createSyntaxError(exec, makeString("Can't create duplicate variable: '", String(entry.key.get()), "'"));
+        }
+
+        // Check if any new "var"s will shadow any previous "let"/"const"/"class" names.
+        // It's an error to introduce a shadow.
+        if (!globalLexicalEnvironment->isEmpty()) {
+            for (auto& entry : variableDeclarations) {
+                if (globalLexicalEnvironment->hasProperty(exec, entry.key.get()))
+                    return createSyntaxError(exec, makeString("Can't create duplicate variable: '", String(entry.key.get()), "'"));
+            }
+        }
+    }
+
+
     m_unlinkedProgramCodeBlock.set(vm, this, unlinkedCodeBlock);
 
     BatchedTransitionOptimizer optimizer(vm, globalObject);
@@ -554,10 +589,24 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
         }
     }
 
-    const VariableEnvironment& variableDeclarations = unlinkedCodeBlock->variableDeclarations();
     for (auto& entry : variableDeclarations) {
         ASSERT(entry.value.isVar());
         globalObject->addVar(callFrame, Identifier::fromUid(&vm, entry.key.get()));
+    }
+
+    {
+        JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(globalObject->globalScope());
+        SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
+        ConcurrentJITLocker locker(symbolTable->m_lock);
+        for (auto& entry : lexicalDeclarations) {
+            ScopeOffset offset = symbolTable->takeNextScopeOffset(locker);
+            SymbolTableEntry newEntry(VarOffset(offset), entry.value.isConst() ? ReadOnly : 0);
+            newEntry.prepareToWatch();
+            symbolTable->add(locker, entry.key.get(), newEntry);
+            
+            ScopeOffset offsetForAssert = globalLexicalEnvironment->addVariables(1, jsTDZValue());
+            RELEASE_ASSERT(offsetForAssert == offset);
+        }
     }
     return 0;
 }
@@ -585,6 +634,7 @@ void ModuleProgramExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     ScriptExecutable::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_unlinkedModuleProgramCodeBlock);
+    visitor.append(&thisObject->m_moduleEnvironmentSymbolTable);
     if (thisObject->m_moduleProgramCodeBlock)
         thisObject->m_moduleProgramCodeBlock->visitAggregate(visitor);
 }
@@ -593,6 +643,7 @@ void ModuleProgramExecutable::clearCode()
 {
     m_moduleProgramCodeBlock = nullptr;
     m_unlinkedModuleProgramCodeBlock.clear();
+    m_moduleEnvironmentSymbolTable.clear();
     Base::clearCode();
 }
 
@@ -690,7 +741,6 @@ void WebAssemblyExecutable::prepareForExecution(ExecState* exec)
 
     m_jitCodeForCall = codeBlock->jitCode();
     m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
-    m_jitCodeForCallWithArityCheckAndPreserveRegs = MacroAssemblerCodePtr();
     m_numParametersForCall = codeBlock->numParameters();
 
     m_codeBlockForCall = codeBlock;

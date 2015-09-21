@@ -854,18 +854,6 @@ public:
         X86Assembler::revertJumpTo_movq_i64r(instructionStart.executableAddress(), reinterpret_cast<intptr_t>(initialValue), scratchRegister);
     }
 
-private:
-    friend class LinkBuffer;
-    friend class RepatchBuffer;
-
-    static void linkCall(void* code, Call call, FunctionPtr function)
-    {
-        if (!call.isFlagSet(Call::Near))
-            X86Assembler::linkPointer(code, call.m_label.labelAtOffset(-REPATCH_OFFSET_CALL_R11), function.value());
-        else
-            X86Assembler::linkCall(code, call.m_label, function.value());
-    }
-
     static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
     {
         X86Assembler::repatchPointer(call.dataLabelPtrAtOffset(-REPATCH_OFFSET_CALL_R11).dataLocation(), destination.executableAddress());
@@ -874,6 +862,20 @@ private:
     static void repatchCall(CodeLocationCall call, FunctionPtr destination)
     {
         X86Assembler::repatchPointer(call.dataLabelPtrAtOffset(-REPATCH_OFFSET_CALL_R11).dataLocation(), destination.executableAddress());
+    }
+
+private:
+    friend class LinkBuffer;
+    friend class RepatchBuffer;
+
+    static void linkCall(void* code, Call call, FunctionPtr function)
+    {
+        if (!call.isFlagSet(Call::Near))
+            X86Assembler::linkPointer(code, call.m_label.labelAtOffset(-REPATCH_OFFSET_CALL_R11), function.value());
+        else if (call.isFlagSet(Call::Tail))
+            X86Assembler::linkJump(code, call.m_label, function.value());
+        else
+            X86Assembler::linkCall(code, call.m_label, function.value());
     }
 };
 

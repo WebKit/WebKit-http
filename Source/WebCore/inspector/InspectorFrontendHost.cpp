@@ -59,9 +59,9 @@ namespace WebCore {
 #if ENABLE(CONTEXT_MENUS)
 class FrontendMenuProvider : public ContextMenuProvider {
 public:
-    static PassRefPtr<FrontendMenuProvider> create(InspectorFrontendHost* frontendHost, Deprecated::ScriptObject frontendApiObject, const Vector<ContextMenuItem>& items)
+    static Ref<FrontendMenuProvider> create(InspectorFrontendHost* frontendHost, Deprecated::ScriptObject frontendApiObject, const Vector<ContextMenuItem>& items)
     {
-        return adoptRef(new FrontendMenuProvider(frontendHost, frontendApiObject, items));
+        return adoptRef(*new FrontendMenuProvider(frontendHost, frontendApiObject, items));
     }
     
     void disconnect()
@@ -225,6 +225,36 @@ String InspectorFrontendHost::debuggableType()
     return ASCIILiteral("web");
 }
 
+String InspectorFrontendHost::platform()
+{
+#if PLATFORM(MAC) || PLATFORM(IOS)
+    return ASCIILiteral("mac");
+#elif OS(WINDOWS)
+    return ASCIILiteral("windows");
+#elif OS(LINUX)
+    return ASCIILiteral("linux");
+#elif OS(FREEBSD)
+    return ASCIILiteral("freebsd");
+#elif OS(OPENBSD)
+    return ASCIILiteral("openbsd");
+#elif OS(SOLARIS)
+    return ASCIILiteral("solaris");
+#else
+    return ASCIILiteral("unknown");
+#endif
+}
+
+String InspectorFrontendHost::port()
+{
+#if PLATFORM(GTK)
+    return ASCIILiteral("gtk");
+#elif PLATFORM(EFL)
+    return ASCIILiteral("efl");
+#else
+    return ASCIILiteral("unknown");
+#endif
+}
+
 void InspectorFrontendHost::copyText(const String& text)
 {
     Pasteboard::createForCopyAndPaste()->writePlainText(text, Pasteboard::CannotSmartReplace);
@@ -314,16 +344,6 @@ void InspectorFrontendHost::unbufferedLog(const String& message)
 void InspectorFrontendHost::beep()
 {
     systemBeep();
-}
-
-bool InspectorFrontendHost::canSaveAs()
-{
-    return false;
-}
-
-bool InspectorFrontendHost::canInspectWorkers()
-{
-    return false;
 }
 
 } // namespace WebCore

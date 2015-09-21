@@ -170,6 +170,92 @@ enum class WASMOpExpressionI32WithImmediate : uint8_t {
     NumberOfWASMOpExpressionI32WithImmediates
 };
 
+enum class WASMOpExpressionF32 : uint8_t {
+    ConstantPoolIndex,
+    Immediate,
+    GetLocal,
+    GetGlobal,
+    SetLocal,
+    SetGlobal,
+    Load,
+    LoadWithOffset,
+    Store,
+    StoreWithOffset,
+    CallInternal,
+    CallIndirect,
+    Conditional,
+    Comma,
+    FromS32,
+    FromU32,
+    FromF64,
+    Negate,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Abs,
+    Ceil,
+    Floor,
+    Sqrt,
+    NumberOfWASMOpExpressionF32s
+};
+
+enum class WASMOpExpressionF32WithImmediate : uint8_t {
+    ConstantPoolIndex,
+    GetLocal,
+    NumberOfWASMOpExpressionF32WithImmediates
+};
+
+enum class WASMOpExpressionF64 : uint8_t {
+    ConstantPoolIndex,
+    Immediate,
+    GetLocal,
+    GetGlobal,
+    SetLocal,
+    SetGlobal,
+    Load,
+    LoadWithOffset,
+    Store,
+    StoreWithOffset,
+    CallInternal,
+    CallIndirect,
+    CallImport,
+    Conditional,
+    Comma,
+    FromS32,
+    FromU32,
+    FromF32,
+    Negate,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Min,
+    Max,
+    Abs,
+    Ceil,
+    Floor,
+    Sqrt,
+    Cos,
+    Sin,
+    Tan,
+    ACos,
+    ASin,
+    ATan,
+    ATan2,
+    Exp,
+    Ln,
+    Pow,
+    NumberOfWASMOpExpressionF64s
+};
+
+enum class WASMOpExpressionF64WithImmediate : uint8_t {
+    ConstantPoolIndex,
+    GetLocal,
+    NumberOfWASMOpExpressionF64WithImmediates
+};
+
 enum class WASMVariableTypes : uint8_t {
     I32 = 1 << 0,
     F32 = 1 << 1,
@@ -197,6 +283,24 @@ enum class WASMExportFormat : uint8_t {
     Record,
     NumberOfExportFormats
 };
+
+enum class WASMTypeConversion {
+    ConvertSigned,
+    ConvertUnsigned,
+    Promote,
+    Demote,
+};
+
+enum class WASMMemoryType {
+    I8,
+    I16,
+    I32,
+    F32,
+    F64
+};
+
+enum class MemoryAccessOffsetMode { NoOffset, WithOffset };
+enum class MemoryAccessConversion { NoConversion, SignExtend, ZeroExtend };
 
 static const uint8_t hasImmediateInOpFlag = 0x80;
 

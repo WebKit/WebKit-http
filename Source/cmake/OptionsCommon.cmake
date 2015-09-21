@@ -86,7 +86,11 @@ endif ()
 
 set(ENABLE_DEBUG_FISSION_DEFAULT OFF)
 if (USE_LD_GOLD AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(ENABLE_DEBUG_FISSION_DEFAULT ON)
+    include(TestCXXAcceptsFlag)
+    CHECK_CXX_ACCEPTS_FLAG(-gsplit-dwarf CXX_ACCEPTS_GSPLIT_DWARF)
+    if (CXX_ACCEPTS_GSPLIT_DWARF)
+        set(ENABLE_DEBUG_FISSION_DEFAULT ON)
+    endif ()
 endif ()
 
 option(DEBUG_FISSION "Use Debug Fission support" ${ENABLE_DEBUG_FISSION_DEFAULT})
@@ -107,7 +111,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif ()
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86)")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86|armhf)")
     # To avoid out of memory when building with debug option in 32bit system.
     # See https://bugs.webkit.org/show_bug.cgi?id=77327
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "-Wl,--no-keep-memory ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")

@@ -54,6 +54,7 @@ class FloatPoint;
 class Frame;
 class HTMLInputElement;
 class HTMLQualifiedName;
+class HTMLSlotElement;
 class IntRect;
 class KeyboardEvent;
 class MathMLQualifiedName;
@@ -125,7 +126,6 @@ public:
         TEXT_NODE = 3,
         CDATA_SECTION_NODE = 4,
         ENTITY_REFERENCE_NODE = 5,
-        ENTITY_NODE = 6,
         PROCESSING_INSTRUCTION_NODE = 7,
         COMMENT_NODE = 8,
         DOCUMENT_NODE = 9,
@@ -134,6 +134,7 @@ public:
         XPATH_NAMESPACE_NODE = 13,
     };
     enum DeprecatedNodeType {
+        ENTITY_NODE = 6,
         NOTATION_NODE = 12,
     };
     enum DocumentPosition {
@@ -182,7 +183,7 @@ public:
     Node* pseudoAwareFirstChild() const;
     Node* pseudoAwareLastChild() const;
 
-    virtual URL baseURI() const;
+    URL baseURI() const;
     
     void getSubresourceURLs(ListHashSet<URL>&) const;
 
@@ -201,8 +202,8 @@ public:
         SelfWithTemplateContent,
         Everything,
     };
-    virtual RefPtr<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
-    RefPtr<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
+    virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
+    Ref<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
 
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
@@ -286,6 +287,10 @@ public:
     WEBCORE_EXPORT Node* deprecatedShadowAncestorNode() const;
     ShadowRoot* containingShadowRoot() const;
     ShadowRoot* shadowRoot() const;
+
+#if ENABLE(SHADOW_DOM)
+    HTMLSlotElement* assignedSlot() const;
+#endif
 
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
     Node* nonBoundaryShadowTreeRootNode();
@@ -521,7 +526,7 @@ public:
     virtual EventTargetInterface eventTargetInterface() const override;
     virtual ScriptExecutionContext* scriptExecutionContext() const override final; // Implemented in Document.h
 
-    virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) override;
+    virtual bool addEventListener(const AtomicString& eventType, RefPtr<EventListener>&&, bool useCapture) override;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) override;
 
     using EventTarget::dispatchEvent;

@@ -202,7 +202,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     }
     
     // And voila, all GPRs are free to reuse.
-    
+
     // Save all state from FPRs into the scratch buffer.
     
     for (size_t index = 0; index < operands.size(); ++index) {
@@ -245,7 +245,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             break;
         }
     }
-    
+
     // Need to ensure that the stack pointer accounts for the worst-case stack usage at exit. This
     // could toast some stack that the DFG used. We need to do it before storing to stack offsets
     // used by baseline.
@@ -254,12 +254,27 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             -m_jit.codeBlock()->jitCode()->dfgCommon()->requiredRegisterCountForExit * sizeof(Register)),
         CCallHelpers::framePointerRegister, CCallHelpers::stackPointerRegister);
     
+    // Restore the DFG callee saves and then save the ones the baseline JIT uses.
+    m_jit.emitRestoreCalleeSaves();
+    m_jit.emitSaveCalleeSavesFor(m_jit.baselineCodeBlock());
+
+    // The tag registers are needed to materialize recoveries below.
+    m_jit.emitMaterializeTagCheckRegisters();
+
+    if (exit.m_isExceptionHandler)
+        m_jit.copyCalleeSavesToVMCalleeSavesBuffer();
+
     // Do all data format conversions and store the results into the stack.
     
     for (size_t index = 0; index < operands.size(); ++index) {
         const ValueRecovery& recovery = operands[index];
-        int operand = operands.operandForIndex(index);
-        
+        VirtualRegister reg = operands.virtualRegisterForIndex(index);
+
+        if (reg.isLocal() && reg.toLocal() < static_cast<int>(m_jit.baselineCodeBlock()->calleeSaveSpaceAsVirtualRegisters()))
+            continue;
+
+        int operand = reg.offset();
+
         switch (recovery.technique()) {
         case InGPR:
         case UnboxedCellInGPR:
@@ -320,7 +335,7 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             break;
         }
     }
-    
+
     // Now that things on the stack are recovered, do the arguments recovery. We assume that arguments
     // recoveries don't recursively refer to each other. But, we don't try to assume that they only
     // refer to certain ranges of locals. Hence why we need to do this here, once the stack is sensible.
@@ -370,9 +385,9 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     // Reify inlined call frames.
     
     reifyInlinedCallFrames(m_jit, exit);
-    
+
     // And finish.
-    adjustAndJumpToTarget(m_jit, exit);
+    adjustAndJumpToTarget(m_jit, exit, exit.m_isExceptionHandler);
 }
 
 } } // namespace JSC::DFG

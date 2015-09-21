@@ -66,7 +66,6 @@ namespace JSC {
 
     struct Instruction;
     struct OperandTypes;
-    struct PolymorphicAccessStructureList;
     struct SimpleJumpTable;
     struct StringJumpTable;
     struct StructureStubInfo;
@@ -180,10 +179,7 @@ namespace JSC {
         CallLinkInfo* callLinkInfo;
     };
 
-    // Near calls can only be patched to other JIT code, regular calls can be patched to JIT code or relinked to stub functions.
-    void ctiPatchNearCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction);
-    void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, MacroAssemblerCodePtr newCalleeFunction);
-    void ctiPatchCallByReturnAddress(CodeBlock* codeblock, ReturnAddressPtr returnAddress, FunctionPtr newCalleeFunction);
+    void ctiPatchCallByReturnAddress(ReturnAddressPtr, FunctionPtr newCalleeFunction);
 
     class JIT : private JSInterfaceJIT {
         friend class JITSlowPathCall;
@@ -491,8 +487,10 @@ namespace JSC {
         void emit_op_bitor(Instruction*);
         void emit_op_bitxor(Instruction*);
         void emit_op_call(Instruction*);
+        void emit_op_tail_call(Instruction*);
         void emit_op_call_eval(Instruction*);
         void emit_op_call_varargs(Instruction*);
+        void emit_op_tail_call_varargs(Instruction*);
         void emit_op_construct_varargs(Instruction*);
         void emit_op_catch(Instruction*);
         void emit_op_construct(Instruction*);
@@ -570,6 +568,8 @@ namespace JSC {
         void emit_op_put_getter_by_id(Instruction*);
         void emit_op_put_setter_by_id(Instruction*);
         void emit_op_put_getter_setter(Instruction*);
+        void emit_op_put_getter_by_val(Instruction*);
+        void emit_op_put_setter_by_val(Instruction*);
         void emit_op_ret(Instruction*);
         void emit_op_rshift(Instruction*);
         void emit_op_strcat(Instruction*);
@@ -602,8 +602,10 @@ namespace JSC {
         void emitSlow_op_bitor(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_bitxor(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_call(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_tail_call(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_call_eval(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_call_varargs(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_tail_call_varargs(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_construct_varargs(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_construct(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_to_this(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -670,11 +672,19 @@ namespace JSC {
         void emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, unsigned depth);
         void emitLoadWithStructureCheck(int scope, Structure** structureSlot);
         void emitGetGlobalProperty(uintptr_t* operandSlot);
-        void emitGetGlobalVar(uintptr_t operand);
+#if USE(JSVALUE64)
+        void emitGetVarFromPointer(JSValue* operand, GPRReg);
+        void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg);
+#else
+        void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg tag, GPRReg payload);
+        void emitGetVarFromPointer(JSValue* operand, GPRReg tag, GPRReg payload);
+#endif
         void emitGetClosureVar(int scope, uintptr_t operand);
         void emitPutGlobalProperty(uintptr_t* operandSlot, int value);
         void emitNotifyWrite(WatchpointSet*);
-        void emitPutGlobalVar(uintptr_t operand, int value, WatchpointSet*);
+        void emitNotifyWrite(GPRReg pointerToSet);
+        void emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet*);
+        void emitPutGlobalVariableIndirect(JSValue** addressOfOperand, int value, WatchpointSet**);
         void emitPutClosureVar(int scope, uintptr_t operand, int value, WatchpointSet*);
 
         void emitInitRegister(int dst);
@@ -761,10 +771,12 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_ECC, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECIZC, RegisterID, const Identifier*, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ECIZCC, RegisterID, const Identifier*, int32_t, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_ECJZC, RegisterID, RegisterID, RegisterID, int32_t, RegisterID);
         MacroAssembler::Call callOperation(J_JITOperation_EE, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EZSymtabJ, int, SymbolTable*, RegisterID);
         MacroAssembler::Call callOperation(J_JITOperation_EZSymtabJ, int, SymbolTable*, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EJ, RegisterID);
+        MacroAssembler::Call callOperationNoExceptionCheck(Z_JITOperation_E);
 #if USE(JSVALUE64)
         MacroAssembler::Call callOperationNoExceptionCheck(V_JITOperation_EJ, RegisterID);
 #else
@@ -772,6 +784,7 @@ namespace JSC {
 #endif
         MacroAssembler::Call callOperation(V_JITOperation_EJIdZJ, RegisterID, const Identifier*, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_EJIdZJJ, RegisterID, const Identifier*, int32_t, RegisterID, RegisterID);
+        MacroAssembler::Call callOperation(V_JITOperation_EJJZJ, RegisterID, RegisterID, int32_t, RegisterID);
 #if USE(JSVALUE64)
         MacroAssembler::Call callOperation(F_JITOperation_EFJZZ, RegisterID, RegisterID, int32_t, RegisterID);
         MacroAssembler::Call callOperation(V_JITOperation_ESsiJJI, StructureStubInfo*, RegisterID, RegisterID, UniquedStringImpl*);
@@ -816,6 +829,7 @@ namespace JSC {
         void updateTopCallFrame();
 
         Call emitNakedCall(CodePtr function = CodePtr());
+        Call emitNakedTailCall(CodePtr function = CodePtr());
 
         // Loads the character value of a single character string into dst.
         void emitLoadCharacterString(RegisterID src, RegisterID dst, JumpList& failures);

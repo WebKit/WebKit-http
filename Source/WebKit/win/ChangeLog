@@ -1,3 +1,206 @@
+2015-09-18  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use tiled drawing for main background layer
+        https://bugs.webkit.org/show_bug.cgi?id=149347
+        <rdar://problem/22759632>
+
+        Reviewed by Alex Christensen.
+
+        Instruct WebCore to use tiled drawing for the root layer
+        of the display.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::shouldUseTiledBackingForFrameView): Added.
+        * WebCoreSupport/WebChromeClient.h:
+
+2015-09-17  Brian Burg  <bburg@apple.com>
+
+        ASSERT(!m_frontendRouter->hasLocalFrontend()) when running Web Inspector tests
+        https://bugs.webkit.org/show_bug.cgi?id=149006
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::destroyInspectorView):
+
+            Disconnect the FrontendClient from the frontend page's inspector controller.
+            Do this teardown before releasing the frontend, otherwise we can't use it.
+
+        (WebInspectorFrontendClient::onClose):
+        (WebInspectorClient::inspectedPageDestroyed): Deleted.
+        (WebInspectorClient::closeLocalFrontend): Deleted.
+        * WebCoreSupport/WebInspectorClient.h: Drive-by cleanup for class declarations.
+        * WebInspector.cpp:
+        (WebInspector::close):
+
+            Go through the frontend instead of InspectorController.
+
+2015-09-17  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win][HighDPI] Windowed plugins have incorrect placement.
+        https://bugs.webkit.org/show_bug.cgi?id=149090
+
+        Reviewed by Alex Christensen.
+
+        We have to scale plugin dimensions with device scale factor.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::windowClipRect):
+        * Plugins/PluginView.h:
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::updatePluginWidget):
+        (WebCore::PluginView::setNPWindowRect):
+        (WebCore::PluginView::snapshot):
+        (WebCore::PluginView::deviceScaleFactor):
+
+2015-09-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Provide a means for viewing the layer tree
+        https://bugs.webkit.org/show_bug.cgi?id=149165
+
+        Reviewed by Simon Fraser.
+
+        Add a new WebView method "printLayerTree" so that clients
+        can get a string dump of the current layer tree. Add this
+        to a new COM interface version so no existing clients break
+        compatibility.
+        
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::QueryInterface): Recognize the new interface version.
+        (WebView::printLayerTree): Added. This just calls the WebCore
+        implementation.
+        * WebView.h:
+
+2015-09-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: disambiguate inspected/frontend controllers and pages in backend code
+        https://bugs.webkit.org/show_bug.cgi?id=149071
+
+        Reviewed by Joseph Pecoraro.
+
+        Be consistent about prefixing pages, inspector controllers, and window controllers
+        with either "frontend" or "inspected", as appropriate. This change makes obvious some bugs
+        in the frontend connection code, which are tracked by https://webkit.org/b/149006.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::inspectedPageDestroyed): Renamed.
+        (WebInspectorClient::openLocalFrontend): Renamed.
+        (WebInspectorClient::closeLocalFrontend): Renamed.
+        (WebInspectorClient::inspectorDestroyed): Deleted.
+        (WebInspectorClient::openInspectorFrontend): Deleted.
+        (WebInspectorClient::closeInspectorFrontend): Deleted.
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebInspector.cpp:
+        (WebInspector::createInstance):
+        (WebInspector::WebInspector):
+        (WebInspector::inspectedWebViewClosed): Renamed.
+        (WebInspector::show):
+        (WebInspector::close):
+        (WebInspector::isJavaScriptProfilingEnabled):
+        (WebInspector::setJavaScriptProfilingEnabled):
+        (WebInspector::evaluateInFrontend):
+        (WebInspector::webViewClosed): Deleted.
+        * WebInspector.h:
+        * WebView.cpp:
+        (WebView::close):
+
+2015-09-08  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Implement DOMNode::attributes.
+        https://bugs.webkit.org/show_bug.cgi?id=148747
+
+        Reviewed by Brent Fulgham.
+
+        * DOMCoreClasses.cpp:
+        (DOMNode::attributes):
+        (DOMNode::ownerDocument):
+        (DOMRange::detach):
+        (DOMNamedNodeMap::DOMNamedNodeMap):
+        (DOMNamedNodeMap::~DOMNamedNodeMap):
+        (DOMNamedNodeMap::createInstance):
+        (DOMNamedNodeMap::QueryInterface):
+        (DOMNamedNodeMap::getNamedItem):
+        (DOMNamedNodeMap::setNamedItem):
+        (DOMNamedNodeMap::removeNamedItem):
+        (DOMNamedNodeMap::item):
+        (DOMNamedNodeMap::length):
+        (DOMNamedNodeMap::getNamedItemNS):
+        (DOMNamedNodeMap::setNamedItemNS):
+        (DOMNamedNodeMap::removeNamedItemNS):
+        * DOMCoreClasses.h:
+        (DOMNamedNodeMap::AddRef):
+        (DOMNamedNodeMap::Release):
+        (DOMNamedNodeMap::throwException):
+        (DOMNamedNodeMap::callWebScriptMethod):
+        (DOMNamedNodeMap::evaluateWebScript):
+        (DOMNamedNodeMap::removeWebScriptKey):
+        (DOMNamedNodeMap::stringRepresentation):
+        (DOMNamedNodeMap::webScriptValueAtIndex):
+        (DOMNamedNodeMap::setWebScriptValueAtIndex):
+        (DOMNamedNodeMap::setException):
+
+2015-09-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: agents should send messages through FrontendRouter instead of FrontendChannel
+        https://bugs.webkit.org/show_bug.cgi?id=148492
+
+        Reviewed by Joseph Pecoraro.
+
+        Stop using InspectorForwarding.h.
+
+        * WebCoreSupport/WebInspectorClient.h:
+
+2015-09-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorController should support multiple frontend channels
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+
+        Reviewed by Joseph Pecoraro.
+
+        Remove the notifyInspectorController flag from closeWindow. Since InspectorClients
+        must now manually disconnect their FrontendChannel(s), we should always
+        perform the teardown that was guarded by this flag.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::closeInspectorFrontend):
+        (WebInspectorFrontendClient::~WebInspectorFrontendClient):
+        (WebInspectorFrontendClient::closeWindow):
+        (WebInspectorFrontendClient::destroyInspectorView):
+        * WebCoreSupport/WebInspectorClient.h:
+
+2015-09-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189338.
+        https://bugs.webkit.org/show_bug.cgi?id=148785
+
+        Caused tons of crashes (Requested by cdumez on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: InspectorController should support multiple
+        frontend channels"
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+        http://trac.webkit.org/changeset/189338
+
+2015-09-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: InspectorController should support multiple frontend channels
+        https://bugs.webkit.org/show_bug.cgi?id=148538
+
+        Reviewed by Joseph Pecoraro.
+
+        Remove the notifyInspectorController flag from closeWindow. Since InspectorClients
+        must now manually disconnect their FrontendChannel(s), we should always
+        perform the teardown that was guarded by this flag.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::closeInspectorFrontend):
+        (WebInspectorFrontendClient::~WebInspectorFrontendClient):
+        (WebInspectorFrontendClient::closeWindow):
+        (WebInspectorFrontendClient::destroyInspectorView):
+        * WebCoreSupport/WebInspectorClient.h:
+
 2015-09-02  Andreas Kling  <akling@apple.com>
 
         ScrollbarThemes should be returned by reference.

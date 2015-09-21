@@ -26,6 +26,7 @@
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
 #include "JSClassRef.h"
+#include "JSGlobalLexicalEnvironment.h"
 #include "JSProxy.h"
 #include "JSSegmentedVariableObject.h"
 #include "JSWeakObjectMapRefInternal.h"
@@ -169,6 +170,9 @@ struct GlobalObjectMethodTable {
 
     typedef JSInternalPromise* (*ModuleLoaderInstantiatePtr)(JSGlobalObject*, ExecState*, JSValue, JSValue);
     ModuleLoaderInstantiatePtr moduleLoaderInstantiate;
+
+    typedef JSValue (*ModuleLoaderEvaluatePtr)(JSGlobalObject*, ExecState*, JSValue, JSValue);
+    ModuleLoaderEvaluatePtr moduleLoaderEvaluate;
 };
 
 class JSGlobalObject : public JSSegmentedVariableObject {
@@ -193,6 +197,7 @@ protected:
 
     WriteBarrier<JSObject> m_globalThis;
 
+    WriteBarrier<JSGlobalLexicalEnvironment> m_globalLexicalEnvironment;
     WriteBarrier<JSObject> m_globalCallee;
     WriteBarrier<RegExpConstructor> m_regExpConstructor;
     WriteBarrier<ErrorConstructor> m_errorConstructor;
@@ -232,6 +237,7 @@ protected:
     WriteBarrier<Structure> m_withScopeStructure;
     WriteBarrier<Structure> m_strictEvalActivationStructure;
     WriteBarrier<Structure> m_lexicalEnvironmentStructure;
+    WriteBarrier<Structure> m_moduleEnvironmentStructure;
     WriteBarrier<Structure> m_directArgumentsStructure;
     WriteBarrier<Structure> m_scopedArgumentsStructure;
     WriteBarrier<Structure> m_outOfBandArgumentsStructure;
@@ -265,6 +271,7 @@ protected:
     WriteBarrier<Structure> m_iteratorResultStructure;
     WriteBarrier<Structure> m_regExpMatchesArrayStructure;
     WriteBarrier<Structure> m_moduleRecordStructure;
+    WriteBarrier<Structure> m_moduleNamespaceObjectStructure;
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_wasmModuleStructure;
 #endif
@@ -302,6 +309,12 @@ protected:
     std::unique_ptr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
     std::unique_ptr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
 #endif
+
+#if ENABLE(INTL)
+    HashSet<String> m_intlCollatorAvailableLocales;
+    HashSet<String> m_intlDateTimeFormatAvailableLocales;
+    HashSet<String> m_intlNumberFormatAvailableLocales;
+#endif // ENABLE(INTL)
 
     RefPtr<WatchpointSet> m_masqueradesAsUndefinedWatchpoint;
     RefPtr<WatchpointSet> m_havingABadTimeWatchpoint;
@@ -385,16 +398,15 @@ public:
     JS_EXPORT_PRIVATE static void defineSetter(JSObject*, ExecState*, PropertyName, JSObject* setterFunc, unsigned attributes);
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
-    // We use this in the code generator as we perform symbol table
-    // lookups prior to initializing the properties
-    bool symbolTableHasProperty(PropertyName);
-
     void addVar(ExecState* exec, const Identifier& propertyName)
     {
         if (!hasProperty(exec, propertyName))
             addGlobalVar(propertyName);
     }
     void addFunction(ExecState*, const Identifier&);
+
+    JSScope* globalScope() { return m_globalLexicalEnvironment.get(); }
+    JSGlobalLexicalEnvironment* globalLexicalEnvironment() { return m_globalLexicalEnvironment.get(); }
 
     // The following accessors return pristine values, even if a script 
     // replaces the global object's associated property.
@@ -449,6 +461,7 @@ public:
     Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
     Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
     Structure* activationStructure() const { return m_lexicalEnvironmentStructure.get(); }
+    Structure* moduleEnvironmentStructure() const { return m_moduleEnvironmentStructure.get(); }
     Structure* directArgumentsStructure() const { return m_directArgumentsStructure.get(); }
     Structure* scopedArgumentsStructure() const { return m_scopedArgumentsStructure.get(); }
     Structure* outOfBandArgumentsStructure() const { return m_outOfBandArgumentsStructure.get(); }
@@ -503,6 +516,7 @@ public:
     static ptrdiff_t iteratorResultStructureOffset() { return OBJECT_OFFSETOF(JSGlobalObject, m_iteratorResultStructure); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
     Structure* moduleRecordStructure() const { return m_moduleRecordStructure.get(); }
+    Structure* moduleNamespaceObjectStructure() const { return m_moduleNamespaceObjectStructure.get(); }
 #if ENABLE(WEBASSEMBLY)
     Structure* wasmModuleStructure() const { return m_wasmModuleStructure.get(); }
 #endif
@@ -519,6 +533,12 @@ public:
     Inspector::JSGlobalObjectInspectorController& inspectorController() const { return *m_inspectorController.get(); }
     JSGlobalObjectDebuggable& inspectorDebuggable() { return *m_inspectorDebuggable.get(); }
 #endif
+
+#if ENABLE(INTL)
+    const HashSet<String>& intlCollatorAvailableLocales();
+    const HashSet<String>& intlDateTimeFormatAvailableLocales();
+    const HashSet<String>& intlNumberFormatAvailableLocales();
+#endif // ENABLE(INTL)
 
     void setConsoleClient(ConsoleClient* consoleClient) { m_consoleClient = consoleClient; }
     ConsoleClient* consoleClient() const { return m_consoleClient; }
@@ -691,12 +711,6 @@ inline bool JSGlobalObject::hasOwnPropertyForWrite(ExecState* exec, PropertyName
         return true;
     bool slotIsWriteable;
     return symbolTableGet(this, propertyName, slot, slotIsWriteable);
-}
-
-inline bool JSGlobalObject::symbolTableHasProperty(PropertyName propertyName)
-{
-    SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.uid());
-    return !entry.isNull();
 }
 
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, unsigned initialLength = 0)

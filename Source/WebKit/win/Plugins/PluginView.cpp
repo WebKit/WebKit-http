@@ -127,7 +127,9 @@ IntRect PluginView::windowClipRect() const
     
     // Take our element and get the clip rect from the enclosing layer and frame view.
     FrameView* parentView = m_element->document().view();
-    clipRect.intersect(parentView->windowClipRectForFrameOwner(m_element, true));
+    IntRect windowClipRect = parentView->windowClipRectForFrameOwner(m_element, true);
+    windowClipRect.scale(deviceScaleFactor());
+    clipRect.intersect(windowClipRect);
 
     return clipRect;
 }
@@ -670,18 +672,18 @@ NPObject* PluginView::npObject()
 }
 #endif
 
-PassRefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
+RefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     NPObject* object = npObject();
     if (!object)
-        return 0;
+        return nullptr;
 
     if (hasOneRef()) {
         // The renderer for the PluginView was destroyed during the above call, and
         // the PluginView will be destroyed when this function returns, so we
         // return null.
-        return 0;
+        return nullptr;
     }
 
     RefPtr<JSC::Bindings::RootObject> root = m_parentFrame->script().createRootObject(this);
@@ -689,9 +691,9 @@ PassRefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
 
     _NPN_ReleaseObject(object);
 
-    return instance.release();
+    return instance;
 #else
-    return 0;
+    return nullptr;
 #endif
 }
 

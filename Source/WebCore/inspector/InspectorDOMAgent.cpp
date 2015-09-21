@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2009 Joseph Pecoraro
  *
@@ -64,6 +64,7 @@
 #include "HitTestResult.h"
 #include "InspectorHistory.h"
 #include "InspectorNodeFinder.h"
+#include "InspectorOverlay.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
@@ -201,9 +202,11 @@ String InspectorDOMAgent::toErrorString(const ExceptionCode& ec)
     return "";
 }
 
-InspectorDOMAgent::InspectorDOMAgent(InstrumentingAgents& instrumentingAgents, InspectorPageAgent* pageAgent, InjectedScriptManager& injectedScriptManager, InspectorOverlay* overlay)
-    : InspectorAgentBase(ASCIILiteral("DOM"), instrumentingAgents)
-    , m_injectedScriptManager(injectedScriptManager)
+InspectorDOMAgent::InspectorDOMAgent(WebAgentContext& context, InspectorPageAgent* pageAgent, InspectorOverlay* overlay)
+    : InspectorAgentBase(ASCIILiteral("DOM"), context)
+    , m_injectedScriptManager(context.injectedScriptManager)
+    , m_frontendDispatcher(std::make_unique<Inspector::DOMFrontendDispatcher>(context.frontendRouter))
+    , m_backendDispatcher(Inspector::DOMBackendDispatcher::create(context.backendDispatcher, this))
     , m_pageAgent(pageAgent)
     , m_overlay(overlay)
 {
@@ -215,16 +218,13 @@ InspectorDOMAgent::~InspectorDOMAgent()
     ASSERT(!m_searchingForNode);
 }
 
-void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* frontendChannel, Inspector::BackendDispatcher* backendDispatcher)
+void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_frontendDispatcher = std::make_unique<Inspector::DOMFrontendDispatcher>(frontendChannel);
-    m_backendDispatcher = Inspector::DOMBackendDispatcher::create(backendDispatcher, this);
-
     m_history = std::make_unique<InspectorHistory>();
     m_domEditor = std::make_unique<DOMEditor>(m_history.get());
 
     m_instrumentingAgents.setInspectorDOMAgent(this);
-    m_document = m_pageAgent->mainFrame()->document();
+    m_document = m_pageAgent->mainFrame().document();
 
     if (m_nodeToFocus)
         focusNode();
@@ -232,9 +232,6 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel* 
 
 void InspectorDOMAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_frontendDispatcher = nullptr;
-    m_backendDispatcher = nullptr;
-
     m_history.reset();
     m_domEditor.reset();
 
@@ -1115,15 +1112,15 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const Inspec
     if (!highlightConfig)
         return;
 
-    m_overlay->highlightNodeList(nodes, *highlightConfig);
+    m_overlay->highlightNodeList(WTF::move(nodes), *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorObject& highlightInspectorObject, const int* nodeId, const String* objectId)
 {
-    Node* node = 0;
-    if (nodeId) {
+    Node* node = nullptr;
+    if (nodeId)
         node = assertNode(errorString, *nodeId);
-    } else if (objectId) {
+    else if (objectId) {
         node = nodeForObjectId(*objectId);
         if (!node)
             errorString = ASCIILiteral("Node for given objectId not found");
@@ -1140,10 +1137,13 @@ void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorO
     m_overlay->highlightNode(node, *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightFrame(ErrorString&, const String& frameId, const InspectorObject* color, const InspectorObject* outlineColor)
+void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const InspectorObject* color, const InspectorObject* outlineColor)
 {
-    Frame* frame = m_pageAgent->frameForId(frameId);
-    if (frame && frame->ownerElement()) {
+    Frame* frame = m_pageAgent->assertFrame(errorString, frameId);
+    if (!frame)
+        return;
+
+    if (frame->ownerElement()) {
         auto highlightConfig = std::make_unique<HighlightConfig>();
         highlightConfig->showInfo = true; // Always show tooltips for frames.
         highlightConfig->content = parseColor(color);
@@ -1523,6 +1523,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
     auto checked = Inspector::Protocol::DOM::AccessibilityProperties::Checked::False;
     RefPtr<Inspector::Protocol::Array<int>> childNodeIds;
     RefPtr<Inspector::Protocol::Array<int>> controlledNodeIds;
+    auto currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::False;
     bool exists = false;
     bool expanded = false;
     bool disabled = false;
@@ -1586,6 +1587,31 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                     for (Element* controlledElement : controlledElements)
                         controlledNodeIds->addItem(pushNodePathToFrontend(controlledElement));
                 }
+            }
+            
+            switch (axObject->ariaCurrentState()) {
+            case ARIACurrentFalse:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::False;
+                break;
+            case ARIACurrentPage:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Page;
+                break;
+            case ARIACurrentStep:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Step;
+                break;
+            case ARIACurrentLocation:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Location;
+                break;
+            case ARIACurrentDate:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Date;
+                break;
+            case ARIACurrentTime:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Time;
+                break;
+            default:
+            case ARIACurrentTrue:
+                currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::True;
+                break;
             }
 
             disabled = !axObject->isEnabled(); 
@@ -1724,6 +1750,8 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
             value->setChildNodeIds(childNodeIds);
         if (controlledNodeIds)
             value->setControlledNodeIds(controlledNodeIds);
+        if (currentState != Inspector::Protocol::DOM::AccessibilityProperties::Current::False)
+            value->setCurrent(currentState);
         if (disabled)
             value->setDisabled(disabled);
         if (supportsExpanded)

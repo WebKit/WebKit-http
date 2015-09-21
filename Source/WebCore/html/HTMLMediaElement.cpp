@@ -1267,12 +1267,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
     LOG(Media, "HTMLMediaElement::loadResource(%p) - m_currentSrc -> %s", this, urlForLoggingMedia(m_currentSrc).utf8().data());
 
-#if ENABLE(MEDIA_STREAM)
-    if (MediaStreamRegistry::registry().lookup(url.string()))
-        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForRateChange);
-#endif
-
-    if (m_sendProgressEvents) 
+    if (m_sendProgressEvents)
         startProgressEventTimer();
 
     bool privateMode = document().page() && document().page()->usesEphemeralSession();
@@ -1292,6 +1287,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
     updateVolume();
 
+    bool loadAttempted = false;
 #if ENABLE(MEDIA_SOURCE)
     ASSERT(!m_mediaSource);
 
@@ -1307,14 +1303,24 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
             m_mediaSource = nullptr;
             mediaLoadingFailed(MediaPlayer::FormatError);
         }
-    } else
+        loadAttempted = true;
+    }
 #endif
+
 #if ENABLE(MEDIA_STREAM)
-        if (m_mediaStreamSrcObject)
-            m_player->load(m_mediaStreamSrcObject->privateStream());
-        else
+    if (!loadAttempted) {
+        if (!m_mediaStreamSrcObject && url.protocolIs(mediaStreamBlobProtocol))
+            m_mediaStreamSrcObject = MediaStream::lookUp(url);
+
+        if (m_mediaStreamSrcObject) {
+            loadAttempted = true;
+            if (!m_player->load(m_mediaStreamSrcObject->privateStream()))
+                mediaLoadingFailed(MediaPlayer::FormatError);
+        }
+    }
 #endif
-    if (!m_player->load(url, contentType, keySystem))
+
+    if (!loadAttempted && !m_player->load(url, contentType, keySystem))
         mediaLoadingFailed(MediaPlayer::FormatError);
 
     // If there is no poster to display, allow the media engine to render video frames as soon as
@@ -5031,9 +5037,10 @@ void HTMLMediaElement::wirelessRoutesAvailableDidChange()
 void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPlayer*)
 {
     LOG(Media, "HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(%p) - webkitCurrentPlaybackTargetIsWireless = %s", this, boolString(webkitCurrentPlaybackTargetIsWireless()));
-
+    ASSERT(m_player);
     configureMediaControls();
     scheduleEvent(eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent);
+    m_mediaSession->isPlayingToWirelessPlaybackTargetChanged(m_player->isCurrentPlaybackTargetWireless());
     updateMediaState(UpdateMediaState::Asynchronously);
 }
 
@@ -5045,13 +5052,13 @@ bool HTMLMediaElement::dispatchEvent(PassRefPtr<Event> prpEvent)
     return HTMLElement::dispatchEvent(event);
 }
 
-bool HTMLMediaElement::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
+bool HTMLMediaElement::addEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, bool useCapture)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
-        return Node::addEventListener(eventType, listener, useCapture);
+        return Node::addEventListener(eventType, WTF::move(listener), useCapture);
 
     bool isFirstAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
-    if (!Node::addEventListener(eventType, listener, useCapture))
+    if (!Node::addEventListener(eventType, WTF::move(listener), useCapture))
         return false;
 
     if (isFirstAvailabilityChangedListener) {
@@ -5647,6 +5654,10 @@ void HTMLMediaElement::createMediaPlayer()
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource)
         m_mediaSource->close();
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+    m_mediaStreamSrcObject = nullptr;
 #endif
 
 #if ENABLE(VIDEO_TRACK)

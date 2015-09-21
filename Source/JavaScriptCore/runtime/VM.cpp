@@ -30,7 +30,6 @@
 #include "VM.h"
 
 #include "ArgList.h"
-#include "ArityCheckFailReturnThunks.h"
 #include "ArrayBufferNeuteringWatchpoint.h"
 #include "BuiltinExecutables.h"
 #include "CodeBlock.h"
@@ -77,6 +76,7 @@
 #include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
+#include "RegisterAtOffsetList.h"
 #include "RuntimeType.h"
 #include "SimpleTypedArrayController.h"
 #include "SourceProviderCache.h"
@@ -253,7 +253,7 @@ VM::VM(VMType vmType, HeapType heapType)
 
 #if ENABLE(JIT)
     jitStubs = std::make_unique<JITThunks>();
-    arityCheckFailReturnThunks = std::make_unique<ArityCheckFailReturnThunks>();
+    allCalleeSaveRegisterOffsets = std::make_unique<RegisterAtOffsetList>(RegisterSet::vmCalleeSaveRegisters(), RegisterAtOffsetList::ZeroBased);
 #endif
     arityCheckData = std::make_unique<CommonSlowPaths::ArityCheckData>();
 
@@ -281,6 +281,8 @@ VM::VM(VMType vmType, HeapType heapType)
         pathOut.print("JSCProfile-", getCurrentProcessID(), "-", m_perBytecodeProfiler->databaseID(), ".json");
         m_perBytecodeProfiler->registerToSaveAtExit(pathOut.toCString().data());
     }
+
+    callFrameForCatch = nullptr;
 
 #if ENABLE(DFG_JIT)
     if (canUseJIT())
@@ -498,9 +500,6 @@ void VM::deleteAllCode()
     whenIdle([this]() {
         m_codeCache->clear();
         m_regExpCache->deleteAllCode();
-#if ENABLE(DFG_JIT)
-        DFG::completeAllPlansForVM(*this);
-#endif
         heap.deleteAllCodeBlocks();
         heap.deleteAllUnlinkedCodeBlocks();
         heap.reportAbandonedObjectGraph();
@@ -534,8 +533,11 @@ void VM::throwException(ExecState* exec, Exception* exception)
         dataLog("In call frame ", RawPointer(exec), " for code block ", *exec->codeBlock(), "\n");
         CRASH();
     }
-    
+
     ASSERT(exec == topCallFrame || exec == exec->lexicalGlobalObject()->globalExec() || exec == exec->vmEntryGlobalObject()->globalExec());
+
+    interpreter->notifyDebuggerOfExceptionToBeThrown(exec, exception);
+
     setException(exception);
 }
 

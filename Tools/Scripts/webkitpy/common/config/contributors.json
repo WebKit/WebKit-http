@@ -350,7 +350,7 @@
       },
       "Basile Clement" : {
         "emails" : [
-            "basile_clement@apple.com"
+            "cbasile06+webkit@gmail.com"
         ],
         "nicks" : [
             "elarnon"
@@ -724,6 +724,15 @@
          ],
          "nicks" : [
             "drousso"
+         ]
+      },
+      "Dewei Zhu" : {
+         "emails" : [
+            "dewei_zhu@apple.com"
+         ],
+         "expertise" : "Performance, Tools",
+         "nicks" : [
+            "Dewei"
          ]
       },
       "Dhi Aurrahman" : {
@@ -1293,6 +1302,14 @@
             "jasonliu"
          ]
       },
+      "Jason Marcell" : {
+         "emails" : [
+            "jmarcell@apple.com"
+         ],
+         "nicks" : [
+            "jmarcell"
+         ]
+      },
       "Javier Fernandez" : {
          "emails" : [
             "jfernandez@igalia.com"
@@ -1574,6 +1591,15 @@
          ],
          "nicks" : [
             "silverroots"
+         ]
+      },
+      "Keith Miller" : {
+         "emails" : [
+            "keith_miller@apple.com"
+         ],
+         "nicks" : [
+            "keith_miller",
+            "keith_miller_"
          ]
       },
       "Keishi Hattori" : {
@@ -2604,6 +2630,16 @@
          "expertise" : "The EFLWebKit port, Memory Leaks",
          "nicks" : [
             "babu"
+         ]
+      },
+      "Sukolsak Sakshuwong": {
+         "emails" : [
+            "ssakshuwong@apple.com",
+            "sukolsak@gmail.com"
+         ],
+         "expertise" : "JavaScript/ECMAScript, WebAssembly",
+         "nicks" : [
+            "sukol"
          ]
       },
       "Szilard Ledan-Muntean" : {

@@ -35,6 +35,10 @@ public:
     static Ref<WebDatabaseProvider> getOrCreate(uint64_t identifier);
     virtual ~WebDatabaseProvider();
 
+#if ENABLE(INDEXED_DATABASE)
+    virtual bool supportsModernIDB() const override { return false; }
+#endif
+
 private:
     explicit WebDatabaseProvider(uint64_t identifier);
 

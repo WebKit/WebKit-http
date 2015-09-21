@@ -33,6 +33,9 @@
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
+#if ENABLE(JIT)
+#include "GPRInfo.h"
+#endif
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "JITThunks.h"
@@ -72,7 +75,6 @@
 
 namespace JSC {
 
-class ArityCheckFailReturnThunks;
 class BuiltinExecutables;
 class CodeBlock;
 class CodeCache;
@@ -90,6 +92,7 @@ class LLIntOffsetsExtractor;
 class LegacyProfiler;
 class NativeExecutable;
 class RegExpCache;
+class RegisterAtOffsetList;
 class ScriptExecutable;
 class SourceProvider;
 class SourceProviderCache;
@@ -357,14 +360,26 @@ public:
     SourceProviderCacheMap sourceProviderCacheMap;
     Interpreter* interpreter;
 #if ENABLE(JIT)
+#if NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    intptr_t calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+
+    static ptrdiff_t calleeSaveRegistersBufferOffset()
+    {
+        return OBJECT_OFFSETOF(VM, calleeSaveRegistersBuffer);
+    }
+#endif // NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+
     std::unique_ptr<JITThunks> jitStubs;
     MacroAssemblerCodeRef getCTIStub(ThunkGenerator generator)
     {
         return jitStubs->ctiStub(this, generator);
     }
     NativeExecutable* getHostFunction(NativeFunction, Intrinsic);
+    
+    std::unique_ptr<RegisterAtOffsetList> allCalleeSaveRegisterOffsets;
+    
+    RegisterAtOffsetList* getAllCalleeSaveRegisterOffsets() { return allCalleeSaveRegisterOffsets.get(); }
 
-    std::unique_ptr<ArityCheckFailReturnThunks> arityCheckFailReturnThunks;
 #endif // ENABLE(JIT)
     std::unique_ptr<CommonSlowPaths::ArityCheckData> arityCheckData;
 #if ENABLE(FTL_JIT)
@@ -377,19 +392,9 @@ public:
         return OBJECT_OFFSETOF(VM, m_exception);
     }
 
-    static ptrdiff_t vmEntryFrameForThrowOffset()
+    static ptrdiff_t callFrameForCatchOffset()
     {
-        return OBJECT_OFFSETOF(VM, vmEntryFrameForThrow);
-    }
-
-    static ptrdiff_t topVMEntryFrameOffset()
-    {
-        return OBJECT_OFFSETOF(VM, topVMEntryFrame);
-    }
-
-    static ptrdiff_t callFrameForThrowOffset()
-    {
-        return OBJECT_OFFSETOF(VM, callFrameForThrow);
+        return OBJECT_OFFSETOF(VM, callFrameForCatch);
     }
 
     static ptrdiff_t targetMachinePCForThrowOffset()
@@ -397,14 +402,12 @@ public:
         return OBJECT_OFFSETOF(VM, targetMachinePCForThrow);
     }
 
+    void restorePreviousException(Exception* exception) { setException(exception); }
+
     void clearException() { m_exception = nullptr; }
     void clearLastException() { m_lastException = nullptr; }
 
-    void setException(Exception* exception)
-    {
-        m_exception = exception;
-        m_lastException = exception;
-    }
+    ExecState** addressOfCallFrameForCatch() { return &callFrameForCatch; }
 
     Exception* exception() const { return m_exception; }
     JSCell** addressOfException() { return reinterpret_cast<JSCell**>(&m_exception); }
@@ -451,8 +454,7 @@ public:
     JSValue hostCallReturnValue;
     unsigned varargsLength;
     ExecState* newCallFrameReturnValue;
-    VMEntryFrame* vmEntryFrameForThrow;
-    ExecState* callFrameForThrow;
+    ExecState* callFrameForCatch;
     void* targetMachinePCForThrow;
     Instruction* targetInterpreterPCForThrow;
     uint32_t osrExitIndex;
@@ -584,6 +586,12 @@ private:
     void createNativeThunk();
 
     void updateStackLimit();
+
+    void setException(Exception* exception)
+    {
+        m_exception = exception;
+        m_lastException = exception;
+    }
 
 #if ENABLE(ASSEMBLER)
     bool m_canUseAssembler;

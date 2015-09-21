@@ -1,3 +1,0 @@
-
-FAIL DOMTokenList stringifier assert_equals: String(classList) should compress whitespace expected "a b" but got "   a  a b"
-

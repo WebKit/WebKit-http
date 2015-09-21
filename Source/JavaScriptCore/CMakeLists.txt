@@ -80,6 +80,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CallEdge.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
+    bytecode/CallMode.cpp
     bytecode/CallVariant.cpp
     bytecode/CodeBlock.cpp
     bytecode/CodeBlockHash.cpp
@@ -87,6 +88,7 @@ set(JavaScriptCore_SOURCES
     bytecode/CodeOrigin.cpp
     bytecode/CodeType.cpp
     bytecode/ComplexGetStatus.cpp
+    bytecode/DataFormat.cpp
     bytecode/DFGExitProfile.cpp
     bytecode/DeferredCompilationCallback.cpp
     bytecode/DeferredSourceDump.cpp
@@ -103,10 +105,10 @@ set(JavaScriptCore_SOURCES
     bytecode/ObjectPropertyCondition.cpp
     bytecode/ObjectPropertyConditionSet.cpp
     bytecode/Opcode.cpp
-    bytecode/PolymorphicGetByIdList.cpp
-    bytecode/PolymorphicPutByIdList.cpp
+    bytecode/PolymorphicAccess.cpp
     bytecode/PreciseJumpTargets.cpp
     bytecode/PropertyCondition.cpp
+    bytecode/PutByIdFlags.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
     bytecode/ReduceWhitespace.cpp
@@ -183,6 +185,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFixupPhase.cpp
     dfg/DFGFlushFormat.cpp
     dfg/DFGFlushedAt.cpp
+    dfg/DFGLiveCatchVariablePreservationPhase.cpp
     dfg/DFGFrozenValue.cpp
     dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
@@ -203,6 +206,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGLivenessAnalysisPhase.cpp
     dfg/DFGLongLivedState.cpp
     dfg/DFGLoopPreHeaderCreationPhase.cpp
+    dfg/DFGMaximalFlushInsertionPhase.cpp
     dfg/DFGMayExit.cpp
     dfg/DFGMinifiedGraph.cpp
     dfg/DFGMinifiedNode.cpp
@@ -323,6 +327,7 @@ set(JavaScriptCore_SOURCES
     inspector/InjectedScriptManager.cpp
     inspector/InjectedScriptModule.cpp
     inspector/InspectorAgentRegistry.cpp
+    inspector/InspectorFrontendRouter.cpp
     inspector/InspectorBackendDispatcher.cpp
     inspector/InspectorValues.cpp
     inspector/JSGlobalObjectConsoleClient.cpp
@@ -354,10 +359,13 @@ set(JavaScriptCore_SOURCES
     interpreter/ProtoCallFrame.cpp
     interpreter/StackVisitor.cpp
 
-    jit/AccessorCallJITStubRoutine.cpp
-    jit/ArityCheckFailReturnThunks.cpp
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
+    jit/CachedRecovery.cpp
+    jit/CallFrameShuffleData.cpp
+    jit/CallFrameShuffler.cpp
+    jit/CallFrameShuffler32_64.cpp
+    jit/CallFrameShuffler64.cpp
     jit/ExecutableAllocationFuzz.cpp
     jit/ExecutableAllocator.cpp
     jit/ExecutableAllocatorFixedVMPool.cpp
@@ -383,7 +391,8 @@ set(JavaScriptCore_SOURCES
     jit/JITToDFGDeferredCompilationCallback.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
-    jit/RegisterPreservationWrapperGenerator.cpp
+    jit/RegisterAtOffset.cpp
+    jit/RegisterAtOffsetList.cpp
     jit/RegisterSet.cpp
     jit/Repatch.cpp
     jit/ScratchRegisterAllocator.cpp
@@ -525,6 +534,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSDateMath.cpp
     runtime/JSEnvironmentRecord.cpp
     runtime/JSFunction.cpp
+    runtime/JSGlobalLexicalEnvironment.cpp
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
@@ -537,6 +547,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSLock.cpp
     runtime/JSMap.cpp
     runtime/JSMapIterator.cpp
+    runtime/JSModuleEnvironment.cpp
+    runtime/JSModuleNamespaceObject.cpp
     runtime/JSModuleRecord.cpp
     runtime/JSNativeStdFunction.cpp
     runtime/JSNotAnObject.cpp
@@ -898,7 +910,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLOperations.cpp
         ftl/FTLOutput.cpp
         ftl/FTLRecoveryOpcode.cpp
-        ftl/FTLRegisterAtOffset.cpp
         ftl/FTLSaveRestore.cpp
         ftl/FTLSlowPathCall.cpp
         ftl/FTLSlowPathCallKey.cpp
@@ -906,7 +917,6 @@ if (ENABLE_FTL_JIT)
         ftl/FTLState.cpp
         ftl/FTLThunks.cpp
         ftl/FTLUnwindInfo.cpp
-        ftl/FTLValueFormat.cpp
         ftl/FTLValueRange.cpp
 
         llvm/InitializeLLVM.cpp
@@ -947,6 +957,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     llint
     parser
     profiler
+    replay
     runtime
     yarr
 
@@ -1056,10 +1067,29 @@ add_custom_command(
     VERBATIM)
 
 # JSCBuiltins
+set(JavaScriptCore_BUILTINS_SOURCES
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ArrayIterator.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Array.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Function.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/GlobalObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/InspectorInstrumentationObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/InternalPromiseConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Iterator.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoaderObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Operations.Promise.js
+    ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/Promise.prototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringIterator.prototype.js
+)
+
 add_custom_command(
    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
-   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/builtins
+   DEPENDS ${JavaScriptCore_BUILTINS_SOURCES}
    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins --input-directory ${CMAKE_CURRENT_SOURCE_DIR}/builtins --output ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
    VERBATIM)
 

@@ -1,6 +1,7 @@
 /*
 * Copyright (C) 2012 Google Inc. All rights reserved.
 * Copyright (C) 2014 University of Washington.
+* Copyright (C) 2015 Apple Inc. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -51,9 +52,7 @@ namespace WebCore {
 class Event;
 class FloatQuad;
 class Frame;
-class InspectorClient;
 class InspectorPageAgent;
-class InstrumentingAgents;
 class IntRect;
 class URL;
 class Page;
@@ -117,10 +116,10 @@ class InspectorTimelineAgent final
 public:
     enum InspectorType { PageInspector, WorkerInspector };
 
-    InspectorTimelineAgent(InstrumentingAgents&, InspectorPageAgent*, InspectorType, InspectorClient*);
+    InspectorTimelineAgent(WebAgentContext&, InspectorPageAgent*, InspectorType);
     virtual ~InspectorTimelineAgent();
 
-    virtual void didCreateFrontendAndBackend(Inspector::FrontendChannel*, Inspector::BackendDispatcher*) override;
+    virtual void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     virtual void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
 
     virtual void start(ErrorString&, const int* maxCallStackDepth = nullptr) override;
@@ -134,7 +133,7 @@ public:
 
     // Methods called from WebCore.
     void startFromConsole(JSC::ExecState*, const String &title);
-    PassRefPtr<JSC::Profile> stopFromConsole(JSC::ExecState*, const String& title);
+    RefPtr<JSC::Profile> stopFromConsole(JSC::ExecState*, const String& title);
 
     // InspectorInstrumentation callbacks.
     void didInstallTimer(int timerId, int timeout, bool singleShot, Frame*);
@@ -198,8 +197,11 @@ private:
     struct TimelineRecordEntry {
         TimelineRecordEntry()
             : type(TimelineRecordType::EventDispatch) { }
-        TimelineRecordEntry(PassRefPtr<Inspector::InspectorObject> record, PassRefPtr<Inspector::InspectorObject> data, PassRefPtr<Inspector::InspectorArray> children, TimelineRecordType type)
-            : record(record), data(data), children(children), type(type)
+        TimelineRecordEntry(RefPtr<Inspector::InspectorObject>&& record, RefPtr<Inspector::InspectorObject>&& data, RefPtr<Inspector::InspectorArray>&& children, TimelineRecordType type)
+            : record(WTF::move(record))
+            , data(WTF::move(data))
+            , children(WTF::move(children))
+            , type(type)
         {
         }
 
@@ -229,14 +231,12 @@ private:
     void clearRecordStack();
 
     void localToPageQuad(const RenderObject&, const LayoutRect&, FloatQuad*);
-    Page* page();
 
     std::unique_ptr<Inspector::TimelineFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::TimelineBackendDispatcher> m_backendDispatcher;
     InspectorPageAgent* m_pageAgent;
 
     PageScriptDebugServer* m_scriptDebugServer { nullptr };
-    InspectorClient* m_client { nullptr };
 
     Vector<TimelineRecordEntry> m_recordStack;
     int m_id { 1 };

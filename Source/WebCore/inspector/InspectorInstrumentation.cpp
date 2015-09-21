@@ -112,7 +112,7 @@ void InspectorInstrumentation::didClearWindowObjectInWorldImpl(InstrumentingAgen
     if (pageAgent)
         pageAgent->didClearWindowObjectInWorld(&frame, world);
     if (PageDebuggerAgent* debuggerAgent = instrumentingAgents.pageDebuggerAgent()) {
-        if (pageAgent && &world == &mainThreadNormalWorld() && &frame == pageAgent->mainFrame())
+        if (pageAgent && &world == &mainThreadNormalWorld() && &frame == &pageAgent->mainFrame())
             debuggerAgent->didClearMainFrameWindowObject();
     }
     if (PageRuntimeAgent* pageRuntimeAgent = instrumentingAgents.pageRuntimeAgent()) {
@@ -798,6 +798,9 @@ void InspectorInstrumentation::didCommitLoadImpl(InstrumentingAgents& instrument
 
         if (InspectorLayerTreeAgent* layerTreeAgent = instrumentingAgents.inspectorLayerTreeAgent())
             layerTreeAgent->reset();
+
+        if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+            pageDebuggerAgent->mainFrameNavigated();
     }
 
     if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
@@ -828,12 +831,22 @@ void InspectorInstrumentation::loaderDetachedFromFrameImpl(InstrumentingAgents& 
 
 void InspectorInstrumentation::frameStartedLoadingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
 {
+    if (frame.isMainFrame()) {
+        if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+            pageDebuggerAgent->mainFrameStartedLoading();
+    }
+
     if (InspectorPageAgent* inspectorPageAgent = instrumentingAgents.inspectorPageAgent())
         inspectorPageAgent->frameStartedLoading(frame);
 }
 
 void InspectorInstrumentation::frameStoppedLoadingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
 {
+    if (frame.isMainFrame()) {
+        if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
+            pageDebuggerAgent->mainFrameStoppedLoading();
+    }
+
     if (InspectorPageAgent* inspectorPageAgent = instrumentingAgents.inspectorPageAgent())
         inspectorPageAgent->frameStoppedLoading(frame);
 }
@@ -960,7 +973,7 @@ void InspectorInstrumentation::didOpenDatabaseImpl(InstrumentingAgents& instrume
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
     if (InspectorDatabaseAgent* dbAgent = instrumentingAgents.inspectorDatabaseAgent())
-        dbAgent->didOpenDatabase(database, domain, name, version);
+        dbAgent->didOpenDatabase(WTF::move(database), domain, name, version);
 }
 
 void InspectorInstrumentation::didDispatchDOMStorageEventImpl(InstrumentingAgents& instrumentingAgents, const String& key, const String& oldValue, const String& newValue, StorageType storageType, SecurityOrigin* securityOrigin, Page* page)

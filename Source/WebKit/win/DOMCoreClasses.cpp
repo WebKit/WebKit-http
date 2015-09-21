@@ -47,6 +47,7 @@
 #include <WebCore/HTMLOptionElement.h>
 #include <WebCore/HTMLSelectElement.h>
 #include <WebCore/HTMLTextAreaElement.h>
+#include <WebCore/NamedNodeMap.h>
 #include <WebCore/NodeList.h>
 #include <WebCore/Range.h>
 #include <WebCore/RenderElement.h>
@@ -65,7 +66,6 @@ using WTF::AtomicString;
 using WebCore::BString;
 using WebCore::Element;
 using WebCore::ExceptionCode;
-using WebCore::FontDescription;
 using WebCore::Frame;
 using WebCore::IntRect;
 using WTF::String;
@@ -212,11 +212,13 @@ HRESULT DOMNode::nextSibling(_COM_Outptr_opt_ IDOMNode** result)
 
 HRESULT DOMNode::attributes(_COM_Outptr_opt_ IDOMNamedNodeMap** result)
 {
-    ASSERT_NOT_REACHED();
     if (!result)
         return E_POINTER;
     *result = nullptr;
-    return E_NOTIMPL;
+    if (!m_node)
+        return E_FAIL;
+    *result = DOMNamedNodeMap::createInstance(m_node->attributes());
+    return *result ? S_OK : E_FAIL;
 }
 
 HRESULT DOMNode::ownerDocument(_COM_Outptr_opt_ IDOMDocument** result)
@@ -1264,7 +1266,7 @@ HRESULT DOMElement::font(_Out_ WebFontDescription* webFontDescription)
     if (!renderer)
         return E_FAIL;
 
-    FontDescription fontDescription = renderer->style().fontCascade().fontDescription();
+    auto fontDescription = renderer->style().fontCascade().fontDescription();
     AtomicString family = fontDescription.firstFamily();
 
     // FIXME: This leaks. Delete this whole function to get rid of the leak.
@@ -1793,5 +1795,91 @@ HRESULT DOMRange::toString(__deref_opt_out BSTR* str)
 HRESULT DOMRange::detach()
 {
     ASSERT_NOT_REACHED();
+    return E_NOTIMPL;
+}
+
+DOMNamedNodeMap::DOMNamedNodeMap(WebCore::NamedNodeMap* nodeMap)
+    : m_nodeMap(nodeMap)
+{
+}
+
+DOMNamedNodeMap::~DOMNamedNodeMap()
+{
+}
+
+IDOMNamedNodeMap* DOMNamedNodeMap::createInstance(WebCore::NamedNodeMap* nodeMap)
+{
+    if (!nodeMap)
+        return nullptr;
+
+    DOMNamedNodeMap* namedNodeMap = new DOMNamedNodeMap(nodeMap);
+
+    IDOMNamedNodeMap* domNamedNodeMap = nullptr;
+    if (FAILED(namedNodeMap->QueryInterface(IID_IDOMNamedNodeMap, reinterpret_cast<void**>(&domNamedNodeMap))))
+        return nullptr;
+
+    return namedNodeMap;
+}
+
+HRESULT DOMNamedNodeMap::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
+{
+    *ppvObject = nullptr;
+    if (IsEqualGUID(riid, IID_IDOMNamedNodeMap))
+        *ppvObject = static_cast<IDOMNamedNodeMap*>(this);
+    else
+        return DOMObject::QueryInterface(riid, ppvObject);
+
+    AddRef();
+    return S_OK;
+}
+
+HRESULT DOMNamedNodeMap::getNamedItem(_In_ BSTR name, _COM_Outptr_opt_ IDOMNode** result)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT DOMNamedNodeMap::setNamedItem(_In_opt_ IDOMNode* arg, _COM_Outptr_opt_ IDOMNode** result)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT DOMNamedNodeMap::removeNamedItem(_In_ BSTR name, _COM_Outptr_opt_ IDOMNode** result)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT DOMNamedNodeMap::item(_In_ UINT index, _COM_Outptr_opt_ IDOMNode** result)
+{
+    if (!result)
+        return E_POINTER;
+    
+    if (!m_nodeMap)
+        return E_FAIL;
+
+    *result = DOMNode::createInstance(m_nodeMap->item(index).get());
+    return *result ? S_OK : E_FAIL;
+}
+
+HRESULT DOMNamedNodeMap::length(_Out_opt_ UINT* result)
+{
+    if (!result)
+        return E_POINTER;
+
+    *result = m_nodeMap->length();
+    return S_OK;
+}
+
+HRESULT DOMNamedNodeMap::getNamedItemNS(_In_ BSTR namespaceURI, _In_ BSTR localName, _COM_Outptr_opt_ IDOMNode** result)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT DOMNamedNodeMap::setNamedItemNS(_In_opt_ IDOMNode* arg, _COM_Outptr_opt_ IDOMNode** result)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT DOMNamedNodeMap::removeNamedItemNS(_In_ BSTR namespaceURI, _In_ BSTR localName, _COM_Outptr_opt_ IDOMNode** result)
+{
     return E_NOTIMPL;
 }

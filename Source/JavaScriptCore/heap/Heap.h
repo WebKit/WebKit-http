@@ -197,7 +197,6 @@ public:
 
     void willStartIterating();
     void didFinishIterating();
-    void getConservativeRegisterRoots(HashSet<JSCell*>& roots);
 
     double lastFullGCLength() const { return m_lastFullGCLength; }
     double lastEdenGCLength() const { return m_lastEdenGCLength; }
@@ -269,8 +268,8 @@ private:
 
     static const size_t minExtraMemory = 256;
     
-    class FinalizerOwner : public WeakHandleOwner {
-        virtual void finalize(Handle<Unknown>, void* context) override;
+    class FinalizerOwner final : public WeakHandleOwner {
+        void finalize(JSCell*&, void* context) override;
     };
 
     JS_EXPORT_PRIVATE bool isValidAllocation(size_t);
@@ -281,7 +280,6 @@ private:
 
     void suspendCompilerThreads();
     void willStartCollection(HeapOperation collectionType);
-    void deleteOldCode(double gcStartTime);
     void flushOldStructureIDTables();
     void flushWriteBarrierBuffer();
     void stopAllocation();
@@ -388,7 +386,6 @@ private:
     VM* m_vm;
     double m_lastFullGCLength;
     double m_lastEdenGCLength;
-    double m_lastCodeDiscardTime;
 
     Vector<ExecutableBase*> m_executables;
 

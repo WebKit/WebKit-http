@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,7 +70,7 @@ WebInspector::~WebInspector()
 }
 
 // Called from WebInspectorClient
-void WebInspector::createInspectorPage(bool underTest)
+void WebInspector::openFrontendConnection(bool underTest)
 {
 #if OS(DARWIN)
     mach_port_t listeningPort;
@@ -93,7 +93,7 @@ void WebInspector::createInspectorPage(bool underTest)
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::CreateInspectorPage(connectionClientPort, canAttachWindow(), underTest), m_page->pageID());
 }
 
-void WebInspector::closeFrontend()
+void WebInspector::closeFrontendConnection()
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::DidClose(), m_page->pageID());
 
@@ -126,7 +126,12 @@ void WebInspector::close()
     if (!m_page->corePage())
         return;
 
-    m_page->corePage()->inspectorController().close();
+    // Close could be called multiple times during teardown.
+    if (!m_frontendConnection)
+        return;
+
+    m_page->corePage()->inspectorController().disconnectFrontend(this);
+    closeFrontendConnection();
 }
 
 void WebInspector::openInNewTab(const String& urlString)
@@ -262,8 +267,7 @@ void WebInspector::remoteFrontendConnected()
 {
     if (m_page->corePage()) {
         m_remoteFrontendConnected = true;
-        bool isAutomaticInspection = false;
-        m_page->corePage()->inspectorController().connectFrontend(this, isAutomaticInspection);
+        m_page->corePage()->inspectorController().connectFrontend(this);
     }
 }
 
@@ -272,7 +276,7 @@ void WebInspector::remoteFrontendDisconnected()
     m_remoteFrontendConnected = false;
 
     if (m_page->corePage())
-        m_page->corePage()->inspectorController().disconnectFrontend(Inspector::DisconnectReason::InspectorDestroyed);
+        m_page->corePage()->inspectorController().disconnectFrontend(this);
 }
 #endif
 

@@ -203,7 +203,7 @@ public:
     void updateFont();
     void initializeFontStyle(Settings*);
 
-    void setFontSize(FontDescription&, float size);
+    void setFontSize(FontCascadeDescription&, float size);
 
 public:
     bool useSVGZoomRules();
@@ -392,9 +392,9 @@ public:
         FillLayer backgroundData() const { return m_backgroundData; }
         Color backgroundColor() const { return m_backgroundColor; }
 
-        const FontDescription& fontDescription() { return m_style->fontDescription(); }
-        const FontDescription& parentFontDescription() { return m_parentStyle->fontDescription(); }
-        void setFontDescription(const FontDescription& fontDescription) { m_fontDirty |= m_style->setFontDescription(fontDescription); }
+        const FontCascadeDescription& fontDescription() { return m_style->fontDescription(); }
+        const FontCascadeDescription& parentFontDescription() { return m_parentStyle->fontDescription(); }
+        void setFontDescription(const FontCascadeDescription& fontDescription) { m_fontDirty |= m_style->setFontDescription(fontDescription); }
         void setZoom(float f) { m_fontDirty |= m_style->setZoom(f); }
         void setEffectiveZoom(float f) { m_fontDirty |= m_style->setEffectiveZoom(f); }
         void setWritingMode(WritingMode writingMode) { m_fontDirty |= m_style->setWritingMode(writingMode); }
@@ -455,9 +455,9 @@ public:
 
     CSSToStyleMap* styleMap() { return &m_styleMap; }
     InspectorCSSOMWrappers& inspectorCSSOMWrappers() { return m_inspectorCSSOMWrappers; }
-    const FontDescription& fontDescription() { return m_state.fontDescription(); }
-    const FontDescription& parentFontDescription() { return m_state.parentFontDescription(); }
-    void setFontDescription(const FontDescription& fontDescription) { m_state.setFontDescription(fontDescription); }
+    const FontCascadeDescription& fontDescription() { return m_state.fontDescription(); }
+    const FontCascadeDescription& parentFontDescription() { return m_state.parentFontDescription(); }
+    void setFontDescription(const FontCascadeDescription& fontDescription) { m_state.setFontDescription(fontDescription); }
     void setZoom(float f) { m_state.setZoom(f); }
     void setEffectiveZoom(float f) { m_state.setEffectiveZoom(f); }
     void setWritingMode(WritingMode writingMode) { m_state.setWritingMode(writingMode); }
@@ -578,7 +578,7 @@ public:
     {
         if (m_pushedStyleResolver)
             return;
-        m_pushedStyleResolver = &m_parent->document().ensureStyleResolver();
+        m_pushedStyleResolver = &m_parent->styleResolver();
         m_pushedStyleResolver->pushParentElement(m_parent);
     }
     ~StyleResolverParentPusher()
@@ -587,9 +587,7 @@ public:
             return;
         // This tells us that our pushed style selector is in a bad state,
         // so we should just bail out in that scenario.
-        ASSERT(m_pushedStyleResolver == &m_parent->document().ensureStyleResolver());
-        if (m_pushedStyleResolver != &m_parent->document().ensureStyleResolver())
-            return;
+        ASSERT(m_pushedStyleResolver == &m_parent->styleResolver());
         m_pushedStyleResolver->popParentElement(m_parent);
     }
     
