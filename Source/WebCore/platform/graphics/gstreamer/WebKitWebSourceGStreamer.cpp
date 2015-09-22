@@ -1153,7 +1153,13 @@ char* CachedResourceStreamingClient::getOrCreateReadBuffer(size_t requestedSize,
 
 void CachedResourceStreamingClient::responseReceived(const ResourceResponse& response)
 {
+    if (!m_src)
+        return;
+
     WebKitWebSrcPrivate* priv = WEBKIT_WEB_SRC(m_src)->priv;
+    if (!priv || !priv->loader)
+        return;
+
     priv->didPassAccessControlCheck = priv->loader->didPassAccessControlCheck();
     handleResponseReceived(response);
 }
