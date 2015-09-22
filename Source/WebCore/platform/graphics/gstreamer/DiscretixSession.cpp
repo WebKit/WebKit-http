@@ -71,7 +71,7 @@ DiscretixSession::DiscretixSession()
     } else {
         m_status = DxDrmClient_Init();
         if (m_status != DX_SUCCESS)
-            GST_ERROR("failed to initialize the DxDrmClient (error: %d)", m_status);
+            GST_ERROR("failed to initialize the DxDrmClient (status: %d)", m_status);
 
         // Set Secure Clock
         /*   m_status = DxDrmStream_AdjustClock(m_DxDrmStream, DX_AUTO_NO_UI);
@@ -105,7 +105,7 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
     GST_DEBUG("generating key request");
     m_keyRequested = true;
     if (status != DX_SUCCESS) {
-        GST_ERROR("failed to create DxDrmClient from initData (error: %d)", status);
+        GST_ERROR("failed to create DxDrmClient from initData (status: %d)", status);
         reportError(status);
         errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
     } else {
@@ -115,7 +115,7 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
         // Get challenge
         status = DxDrmStream_GetLicenseChallenge(m_DxDrmStream, challenge, &challengeLength);
         if (status != DX_SUCCESS) {
-            GST_ERROR("failed to generate challenge request (%d)", status);
+            GST_ERROR("failed to generate challenge request (status: %d)", status);
             errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
         } else {
             // Get License URL
@@ -176,12 +176,12 @@ bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& next
         GST_WARNING("Unexpected call. We are already provisioned");
 
     if (status != DX_SUCCESS) {
-        GST_ERROR("failed processing license response (%d)", status);
+        GST_ERROR("failed processing license response (status: %d)", status);
         errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
     } else if (m_state == PHASE_PROVISIONED) {
         status = DxDrmStream_SetIntent(m_DxDrmStream, DX_INTENT_AUTO_PLAY, DX_AUTO_NO_UI);
         if (status != DX_SUCCESS)
-            GST_ERROR("opening stream failed because there are no rights (license) to play the content");
+            GST_ERROR("opening stream failed because there are no rights (license) to play the content (status: %d)", status);
         else {
             GST_INFO("playback rights found");
 
@@ -201,7 +201,7 @@ bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& next
 
         status = DxDrmClient_GetLicenseAcq_GenerateAck(&responseResult, challenge, &challengeLength);
         if (status != DX_SUCCESS)
-            GST_ERROR("failed generating license ack challenge (%d) response result %p", status, responseResult);
+            GST_ERROR("failed generating license ack challenge (status: %d, response result %p)", status, responseResult);
 
         GST_MEMDUMP("generated license ack request :", challenge, challengeLength);
 
