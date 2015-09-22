@@ -37,6 +37,7 @@ struct _WebKitMediaPlayReadyDecrypt {
     GMutex mutex;
     GCond condition;
 
+    GstEvent* protectionEvent;
     GstBuffer* initDataBuffer;
 };
 
@@ -88,7 +89,7 @@ static void webkit_media_playready_decrypt_class_init(WebKitMediaPlayReadyDecryp
     GST_DEBUG_CATEGORY_INIT(webkit_media_playready_decrypt_debug_category,
         "webkitplayready", 0, "PlayReady decryptor");
 
-    elementClass->change_state = webKitMediaPlayReadyDecryptChangeState;
+    elementClass->change_state = GST_DEBUG_FUNCPTR(webKitMediaPlayReadyDecryptChangeState);
 
     baseTransformClass->transform_ip = GST_DEBUG_FUNCPTR(webkitMediaPlayReadyDecryptTransformInPlace);
     baseTransformClass->transform_caps = GST_DEBUG_FUNCPTR(webkitMediaPlayReadyDecryptTransformCaps);
@@ -111,6 +112,11 @@ static void webkit_media_playready_decrypt_init(WebKitMediaPlayReadyDecrypt* sel
 static void webkit_media_playready_decrypt_dispose(GObject* object)
 {
     WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(object);
+
+    if (self->protectionEvent) {
+        gst_event_unref(self->protectionEvent);
+        self->protectionEvent = nullptr;
+    }
 
     g_mutex_clear(&self->mutex);
     g_cond_clear(&self->condition);
@@ -232,7 +238,9 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
     gboolean boxMapped = FALSE;
     gboolean bufferMapped = FALSE;
 
+    GST_TRACE_OBJECT(self, "Processing buffer");
     g_mutex_lock(&self->mutex);
+    GST_TRACE_OBJECT(self, "Mutex acquired, stream received: %s", self->streamReceived ? "yes":"no");
 
     // The key might not have been received yet. Wait for it.
     if (!self->streamReceived)
@@ -244,6 +252,7 @@ static GstFlowReturn webkitMediaPlayReadyDecryptTransformInPlace(GstBaseTransfor
         goto beach;
     }
 
+    GST_TRACE_OBJECT(self, "Proceeding with decryption");
     protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     if (!protectionMeta || !buffer) {
         if (!protectionMeta)
@@ -312,6 +321,7 @@ beach:
     if (protectionMeta)
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
 
+    GST_TRACE_OBJECT(self, "Unlocking mutex");
     g_mutex_unlock(&self->mutex);
     return result;
 }
@@ -322,11 +332,16 @@ static gboolean requestKey(gpointer userData)
         return G_SOURCE_REMOVE;
 
     WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(userData);
+    GST_DEBUG_OBJECT(self, "posting drm-key-needed message");
     gst_element_post_message(GST_ELEMENT(self),
         gst_message_new_element(GST_OBJECT(self),
             gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, self->initDataBuffer,
                 "key-system-id", G_TYPE_STRING, "com.microsoft.playready", nullptr)));
 
+    if (self->protectionEvent) {
+        gst_event_unref(self->protectionEvent);
+        self->protectionEvent = nullptr;
+    }
     return G_SOURCE_REMOVE;
 }
 
@@ -335,7 +350,6 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
     gboolean result = FALSE;
     WebKitMediaPlayReadyDecrypt* self = WEBKIT_MEDIA_PLAYREADY_DECRYPT(trans);
 
-    g_mutex_lock(&self->mutex);
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_PROTECTION: {
         const gchar* systemId;
@@ -343,7 +357,7 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
 
         GST_INFO_OBJECT(self, "received protection event");
         gst_event_parse_protection(event, &systemId, &self->initDataBuffer, &origin);
-        GST_INFO_OBJECT(self, "systemId: %s", systemId);
+        GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
         if (!g_str_equal(systemId, PLAYREADY_PROTECTION_SYSTEM_ID)
             || !g_str_has_prefix(origin, "smooth-streaming")) {
             gst_event_unref(event);
@@ -351,14 +365,17 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
             break;
         }
 
+        // Keep the event ref around so that the parsed event data
+        // remains valid until the drm-key-need message has been sent.
+        self->protectionEvent = event;
         g_timeout_add(0, requestKey, self);
 
-        gst_event_unref(event);
         result = TRUE;
         break;
     }
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
         GST_INFO_OBJECT(self, "received OOB event");
+        g_mutex_lock(&self->mutex);
         const GstStructure* structure = gst_event_get_structure(event);
         if (gst_structure_has_name(structure, "dxdrm-session")) {
             GST_INFO_OBJECT(self, "received dxdrm session");
@@ -369,6 +386,7 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
             g_cond_signal(&self->condition);
         }
 
+        g_mutex_unlock(&self->mutex);
         gst_event_unref(event);
         result = TRUE;
         break;
@@ -378,7 +396,6 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
         break;
     }
 
-    g_mutex_unlock(&self->mutex);
     return result;
 }
 
@@ -390,7 +407,9 @@ static GstStateChangeReturn webKitMediaPlayReadyDecryptChangeState(GstElement* e
     switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         GST_DEBUG_OBJECT(self, "PAUSED->READY");
+        g_mutex_lock(&self->mutex);
         g_cond_signal(&self->condition);
+        g_mutex_unlock(&self->mutex);
         break;
     default:
         break;
