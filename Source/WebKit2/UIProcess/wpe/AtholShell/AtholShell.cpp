@@ -157,8 +157,8 @@ gpointer AtholShell::launchWPE(gpointer data)
         gchar *cookieDatabasePath = g_build_filename(g_get_user_cache_dir(), "cookies.db", nullptr);
         auto path = adoptWK(WKStringCreateWithUTF8CString(cookieDatabasePath));
         g_free(cookieDatabasePath);
-        auto cookieManager = adoptWK(WKContextGetCookieManager(context.get()));
-        WKCookieManagerSetCookiePersistentStorage(cookieManager.get(), path.get(), kWKCookieStorageTypeSQLite);
+        auto cookieManager = WKContextGetCookieManager(context.get());
+        WKCookieManagerSetCookiePersistentStorage(cookieManager, path.get(), kWKCookieStorageTypeSQLite);
     }
 
     shell.m_view = adoptWK(WKViewCreate(context.get(), pageGroup.get()));
