@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,34 +23,60 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <glib.h>
-#include <weston/compositor.h>
-#include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKView.h>
+#ifndef WPE_ViewBackend_ViewBackendDRM_h
+#define WPE_ViewBackend_ViewBackendDRM_h
+
+#include <WPE/ViewBackend/ViewBackend.h>
+
+#include <unordered_map>
+#include <utility>
+
+typedef struct _drmModeModeInfo drmModeModeInfo;
+struct gbm_bo;
+struct gbm_device;
 
 namespace WPE {
 
-class Environment;
+namespace ViewBackend {
 
-class Shell {
+class Client;
+
+class ViewBackendDRM final : public ViewBackend {
 public:
-    Shell(Environment&);
+    ViewBackendDRM();
+    ~ViewBackendDRM();
 
-    static Shell& instance() { return *m_instance; }
-    static gpointer launchWPE(gpointer);
 
-    Environment& environment() { return m_environment; }
+    void setClient(Client*) override;
+    void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
+    void destroyPrimeBuffer(uint32_t handle) override;
+
+    struct PageFlipHandlerData {
+        Client* client;
+        bool bufferLocked { false };
+        uint32_t lockedBufferHandle { 0 };
+    };
 
 private:
-    static const struct weston_pointer_grab_interface m_pgInterface;
-    static const struct weston_keyboard_grab_interface m_kgInterface;
-    static const struct weston_touch_grab_interface m_tgInterface;
+    struct {
+        int fd;
+        struct gbm_device* device;
+    } m_gbm;
 
-    static Shell* m_instance;
+    struct {
+        int fd;
+        drmModeModeInfo* mode;
+        uint32_t crtcId;
+        uint32_t connectorId;
+    } m_drm;
 
-    Environment& m_environment;
+    PageFlipHandlerData m_pageFlipData;
 
-    WKRetainPtr<WKViewRef> m_view;
+    std::unordered_map<uint32_t, std::pair<struct gbm_bo*, uint32_t>> m_fbMap;
 };
 
+} // namespace ViewBackend
+
 } // namespace WPE
+
+#endif // WPE_ViewBackend_ViewBackendDRM_h

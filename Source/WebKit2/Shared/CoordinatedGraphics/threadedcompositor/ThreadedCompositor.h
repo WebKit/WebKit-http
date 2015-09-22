@@ -28,18 +28,23 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingManager.h"
 #include "CoordinatedGraphicsScene.h"
 #include "SimpleViewportController.h"
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TransformationMatrix.h>
-#include <WebCore/WaylandSurfaceWPE.h>
 #include <wtf/Atomics.h>
 #include <wtf/Condition.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
+
+#if PLATFORM(GBM)
+#include <WebCore/GBMSurface.h>
+#include <WebCore/PlatformDisplayGBM.h>
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
@@ -50,12 +55,13 @@ struct CoordinatedGraphicsState;
 }
 
 namespace WebKit {
-class CoordinatedGraphicsScene;
-class CoordinatedGraphicsSceneClient;
 
 class CompositingRunLoop;
+class CoordinatedGraphicsScene;
+class CoordinatedGraphicsSceneClient;
+class WebPage;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public WebCore::GBMSurface::Client, public CompositingManager::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -67,7 +73,7 @@ public:
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*);
+    static Ref<ThreadedCompositor> create(Client*, WebPage&);
     virtual ~ThreadedCompositor();
 
     void setNeedsDisplay();
@@ -85,13 +91,20 @@ public:
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID);
 
 private:
-    ThreadedCompositor(Client*);
+    ThreadedCompositor(Client*, WebPage&);
 
     // CoordinatedGraphicsSceneClient
     virtual void purgeBackingStores() override;
     virtual void renderNextFrame() override;
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
+
+    // GBMSurface::Client
+    virtual void destroyBuffer(uint32_t) override;
+
+    // CompositingManager::Client
+    virtual void releaseBuffer(uint32_t) override;
+    virtual void frameComplete() override;
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
@@ -111,7 +124,7 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
-    std::unique_ptr<WebCore::WaylandSurface> m_waylandSurface;
+    std::unique_ptr<WebCore::GBMSurface> m_gbmSurface;
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
@@ -125,7 +138,7 @@ private:
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
 
-    static const struct wl_callback_listener m_frameListener;
+    CompositingManager m_compositingManager;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {

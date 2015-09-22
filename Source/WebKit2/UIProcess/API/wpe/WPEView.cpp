@@ -38,23 +38,30 @@ using namespace WebKit;
 
 namespace WKWPE {
 
-View::View(WebProcessPool* pool, WebPageGroup* pageGroup)
+View::View(const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
+    , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{800, 600}
 {
-    pageGroup->preferences().setAcceleratedCompositingEnabled(true);
-    pageGroup->preferences().setForceCompositingMode(true);
-    pageGroup->preferences().setAccelerated2dCanvasEnabled(true);
-    pageGroup->preferences().setWebGLEnabled(true);
-    pageGroup->preferences().setLogsPageMessagesToSystemConsoleEnabled(true);
-    pageGroup->preferences().setWebSecurityEnabled(false);
-    pageGroup->preferences().setDeveloperExtrasEnabled(true);
+    m_viewBackend->setInputClient(this);
 
-    auto configuration = API::PageConfiguration::create();
-    configuration->setPreferences(nullptr);
-    configuration->setPageGroup(pageGroup);
-    configuration->setRelatedPage(nullptr);
-    configuration->setUserContentController(nullptr);
+    auto configuration = baseConfiguration.copy();
+    auto* preferences = configuration->preferences();
+    if (!preferences && configuration->pageGroup()) {
+        preferences = &configuration->pageGroup()->preferences();
+        configuration->setPreferences(preferences);
+    }
+    if (preferences) {
+        preferences->setAcceleratedCompositingEnabled(true);
+        preferences->setForceCompositingMode(true);
+        preferences->setAccelerated2dCanvasEnabled(true);
+        preferences->setWebGLEnabled(true);
+        preferences->setLogsPageMessagesToSystemConsoleEnabled(true);
+        preferences->setWebSecurityEnabled(false);
+        preferences->setDeveloperExtrasEnabled(true);
+    }
+
+    auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTF::move(configuration));
     m_pageProxy->initializeWebPage();
 }
@@ -64,11 +71,6 @@ void View::setSize(const WebCore::IntSize& size)
     m_size = size;
     if (m_pageProxy->drawingArea())
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
-}
-
-void View::makeWPEInputTarget()
-{
-    WPE::Input::Server::singleton().setTarget(this);
 }
 
 void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)

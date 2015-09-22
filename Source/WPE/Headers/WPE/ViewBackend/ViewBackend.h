@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,46 +23,39 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <Athol/Interfaces.h>
-#include <DerivedSources/WebCore/WaylandWPEProtocolServer.h>
-#include <DIAL/Server.h>
-#include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKView.h>
-#include <glib.h>
-#include <wayland-server.h>
+#ifndef WPE_ViewBackend_ViewBackend_h
+#define WPE_ViewBackend_ViewBackend_h
+
+#include <WPE/WPE.h>
+#include <memory>
 
 namespace WPE {
 
-class InputClient;
-class View;
+namespace Input {
+class Client;
+}
 
-class AtholShell : public DIAL::Server::Client {
+namespace ViewBackend {
+
+class Client {
 public:
-    AtholShell(API::Compositor*);
-    static gpointer launchWPE(gpointer);
-
-private:
-    friend class InputClient;
-
-    static const struct wl_wpe_interface m_wpeInterface;
-
-    API::Compositor* m_compositor;
-
-    uint32_t width() { return m_compositor->width(); }
-    uint32_t height() { return m_compositor->height(); }
-
-    WKRetainPtr<WKViewRef> m_view;
-
-    // DIAL::Server::Client
-    virtual void startApp(unsigned, const char*) override;
-    virtual void stopApp(unsigned) override;
-
-    std::unique_ptr<DIAL::Server> m_dialServer;
-    GMainContext* m_threadContext;
-    GSource* m_DIALAppSource { nullptr };
-    char* m_DIALAppURL;
-    void scheduleDIALAppLoad();
-    static gboolean loadDIALApp(gpointer);
+    virtual void releaseBuffer(uint32_t handle) = 0;
+    virtual void frameComplete() = 0;
 };
 
+class ViewBackend {
+public:
+    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
+
+    virtual void setClient(Client*);
+    virtual void commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    virtual void destroyPrimeBuffer(uint32_t);
+
+    virtual void setInputClient(Input::Client*);
+};
+
+} // namespace ViewBackend
+
 } // namespace WPE
+
+#endif // WPE_ViewBackend_ViewBackend_h

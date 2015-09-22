@@ -30,6 +30,7 @@
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
 #include <WPE/Input/Handling.h>
+#include <WPE/ViewBackend/ViewBackend.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
@@ -42,9 +43,9 @@ namespace WKWPE {
 
 class View : public API::ObjectImpl<API::Object::Type::View>, public WPE::Input::Client {
 public:
-    static View* create(WebKit::WebProcessPool* pool, WebKit::WebPageGroup* pageGroup)
+    static View* create(const API::PageConfiguration& configuration)
     {
-        return new View(pool, pageGroup);
+        return new View(configuration);
     }
 
     WebKit::WebPageProxy& page()
@@ -52,10 +53,10 @@ public:
         return *m_pageProxy;
     }
 
+    WPE::ViewBackend::ViewBackend& viewBackend() { return *m_viewBackend; }
+
     const WebCore::IntSize& size() const { return m_size; }
     void setSize(const WebCore::IntSize& size);
-
-    void makeWPEInputTarget();
 
     // WPE::Input::Client
     void handleKeyboardEvent(WPE::Input::KeyboardEvent&&) override;
@@ -64,10 +65,11 @@ public:
     void handleTouchEvent(WPE::Input::TouchEvent&&) override;
 
 private:
-    View(WebKit::WebProcessPool*, WebKit::WebPageGroup*);
+    View(const API::PageConfiguration&);
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
+    std::unique_ptr<WPE::ViewBackend::ViewBackend> m_viewBackend;
     WebCore::IntSize m_size;
 };
 

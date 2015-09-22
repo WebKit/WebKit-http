@@ -80,16 +80,8 @@ find_package(WebP REQUIRED)
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
 find_package(WaylandEGL REQUIRED)
-
-find_package(Athol 0.1)
-if (ATHOL_FOUND)
-    set(ENABLE_ATHOL_SHELL ON)
-else ()
-    find_package(Weston 1.6.0 REQUIRED)
-    if (WESTON_FOUND)
-        set(ENABLE_WESTON_SHELL ON)
-    endif ()
-endif ()
+find_package(LibGBM REQUIRED)
+find_package(LibDRM REQUIRED)
 
 if (ENABLE_SUBTLE_CRYPTO)
     find_package(GnuTLS 3.0.0)
@@ -138,7 +130,7 @@ if (ENABLE_THREADED_COMPOSITOR)
 endif ()
 
 SET_AND_EXPOSE_TO_BUILD(USE_EGL TRUE)
-SET_AND_EXPOSE_TO_BUILD(WTF_PLATFORM_WAYLAND TRUE)
+SET_AND_EXPOSE_TO_BUILD(WTF_PLATFORM_GBM TRUE)
 
 set(FORWARDING_HEADERS_DIR ${DERIVED_SOURCES_DIR}/ForwardingHeaders)
 

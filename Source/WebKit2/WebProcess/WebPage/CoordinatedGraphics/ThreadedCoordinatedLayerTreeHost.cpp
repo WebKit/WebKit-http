@@ -31,10 +31,12 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "DrawingAreaImpl.h"
+#include "DrawingAreaProxyMessages.h"
+#include "DrawingAreaWPE.h"
 #include "NotImplemented.h"
 #include "ThreadSafeCoordinatedSurface.h"
 #include "WebPage.h"
+#include "WebProcess.h"
 #include <WebCore/CoordinatedGraphicsLayer.h>
 #include <WebCore/CoordinatedGraphicsState.h>
 #include <WebCore/Frame.h>
@@ -74,7 +76,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
 
     CoordinatedSurface::setFactory(createCoordinatedSurface);
 
-    m_compositor = ThreadedCompositor::create(this);
+    m_compositor = ThreadedCompositor::create(this, *webPage);
     scheduleLayerFlush();
 }
 
@@ -182,7 +184,7 @@ void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers()
 {
-    static_cast<DrawingAreaImpl*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+    static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
 }
 
 void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)

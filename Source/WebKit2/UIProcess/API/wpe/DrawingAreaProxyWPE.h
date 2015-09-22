@@ -23,23 +23,41 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKView_h
-#define WKView_h
+#ifndef DrawingAreaProxyWPE_h
+#define DrawingAreaProxyWPE_h
 
-#include <WebKit/WKBase.h>
-#include <WebKit/WKGeometry.h>
+#include "DrawingAreaProxy.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "CompositingManagerProxy.h"
+#include "LayerTreeContext.h"
+#include <WPE/ViewBackend/ViewBackend.h>
 
-WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
-WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
-WK_EXPORT void WKViewResize(WKViewRef, WKSize);
-WK_EXPORT void WKViewMakeWPEInputTarget(WKViewRef);
+namespace WebKit {
 
-#ifdef __cplusplus
+class DrawingAreaProxyWPE final : public DrawingAreaProxy {
+public:
+    explicit DrawingAreaProxyWPE(WKWPE::View&);
+    virtual ~DrawingAreaProxyWPE();
+
+private:
+    // DrawingAreaProxy
+    void deviceScaleFactorDidChange() override;
+    void sizeDidChange() override;
+
+    // IPC message handlers
+    void update(uint64_t backingStoreStateID, const UpdateInfo&) override;
+    void didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&) override;
+    void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+    void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
+    void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
+
+    CompositingManagerProxy m_compositingManagerProxy;
+
+    // The current layer tree context.
+    LayerTreeContext m_layerTreeContext;
+};
+
 }
-#endif
 
-#endif // WKView_h
+
+#endif // DrawingAreaProxyWPE_h

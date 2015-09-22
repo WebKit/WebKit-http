@@ -8,19 +8,8 @@ add_custom_target(webkit2wpe-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
 )
 
-add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/bin/WPELauncher
-    DEPENDS ${WEBKIT2_DIR}/UIProcess/wpe/WPELauncher.in
-    COMMAND cp ${WEBKIT2_DIR}/UIProcess/wpe/WPELauncher.in ${CMAKE_BINARY_DIR}/bin/WPELauncher
-    COMMAND chmod +x ${CMAKE_BINARY_DIR}/bin/WPELauncher
-)
-add_custom_target(webkit2wpe-launcher-script
-    DEPENDS ${CMAKE_BINARY_DIR}/bin/WPELauncher
-)
-
 set(WEBKIT2_EXTRA_DEPENDENCIES
     webkit2wpe-forwarding-headers
-    webkit2wpe-launcher-script
 )
 
 list(APPEND WebProcess_SOURCES
@@ -64,11 +53,11 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
     UIProcess/API/C/wpe/WKView.cpp
+    UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
-    UIProcess/DrawingAreaProxyImpl.cpp
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
@@ -99,8 +88,8 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
-    WebProcess/WebPage/DrawingAreaImpl.cpp
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
+    WebProcess/WebPage/wpe/DrawingAreaWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
@@ -114,8 +103,16 @@ if (ENABLE_THREADED_COMPOSITOR)
         Shared/CoordinatedGraphics/SimpleViewportController.cpp
         Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
         Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+        UIProcess/API/wpe/CompositingManagerProxy.cpp
         WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+        WebProcess/WebPage/wpe/CompositingManager.cpp
     )
+
+    list(APPEND WebKit2_MESSAGES_IN_FILES
+        UIProcess/API/wpe/CompositingManagerProxy.messages.in
+        WebProcess/WebPage/wpe/CompositingManager.messages.in
+    )
+
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
         "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
@@ -201,36 +198,6 @@ list(APPEND WebKit2_LIBRARIES
     ${LIBSOUP_LIBRARIES}
     WPE
 )
-
-if (ENABLE_ATHOL_SHELL)
-set(WPEAtholShell_SOURCES
-    UIProcess/wpe/AtholShell/AtholShell.cpp
-    UIProcess/wpe/AtholShell/Module.cpp
-
-    UIProcess/wpe/AtholShell/DIAL/Server.cpp
-    UIProcess/wpe/AtholShell/DIAL/dial_data.c
-    UIProcess/wpe/AtholShell/DIAL/dial_server.c
-    UIProcess/wpe/AtholShell/DIAL/mongoose.c
-    UIProcess/wpe/AtholShell/DIAL/quick_ssdp.c
-    UIProcess/wpe/AtholShell/DIAL/url_lib.c
-)
-
-set(WPEAtholShell_INCLUDE_DIRECTORIES
-    "${WEBKIT2_DIR}/Shared/wpe"
-    "${WEBKIT2_DIR}/UIProcess/wpe/AtholShell"
-    ${ATHOL_INCLUDE_DIRS}
-)
-
-set(WPEAtholShell_LIBRARIES
-    WebKit2
-    ${ATHOL_LIBRARIES}
-)
-
-add_library(WPEAtholShell SHARED ${WPEAtholShell_SOURCES})
-target_link_libraries(WPEAtholShell ${WPEAtholShell_LIBRARIES})
-target_include_directories(WPEAtholShell PUBLIC ${WPEAtholShell_INCLUDE_DIRECTORIES})
-install(TARGETS WPEAtholShell DESTINATION "${LIB_INSTALL_DIR}")
-endif () # ENABLE_ATHOL_SHELL
 
 set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html

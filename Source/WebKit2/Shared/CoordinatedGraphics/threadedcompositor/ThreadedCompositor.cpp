@@ -29,7 +29,7 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/PlatformDisplayWayland.h>
+#include <WebCore/PlatformDisplayGBM.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
@@ -123,14 +123,15 @@ private:
     Atomic<UpdateState> m_updateState;
 };
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client, WebPage& webPage)
 {
-    return adoptRef(*new ThreadedCompositor(client));
+    return adoptRef(*new ThreadedCompositor(client, webPage));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client* client)
+ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     : m_client(client)
     , m_threadIdentifier(0)
+    , m_compositingManager(*this)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
@@ -138,6 +139,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client)
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
     createCompositingThread();
+    m_compositingManager.establishConnection(webPage, m_compositingRunLoop->runLoop());
 }
 
 ThreadedCompositor::~ThreadedCompositor()
@@ -159,7 +161,6 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
         protector->m_scene->setActive(true);
     });
 }
-
 
 void ThreadedCompositor::didChangeViewportSize(const IntSize& newSize)
 {
@@ -221,6 +222,12 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
+void ThreadedCompositor::destroyBuffer(uint32_t handle)
+{
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    m_compositingManager.destroyPrimeBuffer(handle);
+}
+
 bool ThreadedCompositor::ensureGLContext()
 {
     if (!glContext())
@@ -244,16 +251,14 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-    RELEASE_ASSERT(is<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()));
-    m_waylandSurface = downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()));
-    if (!m_waylandSurface)
-        return nullptr;
+    RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
+    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
+    if (!m_gbmSurface)
+        return 0;
 
-    downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).registerSurface(m_waylandSurface->surface());
     setNativeSurfaceHandleForCompositing(0);
-
-    m_context = m_waylandSurface->createGLContext();
+    m_context = m_gbmSurface->createGLContext();
     return m_context.get();
 }
 
@@ -271,8 +276,6 @@ void ThreadedCompositor::didChangeVisibleRect()
         protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
-    if (m_waylandSurface)
-        m_waylandSurface->resize(enclosingIntRect(visibleRect).size());
     scheduleDisplayImmediately();
 }
 
@@ -284,6 +287,9 @@ void ThreadedCompositor::renderLayerTree()
     if (!ensureGLContext())
         return;
 
+    if (!downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).hasFreeBuffers(*m_gbmSurface))
+        return;
+
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;
@@ -293,8 +299,10 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion, TextureMapper::PaintingMirrored);
 
-    wl_callback_add_listener(wl_surface_frame(m_waylandSurface->surface()), &m_frameListener, this);
     glContext()->swapBuffers();
+
+    auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
+    m_compositingManager.commitPrimeBuffer(bufferExport);
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
@@ -391,26 +399,6 @@ static void debugThreadedCompositorFPS()
     }
 }
 
-const struct wl_callback_listener ThreadedCompositor::m_frameListener = {
-    // frame
-    [](void* data, struct wl_callback* callback, uint32_t) {
-        static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
-        if (reportFPS)
-            debugThreadedCompositorFPS();
-        wl_callback_destroy(callback);
-
-        auto& threadedCompositor = *static_cast<ThreadedCompositor*>(data);
-        bool shouldDispatchDisplayRefreshCallback = threadedCompositor.m_clientRendersNextFrame.load()
-            || threadedCompositor.m_displayRefreshMonitor->requiresDisplayRefreshCallback();
-        bool shouldCoordinateUpdateCompletionWithClient = threadedCompositor.m_coordinateUpdateCompletionWithClient.load();
-
-        if (shouldDispatchDisplayRefreshCallback)
-            threadedCompositor.m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-        if (!shouldCoordinateUpdateCompletionWithClient)
-            threadedCompositor.m_compositingRunLoop->updateCompleted();
-    }
-};
-
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::createDisplayRefreshMonitor(PlatformDisplayID)
 {
@@ -468,6 +456,31 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
         if (m_compositor->m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
             m_compositor->m_compositingRunLoop->updateCompleted();
     }
+}
+#endif
+
+#if PLATFORM(WPE)
+void ThreadedCompositor::releaseBuffer(uint32_t handle)
+{
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
+}
+
+void ThreadedCompositor::frameComplete()
+{
+    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
+    if (reportFPS)
+        debugThreadedCompositorFPS();
+
+    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
+        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
+    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
+
+    if (shouldDispatchDisplayRefreshCallback)
+        m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+    if (!shouldCoordinateUpdateCompletionWithClient)
+        m_compositingRunLoop->updateCompleted();
 }
 #endif
 

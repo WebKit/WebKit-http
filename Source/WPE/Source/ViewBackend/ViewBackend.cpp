@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,23 +23,46 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKView_h
-#define WKView_h
+#include <WPE/ViewBackend/ViewBackend.h>
 
-#include <WebKit/WKBase.h>
-#include <WebKit/WKGeometry.h>
+#include "ViewBackendDRM.h"
+#include "ViewBackendWayland.h"
+#include <cstring>
+#include <cstdlib>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace WPE {
 
-WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
-WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
-WK_EXPORT void WKViewResize(WKViewRef, WKSize);
-WK_EXPORT void WKViewMakeWPEInputTarget(WKViewRef);
+namespace ViewBackend {
 
-#ifdef __cplusplus
+std::unique_ptr<ViewBackend> ViewBackend::create()
+{
+    auto* backendEnv = std::getenv("WPE_BACKEND");
+
+    if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland")))
+        return std::unique_ptr<ViewBackendWayland>(new ViewBackendWayland);
+
+    if (backendEnv && !std::strcmp(backendEnv, "drm"))
+        return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+
+    return nullptr;
 }
-#endif
 
-#endif // WKView_h
+void ViewBackend::setClient(Client*)
+{
+}
+
+void ViewBackend::commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+}
+
+void ViewBackend::destroyPrimeBuffer(uint32_t)
+{
+}
+
+void ViewBackend::setInputClient(Input::Client*)
+{
+}
+
+} // namespace ViewBackend
+
+} // namespace WPE

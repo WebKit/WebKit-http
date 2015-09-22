@@ -86,8 +86,8 @@ void Server::servePointerEvent(PointerEvent::Raw&& event)
         m_target->handlePointerEvent({
             event.type,
             event.time,
-            m_pointer.x,
-            m_pointer.y,
+            static_cast<int>(m_pointer.x),
+            static_cast<int>(m_pointer.y),
             event.button,
             event.state
         });
@@ -99,8 +99,8 @@ void Server::serveAxisEvent(AxisEvent::Raw&& event)
         m_target->handleAxisEvent({
             event.type,
             event.time,
-            m_pointer.x,
-            m_pointer.y,
+            static_cast<int>(m_pointer.x),
+            static_cast<int>(m_pointer.y),
             event.axis,
             event.value
         });
