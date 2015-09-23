@@ -273,8 +273,11 @@ void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
     m_coordinator->renderNextFrame();
-    m_layerFlushTimer.cancel();
-    performScheduledLayerFlush();
+
+    if (m_layerFlushTimer.isScheduled()) {
+        m_layerFlushTimer.cancel();
+        performScheduledLayerFlush();
+    }
 }
 
 void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const IntSize& offset)
