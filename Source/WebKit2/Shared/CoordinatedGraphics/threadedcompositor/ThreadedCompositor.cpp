@@ -317,7 +317,7 @@ void ThreadedCompositor::renderLayerTree()
     viewportTransform.scale(viewportController()->pageScaleFactor());
     viewportTransform.translate(-scrollPostion.x(), -scrollPostion.y());
 
-    m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion, TextureMapper::PaintingMirrored);
+    m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
     glContext()->swapBuffers();
 
