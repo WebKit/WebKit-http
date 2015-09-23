@@ -709,7 +709,7 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
         unsigned textureID = *reinterpret_cast<unsigned*>(m_videoFrame->data[0]);
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(m_videoInfo), GST_VIDEO_INFO_HEIGHT(m_videoInfo));
 
-        MutexLocker locker(m_platformLayerProxy->mutex());
+        LockHolder locker(m_platformLayerProxy->mutex());
         if (!m_platformLayerProxy->hasTargetLayer(locker)) {
             g_cond_signal(&m_updateCondition);
             return;
