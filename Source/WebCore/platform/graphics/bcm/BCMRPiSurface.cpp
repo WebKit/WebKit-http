@@ -96,6 +96,7 @@ bool BCMRPiSurface::GLContextBCMRPi::makeContextCurrent()
 
 void BCMRPiSurface::GLContextBCMRPi::swapBuffers()
 {
+    glFinish();
     eglFlushBRCM();
     uint32_t i = m_surface.m_currentSurface;
     eglSwapBuffers(m_surface.m_eglDisplay, m_surface.m_eglSurfaces[i]);
