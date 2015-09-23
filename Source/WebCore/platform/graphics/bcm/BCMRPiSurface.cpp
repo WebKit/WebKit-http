@@ -21,7 +21,7 @@ BCMRPiSurface::BCMRPiSurface(EGLDisplay eglDisplay, EGLConfig eglConfig, const I
         EGL_NONE
     };
 
-    m_eglContext = eglCreateContext(eglDisplay, eglConfig, nullptr, contextAttributes);
+    m_eglContext = eglCreateContext(eglDisplay, eglConfig, GLContext::sharingContext()->platformContext(), contextAttributes);
     if (!m_eglContext) {
         fprintf(stderr, "BCMRPiSurface: failed to create EGLContext\n");
         return;
