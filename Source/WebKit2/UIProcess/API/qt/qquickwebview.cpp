@@ -621,6 +621,7 @@ void QQuickWebViewPrivate::didRelaunchProcess()
 
         updateViewportSize();
         updateUserScripts();
+        updateUserStyleSheets();
         updateSchemeDelegates();
     }
 
@@ -874,27 +875,32 @@ void QQuickWebViewPrivate::setNavigatorQtObjectEnabled(bool enabled)
     WKPagePostMessageToInjectedBundle(webPage.get(), messageName, wkEnabled.get());
 }
 
-static WKRetainPtr<WKStringRef> readUserScript(const QUrl& url)
+static WKRetainPtr<WKStringRef> readUserFile(const QUrl& url, const char* userFileType)
 {
+    if (!url.isValid()) {
+        qWarning("QQuickWebView: Couldn't open '%s' as %s because URL is invalid.", qPrintable(url.toString()), userFileType);
+        return 0;
+    }
+
     QString path;
     if (url.isLocalFile())
         path = url.toLocalFile();
     else if (url.scheme() == QLatin1String("qrc"))
         path = QStringLiteral(":") + url.path();
     else {
-        qWarning("QQuickWebView: Couldn't open '%s' as user script because only file:/// and qrc:/// URLs are supported.", qPrintable(url.toString()));
+        qWarning("QQuickWebView: Couldn't open '%s' as %s because only file:/// and qrc:/// URLs are supported.", qPrintable(url.toString()), userFileType);
         return 0;
     }
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning("QQuickWebView: Couldn't open '%s' as user script due to error '%s'.", qPrintable(url.toString()), qPrintable(file.errorString()));
+        qWarning("QQuickWebView: Couldn't open '%s' as %s due to error '%s'.", qPrintable(url.toString()), userFileType, qPrintable(file.errorString()));
         return 0;
     }
 
     QByteArray contents = file.readAll();
     if (contents.isEmpty())
-        qWarning("QQuickWebView: Ignoring '%s' as user script because file is empty.", qPrintable(url.toString()));
+        qWarning("QQuickWebView: Ignoring '%s' as %s because file is empty.", qPrintable(url.toString()), userFileType);
 
     return adoptWK(WKStringCreateWithUTF8CString(contents.constData()));
 }
@@ -905,17 +911,25 @@ void QQuickWebViewPrivate::updateUserScripts()
     // each Page/WebView pair we create.
     WKPageGroupRemoveAllUserScripts(pageGroup.get());
 
-    for (unsigned i = 0; i < userScripts.size(); ++i) {
-        const QUrl& url = userScripts.at(i);
-        if (!url.isValid()) {
-            qWarning("QQuickWebView: Couldn't open '%s' as user script because URL is invalid.", qPrintable(url.toString()));
-            continue;
-        }
-
-        WKRetainPtr<WKStringRef> contents = readUserScript(url);
+    foreach (const QUrl& url, userScripts) {
+        WKRetainPtr<WKStringRef> contents = readUserFile(url, "user script");
         if (!contents || WKStringIsEmpty(contents.get()))
             continue;
         WKPageGroupAddUserScript(pageGroup.get(), contents.get(), /*baseURL*/ 0, /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, kWKInjectInTopFrameOnly, kWKInjectAtDocumentEnd);
+    }
+}
+
+void QQuickWebViewPrivate::updateUserStyleSheets()
+{
+    // This feature works per-WebView because we keep an unique page group for
+    // each Page/WebView pair we create.
+    WKPageGroupRemoveAllUserStyleSheets(pageGroup.get());
+
+    foreach (const QUrl& url, userStyleSheets) {
+        WKRetainPtr<WKStringRef> contents = readUserFile(url, "user style sheet");
+        if (!contents || WKStringIsEmpty(contents.get()))
+            continue;
+        WKPageGroupAddUserStyleSheet(pageGroup.get(), contents.get(), /*baseURL*/ 0, /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, kWKInjectInTopFrameOnly);
     }
 }
 
@@ -1522,6 +1536,22 @@ void QQuickWebViewExperimental::setUserScripts(const QList<QUrl>& userScripts)
     d->userScripts = userScripts;
     d->updateUserScripts();
     emit userScriptsChanged();
+}
+
+QList<QUrl> QQuickWebViewExperimental::userStyleSheets() const
+{
+    Q_D(const QQuickWebView);
+    return d->userStyleSheets;
+}
+
+void QQuickWebViewExperimental::setUserStyleSheets(const QList<QUrl>& userStyleSheets)
+{
+    Q_D(QQuickWebView);
+    if (d->userStyleSheets == userStyleSheets)
+        return;
+    d->userStyleSheets = userStyleSheets;
+    d->updateUserStyleSheets();
+    emit userStyleSheetsChanged();
 }
 
 QUrl QQuickWebViewExperimental::remoteInspectorUrl() const
