@@ -22,7 +22,9 @@
 #ifndef WebCoreJSClientData_h
 #define WebCoreJSClientData_h
 
+#include "CountQueuingStrategyBuiltinsWrapper.h"
 #include "DOMWrapperWorld.h"
+#include "ReadableStreamBuiltinsWrapper.h"
 #include "WebCoreTypedArrayController.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
@@ -35,7 +37,11 @@ class WebCoreJSClientData : public JSC::VM::ClientData {
     friend void initNormalWorldClientData(JSC::VM*);
 
 public:
-    WebCoreJSClientData()
+    explicit WebCoreJSClientData(JSC::VM& vm)
+#if ENABLE(STREAMS_API)
+        : m_readableStreamBuiltins(&vm)
+        , m_countQueuingStrategyBuiltins(&vm)
+#endif
     {
     }
 
@@ -71,14 +77,24 @@ public:
         m_worldSet.remove(&world);
     }
 
+#if ENABLE(STREAMS_API)
+    ReadableStreamBuiltinsWrapper& readableStreamBuiltins() { return m_readableStreamBuiltins; }
+    CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins; }
+#endif
+
 private:
     HashSet<DOMWrapperWorld*> m_worldSet;
     RefPtr<DOMWrapperWorld> m_normalWorld;
+
+#if ENABLE(STREAMS_API)
+    ReadableStreamBuiltinsWrapper m_readableStreamBuiltins;
+    CountQueuingStrategyBuiltinsWrapper m_countQueuingStrategyBuiltins;
+#endif
 };
 
 inline void initNormalWorldClientData(JSC::VM* vm)
 {
-    WebCoreJSClientData* webCoreJSClientData = new WebCoreJSClientData;
+    WebCoreJSClientData* webCoreJSClientData = new WebCoreJSClientData(*vm);
     vm->clientData = webCoreJSClientData; // ~VM deletes this pointer.
     webCoreJSClientData->m_normalWorld = DOMWrapperWorld::create(*vm, true);
     vm->m_typedArrayController = adoptRef(new WebCoreTypedArrayController());

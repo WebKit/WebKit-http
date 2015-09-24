@@ -262,6 +262,8 @@ fast/css/draggable-region-parser.html
 css3/font-feature-settings-rendering.html
 
 webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering-2.html
+webkit.org/b/149246 [ Mavericks ] css3/font-variant-all-webfont.html
+webkit.org/b/149246 [ Mavericks ] css3/font-variant-parsing.html
 
 # This feature is disabled on Mavericks.
 [ Mavericks ] http/tests/navigation/page-cache-pending-image-load.html [ Skip ]
@@ -907,6 +909,9 @@ webkit.org/b/137368 media/video-controls-no-scripting.html [ Pass Failure ]
 [ Mavericks ] fast/history/page-cache-removed-source-buffer.html [ WontFix ]
 ## --- End media tests failing on Mavericks and earlier ---
 
+# Yosemite has different expected results. It needs to rebase.
+webkit.org/b/149113 [ Yosemite ] media/media-controls-play-button-updates.html [ Skip ]
+
 ## --- Start flaky media tests ---
 webkit.org/b/34331 http/tests/media/video-referer.html [ Pass Timeout ]
 webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
@@ -1303,3 +1308,13 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
+
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-with-rules.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
+webkit.org/b/149328 fast/shadow-dom/shadow-layout-after-slot-changes.html [ ImageOnlyFailure ]
+
+webkit.org/b/149510 accessibility/mac/aria-expanded-notifications.html [ Pass Failure ]
+

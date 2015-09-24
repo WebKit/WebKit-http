@@ -1755,7 +1755,6 @@ bool Element::childTypeAllowed(NodeType type) const
     case COMMENT_NODE:
     case PROCESSING_INSTRUCTION_NODE:
     case CDATA_SECTION_NODE:
-    case ENTITY_REFERENCE_NODE:
         return true;
     default:
         break;
@@ -1864,7 +1863,20 @@ void Element::childrenChanged(const ChildChange& change)
         if (auto* distributor = shadowRoot->distributor())
             distributor->invalidateDistribution(this);
 #if ENABLE(SHADOW_DOM)
-        shadowRoot->invalidateSlotAssignments();
+        switch (change.type) {
+        case ElementInserted:
+        case ElementRemoved:
+        case AllChildrenRemoved:
+            shadowRoot->invalidateSlotAssignments();
+            break;
+        case TextInserted:
+        case TextRemoved:
+        case TextChanged:
+            shadowRoot->invalidateDefaultSlotAssignments();
+            break;
+        case NonContentsChildChanged:
+            break;
+        }
 #endif
     }
 }
