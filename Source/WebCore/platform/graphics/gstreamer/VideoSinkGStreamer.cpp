@@ -118,7 +118,7 @@ struct _WebKitVideoSinkPrivate {
             gst_caps_unref(currentCaps);
         currentCaps = nullptr;
 
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 5, 1)
         if (context) {
             gst_gl_context_destroy(context);
             gst_object_unref(context);
