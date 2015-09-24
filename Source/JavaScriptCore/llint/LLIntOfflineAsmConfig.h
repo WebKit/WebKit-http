@@ -161,16 +161,4 @@
 #define OFFLINE_ASM_EXECUTION_TRACING 0
 #endif
 
-#if ENABLE(GGC)
-#define OFFLINE_ASM_GGC 1
-#else
-#define OFFLINE_ASM_GGC 0
-#endif
-
-#if COMPILER_SUPPORTS(EABI) && CPU(ARM)
-#define OFFLINE_ASM_ARM_EABI 1
-#else
-#define OFFLINE_ASM_ARM_EABI 0
-#endif
-
 #endif // LLIntOfflineAsmConfig_h

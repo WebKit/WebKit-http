@@ -27,12 +27,12 @@
 
 #include "Attribute.h"
 #include "AttributeDOMTokenList.h"
+#include "AuthorStyleSheets.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "Document.h"
-#include "DocumentStyleSheetCollection.h"
 #include "Event.h"
 #include "EventSender.h"
 #include "Frame.h"
@@ -69,7 +69,6 @@ static LinkEventSender& linkLoadEventSender()
 inline HTMLLinkElement::HTMLLinkElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLElement(tagName, document)
     , m_linkLoader(*this)
-    , m_sizes(DOMSettableTokenList::create())
     , m_disabledState(Unset)
     , m_loading(false)
     , m_createdByParser(createdByParser)
@@ -95,7 +94,7 @@ HTMLLinkElement::~HTMLLinkElement()
         m_cachedSheet->removeClient(this);
 
     if (inDocument())
-        document().styleSheetCollection().removeStyleSheetCandidateNode(*this);
+        document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
 
     linkLoadEventSender().cancelEvent(*this);
 }
@@ -159,7 +158,8 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
         return;
     }
     if (name == sizesAttr) {
-        setSizes(value);
+        if (m_sizes)
+            m_sizes->attributeValueChanged(value);
         process();
         return;
     }
@@ -279,7 +279,7 @@ Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode& 
     if (m_isInShadowTree)
         return InsertionDone;
 
-    document().styleSheetCollection().addStyleSheetCandidateNode(*this, m_createdByParser);
+    document().authorStyleSheets().addStyleSheetCandidateNode(*this, m_createdByParser);
 
     process();
     return InsertionDone;
@@ -295,7 +295,7 @@ void HTMLLinkElement::removedFrom(ContainerNode& insertionPoint)
         ASSERT(!m_sheet);
         return;
     }
-    document().styleSheetCollection().removeStyleSheetCandidateNode(*this);
+    document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
 
     if (m_sheet)
         clearSheet();
@@ -365,6 +365,13 @@ bool HTMLLinkElement::styleSheetIsLoading() const
     if (!m_sheet)
         return false;
     return m_sheet->contents().isLoading();
+}
+
+DOMSettableTokenList& HTMLLinkElement::sizes()
+{
+    if (!m_sizes)
+        m_sizes = std::make_unique<AttributeDOMTokenList>(*this, sizesAttr);
+    return *m_sizes;
 }
 
 void HTMLLinkElement::linkLoaded()
@@ -475,9 +482,9 @@ IconType HTMLLinkElement::iconType() const
     return m_relAttribute.iconType;
 }
 
-String HTMLLinkElement::iconSizes() const
+String HTMLLinkElement::iconSizes()
 {
-    return m_sizes->toString();
+    return sizes().toString();
 }
 
 void HTMLLinkElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
@@ -507,7 +514,7 @@ void HTMLLinkElement::addPendingSheet(PendingSheetType type)
 
     if (m_pendingSheetType == InactiveSheet)
         return;
-    document().styleSheetCollection().addPendingSheet();
+    document().authorStyleSheets().addPendingSheet();
 }
 
 void HTMLLinkElement::removePendingSheet(RemovePendingSheetNotificationType notification)
@@ -520,19 +527,14 @@ void HTMLLinkElement::removePendingSheet(RemovePendingSheetNotificationType noti
 
     if (type == InactiveSheet) {
         // Document just needs to know about the sheet for exposure through document.styleSheets
-        document().styleSheetCollection().updateActiveStyleSheets(DocumentStyleSheetCollection::OptimizedUpdate);
+        document().authorStyleSheets().updateActiveStyleSheets(AuthorStyleSheets::OptimizedUpdate);
         return;
     }
 
-    document().styleSheetCollection().removePendingSheet(
+    document().authorStyleSheets().removePendingSheet(
         notification == RemovePendingSheetNotifyImmediately
-        ? DocumentStyleSheetCollection::RemovePendingSheetNotifyImmediately
-        : DocumentStyleSheetCollection::RemovePendingSheetNotifyLater);
-}
-
-void HTMLLinkElement::setSizes(const String& value)
-{
-    m_sizes->setValue(value);
+        ? AuthorStyleSheets::RemovePendingSheetNotifyImmediately
+        : AuthorStyleSheets::RemovePendingSheetNotifyLater);
 }
 
 } // namespace WebCore

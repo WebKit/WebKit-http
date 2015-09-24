@@ -45,6 +45,7 @@
 #include <runtime/StructureInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/TypedArrays.h>
+#include <runtime/WriteBarrier.h>
 #include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 #include <wtf/Noncopyable.h>
@@ -52,6 +53,7 @@
 
 namespace JSC {
 class HashEntry;
+class JSFunction;
 }
 
 namespace WebCore {
@@ -83,6 +85,15 @@ JSC::EncodedJSValue throwConstructorDocumentUnavailableError(JSC::ExecState&, co
 WEBCORE_EXPORT JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwThisTypeError(JSC::ExecState&, const char* interfaceName, const char* functionName);
 
+void callFunctionWithCurrentArguments(JSC::ExecState&, JSC::JSObject& thisObject, JSC::JSFunction&);
+
+template<typename WrapperClass, typename DOMClass> inline JSC::EncodedJSValue createFromJSBuiltin(JSC::ExecState& state, JSC::JSFunction& initializeFunction, JSDOMGlobalObject& globalObject)
+{
+    JSC::JSObject* object = asObject(toJS(&state, &globalObject, DOMClass::create()));
+    callFunctionWithCurrentArguments(state, *object, initializeFunction);
+    return JSC::JSValue::encode(object);
+}
+
 // Base class for all constructor objects in the JSC bindings.
 class DOMConstructorObject : public JSDOMWrapper {
 public:
@@ -99,6 +110,23 @@ protected:
         : JSDOMWrapper(structure, globalObject)
     {
     }
+};
+
+class DOMConstructorJSBuiltinObject : public DOMConstructorObject {
+public:
+    typedef DOMConstructorObject Base;
+
+protected:
+    DOMConstructorJSBuiltinObject(JSC::Structure* structure, JSDOMGlobalObject* globalObject)
+        : DOMConstructorObject(structure, globalObject) { }
+
+    static void visitChildren(JSC::JSCell*, JSC::SlotVisitor&);
+
+    JSC::JSFunction* initializeFunction() { return m_initializeFunction.get(); }
+    void setInitializeFunction(JSC::VM& vm, JSC::JSFunction& function) { m_initializeFunction.set(vm, this, &function); }
+
+private:
+    JSC::WriteBarrier<JSC::JSFunction> m_initializeFunction;
 };
 
 WEBCORE_EXPORT JSC::Structure* getCachedDOMStructure(JSDOMGlobalObject*, const JSC::ClassInfo*);
@@ -453,6 +481,13 @@ template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState*
     for (auto& element : vector)
         list.append(JSValueTraits<T>::arrayJSValue(exec, globalObject, element));
     return JSC::constructArray(exec, nullptr, globalObject, list);
+}
+
+template<typename T, size_t inlineCapacity> inline JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T, inlineCapacity>* vector)
+{
+    if (!vector)
+        return JSC::constructEmptyArray(exec, nullptr, globalObject, 0);
+    return jsArray(exec, globalObject, *vector);
 }
 
 WEBCORE_EXPORT JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, PassRefPtr<DOMStringList>);

@@ -1,3 +1,235 @@
+2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-09-23  Timothy Horton  <timothy_horton@apple.com>
+
+        Link highlight rect is too rounded on blocks with border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=149511
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (nsSizeForTapHighlightBorderRadius):
+        (-[WKContentView _updateTapHighlight]):
+        Scale the border radius from content to view coordinates, just like
+        we do for the rects that WebKit returns us.
+
+2015-09-22  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Add a file of pointer-lock to cmake ports
+        https://bugs.webkit.org/show_bug.cgi?id=149453
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick): Fix a build break.
+
+2015-09-22  Anders Carlsson  <andersca@apple.com>
+
+        URL of page visited in private browsing still appears in Activity Monitor after page is closed
+        https://bugs.webkit.org/show_bug.cgi?id=149475
+        rdar://problem/22684521
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::close):
+        Make sure to call updateActivePages after removing the page from the page map.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::updateActivePages):
+        Don't include pages that have private browsing enabled.
+
+2015-09-22  Tim Horton  <timothy_horton@apple.com>
+
+        Make it more obvious when using an unaccelerated image buffer, and fix a few callers who do
+        https://bugs.webkit.org/show_bug.cgi?id=149428
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::create):
+
+2015-09-22  Andreas Kling  <akling@apple.com>
+
+        [WK2][NetworkCache] New entry bodies remain in dirty memory after being written to disk.
+        <https://webkit.org/b/149463>
+
+        Reviewed by Antti Koivisto.
+
+        Call msync(MS_ASYNC) on cache entry bodies after writing their data to a
+        memory-mapped file. This turns the previously dirty memory into clean memory,
+        reducing our effective footprint.
+
+        I previously believed this would happen automatically when the kernel finds
+        itself under memory pressure, around the same time as it starts dropping
+        volatile pages. Turns out that's not the case. Even under considerable pressure,
+        we never flush this memory to file. So let's take care of it ourselves.
+
+        If this ends up generating more IO activity than we're comfortable with on some
+        scenario, we can look at throttling.
+
+        * NetworkProcess/cache/NetworkCacheData.cpp:
+        (WebKit::NetworkCache::Data::mapToFile):
+
+2015-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for legacy EntityReference DOM Node type
+        https://bugs.webkit.org/show_bug.cgi?id=149348
+
+        Reviewed by Darin Adler.
+
+        Drop handling EntityReference Nodes.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        (WebKit::WKDOMNodeClass): Deleted.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::isAssistableElement):
+
+2015-09-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r189616.
+        https://bugs.webkit.org/show_bug.cgi?id=149456
+
+        suspected cause of multiple regressions (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Weak should only accept cell pointees."
+        https://bugs.webkit.org/show_bug.cgi?id=148955
+        http://trac.webkit.org/changeset/189616
+
+2015-09-21  Timothy Horton  <timothy_horton@apple.com>
+
+        Allow DataDetectors to pre-filter telephone number menu items
+        https://bugs.webkit.org/show_bug.cgi?id=149444
+        <rdar://problem/19286320>
+
+        Reviewed by Sam Weinig.
+
+        * Platform/mac/MenuUtilities.mm:
+        (WebKit::menuItemForTelephoneNumber):
+        (WebKit::menuForTelephoneNumber):
+        Let DataDetectors know what kind of items we want, so that they can avoid
+        some unnecessary work in cases where we were just going to throw away the items anyway.
+
+2015-09-21  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [Threaded Compositor] Modified to use reference of GraphicsContext instead of pointer
+        https://bugs.webkit.org/show_bug.cgi?id=149399
+
+        Reviewed by Darin Adler.
+
+        This fixes build failure after r189144
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::paintToSurface):
+        (WebKit::ThreadSafeCoordinatedSurface::beginPaint):
+        (WebKit::ThreadSafeCoordinatedSurface::endPaint):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h:
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add the ability for tests to run script in the UI process in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=149356
+
+        Reviewed by Tim Horton.
+
+        Expose a few private functions for testing.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2015-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Layout milestones aren't synchronized with UI-side compositing transactions
+        https://bugs.webkit.org/show_bug.cgi?id=149362
+
+        Reviewed by Anders Carlsson.
+        
+        Because layout milestones are primarily used to synchronize things with
+        the displayed layout/rendering of the page, they should fire at the same
+        time as the contents of the view change.
+
+        However, with UI-side compositing, the layer tree transaction will
+        most likely come in *after* the layout milestones associated with its
+        contents fire, breaking this synchronization.
+
+        Instead, put the layout milestones inside the transaction and fire them
+        immediately after it is committed in the UI process.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::setCallbackIDs):
+        (WebKit::RemoteLayerTreeTransaction::newlyReachedLayoutMilestones):
+        (WebKit::RemoteLayerTreeTransaction::setNewlyReachedLayoutMilestones):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::RemoteLayerTreeTransaction):
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        Add LayoutMilestones to the transaction.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didLayout):
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::renderingProgressDidChange):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        (WKPageSetPageNavigationClient):
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::renderingProgressDidChange):
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree):
+        Remove the UserData parameter from didLayout/renderingProgressDidChange,
+        except for at the API level where we'll always pass null.
+        Nobody uses UserData on didLayout, and we'll assert if any client sets it
+        (and it won't get passed through to the UI process).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didLayoutForCustomContentProvider):
+        Just call didLayout with the relevant milestones instead of reimplementing it.
+
+        (WebKit::WebPageProxy::didLayout):
+        * UIProcess/WebPageProxy.h:
+        Make didLayout public.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidLayout):
+        Let WebPage handle dispatching didLayout.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::dispatchDidLayout):
+        * WebProcess/WebPage/WebPage.h:
+        Let the DrawingArea handle dispatching didLayout.
+        If it doesn't want to handle it, we'll just do the normal thing
+        and dispatch an async message.
+
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        If we reach a new layout milestone, dispatch didLayout client/delegate callbacks.
+
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::dispatchDidLayout):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers):
+        (WebKit::RemoteLayerTreeDrawingArea::dispatchDidLayout):
+        Queue up milestones as we reach them, and send them in the transaction.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2015-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] WebEditorClient::supportsGlobalSelection returns true under Wayland

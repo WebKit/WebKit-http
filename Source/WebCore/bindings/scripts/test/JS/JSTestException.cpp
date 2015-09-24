@@ -99,7 +99,7 @@ static const HashTable JSTestExceptionTable = { 1, 1, true, JSTestExceptionTable
 const ClassInfo JSTestExceptionConstructor::s_info = { "TestExceptionConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestExceptionConstructor) };
 
 JSTestExceptionConstructor::JSTestExceptionConstructor(Structure* structure, JSDOMGlobalObject* globalObject)
-    : DOMConstructorObject(structure, globalObject)
+    : Base(structure, globalObject)
 {
 }
 
@@ -156,33 +156,33 @@ JSTestException::~JSTestException()
     releaseImpl();
 }
 
-bool JSTestException::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+bool JSTestException::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
 {
     auto* thisObject = jsCast<JSTestException*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (getStaticValueSlot<JSTestException, Base>(exec, JSTestExceptionTable, thisObject, propertyName, slot))
+    if (getStaticValueSlot<JSTestException, Base>(state, JSTestExceptionTable, thisObject, propertyName, slot))
         return true;
     return false;
 }
 
-EncodedJSValue jsTestExceptionName(ExecState* exec, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestExceptionName(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
 {
-    UNUSED_PARAM(exec);
+    UNUSED_PARAM(state);
     UNUSED_PARAM(slotBase);
     UNUSED_PARAM(thisValue);
     auto* castedThis = jsCast<JSTestException*>(slotBase);
     auto& impl = castedThis->impl();
-    JSValue result = jsStringWithCache(exec, impl.name());
+    JSValue result = jsStringWithCache(state, impl.name());
     return JSValue::encode(result);
 }
 
 
-EncodedJSValue jsTestExceptionConstructor(ExecState* exec, JSObject* baseValue, EncodedJSValue, PropertyName)
+EncodedJSValue jsTestExceptionConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)
 {
     JSTestExceptionPrototype* domObject = jsDynamicCast<JSTestExceptionPrototype*>(baseValue);
     if (!domObject)
-        return throwVMTypeError(exec);
-    return JSValue::encode(JSTestException::getConstructor(exec->vm(), domObject->globalObject()));
+        return throwVMTypeError(state);
+    return JSValue::encode(JSTestException::getConstructor(state->vm(), domObject->globalObject()));
 }
 
 JSValue JSTestException::getConstructor(VM& vm, JSGlobalObject* globalObject)
@@ -190,18 +190,18 @@ JSValue JSTestException::getConstructor(VM& vm, JSGlobalObject* globalObject)
     return getDOMConstructor<JSTestExceptionConstructor>(vm, jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
-bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::JSCell& cell, void*, SlotVisitor& visitor)
+bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
 {
-    UNUSED_PARAM(cell);
+    UNUSED_PARAM(handle);
     UNUSED_PARAM(visitor);
     return false;
 }
 
-void JSTestExceptionOwner::finalize(JSC::JSCell*& cell, void* context)
+void JSTestExceptionOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto& wrapper = jsCast<JSTestException&>(*cell);
+    auto* jsTestException = jsCast<JSTestException*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
-    uncacheWrapper(world, &wrapper.impl(), &wrapper);
+    uncacheWrapper(world, &jsTestException->impl(), jsTestException);
 }
 
 #if ENABLE(BINDING_INTEGRITY)

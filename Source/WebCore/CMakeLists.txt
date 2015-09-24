@@ -391,7 +391,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DocumentFragment.idl
     dom/DocumentType.idl
     dom/Element.idl
-    dom/EntityReference.idl
     dom/ErrorEvent.idl
     dom/Event.idl
     dom/EventException.idl
@@ -521,6 +520,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLTableSectionElement.idl
     html/HTMLTemplateElement.idl
     html/HTMLTextAreaElement.idl
+    html/HTMLTimeElement.idl
     html/HTMLTitleElement.idl
     html/HTMLTrackElement.idl
     html/HTMLUListElement.idl
@@ -819,11 +819,14 @@ set(WebCore_IDL_FILES
 if (WIN32)
     if (INTERNAL_BUILD)
         set(WebCore_INSPECTOR_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore")
+        set(WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore")
     else ()
         set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+        set(WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}")
     endif ()
 else ()
     set(WebCore_INSPECTOR_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}/inspector/scripts")
+    set(WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR "${JAVASCRIPTCORE_DIR}")
 endif ()
 
 set(WebCore_SOURCES
@@ -1099,7 +1102,6 @@ set(WebCore_SOURCES
     bindings/js/JSCanvasRenderingContextCustom.cpp
     bindings/js/JSCharacterDataCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
-    bindings/js/JSCountQueuingStrategyCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
     bindings/js/JSCryptoCustom.cpp
@@ -1155,7 +1157,6 @@ set(WebCore_SOURCES
     bindings/js/JSHTMLFrameElementCustom.cpp
     bindings/js/JSHTMLFrameSetElementCustom.cpp
     bindings/js/JSHTMLInputElementCustom.cpp
-    bindings/js/JSHTMLLinkElementCustom.cpp
     bindings/js/JSHTMLMediaElementCustom.cpp
     bindings/js/JSHTMLObjectElementCustom.cpp
     bindings/js/JSHTMLOptionsCollectionCustom.cpp
@@ -1378,6 +1379,7 @@ set(WebCore_SOURCES
     dom/ActiveDOMObject.cpp
     dom/AnimationEvent.cpp
     dom/Attr.cpp
+    dom/AuthorStyleSheets.cpp
     dom/BeforeTextInsertedEvent.cpp
     dom/BeforeUnloadEvent.cpp
     dom/CDATASection.cpp
@@ -1419,7 +1421,6 @@ set(WebCore_SOURCES
     dom/DocumentOrderedMap.cpp
     dom/DocumentParser.cpp
     dom/DocumentSharedObjectPool.cpp
-    dom/DocumentStyleSheetCollection.cpp
     dom/DocumentType.cpp
     dom/Element.cpp
     dom/ElementData.cpp
@@ -1435,6 +1436,7 @@ set(WebCore_SOURCES
     dom/EventTarget.cpp
     dom/ExceptionBase.cpp
     dom/ExceptionCodePlaceholder.cpp
+    dom/ExtensionStyleSheets.cpp
     dom/FocusEvent.cpp
     dom/GenericEventQueue.cpp
     dom/IdTargetObserver.cpp
@@ -1702,6 +1704,7 @@ set(WebCore_SOURCES
     html/HTMLTemplateElement.cpp
     html/HTMLTextAreaElement.cpp
     html/HTMLTextFormControlElement.cpp
+    html/HTMLTimeElement.cpp
     html/HTMLTitleElement.cpp
     html/HTMLTrackElement.cpp
     html/HTMLUListElement.cpp
@@ -2018,6 +2021,7 @@ set(WebCore_SOURCES
     page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
     page/PerformanceUserTiming.cpp
+    page/PointerLockController.cpp
     page/PrintContext.cpp
     page/Screen.cpp
     page/SecurityOrigin.cpp
@@ -3338,6 +3342,11 @@ set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlo
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
 set(IDL_ATTRIBUTES_FILE ${WEBCORE_DIR}/bindings/scripts/IDLAttributes.txt)
 
+set(WEBCORE_JS_BUILTINS
+    ${WEBCORE_DIR}/Modules/streams/CountQueuingStrategy.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
+)
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 # Generate InspectorOverlayPage.h
@@ -3557,6 +3566,22 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
     ${SUPPLEMENTAL_DEPENDENCY_FILE}
     ${ADDITIONAL_BINDINGS_DEPENDENCIES})
 
+# WebCore JS Builtins
+foreach (_builtinjs ${WEBCORE_JS_BUILTINS})
+    get_filename_component(_name ${_builtinjs} NAME_WE)
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}BuiltinsWrapper.h ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.h ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.cpp
+        MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins
+        DEPENDS ${WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR}/generate-js-builtins
+        DEPENDS ${_builtinjs}
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-js-builtins --input ${_builtinjs} --output_dir ${DERIVED_SOURCES_WEBCORE_DIR} --generate_js_builtins_path ${WebCore_GENERATE_JS_BUILTINS_SCRIPTS_DIR}
+        VERBATIM)
+    list(APPEND WebCore_SOURCES
+        ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.h
+        ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}BuiltinsWrapper.h
+        ${DERIVED_SOURCES_WEBCORE_DIR}/${_name}Builtins.cpp
+    )
+endforeach ()
 
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/html/HTMLTreeBuilder.cpp MathMLNames.cpp)
 

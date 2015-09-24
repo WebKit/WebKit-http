@@ -1816,14 +1816,6 @@
             "demarchi"
          ]
       },
-      "Lucas Forschler" : {
-         "emails" : [
-            "lforschler@apple.com"
-         ],
-         "nicks" : [
-            "lforschler"
-         ]
-      },
       "Luciano Wolf" : {
          "emails" : [
             "luciano.wolf@openbossa.org"
@@ -2634,7 +2626,6 @@
       },
       "Sukolsak Sakshuwong": {
          "emails" : [
-            "ssakshuwong@apple.com",
             "sukolsak@gmail.com"
          ],
          "expertise" : "JavaScript/ECMAScript, WebAssembly",
@@ -4460,6 +4451,14 @@
             "leviw"
          ]
       },
+      "Lucas Forschler" : {
+         "emails" : [
+            "lforschler@apple.com"
+         ],
+         "nicks" : [
+            "lforschler"
+         ]
+      },
       "Luiz Agostini" : {
          "emails" : [
             "luiz@webkit.org",
@@ -4555,6 +4554,15 @@
          "expertise" : "Text layout and rendering",
          "nicks" : [
             "litherum"
+         ]
+      },
+      "Nan Wang" : {
+         "emails" : [
+            "n_wang@apple.com"
+         ],
+         "expertise" : "Accessibility",
+         "nicks" : [
+            "n_wang"
          ]
       },
       "Nate Chapin" : {

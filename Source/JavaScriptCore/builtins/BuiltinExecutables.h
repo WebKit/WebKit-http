@@ -53,15 +53,11 @@ const SourceCode& name##Source() { return m_##name##Source; }
     UnlinkedFunctionExecutable* createDefaultConstructor(ConstructorKind, const Identifier& name);
 
 private:
-    void finalize(JSCell*&, void* context) override;
+    void finalize(Handle<Unknown>, void* context) override;
 
     VM& m_vm;
 
-    UnlinkedFunctionExecutable* createBuiltinExecutable(const SourceCode& code, const Identifier& name, ConstructAbility constructAbility)
-    {
-        return createExecutableInternal(code, name, ConstructorKind::None, constructAbility);
-    }
-    UnlinkedFunctionExecutable* createExecutableInternal(const SourceCode&, const Identifier&, ConstructorKind, ConstructAbility);
+    UnlinkedFunctionExecutable* createBuiltinExecutable(const SourceCode&, const Identifier&, ConstructAbility);
 
 #define DECLARE_BUILTIN_SOURCE_MEMBERS(name, functionName, length)\
     SourceCode m_##name##Source; \
