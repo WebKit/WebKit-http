@@ -112,6 +112,12 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
         uint32_t challengeLength = MAX_CHALLENGE_LEN;
         unsigned char* challenge = static_cast<unsigned char*>(g_malloc0(challengeLength));
 
+        // As a temporary hack, we clear the already aquired licenses everytime we request a new one.
+        // reason is that currently DxDrm seems to limit the number of aquired licenses per run
+        // to 20. This means run 21 will be in ERROR. Proper patch is requested from Discretix. This
+        // is a work-a-round.
+        DxDrmClient_DeleteAssets(DX_ASSET_PLAYREADY_STORE);
+
         // Get challenge
         status = DxDrmStream_GetLicenseChallenge(m_DxDrmStream, challenge, &challengeLength);
         if (status != DX_SUCCESS) {
