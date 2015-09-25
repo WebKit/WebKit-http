@@ -77,6 +77,9 @@ find_package(EGL REQUIRED)
 find_package(WaylandEGL REQUIRED)
 find_package(BCMHost REQUIRED)
 
+find_package(Libinput REQUIRED)
+find_package(Libudev REQUIRED)
+
 if (ENABLE_SUBTLE_CRYPTO)
     find_package(GnuTLS 3.0.0)
     if (NOT GNUTLS_FOUND)

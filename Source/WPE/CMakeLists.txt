@@ -21,6 +21,8 @@ set(WPE_INCLUDE_DIRECTORIES
     ${BCM_HOST_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
+    ${LIBINPUT_INCLUDE_DIRS}
+    ${LIBUDEV_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
@@ -29,6 +31,8 @@ set(WPE_LIBRARIES
     ${BCM_HOST_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
+    ${LIBINPUT_LIBRARIES}
+    ${LIBUDEV_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
 )
@@ -36,6 +40,7 @@ set(WPE_LIBRARIES
 set(WPE_SOURCES
     Source/Input/Handling.cpp
     Source/Input/KeyboardEventRepeating.cpp
+    Source/Input/LibinputServer.cpp
 
     Source/Input/LinuxInput/KeyMappingLinuxInput.cpp
     Source/Input/LinuxInput/KeyboardEventHandlerLinuxInput.cpp

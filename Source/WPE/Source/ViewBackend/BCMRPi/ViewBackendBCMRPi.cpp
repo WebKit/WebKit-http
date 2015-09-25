@@ -2,6 +2,7 @@
 
 #if WPE_PLATFORM_BCM_RPI
 
+#include "LibinputServer.h"
 #include <bcm_host.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2ext.h>
@@ -148,6 +149,7 @@ ViewBackendBCMRPi::ViewBackendBCMRPi()
 
 ViewBackendBCMRPi::~ViewBackendBCMRPi()
 {
+    LibinputServer::singleton().setClient(nullptr);
 }
 
 void ViewBackendBCMRPi::setClient(Client* client)
@@ -207,6 +209,11 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint
     m_client->frameComplete();
 
     glDeleteTextures(1, &texture);
+}
+
+void ViewBackendBCMRPi::setInputClient(Input::Client* client)
+{
+    LibinputServer::singleton().setClient(client);
 }
 
 } // namespace ViewBackend

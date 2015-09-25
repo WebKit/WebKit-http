@@ -17,6 +17,8 @@ public:
     void setClient(Client*) override;
     void commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint32_t width, uint32_t height, uint32_t format) override;
 
+    void setInputClient(Input::Client*) override;
+
 private:
     Client* m_client;
 
