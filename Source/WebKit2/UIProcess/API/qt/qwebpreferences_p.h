@@ -50,6 +50,7 @@ public:
     Q_PROPERTY(bool universalAccessFromFileURLsAllowed READ universalAccessFromFileURLsAllowed WRITE setUniversalAccessFromFileURLsAllowed NOTIFY universalAccessFromFileURLsAllowedChanged FINAL)
     Q_PROPERTY(bool fileAccessFromFileURLsAllowed READ fileAccessFromFileURLsAllowed WRITE setFileAccessFromFileURLsAllowed NOTIFY fileAccessFromFileURLsAllowedChanged FINAL)
     Q_PROPERTY(bool spatialNavigationEnabled READ spatialNavigationEnabled WRITE setSpatialNavigationEnabled NOTIFY spatialNavigationEnabledChanged FINAL)
+    Q_PROPERTY(bool linksIncludedInFocusChain READ linksIncludedInFocusChain WRITE setLinksIncludedInFocusChain NOTIFY linksIncludedInFocusChainChanged FINAL)
 
     Q_PROPERTY(QString standardFontFamily READ standardFontFamily WRITE setStandardFontFamily NOTIFY standardFontFamilyChanged FINAL)
     Q_PROPERTY(QString fixedFontFamily READ fixedFontFamily WRITE setFixedFontFamily NOTIFY fixedFontFamilyChanged FINAL)
@@ -119,6 +120,9 @@ public:
     bool spatialNavigationEnabled() const;
     void setSpatialNavigationEnabled(bool enable);
 
+    bool linksIncludedInFocusChain() const;
+    void setLinksIncludedInFocusChain(bool enable);
+
     QString standardFontFamily() const;
     void setStandardFontFamily(const QString& family);
 
@@ -164,6 +168,7 @@ Q_SIGNALS:
     void caretBrowsingEnabledChanged();
     void notificationsEnabledChanged();
     void spatialNavigationEnabledChanged();
+    void linksIncludedInFocusChainChanged();
     void universalAccessFromFileURLsAllowedChanged();
     void fileAccessFromFileURLsAllowedChanged();
 

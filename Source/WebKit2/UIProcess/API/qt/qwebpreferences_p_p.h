@@ -44,7 +44,8 @@ public:
         NotificationsEnabled,
         UniversalAccessFromFileURLsAllowed,
         FileAccessFromFileURLsAllowed,
-        SpatialNavigationEnabled
+        SpatialNavigationEnabled,
+        LinksIncludedInFocusChain
     };
 
     enum FontFamily {
