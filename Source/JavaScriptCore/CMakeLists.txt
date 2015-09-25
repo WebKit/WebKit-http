@@ -192,6 +192,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGGraphSafepoint.cpp
     dfg/DFGHeapLocation.cpp
     dfg/DFGInPlaceAbstractState.cpp
+    dfg/DFGInferredTypeCheck.cpp
     dfg/DFGInsertionSet.cpp
     dfg/DFGIntegerCheckCombiningPhase.cpp
     dfg/DFGIntegerRangeOptimizationPhase.cpp
@@ -294,7 +295,6 @@ set(JavaScriptCore_SOURCES
     heap/GCActivityCallback.cpp
     heap/GCLogging.cpp
     heap/GCThread.cpp
-    heap/GCThreadSharedData.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
@@ -500,6 +500,8 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/GetterSetter.cpp
     runtime/Identifier.cpp
     runtime/IndexingType.cpp
+    runtime/InferredType.cpp
+    runtime/InferredTypeTable.cpp
     runtime/InferredValue.cpp
     runtime/InitializeThreading.cpp
     runtime/InspectorInstrumentationObject.cpp
@@ -946,6 +948,7 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     API
     assembler
     bindings
+    builtins
     bytecode
     debugger
     dfg

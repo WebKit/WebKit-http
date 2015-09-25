@@ -393,6 +393,9 @@ static bool ToggleMenuItem(HWND hWnd, UINT menuID)
         gMiniBrowser->privatePreferences()->setShowDebugBorders(newState);
         gMiniBrowser->privatePreferences()->setShowRepaintCounter(newState);
         break;
+    case IDM_DEBUG_INFO_LAYER:
+        gMiniBrowser->privatePreferences()->setShowTiledScrollingIndicator(newState);
+        break;
     case IDM_INVERT_COLORS:
         gMiniBrowser->privatePreferences()->setShouldInvertColors(newState);
         break;
@@ -848,10 +851,12 @@ static void parseCommandLine(bool& usesLayeredWebView, bool& useFullDesktop, boo
             usesLayeredWebView = true;
         else if (!wcsicmp(argv[i], L"--desktop"))
             useFullDesktop = true;
-        else if (!requestedURL)
-            requestedURL = argv[i];
         else if (!wcsicmp(argv[i], L"--performance"))
             pageLoadTesting = true;
+        else if (!wcsicmp(argv[i], L"--highDPI"))
+            continue; // ignore
+        else if (!requestedURL)
+            requestedURL = argv[i];
     }
 }
 

@@ -23,7 +23,8 @@
  */
 
 interface HTMLOutputElement : HTMLElement {
-    readonly attribute DOMSettableTokenList htmlFor;
+    [PutForwards=value] readonly attribute DOMSettableTokenList htmlFor;
+
     readonly attribute HTMLFormElement form;
     [Reflect] attribute DOMString name;
 

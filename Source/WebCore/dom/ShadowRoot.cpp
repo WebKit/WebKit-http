@@ -109,7 +109,6 @@ bool ShadowRoot::childTypeAllowed(NodeType type) const
     case COMMENT_NODE:
     case TEXT_NODE:
     case CDATA_SECTION_NODE:
-    case ENTITY_REFERENCE_NODE:
         return true;
     default:
         return false;
@@ -166,7 +165,13 @@ void ShadowRoot::removeSlotElementByName(const AtomicString& name, HTMLSlotEleme
 void ShadowRoot::invalidateSlotAssignments()
 {
     if (m_slotAssignments)
-        m_slotAssignments->invalidate();
+        m_slotAssignments->invalidate(*this);
+}
+
+void ShadowRoot::invalidateDefaultSlotAssignments()
+{
+    if (m_slotAssignments)
+        m_slotAssignments->invalidateDefaultSlot(*this);
 }
 
 const Vector<Node*>* ShadowRoot::assignedNodesForSlot(const HTMLSlotElement& slot)

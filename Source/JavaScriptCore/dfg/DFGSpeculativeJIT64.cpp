@@ -1228,7 +1228,6 @@ GPRReg SpeculativeJIT::fillSpeculateBoolean(Edge edge)
 
 void SpeculativeJIT::compileBaseValueStoreBarrier(Edge& baseEdge, Edge& valueEdge)
 {
-#if ENABLE(GGC)
     ASSERT(!isKnownNotCell(valueEdge.node()));
 
     SpeculateCellOperand base(this, baseEdge);
@@ -1237,10 +1236,6 @@ void SpeculativeJIT::compileBaseValueStoreBarrier(Edge& baseEdge, Edge& valueEdg
     GPRTemporary scratch2(this);
 
     writeBarrier(base.gpr(), value.gpr(), valueEdge, scratch1.gpr(), scratch2.gpr());
-#else
-    UNUSED_PARAM(baseEdge);
-    UNUSED_PARAM(valueEdge);
-#endif
 }
 
 void SpeculativeJIT::compileObjectEquality(Node* node)
@@ -3916,38 +3911,7 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case CheckStructure: {
-        SpeculateCellOperand base(this, node->child1());
-        
-        ASSERT(node->structureSet().size());
-        
-        ExitKind exitKind;
-        if (node->child1()->hasConstant())
-            exitKind = BadConstantCache;
-        else
-            exitKind = BadCache;
-        
-        if (node->structureSet().size() == 1) {
-            speculationCheck(
-                exitKind, JSValueSource::unboxedCell(base.gpr()), 0,
-                m_jit.branchWeakStructure(
-                    JITCompiler::NotEqual,
-                    JITCompiler::Address(base.gpr(), JSCell::structureIDOffset()),
-                    node->structureSet()[0]));
-        } else {
-            JITCompiler::JumpList done;
-            
-            for (size_t i = 0; i < node->structureSet().size() - 1; ++i)
-                done.append(m_jit.branchWeakStructure(JITCompiler::Equal, MacroAssembler::Address(base.gpr(), JSCell::structureIDOffset()), node->structureSet()[i]));
-            
-            speculationCheck(
-                exitKind, JSValueSource::unboxedCell(base.gpr()), 0,
-                m_jit.branchWeakStructure(
-                    JITCompiler::NotEqual, MacroAssembler::Address(base.gpr(), JSCell::structureIDOffset()), node->structureSet().last()));
-            
-            done.link(&m_jit);
-        }
-        
-        noResult(node);
+        compileCheckStructure(node);
         break;
     }
         
@@ -4846,7 +4810,6 @@ void SpeculativeJIT::compile(Node* node)
         use(node);
 }
 
-#if ENABLE(GGC)
 void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg valueGPR, Edge valueUse, GPRReg scratch1, GPRReg scratch2)
 {
     JITCompiler::Jump isNotCell;
@@ -4860,7 +4823,6 @@ void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg valueGPR, Edge valueUs
     if (!isKnownCell(valueUse.node()))
         isNotCell.link(&m_jit);
 }
-#endif // ENABLE(GGC)
 
 void SpeculativeJIT::moveTrueTo(GPRReg gpr)
 {

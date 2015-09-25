@@ -49,6 +49,11 @@ namespace JSC {
 
 static const uint32_t wasmMagicNumber = 0x6d736177;
 
+enum class WASMOpKind {
+    Statement,
+    Expression
+};
+
 enum class WASMOpStatement : uint8_t {
     SetLocal,
     SetGlobal,
@@ -254,6 +259,13 @@ enum class WASMOpExpressionF64WithImmediate : uint8_t {
     ConstantPoolIndex,
     GetLocal,
     NumberOfWASMOpExpressionF64WithImmediates
+};
+
+enum class WASMOpExpressionVoid : uint8_t {
+    CallInternal,
+    CallIndirect,
+    CallImport,
+    NumberOfWASMOpExpressionVoids
 };
 
 enum class WASMVariableTypes : uint8_t {

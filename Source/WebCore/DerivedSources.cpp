@@ -42,6 +42,7 @@
 #include "JSCanvasRenderingContext.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
 #if ENABLE(STREAMS_API)
+#include "CountQueuingStrategyBuiltins.cpp"
 #include "JSCountQueuingStrategy.cpp"
 #endif
 #if ENABLE(WEBGL)
@@ -149,7 +150,6 @@
 #include "JSDOMWindow.cpp"
 #include "JSDOMWindowCSS.cpp"
 #include "JSElement.cpp"
-#include "JSEntityReference.cpp"
 #include "JSErrorEvent.cpp"
 #include "JSEvent.cpp"
 #include "JSEventException.cpp"
@@ -245,6 +245,7 @@
 #include "JSHTMLTemplateElement.cpp"
 #endif
 #include "JSHTMLTextAreaElement.cpp"
+#include "JSHTMLTimeElement.cpp"
 #include "JSHTMLTitleElement.cpp"
 #include "JSHTMLUnknownElement.cpp"
 #include "JSHTMLUListElement.cpp"
@@ -309,6 +310,7 @@
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamController.cpp"
 #include "JSReadableStreamReader.cpp"
+#include "ReadableStreamBuiltins.cpp"
 #endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"
