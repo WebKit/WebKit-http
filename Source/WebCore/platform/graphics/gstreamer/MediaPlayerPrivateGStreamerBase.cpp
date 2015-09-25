@@ -269,6 +269,18 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
         m_pipeline.clear();
     }
 
+#if USE(DXDRM)
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (m_dxdrmSession != NULL) {
+        delete m_dxdrmSession;
+    }
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+    if (m_cdmSession != NULL)
+        delete m_cdmSession;
+    }
+#endif
+#endif
+
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
     if (client())
         client()->platformLayerWillBeDestroyed();
