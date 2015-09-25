@@ -274,7 +274,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     if (m_dxdrmSession != NULL) {
         delete m_dxdrmSession;
     }
-#elif ENABLE(ENCRYPTED_MEDIA_V2)
+#elif ENABLE(ENCRYPTED_MEDIA_V2) {
     if (m_cdmSession != NULL)
         delete m_cdmSession;
     }
