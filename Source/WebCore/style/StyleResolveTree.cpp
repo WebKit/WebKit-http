@@ -28,10 +28,12 @@
 
 #include "AXObjectCache.h"
 #include "AnimationController.h"
+#include "AuthorStyleSheets.h"
 #include "CSSFontSelector.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
 #include "FlowThreadController.h"
+#include "HTMLSlotElement.h"
 #include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
@@ -468,11 +470,33 @@ static void attachBeforeOrAfterPseudoElementIfNeeded(Element& current, PseudoId 
     attachRenderTree(pseudoElement.get(), *current.renderStyle(), renderTreePosition, nullptr);
 }
 
+#if ENABLE(SHADOW_DOM)
+static void attachSlotAssignees(HTMLSlotElement& slot, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition)
+{
+    if (auto* assignedNodes = slot.assignedNodes()) {
+        for (auto* child : *assignedNodes) {
+            if (is<Text>(*child))
+                attachTextRenderer(downcast<Text>(*child), renderTreePosition);
+            else if (is<Element>(*child))
+                attachRenderTree(downcast<Element>(*child), inheritedStyle, renderTreePosition, nullptr);
+        }
+    }
+    slot.clearNeedsStyleRecalc();
+    slot.clearChildNeedsStyleRecalc();
+}
+#endif
+
 static void attachRenderTree(Element& current, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition, PassRefPtr<RenderStyle> resolvedStyle)
 {
     PostResolutionCallbackDisabler callbackDisabler(current.document());
     WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
 
+#if ENABLE(SHADOW_DOM)
+    if (is<HTMLSlotElement>(current)) {
+        attachSlotAssignees(downcast<HTMLSlotElement>(current), inheritedStyle, renderTreePosition);
+        return;
+    }
+#endif
     if (is<InsertionPoint>(current)) {
         attachDistributedChildren(downcast<InsertionPoint>(current), inheritedStyle, renderTreePosition);
         current.clearNeedsStyleRecalc();
@@ -532,15 +556,10 @@ static void detachDistributedChildren(InsertionPoint& insertionPoint)
 
 static void detachChildren(ContainerNode& current, DetachType detachType)
 {
-    if (is<InsertionPoint>(current))
-        detachDistributedChildren(downcast<InsertionPoint>(current));
-
     for (Node* child = current.firstChild(); child; child = child->nextSibling()) {
-        if (is<Text>(*child)) {
-            Style::detachTextRenderer(downcast<Text>(*child));
-            continue;
-        }
-        if (is<Element>(*child))
+        if (is<Text>(*child))
+            detachTextRenderer(downcast<Text>(*child));
+        else if (is<Element>(*child))
             detachRenderTree(downcast<Element>(*child), detachType);
     }
     current.clearChildNeedsStyleRecalc();
@@ -550,6 +569,23 @@ static void detachShadowRoot(ShadowRoot& shadowRoot, DetachType detachType)
 {
     detachChildren(shadowRoot, detachType);
 }
+
+#if ENABLE(SHADOW_DOM)
+static void detachSlotAssignees(HTMLSlotElement& slot, DetachType detachType)
+{
+    ASSERT(!slot.renderer());
+    if (auto* assignedNodes = slot.assignedNodes()) {
+        for (auto* child : *assignedNodes) {
+            if (is<Text>(*child))
+                detachTextRenderer(downcast<Text>(*child));
+            else if (is<Element>(*child))
+                detachRenderTree(downcast<Element>(*child), detachType);
+        }
+    }
+    slot.clearNeedsStyleRecalc();
+    slot.clearChildNeedsStyleRecalc();
+}
+#endif
 
 static void detachRenderTree(Element& current, DetachType detachType)
 {
@@ -565,7 +601,13 @@ static void detachRenderTree(Element& current, DetachType detachType)
     if (detachType != ReattachDetach)
         current.clearHoverAndActiveStatusBeforeDetachingRenderer();
 
-    if (ShadowRoot* shadowRoot = current.shadowRoot())
+    if (is<InsertionPoint>(current))
+        detachDistributedChildren(downcast<InsertionPoint>(current));
+#if ENABLE(SHADOW_DOM)
+    else if (is<HTMLSlotElement>(current))
+        detachSlotAssignees(downcast<HTMLSlotElement>(current), detachType);
+#endif
+    else if (ShadowRoot* shadowRoot = current.shadowRoot())
         detachShadowRoot(*shadowRoot, detachType);
 
     detachChildren(current, detachType);
@@ -644,7 +686,7 @@ static Change resolveLocal(Element& current, RenderStyle& inheritedStyle, Render
 
     // If "rem" units are used anywhere in the document, and if the document element's font size changes, then force font updating
     // all the way down the tree. This is simpler than having to maintain a cache of objects (and such font size changes should be rare anyway).
-    if (document.styleSheetCollection().usesRemUnits() && document.documentElement() == &current && localChange != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
+    if (document.authorStyleSheets().usesRemUnits() && document.documentElement() == &current && localChange != NoChange && currentStyle && newStyle && currentStyle->fontSize() != newStyle->fontSize()) {
         // Cached RenderStyles may depend on the re units.
         if (StyleResolver* styleResolver = document.styleResolverIfExists())
             styleResolver->invalidateMatchedPropertiesCache();
@@ -798,10 +840,32 @@ static void resolveChildren(Element& current, RenderStyle& inheritedStyle, Chang
     }
 }
 
+#if ENABLE(SHADOW_DOM)
+static void resolveSlotAssignees(HTMLSlotElement& slot, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition, Change change)
+{
+    if (auto* assignedNodes = slot.assignedNodes()) {
+        for (auto* child : *assignedNodes) {
+            if (is<Text>(*child))
+                resolveTextNode(downcast<Text>(*child), renderTreePosition);
+            else if (is<Element>(*child))
+                resolveTree(downcast<Element>(*child), inheritedStyle, renderTreePosition, change);
+        }
+    }
+    slot.clearNeedsStyleRecalc();
+    slot.clearChildNeedsStyleRecalc();
+}
+#endif
+
 void resolveTree(Element& current, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition, Change change)
 {
     ASSERT(change != Detach);
 
+#if ENABLE(SHADOW_DOM)
+    if (is<HTMLSlotElement>(current)) {
+        resolveSlotAssignees(downcast<HTMLSlotElement>(current), inheritedStyle, renderTreePosition, change);
+        return;
+    }
+#endif
     if (is<InsertionPoint>(current)) {
         current.clearNeedsStyleRecalc();
         current.clearChildNeedsStyleRecalc();
@@ -851,6 +915,8 @@ void resolveTree(Element& current, RenderStyle& inheritedStyle, RenderTreePositi
 
 void resolveTree(Document& document, Change change)
 {
+    auto& renderView = *document.renderView();
+
     if (change == Force) {
         auto documentStyle = resolveForDocument(document);
 
@@ -861,9 +927,9 @@ void resolveTree(Document& document, Change change)
                 documentStyle.get().fontCascade().update(&document.fontSelector());
         }
 
-        Style::Change documentChange = determineChange(documentStyle.get(), document.renderView()->style());
+        Style::Change documentChange = determineChange(documentStyle.get(), renderView.style());
         if (documentChange != NoChange)
-            document.renderView()->setStyle(WTF::move(documentStyle));
+            renderView.setStyle(WTF::move(documentStyle));
     }
 
     Element* documentElement = document.documentElement();
@@ -871,8 +937,18 @@ void resolveTree(Document& document, Change change)
         return;
     if (change < Inherit && !documentElement->childNeedsStyleRecalc() && !documentElement->needsStyleRecalc())
         return;
-    RenderTreePosition renderTreePosition(*document.renderView());
+
+    auto& styleResolved = document.ensureStyleResolver();
+
+    // Pseudo element removal and similar may only work with these flags still set. Reset them after the style recalc.
+    renderView.setUsesFirstLineRules(renderView.usesFirstLineRules() || styleResolved.usesFirstLineRules());
+    renderView.setUsesFirstLetterRules(renderView.usesFirstLetterRules() || styleResolved.usesFirstLetterRules());
+
+    RenderTreePosition renderTreePosition(renderView);
     resolveTree(*documentElement, *document.renderStyle(), renderTreePosition, change);
+
+    renderView.setUsesFirstLineRules(styleResolved.usesFirstLineRules());
+    renderView.setUsesFirstLetterRules(styleResolved.usesFirstLetterRules());
 }
 
 void detachRenderTree(Element& element)

@@ -85,18 +85,13 @@ void HTMLSlotElement::attributeChanged(const QualifiedName& name, const AtomicSt
     }
 }
 
-Vector<RefPtr<Node>> HTMLSlotElement::getDistributedNodes() const
+const Vector<Node*>* HTMLSlotElement::assignedNodes() const
 {
-    Vector<RefPtr<Node>> distributedNodes;
+    auto* shadowRoot = containingShadowRoot();
+    if (!shadowRoot)
+        return nullptr;
 
-    if (auto shadowRoot = containingShadowRoot()) {
-        if (auto assignedNodes = shadowRoot->assignedNodesForSlot(*this)) {
-            for (auto* node : *assignedNodes)
-                distributedNodes.append(node);
-        }
-    }
-
-    return distributedNodes;
+    return shadowRoot->assignedNodesForSlot(*this);
 }
 
 }

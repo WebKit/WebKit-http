@@ -14,6 +14,7 @@ editing/mac [ Skip ]
 editing/pasteboard/gtk [ Skip ]
 tiled-drawing [ Skip ]
 swipe [ Skip ]
+fast/zooming/ios [ Skip ]
 
 fast/forms/attributed-strings.html [ Skip ]
 fast/scrolling/latching [ Skip ]
@@ -35,6 +36,13 @@ fast/events/mouse-force-up.html [ Skip ]
 
 # Only iOS supports QuickLook
 quicklook [ Skip ]
+
+# This test is WebKit2-only
+http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
+
+# Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
+fast/harness/ui-side-scripts.html [ Skip ]
+fast/harness/concurrent-ui-side-scripts.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -663,8 +671,10 @@ webkit.org/b/148925 svg/dom/svg-root-lengths.html [ Pass Failure ]
 
 webkit.org/b/149082 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html [ Pass Failure ]
 
-webkit.org/b/148695 fast/shadow-dom [ Failure ]
+webkit.org/b/148695 fast/shadow-dom [ Failure ImageOnlyFailure ]
 
 # Marks as flaky (see also https://bugs.webkit.org/show_bug.cgi?id=132388)
 
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overrides.html [ Failure Pass ]
+
+webkit.org/b/149218 http/tests/notifications/events.html [ Pass Crash Timeout ]

@@ -34,9 +34,6 @@
 #include "JSAudioTrackCustom.cpp"
 #include "JSAudioTrackListCustom.cpp"
 #include "JSBlobCustom.cpp"
-#if ENABLE(STREAMS_API)
-#include "JSCountQueuingStrategyCustom.cpp"
-#endif
 #include "JSCSSRuleCustom.cpp"
 #include "JSCSSRuleListCustom.cpp"
 #include "JSCSSStyleDeclarationCustom.cpp"
@@ -94,7 +91,6 @@
 #include "JSHTMLFrameElementCustom.cpp"
 #include "JSHTMLFrameSetElementCustom.cpp"
 #include "JSHTMLInputElementCustom.cpp"
-#include "JSHTMLLinkElementCustom.cpp"
 #include "JSHTMLMediaElementCustom.cpp"
 #include "JSHTMLObjectElementCustom.cpp"
 #include "JSHTMLOptionsCollectionCustom.cpp"

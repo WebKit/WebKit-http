@@ -148,48 +148,40 @@ ALWAYS_INLINE void SlotVisitor::appendValues(WriteBarrierBase<Unknown>* barriers
 
 inline void SlotVisitor::addWeakReferenceHarvester(WeakReferenceHarvester* weakReferenceHarvester)
 {
-    m_shared.m_weakReferenceHarvesters.addThreadSafe(weakReferenceHarvester);
+    m_heap.m_weakReferenceHarvesters.addThreadSafe(weakReferenceHarvester);
 }
 
 inline void SlotVisitor::addUnconditionalFinalizer(UnconditionalFinalizer* unconditionalFinalizer)
 {
-    m_shared.m_unconditionalFinalizers.addThreadSafe(unconditionalFinalizer);
+    m_heap.m_unconditionalFinalizers.addThreadSafe(unconditionalFinalizer);
 }
 
 inline void SlotVisitor::addOpaqueRoot(void* root)
 {
-#if ENABLE(PARALLEL_GC)
     if (Options::numberOfGCMarkers() == 1) {
         // Put directly into the shared HashSet.
-        m_shared.m_opaqueRoots.add(root);
+        m_heap.m_opaqueRoots.add(root);
         return;
     }
     // Put into the local set, but merge with the shared one every once in
     // a while to make sure that the local sets don't grow too large.
     mergeOpaqueRootsIfProfitable();
     m_opaqueRoots.add(root);
-#else
-    m_opaqueRoots.add(root);
-#endif
 }
 
 inline bool SlotVisitor::containsOpaqueRoot(void* root) const
 {
     ASSERT(!m_isInParallelMode);
-#if ENABLE(PARALLEL_GC)
     ASSERT(m_opaqueRoots.isEmpty());
-    return m_shared.m_opaqueRoots.contains(root);
-#else
-    return m_opaqueRoots.contains(root);
-#endif
+    return m_heap.m_opaqueRoots.contains(root);
 }
 
 inline TriState SlotVisitor::containsOpaqueRootTriState(void* root) const
 {
     if (m_opaqueRoots.contains(root))
         return TrueTriState;
-    std::lock_guard<Lock> lock(m_shared.m_opaqueRootsMutex);
-    if (m_shared.m_opaqueRoots.contains(root))
+    std::lock_guard<Lock> lock(m_heap.m_opaqueRootsMutex);
+    if (m_heap.m_opaqueRoots.contains(root))
         return TrueTriState;
     return MixedTriState;
 }
@@ -197,12 +189,8 @@ inline TriState SlotVisitor::containsOpaqueRootTriState(void* root) const
 inline int SlotVisitor::opaqueRootCount()
 {
     ASSERT(!m_isInParallelMode);
-#if ENABLE(PARALLEL_GC)
     ASSERT(m_opaqueRoots.isEmpty());
-    return m_shared.m_opaqueRoots.size();
-#else
-    return m_opaqueRoots.size();
-#endif
+    return m_heap.m_opaqueRoots.size();
 }
 
 inline void SlotVisitor::mergeOpaqueRootsIfNecessary()
@@ -245,7 +233,7 @@ inline void SlotVisitor::copyLater(JSCell* owner, CopyToken token, void* ptr, si
         // is correct.
         // https://bugs.webkit.org/show_bug.cgi?id=144749
         bytes = block->size();
-        m_shared.m_copiedSpace->pin(block);
+        m_heap.m_storageSpace.pin(block);
     }
 
     ASSERT(heap()->m_storageSpace.contains(block));
@@ -264,17 +252,17 @@ inline void SlotVisitor::reportExtraMemoryVisited(JSCell* owner, size_t size)
 
 inline Heap* SlotVisitor::heap() const
 {
-    return &sharedData().m_vm->heap;
+    return &m_heap;
 }
 
 inline VM& SlotVisitor::vm()
 {
-    return *sharedData().m_vm;
+    return *m_heap.m_vm;
 }
 
 inline const VM& SlotVisitor::vm() const
 {
-    return *sharedData().m_vm;
+    return *m_heap.m_vm;
 }
 
 } // namespace JSC

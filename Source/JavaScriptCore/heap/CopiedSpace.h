@@ -46,7 +46,7 @@ class CopiedBlock;
 
 class CopiedSpace {
     friend class CopyVisitor;
-    friend class GCThreadSharedData;
+    friend class Heap;
     friend class SlotVisitor;
     friend class JIT;
 public:
@@ -139,7 +139,6 @@ private:
     bool m_shouldDoCopyPhase;
 
     Lock m_loanedBlocksLock; 
-    Condition m_loanedBlocksCondition;
     size_t m_numberOfLoanedBlocks;
     
     size_t m_bytesRemovedFromOldSpaceDueToReallocation;

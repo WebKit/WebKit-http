@@ -1,3 +1,299 @@
+2015-09-24  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+
+2015-09-24  Mark Lam  <mark.lam@apple.com>
+
+        Unreviewed. Make Lucas Forschler a WebKit reviewer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-09-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GObject DOM API breaks after r190120.
+
+        Bring back code removed in r169931 to handle documentation of
+        deleted classes.
+
+        * gtk/webkitdom.py:
+        (WebKitDOMDocGenerator):
+        (WebKitDOMDocGenerator.write_deleted_classes):
+        (WebKitDOMDocGenerator.generate):
+        (write_deleted_classes):
+        (WebKitDOMDocGeneratorSections._deleted_class):
+        (WebKitDOMDocGeneratorSections._deleted_class.in):
+        (WebKitDOMDocGeneratorSections.write_deleted_classes):
+        (WebKitDOMDocGeneratorSections.write_deleted_classes.with):
+
+2015-09-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] [Font Features] Implement font-variant-*
+        https://bugs.webkit.org/show_bug.cgi?id=148413
+
+        Reviewed by Darin Adler.
+
+        Update test font to use "lnum" feature.
+
+        * FontWithFeatures/FontWithFeatures/FontCreator.cpp:
+        (Generator::appendGSUBTable):
+
+2015-09-22  Andy Estes  <aestes@apple.com>
+
+        ContentFiltering.AllowDownloadAfterAddData is very flaky
+        https://bugs.webkit.org/show_bug.cgi?id=148885
+        <rdar://problem/22729563>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The AllowDownload* tests were relying on -_downloadDidStart: being called before -webView:didFinishNavigation:,
+        but there is no guarantee of this. For tests that should allow a download, spin the runloop until
+        -_downloadDidStart: is called. The test will now timeout on failure, but will no longer produce false failures.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
+        (downloadTest):
+
+2015-09-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Mavericks: Media tests start to time out after a few days of bot uptime
+        https://bugs.webkit.org/show_bug.cgi?id=149468
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/port/base.py:
+        * Scripts/webkitpy/port/driver.py:
+        * Scripts/webkitpy/port/mac.py:
+
+2015-09-22  Nan Wang  <n_wang@apple.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove 'nullable' to fix older iOS builds.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView scrollViewDidEndZooming:withView:atScale:]):
+
+2015-09-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Show tiled drawing debug overlay on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=149426
+
+        Reviewed by Dean Jackson.
+
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLib.rc: Add new menu option.
+        * MiniBrowser/MiniBrowser.vcxproj/MiniBrowserLibResource.h: Ditto.
+        * MiniBrowser/win/Common.cpp:
+        (::ToggleMenuItem): Recognize new menu item and toggle the 'showTiledScrollingIndicator'
+        flag if needed.
+        * MiniBrowser/win/MiniBrowser.h: Update to use new IWebPreferencesPrivate3 class.
+
+2015-09-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Use command-line argument to launch in regular or High DPI mode.
+        https://bugs.webkit.org/show_bug.cgi?id=149417
+
+        Reviewed by Dean Jackson.
+
+        * MiniBrowser/win/Common.cpp:
+        (parseCommandLine): Ignore the '--highDPI' argument. It's used at the
+        very start of execution, before the MiniBrowser.dll is loaded.
+        * win/DLLLauncher/DLLLauncherMain.cpp:
+        (shouldUseHighDPI): Check for '--highDPI', and use this mode if
+        present. On WinCairo, always use High DPI.
+
+2015-09-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        32-bit Mac build fix attempt after r190065.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+
+2015-09-21  Alexey Proskuryakov  <ap@apple.com>
+
+        [OS X] Update for Xcode 7.0 on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=149389
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        Removed unneeded declarations - conforming to a protocol is sufficient.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm:
+        Changed the definitions to be compiled whenever the SDK requires it (so we will have
+        dead code compiled in when building for 10.10 with 10.11 SDK, somewhat unfortunately).
+
+2015-09-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add the ability for tests to run script in the UI process in WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=149356
+
+        Reviewed by Tim Horton.
+
+        This change adds testRunner.runUIScript(script, callback), which allows a test
+        to execute script in a JSContext which runs in the UI process. That context
+        has bindings exposed through the UIScriptController interface; currently one test
+        function, and some iOS-specific functions are included. UIScriptController can be
+        async with a callback, and runUIScript() itself is asynchronous. When the UI 
+        script is complete, it calls uiController.uiScriptComplete(result), where 'result'
+        is a string passed back to the web process, and given to the runUIScript()
+        callback function.
+        
+        Thanks to Gyuyoung Kim for help with the Gtk/Efl build.
+
+        * WebKitTestRunner/DerivedSources.make: Build UIScriptController.idl.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Add runUIScript().
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage): When the UI-side script is
+        complete, call back into TestRunner.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::nextUIScriptCallbackID):
+        (WTR::TestRunner::runUIScript): Post a message to the injected bundle to run the UI script.
+        (WTR::TestRunner::runUIScriptCallback): When the UI script is done, execute its callback function.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::testOptionsForTest): Support "useFlexibleViewport" as a test argument.
+        (WTR::shouldUseFixedLayout): Deleted. Moved to a TestInvocation function.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shouldUseFixedLayout):
+        (WTR::TestInvocation::shouldUseThreadedScrolling):
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        (WTR::TestInvocation::runUISideScript): Run the UI-side script!
+        (WTR::TestInvocation::uiScriptDidComplete): Send a message back to the injected bundle.
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm: Added.
+        (-[TestRunnerWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]):
+        (-[TestRunnerWKWebView zoomToScale:animated:completionHandler:]):
+        (-[TestRunnerWKWebView scrollViewDidEndZooming:withView:atScale:]):
+        (-[TestRunnerWKWebView onDidEndZooming:]): Allow a test to hook into the end of zooming.
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::PlatformWebView): Make a TestRunnerWKWebView on iOS.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm: Added.
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::zoomToScale):
+        (WTR::UIScriptController::zoomScale):
+        (WTR::UIScriptController::minimumZoomScale):
+        (WTR::UIScriptController::maximumZoomScale):
+        (WTR::UIScriptController::contentVisibleRect):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (-[TestRunnerWKWebView dragImage:at:offset:event:pasteboard:source:slideBack:]): Deleted.
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest):
+        (WTR::shouldUseThreadedScrolling): Deleted. Moved to TestInvocation.
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.h:
+        * WebKitTestRunner/uiscriptcontext/UIScriptContext.cpp: Added. Owns the JS context in the UI process.
+        (UIScriptContext::UIScriptContext):
+        (UIScriptContext::~UIScriptContext):
+        (UIScriptContext::runUIScript): Entrypoint to running the UI script. If the script didn't do anything
+        asynchronous, call the callback.
+        (UIScriptContext::nextTaskCallbackID):
+        (UIScriptContext::prepareForAsyncTask): Do setup for one async task (i.e. a UIScriptController function
+        that has a callback). Has to store the callbackID of the script, so code called from the completion
+        callback knows which UI script invoked it.
+        (UIScriptContext::asyncTaskComplete): Called when one task is finished.
+        (UIScriptContext::uiScriptComplete):
+        (UIScriptContext::objectFromRect): Make a JS object from a rect.
+        * WebKitTestRunner/uiscriptcontext/UIScriptContext.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptContext::hasOutstandingAsyncTasks):
+        * WebKitTestRunner/uiscriptcontext/UIScriptController.cpp: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptController::UIScriptController):
+        (WTR::UIScriptController::makeWindowObject):
+        (WTR::UIScriptController::wrapperClass):
+        (WTR::UIScriptController::doAsyncTask):
+        (WTR::UIScriptController::zoomToScale):
+        (WTR::UIScriptController::zoomScale):
+        (WTR::UIScriptController::minimumZoomScale):
+        (WTR::UIScriptController::maximumZoomScale):
+        (WTR::UIScriptController::contentVisibleRect):
+        (WTR::UIScriptController::uiScriptComplete):
+        * WebKitTestRunner/uiscriptcontext/UIScriptController.h: Copied from Tools/WebKitTestRunner/TestOptions.h.
+        (WTR::UIScriptController::create):
+        * WebKitTestRunner/uiscriptcontext/bindings/UIScriptController.idl: Copied from Tools/WebKitTestRunner/TestOptions.h.
+
+2015-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on threaded scrolling by default in the tests
+        https://bugs.webkit.org/show_bug.cgi?id=149377
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::updatePlatformSpecificTestOptionsForTest):
+        (WTR::shouldUseThreadedScrolling): Deleted.
+        Turn on threaded scrolling by default.
+
+2015-09-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] run-gtk-tests doesn't provide feedback about crashing google tests
+        https://bugs.webkit.org/show_bug.cgi?id=149252
+
+        Reviewed by Darin Adler.
+
+        In case of glib tests the test runner notifies about tests
+        crashing, but for google tests we don't get any feedback, which
+        means that in case of a test crashing we get a list of **PASS**
+        messages and at the summary we are notified that the test suite
+        has failed, but it's impossible to know which test cases have failed.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner._run_google_test): Add a **CRASH** message if test
+        case crashed.
+
+2015-09-20  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitTestRunner can leak user content script results between tests
+        https://bugs.webkit.org/show_bug.cgi?id=149391
+
+        Reviewed by Sam Weinig.
+
+        Move WKBundlePageRemoveAllUserContent call so that it's executed before loading
+        about:blank, and thus about:blank doesn't have unintended side effects.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::resetAfterTest):
+
+2015-09-20  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac, iOS] AccessibilityController doesn't uninstall global notification handler
+        https://bugs.webkit.org/show_bug.cgi?id=149384
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityControllerIOS.mm:
+        (AccessibilityController::addNotificationListener): Fixed a leak, and cleaned up the code.
+        (AccessibilityController::platformResetToConsistentState): Actually remove the handler,
+        regardless of whether someone else holds a reference (we also call -stopListening in
+        -dealloc).
+
+        * DumpRenderTree/mac/AccessibilityControllerMac.mm:
+        (AccessibilityController::platformResetToConsistentState):
+        (AccessibilityController::addNotificationListener):
+        Ditto.
+
+2015-09-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove XHR_TIMEOUT compilation guard
+        https://bugs.webkit.org/show_bug.cgi?id=149260
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
 2015-09-19  Dan Bernstein  <mitz@apple.com>
 
         Attempted build fix.

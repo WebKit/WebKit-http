@@ -836,6 +836,12 @@
     return kit(WTF::getPtr(IMPL->putForwardsAttribute()));
 }
 
+- (DOMTestNode *)putForwardsNullableAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->putForwardsNullableAttribute(isNull)));
+}
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -947,6 +953,18 @@
 {
     WebCore::JSMainThreadNullState state;
     IMPL->customMethodWithArgs(longArg, strArg, core(objArg));
+}
+
+- (void)jsBuiltinMethod
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->jsBuiltinMethod();
+}
+
+- (void)jsBuiltinMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->jsBuiltinMethodWithArgs(longArg, strArg, core(objArg));
 }
 
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture

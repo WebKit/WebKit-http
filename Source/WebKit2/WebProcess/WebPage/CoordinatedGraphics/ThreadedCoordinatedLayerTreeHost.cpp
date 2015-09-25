@@ -67,6 +67,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
+    , m_scheduledWhileWaitingForRenderer(false)
     , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 30)
     , m_layerFlushSchedulingEnabled(true)
 {
@@ -89,6 +90,11 @@ void ThreadedCoordinatedLayerTreeHost::scheduleLayerFlush()
 {
     if (!m_layerFlushSchedulingEnabled)
         return;
+
+    if (m_isWaitingForRenderer) {
+        m_scheduledWhileWaitingForRenderer = true;
+        return;
+    }
 
     if (!m_layerFlushTimer.isActive())
         m_layerFlushTimer.schedule();
@@ -272,9 +278,10 @@ void ThreadedCoordinatedLayerTreeHost::purgeBackingStores()
 void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
+    bool scheduledWhileWaitingForRenderer = std::exchange(m_scheduledWhileWaitingForRenderer, false);
     m_coordinator->renderNextFrame();
 
-    if (m_layerFlushTimer.isScheduled()) {
+    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isScheduled()) {
         m_layerFlushTimer.cancel();
         performScheduledLayerFlush();
     }
