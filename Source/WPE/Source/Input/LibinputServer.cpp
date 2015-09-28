@@ -1,6 +1,7 @@
 #include "LibinputServer.h"
 
 #include "KeyboardEventHandler.h"
+#include "KeyboardEventRepeating.h"
 #include <WPE/Input/Handling.h>
 #include <cstdio>
 #include <fcntl.h>
@@ -28,6 +29,7 @@ LibinputServer& LibinputServer::singleton()
 
 LibinputServer::LibinputServer()
     : m_keyboardEventHandler(Input::KeyboardEventHandler::create())
+    , m_keyboardEventRepeating(new Input::KeyboardEventRepeating(*this))
 {
     m_udev = udev_new();
     if (!m_udev)
@@ -86,6 +88,12 @@ void LibinputServer::processEvents()
 
             Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(rawEvent);
             m_client->handleKeyboardEvent({ rawEvent.time, std::get<0>(result), std::get<1>(result), !!rawEvent.state, std::get<2>(result) });
+
+            if (!!rawEvent.state)
+                m_keyboardEventRepeating->schedule(rawEvent);
+            else
+                m_keyboardEventRepeating->cancel();
+
             break;
         }
         default:
@@ -94,6 +102,12 @@ void LibinputServer::processEvents()
 
         libinput_event_destroy(event);
     }
+}
+
+void LibinputServer::dispatchKeyboardEvent(const Input::KeyboardEvent::Raw& event)
+{
+    Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(event);
+    m_client->handleKeyboardEvent({ event.time, std::get<0>(result), std::get<1>(result), !!event.state, std::get<2>(result) });
 }
 
 GSourceFuncs LibinputServer::EventSource::s_sourceFuncs = {

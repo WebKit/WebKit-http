@@ -1,6 +1,7 @@
 #ifndef LibinputServer_h
 #define LibinputServer_h
 
+#include "KeyboardEventRepeating.h"
 #include <glib.h>
 #include <libinput.h>
 #include <libudev.h>
@@ -13,7 +14,7 @@ class Client;
 class KeyboardEventHandler;
 }
 
-class LibinputServer {
+class LibinputServer : public Input::KeyboardEventRepeating::Client {
 public:
     static LibinputServer& singleton();
 
@@ -25,11 +26,15 @@ private:
 
     void processEvents();
 
+    // Input::KeyboardEventRepeating::Client
+    void dispatchKeyboardEvent(const Input::KeyboardEvent::Raw&) override;
+
     struct udev* m_udev;
     struct libinput* m_libinput;
 
     Input::Client* m_client;
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
+    std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
 
     class EventSource {
     public:

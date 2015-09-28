@@ -30,7 +30,8 @@ namespace WPE {
 
 namespace Input {
 
-KeyboardEventRepeating::KeyboardEventRepeating()
+KeyboardEventRepeating::KeyboardEventRepeating(Client& client)
+    : m_client(client)
 {
     m_source = g_source_new(&sourceFuncs, sizeof(GSource));
     g_source_set_name(m_source, "[WPE] KeyboardEventRepeating");
@@ -68,6 +69,7 @@ void KeyboardEventRepeating::dispatch()
         return;
     }
 
+    m_client.dispatchKeyboardEvent(m_event);
     g_source_set_ready_time(m_source, g_get_monotonic_time() + s_repeatDelay);
 }
 
