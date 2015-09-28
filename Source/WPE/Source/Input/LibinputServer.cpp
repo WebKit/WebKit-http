@@ -51,9 +51,8 @@ LibinputServer::LibinputServer()
     g_source_add_poll(baseSource, &source->pfd);
     source->server = this;
 
-    g_source_set_name(baseSource, "[WebKit] libinput");
-    g_source_set_priority(baseSource, G_PRIORITY_HIGH + 30);
-    g_source_set_can_recurse(baseSource, TRUE);
+    g_source_set_name(baseSource, "[WPE] libinput");
+    g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
     g_source_attach(baseSource, nullptr);
 
     fprintf(stderr, "[LibinputServer] Initialization succeeded.\n");
