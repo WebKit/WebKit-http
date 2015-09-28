@@ -1,4 +1,3 @@
-#include <WebKit/WKContextConfigurationRef.h>
 #include <WebKit/WKContext.h>
 #include <WebKit/WKFramePolicyListener.h>
 #include <WebKit/WKPageGroup.h>
