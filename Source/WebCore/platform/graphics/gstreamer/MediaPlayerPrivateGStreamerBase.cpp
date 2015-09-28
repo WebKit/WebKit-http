@@ -219,6 +219,10 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     , m_cdmSession(0)
 #endif
+    , m_videoSourceRotation(NoVideoSourceRotation)
+#if USE(TEXTURE_MAPPER_GL)
+    , m_textureMapperRotationFlag(0)
+#endif
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(GSTREAMER_GL)
@@ -435,6 +439,10 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 
     LOG_MEDIA_MESSAGE("Original video size: %dx%d", originalSize.width(), originalSize.height());
     LOG_MEDIA_MESSAGE("Pixel aspect ratio: %d/%d", pixelAspectRatioNumerator, pixelAspectRatioDenominator);
+
+    // If the video is tagged as rotated 90 or 270 degrees, swap width and height
+    if (m_videoSourceRotation == VideoSourceRotation90 || m_videoSourceRotation == VideoSourceRotation270)
+        originalSize = originalSize.transposedSize();
 
     // Calculate DAR based on PAR and video size.
     int displayWidth = originalSize.width() * pixelAspectRatioNumerator;
@@ -730,7 +738,7 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
             g_cond_signal(&m_updateCondition);
             return;
         }
-        TextureMapperGL::Flags flags = GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+        TextureMapperGL::Flags flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0);
         m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, size, flags));
         m_platformLayerProxy->requestUpdate(locker);
     }
@@ -777,7 +785,7 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
 
             RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
             texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
-            buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTF::move(texture));
+            buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTF::move(texture), m_textureMapperRotationFlag);
         }
 
         updateTexture(buffer->textureGL(), videoInfo);
@@ -895,8 +903,11 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
         return;
 
     if (m_usingFallbackVideoSink) {
-        if (RefPtr<BitmapTexture> texture = updateTexture(textureMapper))
-            textureMapper->drawTexture(*texture.get(), targetRect, modelViewMatrix, opacity);
+        if (RefPtr<BitmapTexture> texture = updateTexture(textureMapper)) {
+            TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+            BitmapTextureGL* textureGL = static_cast<BitmapTextureGL*>(texture.get());
+            texmapGL->drawTexture(textureGL->id(), m_textureMapperRotationFlag, textureGL->size(), targetRect, modelViewMatrix, opacity);
+        }
         return;
     }
 
@@ -907,7 +918,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
             return;
 
         unsigned textureID = *reinterpret_cast<unsigned*>(m_videoFrame->data[0]);
-        TextureMapperGL::Flags flags = GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+        TextureMapperGL::Flags flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0);
 
         IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(m_videoInfo), GST_VIDEO_INFO_HEIGHT(m_videoInfo));
         TextureMapperGL* textureMapperGL = reinterpret_cast<TextureMapperGL*>(textureMapper);
@@ -1265,6 +1276,37 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
     UNUSED_PARAM(parameters);
 #endif
     return result;
+}
+
+void MediaPlayerPrivateGStreamerBase::setVideoSourceRotation(VideoSourceRotation rotation)
+{
+    if (m_videoSourceRotation == rotation)
+            return;
+
+    m_videoSourceRotation = rotation;
+
+    switch (m_videoSourceRotation) {
+    case NoVideoSourceRotation:
+#if USE(TEXTURE_MAPPER_GL)
+        m_textureMapperRotationFlag = 0;
+#endif
+        break;
+    case VideoSourceRotation90:
+#if USE(TEXTURE_MAPPER_GL)
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture90;
+#endif
+        break;
+    case VideoSourceRotation180:
+#if USE(TEXTURE_MAPPER_GL)
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture180;
+#endif
+        break;
+    case VideoSourceRotation270:
+#if USE(TEXTURE_MAPPER_GL)
+        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture270;
+#endif
+        break;
+    }
 }
 
 }

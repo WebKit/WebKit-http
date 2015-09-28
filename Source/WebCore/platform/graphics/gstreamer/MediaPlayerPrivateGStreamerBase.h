@@ -81,6 +81,13 @@ class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 {
 
 public:
+    enum VideoSourceRotation {
+        NoVideoSourceRotation,
+        VideoSourceRotation90,
+        VideoSourceRotation180,
+        VideoSourceRotation270
+    };
+
     virtual ~MediaPlayerPrivateGStreamerBase();
 
     virtual FloatSize naturalSize() const override;
@@ -164,7 +171,9 @@ public:
 
     GstElement* pipeline() const { return m_pipeline.get(); }
 
-protected:
+    void setVideoSourceRotation(VideoSourceRotation rotation);
+
+ protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
 
     virtual GstElement* createVideoSink();
@@ -237,6 +246,10 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&);
     CDMSession* m_cdmSession;
+#endif
+    VideoSourceRotation m_videoSourceRotation;
+#if USE(TEXTURE_MAPPER_GL)
+    TextureMapperGL::Flags m_textureMapperRotationFlag ;
 #endif
 
 };
