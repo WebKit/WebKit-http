@@ -26,8 +26,6 @@
 
 #include "KeyboardEventRepeating.h"
 
-#include <WPE/Input/Handling.h>
-
 namespace WPE {
 
 namespace Input {
@@ -70,7 +68,6 @@ void KeyboardEventRepeating::dispatch()
         return;
     }
 
-    Server::singleton().serveKeyboardEvent({ m_event.time, m_event.key, m_event.state });
     g_source_set_ready_time(m_source, g_get_monotonic_time() + s_repeatDelay);
 }
 
