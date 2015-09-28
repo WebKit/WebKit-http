@@ -55,13 +55,11 @@ static GLuint createShader(const char* source, GLenum shaderType)
         return 0;
     }
 
-    fprintf(stderr, "creteShader(): shader %d for %16s...\n", shader, source);
     return shader;
 }
 
 ViewBackendBCMRPi::ViewBackendBCMRPi()
 {
-    fprintf(stderr, "ViewBackendBCMRPi: ctor\n");
     bcm_host_init();
 
     m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
