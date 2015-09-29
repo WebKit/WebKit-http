@@ -8,13 +8,14 @@
 
 namespace WebCore {
 
+uint32_t BCMRPiSurface::s_imageHandle = 0;
+
 BCMRPiSurface::BCMRPiSurface(EGLDisplay eglDisplay, EGLConfig eglConfig, const IntSize& size)
     : m_eglDisplay(eglDisplay)
+    , m_size(size)
 {
-    int width = size.width();
-    int height = size.height();
     fprintf(stderr, "BCMRPiSurface: ctor for %p, EGL display %p config %p, size (%d,%d)\n",
-        this, eglDisplay, eglConfig, width, height);
+        this, eglDisplay, eglConfig, m_size.width(), m_size.height());
 
     static const EGLint contextAttributes[] = {
         EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -27,42 +28,35 @@ BCMRPiSurface::BCMRPiSurface(EGLDisplay eglDisplay, EGLConfig eglConfig, const I
         return;
     }
 
-    EGLint pixelFormat = EGL_PIXEL_FORMAT_ARGB_8888_BRCM;
-    EGLint renderableType;
-    eglGetConfigAttrib(eglDisplay, eglConfig, EGL_RENDERABLE_TYPE, &renderableType);
-    if (renderableType & EGL_OPENGL_ES_BIT)
-        pixelFormat |= EGL_PIXEL_FORMAT_RENDER_GLES_BRCM | EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM;
-    if (renderableType & EGL_OPENGL_ES2_BIT)
-        pixelFormat |= EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM | EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM;
-    if (renderableType & EGL_OPENVG_BIT)
-        pixelFormat |= EGL_PIXEL_FORMAT_RENDER_VG_BRCM | EGL_PIXEL_FORMAT_VG_IMAGE_BRCM;
-    if (renderableType & EGL_OPENGL_BIT)
-        pixelFormat |= EGL_PIXEL_FORMAT_RENDER_GL_BRCM;
-
-    static const EGLint pixmapAttributes[] = {
-        EGL_VG_COLORSPACE, EGL_VG_COLORSPACE_sRGB,
-        EGL_VG_ALPHA_FORMAT, EGL_VG_ALPHA_FORMAT_NONPRE,
+    const EGLint pbufferAttributes[] = {
+        EGL_WIDTH, m_size.width(),
+        EGL_HEIGHT, m_size.height(),
+        EGL_TEXTURE_FORMAT, EGL_TEXTURE_RGBA,
+        EGL_TEXTURE_TARGET, EGL_TEXTURE_2D,
         EGL_NONE
     };
+    m_eglSurface = eglCreatePbufferSurface(eglDisplay, eglConfig, pbufferAttributes);
+    fprintf(stderr, "m_eglSurface %p error 0x%x\n", m_eglSurface, eglGetError());
+    eglMakeCurrent(eglDisplay, m_eglSurface, m_eglSurface, m_eglContext);
 
-    for (unsigned i = 0; i < 2; ++i) {
-        EGLint image[5] = { 0, 0, width, height, pixelFormat };
+    for (auto& image : m_images) {
+        auto& texture = image.first;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size.width(), m_size.height(), 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-        eglCreateGlobalImageBRCM(width, height, pixelFormat, nullptr, width * 4, image);
-        m_eglSurfaces[i] = eglCreatePixmapSurface(eglDisplay, eglConfig,
-            (EGLNativePixmapType)image, pixmapAttributes);
-
-        auto* globalImage = &m_globalImages[i * 5];
-        globalImage[0] = static_cast<uint32_t>(image[0]);
-        globalImage[1] = static_cast<uint32_t>(image[1]);
-        globalImage[2] = static_cast<uint32_t>(width);
-        globalImage[3] = static_cast<uint32_t>(height);
-        globalImage[4] = static_cast<uint32_t>(pixelFormat);
+        image.second = eglCreateImageKHR(m_eglDisplay, m_eglContext, EGL_GL_TEXTURE_2D_KHR, (EGLClientBuffer)texture, nullptr);
     }
 
-    fprintf(stderr, "global image #1: [0] = %d, [1] = %d\n", m_globalImages[0], m_globalImages[1]);
-    fprintf(stderr, "global image #2: [0] = %d, [1] = %d\n", m_globalImages[5], m_globalImages[6]);
-    fprintf(stderr, "\tEGL surfaces: #1 %p, #2 %p\n", m_eglSurfaces[0], m_eglSurfaces[1]);
+    glGenFramebuffers(1, &m_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_images[0].first, 0);
 }
 
 BCMRPiSurface::~BCMRPiSurface()
@@ -76,10 +70,9 @@ std::unique_ptr<GLContext> BCMRPiSurface::createGLContext()
 
 BCMRPiSurface::BCMBufferExport BCMRPiSurface::lockFrontBuffer()
 {
-    uint32_t i = m_currentSurface;
-    m_currentSurface = (i + 1) % 2;
-    auto* image = &m_globalImages[i * 5];
-    return BCMBufferExport{ image[0], image[1], image[2], image[3], image[4] };
+    uint32_t cb = m_cb;
+    m_cb = (m_cb + 1) % 2;
+    return BCMBufferExport{ m_images[cb].first, *((uint32_t*)&m_images[cb].second), m_size.width(), m_size.height(), 0 };
 }
 
 void BCMRPiSurface::releaseBuffer(uint32_t)
@@ -94,16 +87,21 @@ BCMRPiSurface::GLContextBCMRPi::GLContextBCMRPi(BCMRPiSurface& surface)
 bool BCMRPiSurface::GLContextBCMRPi::makeContextCurrent()
 {
     GLContext::makeContextCurrent();
-    uint32_t i = m_surface.m_currentSurface;
-    return eglMakeCurrent(m_surface.m_eglDisplay, m_surface.m_eglSurfaces[i], m_surface.m_eglSurfaces[i], m_surface.m_eglContext);
+    bool r = eglMakeCurrent(m_surface.m_eglDisplay, m_surface.m_eglSurface, m_surface.m_eglSurface, m_surface.m_eglContext);
+    if (!r)
+        return false;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_surface.m_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_surface.m_images[m_surface.m_cb].first, 0);
+    return true;
 }
 
 void BCMRPiSurface::GLContextBCMRPi::swapBuffers()
 {
+    // FIXME:
     glFinish();
-    eglFlushBRCM();
-    uint32_t i = m_surface.m_currentSurface;
-    eglSwapBuffers(m_surface.m_eglDisplay, m_surface.m_eglSurfaces[i]);
+
+    eglSwapBuffers(m_surface.m_eglDisplay, m_surface.m_eglSurface);
 }
 
 void BCMRPiSurface::GLContextBCMRPi::waitNative()

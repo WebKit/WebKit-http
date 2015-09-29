@@ -4,12 +4,13 @@
 #if PLATFORM(BCM_RPI)
 
 #include "GLContext.h"
+#include "IntSize.h"
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
 #include <tuple>
 
 namespace WebCore {
-
-class IntSize;
 
 class BCMRPiSurface {
 public:
@@ -50,9 +51,13 @@ private:
 
     EGLDisplay m_eglDisplay;
     EGLContext m_eglContext;
-    std::array<uint32_t, 10> m_globalImages;
-    std::array<EGLSurface, 2> m_eglSurfaces;
-    uint32_t m_currentSurface { 0 };
+
+    static uint32_t s_imageHandle;
+    IntSize m_size;
+    EGLSurface m_eglSurface;
+    uint32_t m_cb { 0 };
+    std::array<std::pair<GLuint, EGLImageKHR>, 2> m_images;
+    GLuint m_fbo { 0 };
 };
 
 } // namespace WebCore
