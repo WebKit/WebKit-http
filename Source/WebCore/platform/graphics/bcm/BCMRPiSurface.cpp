@@ -82,6 +82,10 @@ BCMRPiSurface::BCMBufferExport BCMRPiSurface::lockFrontBuffer()
     return BCMBufferExport{ image[0], image[1], image[2], image[3], image[4] };
 }
 
+void BCMRPiSurface::releaseBuffer(uint32_t)
+{
+}
+
 BCMRPiSurface::GLContextBCMRPi::GLContextBCMRPi(BCMRPiSurface& surface)
     : m_surface(surface)
 {

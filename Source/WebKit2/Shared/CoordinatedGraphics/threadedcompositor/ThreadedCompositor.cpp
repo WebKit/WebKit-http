@@ -489,6 +489,9 @@ void ThreadedCompositor::releaseBuffer(uint32_t handle)
 #if PLATFORM(GBM)
     downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
 #endif
+#if PLATFORM(BCM_RPI)
+    m_surface->releaseBuffer(handle);
+#endif
 }
 
 void ThreadedCompositor::frameComplete()

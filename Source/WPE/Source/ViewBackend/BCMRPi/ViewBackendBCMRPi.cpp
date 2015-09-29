@@ -204,6 +204,7 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint
     eglFlushBRCM();
     eglSwapBuffers(m_eglDisplay, m_eglSurface);
 
+    m_client->releaseBuffer(handle1);
     m_client->frameComplete();
 
     glDeleteTextures(1, &texture);
