@@ -3,7 +3,9 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <GLES2/gl2.h>
+#include <unordered_map>
 
 namespace WPE {
 
@@ -32,6 +34,8 @@ private:
     GLuint m_vertexShader;
     GLuint m_fragmentShader;
     GLuint m_texUniform;
+
+    std::unordered_map<uint32_t, std::pair<GLuint, EGLImageKHR>> m_bufferMap;
 };
 
 } // namespace ViewBackend
