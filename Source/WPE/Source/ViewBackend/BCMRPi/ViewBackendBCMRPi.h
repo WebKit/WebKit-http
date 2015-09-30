@@ -2,8 +2,7 @@
 
 #include <WPE/ViewBackend/ViewBackend.h>
 
-#include <EGL/egl.h>
-#include <GLES2/gl2.h>
+#include <bcm_host.h>
 
 namespace WPE {
 
@@ -15,23 +14,18 @@ public:
     virtual ~ViewBackendBCMRPi();
 
     void setClient(Client*) override;
-    void commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint32_t width, uint32_t height, uint32_t format) override;
+    uint32_t createBCMElement(int32_t width, int32_t height);
+    void commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
 
     void setInputClient(Input::Client*) override;
 
 private:
     Client* m_client;
 
-    EGLDisplay m_eglDisplay;
-    EGLContext m_eglContext;
-    EGLSurface m_eglSurface;
-    EGL_DISPMANX_WINDOW_T m_nativeWindow;
-    DISPMANX_ELEMENT_HANDLE_T m_nativeElement;
-
-    GLuint m_program;
-    GLuint m_vertexShader;
-    GLuint m_fragmentShader;
-    GLuint m_texUniform;
+    DISPMANX_DISPLAY_HANDLE_T m_displayHandle;
+    DISPMANX_ELEMENT_HANDLE_T m_elementHandle;
+    uint32_t m_width;
+    uint32_t m_height;
 };
 
 } // namespace ViewBackend

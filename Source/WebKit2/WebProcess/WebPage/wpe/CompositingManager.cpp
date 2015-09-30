@@ -69,14 +69,19 @@ void CompositingManager::destroyPrimeBuffer(uint32_t handle)
 #endif // PLATFORM(GBM)
 
 #if PLATFORM(BCM_RPI)
+uint32_t CompositingManager::createBCMElement(int32_t width, int32_t height)
+{
+    uint32_t handle = 0;
+    m_connection->sendSync(Messages::CompositingManagerProxy::CreateBCMElement(width, height), Messages::CompositingManagerProxy::CreateBCMElement::Reply(handle), 0);
+    return handle;
+}
+
 void CompositingManager::commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport& bufferExport)
 {
     m_connection->send(Messages::CompositingManagerProxy::CommitBCMBuffer(
         std::get<0>(bufferExport),
         std::get<1>(bufferExport),
-        std::get<2>(bufferExport),
-        std::get<3>(bufferExport),
-        std::get<4>(bufferExport)), 0);
+        std::get<2>(bufferExport)), 0);
 }
 #endif // PLATFORM(BCM_RPI)
 

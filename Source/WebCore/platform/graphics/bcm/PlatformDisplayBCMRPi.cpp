@@ -3,8 +3,8 @@
 
 #if PLATFORM(BCM_RPI)
 
+#include <EGL/egl.h>
 #include "IntSize.h"
-#include <EGL/eglext.h>
 
 namespace WebCore {
 
@@ -20,33 +20,11 @@ PlatformDisplayBCMRPi::PlatformDisplayBCMRPi()
 
     PlatformDisplay::initializeEGLDisplay();
     fprintf(stderr, "\tm_eglDisplay %p\n", m_eglDisplay);
-
-    static const EGLint configAttributes[] = {
-        EGL_RED_SIZE, 8,
-        EGL_GREEN_SIZE, 8,
-        EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        EGL_SURFACE_TYPE, EGL_PIXMAP_BIT,
-        EGL_NONE
-    };
-
-    EGLint numberOfConfigs;
-    if (!eglChooseConfig(m_eglDisplay, configAttributes, &m_eglConfig, 1, &numberOfConfigs) || numberOfConfigs != 1) {
-        fprintf(stderr, "\tPlatformDisplayBCMRPi: could not get the desired EGL config\n");
-        return;
-    }
 }
 
-PlatformDisplayBCMRPi::~PlatformDisplayBCMRPi()
+std::unique_ptr<BCMRPiSurface> PlatformDisplayBCMRPi::createSurface(const IntSize& size, uint32_t elementHandle)
 {
-    fprintf(stderr, "PlatformDisplayBCMRPi: dtor\n");
-}
-
-std::unique_ptr<BCMRPiSurface> PlatformDisplayBCMRPi::createSurface(const IntSize& size)
-{
-    fprintf(stderr, "PlatformDisplayBCMRPi::%s(): size (%d,%d)\n", __func__, size.width(), size.height());
-    return std::make_unique<BCMRPiSurface>(m_eglDisplay, m_eglConfig, size);
+    return std::make_unique<BCMRPiSurface>(size, elementHandle);
 }
 
 } // namespace WebCore

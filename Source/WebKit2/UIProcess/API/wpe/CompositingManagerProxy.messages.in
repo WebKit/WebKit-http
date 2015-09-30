@@ -29,6 +29,7 @@ messages -> CompositingManagerProxy {
 #endif
 
 #if PLATFORM(BCM_RPI)
-    CommitBCMBuffer(uint32_t handle1, uint32_t handle2, uint32_t width, uint32_t height, uint32_t format);
+    CreateBCMElement(int32_t width, int32_t height) -> (uint32_t handle)
+    CommitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height)
 #endif
 }

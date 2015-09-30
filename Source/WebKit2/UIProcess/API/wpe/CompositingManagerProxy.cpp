@@ -63,9 +63,14 @@ void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
 #endif
 
 #if PLATFORM(BCM_RPI)
-void CompositingManagerProxy::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint32_t width, uint32_t height, uint32_t format)
+void CompositingManagerProxy::createBCMElement(int32_t width, int32_t height, uint32_t& handle)
 {
-    m_viewBackend.commitBCMBuffer(handle1, handle2, width, height, format);
+    handle = m_viewBackend.createBCMElement(width, height);
+}
+
+void CompositingManagerProxy::commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height)
+{
+    m_viewBackend.commitBCMBuffer(handle, width, height);
 }
 #endif
 

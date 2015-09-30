@@ -59,6 +59,7 @@ public:
 #endif
 
 #if PLATFORM(BCM_RPI)
+    uint32_t createBCMElement(int32_t width, int32_t height);
     void commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport&);
     // void destroyBCMBuffer(...);
 #endif

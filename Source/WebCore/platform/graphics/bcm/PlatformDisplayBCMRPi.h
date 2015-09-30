@@ -6,25 +6,23 @@
 #include "PlatformDisplay.h"
 
 #include "BCMRPiSurface.h"
-#include <EGL/egl.h>
 
 namespace WebCore {
 
+class BCMRPiSurface;
 class IntSize;
 
 class PlatformDisplayBCMRPi final : public PlatformDisplay {
 public:
     PlatformDisplayBCMRPi();
-    virtual ~PlatformDisplayBCMRPi();
+    virtual ~PlatformDisplayBCMRPi() = default;
 
-    std::unique_ptr<BCMRPiSurface> createSurface(const IntSize&);
+    std::unique_ptr<BCMRPiSurface> createSurface(const IntSize&, uint32_t elementHandle);
 
     using BCMBufferExport = BCMRPiSurface::BCMBufferExport;
 
 private:
     Type type() const override { return PlatformDisplay::Type::BCMRPi; }
-
-    EGLConfig m_eglConfig;
 };
 
 } // namespace WebCore

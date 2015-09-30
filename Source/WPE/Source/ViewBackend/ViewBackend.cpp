@@ -76,7 +76,12 @@ void ViewBackend::destroyPrimeBuffer(uint32_t)
 {
 }
 
-void ViewBackend::commitBCMBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+uint32_t ViewBackend::createBCMElement(int32_t, int32_t)
+{
+    return 0;
+}
+
+void ViewBackend::commitBCMBuffer(uint32_t, uint32_t, uint32_t)
 {
 }
 

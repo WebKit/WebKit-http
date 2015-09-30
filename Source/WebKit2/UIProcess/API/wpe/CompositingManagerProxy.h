@@ -68,7 +68,8 @@ private:
     void destroyPrimeBuffer(uint32_t);
 #endif
 #if PLATFORM(BCM_RPI)
-    void commitBCMBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    void createBCMElement(int32_t width, int32_t height, uint32_t& handle);
+    void commitBCMBuffer(uint32_t, uint32_t, uint32_t);
 #endif
 
     // WPE::ViewBackend::Client

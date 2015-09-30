@@ -267,8 +267,9 @@ GLContext* ThreadedCompositor::glContext()
 #if PLATFORM(BCM_RPI)
     RELEASE_ASSERT(is<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()));
 
-    m_surface = downcast<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()));
+    IntSize size(viewportController()->visibleContentsRect().size());
+    m_surface = downcast<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()).createSurface(size,
+        m_compositingManager.createBCMElement(size.width(), size.height()));
     if (!m_surface)
         return nullptr;
 
@@ -319,10 +320,10 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
-    glContext()->swapBuffers();
-
     auto bufferExport = m_surface->lockFrontBuffer();
     m_compositingManager.commitBCMBuffer(bufferExport);
+
+    glContext()->swapBuffers();
 
     // auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
     // m_compositingManager.commitPrimeBuffer(bufferExport);
@@ -488,6 +489,9 @@ void ThreadedCompositor::releaseBuffer(uint32_t handle)
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
 #if PLATFORM(GBM)
     downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
+#endif
+#if PLATFORM(BCM_RPI)
+    m_surface->releaseBuffer(handle);
 #endif
 }
 

@@ -51,7 +51,8 @@ public:
     virtual void commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
     virtual void destroyPrimeBuffer(uint32_t);
 
-    virtual void commitBCMBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+    virtual uint32_t createBCMElement(int32_t, int32_t);
+    virtual void commitBCMBuffer(uint32_t, uint32_t, uint32_t);
 
     virtual void setInputClient(Input::Client*);
 };
