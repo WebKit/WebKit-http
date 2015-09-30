@@ -20,7 +20,6 @@ public:
 
     using BCMBufferExport = std::tuple<uint32_t, uint32_t, uint32_t, uint32_t, uint32_t>;
     BCMBufferExport lockFrontBuffer();
-    void releaseBuffer(uint32_t);
 
 private:
     class GLContextBCMRPi : public GLContext {
