@@ -159,31 +159,35 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint
 {
     eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext);
 
-    auto it = m_bufferMap.find(handle1);
-    if (it == m_bufferMap.end()) {
-        GLuint texture = 0;
-        glGenTextures(1, &texture);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-            GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    EGLint image[5];
+    image[0] = handle1;
+    image[1] = handle2;
+    image[2] = width;
+    image[3] = height;
+    image[4] = format;
 
-        glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, (EGLImageKHR)handle2);
-        glBindTexture(GL_TEXTURE_2D, 0);
+    eglQueryGlobalImageBRCM(image, image + 2);
 
-        it = m_bufferMap.insert({ handle1, std::pair<GLuint, EGLImageKHR>{ texture, (EGLImageKHR)handle2 } }).first;
-    }
+    EGLImageKHR eglImage = eglCreateImageKHR(m_eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_PIXMAP_KHR, (EGLClientBuffer)image, nullptr);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, it->second.first);
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, eglImage);
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    eglDestroyImageKHR(m_eglDisplay, eglImage);
 
     glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(m_program);
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
     glUniform1i(m_texUniform, 0);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, s_squareVertices);
@@ -202,6 +206,8 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t handle1, uint32_t handle2, uint
 
     m_client->releaseBuffer(handle1);
     m_client->frameComplete();
+
+    glDeleteTextures(1, &texture);
 }
 
 void ViewBackendBCMRPi::setInputClient(Input::Client* client)
