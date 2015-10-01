@@ -38,6 +38,64 @@ using namespace WebCore;
 
 namespace WebKit {
 
+static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent& platformEvent)
+{
+    {
+        bool handled = true;
+        int keyCode = event.keyCode();
+
+        switch (keyCode) {
+        case VK_BACK:
+            frame.editor().command("DeleteBackward").execute();
+            break;
+        case VK_DELETE:
+            frame.editor().command("DeleteForward").execute();
+            break;
+        default:
+            handled = false;
+            break;
+        }
+
+        if (handled)
+            return;
+    }
+
+    // Don't insert null or control characters as they can result in unexpected behaviour
+    if (event.charCode() < ' ')
+        return;
+
+    // Don't insert anything if a modifier is pressed
+    if (platformEvent.ctrlKey() || platformEvent.altKey())
+        return;
+
+    if (frame.editor().insertText(platformEvent.text(), &event))
+        event.setDefaultHandled();
+}
+
+static void handleKeyDown(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent&)
+{
+    bool handled = true;
+    int keyCode = event.keyCode();
+
+    switch (keyCode) {
+    case VK_LEFT:
+        frame.editor().command("MoveLeft").execute();
+        break;
+    case VK_RIGHT:
+        frame.editor().command("MoveRight").execute();
+        break;
+    case VK_DELETE:
+        frame.editor().command("DeleteForward").execute();
+        break;
+    default:
+        handled = false;
+        break;
+    }
+
+    if (handled)
+        event.setDefaultHandled();
+}
+
 void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
 {
     Node* node = event->target()->toNode();
@@ -62,19 +120,10 @@ void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
     // This is just a normal text insertion, so wait to execute the insertion
     // until a keypress event happens. This will ensure that the insertion will not
     // be reflected in the contents of the field until the keyup DOM event.
-    if (event->type() != eventNames().keypressEvent)
-        return;
-
-    // Don't insert null or control characters as they can result in unexpected behaviour
-    if (event->charCode() < ' ')
-        return;
-
-    // Don't insert anything if a modifier is pressed
-    if (platformEvent->ctrlKey() || platformEvent->altKey())
-        return;
-
-    if (frame->editor().insertText(platformEvent->text(), event))
-        event->setDefaultHandled();
+    if (event->type() == eventNames().keypressEvent)
+        return handleKeyPress(*frame, *event, *platformEvent);
+    if (event->type() == eventNames().keydownEvent)
+        return handleKeyDown(*frame, *event, *platformEvent);
 }
 
 void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent* event)

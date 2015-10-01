@@ -32,7 +32,7 @@
 namespace WTR {
 
 PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const TestOptions& options)
-    : m_view(WKViewCreate(WKPageConfigurationGetContext(configuration), WKPageConfigurationGetPageGroup(configuration)))
+    : m_view(WKViewCreate(configuration))
     , m_window(nullptr)
     , m_windowIsKey(true)
     , m_options(options)

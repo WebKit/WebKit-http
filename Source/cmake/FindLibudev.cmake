@@ -1,9 +1,9 @@
-# - Try to find Weston.
+# - Try to find libinput.
 # Once done, this will define
 #
-#  WESTON_FOUND - system has Wayland.
-#  WESTON_INCLUDE_DIRS - the Wayland include directories
-#  WESTON_LIBRARIES - link these to use Wayland.
+#  LIBUDEV_FOUND - system has udev.
+#  LIBUDEV_INCLUDE_DIRS - the udev include directories
+#  LIBUDEV_LIBRARIES - link these to use udev.
 #
 # Copyright (C) 2014 Igalia S.L.
 #
@@ -29,23 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_WESTON QUIET weston)
-
-find_path(WESTON_INCLUDE_DIRS
-    NAMES weston/compositor.h
-    HINTS ${PC_WESTON_INCLUDEDIR}
-          ${PC_WESTON_INCLUDE_DIRS}
-)
-
-set(WESTON_INCLUDE_DIRS ${WESTON_INCLUDE_DIRS} ${PC_WESTON_INCLUDE_DIRS})
-
-# Weston does not provide any usable libraries.
-
-if ("${Weston_FIND_VERSION}" VERSION_GREATER "${PC_WESTON_VERSION}")
-    message(FATAL_ERROR "Required version (" ${Weston_FIND_VERSION} ") is higher than found version (" ${PC_WESTON_VERSION} ")")
-endif ()
+pkg_check_modules(LIBUDEV libudev)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(WESTON REQUIRED_VARS WESTON_INCLUDE_DIRS VERSION_VAR PC_WESTON_VERSION)
-
-mark_as_advanced(WESTON_INCLUDE_DIRS)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LIBUDEV DEFAULT_MSG LIBUDEV_FOUND)

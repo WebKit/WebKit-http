@@ -28,7 +28,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_WAYLAND_EGL wayland-egl)
+pkg_check_modules(PC_WAYLAND_EGL wayland-egl bcm_host)
 
 find_path(WAYLAND_EGL_INCLUDE_DIRS
     NAMES wayland-egl.h

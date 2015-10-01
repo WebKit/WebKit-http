@@ -147,6 +147,7 @@ private:
     bool m_notifyAfterScheduledLayerFlush;
     bool m_isSuspended;
     bool m_isWaitingForRenderer;
+    bool m_scheduledWhileWaitingForRenderer;
 
     float m_lastScaleFactor;
     WebCore::IntPoint m_lastScrollPosition;

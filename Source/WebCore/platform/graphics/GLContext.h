@@ -30,7 +30,9 @@
 #if !PLATFORM(GTK) && !PLATFORM(WPE)
 #include "eglplatform.h"
 #else
-#include <wayland-egl.h>
+#if PLATFORM(GBM)
+#include <gbm.h>
+#endif
 #include <EGL/eglplatform.h>
 #endif
 typedef EGLNativeWindowType GLNativeWindowType;

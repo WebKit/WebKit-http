@@ -26,7 +26,6 @@
 #include <WPE/Input/Handling.h>
 
 #include "KeyboardEventHandler.h"
-#include "KeyboardEventRepeating.h"
 #include <glib.h>
 
 namespace WPE {
@@ -41,7 +40,6 @@ Server& Server::singleton()
 
 Server::Server()
     : m_keyboardEventHandler(KeyboardEventHandler::create())
-    , m_keyboardEventRepeating(std::unique_ptr<KeyboardEventRepeating>(new KeyboardEventRepeating))
 {
 }
 
@@ -52,10 +50,8 @@ void Server::setTarget(Client* target)
 
 void Server::serveKeyboardEvent(KeyboardEvent::Raw&& event)
 {
-    if (!m_target) {
-        m_keyboardEventRepeating->cancel();
+    if (!m_target)
         return;
-    }
 
     KeyboardEventHandler::Result handlingResult = m_keyboardEventHandler->handleKeyboardEvent(event);
     m_target->handleKeyboardEvent({
@@ -65,11 +61,6 @@ void Server::serveKeyboardEvent(KeyboardEvent::Raw&& event)
         !!event.state,
         std::get<2>(handlingResult)
     });
-
-    if (!!event.state)
-        m_keyboardEventRepeating->schedule(event);
-    else
-        m_keyboardEventRepeating->cancel();
 }
 
 void Server::servePointerEvent(PointerEvent::Raw&& event)
@@ -86,8 +77,8 @@ void Server::servePointerEvent(PointerEvent::Raw&& event)
         m_target->handlePointerEvent({
             event.type,
             event.time,
-            m_pointer.x,
-            m_pointer.y,
+            static_cast<int>(m_pointer.x),
+            static_cast<int>(m_pointer.y),
             event.button,
             event.state
         });
@@ -99,8 +90,8 @@ void Server::serveAxisEvent(AxisEvent::Raw&& event)
         m_target->handleAxisEvent({
             event.type,
             event.time,
-            m_pointer.x,
-            m_pointer.y,
+            static_cast<int>(m_pointer.x),
+            static_cast<int>(m_pointer.y),
             event.axis,
             event.value
         });

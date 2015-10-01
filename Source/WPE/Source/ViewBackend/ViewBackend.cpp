@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,34 +23,66 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <glib.h>
-#include <weston/compositor.h>
-#include <WebKit/WKRetainPtr.h>
-#include <WebKit/WKView.h>
+#include "Config.h"
+#include <WPE/ViewBackend/ViewBackend.h>
+
+#include "ViewBackendBCMRPi.h"
+#include "ViewBackendDRM.h"
+#include "ViewBackendWayland.h"
+#include <cstring>
+#include <cstdlib>
 
 namespace WPE {
 
-class Environment;
+namespace ViewBackend {
 
-class Shell {
-public:
-    Shell(Environment&);
+std::unique_ptr<ViewBackend> ViewBackend::create()
+{
+    auto* backendEnv = std::getenv("WPE_BACKEND");
 
-    static Shell& instance() { return *m_instance; }
-    static gpointer launchWPE(gpointer);
+#if WPE_BACKEND(WAYLAND)
+    if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland")))
+        return std::unique_ptr<ViewBackendWayland>(new ViewBackendWayland);
+#endif
 
-    Environment& environment() { return m_environment; }
+#if WPE_BACKEND(DRM)
+    if (backendEnv && !std::strcmp(backendEnv, "drm"))
+        return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+#endif
 
-private:
-    static const struct weston_pointer_grab_interface m_pgInterface;
-    static const struct weston_keyboard_grab_interface m_kgInterface;
-    static const struct weston_touch_grab_interface m_tgInterface;
+#if WPE_BACKEND(BCM_RPI)
+    if (!backendEnv || !std::strcmp(backendEnv, "rpi"))
+        return std::unique_ptr<ViewBackendBCMRPi>(new ViewBackendBCMRPi);
+#endif
 
-    static Shell* m_instance;
+    return nullptr;
+}
 
-    Environment& m_environment;
+void ViewBackend::setClient(Client*)
+{
+}
 
-    WKRetainPtr<WKViewRef> m_view;
-};
+void ViewBackend::commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+}
+
+void ViewBackend::destroyPrimeBuffer(uint32_t)
+{
+}
+
+uint32_t ViewBackend::createBCMElement(int32_t, int32_t)
+{
+    return 0;
+}
+
+void ViewBackend::commitBCMBuffer(uint32_t, uint32_t, uint32_t)
+{
+}
+
+void ViewBackend::setInputClient(Input::Client*)
+{
+}
+
+} // namespace ViewBackend
 
 } // namespace WPE

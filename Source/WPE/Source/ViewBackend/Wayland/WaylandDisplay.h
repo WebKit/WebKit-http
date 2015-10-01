@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,53 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
+#ifndef ViewBackend_Wayland_WaylandDisplay_h
+#define ViewBackend_Wayland_WaylandDisplay_h
 
-#include "AtholShell.h"
+#if WPE_BACKEND(WAYLAND)
 
-extern "C" {
+struct wl_compositor;
+struct wl_display;
+struct wl_drm;
+struct wl_registry;
+struct wl_seat;
+struct xdg_shell;
 
-WL_EXPORT int module_init(API::Compositor* compositor)
-{
-    auto* shell = new WPE::AtholShell(compositor);
-    g_thread_new("WPE Thread", WPE::AtholShell::launchWPE, shell);
-    return 0;
-}
+typedef struct _GSource GSource;
 
-}
+namespace WPE {
+
+namespace ViewBackend {
+
+class WaylandDisplay {
+public:
+    static const WaylandDisplay& singleton();
+
+    struct wl_display* display() const { return m_display; }
+
+    struct Interfaces {
+        struct wl_compositor* compositor;
+        struct wl_drm* drm;
+        struct wl_seat* seat;
+        struct xdg_shell* xdg;
+    };
+    const Interfaces& interfaces() const { return m_interfaces; }
+
+private:
+    WaylandDisplay();
+    ~WaylandDisplay();
+
+    struct wl_display* m_display;
+    struct wl_registry* m_registry;
+    Interfaces m_interfaces;
+
+    GSource* m_eventSource;
+};
+
+} // namespace ViewBackend
+
+} // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)
+
+#endif // ViewBackend_Wayland_WaylandDisplay_h

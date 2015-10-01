@@ -31,10 +31,12 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
-#include "DrawingAreaImpl.h"
+#include "DrawingAreaProxyMessages.h"
+#include "DrawingAreaWPE.h"
 #include "NotImplemented.h"
 #include "ThreadSafeCoordinatedSurface.h"
 #include "WebPage.h"
+#include "WebProcess.h"
 #include <WebCore/CoordinatedGraphicsLayer.h>
 #include <WebCore/CoordinatedGraphicsState.h>
 #include <WebCore/Frame.h>
@@ -65,6 +67,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
+    , m_scheduledWhileWaitingForRenderer(false)
     , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 30)
     , m_layerFlushSchedulingEnabled(true)
 {
@@ -74,7 +77,7 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
 
     CoordinatedSurface::setFactory(createCoordinatedSurface);
 
-    m_compositor = ThreadedCompositor::create(this);
+    m_compositor = ThreadedCompositor::create(this, *webPage);
     scheduleLayerFlush();
 }
 
@@ -87,6 +90,11 @@ void ThreadedCoordinatedLayerTreeHost::scheduleLayerFlush()
 {
     if (!m_layerFlushSchedulingEnabled)
         return;
+
+    if (m_isWaitingForRenderer) {
+        m_scheduledWhileWaitingForRenderer = true;
+        return;
+    }
 
     if (!m_layerFlushTimer.isActive())
         m_layerFlushTimer.schedule();
@@ -182,7 +190,7 @@ void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::compositorDidFlushLayers()
 {
-    static_cast<DrawingAreaImpl*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
+    static_cast<DrawingAreaWPE*>(m_webPage->drawingArea())->layerHostDidFlushLayers();
 }
 
 void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)
@@ -270,9 +278,13 @@ void ThreadedCoordinatedLayerTreeHost::purgeBackingStores()
 void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
 {
     m_isWaitingForRenderer = false;
+    bool scheduledWhileWaitingForRenderer = std::exchange(m_scheduledWhileWaitingForRenderer, false);
     m_coordinator->renderNextFrame();
-    m_layerFlushTimer.cancel();
-    performScheduledLayerFlush();
+
+    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isScheduled()) {
+        m_layerFlushTimer.cancel();
+        performScheduledLayerFlush();
+    }
 }
 
 void ThreadedCoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const IntSize& offset)

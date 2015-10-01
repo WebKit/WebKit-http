@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-WK_EXPORT WKViewRef WKViewCreate(WKContextRef, WKPageGroupRef);
+WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 WK_EXPORT void WKViewResize(WKViewRef, WKSize);
 WK_EXPORT void WKViewMakeWPEInputTarget(WKViewRef);

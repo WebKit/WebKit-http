@@ -36,7 +36,12 @@ namespace Input {
 
 class KeyboardEventRepeating {
 public:
-    KeyboardEventRepeating();
+    class Client {
+    public:
+        virtual void dispatchKeyboardEvent(const KeyboardEvent::Raw&);
+    };
+
+    KeyboardEventRepeating(Client&);
     ~KeyboardEventRepeating();
 
     void schedule(const KeyboardEvent::Raw&);
@@ -49,6 +54,7 @@ private:
     void dispatch();
     static GSourceFuncs sourceFuncs;
 
+    Client& m_client;
     GSource* m_source;
     KeyboardEvent::Raw m_event { 0, 0, 0 };
 };

@@ -22,10 +22,12 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/geoclue"
+    "${WEBCORE_DIR}/platform/graphics/bcm"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
     "${WEBCORE_DIR}/platform/graphics/freetype"
+    "${WEBCORE_DIR}/platform/graphics/gbm"
     "${WEBCORE_DIR}/platform/graphics/gstreamer"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
@@ -67,6 +69,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
+    platform/graphics/bcm/BCMRPiSurface.cpp
+    platform/graphics/bcm/PlatformDisplayBCMRPi.cpp
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
@@ -89,6 +93,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
+    platform/graphics/gbm/GBMSurface.cpp
+    platform/graphics/gbm/PlatformDisplayGBM.cpp
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
@@ -201,6 +207,7 @@ set(WebCore_USER_AGENT_SCRIPTS
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/wpe/RenderThemeWPE.cpp)
 
 list(APPEND WebCore_LIBRARIES
+    ${BCM_HOST_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${EGL_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
@@ -220,6 +227,8 @@ list(APPEND WebCore_LIBRARIES
     ${HARFBUZZ_LIBRARIES}
     ${ICU_LIBRARIES}
     ${JPEG_LIBRARIES}
+    ${LIBGBM_LIBRARIES}
+    ${LIBDRM_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
@@ -231,6 +240,7 @@ list(APPEND WebCore_LIBRARIES
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+    ${BCM_HOST_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${EGL_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIRS}
@@ -247,6 +257,8 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${HARFBUZZ_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
     ${JPEG_INCLUDE_DIRS}
+    ${LIBGBM_INCLUDE_DIRS}
+    ${LIBDRM_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}

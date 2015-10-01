@@ -40,6 +40,8 @@
 #else
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 #include "CoordinatedDrawingArea.h"
+#elif PLATFORM(WPE)
+#include "DrawingAreaWPE.h"
 #else
 #include "DrawingAreaImpl.h"
 #endif
@@ -63,6 +65,9 @@ std::unique_ptr<DrawingArea> DrawingArea::create(WebPage& webPage, const WebPage
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     case DrawingAreaTypeCoordinated:
         return std::make_unique<CoordinatedDrawingArea>(webPage, parameters);
+#elif PLATFORM(WPE)
+    case DrawingAreaTypeWPE:
+        return std::make_unique<DrawingAreaWPE>(webPage, parameters);
 #else
     case DrawingAreaTypeImpl:
         return std::make_unique<DrawingAreaImpl>(webPage, parameters);

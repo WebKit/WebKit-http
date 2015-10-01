@@ -1,11 +1,10 @@
-# - Try to find Athol.
+# - Try to find bcm_host.
 # Once done, this will define
 #
-#  ATHOL_FOUND - system has Athol.
-#  ATHOL_INCLUDE_DIRS - the Athol include directories
-#  ATHOL_LIBRARIES - link these to use Athol.
+#  BCM_HOST_INCLUDE_DIRS - the bcm_host include directories
+#  BCM_HOST_LIBRARIES - link these to use bcm_host.
 #
-# Copyright (C) 2014 Igalia S.L.
+# Copyright (C) 2015 Igalia S.L.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,7 +28,9 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(ATHOL athol)
+pkg_check_modules(BCM_HOST bcm_host)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(ATHOL DEFAULT_MSG ATHOL_FOUND)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(BCM_HOST DEFAULT_MSG BCM_HOST_LIBRARIES)
+
+mark_as_advanced(BCM_HOST_INCLUDE_DIRS BCM_HOST_LIBRARIES)
