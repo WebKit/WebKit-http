@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendWayland_h
 #define WPE_ViewBackend_ViewBackendWayland_h
 
+#if WPE_BACKEND(WAYLAND)
+
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
 #include <utility>
@@ -104,5 +106,7 @@ private:
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)
 
 #endif // WPE_ViewBackend_ViewBackendWayland_h

@@ -26,6 +26,8 @@
 #ifndef ViewBackend_Wayland_WaylandDisplay_h
 #define ViewBackend_Wayland_WaylandDisplay_h
 
+#if WPE_BACKEND(WAYLAND)
+
 #include <wayland-client.h>
 
 struct wl_compositor;
@@ -62,5 +64,7 @@ private:
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)
 
 #endif // ViewBackend_Wayland_WaylandDisplay_h

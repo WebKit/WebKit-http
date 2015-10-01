@@ -23,6 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 
 #include "ViewBackendDRM.h"
@@ -38,11 +39,15 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 {
     auto* backendEnv = std::getenv("WPE_BACKEND");
 
+#if WPE_BACKEND(WAYLAND)
     if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland")))
         return std::unique_ptr<ViewBackendWayland>(new ViewBackendWayland);
+#endif
 
+#if WPE_BACKEND(DRM)
     if (backendEnv && !std::strcmp(backendEnv, "drm"))
         return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
+#endif
 
     return nullptr;
 }

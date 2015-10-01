@@ -23,7 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "ViewBackendWayland.h"
+
+#if WPE_BACKEND(WAYLAND)
 
 #include "WaylandDisplay.h"
 #include "xdg-shell-client-protocol.h"
@@ -304,3 +307,5 @@ void ViewBackendWayland::setInputClient(Input::Client* client)
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)

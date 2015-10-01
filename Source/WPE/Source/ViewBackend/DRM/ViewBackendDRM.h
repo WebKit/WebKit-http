@@ -26,6 +26,8 @@
 #ifndef WPE_ViewBackend_ViewBackendDRM_h
 #define WPE_ViewBackend_ViewBackendDRM_h
 
+#if WPE_BACKEND(DRM)
+
 #include <WPE/ViewBackend/ViewBackend.h>
 
 #include <unordered_map>
@@ -78,5 +80,7 @@ private:
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(DRM)
 
 #endif // WPE_ViewBackend_ViewBackendDRM_h

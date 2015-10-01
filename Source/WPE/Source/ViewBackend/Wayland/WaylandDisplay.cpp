@@ -23,7 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "WaylandDisplay.h"
+
+#if WPE_BACKEND(WAYLAND)
 
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
@@ -166,3 +169,5 @@ WaylandDisplay::~WaylandDisplay()
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)

@@ -23,7 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "ViewBackendDRM.h"
+
+#if WPE_BACKEND(DRM)
 
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
@@ -226,3 +229,5 @@ void ViewBackendDRM::destroyPrimeBuffer(uint32_t handle)
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(DRM)
