@@ -231,12 +231,12 @@ const struct wl_callback_listener g_callbackListener = {
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
-    m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
+    m_surface = wl_compositor_create_surface(m_display.interfaces().compositor);
 
-    wl_seat_add_listener(m_display.interfaces.seat, &g_seatListener, &m_seatData);
+    wl_seat_add_listener(m_display.interfaces().seat, &g_seatListener, &m_seatData);
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);
+    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
     xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
     xdg_surface_set_title(m_xdgSurface, "WPE");
 }
@@ -266,7 +266,7 @@ void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t wid
     auto& bufferMap = m_bufferData.map;
     if (fd >= 0) {
         assert(bufferMap.find(handle) == bufferMap.end());
-        buffer = wl_drm_create_prime_buffer(m_display.interfaces.drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
         bufferMap.insert({ handle, buffer });
     } else {

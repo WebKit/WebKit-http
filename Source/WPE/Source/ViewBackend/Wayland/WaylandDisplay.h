@@ -52,7 +52,8 @@ public:
         struct wl_drm* drm;
         struct wl_seat* seat;
         struct xdg_shell* xdg;
-    } interfaces;
+    };
+    const Interfaces& interfaces() const { return m_interfaces; }
 
 private:
     WaylandDisplay();
@@ -60,6 +61,7 @@ private:
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
+    Interfaces m_interfaces;
 
     GSource* m_eventSource;
 };

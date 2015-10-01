@@ -131,7 +131,7 @@ WaylandDisplay::WaylandDisplay()
     m_display = wl_display_connect(nullptr);
     m_registry = wl_display_get_registry(m_display);
 
-    wl_registry_add_listener(m_registry, &g_registryListener, &interfaces);
+    wl_registry_add_listener(m_registry, &g_registryListener, &m_interfaces);
     wl_display_roundtrip(m_display);
 
     m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
@@ -151,19 +151,19 @@ WaylandDisplay::WaylandDisplay()
 
 WaylandDisplay::~WaylandDisplay()
 {
-    if (interfaces.compositor)
-        wl_compositor_destroy(interfaces.compositor);
-    if (interfaces.drm)
-        wl_drm_destroy(interfaces.drm);
-    if (interfaces.seat)
-        wl_seat_destroy(interfaces.seat);
-    if (interfaces.xdg)
-        xdg_shell_destroy(interfaces.xdg);
-    interfaces = { nullptr, nullptr, nullptr, nullptr };
-
     if (m_eventSource)
         g_source_unref(m_eventSource);
     m_eventSource = nullptr;
+
+    if (m_interfaces.compositor)
+        wl_compositor_destroy(m_interfaces.compositor);
+    if (m_interfaces.drm)
+        wl_drm_destroy(m_interfaces.drm);
+    if (m_interfaces.seat)
+        wl_seat_destroy(m_interfaces.seat);
+    if (m_interfaces.xdg)
+        xdg_shell_destroy(m_interfaces.xdg);
+    m_interfaces = { nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
