@@ -202,28 +202,6 @@ list(APPEND WebKit2_LIBRARIES
     WPE
 )
 
-if (ENABLE_ATHOL_SHELL)
-set(WPEAtholShell_SOURCES
-    UIProcess/wpe/AtholShell/AtholShell.cpp
-    UIProcess/wpe/AtholShell/Module.cpp
-)
-
-set(WPEAtholShell_INCLUDE_DIRECTORIES
-    "${WEBKIT2_DIR}/Shared/wpe"
-    ${ATHOL_INCLUDE_DIRS}
-)
-
-set(WPEAtholShell_LIBRARIES
-    WebKit2
-    ${ATHOL_LIBRARIES}
-)
-
-add_library(WPEAtholShell SHARED ${WPEAtholShell_SOURCES})
-target_link_libraries(WPEAtholShell ${WPEAtholShell_LIBRARIES})
-target_include_directories(WPEAtholShell PUBLIC ${WPEAtholShell_INCLUDE_DIRECTORIES})
-install(TARGETS WPEAtholShell DESTINATION "${LIB_INSTALL_DIR}")
-endif () # ENABLE_ATHOL_SHELL
-
 set(InspectorFiles
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
     ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Base/*.js
