@@ -23,7 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "WaylandDisplay.h"
+
+#if WPE_BACKEND(WAYLAND)
 
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
@@ -128,41 +131,50 @@ WaylandDisplay::WaylandDisplay()
     m_display = wl_display_connect(nullptr);
     m_registry = wl_display_get_registry(m_display);
 
-    wl_registry_add_listener(m_registry, &g_registryListener, &interfaces);
+    wl_registry_add_listener(m_registry, &g_registryListener, &m_interfaces);
     wl_display_roundtrip(m_display);
 
-    GSource* baseSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
-    auto* source = reinterpret_cast<EventSource*>(baseSource);
+    m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
+    auto* source = reinterpret_cast<EventSource*>(m_eventSource);
     source->display = m_display;
 
     source->pfd.fd = wl_display_get_fd(m_display);
     source->pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
     source->pfd.revents = 0;
-    g_source_add_poll(baseSource, &source->pfd);
+    g_source_add_poll(m_eventSource, &source->pfd);
 
-    g_source_set_name(baseSource, "[WebKit] WaylandDisplay");
-    g_source_set_priority(baseSource, G_PRIORITY_HIGH + 30);
-    g_source_set_can_recurse(baseSource, TRUE);
-    g_source_attach(baseSource, g_main_context_get_thread_default());
+    g_source_set_name(m_eventSource, "[WPE] WaylandDisplay");
+    g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
+    g_source_set_can_recurse(m_eventSource, TRUE);
+    g_source_attach(m_eventSource, g_main_context_get_thread_default());
 }
 
 WaylandDisplay::~WaylandDisplay()
 {
-    if (interfaces.compositor)
-        wl_compositor_destroy(interfaces.compositor);
-    if (interfaces.drm)
-        wl_drm_destroy(interfaces.drm);
-    if (interfaces.seat)
-        wl_seat_destroy(interfaces.seat);
-    if (interfaces.xdg)
-        xdg_shell_destroy(interfaces.xdg);
+    if (m_eventSource)
+        g_source_unref(m_eventSource);
+    m_eventSource = nullptr;
+
+    if (m_interfaces.compositor)
+        wl_compositor_destroy(m_interfaces.compositor);
+    if (m_interfaces.drm)
+        wl_drm_destroy(m_interfaces.drm);
+    if (m_interfaces.seat)
+        wl_seat_destroy(m_interfaces.seat);
+    if (m_interfaces.xdg)
+        xdg_shell_destroy(m_interfaces.xdg);
+    m_interfaces = { nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
+    m_registry = nullptr;
     if (m_display)
         wl_display_disconnect(m_display);
+    m_display = nullptr;
 }
 
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)

@@ -9,7 +9,6 @@
       <dep package="libsoup"/>
       <dep package="cairo"/>
       <dep package="wayland"/>
-      <dep package="weston"/>
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
       <dep package="gst-plugins-good"/>
@@ -97,43 +96,27 @@
   </autotools>
 
   <autotools id="wayland" autogenargs="--disable-documentation">
-    <branch module="releases/wayland-1.7.0.tar.xz" version="1.7.0"
+    <branch module="releases/wayland-1.9.0.tar.xz" version="1.9.0"
             repo="wayland.freedesktop.org"
-            hash="sha256:bdea47a2db96f7e53f1ce0351559c0af5b7f7aae7e95f0a884a78af9f1057c9c"/>
-  </autotools>
-
-  <autotools id="libinput" autogenargs="--disable-documentation">
-    <branch module="software/libinput/libinput-0.14.1.tar.xz" version="0.14.1"
-            repo="freedesktop.org"
-            hash="sha256:2bed202ebe2d5026950d6f9d2ac0f0160d12f61c5a0f6d0d6ef671bbb02c1b64"/>
-  </autotools>
-
-  <autotools id="weston" autogenargs="--disable-setuid-install">
-    <dependencies>
-      <dep package="wayland"/>
-      <dep package="libinput"/>
-      <dep package="cairo"/>
-    </dependencies>
-    <branch repo="github.com" module="WebKitForWayland/weston.git"
-            tag="d32748b3d16a7e6dae9743d3becbcbbd0d7eb210"/>
+            hash="sha256:9c8770720aa0034479735f58a4dc4ca9b172ecfede28f5134312e135b7301efa"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="gstreamer/gstreamer-1.4.2.tar.xz" version="1.4.2"
+    <branch module="gstreamer/gstreamer-1.4.5.tar.xz" version="1.4.5"
             repo="gstreamer"
-            hash="sha256:0339e0f156e130233ae26f0dcf541bf42ed73dcf6e2713369ed61d215b0847fc"/>
+            hash="sha256:40801aa7f979024526258a0e94707ba42b8ab6f7d2206e56adbc4433155cb0ae"/>
   </autotools>
 
   <autotools id="gst-plugins-base" autogenargs="--disable-examples --disable-gtk-doc">
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch module="gst-plugins-base/gst-plugins-base-1.4.2.tar.xz" version="1.4.2"
+    <branch module="gst-plugins-base/gst-plugins-base-1.4.5.tar.xz" version="1.4.5"
             repo="gstreamer"
-            hash="sha256:c0a8c44607d8a5669d2f0c118a72026f883a58ce1f3c720924b77f275b7b8835">
+            hash="sha256:77bd8199e7a312d3d71de9b7ddf761a3b78560a2c2a80829d0815ca39cbd551d">
     </branch>
   </autotools>
 
@@ -142,9 +125,9 @@
       <dep package="gst-plugins-base"/>
     </dependencies>
 
-    <branch module="gst-plugins-good/gst-plugins-good-1.4.2.tar.xz" version="1.4.2"
+    <branch module="gst-plugins-good/gst-plugins-good-1.4.5.tar.xz" version="1.4.5"
             repo="gstreamer"
-            hash="sha256:63d7c8006af05143839b6e166a363d84c438380efe1409029deebcfce50b0fa8">
+            hash="sha256:79b1b5f3f7bcaa8a615202eb5e176121eeb8336960f70687e536ad78dbc7e641">
     </branch>
   </autotools>
 
@@ -152,18 +135,18 @@
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="gst-plugins-bad/gst-plugins-bad-1.4.2.tar.xz" version="1.4.2"
+    <branch module="gst-plugins-bad/gst-plugins-bad-1.4.5.tar.xz" version="1.4.5"
             repo="gstreamer"
-            hash="sha256:31623079803b0311560730f47389cc360ddb2df5286ad2cf40048b9a82c4808e"/>
+            hash="sha256:152fad7250683d72f9deb36c5685428338365fe4a4c87ffe15e38783b14f983c"/>
   </autotools>
 
   <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="gst-libav/gst-libav-1.4.2.tar.xz" version="1.4.2"
+    <branch module="gst-libav/gst-libav-1.4.5.tar.xz" version="1.4.5"
             repo="gstreamer"
-            hash="sha256:f658a7025ef00a87f1f2032621bad88ad77ba87e18583d7a66bfcf335b187104"/>
+            hash="sha256:605c62624604f3bb5c870844cc1f2711779cc533b004c2aa1d8c0d58557afbbc"/>
   </autotools>
 
 </moduleset>

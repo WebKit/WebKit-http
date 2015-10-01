@@ -34,9 +34,7 @@
 #include <tuple>
 #include <wtf/HashMap.h>
 
-#include <gbm.h>
-#include <EGL/egl.h>
-
+struct gbm_bo;
 struct gbm_device;
 
 namespace WebCore {

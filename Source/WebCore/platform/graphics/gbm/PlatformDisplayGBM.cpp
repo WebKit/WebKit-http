@@ -31,6 +31,7 @@
 #include "GLContextEGL.h"
 #include "IntSize.h"
 #include <fcntl.h>
+#include <gbm.h>
 #include <unistd.h>
 #include <xf86drm.h>
 
@@ -49,6 +50,8 @@ PlatformDisplayGBM::PlatformDisplayGBM()
     m_gbm.device = gbm_create_device(m_gbm.fd);
     if (!m_gbm.device) {
         fprintf(stderr, "PlatformDisplayGBM: cannot create the GBM device\n");
+        close(m_gbm.fd);
+        m_gbm.fd = -1;
         return;
     }
 
@@ -65,9 +68,9 @@ PlatformDisplayGBM::~PlatformDisplayGBM()
 {
     if (m_gbm.device)
         gbm_device_destroy(m_gbm.device);
-
     if (m_gbm.fd >= 0)
         close(m_gbm.fd);
+    m_gbm = { -1, nullptr };
 }
 
 std::unique_ptr<GBMSurface> PlatformDisplayGBM::createSurface(const IntSize& size, GBMSurface::Client& client)
@@ -122,7 +125,6 @@ void PlatformDisplayGBM::releaseBuffer(GBMSurface& surface, uint32_t handle)
 
 void PlatformDisplayGBM::boDataDestroyCallback(struct gbm_bo*, void* data)
 {
-    fprintf(stderr, "PlatformDisplayGBM::boDataDestroyCallback()\n");
     if (!data)
         return;
 

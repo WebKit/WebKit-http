@@ -30,6 +30,7 @@
 #include "WPEView.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
+#include <WebCore/NotImplemented.h>
 
 namespace WebKit {
 
@@ -45,27 +46,26 @@ DrawingAreaProxyWPE::~DrawingAreaProxyWPE()
 
 void DrawingAreaProxyWPE::deviceScaleFactorDidChange()
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaProxyWPE::sizeDidChange()
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaProxyWPE::update(uint64_t backingStoreStateID, const UpdateInfo&)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaProxyWPE::didUpdateBackingStoreState(uint64_t backingStoreStateID, const UpdateInfo&, const LayerTreeContext&)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext& layerTreeContext)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
     ASSERT(!backingStoreID);
 
     m_layerTreeContext = layerTreeContext;
@@ -74,12 +74,12 @@ void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreS
 
 void DrawingAreaProxyWPE::exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaProxyWPE::updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&)
 {
-    fprintf(stderr, "DrawingAreaProxyWPE: %s\n", __func__);
+    notImplemented();
 }
 
 } // namespace WebKit

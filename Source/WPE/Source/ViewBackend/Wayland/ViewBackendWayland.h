@@ -26,7 +26,7 @@
 #ifndef WPE_ViewBackend_ViewBackendWayland_h
 #define WPE_ViewBackend_ViewBackendWayland_h
 
-#if WPE_PLATFORM_WAYLAND
+#if WPE_BACKEND(WAYLAND)
 
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
@@ -95,18 +95,18 @@ public:
 private:
     const WaylandDisplay& m_display;
 
+    struct wl_surface* m_surface;
+    struct xdg_surface* m_xdgSurface;
+
     SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
-
-    struct wl_surface* m_surface;
-    struct xdg_surface* m_xdgSurface;
 };
 
 } // namespace ViewBackend
 
 } // namespace WPE
 
-#endif // WPE_PLATFORM_WAYLAND
+#endif // WPE_BACKEND(WAYLAND)
 
 #endif // WPE_ViewBackend_ViewBackendWayland_h

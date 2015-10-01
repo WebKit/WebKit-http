@@ -26,13 +26,16 @@
 #ifndef ViewBackend_Wayland_WaylandDisplay_h
 #define ViewBackend_Wayland_WaylandDisplay_h
 
-#include <wayland-client.h>
+#if WPE_BACKEND(WAYLAND)
 
 struct wl_compositor;
 struct wl_display;
 struct wl_drm;
 struct wl_registry;
+struct wl_seat;
 struct xdg_shell;
+
+typedef struct _GSource GSource;
 
 namespace WPE {
 
@@ -49,7 +52,8 @@ public:
         struct wl_drm* drm;
         struct wl_seat* seat;
         struct xdg_shell* xdg;
-    } interfaces;
+    };
+    const Interfaces& interfaces() const { return m_interfaces; }
 
 private:
     WaylandDisplay();
@@ -57,10 +61,15 @@ private:
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
+    Interfaces m_interfaces;
+
+    GSource* m_eventSource;
 };
 
 } // namespace ViewBackend
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)
 
 #endif // ViewBackend_Wayland_WaylandDisplay_h

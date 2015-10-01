@@ -23,9 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "ViewBackendDRM.h"
 
-#if WPE_PLATFORM_DRM
+#if WPE_BACKEND(DRM)
 
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
@@ -42,20 +43,9 @@ namespace WPE {
 
 namespace ViewBackend {
 
-static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
-{
-    auto& handlerData = *static_cast<ViewBackendDRM::PageFlipHandlerData*>(data);
-    if (handlerData.client) {
-        handlerData.client->frameComplete();
+namespace DRM {
 
-        if (handlerData.bufferLocked) {
-            handlerData.bufferLocked = false;
-            handlerData.client->releaseBuffer(handlerData.lockedBufferHandle);
-        }
-    }
-}
-
-class KEventSource {
+class EventSource {
 public:
     static GSourceFuncs sourceFuncs;
 
@@ -66,18 +56,18 @@ public:
     drmEventContext eventContext;
 };
 
-GSourceFuncs KEventSource::sourceFuncs = {
+GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // prepare
     // check
     [](GSource* base) -> gboolean
     {
-        auto* source = reinterpret_cast<KEventSource*>(base);
+        auto* source = reinterpret_cast<EventSource*>(base);
         return !!source->pfd.revents;
     },
     // dispatch
     [](GSource* base, GSourceFunc, gpointer) -> gboolean
     {
-        auto* source = reinterpret_cast<KEventSource*>(base);
+        auto* source = reinterpret_cast<EventSource*>(base);
 
         if (source->pfd.revents & G_IO_IN)
             drmHandleEvent(source->drmFD, &source->eventContext);
@@ -93,7 +83,23 @@ GSourceFuncs KEventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
+} // namespace DRM
+
+static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
+{
+    auto& handlerData = *static_cast<ViewBackendDRM::PageFlipHandlerData*>(data);
+    if (handlerData.client) {
+        handlerData.client->frameComplete();
+
+        if (handlerData.bufferLocked) {
+            handlerData.bufferLocked = false;
+            handlerData.client->releaseBuffer(handlerData.lockedBufferHandle);
+        }
+    }
+}
+
 ViewBackendDRM::ViewBackendDRM()
+    : m_pageFlipData{ nullptr, false, 0 }
 {
     m_drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (m_drm.fd < 0) {
@@ -102,16 +108,25 @@ ViewBackendDRM::ViewBackendDRM()
     }
 
     drm_magic_t magic;
-    if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic))
+    if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic)) {
+        close(m_drm.fd);
+        m_drm.fd = -1;
         return;
+    }
 
-    m_gbm.device = gbm_create_device(m_drm.fd);
-    if (!m_gbm.device)
+    m_drm.gbmDevice = gbm_create_device(m_drm.fd);
+    if (!m_drm.gbmDevice) {
+        close(m_drm.fd);
+        m_drm.fd = -1;
         return;
+    }
 
     drmModeRes* resources = drmModeGetResources(m_drm.fd);
-    if (!resources)
+    if (!resources) {
+        close(m_drm.fd);
+        m_drm.fd = -1;
         return;
+    }
 
     drmModeConnector* connector = nullptr;
     for (int i = 0; i < resources->count_connectors; ++i) {
@@ -122,8 +137,11 @@ ViewBackendDRM::ViewBackendDRM()
         drmModeFreeConnector(connector);
     }
 
-    if (!connector)
+    if (!connector) {
+        close(m_drm.fd);
+        m_drm.fd = -1;
         return;
+    }
 
     int area = 0;
     for (int i = 0; i < connector->count_modes; ++i) {
@@ -135,8 +153,11 @@ ViewBackendDRM::ViewBackendDRM()
         }
     }
 
-    if (!m_drm.mode)
+    if (!m_drm.mode) {
+        close(m_drm.fd);
+        m_drm.fd = -1;
         return;
+    }
 
     drmModeEncoder* encoder = nullptr;
     for (int i = 0; i < resources->count_encoders; ++i) {
@@ -153,9 +174,10 @@ ViewBackendDRM::ViewBackendDRM()
 
     drmModeFreeEncoder(encoder);
     drmModeFreeConnector(connector);
+    drmModeFreeResources(resources);
 
-    GSource* baseSource = g_source_new(&KEventSource::sourceFuncs, sizeof(KEventSource));
-    auto* source = reinterpret_cast<KEventSource*>(baseSource);
+    m_eventSource = g_source_new(&DRM::EventSource::sourceFuncs, sizeof(DRM::EventSource));
+    auto* source = reinterpret_cast<DRM::EventSource*>(m_eventSource);
     source->drmFD = m_drm.fd;
     source->eventContext = {
         DRM_EVENT_CONTEXT_VERSION,
@@ -166,16 +188,31 @@ ViewBackendDRM::ViewBackendDRM()
     source->pfd.fd = m_drm.fd;
     source->pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
     source->pfd.revents = 0;
-    g_source_add_poll(baseSource, &source->pfd);
+    g_source_add_poll(m_eventSource, &source->pfd);
 
-    g_source_set_name(baseSource, "[WebKit] DRM");
-    g_source_set_priority(baseSource, G_PRIORITY_HIGH + 30);
-    g_source_set_can_recurse(baseSource, TRUE);
-    g_source_attach(baseSource, g_main_context_get_thread_default());
+    g_source_set_name(m_eventSource, "[WPE] DRM");
+    g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
+    g_source_set_can_recurse(m_eventSource, TRUE);
+    g_source_attach(m_eventSource, g_main_context_get_thread_default());
 }
 
 ViewBackendDRM::~ViewBackendDRM()
 {
+    m_fbMap = { };
+
+    if (m_eventSource)
+        g_source_unref(m_eventSource);
+    m_eventSource = nullptr;
+
+    m_pageFlipData = { nullptr, false, 0 };
+
+    if (m_drm.mode)
+        drmModeFreeModeInfo(m_drm.mode);
+    if (m_drm.gbmDevice)
+        gbm_device_destroy(m_drm.gbmDevice);
+    if (m_drm.fd >= 0)
+        close(m_drm.fd);
+    m_drm = { -1, nullptr, nullptr, 0, 0 };
 }
 
 void ViewBackendDRM::setClient(Client* client)
@@ -190,7 +227,7 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
     if (fd >= 0) {
         assert(m_fbMap.find(handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, width, height, stride, format };
-        struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+        struct gbm_bo* bo = gbm_bo_import(m_drm.gbmDevice, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
             24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);
@@ -229,4 +266,4 @@ void ViewBackendDRM::destroyPrimeBuffer(uint32_t handle)
 
 } // namespace WPE
 
-#endif // WPE_PLATFORM_DRM
+#endif // WPE_BACKEND(DRM)

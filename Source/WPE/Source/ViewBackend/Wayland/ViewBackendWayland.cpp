@@ -23,9 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "Config.h"
 #include "ViewBackendWayland.h"
 
-#if WPE_PLATFORM_WAYLAND
+#if WPE_BACKEND(WAYLAND)
 
 #include "WaylandDisplay.h"
 #include "xdg-shell-client-protocol.h"
@@ -230,12 +231,12 @@ const struct wl_callback_listener g_callbackListener = {
 ViewBackendWayland::ViewBackendWayland()
     : m_display(WaylandDisplay::singleton())
 {
-    m_surface = wl_compositor_create_surface(m_display.interfaces.compositor);
+    m_surface = wl_compositor_create_surface(m_display.interfaces().compositor);
 
-    wl_seat_add_listener(m_display.interfaces.seat, &g_seatListener, &m_seatData);
+    wl_seat_add_listener(m_display.interfaces().seat, &g_seatListener, &m_seatData);
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces.xdg, m_surface);
+    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
     xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
     xdg_surface_set_title(m_xdgSurface, "WPE");
 }
@@ -244,13 +245,29 @@ ViewBackendWayland::~ViewBackendWayland()
 {
     if (m_callbackData.frameCallback)
         wl_callback_destroy(m_callbackData.frameCallback);
+    m_callbackData = { nullptr, nullptr };
 
-    if (m_seatData.xkb.state)
-        xkb_state_unref(m_seatData.xkb.state);
-    if (m_seatData.xkb.keymap)
-        xkb_keymap_unref(m_seatData.xkb.keymap);
+    m_bufferData = { nullptr, { } };
+
+    if (m_seatData.pointer)
+        wl_pointer_destroy(m_seatData.pointer);
+    if (m_seatData.keyboard)
+        wl_keyboard_destroy(m_seatData.keyboard);
     if (m_seatData.xkb.context)
         xkb_context_unref(m_seatData.xkb.context);
+    if (m_seatData.xkb.keymap)
+        xkb_keymap_unref(m_seatData.xkb.keymap);
+    if (m_seatData.xkb.state)
+        xkb_state_unref(m_seatData.xkb.state);
+    m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
+        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 } };
+
+    if (m_xdgSurface)
+        xdg_surface_destroy(m_xdgSurface);
+    m_xdgSurface = nullptr;
+    if (m_surface)
+        wl_surface_destroy(m_surface);
+    m_surface = nullptr;
 }
 
 void ViewBackendWayland::setClient(Client* client)
@@ -265,7 +282,7 @@ void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t wid
     auto& bufferMap = m_bufferData.map;
     if (fd >= 0) {
         assert(bufferMap.find(handle) == bufferMap.end());
-        buffer = wl_drm_create_prime_buffer(m_display.interfaces.drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
         bufferMap.insert({ handle, buffer });
     } else {
@@ -307,4 +324,4 @@ void ViewBackendWayland::setInputClient(Input::Client* client)
 
 } // namespace WPE
 
-#endif // WPE_PLATFORM_WAYLAND
+#endif // WPE_BACKEND(WAYLAND)

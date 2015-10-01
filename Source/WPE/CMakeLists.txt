@@ -7,12 +7,13 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
-add_definitions(-DWPE_PLATFORM_BCM_RPI=1)
-add_definitions(-DWPE_PLATFORM_DRM=0)
-add_definitions(-DWPE_PLATFORM_WAYLAND=0)
+add_definitions(-DWPE_BACKEND_BCM_RPI=1)
+add_definitions(-DWPE_BACKEND_DRM=0)
+add_definitions(-DWPE_BACKEND_WAYLA0ND=0)
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
