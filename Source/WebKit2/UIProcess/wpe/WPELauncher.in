@@ -1,2 +1,0 @@
-#!/bin/sh
-weston --shell=$(readlink -e $(dirname $0)/../lib/libWPEWestonShell.so) --socket=wpe-launcher-$(uuidgen) -- $@
