@@ -1,6 +1,6 @@
 #include "ViewBackendBCMRPi.h"
 
-#if WPE_PLATFORM_BCM_RPI
+#if WPE_BACKEND(BCM_RPI)
 
 #include "LibinputServer.h"
 
@@ -77,4 +77,4 @@ void ViewBackendBCMRPi::setInputClient(Input::Client* client)
 
 } // namespace WPE
 
-#endif // WPE_PLATFORM_BCM_RPI
+#endif // WPE_BACKEND(BCM_RPI)

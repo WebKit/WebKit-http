@@ -1,4 +1,4 @@
-#if WPE_PLATFORM_BCM_RPI
+#if WPE_BACKEND(BCM_RPI)
 
 #include <WPE/ViewBackend/ViewBackend.h>
 
@@ -32,4 +32,4 @@ private:
 
 } // namespace WPE
 
-#endif // WPE_PLATFORM_BCM_RPI
+#endif // WPE_BACKEND(BCM_RPI)
