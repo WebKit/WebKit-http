@@ -33,9 +33,10 @@
 #include <unordered_map>
 #include <utility>
 
-typedef struct _drmModeModeInfo drmModeModeInfo;
 struct gbm_bo;
 struct gbm_device;
+typedef struct _GSource GSource;
+typedef struct _drmModeModeInfo drmModeModeInfo;
 
 namespace WPE {
 
@@ -46,7 +47,7 @@ class Client;
 class ViewBackendDRM final : public ViewBackend {
 public:
     ViewBackendDRM();
-    ~ViewBackendDRM();
+    virtual ~ViewBackendDRM();
 
 
     void setClient(Client*) override;
@@ -55,18 +56,14 @@ public:
 
     struct PageFlipHandlerData {
         Client* client;
-        bool bufferLocked { false };
-        uint32_t lockedBufferHandle { 0 };
+        bool bufferLocked;
+        uint32_t lockedBufferHandle;
     };
 
 private:
     struct {
         int fd;
-        struct gbm_device* device;
-    } m_gbm;
-
-    struct {
-        int fd;
+        struct gbm_device* gbmDevice;
         drmModeModeInfo* mode;
         uint32_t crtcId;
         uint32_t connectorId;
@@ -74,6 +71,7 @@ private:
 
     PageFlipHandlerData m_pageFlipData;
 
+    GSource* m_eventSource;
     std::unordered_map<uint32_t, std::pair<struct gbm_bo*, uint32_t>> m_fbMap;
 };
 
