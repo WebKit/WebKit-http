@@ -245,13 +245,29 @@ ViewBackendWayland::~ViewBackendWayland()
 {
     if (m_callbackData.frameCallback)
         wl_callback_destroy(m_callbackData.frameCallback);
+    m_callbackData = { nullptr, nullptr };
 
-    if (m_seatData.xkb.state)
-        xkb_state_unref(m_seatData.xkb.state);
-    if (m_seatData.xkb.keymap)
-        xkb_keymap_unref(m_seatData.xkb.keymap);
+    m_bufferData = { nullptr, { } };
+
+    if (m_seatData.pointer)
+        wl_pointer_destroy(m_seatData.pointer);
+    if (m_seatData.keyboard)
+        wl_keyboard_destroy(m_seatData.keyboard);
     if (m_seatData.xkb.context)
         xkb_context_unref(m_seatData.xkb.context);
+    if (m_seatData.xkb.keymap)
+        xkb_keymap_unref(m_seatData.xkb.keymap);
+    if (m_seatData.xkb.state)
+        xkb_state_unref(m_seatData.xkb.state);
+    m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
+        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 } };
+
+    if (m_xdgSurface)
+        xdg_surface_destroy(m_xdgSurface);
+    m_xdgSurface = nullptr;
+    if (m_surface)
+        wl_surface_destroy(m_surface);
+    m_surface = nullptr;
 }
 
 void ViewBackendWayland::setClient(Client* client)

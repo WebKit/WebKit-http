@@ -95,12 +95,12 @@ public:
 private:
     const WaylandDisplay& m_display;
 
+    struct wl_surface* m_surface;
+    struct xdg_surface* m_xdgSurface;
+
     SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
-
-    struct wl_surface* m_surface;
-    struct xdg_surface* m_xdgSurface;
 };
 
 } // namespace ViewBackend
