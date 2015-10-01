@@ -28,13 +28,14 @@
 
 #if WPE_BACKEND(WAYLAND)
 
-#include <wayland-client.h>
-
 struct wl_compositor;
 struct wl_display;
 struct wl_drm;
 struct wl_registry;
+struct wl_seat;
 struct xdg_shell;
+
+typedef struct _GSource GSource;
 
 namespace WPE {
 
@@ -59,6 +60,8 @@ private:
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
+
+    GSource* m_eventSource;
 };
 
 } // namespace ViewBackend
