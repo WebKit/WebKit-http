@@ -9,8 +9,8 @@
 #include "WebPreferencesStore.h"
 #include <WebCore/DisplayRefreshMonitor.h>
 #include <WebCore/MainFrame.h>
+#include <WebCore/NotImplemented.h>
 #include <WebCore/Settings.h>
-#include <cstdio>
 
 using namespace WebCore;
 
@@ -58,12 +58,11 @@ void DrawingAreaWPE::pageBackgroundTransparencyChanged()
 
 void DrawingAreaWPE::forceRepaint()
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
+    notImplemented();
 }
 
 bool DrawingAreaWPE::forceRepaintAsync(uint64_t callbackID)
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
     return m_layerTreeHost && m_layerTreeHost->forceRepaintAsync(callbackID);
 }
 
@@ -74,7 +73,7 @@ void DrawingAreaWPE::setLayerTreeStateIsFrozen(bool frozen)
 
 void DrawingAreaWPE::setPaintingEnabled(bool)
 {
-    fprintf(stderr, "DrawingAreaWPE: %s\n", __func__);
+    notImplemented();
 }
 
 void DrawingAreaWPE::updatePreferences(const WebPreferencesStore& store)
