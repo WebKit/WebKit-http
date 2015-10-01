@@ -9,6 +9,4 @@ To build:
 To run:
 
     $ Tools/Scripts/run-wpe
-    $ Tools/Scripts/run-wpe --url http://www.webkit.org
-    # Arguments after -- are passed to Weston
-    $ Tools/Scripts/run-wpe -- --fullscreen
+    $ Tools/Scripts/run-wpe http://www.bouncyballs.org
