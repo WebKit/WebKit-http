@@ -29,7 +29,7 @@
 #if PLATFORM(GBM)
 
 #include "GLContextEGL.h"
-#include <cstdio>
+#include <gbm.h>
 
 namespace WebCore {
 
@@ -37,14 +37,13 @@ GBMSurface::GBMSurface(struct gbm_surface* surface, Client& client)
     : m_surface(surface)
     , m_client(client)
 {
-    fprintf(stderr, "GBMSurface: ctor, surface %p\n", m_surface);
 }
 
 GBMSurface::~GBMSurface()
 {
-    fprintf(stderr, "GBMSurface: dtor\n");
     if (m_surface)
         gbm_surface_destroy(m_surface);
+    m_surface = nullptr;
 }
 
 std::unique_ptr<GLContextEGL> GBMSurface::createGLContext() const

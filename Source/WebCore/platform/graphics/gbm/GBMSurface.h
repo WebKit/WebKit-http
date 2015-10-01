@@ -28,7 +28,7 @@
 
 #if PLATFORM(GBM)
 
-#include <gbm.h>
+struct gbm_surface;
 
 namespace WebCore {
 
