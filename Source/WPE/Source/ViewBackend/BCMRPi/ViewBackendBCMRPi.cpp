@@ -1,3 +1,4 @@
+#include "Config.h"
 #include "ViewBackendBCMRPi.h"
 
 #if WPE_BACKEND(BCM_RPI)
