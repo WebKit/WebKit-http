@@ -69,11 +69,6 @@ find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
 find_package(WaylandEGL REQUIRED)
 
-find_package(Weston 1.6.0 REQUIRED)
-if (WESTON_FOUND)
-    set(ENABLE_WESTON_SHELL ON)
-endif ()
-
 find_package(Athol 0.1)
 if (ATHOL_FOUND)
     set(ENABLE_ATHOL_SHELL ON)
