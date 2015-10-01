@@ -54,7 +54,7 @@ class WaylandDisplay;
 class ViewBackendWayland final : public ViewBackend {
 public:
     ViewBackendWayland();
-    ~ViewBackendWayland();
+    virtual ~ViewBackendWayland();
 
     void setClient(Client* client) override;
     void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
