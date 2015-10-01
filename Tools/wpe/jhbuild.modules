@@ -96,9 +96,9 @@
   </autotools>
 
   <autotools id="wayland" autogenargs="--disable-documentation">
-    <branch module="releases/wayland-1.7.0.tar.xz" version="1.7.0"
+    <branch module="releases/wayland-1.9.0.tar.xz" version="1.9.0"
             repo="wayland.freedesktop.org"
-            hash="sha256:bdea47a2db96f7e53f1ce0351559c0af5b7f7aae7e95f0a884a78af9f1057c9c"/>
+            hash="sha256:9c8770720aa0034479735f58a4dc4ca9b172ecfede28f5134312e135b7301efa"/>
   </autotools>
 
   <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
