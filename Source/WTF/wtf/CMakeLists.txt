@@ -60,10 +60,12 @@ set(WTF_HEADERS
     PageAllocation.h
     PageBlock.h
     PageReservation.h
+    ParallelHelperPool.h
     ParallelJobs.h
     ParallelJobsGeneric.h
     ParallelJobsLibdispatch.h
     ParallelJobsOpenMP.h
+    ParallelVectorIterator.h
     ParkingLot.h
     PassRefPtr.h
     Platform.h
@@ -82,6 +84,7 @@ set(WTF_HEADERS
     RetainPtr.h
     RunLoop.h
     SHA1.h
+    SharedTask.h
     SaturatedArithmetic.h
     SegmentedVector.h
     StackBounds.h
@@ -167,6 +170,7 @@ set(WTF_SOURCES
     NumberOfCores.cpp
     OSRandomSource.cpp
     PageBlock.cpp
+    ParallelHelperPool.cpp
     ParallelJobsGeneric.cpp
     ParkingLot.cpp
     PrintStream.cpp
@@ -271,6 +275,11 @@ add_library(WTF ${WTF_LIBRARY_TYPE} ${WTF_HEADERS} ${WTF_SOURCES})
 target_link_libraries(WTF ${WTF_LIBRARIES})
 set_target_properties(WTF PROPERTIES COMPILE_DEFINITIONS "BUILDING_WTF")
 set_target_properties(WTF PROPERTIES FOLDER "JavaScriptCore")
+
+if (MSVC)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+endif ()
 
 if (WTF_POST_BUILD_COMMAND)
     add_custom_command(TARGET WTF POST_BUILD COMMAND ${WTF_POST_BUILD_COMMAND} VERBATIM)

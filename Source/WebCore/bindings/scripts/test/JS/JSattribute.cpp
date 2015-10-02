@@ -23,7 +23,6 @@
 
 #include "JSDOMBinding.h"
 #include "URL.h"
-#include "attribute.h"
 #include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
@@ -117,8 +116,7 @@ void JSattributePrototype::finishCreation(VM& vm)
 const ClassInfo JSattribute::s_info = { "attribute", &Base::s_info, 0, CREATE_METHOD_TABLE(JSattribute) };
 
 JSattribute::JSattribute(Structure* structure, JSDOMGlobalObject* globalObject, Ref<attribute>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<attribute>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -136,11 +134,6 @@ void JSattribute::destroy(JSC::JSCell* cell)
 {
     JSattribute* thisObject = static_cast<JSattribute*>(cell);
     thisObject->JSattribute::~JSattribute();
-}
-
-JSattribute::~JSattribute()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsattributeReadonly(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)

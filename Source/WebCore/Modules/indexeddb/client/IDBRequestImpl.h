@@ -29,18 +29,27 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBOpenDBRequest.h"
+#include "IDBRequestIdentifier.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
+
+class Event;
+class IDBResultData;
+
 namespace IDBClient {
+
+class IDBConnectionToServer;
 
 class IDBRequest : public WebCore::IDBOpenDBRequest, public RefCounted<IDBRequest> {
 public:
-    virtual PassRefPtr<IDBAny> result(ExceptionCode&) const override;
+    const IDBRequestIdentifier& requestIdentifier() const { return m_requestIdentifier; }
+
+    virtual RefPtr<IDBAny> result(ExceptionCode&) const override;
     virtual unsigned short errorCode(ExceptionCode&) const override;
-    virtual PassRefPtr<DOMError> error(ExceptionCode&) const override;
-    virtual PassRefPtr<IDBAny> source() const override;
-    virtual PassRefPtr<IDBTransaction> transaction() const override;
+    virtual RefPtr<DOMError> error(ExceptionCode&) const override;
+    virtual RefPtr<IDBAny> source() const override;
+    virtual RefPtr<IDBTransaction> transaction() const override;
     virtual const String& readyState() const override;
 
     // EventTarget
@@ -50,8 +59,10 @@ public:
     using RefCounted<IDBRequest>::ref;
     using RefCounted<IDBRequest>::deref;
 
+    void enqueueEvent(Ref<Event>&&);
+    
 protected:
-    IDBRequest(ScriptExecutionContext*);
+    IDBRequest(IDBConnectionToServer&, ScriptExecutionContext*);
 
     // ActiveDOMObject.
     virtual const char* activeDOMObjectName() const override final;
@@ -60,6 +71,8 @@ protected:
     // EventTarget.
     virtual void refEventTarget() override final { RefCounted<IDBRequest>::ref(); }
     virtual void derefEventTarget() override final { RefCounted<IDBRequest>::deref(); }
+
+    IDBRequestIdentifier m_requestIdentifier;
 };
 
 } // namespace IDBClient

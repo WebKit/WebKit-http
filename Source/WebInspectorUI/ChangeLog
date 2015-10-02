@@ -1,3 +1,275 @@
+2015-10-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Simplify filterableData processing
+        https://bugs.webkit.org/show_bug.cgi?id=149730
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.get filterableData):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.applyFiltersToTreeElement.matchTextFilter):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype.get filterableData):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype.matchTreeElementAgainstCustomFilters): Deleted.
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.prototype.get filterableData):
+        (WebInspector.SearchResultTreeElement):
+
+2015-10-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not immediately create all ProfileNodeTreeElements when showing JavaScript and Events timeline
+        https://bugs.webkit.org/show_bug.cgi?id=149726
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.shouldFilterPopulate):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        We were populating during filtering if there were any custom filters.
+        However the TimelineSidebarPanel has custom filters (based on time and type)
+        but those don't need to trigger population. Delay population until it
+        would actually be needed (like a text search).
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.shouldFilterPopulate):
+        Do not populate on filter via this custom filters.
+
+2015-10-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r189567): Toolbar collapses when inspector at minimum height with console open
+        https://bugs.webkit.org/show_bug.cgi?id=149725
+
+        Reviewed by Timothy Hatcher.
+
+        CSS Flexible Box Layout Module Level 1 introduces a new `auto` initial value for the min-{width|height}
+        of flex box items, breaking some areas of the inspector UI. This is fixed by setting a min-height of
+        zero for the #main <div>.
+
+        * UserInterface/Views/Main.css:
+        (#main):
+
+2015-10-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Clip string previews
+        https://bugs.webkit.org/show_bug.cgi?id=149708
+
+        Only show first 140 characters in strings previews.
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.truncate): Added.
+        A smart trancate function that doesn't split words.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._shouldConsiderObjectLossless):
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForTypesAndValue):
+
+2015-09-30  João Oliveira  <hello@jxs.pt>
+
+        Web Inspector: Adjust font size of Developer Tools using Command,+ or Command,-
+        https://bugs.webkit.org/show_bug.cgi?id=149590
+
+        Reviewed by Joseph Pecoraro.
+
+        Patch by João Oliveira and Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Add global keyboard shortcuts for zoom in and zoom out.
+
+2015-10-01  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add GTK+ icons for the numerical input and slider based Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147847
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/VisualStylePropertyLinked.svg: Added.
+        * UserInterface/Images/gtk/VisualStylePropertyUnlinked.svg: Added.
+
+2015-10-01  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add GTK+ icons for the different types of non-numerical Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147846
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/AUTHORS: Updated.
+        * UserInterface/Images/gtk/ClearBoth.svg: Added.
+        * UserInterface/Images/gtk/ClearLeft.svg: Added.
+        * UserInterface/Images/gtk/ClearRight.svg: Added.
+        * UserInterface/Images/gtk/CubicBezier.svg: Updated.
+        * UserInterface/Images/gtk/FloatLeft.svg: Added.
+        * UserInterface/Images/gtk/FloatRight.svg: Added.
+        * UserInterface/Images/gtk/FontStyleItalic.svg: Added.
+        * UserInterface/Images/gtk/FontStyleNormal.svg: Added.
+        * UserInterface/Images/gtk/FontVariantSmallCaps.svg: Added.
+        * UserInterface/Images/gtk/TextAlignCenter.svg: Added.
+        * UserInterface/Images/gtk/TextAlignJustify.svg: Added.
+        * UserInterface/Images/gtk/TextAlignLeft.svg: Added.
+        * UserInterface/Images/gtk/TextAlignRight.svg: Added.
+        * UserInterface/Images/gtk/TextDecorationLineThrough.svg: Added.
+        * UserInterface/Images/gtk/TextDecorationOverline.svg: Added.
+        * UserInterface/Images/gtk/TextDecorationUnderline.svg: Added.
+        * UserInterface/Images/gtk/TextTransformCapitalize.svg: Added.
+        * UserInterface/Images/gtk/TextTransformLowercase.svg: Added.
+        * UserInterface/Images/gtk/TextTransformUppercase.svg: Added.
+        * UserInterface/Images/gtk/VisualStyleNone.svg: Added.
+
+2015-09-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce `delete` in Timeline related classes
+        https://bugs.webkit.org/show_bug.cgi?id=149686
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.prototype.capturingStopped):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        (WebInspector.TimelineDataGrid.prototype._sort):
+        (WebInspector.TimelineDataGrid.prototype._updatePopoverForSelectedNode):
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype.updateLayout):
+        (WebInspector.TimelineOverview.prototype._handleScrollEvent):
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeOutlineScrolled):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._dataGridScrolled):
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WebInspector.ProbeSetDataGrid):
+        (WebInspector.ProbeSetDataGrid.prototype._teardownData):
+        Remove an unused member variable as well.
+
+2015-09-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Thousands of timers fire after switching to JavaScript and Events timeline
+        https://bugs.webkit.org/show_bug.cgi?id=149682
+
+        Reviewed by Timothy Hatcher.
+
+        Setting the status element of a GeneralTreeElement was triggering a
+        TreeOutline.onchange event. For TreeOutlines with lots of tree elements
+        (JavaScript & Events with profile nodes) this could result in thousands
+        of onchange events that causes lots of unnecessary work and blocks
+        future timers (like scroll synchronization) from firing.
+
+        This change eliminates TreeOutline change events for tree element
+        changes that are not interesting.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.set status): Deleted.
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.set tooltip): Deleted.
+
+2015-09-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce `delete` in TreeElements and DataGridNodes
+        https://bugs.webkit.org/show_bug.cgi?id=149680
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement):
+        (WebInspector.BreakpointTreeElement.prototype._removeProbeSet):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._editingCommitted.moveToNextCell):
+        (WebInspector.DataGrid.prototype._editingCommitted):
+        (WebInspector.DataGrid.prototype._editingCancelled):
+        (WebInspector.DataGrid.prototype.removeColumn):
+        (WebInspector.DataGridNode.prototype.refreshIfNeeded):
+        (WebInspector.DataGridNode.prototype.refresh):
+        (WebInspector.DataGridNode.prototype.expand):
+        (WebInspector.DataGridNode.prototype.restorePosition):
+        (WebInspector.DataGridNode):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.ondetach):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.refresh):
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype._fireDidChange):
+        (WebInspector.TreeElement.prototype.expand):
+
+2015-09-30  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add GTK+ icon for the Bezier curve visual editor
+        https://bugs.webkit.org/show_bug.cgi?id=147681
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/gtk/CubicBezier.svg: Added.
+
+2015-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Console completion suggestions should include properties on Object (hasOwnProperty, toString, etc)
+        https://bugs.webkit.org/show_bug.cgi?id=149649
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Base/Utilities.js:
+        (value):
+        Since keySets in this instance are often used as hash maps with the
+        `in` operator, create a blank object that won't have Object.prototype
+        functions that would be seen by `in`.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNames.compare):
+        Sort __defineGetter__ and __lookupGetter__ and friends last, since they
+        are rarely used properties.
+
+2015-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Missing completions for Symbol objects, console.error warning
+        https://bugs.webkit.org/show_bug.cgi?id=149641
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.getCompletions):
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.evaluated):
+        Include completions for symbol types.
+
+2015-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Hitting ESC while editing element tag name leaves element in bad state
+        https://bugs.webkit.org/show_bug.cgi?id=149506
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName.editingCancelled):
+        (WebInspector.DOMTreeElement.prototype._startEditingTagName):
+        When cancelling editing of a tag name, revert any changes we had
+        been making to the closing tag name.
+
+2015-09-28  João Oliveira  <hello@jxs.pt>
+
+        Web Inspector: search shortcut in split console moves focus to search box, but doesn't show caret
+        https://bugs.webkit.org/show_bug.cgi?id=149223
+
+        Reviewed by Timothy Hatcher.
+
+        When pressing console find shortcut (CMD+F) SearchBar now checks if there's text on _searchInput
+        if so text is selected, if the textbox is empty, textbox gains focus.
+
+        * UserInterface/Views/SearchBar.js:
+        (WebInspector.SearchBar.prototype.focus):
+
+2015-09-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reloading the page causes the inspector tab to switch back to "Resources" tab
+        https://bugs.webkit.org/show_bug.cgi?id=148732
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptsCleared):
+        Suppress selection of sibiling tree elements when removing extra folders.
+
 2015-09-24  Ryosuke Niwa  <rniwa@webkit.org>
 
         Ran sort-Xcode-project-file.

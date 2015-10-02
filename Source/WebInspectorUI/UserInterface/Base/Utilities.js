@@ -445,7 +445,7 @@ Object.defineProperty(Array.prototype, "keySet",
 {
     value: function()
     {
-        var keys = {};
+        let keys = Object.create(null);
         for (var i = 0; i < this.length; ++i)
             keys[this[i]] = true;
         return keys;
@@ -471,6 +471,24 @@ Object.defineProperty(String.prototype, "trimEnd",
         if (this.length <= maxLength)
             return this;
         return this.substr(0, maxLength - 1) + "\u2026";
+    }
+});
+
+Object.defineProperty(String.prototype, "truncate",
+{
+    value: function(maxLength)
+    {
+        "use strict";
+
+        if (this.length <= maxLength)
+            return this;
+
+        let clipped = this.slice(0, maxLength);
+        let indexOfLastWhitespace = clipped.search(/\s\S*$/);
+        if (indexOfLastWhitespace > Math.floor(maxLength / 2))
+            clipped = clipped.slice(0, indexOfLastWhitespace - 1);
+
+        return clipped + "\u2026";
     }
 });
 

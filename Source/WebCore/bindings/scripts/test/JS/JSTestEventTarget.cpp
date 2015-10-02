@@ -28,7 +28,6 @@
 #include "JSEventListener.h"
 #include "JSNode.h"
 #include "Node.h"
-#include "TestEventTarget.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <runtime/PropertyNameArray.h>
@@ -146,8 +145,7 @@ void JSTestEventTargetPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, &JSTestEventTargetTable, CREATE_METHOD_TABLE(JSTestEventTarget) };
 
 JSTestEventTarget::JSTestEventTarget(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestEventTarget>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestEventTarget>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -165,11 +163,6 @@ void JSTestEventTarget::destroy(JSC::JSCell* cell)
 {
     JSTestEventTarget* thisObject = static_cast<JSTestEventTarget*>(cell);
     thisObject->JSTestEventTarget::~JSTestEventTarget();
-}
-
-JSTestEventTarget::~JSTestEventTarget()
-{
-    releaseImpl();
 }
 
 bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
@@ -233,6 +226,10 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)
         propertyNames.add(Identifier::from(state, i));
+    if (mode.includeDontEnumProperties()) {
+        for (auto& propertyName : thisObject->impl().supportedPropertyNames())
+            propertyNames.add(Identifier::fromString(state, propertyName));
+    }
     Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
 }
 

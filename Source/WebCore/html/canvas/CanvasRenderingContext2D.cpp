@@ -42,7 +42,6 @@
 #include "DOMPath.h"
 #include "ExceptionCodePlaceholder.h"
 #include "FloatQuad.h"
-#include "GraphicsContext.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageData.h"
@@ -173,6 +172,7 @@ CanvasRenderingContext2D::State::State()
     , hasInvertibleTransform(true)
     , lineDashOffset(0)
     , imageSmoothingEnabled(true)
+    , imageSmoothingQuality(SmoothingQuality::Low)
     , textAlign(StartTextAlign)
     , textBaseline(AlphabeticTextBaseline)
     , direction(Direction::Inherit)
@@ -199,6 +199,7 @@ CanvasRenderingContext2D::State::State(const State& other)
     , hasInvertibleTransform(other.hasInvertibleTransform)
     , lineDashOffset(other.lineDashOffset)
     , imageSmoothingEnabled(other.imageSmoothingEnabled)
+    , imageSmoothingQuality(other.imageSmoothingQuality)
     , textAlign(other.textAlign)
     , textBaseline(other.textBaseline)
     , direction(other.direction)
@@ -229,6 +230,7 @@ CanvasRenderingContext2D::State& CanvasRenderingContext2D::State::operator=(cons
     transform = other.transform;
     hasInvertibleTransform = other.hasInvertibleTransform;
     imageSmoothingEnabled = other.imageSmoothingEnabled;
+    imageSmoothingQuality = other.imageSmoothingQuality;
     textAlign = other.textAlign;
     textBaseline = other.textBaseline;
     direction = other.direction;
@@ -1326,14 +1328,14 @@ enum ImageSizeType {
     ImageSizeBeforeDevicePixelRatio
 };
 
-static LayoutSize size(HTMLImageElement* image, ImageSizeType sizeType)
+static LayoutSize size(HTMLImageElement* imageElement, ImageSizeType sizeType)
 {
     LayoutSize size;
-    if (CachedImage* cachedImage = image->cachedImage()) {
-        size = cachedImage->imageSizeForRenderer(image->renderer(), 1.0f); // FIXME: Not sure about this.
+    if (CachedImage* cachedImage = imageElement->cachedImage()) {
+        size = cachedImage->imageSizeForRenderer(imageElement->renderer(), 1.0f); // FIXME: Not sure about this.
 
-        if (sizeType == ImageSizeAfterDevicePixelRatio && is<RenderImage>(image->renderer()) && cachedImage->image() && !cachedImage->image()->hasRelativeWidth())
-            size.scale(downcast<RenderImage>(*image->renderer()).imageDevicePixelRatio());
+        if (sizeType == ImageSizeAfterDevicePixelRatio && is<RenderImage>(imageElement->renderer()) && cachedImage->image() && !cachedImage->image()->hasRelativeWidth())
+            size.scale(downcast<RenderImage>(*imageElement->renderer()).imageDevicePixelRatio());
     }
     return size;
 }
@@ -1355,42 +1357,42 @@ static inline FloatRect normalizeRect(const FloatRect& rect)
         std::max(rect.height(), -rect.height()));
 }
 
-void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, float x, float y, ExceptionCode& ec)
+void CanvasRenderingContext2D::drawImage(HTMLImageElement* imageElement, float x, float y, ExceptionCode& ec)
 {
-    if (!image) {
+    if (!imageElement) {
         ec = TYPE_MISMATCH_ERR;
         return;
     }
-    LayoutSize destRectSize = size(image, ImageSizeAfterDevicePixelRatio);
-    drawImage(image, x, y, destRectSize.width(), destRectSize.height(), ec);
+    LayoutSize destRectSize = size(imageElement, ImageSizeAfterDevicePixelRatio);
+    drawImage(imageElement, x, y, destRectSize.width(), destRectSize.height(), ec);
 }
 
-void CanvasRenderingContext2D::drawImage(HTMLImageElement* image,
+void CanvasRenderingContext2D::drawImage(HTMLImageElement* imageElement,
     float x, float y, float width, float height, ExceptionCode& ec)
 {
-    if (!image) {
+    if (!imageElement) {
         ec = TYPE_MISMATCH_ERR;
         return;
     }
-    LayoutSize sourceRectSize = size(image, ImageSizeBeforeDevicePixelRatio);
-    drawImage(image, FloatRect(0, 0, sourceRectSize.width(), sourceRectSize.height()), FloatRect(x, y, width, height), ec);
+    LayoutSize sourceRectSize = size(imageElement, ImageSizeBeforeDevicePixelRatio);
+    drawImage(imageElement, FloatRect(0, 0, sourceRectSize.width(), sourceRectSize.height()), FloatRect(x, y, width, height), ec);
 }
 
-void CanvasRenderingContext2D::drawImage(HTMLImageElement* image,
+void CanvasRenderingContext2D::drawImage(HTMLImageElement* imageElement,
     float sx, float sy, float sw, float sh,
     float dx, float dy, float dw, float dh, ExceptionCode& ec)
 {
-    drawImage(image, FloatRect(sx, sy, sw, sh), FloatRect(dx, dy, dw, dh), ec);
+    drawImage(imageElement, FloatRect(sx, sy, sw, sh), FloatRect(dx, dy, dw, dh), ec);
 }
 
-void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, const FloatRect& srcRect, const FloatRect& dstRect, ExceptionCode& ec)
+void CanvasRenderingContext2D::drawImage(HTMLImageElement* imageElement, const FloatRect& srcRect, const FloatRect& dstRect, ExceptionCode& ec)
 {
-    drawImage(image, srcRect, dstRect, state().globalComposite, state().globalBlend, ec);
+    drawImage(imageElement, srcRect, dstRect, state().globalComposite, state().globalBlend, ec);
 }
 
-void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ExceptionCode& ec)
+void CanvasRenderingContext2D::drawImage(HTMLImageElement* imageElement, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ExceptionCode& ec)
 {
-    if (!image) {
+    if (!imageElement) {
         ec = TYPE_MISMATCH_ERR;
         return;
     }
@@ -1404,13 +1406,13 @@ void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, const FloatRec
     if (!dstRect.width() || !dstRect.height())
         return;
 
-    if (!image->complete())
+    if (!imageElement->complete())
         return;
 
     FloatRect normalizedSrcRect = normalizeRect(srcRect);
     FloatRect normalizedDstRect = normalizeRect(dstRect);
 
-    FloatRect imageRect = FloatRect(FloatPoint(), size(image, ImageSizeBeforeDevicePixelRatio));
+    FloatRect imageRect = FloatRect(FloatPoint(), size(imageElement, ImageSizeBeforeDevicePixelRatio));
     if (!srcRect.width() || !srcRect.height()) {
         ec = INDEX_SIZE_ERR;
         return;
@@ -1424,26 +1426,40 @@ void CanvasRenderingContext2D::drawImage(HTMLImageElement* image, const FloatRec
     if (!state().hasInvertibleTransform)
         return;
 
-    CachedImage* cachedImage = image->cachedImage();
+    CachedImage* cachedImage = imageElement->cachedImage();
     if (!cachedImage)
         return;
 
+    Image* image = cachedImage->imageForRenderer(imageElement->renderer());
+    if (!image)
+        return;
+    
+    ImageObserver* observer = image->imageObserver();
+
+    if (image->isSVGImage()) {
+        image->setImageObserver(nullptr);
+        image->setContainerSize(normalizedSrcRect.size());
+    }
+
     if (rectContainsCanvas(normalizedDstRect)) {
-        c->drawImage(cachedImage->imageForRenderer(image->renderer()), ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
+        c->drawImage(image, ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
         didDrawEntireCanvas();
     } else if (isFullCanvasCompositeMode(op)) {
-        fullCanvasCompositedDrawImage(cachedImage->imageForRenderer(image->renderer()), ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, op);
+        fullCanvasCompositedDrawImage(image, ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, op);
         didDrawEntireCanvas();
     } else if (op == CompositeCopy) {
         clearCanvas();
-        c->drawImage(cachedImage->imageForRenderer(image->renderer()), ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
+        c->drawImage(image, ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
         didDrawEntireCanvas();
     } else {
-        c->drawImage(cachedImage->imageForRenderer(image->renderer()), ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
+        c->drawImage(image, ColorSpaceDeviceRGB, normalizedDstRect, normalizedSrcRect, ImagePaintingOptions(op, blendMode));
         didDraw(normalizedDstRect);
     }
+    
+    if (image->isSVGImage())
+        image->setImageObserver(observer);
 
-    checkOrigin(image);
+    checkOrigin(imageElement);
 }
 
 void CanvasRenderingContext2D::drawImage(HTMLCanvasElement* sourceCanvas, float x, float y, ExceptionCode& ec)
@@ -1611,7 +1627,7 @@ void CanvasRenderingContext2D::drawImage(HTMLVideoElement* video, const FloatRec
 }
 #endif
 
-void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement* image,
+void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement* imageElement,
     float sx, float sy, float sw, float sh,
     float dx, float dy, float dw, float dh,
     const String& compositeOperation)
@@ -1621,7 +1637,7 @@ void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement* image,
     if (!parseCompositeAndBlendOperator(compositeOperation, op, blendOp) || blendOp != BlendModeNormal)
         op = CompositeSourceOver;
 
-    drawImage(image, FloatRect(sx, sy, sw, sh), FloatRect(dx, dy, dw, dh), op, BlendModeNormal, IGNORE_EXCEPTION);
+    drawImage(imageElement, FloatRect(sx, sy, sw, sh), FloatRect(dx, dy, dw, dh), op, BlendModeNormal, IGNORE_EXCEPTION);
 }
 
 void CanvasRenderingContext2D::setAlpha(float alpha)
@@ -1788,10 +1804,10 @@ RefPtr<CanvasGradient> CanvasRenderingContext2D::createRadialGradient(float x0, 
     return WTF::move(gradient);
 }
 
-RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageElement* image,
+RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageElement* imageElement,
     const String& repetitionType, ExceptionCode& ec)
 {
-    if (!image) {
+    if (!imageElement) {
         ec = TYPE_MISMATCH_ERR;
         return nullptr;
     }
@@ -1801,9 +1817,9 @@ RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageElement* 
     if (ec)
         return nullptr;
 
-    CachedImage* cachedImage = image->cachedImage();
+    CachedImage* cachedImage = imageElement->cachedImage();
     // If the image loading hasn't started or the image is not complete, it is not fully decodable.
-    if (!cachedImage || !image->complete())
+    if (!cachedImage || !imageElement->complete())
         return nullptr;
 
     if (cachedImage->status() == CachedResource::LoadError) {
@@ -1811,11 +1827,11 @@ RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageElement* 
         return nullptr;
     }
 
-    if (!image->cachedImage()->imageForRenderer(image->renderer()))
+    if (!imageElement->cachedImage()->imageForRenderer(imageElement->renderer()))
         return CanvasPattern::create(Image::nullImage(), repeatX, repeatY, true);
 
     bool originClean = cachedImage->isOriginClean(canvas()->securityOrigin());
-    return CanvasPattern::create(cachedImage->imageForRenderer(image->renderer()), repeatX, repeatY, originClean);
+    return CanvasPattern::create(cachedImage->imageForRenderer(imageElement->renderer()), repeatX, repeatY, originClean);
 }
 
 RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLCanvasElement* canvas,
@@ -2526,6 +2542,63 @@ PlatformLayer* CanvasRenderingContext2D::platformLayer() const
 }
 #endif
 
+static InterpolationQuality smoothingToInterpolationQuality(CanvasRenderingContext2D::SmoothingQuality quality)
+{
+    switch (quality) {
+    case CanvasRenderingContext2D::SmoothingQuality::Low:
+        return InterpolationLow;
+    case CanvasRenderingContext2D::SmoothingQuality::Medium:
+        return InterpolationMedium;
+    case CanvasRenderingContext2D::SmoothingQuality::High:
+        return InterpolationHigh;
+    }
+
+    ASSERT_NOT_REACHED();
+    return InterpolationLow;
+};
+
+String CanvasRenderingContext2D::imageSmoothingQuality() const
+{
+    switch (state().imageSmoothingQuality) {
+    case SmoothingQuality::Low:
+        return ASCIILiteral("low");
+    case SmoothingQuality::Medium:
+        return ASCIILiteral("medium");
+    case SmoothingQuality::High:
+        return ASCIILiteral("high");
+    }
+
+    ASSERT_NOT_REACHED();
+    return ASCIILiteral("low");
+}
+
+void CanvasRenderingContext2D::setImageSmoothingQuality(const String& smoothingQualityString)
+{
+    SmoothingQuality quality;
+    if (smoothingQualityString == "low")
+        quality = SmoothingQuality::Low;
+    else if (smoothingQualityString == "medium")
+        quality = SmoothingQuality::Medium;
+    else if (smoothingQualityString == "high")
+        quality = SmoothingQuality::High;
+    else {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (quality == state().imageSmoothingQuality)
+        return;
+
+    realizeSaves();
+    modifiableState().imageSmoothingQuality = quality;
+
+    if (!modifiableState().imageSmoothingEnabled)
+        return;
+
+    if (auto* context = drawingContext())
+        context->setImageInterpolationQuality(smoothingToInterpolationQuality(quality));
+}
+
 bool CanvasRenderingContext2D::imageSmoothingEnabled() const
 {
     return state().imageSmoothingEnabled;
@@ -2540,7 +2613,7 @@ void CanvasRenderingContext2D::setImageSmoothingEnabled(bool enabled)
     modifiableState().imageSmoothingEnabled = enabled;
     GraphicsContext* c = drawingContext();
     if (c)
-        c->setImageInterpolationQuality(enabled ? DefaultInterpolationQuality : InterpolationNone);
+        c->setImageInterpolationQuality(enabled ? smoothingToInterpolationQuality(state().imageSmoothingQuality) : InterpolationNone);
 }
 
 } // namespace WebCore

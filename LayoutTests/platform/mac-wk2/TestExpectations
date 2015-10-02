@@ -199,22 +199,12 @@ webkit.org/b/105954 http/tests/navigation/reload-subframe-object.html [ Failure 
 
 webkit.org/b/105960 plugins/navigator-plugins.html [ Failure ]
 
-webkit.org/b/108507 printing/quirks-percentage-height-body.html [ Skip ]
-webkit.org/b/108507 printing/quirks-percentage-height.html [ Skip ]
-webkit.org/b/108507 printing/standards-percentage-heights.html [ Skip ]
-
 webkit.org/b/104954 http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
 
 # Flaky everywhere.
 webkit.org/b/114302 platform/mac-wk2/plugins/mouse-events-scaled-iframe.html [ Pass Failure ]
 
 webkit.org/b/114572 platform/mac-wk2/plugins/mouse-events-scaled.html [ Pass Failure ]
-
-# [WK2] Media elements never fail to load
-webkit.org/b/117767 media/W3C/audio/error/error_onerror_called_on_bogus_source.html [ Timeout ]
-webkit.org/b/117767 media/W3C/video/error/error_onerror_called_on_bogus_source.html [ Timeout ]
-webkit.org/b/117767 media/broken-video.html [ Timeout ]
-webkit.org/b/117767 media/event-attributes.html [ Timeout ]
 
 webkit.org/b/117962 media/video-played-collapse.html [ Pass Failure ]
 
@@ -265,7 +255,7 @@ webkit.org/b/148408 tiled-drawing/scrolling/scroll-snap/scroll-snap-iframe.html 
 webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [ Pass Failure Timeout ]
 
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Timeout ]
-webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Timeout ]
+webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 
 webkit.org/b/140217 http/tests/navigation/forward-and-cancel.html [ Pass Failure ]
 

@@ -22,7 +22,6 @@
 #include "JSTestCustomConstructorWithNoInterfaceObject.h"
 
 #include "JSDOMBinding.h"
-#include "TestCustomConstructorWithNoInterfaceObject.h"
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -120,8 +119,7 @@ void JSTestCustomConstructorWithNoInterfaceObjectPrototype::finishCreation(VM& v
 const ClassInfo JSTestCustomConstructorWithNoInterfaceObject::s_info = { "TestCustomConstructorWithNoInterfaceObject", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomConstructorWithNoInterfaceObject) };
 
 JSTestCustomConstructorWithNoInterfaceObject::JSTestCustomConstructorWithNoInterfaceObject(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomConstructorWithNoInterfaceObject>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestCustomConstructorWithNoInterfaceObject>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -139,11 +137,6 @@ void JSTestCustomConstructorWithNoInterfaceObject::destroy(JSC::JSCell* cell)
 {
     JSTestCustomConstructorWithNoInterfaceObject* thisObject = static_cast<JSTestCustomConstructorWithNoInterfaceObject*>(cell);
     thisObject->JSTestCustomConstructorWithNoInterfaceObject::~JSTestCustomConstructorWithNoInterfaceObject();
-}
-
-JSTestCustomConstructorWithNoInterfaceObject::~JSTestCustomConstructorWithNoInterfaceObject()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestCustomConstructorWithNoInterfaceObjectConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)

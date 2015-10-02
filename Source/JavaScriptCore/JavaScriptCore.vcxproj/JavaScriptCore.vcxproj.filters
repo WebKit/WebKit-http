@@ -291,6 +291,9 @@
     <ClCompile Include="..\heap\Heap.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\heap\HeapHelperPool.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\HeapStatistics.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -1080,6 +1083,9 @@
     <ClCompile Include="..\runtime\JSTypedArrays.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
+    <ClCompile Include="..\runtime\JSTypedArrayViewPrototype.cpp">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClCompile Include="..\runtime\DataView.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
@@ -1576,6 +1582,9 @@
       <Filter>ftl</Filter>
     </ClCompile>
     <ClCompile Include="..\ftl\FTLJSCall.cpp">
+      <Filter>ftl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ftl\FTLJSTailCall.cpp">
       <Filter>ftl</Filter>
     </ClCompile>
     <ClCompile Include="..\ftl\FTLLink.cpp">
@@ -2286,6 +2295,9 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\Heap.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\HeapHelperPool.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\HeapInlines.h">
@@ -3167,9 +3179,6 @@
     <ClInclude Include="..\runtime\WeakGCMap.h">
       <Filter>runtime</Filter>
     </ClInclude>
-    <ClInclude Include="..\runtime\WeakRandom.h">
-      <Filter>runtime</Filter>
-    </ClInclude>
     <ClInclude Include="..\runtime\WriteBarrier.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3372,6 +3381,9 @@
     <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototype.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\JSGenericTypedArrayViewPrototypeFunctions.h">
+      <Filter>runtime</Filter>
+    </ClInclude>
     <ClInclude Include="..\runtime\JSInternalPromise.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -3447,6 +3459,9 @@
     <ClInclude Include="..\runtime\JSTypedArrays.h">
       <Filter>runtime</Filter>
     </ClInclude>
+    <ClInclude Include="..\runtime\JSTypedArrayViewPrototype.h">
+      <Filter>runtime</Filter>
+    </ClCompile>
     <ClInclude Include="..\runtime\JSUint16Array.h">
       <Filter>runtime</Filter>
     </ClInclude>
@@ -4139,6 +4154,9 @@
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLJSCall.h">
+      <Filter>ftl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ftl\FTLJSTailCall.h">
       <Filter>ftl</Filter>
     </ClInclude>
     <ClInclude Include="..\ftl\FTLLink.h">

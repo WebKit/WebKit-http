@@ -29,6 +29,7 @@
 #include "InspectorController.h"
 #include "JSDOMGlobalObjectTask.h"
 #include "JSDOMWindowCustom.h"
+#include "JSModuleLoader.h"
 #include "JSNode.h"
 #include "Logging.h"
 #include "Page.h"
@@ -36,6 +37,7 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "WebCoreJSClientData.h"
+#include <runtime/JSInternalPromiseDeferred.h>
 #include <runtime/Microtask.h>
 #include <wtf/MainThread.h>
 
@@ -43,6 +45,10 @@
 #include "ChromeClient.h"
 #include "WebSafeGCActivityCallbackIOS.h"
 #include "WebSafeIncrementalSweeperIOS.h"
+#endif
+
+#if ENABLE(STREAMS_API)
+#include "ReadableStreamInternalsBuiltins.h"
 #endif
 
 using namespace JSC;
@@ -56,13 +62,16 @@ static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* e
 
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
 
-const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr, nullptr };
+const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, &moduleLoaderEvaluate };
 
 JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWindow> window, JSDOMWindowShell* shell)
     : JSDOMGlobalObject(vm, structure, &shell->world(), &s_globalObjectMethodTable)
     , m_windowCloseWatchpoints((window && window->frame()) ? IsWatched : IsInvalidated)
     , m_impl(window)
     , m_shell(shell)
+#if ENABLE(STREAMS_API)
+    , m_readableStreamFunctions(vm)
+#endif
 {
 }
 
@@ -71,12 +80,34 @@ void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowShell* shell)
     Base::finishCreation(vm, shell);
     ASSERT(inherits(info()));
 
+#if ENABLE(STREAMS_API)
+    m_readableStreamFunctions.init(*this);
+#endif
+
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->document, jsNull(), DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->window, m_shell, DontDelete | ReadOnly)
+        GlobalPropertyInfo(vm.propertyNames->window, m_shell, DontDelete | ReadOnly),
+#if ENABLE(STREAMS_API)
+#define DECLARE_GLOBAL_STATIC(name)\
+        GlobalPropertyInfo(\
+            static_cast<WebCoreJSClientData*>(vm.clientData)->readableStreamInternalsBuiltins().name##PrivateName(),\
+            m_readableStreamFunctions.m_##name##Function.get() , DontDelete | ReadOnly),
+        WEBCOREREADABLESTREAMINTERNALS_FOREACH_BUILTIN_FUNCTION_NAME(DECLARE_GLOBAL_STATIC)
+#undef EXPORT_FUNCTION
+#endif
     };
-    
+
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
+}
+
+void JSDOMWindowBase::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    JSDOMWindowBase* thisObject = jsCast<JSDOMWindowBase*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    Base::visitChildren(thisObject, visitor);
+#if ENABLE(STREAMS_API)
+    thisObject->m_readableStreamFunctions.visit(visitor);
+#endif
 }
 
 void JSDOMWindowBase::destroy(JSCell* cell)
@@ -274,6 +305,33 @@ void JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(DOMWindow* window)
         JSDOMWindowBase* jsWindow = JSC::jsCast<JSDOMWindowBase*>(wrapper);
         jsWindow->m_windowCloseWatchpoints.fireAll("Frame cleared");
     }
+}
+
+
+JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleName, JSC::JSValue importerModuleKey)
+{
+    JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
+    if (RefPtr<Document> document = thisObject->impl().document())
+        return document->moduleLoader()->resolve(globalObject, exec, moduleName, importerModuleKey);
+    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
+    return deferred->reject(exec, jsUndefined());
+}
+
+JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey)
+{
+    JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
+    if (RefPtr<Document> document = thisObject->impl().document())
+        return document->moduleLoader()->fetch(globalObject, exec, moduleKey);
+    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
+    return deferred->reject(exec, jsUndefined());
+}
+
+JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey, JSC::JSValue moduleRecord)
+{
+    JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
+    if (RefPtr<Document> document = thisObject->impl().document())
+        return document->moduleLoader()->evaluate(globalObject, exec, moduleKey, moduleRecord);
+    return JSC::jsUndefined();
 }
 
 } // namespace WebCore

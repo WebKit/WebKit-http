@@ -1717,11 +1717,6 @@ void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>
 }
 #endif
 
-void WebFrameLoaderClient::prefetchDNS(const String& hostname)
-{
-    WebProcess::singleton().prefetchDNS(hostname);
-}
-
 bool WebFrameLoaderClient::shouldPaintBrokenImage(const WebCore::URL&) const
 {
 #if PLATFORM(WPE)

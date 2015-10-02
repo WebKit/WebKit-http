@@ -560,8 +560,7 @@ sub determineConfigurationProductDir
     determineBaseProductDir();
     determineConfiguration();
     if (isAppleWinWebKit() || isWinCairo()) {
-        my $binDir = isWin64() ? "bin64" : "bin32";
-        $configurationProductDir = File::Spec->catdir($baseProductDir, $configuration, $binDir);
+        $configurationProductDir = File::Spec->catdir($baseProductDir, $configuration);
     } else {
         if (usesPerConfigurationBuildDirectory()) {
             $configurationProductDir = "$baseProductDir";
@@ -616,6 +615,10 @@ sub jscProductDir
 {
     my $productDir = productDir();
     $productDir .= "/bin" if (isEfl() || isGtk());
+    if (isAnyWindows()) {
+        my $binDir = isWin64() ? "bin64" : "bin32";
+        $productDir = File::Spec->catdir($productDir, $binDir);
+    }
 
     return $productDir;
 }
@@ -1048,6 +1051,13 @@ sub determineIsWin64()
     $isWin64 = checkForArgumentAndRemoveFromARGV("--64-bit");
 }
 
+sub determineIsWin64FromArchitecture($)
+{
+    my $arch = shift;
+    $isWin64 = ($arch eq "x86_64");
+    return $isWin64;
+}
+
 sub isCygwin()
 {
     return ($^O eq "cygwin") || 0;
@@ -1393,7 +1403,7 @@ sub launcherName()
     } elsif (isAppleMacWebKit()) {
         return "Safari";
     } elsif (isAppleWinWebKit()) {
-        return "WinLauncher";
+        return "MiniBrowser";
     }
 }
 
@@ -1531,6 +1541,8 @@ sub setupAppleWinEnv()
         $variablesToSet{WEBKIT_LIBRARIES} = windowsLibrariesDir() unless $ENV{WEBKIT_LIBRARIES};
         $variablesToSet{WEBKIT_OUTPUTDIR} = windowsOutputDir() unless $ENV{WEBKIT_OUTPUTDIR};
         $variablesToSet{MSBUILDDISABLENODEREUSE} = "1" unless $ENV{MSBUILDDISABLENODEREUSE};
+        $variablesToSet{_IsNativeEnvironment} = "true" unless $ENV{_IsNativeEnvironment};
+        $variablesToSet{PreferredToolArchitecture} = "x64" unless $ENV{PreferredToolArchitecture};
 
         foreach my $variable (keys %variablesToSet) {
             print "Setting the Environment Variable '" . $variable . "' to '" . $variablesToSet{$variable} . "'\n\n";
@@ -1870,6 +1882,8 @@ sub generateBuildSystemFromCMakeProject
         } else {
             push @args, "Ninja";
         }
+    } elsif (isAnyWindows() && isWin64()) {
+        push @args, '-G "Visual Studio 14 2015 Win64"';
     }
 
     # GTK+ has a production mode, but build-webkit should always use developer mode.
@@ -2007,12 +2021,16 @@ sub setPathForRunningWebKitApp
 {
     my ($env) = @_;
 
-    if (isAppleWinWebKit()) {
-        $env->{PATH} = join(':', productDir(), appleApplicationSupportPath(), $env->{PATH} || "");
-    } elsif (isWinCairo()) {
-        my $winCairoBin = sourceDir() . "/WebKitLibraries/win/" . (isWin64() ? "bin64/" : "bin32/");
-        my $gstreamerBin = isWin64() ? $ENV{"GSTREAMER_1_0_ROOT_X86_64"} . "bin" : $ENV{"GSTREAMER_1_0_ROOT_X86"} . "bin";
-        $env->{PATH} = join(':', productDir(), $winCairoBin, $gstreamerBin, $env->{PATH} || "");
+    if (isAnyWindows()) {
+        my $binDir = isWin64() ? "bin64" : "bin32";
+        my $productBinaryDir = File::Spec->catdir(productDir(), $binDir);
+        if (isAppleWinWebKit()) {
+            $env->{PATH} = join(':', $productBinaryDir, appleApplicationSupportPath(), $env->{PATH} || "");
+        } elsif (isWinCairo()) {
+            my $winCairoBin = sourceDir() . "/WebKitLibraries/win/" . (isWin64() ? "bin64/" : "bin32/");
+            my $gstreamerBin = isWin64() ? $ENV{"GSTREAMER_1_0_ROOT_X86_64"} . "bin" : $ENV{"GSTREAMER_1_0_ROOT_X86"} . "bin";
+            $env->{PATH} = join(':', $productBinaryDir, $winCairoBin, $gstreamerBin, $env->{PATH} || "");
+        }
     }
 }
 
@@ -2413,7 +2431,8 @@ sub runSafari
     if (isAppleWinWebKit()) {
         my $result;
         my $productDir = productDir();
-        my $webKitLauncherPath = File::Spec->catfile(productDir(), "WinLauncher.exe");
+        my $binDir = isWin64() ? "bin64" : "bin32";
+        my $webKitLauncherPath = File::Spec->catfile(productDir(), $binDir, "MiniBrowser.exe");
         return system { $webKitLauncherPath } $webKitLauncherPath, @ARGV;
     }
 
@@ -2424,6 +2443,12 @@ sub runMiniBrowser
 {
     if (isAppleMacWebKit()) {
         return runMacWebKitApp(File::Spec->catfile(productDir(), "MiniBrowser.app", "Contents", "MacOS", "MiniBrowser"));
+    } elsif (isAppleWinWebKit()) {
+        my $result;
+        my $productDir = productDir();
+        my $binDir = isWin64() ? "bin64" : "bin32";
+        my $webKitLauncherPath = File::Spec->catfile(productDir(), $binDir, "MiniBrowser.exe");
+        return system { $webKitLauncherPath } $webKitLauncherPath, @ARGV;
     }
 
     return 1;

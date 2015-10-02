@@ -32,6 +32,7 @@
 #include "CSSAspectRatioValue.h"
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
+#include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
@@ -2095,6 +2096,25 @@ inline static bool isFlexOrGrid(ContainerNode* element)
     return element && element->computedStyle() && element->computedStyle()->isDisplayFlexibleOrGridBox();
 }
 
+RefPtr<CSSValue> ComputedStyleExtractor::customPropertyValue(const String& propertyName) const
+{
+    Node* styledNode = this->styledNode();
+    if (!styledNode)
+        return nullptr;
+
+    RefPtr<RenderStyle> style = computeRenderStyleForProperty(styledNode, m_pseudoElementSpecifier, CSSPropertyCustom);
+    if (!style || !style->hasCustomProperty(propertyName))
+        return nullptr;
+
+    return style->getCustomPropertyValue(propertyName);
+}
+
+String ComputedStyleExtractor::customPropertyText(const String& propertyName) const
+{
+    RefPtr<CSSValue> propertyValue = this->customPropertyValue(propertyName);
+    return propertyValue ? propertyValue->cssText() : emptyString();
+}
+
 RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
 {
     Node* styledNode = this->styledNode();
@@ -3553,6 +3573,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyWritingMode:
         case CSSPropertyWebkitSvgShadow:
             return svgPropertyValue(propertyID, DoNotUpdateLayout);
+        case CSSPropertyCustom:
+            ASSERT_NOT_REACHED();
+            return nullptr;
     }
 
     logUnimplementedPropertyID(propertyID);
@@ -3577,15 +3600,35 @@ unsigned CSSComputedStyleDeclaration::length() const
     if (!style)
         return 0;
 
-    return numComputedProperties;
+    const HashMap<AtomicString, RefPtr<CSSValue>>* customProperties = style->customProperties();
+    return numComputedProperties + (customProperties ? customProperties->size() : 0);
 }
 
 String CSSComputedStyleDeclaration::item(unsigned i) const
 {
     if (i >= length())
         return emptyString();
+    
+    if (i < numComputedProperties)
+        return getPropertyNameString(computedProperties[i]);
+    
+    Node* node = m_node.get();
+    if (!node)
+        return emptyString();
 
-    return getPropertyNameString(computedProperties[i]);
+    RenderStyle* style = node->computedStyle(m_pseudoElementSpecifier);
+    if (!style)
+        return emptyString();
+    
+    unsigned index = i - numComputedProperties;
+    
+    const auto* customProperties = style->customProperties();
+    if (!customProperties || index >= customProperties->size())
+        return emptyString();
+    
+    Vector<String, 4> results;
+    copyKeysToVector(*customProperties, results);
+    return results.at(index);
 }
 
 bool ComputedStyleExtractor::propertyMatches(CSSPropertyID propertyID, const CSSValue* value) const
@@ -3676,6 +3719,9 @@ CSSRule* CSSComputedStyleDeclaration::parentRule() const
 
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& propertyName)
 {
+    if (isCustomPropertyName(propertyName))
+        return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
+
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return nullptr;
@@ -3685,6 +3731,9 @@ RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& 
 
 String CSSComputedStyleDeclaration::getPropertyValue(const String &propertyName)
 {
+    if (isCustomPropertyName(propertyName))
+        return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyText(propertyName);
+
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return String();

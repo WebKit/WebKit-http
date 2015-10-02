@@ -1007,6 +1007,10 @@ struct Node {
         switch (op()) {
         case CallVarargs:
         case CallForwardVarargs:
+        case TailCallVarargs:
+        case TailCallForwardVarargs:
+        case TailCallVarargsInlinedCaller:
+        case TailCallForwardVarargsInlinedCaller:
         case ConstructVarargs:
         case ConstructForwardVarargs:
             return true;
@@ -1104,11 +1108,22 @@ struct Node {
         case Branch:
         case Switch:
         case Return:
+        case TailCall:
+        case TailCallVarargs:
+        case TailCallForwardVarargs:
         case Unreachable:
             return true;
         default:
             return false;
         }
+    }
+
+    bool isFunctionTerminal()
+    {
+        if (isTerminal() && !numSuccessors())
+            return true;
+
+        return false;
     }
 
     unsigned targetBytecodeOffsetDuringParsing()
@@ -1254,10 +1269,13 @@ struct Node {
         case GetByIdFlush:
         case GetByVal:
         case Call:
+        case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
+        case TailCallForwardVarargsInlinedCaller:
         case GetByOffset:
         case MultiGetByOffset:
         case GetClosureVar:
@@ -1858,6 +1876,11 @@ struct Node {
     {
         return isStringOrStringObjectSpeculation(prediction());
     }
+
+    bool shouldSpeculateSymbol()
+    {
+        return isSymbolSpeculation(prediction());
+    }
     
     bool shouldSpeculateFinalObject()
     {
@@ -2002,6 +2025,11 @@ struct Node {
     {
         return op1->shouldSpeculateNumberOrBooleanExpectingDefined()
             && op2->shouldSpeculateNumberOrBooleanExpectingDefined();
+    }
+
+    static bool shouldSpeculateSymbol(Node* op1, Node* op2)
+    {
+        return op1->shouldSpeculateSymbol() && op2->shouldSpeculateSymbol();
     }
     
     static bool shouldSpeculateFinalObject(Node* op1, Node* op2)

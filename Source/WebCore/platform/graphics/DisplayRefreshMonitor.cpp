@@ -37,8 +37,6 @@
 #include "DisplayRefreshMonitorMac.h"
 #endif
 
-#include <stdio.h>
-
 namespace WebCore {
 
 RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::createDefaultDisplayRefreshMonitor(PlatformDisplayID displayID)

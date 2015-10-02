@@ -23,7 +23,6 @@
 
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
-#include "TestNondeterministic.h"
 #include "URL.h"
 #include <runtime/Error.h>
 #include <runtime/JSString.h>
@@ -142,8 +141,7 @@ void JSTestNondeterministicPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestNondeterministic::s_info = { "TestNondeterministic", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestNondeterministic) };
 
 JSTestNondeterministic::JSTestNondeterministic(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestNondeterministic>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestNondeterministic>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -161,11 +159,6 @@ void JSTestNondeterministic::destroy(JSC::JSCell* cell)
 {
     JSTestNondeterministic* thisObject = static_cast<JSTestNondeterministic*>(cell);
     thisObject->JSTestNondeterministic::~JSTestNondeterministic();
-}
-
-JSTestNondeterministic::~JSTestNondeterministic()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestNondeterministicNondeterministicReadonlyAttr(ExecState* state, JSObject* slotBase, EncodedJSValue thisValue, PropertyName)
