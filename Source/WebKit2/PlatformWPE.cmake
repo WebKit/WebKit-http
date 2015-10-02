@@ -33,6 +33,11 @@ list(APPEND WebKit2_SOURCES
     PluginProcess/unix/PluginProcessMainUnix.cpp
     PluginProcess/unix/PluginProcessUnix.cpp
     Shared/API/c/cairo/WKImageCairo.cpp
+    Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
+    Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
+    Shared/CoordinatedGraphics/SimpleViewportController.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
+    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
     Shared/Downloads/soup/DownloadSoup.cpp
     Shared/Downloads/wpe/DownloadSoupErrorsWPE.cpp
     Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
@@ -53,6 +58,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
     UIProcess/API/C/wpe/WKView.cpp
+    UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
@@ -88,7 +94,9 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
+    WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
+    WebProcess/WebPage/wpe/CompositingManager.cpp
     WebProcess/WebPage/wpe/DrawingAreaWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
@@ -96,34 +104,11 @@ list(APPEND WebKit2_SOURCES
     WebProcess/soup/WebProcessSoup.cpp
     WebProcess/wpe/WebProcessMainWPE.cpp
 )
-if (ENABLE_THREADED_COMPOSITOR)
-    list(APPEND WebKit2_SOURCES
-        Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
-        Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
-        Shared/CoordinatedGraphics/SimpleViewportController.cpp
-        Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
-        Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
-        UIProcess/API/wpe/CompositingManagerProxy.cpp
-        WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
-        WebProcess/WebPage/wpe/CompositingManager.cpp
-    )
 
-    list(APPEND WebKit2_MESSAGES_IN_FILES
-        UIProcess/API/wpe/CompositingManagerProxy.messages.in
-        WebProcess/WebPage/wpe/CompositingManager.messages.in
-    )
-
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
-        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
-        "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
-        "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
-    )
-else ()
-    list(APPEND WebKit2_SOURCES
-        WebProcess/WebPage/wpe/LayerTreeHostWPE.cpp
-    )
-endif ()
+list(APPEND WebKit2_MESSAGES_IN_FILES
+    UIProcess/API/wpe/CompositingManagerProxy.messages.in
+    WebProcess/WebPage/wpe/CompositingManager.messages.in
+)
 
 list(APPEND WebKit2_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBKIT2_DIR}/WebKit2ResourcesGResourceBundle.c
@@ -159,9 +144,12 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Shared/API/c/wpe"
+    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
+    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
     "${WEBKIT2_DIR}/Shared/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/soup"
@@ -176,6 +164,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/unix"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
+    "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WEBKIT2_DIR}/WebProcess/WebPage/wpe"
     "${WTF_DIR}/wtf/gtk/"
     "${WTF_DIR}/wtf/gobject"

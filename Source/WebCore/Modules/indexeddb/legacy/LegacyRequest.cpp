@@ -31,7 +31,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "EventException.h"
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventQueue.h"
@@ -96,7 +95,7 @@ LegacyRequest::~LegacyRequest()
 {
 }
 
-PassRefPtr<IDBAny> LegacyRequest::result(ExceptionCode& ec) const
+RefPtr<IDBAny> LegacyRequest::result(ExceptionCode& ec) const
 {
     if (m_readyState != DONE) {
         ec = IDBDatabaseException::InvalidStateError;
@@ -105,7 +104,7 @@ PassRefPtr<IDBAny> LegacyRequest::result(ExceptionCode& ec) const
     return m_result;
 }
 
-PassRefPtr<DOMError> LegacyRequest::error(ExceptionCode& ec) const
+RefPtr<DOMError> LegacyRequest::error(ExceptionCode& ec) const
 {
     if (m_readyState != DONE) {
         ec = IDBDatabaseException::InvalidStateError;
@@ -123,12 +122,12 @@ unsigned short LegacyRequest::errorCode(ExceptionCode& ec) const
     return m_errorCode;
 }
 
-PassRefPtr<IDBAny> LegacyRequest::source() const
+RefPtr<IDBAny> LegacyRequest::source() const
 {
     return m_source;
 }
 
-PassRefPtr<IDBTransaction> LegacyRequest::transaction() const
+RefPtr<IDBTransaction> LegacyRequest::transaction() const
 {
     return m_transaction;
 }
@@ -296,7 +295,7 @@ void LegacyRequest::onSuccess(PassRefPtr<IDBCursorBackend> prpBackend)
     RefPtr<LegacyCursor> cursor;
     switch (m_cursorType) {
     case IndexedDB::CursorType::KeyOnly:
-        cursor = LegacyCursor::create(backend.release(), m_cursorDirection, this, m_source.get(), m_transaction.get());
+        cursor = LegacyCursor::create(backend.get(), m_cursorDirection, this, m_source.get(), m_transaction.get());
         break;
     case IndexedDB::CursorType::KeyAndValue:
         cursor = LegacyCursorWithValue::create(backend.release(), m_cursorDirection, this, m_source.get(), m_transaction.get());

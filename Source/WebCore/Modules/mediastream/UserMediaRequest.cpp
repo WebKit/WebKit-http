@@ -122,12 +122,13 @@ void UserMediaRequest::start()
     RealtimeMediaSourceCenter::singleton().validateRequestConstraints(this, m_audioConstraints, m_videoConstraints);
 }
 
-void UserMediaRequest::constraintsValidated(const Vector<RefPtr<RealtimeMediaSource>>& videoTracks, const Vector<RefPtr<RealtimeMediaSource>>& audioTracks)
+void UserMediaRequest::constraintsValidated(const Vector<RefPtr<RealtimeMediaSource>>& audioTracks, const Vector<RefPtr<RealtimeMediaSource>>& videoTracks)
 {
     for (auto& audioTrack : audioTracks)
-        m_audioDeviceUIDs.append(audioTrack->id());
+        m_audioDeviceUIDs.append(audioTrack->persistentID());
     for (auto& videoTrack : videoTracks)
-        m_videoDeviceUIDs.append(videoTrack->id());
+        m_videoDeviceUIDs.append(videoTrack->persistentID());
+
     RefPtr<UserMediaRequest> protectedThis(this);
     callOnMainThread([protectedThis] {
         // 2 - The constraints are valid, ask the user for access to media.
@@ -136,14 +137,15 @@ void UserMediaRequest::constraintsValidated(const Vector<RefPtr<RealtimeMediaSou
     });
 }
 
-void UserMediaRequest::userMediaAccessGranted(const String& videoDeviceUID, const String& audioDeviceUID)
+void UserMediaRequest::userMediaAccessGranted(const String& audioDeviceUID, const String& videoDeviceUID)
 {
-    m_chosenVideoDeviceUID = videoDeviceUID;
-    m_chosenAudioDeviceUID = audioDeviceUID;
+    m_allowedVideoDeviceUID = videoDeviceUID;
+    m_audioDeviceUIDAllowed = audioDeviceUID;
+
     RefPtr<UserMediaRequest> protectedThis(this);
-    callOnMainThread([protectedThis] {
+    callOnMainThread([protectedThis, audioDeviceUID, videoDeviceUID] {
         // 3 - the user granted access, ask platform to create the media stream descriptors.
-        RealtimeMediaSourceCenter::singleton().createMediaStream(protectedThis.get(), protectedThis->m_audioConstraints, protectedThis->m_videoConstraints);
+        RealtimeMediaSourceCenter::singleton().createMediaStream(protectedThis.get(), audioDeviceUID, videoDeviceUID);
     });
 }
 
@@ -164,10 +166,14 @@ void UserMediaRequest::didCreateStream(PassRefPtr<MediaStreamPrivate> privateStr
 
     // 4 - Create the MediaStream and pass it to the success callback.
     RefPtr<MediaStream> stream = MediaStream::create(*m_scriptExecutionContext, privateStream);
-    for (auto& track : stream->getAudioTracks())
-        track->applyConstraints(*m_audioConstraints);
-    for (auto& track : stream->getVideoTracks())
-        track->applyConstraints(*m_videoConstraints);
+    if (m_audioConstraints) {
+        for (auto& track : stream->getAudioTracks())
+            track->applyConstraints(*m_audioConstraints);
+    }
+    if (m_videoConstraints) {
+        for (auto& track : stream->getVideoTracks())
+            track->applyConstraints(*m_videoConstraints);
+    }
 
     m_promise.resolve(stream);
 }

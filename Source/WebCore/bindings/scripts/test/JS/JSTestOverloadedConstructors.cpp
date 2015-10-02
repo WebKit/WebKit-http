@@ -24,7 +24,6 @@
 #include "ExceptionCode.h"
 #include "JSBlob.h"
 #include "JSDOMBinding.h"
-#include "TestOverloadedConstructors.h"
 #include <runtime/Error.h>
 #include <wtf/GetPtr.h>
 
@@ -207,8 +206,7 @@ void JSTestOverloadedConstructorsPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestOverloadedConstructors::s_info = { "TestOverloadedConstructors", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestOverloadedConstructors) };
 
 JSTestOverloadedConstructors::JSTestOverloadedConstructors(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverloadedConstructors>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestOverloadedConstructors>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -226,11 +224,6 @@ void JSTestOverloadedConstructors::destroy(JSC::JSCell* cell)
 {
     JSTestOverloadedConstructors* thisObject = static_cast<JSTestOverloadedConstructors*>(cell);
     thisObject->JSTestOverloadedConstructors::~JSTestOverloadedConstructors();
-}
-
-JSTestOverloadedConstructors::~JSTestOverloadedConstructors()
-{
-    releaseImpl();
 }
 
 EncodedJSValue jsTestOverloadedConstructorsConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)

@@ -25,7 +25,6 @@
 #include "JSDOMBinding.h"
 #include "JSNode.h"
 #include "Node.h"
-#include "TestOverrideBuiltins.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <wtf/GetPtr.h>
@@ -136,8 +135,7 @@ void JSTestOverrideBuiltinsPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestOverrideBuiltins::s_info = { "TestOverrideBuiltins", &Base::s_info, &JSTestOverrideBuiltinsTable, CREATE_METHOD_TABLE(JSTestOverrideBuiltins) };
 
 JSTestOverrideBuiltins::JSTestOverrideBuiltins(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverrideBuiltins>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestOverrideBuiltins>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -155,11 +153,6 @@ void JSTestOverrideBuiltins::destroy(JSC::JSCell* cell)
 {
     JSTestOverrideBuiltins* thisObject = static_cast<JSTestOverrideBuiltins*>(cell);
     thisObject->JSTestOverrideBuiltins::~JSTestOverrideBuiltins();
-}
-
-JSTestOverrideBuiltins::~JSTestOverrideBuiltins()
-{
-    releaseImpl();
 }
 
 bool JSTestOverrideBuiltins::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
@@ -199,6 +192,17 @@ EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, JSObject*, En
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSTestOverrideBuiltins::getConstructor(state->vm(), domObject->globalObject()));
+}
+
+void JSTestOverrideBuiltins::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)
+{
+    auto* thisObject = jsCast<JSTestOverrideBuiltins*>(object);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    if (mode.includeDontEnumProperties()) {
+        for (auto& propertyName : thisObject->impl().supportedPropertyNames())
+            propertyNames.add(Identifier::fromString(state, propertyName));
+    }
+    Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
 }
 
 JSValue JSTestOverrideBuiltins::getConstructor(VM& vm, JSGlobalObject* globalObject)

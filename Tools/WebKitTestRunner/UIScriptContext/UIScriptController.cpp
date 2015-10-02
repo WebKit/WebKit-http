@@ -28,7 +28,7 @@
 
 #include "JSUIScriptController.h"
 #include "UIScriptContext.h"
-// #include <JavaScriptCore/JavaScriptCore.h>
+#include <JavaScriptCore/JSValueRef.h>
 
 namespace WTR {
 
@@ -53,8 +53,64 @@ void UIScriptController::doAsyncTask(JSValueRef)
 }
 #endif
 
+void UIScriptController::setWillBeginZoomingCallback(JSValueRef callback)
+{
+    m_willBeginZoomingCallback = m_context.registerCallback(callback);
+    platformSetWillBeginZoomingCallback();
+}
+
+JSValueRef UIScriptController::willBeginZoomingCallback() const
+{
+    return m_context.callbackWithID(m_willBeginZoomingCallback);
+}
+
+void UIScriptController::setDidEndZoomingCallback(JSValueRef callback)
+{
+    m_didEndZoomingCallback = m_context.registerCallback(callback);
+    platformSetDidEndZoomingCallback();
+}
+
+JSValueRef UIScriptController::didEndZoomingCallback() const
+{
+    return m_context.callbackWithID(m_didEndZoomingCallback);
+}
+
+void UIScriptController::setDidShowKeyboardCallback(JSValueRef callback)
+{
+    m_didShowKeyboardCallback = m_context.registerCallback(callback);
+    platformSetDidShowKeyboardCallback();
+}
+
+JSValueRef UIScriptController::didShowKeyboardCallback() const
+{
+    return m_context.callbackWithID(m_didShowKeyboardCallback);
+}
+
+void UIScriptController::setDidHideKeyboardCallback(JSValueRef callback)
+{
+    m_didHideKeyboardCallback = m_context.registerCallback(callback);
+    platformSetDidHideKeyboardCallback();
+}
+
+JSValueRef UIScriptController::didHideKeyboardCallback() const
+{
+    return m_context.callbackWithID(m_didHideKeyboardCallback);
+}
+
 #if !PLATFORM(IOS)
 void UIScriptController::zoomToScale(double, JSValueRef)
+{
+}
+
+void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
 
@@ -76,6 +132,22 @@ double UIScriptController::maximumZoomScale() const
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
     return nullptr;
+}
+
+void UIScriptController::platformSetWillBeginZoomingCallback()
+{
+}
+
+void UIScriptController::platformSetDidEndZoomingCallback()
+{
+}
+
+void UIScriptController::platformSetDidShowKeyboardCallback()
+{
+}
+
+void UIScriptController::platformSetDidHideKeyboardCallback()
+{
 }
 #endif
 

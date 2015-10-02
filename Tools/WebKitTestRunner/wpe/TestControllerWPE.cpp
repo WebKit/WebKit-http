@@ -122,7 +122,7 @@ void TestController::platformResetPreferencesToConsistentValues()
 {
 }
 
-void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const TestInvocation&) const
+void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string&) const
 {
 }
 

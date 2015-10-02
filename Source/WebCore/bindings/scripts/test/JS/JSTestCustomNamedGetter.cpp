@@ -23,7 +23,6 @@
 
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
-#include "TestCustomNamedGetter.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <wtf/GetPtr.h>
@@ -134,8 +133,7 @@ void JSTestCustomNamedGetterPrototype::finishCreation(VM& vm)
 const ClassInfo JSTestCustomNamedGetter::s_info = { "TestCustomNamedGetter", &Base::s_info, &JSTestCustomNamedGetterTable, CREATE_METHOD_TABLE(JSTestCustomNamedGetter) };
 
 JSTestCustomNamedGetter::JSTestCustomNamedGetter(Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomNamedGetter>&& impl)
-    : JSDOMWrapper(structure, globalObject)
-    , m_impl(&impl.leakRef())
+    : JSDOMWrapperWithImplementation<TestCustomNamedGetter>(structure, globalObject, WTF::move(impl))
 {
 }
 
@@ -153,11 +151,6 @@ void JSTestCustomNamedGetter::destroy(JSC::JSCell* cell)
 {
     JSTestCustomNamedGetter* thisObject = static_cast<JSTestCustomNamedGetter*>(cell);
     thisObject->JSTestCustomNamedGetter::~JSTestCustomNamedGetter();
-}
-
-JSTestCustomNamedGetter::~JSTestCustomNamedGetter()
-{
-    releaseImpl();
 }
 
 bool JSTestCustomNamedGetter::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)

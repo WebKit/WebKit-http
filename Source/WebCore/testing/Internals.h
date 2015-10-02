@@ -158,6 +158,7 @@ public:
     unsigned markerCountForNode(Node*, const String&, ExceptionCode&);
     RefPtr<Range> markerRangeForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
     String markerDescriptionForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
+    String dumpMarkerRects(const String& markerType, ExceptionCode&);
     void addTextMatchMarker(const Range*, bool isActive);
     void setMarkedTextMatchesAreHighlighted(bool, ExceptionCode&);
 
@@ -385,7 +386,7 @@ public:
 #endif
 
 #if ENABLE(VIDEO)
-    void beginMediaSessionInterruption();
+    void beginMediaSessionInterruption(const String&, ExceptionCode&);
     void endMediaSessionInterruption(const String&);
     void applicationWillEnterForeground() const;
     void applicationWillEnterBackground() const;

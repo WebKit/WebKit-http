@@ -36,6 +36,7 @@
 #include "CSSContentDistributionValue.h"
 #include "CSSCrossfadeValue.h"
 #include "CSSCursorImageValue.h"
+#include "CSSCustomPropertyValue.h"
 #include "CSSFilterImageValue.h"
 #include "CSSFontFaceRule.h"
 #include "CSSFontFaceSrcValue.h"
@@ -1350,6 +1351,19 @@ CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties* declaration
     return parser.parseValue(declaration, propertyID, string, important, contextStyleSheet);
 }
 
+CSSParser::ParseResult CSSParser::parseCustomPropertyValue(MutableStyleProperties* declaration, const AtomicString& propertyName, const String& string, bool important, CSSParserMode cssParserMode, StyleSheetContents* contextStyleSheet)
+{
+    CSSParserContext context(cssParserMode);
+    if (contextStyleSheet) {
+        context = contextStyleSheet->parserContext();
+        context.mode = cssParserMode;
+    }
+
+    CSSParser parser(context);
+    parser.setCustomPropertyName(propertyName);
+    return parser.parseValue(declaration, CSSPropertyCustom, string, important, contextStyleSheet);
+}
+
 CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties* declaration, CSSPropertyID propertyID, const String& string, bool important, StyleSheetContents* contextStyleSheet)
 {
     setStyleSheet(contextStyleSheet);
@@ -1575,13 +1589,23 @@ CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& exp
     return SourceSize(WTF::move(expression), WTF::move(value));
 }
 
-static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
+static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
 {
     // Add properties in reverse order so that highest priority definitions are reached first. Duplicate definitions can then be ignored when found.
     for (int i = input.size() - 1; i >= 0; --i) {
         const CSSProperty& property = input[i];
         if (property.isImportant() != important)
             continue;
+        
+        if (property.id() == CSSPropertyCustom) {
+            const AtomicString& name = downcast<CSSCustomPropertyValue>(*property.value()).name();
+            if (seenCustomProperties.contains(name))
+                continue;
+            seenCustomProperties.add(name);
+            output[--unusedEntries] = property;
+            continue;
+        }
+
         const unsigned propertyIDIndex = property.id() - firstCSSProperty;
         ASSERT(propertyIDIndex < seenProperties.size());
         if (seenProperties[propertyIDIndex])
@@ -1598,8 +1622,9 @@ Ref<ImmutableStyleProperties> CSSParser::createStyleProperties()
     Vector<CSSProperty, 256> results(unusedEntries);
 
     // Important properties have higher priority, so add them first. Duplicate definitions can then be ignored when found.
-    filterProperties(true, m_parsedProperties, results, unusedEntries, seenProperties);
-    filterProperties(false, m_parsedProperties, results, unusedEntries, seenProperties);
+    HashSet<AtomicString> seenCustomProperties;
+    filterProperties(true, m_parsedProperties, results, unusedEntries, seenProperties, seenCustomProperties);
+    filterProperties(false, m_parsedProperties, results, unusedEntries, seenProperties, seenCustomProperties);
     if (unusedEntries)
         results.remove(0, unusedEntries);
 
@@ -1883,6 +1908,12 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 {
     if (!m_valueList || !m_valueList->current())
         return false;
+    
+    if (propId == CSSPropertyCustom) {
+        // FIXME: For now put this ahead of inherit/initial processing.
+        // Eventually we want to support initial and inherit.
+        return parseCustomPropertyDeclaration(important);
+    }
 
     ValueWithCalculation valueWithCalculation(*m_valueList->current());
     CSSValueID id = valueWithCalculation.value().id;
@@ -4124,7 +4155,15 @@ bool CSSParser::parseAlt(CSSPropertyID propID, bool important)
 
     return false;
 }
-    
+
+bool CSSParser::parseCustomPropertyDeclaration(bool important)
+{
+    if (m_customPropertyName.isEmpty() || !m_valueList)
+        return false;
+    addProperty(CSSPropertyCustom, CSSCustomPropertyValue::create(m_customPropertyName, m_valueList), important, false);
+    return true;
+}
+
 // [ <string> | <uri> | <counter> | attr(X) | open-quote | close-quote | no-open-quote | no-close-quote ]+ | inherit
 // in CSS 2.1 this got somewhat reduced:
 // [ <string> | attr(X) | open-quote | close-quote | no-open-quote | no-close-quote ]+ | inherit
@@ -10887,6 +10926,13 @@ static inline bool isIdentifierStartAfterDash(CharacterType* currentCharacter)
 }
 
 template <typename CharacterType>
+static inline bool isCustomPropertyIdentifier(CharacterType* currentCharacter)
+{
+    return isASCIIAlpha(currentCharacter[0]) || currentCharacter[0] == '_' || currentCharacter[0] >= 128
+        || (currentCharacter[0] == '\\' && isCSSEscape(currentCharacter[1]));
+}
+
+template <typename CharacterType>
 static inline bool isEqualToCSSIdentifier(CharacterType* cssString, const char* constantString)
 {
     // Compare an character memory data with a zero terminated string.
@@ -11125,10 +11171,6 @@ inline bool CSSParser::parseIdentifierInternal(SrcCharacterType*& src, DestChara
 template <typename CharacterType>
 inline void CSSParser::parseIdentifier(CharacterType*& result, CSSParserString& resultString, bool& hasEscape)
 {
-    // If a valid identifier start is found, we can safely
-    // parse the identifier until the next invalid character.
-    ASSERT(isIdentifierStart<CharacterType>());
-
     CharacterType* start = currentCharacter<CharacterType>();
     if (UNLIKELY(!parseIdentifierInternal(currentCharacter<CharacterType>(), result, hasEscape))) {
         // Found an escape we couldn't handle with 8 bits, copy what has been recognized and continue
@@ -12067,6 +12109,11 @@ restartAfterComment:
                 }
             }
             resultString.setLength(result - tokenStart<SrcCharacterType>());
+            yylval->string = resultString;
+        } else if (currentCharacter<SrcCharacterType>()[0] == '-' && isIdentifierStartAfterDash(currentCharacter<SrcCharacterType>() + 1)) {
+            --currentCharacter<SrcCharacterType>();
+            parseIdentifier(result, resultString, hasEscape);
+            m_token = CUSTOM_PROPERTY;
             yylval->string = resultString;
         } else if (currentCharacter<SrcCharacterType>()[0] == '-' && currentCharacter<SrcCharacterType>()[1] == '>') {
             currentCharacter<SrcCharacterType>() += 2;

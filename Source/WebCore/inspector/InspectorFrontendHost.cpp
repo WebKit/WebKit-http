@@ -85,8 +85,8 @@ private:
     
     virtual void populateContextMenu(ContextMenu* menu) override
     {
-        for (size_t i = 0; i < m_items.size(); ++i)
-            menu->appendItem(m_items[i]);
+        for (auto& item : m_items)
+            menu->appendItem(item);
     }
     
     virtual void contextMenuItemSelected(ContextMenuItem* item) override
@@ -174,15 +174,20 @@ void InspectorFrontendHost::bringToFront()
         m_client->bringToFront();
 }
 
+void InspectorFrontendHost::inspectedURLChanged(const String& newURL)
+{
+    if (m_client)
+        m_client->inspectedURLChanged(newURL);
+}
+
 void InspectorFrontendHost::setZoomFactor(float zoom)
 {
     m_frontendPage->mainFrame().setPageAndTextZoomFactors(zoom, 1);
 }
 
-void InspectorFrontendHost::inspectedURLChanged(const String& newURL)
+float InspectorFrontendHost::zoomFactor()
 {
-    if (m_client)
-        m_client->inspectedURLChanged(newURL);
+    return m_frontendPage->mainFrame().pageZoomFactor();
 }
 
 void InspectorFrontendHost::setAttachedWindowHeight(unsigned height)

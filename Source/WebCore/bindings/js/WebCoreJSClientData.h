@@ -22,12 +22,17 @@
 #ifndef WebCoreJSClientData_h
 #define WebCoreJSClientData_h
 
-#include "CountQueuingStrategyBuiltinsWrapper.h"
 #include "DOMWrapperWorld.h"
-#include "ReadableStreamBuiltinsWrapper.h"
 #include "WebCoreTypedArrayController.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
+
+#if ENABLE(STREAMS_API)
+#include "ByteLengthQueuingStrategyBuiltinsWrapper.h"
+#include "CountQueuingStrategyBuiltinsWrapper.h"
+#include "ReadableStreamBuiltinsWrapper.h"
+#include "ReadableStreamInternalsBuiltinsWrapper.h"
+#endif
 
 namespace WebCore {
 
@@ -37,12 +42,19 @@ class WebCoreJSClientData : public JSC::VM::ClientData {
     friend void initNormalWorldClientData(JSC::VM*);
 
 public:
-    explicit WebCoreJSClientData(JSC::VM& vm)
 #if ENABLE(STREAMS_API)
+    explicit WebCoreJSClientData(JSC::VM& vm)
         : m_readableStreamBuiltins(&vm)
+        , m_readableStreamInternalsBuiltins(&vm)
+        , m_byteLengthQueuingStrategyBuiltins(&vm)
         , m_countQueuingStrategyBuiltins(&vm)
+#else
+    WebCoreJSClientData(JSC::VM&)
 #endif
     {
+#if ENABLE(STREAMS_API)
+        m_readableStreamInternalsBuiltins.exportNames();
+#endif
     }
 
     virtual ~WebCoreJSClientData()
@@ -79,6 +91,8 @@ public:
 
 #if ENABLE(STREAMS_API)
     ReadableStreamBuiltinsWrapper& readableStreamBuiltins() { return m_readableStreamBuiltins; }
+    ReadableStreamInternalsBuiltinsWrapper& readableStreamInternalsBuiltins() { return m_readableStreamInternalsBuiltins; }
+    ByteLengthQueuingStrategyBuiltinsWrapper& byteLengthQueuingStrategyBuiltins() { return m_byteLengthQueuingStrategyBuiltins; }
     CountQueuingStrategyBuiltinsWrapper& countQueuingStrategyBuiltins() { return m_countQueuingStrategyBuiltins; }
 #endif
 
@@ -88,6 +102,8 @@ private:
 
 #if ENABLE(STREAMS_API)
     ReadableStreamBuiltinsWrapper m_readableStreamBuiltins;
+    ReadableStreamInternalsBuiltinsWrapper m_readableStreamInternalsBuiltins;
+    ByteLengthQueuingStrategyBuiltinsWrapper m_byteLengthQueuingStrategyBuiltins;
     CountQueuingStrategyBuiltinsWrapper m_countQueuingStrategyBuiltins;
 #endif
 };

@@ -28,7 +28,9 @@
 
 #if PLATFORM(IOS)
 
+#import "HIDEventGenerator.h"
 #import "PlatformWebView.h"
+#import "StringFunctions.h"
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
 #import "UIScriptContext.h"
@@ -64,6 +66,43 @@ double UIScriptController::zoomScale() const
     return webView.scrollView.zoomScale;
 }
 
+static CGPoint globalToContentCoordinates(TestRunnerWKWebView *webView, long x, long y)
+{
+    CGPoint point = CGPointMake(x, y);
+    point = [webView _convertPointFromContentsToView:point];
+    point = [webView convertPoint:point toView:nil];
+    point = [webView.window convertPoint:point toWindow:nil];
+    return point;
+}
+
+void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef callback)
+{
+    unsigned callbackID = m_context.prepareForAsyncTask(callback);
+
+    [[HIDEventGenerator sharedHIDEventGenerator] tap:globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), x, y) completionBlock:^{
+        m_context.asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef callback)
+{
+    unsigned callbackID = m_context.prepareForAsyncTask(callback);
+
+    [[HIDEventGenerator sharedHIDEventGenerator] doubleTap:globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), x, y) completionBlock:^{
+        m_context.asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+{
+    unsigned callbackID = m_context.prepareForAsyncTask(callback);
+
+    // Assumes that the keyboard is already shown.
+    [[HIDEventGenerator sharedHIDEventGenerator] keyDown:toWTFString(toWK(character)) completionBlock:^{
+        m_context.asyncTaskComplete(callbackID);
+    }];
+}
+
 double UIScriptController::minimumZoomScale() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -84,6 +123,38 @@ JSObjectRef UIScriptController::contentVisibleRect() const
     
     WKRect wkRect = WKRectMake(contentVisibleRect.origin.x, contentVisibleRect.origin.y, contentVisibleRect.size.width, contentVisibleRect.size.height);
     return m_context.objectFromRect(wkRect);
+}
+
+void UIScriptController::platformSetWillBeginZoomingCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.willBeginZoomingCallback = ^{
+        m_context.fireCallback(m_willBeginZoomingCallback);
+    };
+}
+
+void UIScriptController::platformSetDidEndZoomingCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.didEndZoomingCallback = ^{
+        m_context.fireCallback(m_didEndZoomingCallback);
+    };
+}
+
+void UIScriptController::platformSetDidShowKeyboardCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.didShowKeyboardCallback = ^{
+        m_context.fireCallback(m_didShowKeyboardCallback);
+    };
+}
+
+void UIScriptController::platformSetDidHideKeyboardCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.didHideKeyboardCallback = ^{
+        m_context.fireCallback(m_didHideKeyboardCallback);
+    };
 }
 
 }

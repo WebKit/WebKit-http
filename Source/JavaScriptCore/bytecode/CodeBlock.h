@@ -406,14 +406,14 @@ public:
         return &m_rareCaseProfiles.last();
     }
     unsigned numberOfRareCaseProfiles() { return m_rareCaseProfiles.size(); }
-    RareCaseProfile* rareCaseProfile(int index) { return &m_rareCaseProfiles[index]; }
     RareCaseProfile* rareCaseProfileForBytecodeOffset(int bytecodeOffset);
+    unsigned rareCaseProfileCountForBytecodeOffset(int bytecodeOffset);
 
     bool likelyToTakeSlowCase(int bytecodeOffset)
     {
         if (!hasBaselineJITProfiling())
             return false;
-        unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
+        unsigned value = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
         return value >= Options::likelyToTakeSlowCaseMinimumCount();
     }
 
@@ -421,7 +421,7 @@ public:
     {
         if (!hasBaselineJITProfiling())
             return false;
-        unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
+        unsigned value = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
         return value >= Options::couldTakeSlowCaseMinimumCount();
     }
 
@@ -438,20 +438,19 @@ public:
             m_specialFastCaseProfiles, m_specialFastCaseProfiles.size(), bytecodeOffset,
             getRareCaseProfileBytecodeOffset);
     }
-
-    bool likelyToTakeSpecialFastCase(int bytecodeOffset)
+    unsigned specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset)
     {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-        return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount();
+        RareCaseProfile* profile = specialFastCaseProfileForBytecodeOffset(bytecodeOffset);
+        if (!profile)
+            return 0;
+        return profile->m_counter;
     }
 
     bool couldTakeSpecialFastCase(int bytecodeOffset)
     {
         if (!hasBaselineJITProfiling())
             return false;
-        unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
+        unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
         return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
     }
 
@@ -459,19 +458,9 @@ public:
     {
         if (!hasBaselineJITProfiling())
             return false;
-        unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-        unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
+        unsigned slowCaseCount = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
+        unsigned specialFastCaseCount = specialFastCaseProfileCountForBytecodeOffset(bytecodeOffset);
         unsigned value = slowCaseCount - specialFastCaseCount;
-        return value >= Options::likelyToTakeSlowCaseMinimumCount();
-    }
-
-    bool likelyToTakeAnySlowCase(int bytecodeOffset)
-    {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-        unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-        unsigned value = slowCaseCount + specialFastCaseCount;
         return value >= Options::likelyToTakeSlowCaseMinimumCount();
     }
 

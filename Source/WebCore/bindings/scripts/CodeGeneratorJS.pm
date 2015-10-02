@@ -180,7 +180,8 @@ sub GetParentClassName
     my $interface = shift;
 
     return $interface->extendedAttributes->{"JSLegacyParent"} if $interface->extendedAttributes->{"JSLegacyParent"};
-    return "JSDOMWrapper" unless $interface->parent;
+    return "JSDOMWrapper" unless NeedsImplementationClass($interface);
+    return "JSDOMWrapperWithImplementation<" . GetImplClassName($interface->name) . ">" unless $interface->parent;
     return "JS" . $interface->parent;
 }
 
@@ -509,10 +510,46 @@ sub GenerateImplementationContentHeader
     return @implContentHeader;
 }
 
+sub NeedsImplementationClass
+{
+    my ($interface) = @_;
+
+    return 0 if ($interface->extendedAttributes->{"JSBuiltinConstructor"});
+    return 1;
+}
+
+sub ShouldGenerateToWrapped
+{
+    my ($hasParent, $interface) = @_;
+
+    return 0 if not NeedsImplementationClass($interface);
+    if (!$hasParent or $interface->extendedAttributes->{"JSGenerateToNativeObject"}) {
+        return 1;
+    }
+    return 0;
+}
+
+sub ShouldGenerateWrapperOwnerCode
+{
+    my ($hasParent, $interface) = @_;
+
+    return 0 if not NeedsImplementationClass($interface);
+    if (!$hasParent ||
+        GetGenerateIsReachable($interface) ||
+        GetCustomIsReachable($interface) ||
+        $interface->extendedAttributes->{"JSCustomFinalize"} ||
+        $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
+        return 1;
+    }
+    return 0;
+}
+
 sub ShouldGenerateToJSDeclaration
 {
     my ($hasParent, $interface) = @_;
+
     return 0 if ($interface->extendedAttributes->{"SuppressToJSObject"});
+    return 0 if not NeedsImplementationClass($interface);
     return 0 if $interface->name eq "AbstractView";
     return 1 if (!$hasParent or $interface->extendedAttributes->{"JSGenerateToJSObject"} or $interface->extendedAttributes->{"CustomToJSObject"});
     return 0;
@@ -521,9 +558,9 @@ sub ShouldGenerateToJSDeclaration
 sub ShouldGenerateToJSImplementation
 {
     my ($hasParent, $interface) = @_;
-    return 0 if ($interface->extendedAttributes->{"SuppressToJSObject"});
-    return 0 if $interface->name eq "AbstractView";
-    return 1 if ((!$hasParent or $interface->extendedAttributes->{"JSGenerateToJSObject"}) and !$interface->extendedAttributes->{"CustomToJSObject"});
+
+    return 0 if not ShouldGenerateToJSDeclaration($hasParent, $interface);
+    return 1 if not $interface->extendedAttributes->{"CustomToJSObject"};
     return 0;
 }
 
@@ -533,6 +570,9 @@ sub GetAttributeGetterName
     if ($attribute->isStatic) {
         return $codeGenerator->WK_lcfirst($className) . "Constructor" . $codeGenerator->WK_ucfirst($attribute->signature->name);
     }
+    if ($attribute->signature->extendedAttributes->{"JSBuiltin"}) {
+        return GetJSBuiltinFunctionName($className, $attribute->signature->name);
+    }
     return "js" . $interfaceName . $codeGenerator->WK_ucfirst($attribute->signature->name) . ($attribute->signature->type =~ /Constructor$/ ? "Constructor" : "");
 }
 
@@ -541,6 +581,9 @@ sub GetAttributeSetterName
     my ($interfaceName, $className, $attribute) = @_;
     if ($attribute->isStatic) {
         return "set" . $codeGenerator->WK_ucfirst($className) . "Constructor" . $codeGenerator->WK_ucfirst($attribute->signature->name);
+    }
+    if ($attribute->signature->extendedAttributes->{"JSBuiltin"}) {
+        return "set" . $codeGenerator->WK_ucfirst(GetJSBuiltinFunctionName($className, $attribute->signature->name));
     }
     return "setJS" . $interfaceName . $codeGenerator->WK_ucfirst($attribute->signature->name) . ($attribute->signature->type =~ /Constructor$/ ? "Constructor" : "");
 }
@@ -798,6 +841,10 @@ sub GetImplClassName
     my $name = shift;
 
     return "DOMWindow" if $name eq "AbstractView";
+
+    my ($svgPropertyType, $svgListPropertyType, $svgNativeType) = GetSVGPropertyTypes($name);
+    return $svgNativeType if $svgNativeType;
+
     return $name;
 }
 
@@ -839,9 +886,7 @@ sub GenerateHeader
     $headerIncludes{"SVGElement.h"} = 1 if $className =~ /^JSSVG/;
 
     my $implType = GetImplClassName($interfaceName);
-    my ($svgPropertyType, $svgListPropertyType, $svgNativeType) = GetSVGPropertyTypes($implType);
-    $implType = $svgNativeType if $svgNativeType;
-
+    my ($svgPropertyType, $svgListPropertyType, $svgNativeType) = GetSVGPropertyTypes($interfaceName);
     my $svgPropertyOrListPropertyType;
     $svgPropertyOrListPropertyType = $svgPropertyType if $svgPropertyType;
     $svgPropertyOrListPropertyType = $svgListPropertyType if $svgListPropertyType;
@@ -897,6 +942,13 @@ sub GenerateHeader
         push(@headerContent, "        ptr->finishCreation(globalObject->vm());\n");
         push(@headerContent, "        return ptr;\n");
         push(@headerContent, "    }\n\n");
+    } elsif (!NeedsImplementationClass($interface)) {
+        push(@headerContent, "    static $className* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject)\n");
+        push(@headerContent, "    {\n");
+        push(@headerContent, "        $className* ptr = new (NotNull, JSC::allocateCell<$className>(globalObject->vm().heap)) $className(structure, globalObject);\n");
+        push(@headerContent, "        ptr->finishCreation(globalObject->vm());\n");
+        push(@headerContent, "        return ptr;\n");
+        push(@headerContent, "    }\n\n");  
     } else {
         AddIncludesForTypeInHeader($implType) unless $svgPropertyOrListPropertyType;
         push(@headerContent, "    static $className* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<$implType>&& impl)\n");
@@ -918,7 +970,7 @@ sub GenerateHeader
     }
 
     # JSValue to implementation type
-    if (!$hasParent || $interface->extendedAttributes->{"JSGenerateToNativeObject"}) {
+    if (ShouldGenerateToWrapped($hasParent, $interface)) {
         if ($interfaceName eq "NodeFilter") {
             push(@headerContent, "    static RefPtr<NodeFilter> toWrapped(JSC::VM&, JSC::JSValue);\n");
         } elsif ($interfaceName eq "DOMStringList") {
@@ -978,7 +1030,6 @@ sub GenerateHeader
 
     if (!$hasParent) {
         push(@headerContent, "    static void destroy(JSC::JSCell*);\n");
-        push(@headerContent, "    ~${className}();\n");
     }
 
     # Class info
@@ -1031,7 +1082,7 @@ sub GenerateHeader
     }
 
     # Custom getOwnPropertyNames function
-    if ($interface->extendedAttributes->{"CustomEnumerateProperty"} || $indexedGetterFunction) {
+    if ($interface->extendedAttributes->{"CustomEnumerateProperty"} || $indexedGetterFunction || $namedGetterFunction) {
         push(@headerContent, "    static void getOwnPropertyNames(JSC::JSObject*, JSC::ExecState*, JSC::PropertyNameArray&, JSC::EnumerationMode = JSC::EnumerationMode());\n");
         $structureFlags{"JSC::OverridesGetPropertyNames"} = 1;       
     }
@@ -1065,7 +1116,7 @@ sub GenerateHeader
             if ($attribute->signature->extendedAttributes->{"CachedAttribute"}) {
                 my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
                 push(@headerContent, "#if ${conditionalString}\n") if $conditionalString;
-                push(@headerContent, "    JSC::WriteBarrier<JSC::Unknown> m_" . $attribute->signature->name . ";\n");
+                push(@headerContent, "    mutable JSC::WriteBarrier<JSC::Unknown> m_" . $attribute->signature->name . ";\n");
                 $numCachedAttributes++;
                 $needsVisitChildren = 1;
                 push(@headerContent, "#endif\n") if $conditionalString;
@@ -1138,16 +1189,13 @@ sub GenerateHeader
         push(@headerContent, $endAppleCopyright) if $inAppleCopyright;
     }
 
-    if (!$hasParent) {
-        push(@headerContent, "    $implType& impl() const { return *m_impl; }\n");
-        push(@headerContent, "    void releaseImpl() { std::exchange(m_impl, nullptr)->deref(); }\n\n");
-        push(@headerContent, "private:\n");
-        push(@headerContent, "    $implType* m_impl;\n");
-    } else {
-        push(@headerContent, "    $interfaceName& impl() const\n");
-        push(@headerContent, "    {\n");
-        push(@headerContent, "        return static_cast<$interfaceName&>(Base::impl());\n");
-        push(@headerContent, "    }\n");
+    if (NeedsImplementationClass($interface)) {
+        if ($hasParent) {
+            push(@headerContent, "    $interfaceName& impl() const\n");
+            push(@headerContent, "    {\n");
+            push(@headerContent, "        return static_cast<$interfaceName&>(Base::impl());\n");
+            push(@headerContent, "    }\n");
+        }
     }
 
     # structure flags
@@ -1167,7 +1215,9 @@ sub GenerateHeader
         push(@headerContent, "    $className(JSC::VM&, JSC::Structure*, Ref<$implType>&&, JSDOMWindowShell*);\n");
     } elsif ($codeGenerator->InheritsInterface($interface, "WorkerGlobalScope")) {
         push(@headerContent, "    $className(JSC::VM&, JSC::Structure*, Ref<$implType>&&);\n");
-    } else {
+    } elsif (!NeedsImplementationClass($interface)) {
+        push(@headerContent, "    $className(JSC::Structure*, JSDOMGlobalObject*);\n\n");
+     } else {
         push(@headerContent, "    $className(JSC::Structure*, JSDOMGlobalObject*, Ref<$implType>&&);\n\n");
         push(@headerContent, "    void finishCreation(JSC::VM& vm)\n");
         push(@headerContent, "    {\n");
@@ -1188,11 +1238,7 @@ sub GenerateHeader
 
     push(@headerContent, "};\n\n");
 
-    if (!$hasParent ||
-        GetGenerateIsReachable($interface) ||
-        GetCustomIsReachable($interface) ||
-        $interface->extendedAttributes->{"JSCustomFinalize"} ||
-        $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
+    if (ShouldGenerateWrapperOwnerCode($hasParent, $interface)) {
         if ($interfaceName ne "Node" && $codeGenerator->InheritsInterface($interface, "Node")) {
             $headerIncludes{"JSNode.h"} = 1;
             push(@headerContent, "class JS${interfaceName}Owner : public JSNodeOwner {\n");
@@ -1350,7 +1396,8 @@ sub GenerateAttributesHashTable
 
         push(@specials, "DontEnum") if ($attribute->signature->extendedAttributes->{"NotEnumerable"} || $is_global_constructor);
         push(@specials, "ReadOnly") if IsReadonly($attribute);
-        push(@specials, "CustomAccessor") unless $is_global_constructor;
+        push(@specials, "CustomAccessor") unless $is_global_constructor or $attribute->signature->extendedAttributes->{"JSBuiltin"};
+        push(@specials, "Accessor | Builtin") if  $attribute->signature->extendedAttributes->{"JSBuiltin"};
         my $special = (@specials > 0) ? join(" | ", @specials) : "0";
         push(@$hashSpecials, $special);
 
@@ -1746,7 +1793,6 @@ sub GenerateImplementation
     $implIncludes{"<runtime/PropertyNameArray.h>"} = 1 if $indexedGetterFunction;
 
     my $implType = GetImplClassName($interfaceName);
-    AddIncludesForTypeInImpl($implType);
 
     AddIncludesForJSBuiltinMethods($interface);
 
@@ -1795,6 +1841,7 @@ sub GenerateImplementation
         push(@implContent, "// Attributes\n\n");
         foreach my $attribute (@{$interface->attributes}) {
             next if $attribute->signature->extendedAttributes->{"ForwardDeclareInHeader"};
+            next if $attribute->signature->extendedAttributes->{"JSBuiltin"};
 
             my $conditionalString = $codeGenerator->GenerateConditionalString($attribute->signature);
             push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
@@ -2088,9 +2135,7 @@ sub GenerateImplementation
     }
     push(@implContent, ", CREATE_METHOD_TABLE($className) };\n\n");
 
-    my ($svgPropertyType, $svgListPropertyType, $svgNativeType) = GetSVGPropertyTypes($implType);
-    $implType = $svgNativeType if $svgNativeType;
-
+    my ($svgPropertyType, $svgListPropertyType, $svgNativeType) = GetSVGPropertyTypes($interfaceName);
     my $svgPropertyOrListPropertyType;
     $svgPropertyOrListPropertyType = $svgPropertyType if $svgPropertyType;
     $svgPropertyOrListPropertyType = $svgListPropertyType if $svgListPropertyType;
@@ -2108,14 +2153,12 @@ sub GenerateImplementation
         push(@implContent, "    : $parentClassName(vm, structure, WTF::move(impl))\n");
         push(@implContent, "{\n");
         push(@implContent, "}\n\n");
-    } else {
+    } elsif (!NeedsImplementationClass($interface)) {
+        push(@implContent, "${className}::$className(Structure* structure, JSDOMGlobalObject* globalObject)\n");
+        push(@implContent, "    : $parentClassName(structure, globalObject) { }\n\n");
+     }else {
         push(@implContent, "${className}::$className(Structure* structure, JSDOMGlobalObject* globalObject, Ref<$implType>&& impl)\n");
-        if ($hasParent) {
-            push(@implContent, "    : $parentClassName(structure, globalObject, WTF::move(impl))\n");
-        } else {
-            push(@implContent, "    : $parentClassName(structure, globalObject)\n");
-            push(@implContent, "    , m_impl(&impl.leakRef())\n");
-        }
+        push(@implContent, "    : $parentClassName(structure, globalObject, WTF::move(impl))\n");
         push(@implContent, "{\n");
         push(@implContent, "}\n\n");
     }
@@ -2142,11 +2185,6 @@ sub GenerateImplementation
         push(@implContent, "{\n");
         push(@implContent, "    ${className}* thisObject = static_cast<${className}*>(cell);\n");
         push(@implContent, "    thisObject->${className}::~${className}();\n");
-        push(@implContent, "}\n\n");
-
-        push(@implContent, "${className}::~${className}()\n");
-        push(@implContent, "{\n");
-        push(@implContent, "    releaseImpl();\n");
         push(@implContent, "}\n\n");
     }
 
@@ -2227,6 +2265,8 @@ sub GenerateImplementation
     $numAttributes = $numAttributes + 1 if NeedsConstructorProperty($interface);
     if ($numAttributes > 0) {
         foreach my $attribute (@{$interface->attributes}) {
+            next if $attribute->signature->extendedAttributes->{"JSBuiltin"};
+
             my $name = $attribute->signature->name;
             my $type = $attribute->signature->type;
             # Nullable wrapper types do not need any special handling as the implementation can return a null pointer.
@@ -2571,6 +2611,8 @@ sub GenerateImplementation
 
     foreach my $attribute (@{$interface->attributes}) {
         if (!IsReadonly($attribute)) {
+            next if $attribute->signature->extendedAttributes->{"JSBuiltin"};
+
             my $name = $attribute->signature->name;
             my $type = $attribute->signature->type;
             my $putFunctionName = GetAttributeSetterName($interfaceName, $className, $attribute);
@@ -2769,13 +2811,22 @@ sub GenerateImplementation
         }
     }
 
-    if ($indexedGetterFunction && !$interface->extendedAttributes->{"CustomEnumerateProperty"}) {
+    if (($indexedGetterFunction || $namedGetterFunction) && !$interface->extendedAttributes->{"CustomEnumerateProperty"}) {
         push(@implContent, "void ${className}::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)\n");
         push(@implContent, "{\n");
         push(@implContent, "    auto* thisObject = jsCast<${className}*>(object);\n");
         push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObject, info());\n");
-        push(@implContent, "    for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)\n");
-        push(@implContent, "        propertyNames.add(Identifier::from(state, i));\n");
+        if ($indexedGetterFunction) {
+            push(@implContent, "    for (unsigned i = 0, count = thisObject->impl().length(); i < count; ++i)\n");
+            push(@implContent, "        propertyNames.add(Identifier::from(state, i));\n");
+        }
+        if ($namedGetterFunction) {
+            # FIXME: We may need to add an IDL extended attribute at some point if an interface needs enumerable named properties.
+            push(@implContent, "    if (mode.includeDontEnumProperties()) {\n");
+            push(@implContent, "        for (auto& propertyName : thisObject->impl().supportedPropertyNames())\n");
+            push(@implContent, "            propertyNames.add(Identifier::fromString(state, propertyName));\n");
+            push(@implContent, "    }\n");
+        }
         push(@implContent, "    Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);\n");
         push(@implContent, "}\n\n");
     }
@@ -2966,8 +3017,7 @@ sub GenerateImplementation
         }
     }
 
-    if ((!$hasParent && !GetCustomIsReachable($interface)) || GetGenerateIsReachable($interface) || $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
-
+    if (ShouldGenerateWrapperOwnerCode($hasParent, $interface) && !GetCustomIsReachable($interface)) {
         push(@implContent, "bool JS${interfaceName}Owner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)\n");
         push(@implContent, "{\n");
         # All ActiveDOMObjects implement hasPendingActivity(), but not all of them
@@ -3050,11 +3100,7 @@ sub GenerateImplementation
         push(@implContent, "}\n\n");
     }
 
-    if (!$interface->extendedAttributes->{"JSCustomFinalize"} &&
-        (!$hasParent ||
-         GetGenerateIsReachable($interface) ||
-         GetCustomIsReachable($interface) ||
-         $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject"))) {
+    if (ShouldGenerateWrapperOwnerCode($hasParent, $interface) && !$interface->extendedAttributes->{"JSCustomFinalize"}) {
         push(@implContent, "void JS${interfaceName}Owner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)\n");
         push(@implContent, "{\n");
         push(@implContent, "    auto* js${interfaceName} = jsCast<JS${interfaceName}*>(handle.slot()->asCell());\n");
@@ -3150,7 +3196,7 @@ END
         push(@implContent, "}\n\n");
     }
 
-    if ((!$hasParent or $interface->extendedAttributes->{"JSGenerateToNativeObject"}) and !$interface->extendedAttributes->{"JSCustomToNativeObject"}) {
+    if (ShouldGenerateToWrapped($hasParent, $interface) and !$interface->extendedAttributes->{"JSCustomToNativeObject"}) {
         push(@implContent, "$implType* ${className}::toWrapped(JSC::JSValue value)\n");
         push(@implContent, "{\n");
         push(@implContent, "    if (auto* wrapper = " . GetCastingHelperForThisObject($interface) . "(value))\n");
@@ -4791,7 +4837,7 @@ END
             push(@$outputArray, "{\n");
 
             push(@$outputArray, "    auto* castedThis = jsCast<${constructorClassName}*>(state->callee());\n");
-            push(@$outputArray, "    return createFromJSBuiltin<${className}, ${interfaceName}>(*state, *castedThis->initializeFunction(), *castedThis->globalObject());\n");
+            push(@$outputArray, "    return createJSBuiltin<${className}>(*state, *castedThis->initializeFunction(), *castedThis->globalObject());\n");
 
             push(@$outputArray, "}\n\n");
         } elsif (!HasCustomConstructor($interface) && (!$interface->extendedAttributes->{"NamedConstructor"} || $generatingNamedConstructor)) {
@@ -5042,8 +5088,7 @@ sub ComputeFunctionSpecial
     my $function = shift;
 
     my @specials = ();
-    push(@specials, "DontDelete") if $function->signature->extendedAttributes->{"NotDeletable"}
-       || $function->signature->extendedAttributes->{"Unforgeable"}
+    push(@specials, "DontDelete") if $function->signature->extendedAttributes->{"Unforgeable"}
        || $interface->extendedAttributes->{"Unforgeable"};
     push(@specials, "DontEnum") if $function->signature->extendedAttributes->{"NotEnumerable"};
     if ($function->signature->extendedAttributes->{"JSBuiltin"}) {

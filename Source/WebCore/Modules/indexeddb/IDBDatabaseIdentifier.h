@@ -50,6 +50,8 @@ public:
         m_mainFrameOrigin.port = -1;
     }
 
+    IDBDatabaseIdentifier isolatedCopy() const;
+
     bool isHashTableDeletedValue() const
     {
         return m_openingOrigin.port == -1 && m_mainFrameOrigin.port == -1;
@@ -82,6 +84,10 @@ public:
     }
 
     const String& databaseName() const { return m_databaseName; }
+
+#ifndef NDEBUG
+    String debugString() const;
+#endif
 
 private:
     String m_databaseName;

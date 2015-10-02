@@ -292,6 +292,8 @@
     macro(getPrototypeOf) \
     macro(getOwnPropertyNames) \
     macro(TypeError) \
+    macro(typedArrayLength) \
+    macro(typedArraySort) \
     macro(undefined) \
     macro(BuiltinLog) \
     macro(homeObject) \
@@ -358,6 +360,10 @@ namespace JSC {
         Identifier lookUpPublicName(const Identifier&) const;
 
         const BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() const { return m_bytecodeIntrinsicRegistry; }
+
+        // Callers of this method should make sure that identifiers given to this method 
+        // survive the lifetime of CommonIdentifiers and related VM.
+        JS_EXPORT_PRIVATE void appendExternalName(const Identifier& publicName, const Identifier& privateName);
 
     private:
         BytecodeIntrinsicRegistry m_bytecodeIntrinsicRegistry;

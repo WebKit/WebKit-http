@@ -211,6 +211,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     BOOL _pageIsPrintingToPDF;
     RetainPtr<CGPDFDocumentRef> _printedDocument;
     Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
+
+    BOOL _canAssistOnProgrammaticFocus;
 #endif
 #if PLATFORM(MAC)
     RetainPtr<WKView> _wkView;
@@ -366,6 +368,8 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     _page->contentSizeCategoryDidChange([self _contentSizeCategory]);
 
     [[_configuration _contentProviderRegistry] addPage:*_page];
+
+    [self setCanAssistOnProgrammaticFocus:[_configuration canAssistOnProgrammaticFocus]];
 #endif
 
 #if PLATFORM(MAC)
@@ -714,6 +718,16 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 - (UIScrollView *)scrollView
 {
     return _scrollView.get();
+}
+
+- (BOOL)canAssistOnProgrammaticFocus
+{
+    return _canAssistOnProgrammaticFocus;
+}
+
+- (void)setCanAssistOnProgrammaticFocus:(BOOL)canAssistOnProgrammaticFocus
+{
+    _canAssistOnProgrammaticFocus = canAssistOnProgrammaticFocus;
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -3020,21 +3034,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _viewportMetaTagWidth;
 }
 
-- (CGRect)_contentVisibleRect
-{
-    return [self convertRect:[self bounds] toView:self._currentContentView];
-}
-
-- (CGPoint)_convertPointFromContentsToView:(CGPoint)point
-{
-    return [self convertPoint:point fromView:self._currentContentView];
-}
-
-- (CGPoint)_convertPointFromViewToContents:(CGPoint)point
-{
-    return [self convertPoint:point toView:self._currentContentView];
-}
-
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter
 {
     UIViewPrintFormatter *viewPrintFormatter = self.viewPrintFormatter;
@@ -3107,13 +3106,51 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return [_wkView _automaticallyAdjustsContentInsets];
 }
 
-#endif
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 #endif
 
 @end
 
-#if !TARGET_OS_IPHONE
+
+@implementation WKWebView (WKTesting)
+
+#if PLATFORM(IOS)
+
+- (CGRect)_contentVisibleRect
+{
+    return [self convertRect:[self bounds] toView:self._currentContentView];
+}
+
+- (CGPoint)_convertPointFromContentsToView:(CGPoint)point
+{
+    return [self convertPoint:point fromView:self._currentContentView];
+}
+
+- (CGPoint)_convertPointFromViewToContents:(CGPoint)point
+{
+    return [self convertPoint:point toView:self._currentContentView];
+}
+
+#endif // PLATFORM(IOS)
+
+// Execute the supplied block after the next transaction from the WebProcess.
+- (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock
+{
+    typeof(updateBlock) updateBlockCopy = nil;
+    if (updateBlock)
+        updateBlockCopy = Block_copy(updateBlock);
+
+    _page->callAfterNextPresentationUpdate([updateBlockCopy](WebKit::CallbackBase::Error error) {
+        updateBlockCopy();
+        Block_release(updateBlockCopy);
+    });
+}
+
+@end
+
+
+#if PLATFORM(MAC)
 
 @implementation WKWebView (WKIBActions)
 
@@ -3167,7 +3204,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 @end
 
-#endif
+#endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
 @implementation WKWebView (_WKWebViewPrintFormatter)
