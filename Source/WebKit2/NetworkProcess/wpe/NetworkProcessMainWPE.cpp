@@ -46,6 +46,8 @@ public:
         // accepting invalid certificates by default. New API will be
         // added later to let client accept/discard invalid certificates.
         SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
+
+        SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
         return true;
     }
 
