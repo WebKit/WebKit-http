@@ -415,6 +415,7 @@ ThreadedCompositor::DisplayRefreshMonitor::DisplayRefreshMonitor(ThreadedComposi
 
 bool ThreadedCompositor::DisplayRefreshMonitor::requestRefreshCallback()
 {
+    LockHolder locker(mutex());
     setIsScheduled(true);
     return true;
 }
