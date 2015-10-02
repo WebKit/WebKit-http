@@ -185,8 +185,6 @@ std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntS
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     // We keep the minimum size at 1x1px since Mesa returns null values in wl_egl_window_create() for zero width or height.
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
-
-    wl_display_roundtrip(m_display);
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
 }
 
@@ -217,9 +215,8 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createOffscreenContext(GLC
 {
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
-    wl_display_roundtrip(m_display);
-
     auto contextData = std::make_unique<OffscreenContextData>(wlSurface, nativeWindow);
+
     auto context = GLContextEGL::createWindowContext(nativeWindow, sharingContext);
     if (context)
         context->setContextData(WTF::move(contextData));
