@@ -28,7 +28,10 @@
 
 #include "Connection.h"
 #include "MessageReceiver.h"
+
+#if PLATFORM(GBM)
 #include <WebCore/PlatformDisplayGBM.h>
+#endif
 
 namespace WebKit {
 
@@ -45,8 +48,11 @@ public:
     CompositingManager(Client&);
 
     void establishConnection(WebPage&, WTF::RunLoop&);
+
+#if PLATFORM(GBM)
     void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&);
     void destroyPrimeBuffer(uint32_t);
+#endif
 
     CompositingManager(const CompositingManager&) = delete;
     CompositingManager& operator=(const CompositingManager&) = delete;

@@ -50,6 +50,7 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
+#if PLATFORM(GBM)
 void CompositingManager::commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport& bufferExport)
 {
     m_connection->send(Messages::CompositingManagerProxy::CommitPrimeBuffer(
@@ -65,6 +66,7 @@ void CompositingManager::destroyPrimeBuffer(uint32_t handle)
 {
     m_connection->send(Messages::CompositingManagerProxy::DestroyPrimeBuffer(handle), 0);
 }
+#endif // PLATFORM(GBM)
 
 void CompositingManager::releaseBuffer(uint32_t handle)
 {

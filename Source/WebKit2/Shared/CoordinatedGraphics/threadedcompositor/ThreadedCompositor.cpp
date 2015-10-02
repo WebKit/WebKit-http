@@ -222,11 +222,13 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
+#if PLATFORM(GBM)
 void ThreadedCompositor::destroyBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
     m_compositingManager.destroyPrimeBuffer(handle);
 }
+#endif
 
 bool ThreadedCompositor::ensureGLContext()
 {
@@ -251,8 +253,8 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
+#if PLATFORM(GBM)
     RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
-
     m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay())
         .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
     if (!m_gbmSurface)
@@ -260,6 +262,8 @@ GLContext* ThreadedCompositor::glContext()
 
     setNativeSurfaceHandleForCompositing(0);
     m_context = m_gbmSurface->createGLContext();
+#endif
+
     return m_context.get();
 }
 
@@ -464,7 +468,9 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+#if PLATFORM(GBM)
     downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
+#endif
 }
 
 void ThreadedCompositor::frameComplete()
