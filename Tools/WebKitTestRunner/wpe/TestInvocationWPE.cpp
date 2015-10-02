@@ -28,7 +28,7 @@
 
 namespace WTR {
 
-void TestInvocation::dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef)
+void TestInvocation::dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef, SnapshotResultType)
 {
 }
 
