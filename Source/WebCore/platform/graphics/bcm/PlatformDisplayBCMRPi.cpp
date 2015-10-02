@@ -36,8 +36,6 @@ namespace WebCore {
 
 PlatformDisplayBCMRPi::PlatformDisplayBCMRPi()
 {
-    fprintf(stderr, "PlatformDisplayBCMRPi: ctor\n");
-
     m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (m_eglDisplay == EGL_NO_DISPLAY) {
         fprintf(stderr, "PlatformDisplayBCMRPi: could not create the EGL display\n");
@@ -45,7 +43,6 @@ PlatformDisplayBCMRPi::PlatformDisplayBCMRPi()
     }
 
     PlatformDisplay::initializeEGLDisplay();
-    fprintf(stderr, "\tm_eglDisplay %p\n", m_eglDisplay);
 }
 
 std::unique_ptr<BCMRPiSurface> PlatformDisplayBCMRPi::createSurface(const IntSize& size, uint32_t elementHandle)

@@ -36,14 +36,9 @@ namespace WebCore {
 
 BCMRPiSurface::BCMRPiSurface(const IntSize& size, uint32_t elementHandle)
 {
-    fprintf(stderr, "BCMRPiSurface: ctor for %p, size (%d,%d), elementHandle %u\n",
-        this, size.width(), size.height(), elementHandle);
-
     m_nativeWindow.element = elementHandle;
     m_nativeWindow.width = size.width();
     m_nativeWindow.height = size.height();
-
-    fprintf(stderr, "BCMRPiSurface: all ok :|\n");
 }
 
 std::unique_ptr<GLContext> BCMRPiSurface::createGLContext()

@@ -275,7 +275,6 @@ GLContext* ThreadedCompositor::glContext()
 
     setNativeSurfaceHandleForCompositing(0);
     m_context = m_surface->createGLContext();
-    fprintf(stderr, "context %p\n", m_context.get());
 #endif
 
     return m_context.get();
