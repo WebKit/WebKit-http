@@ -44,7 +44,6 @@ public:
 #endif
     virtual ~GLContextEGL();
     virtual bool makeContextCurrent();
-    virtual bool unmakeContextCurrent();
     virtual void swapBuffers();
     virtual void waitNative();
     virtual bool canRenderToDefaultFramebuffer();
