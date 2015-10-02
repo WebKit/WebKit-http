@@ -20,6 +20,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/yarr"
     "${THIRDPARTY_DIR}/ANGLE/"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+    "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform/cairo"
     "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/graphics/cairo"
@@ -32,6 +33,9 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/texmap"
+    "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
+    "${WEBCORE_DIR}/platform/graphics/texmap/threadedcompositor"
     "${WEBCORE_DIR}/platform/graphics/wayland"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
@@ -53,6 +57,12 @@ add_custom_command(
 list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
+    page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
+    page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+    page/scrolling/ScrollingStateStickyNode.cpp
+    page/scrolling/ScrollingThread.cpp
+    page/scrolling/ScrollingTreeNode.cpp
+    page/scrolling/ScrollingTreeScrollingNode.cpp
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
     platform/Theme.cpp
@@ -117,6 +127,22 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+    platform/graphics/texmap/BitmapTexture.cpp
+    platform/graphics/texmap/BitmapTextureGL.cpp
+    platform/graphics/texmap/BitmapTexturePool.cpp
+    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+    platform/graphics/texmap/TextureMapperGL.cpp
+    platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
+    platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
+    platform/graphics/texmap/TextureMapperShaderProgram.cpp
+    platform/graphics/texmap/coordinated/AreaAllocator.cpp
+    platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
+    platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
+    platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
+    platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
+    platform/graphics/texmap/coordinated/Tile.cpp
+    platform/graphics/texmap/coordinated/TiledBackingStore.cpp
+    platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     platform/graphics/wayland/PlatformDisplayWayland.cpp
     platform/graphics/wayland/WaylandSurfaceWPE.cpp
     platform/graphics/GLContext.cpp
@@ -260,46 +286,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WAYLAND_INCLUDE_DIRS}
     ${WEBP_INCLUDE_DIRS}
 )
-
-if (USE_TEXTURE_MAPPER)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/texmap"
-    )
-    list(APPEND WebCore_SOURCES
-        platform/graphics/texmap/BitmapTexture.cpp
-        platform/graphics/texmap/BitmapTextureGL.cpp
-        platform/graphics/texmap/BitmapTexturePool.cpp
-        platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-        platform/graphics/texmap/TextureMapperGL.cpp
-        platform/graphics/texmap/TextureMapperShaderProgram.cpp
-    )
-endif ()
-
-if (ENABLE_THREADED_COMPOSITOR)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
-        "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
-        "${WEBCORE_DIR}/platform/graphics/texmap/threadedcompositor"
-    )
-    list(APPEND WebCore_SOURCES
-        page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
-        page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
-        page/scrolling/ScrollingStateStickyNode.cpp
-        page/scrolling/ScrollingThread.cpp
-        page/scrolling/ScrollingTreeNode.cpp
-        page/scrolling/ScrollingTreeScrollingNode.cpp
-        platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
-        platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
-        platform/graphics/texmap/coordinated/AreaAllocator.cpp
-        platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
-        platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
-        platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
-        platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
-        platform/graphics/texmap/coordinated/Tile.cpp
-        platform/graphics/texmap/coordinated/TiledBackingStore.cpp
-        platform/graphics/texmap/coordinated/UpdateAtlas.cpp
-    )
-endif ()
 
 if (ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
