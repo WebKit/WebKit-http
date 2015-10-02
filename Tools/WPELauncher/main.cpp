@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 
     auto view = adoptWK(createView(pageConfiguration.get()));
 
-    const char* url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
+    const char* url = "http://widgets.metrological.com/metrological/nl/rpi";
     if (argc > 1)
         url = argv[1];
 
