@@ -77,6 +77,11 @@ void PlatformWebView::removeChromeInputField()
 {
 }
 
+void PlatformWebView::setWindowIsKey(bool windowIsKey)
+{
+    m_windowIsKey = windowIsKey;
+}
+
 void PlatformWebView::makeWebViewFirstResponder()
 {
 }
@@ -87,6 +92,10 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)
+{
+}
+
+void PlatformWebView::setNavigationGesturesEnabled(bool)
 {
 }
 
