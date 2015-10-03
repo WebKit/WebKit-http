@@ -42,6 +42,8 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
     m_eventLoop = adoptGRef(g_main_loop_new(m_eventContext.get(), FALSE));
     ASSERT(m_eventLoop);
 
+    m_dispatchQueue.initialize("[WebKit] WorkQueue::dispatch", G_PRIORITY_HIGH + 30, m_eventContext.get());
+
     // This name can be com.apple.WebKit.ProcessLauncher or com.apple.CoreIPC.ReceiveQueue.
     // We are using those names for the thread name, but both are longer than 31 characters,
     // which is the limit of Visual Studio for thread names.
@@ -57,8 +59,10 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
 
     GRefPtr<GMainLoop> eventLoop(m_eventLoop.get());
     m_workQueueThread = createThread(threadName, [eventLoop] {
-        g_main_context_push_thread_default(g_main_loop_get_context(eventLoop.get()));
+        GMainContext* context = g_main_loop_get_context(eventLoop.get());
+        g_main_context_push_thread_default(context);
         g_main_loop_run(eventLoop.get());
+        g_main_context_pop_thread_default(context);
     });
 }
 
@@ -75,8 +79,8 @@ void WorkQueue::platformInvalidate()
         else {
             // The thread hasn't started yet, so schedule a main loop quit to ensure the thread finishes.
             GMainLoop* eventLoop = m_eventLoop.get();
-            GMainLoopSource::scheduleAndDeleteOnDestroy("[WebKit] WorkQueue quit main loop", [eventLoop] { g_main_loop_quit(eventLoop); },
-                G_PRIORITY_HIGH, nullptr, m_eventContext.get());
+            GSourceWrap::OneShot::construct("[WebKit] WorkQueue quit main loop", [eventLoop] { g_main_loop_quit(eventLoop); },
+                std::chrono::microseconds(0), G_PRIORITY_HIGH, m_eventContext.get());
         }
         m_eventLoop = nullptr;
     }
@@ -86,24 +90,23 @@ void WorkQueue::platformInvalidate()
 
 void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<void ()> function, std::function<void ()> closeFunction)
 {
-    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(fileDescriptor, 0));
-    ref();
-    m_socketEventSource.schedule("[WebKit] WorkQueue::SocketEventHandler", [function, closeFunction](GIOCondition condition) {
+    GRefPtr<GSocket> socket = adoptGRef(g_socket_new_from_fd(fileDescriptor, nullptr));
+    RefPtr<WorkQueue> protector(this);
+    m_socketEventSource.initialize("[WebKit] WorkQueue::SocketEventHandler",
+        [protector, function, closeFunction](GIOCondition condition) {
             if (condition & G_IO_HUP || condition & G_IO_ERR || condition & G_IO_NVAL) {
                 closeFunction();
-                return GMainLoopSource::Stop;
+                return false;
             }
 
             if (condition & G_IO_IN) {
                 function();
-                return GMainLoopSource::Continue;
+                return true;
             }
 
             ASSERT_NOT_REACHED();
-            return GMainLoopSource::Stop;
-        }, socket.get(), G_IO_IN,
-        [this] { deref(); },
-        m_eventContext.get());
+            return false;
+        }, socket.get(), G_IO_IN, G_PRIORITY_HIGH + 30, m_eventContext.get());
 }
 
 void WorkQueue::unregisterSocketEventHandler(int)
@@ -113,16 +116,14 @@ void WorkQueue::unregisterSocketEventHandler(int)
 
 void WorkQueue::dispatch(std::function<void ()> function)
 {
-    ref();
-    GMainLoopSource::scheduleAndDeleteOnDestroy("[WebKit] WorkQueue::dispatch", WTF::move(function), G_PRIORITY_DEFAULT,
-        [this] { deref(); }, m_eventContext.get());
+    m_dispatchQueue.queue(WTF::move(function));
 }
 
 void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, std::function<void ()> function)
 {
-    ref();
-    GMainLoopSource::scheduleAfterDelayAndDeleteOnDestroy("[WebKit] WorkQueue::dispatchAfter", WTF::move(function),
-        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_DEFAULT, [this] { deref(); }, m_eventContext.get());
+    RefPtr<WorkQueue> protector(this);
+    GSourceWrap::OneShot::construct("[WebKit] WorkQueue::dispatchAfter", std::bind([protector](const std::function<void ()>& function) { function(); }, WTF::move(function)),
+        std::chrono::duration_cast<std::chrono::milliseconds>(duration), G_PRIORITY_HIGH + 30, m_eventContext.get());
 }
 
 }
