@@ -1,5 +1,7 @@
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
+configure_file(wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
+
 add_definitions(-DWEBKIT2_COMPILATION)
 
 set(WebKit2_USE_PREFIX_HEADER ON)
@@ -254,3 +256,7 @@ add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_S
 add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
+
+install(FILES ${CMAKE_BINARY_DIR}/wpe-webkit.pc
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)
