@@ -120,12 +120,7 @@ include_directories(SYSTEM ${WebKitTestRunner_SYSTEM_INCLUDE_DIRECTORIES})
 add_library(TestRunnerInjectedBundle SHARED ${WebKitTestRunnerInjectedBundle_SOURCES})
 target_link_libraries(TestRunnerInjectedBundle ${WebKitTestRunner_LIBRARIES})
 
-if (PORT STREQUAL "WPE")
-add_library(WebKitTestRunner SHARED ${WebKitTestRunner_SOURCES})
-add_dependencies(WebKitTestRunner WebKitTestRunner-shell-script)
-else ()
 add_executable(WebKitTestRunner ${WebKitTestRunner_SOURCES})
-endif ()
 target_link_libraries(WebKitTestRunner ${WebKitTestRunner_LIBRARIES})
 
 add_dependencies(WebKit2 ${ForwardingHeadersForWebKitTestRunner_NAME})
