@@ -257,6 +257,93 @@ add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 
+set(WPE_INSTALLED_WEBKIT_HEADERS
+    ${WEBKIT2_DIR}/Shared/API/c/WKArray.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKBase.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKData.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDeclarationSpecifiers.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDiagnosticLoggingResultType.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDictionary.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKErrorRef.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKEvent.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKFindOptions.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKGeometry.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKMutableArray.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKMutableDictionary.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKNumber.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKPageLoadTypes.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKPageVisibilityTypes.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKSecurityOriginRef.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKSerializedScriptValue.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKSerializedScriptValuePrivate.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKString.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKType.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURL.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURLRequest.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURLResponse.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserContentInjectedFrames.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserContentURLPattern.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserScriptInjectionTime.h
+
+    ${WEBKIT2_DIR}/Shared/API/c/wpe/WKBaseWPE.h
+
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListItemRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextConfigurationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextConnectionClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextDownloadClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextHistoryClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextInjectedBundleClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContext.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKCredential.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKCredentialTypes.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFrame.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFrameInfoRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFramePolicyListener.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKHitTestResult.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNativeEvent.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationActionRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationDataRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationResponseRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPage.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageConfigurationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageContextMenuClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageDiagnosticLoggingClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFindClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFindMatchesClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFormClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageGroup.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageInjectedBundleClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageLoaderClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageNavigationClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPagePolicyClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageRenderingProgressEvents.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageUIClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPluginLoadPolicy.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPreferencesRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionStateRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKViewportAttributes.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKWindowFeaturesRef.h
+
+    ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKView.h
+)
+
+install(FILES ${WPE_INSTALLED_WEBKIT_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/WebKit"
+)
+
+set(WPE_INSTALLED_HEADERS
+    ${WEBKIT2_DIR}/Shared/API/c/wpe/WebKit.h
+)
+
+install(FILES ${WPE_INSTALLED_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE"
+)
+
 install(FILES ${CMAKE_BINARY_DIR}/wpe-webkit.pc
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
