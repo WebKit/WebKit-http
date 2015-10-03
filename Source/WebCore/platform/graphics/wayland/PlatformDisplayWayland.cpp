@@ -95,8 +95,6 @@ void PlatformDisplayWayland::globalCallback(void* data, struct wl_registry* regi
     auto display = static_cast<PlatformDisplayWayland*>(data);
     if (!std::strcmp(interface, "wl_compositor"))
         display->m_compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
-    else if (!std::strcmp(interface, "wl_wpe"))
-        display->m_wpe = static_cast<struct wl_wpe*>(wl_registry_bind(registry, name, &wl_wpe_interface, 1));
 }
 
 void PlatformDisplayWayland::globalRemoveCallback(void*, struct wl_registry*, uint32_t)
@@ -170,8 +168,6 @@ PlatformDisplayWayland::PlatformDisplayWayland(struct wl_display* wlDisplay)
 
 PlatformDisplayWayland::~PlatformDisplayWayland()
 {
-    if (m_wpe)
-        wl_wpe_destroy(m_wpe);
     if (m_compositor)
         wl_compositor_destroy(m_compositor);
     if (m_registry)
@@ -186,11 +182,6 @@ std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntS
     // We keep the minimum size at 1x1px since Mesa returns null values in wl_egl_window_create() for zero width or height.
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
-}
-
-void PlatformDisplayWayland::registerSurface(struct wl_surface* surface) const
-{
-    wl_wpe_register_surface(m_wpe, surface);
 }
 
 class OffscreenContextData : public GLContext::Data {

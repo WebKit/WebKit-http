@@ -45,15 +45,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WTF_DIR}
 )
 
-# WaylandWPE protocol extension.
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
-    DEPENDS ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml
-    COMMAND wayland-scanner server-header < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocolServer.h
-    COMMAND wayland-scanner client-header < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocolClient.h
-    COMMAND wayland-scanner code < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
-)
-
 list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
@@ -143,8 +134,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/Tile.cpp
     platform/graphics/texmap/coordinated/TiledBackingStore.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
-    platform/graphics/wayland/PlatformDisplayWayland.cpp
-    platform/graphics/wayland/WaylandSurfaceWPE.cpp
     platform/graphics/GLContext.cpp
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -213,8 +202,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
-
-    ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS

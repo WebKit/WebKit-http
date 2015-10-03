@@ -29,7 +29,6 @@
 #if PLATFORM(WAYLAND)
 
 #include "PlatformDisplay.h"
-#include "WaylandWPEProtocolClient.h"
 #include <memory>
 #include <wayland-client.h>
 #include <wayland-egl.h>
@@ -50,7 +49,6 @@ public:
     struct wl_display* native() const { return m_display; }
 
     std::unique_ptr<WaylandSurface> createSurface(const IntSize&);
-    void registerSurface(struct wl_surface*) const;
 
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
@@ -60,14 +58,13 @@ private:
     static void globalRemoveCallback(void* data, struct wl_registry*, uint32_t name);
 
     PlatformDisplayWayland(struct wl_display*);
-    bool isInitialized() { return m_compositor && m_wpe && m_eglDisplay != EGL_NO_DISPLAY && m_eglConfigChosen; }
+    bool isInitialized() { return m_compositor && m_eglDisplay != EGL_NO_DISPLAY && m_eglConfigChosen; }
 
     Type type() const override { return PlatformDisplay::Type::Wayland; }
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
     struct wl_compositor* m_compositor;
-    struct wl_wpe* m_wpe;
 
     EGLConfig m_eglConfig;
     bool m_eglConfigChosen;
