@@ -275,7 +275,6 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/Shared/API/c/WKPageVisibilityTypes.h
     ${WEBKIT2_DIR}/Shared/API/c/WKSecurityOriginRef.h
     ${WEBKIT2_DIR}/Shared/API/c/WKSerializedScriptValue.h
-    ${WEBKIT2_DIR}/Shared/API/c/WKSerializedScriptValuePrivate.h
     ${WEBKIT2_DIR}/Shared/API/c/WKString.h
     ${WEBKIT2_DIR}/Shared/API/c/WKType.h
     ${WEBKIT2_DIR}/Shared/API/c/WKURL.h
