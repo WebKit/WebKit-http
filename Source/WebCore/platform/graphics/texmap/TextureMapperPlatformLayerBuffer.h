@@ -37,8 +37,8 @@ class TextureMapperPlatformLayerBuffer : public TextureMapperPlatformLayer {
     WTF_MAKE_NONCOPYABLE(TextureMapperPlatformLayerBuffer);
     WTF_MAKE_FAST_ALLOCATED();
 public:
-    TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&&);
-    TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize&, bool hasAlpha, bool shouldFlip);
+    TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&&, TextureMapperGL::Flags extraFlags = 0);
+    TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize&, TextureMapperGL::Flags flags);
 
     virtual ~TextureMapperPlatformLayerBuffer();
 
@@ -59,8 +59,7 @@ private:
 
     GLuint m_textureID;
     IntSize m_size;
-    bool m_hasAlpha;
-    bool m_shouldFlip;
+    TextureMapperGL::Flags m_flags;
     bool m_hasManagedTexture;
 };
 

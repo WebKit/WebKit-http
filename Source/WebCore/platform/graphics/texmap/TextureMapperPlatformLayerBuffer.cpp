@@ -28,17 +28,17 @@
 
 namespace WebCore {
 
-TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&& texture)
+    TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&& texture, TextureMapperGL::Flags extraFlags)
     : m_texture(WTF::move(texture))
+    , m_flags(extraFlags)
     , m_hasManagedTexture(true)
 {
 }
 
-TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize& size, bool hasAlpha, bool shouldFlip)
+TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize& size, TextureMapperGL::Flags flags)
     : m_textureID(textureID)
     , m_size(size)
-    , m_hasAlpha(hasAlpha)
-    , m_shouldFlip(shouldFlip)
+    , m_flags(flags)
     , m_hasManagedTexture(false)
 {
 }
@@ -56,14 +56,15 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper* textu
 {
     if (m_hasManagedTexture) {
         ASSERT(m_texture);
-        textureMapper->drawTexture(*m_texture, targetRect, modelViewMatrix, opacity);
+        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+        BitmapTextureGL* textureGL = static_cast<BitmapTextureGL*>(m_texture.get());
+        texmapGL->drawTexture(textureGL->id(), m_flags | (textureGL->isOpaque() ? 0 : TextureMapperGL::ShouldBlend), textureGL->size(), targetRect, modelViewMatrix, opacity);
         return;
     }
 
     ASSERT(m_textureID);
     TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-    TextureMapperGL::Flags flags = (m_shouldFlip ? TextureMapperGL::ShouldFlipTexture : 0) | (m_hasAlpha ? TextureMapperGL::ShouldBlend : 0);
-    texmapGL->drawTexture(m_textureID, flags, m_size, targetRect, modelViewMatrix, opacity);
+    texmapGL->drawTexture(m_textureID, m_flags, m_size, targetRect, modelViewMatrix, opacity);
 }
 
 }; // namespace WebCore

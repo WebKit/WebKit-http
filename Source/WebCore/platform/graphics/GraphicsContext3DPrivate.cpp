@@ -108,7 +108,8 @@ void GraphicsContext3DPrivate::swapPlatformTexture()
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, m_context->m_attrs.alpha, true));
+    TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
+    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
 
     m_context->markLayerComposited();
 }

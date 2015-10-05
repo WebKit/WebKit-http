@@ -120,7 +120,7 @@ void ImageBufferData::swapBuffersIfNeeded()
         createCompositorBuffer();
 
         LockHolder locker(m_platformLayerProxy->mutex());
-        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, true, false));
+        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend));
     }
 
     // It would be great if we could just swap the buffers here as we do with webgl, but that breaks the cases
@@ -195,7 +195,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
             renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
 #if USE(COORDINATED_GRAPHICS_THREADED)
         else
-            m_data.m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, true, false));
+            m_data.m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
 #endif
 
     }

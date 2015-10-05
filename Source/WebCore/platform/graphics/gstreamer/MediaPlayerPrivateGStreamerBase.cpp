@@ -730,7 +730,8 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
             g_cond_signal(&m_updateCondition);
             return;
         }
-        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, size, GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo), false));
+        TextureMapperGL::Flags flags = GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, size, flags));
         m_platformLayerProxy->requestUpdate(locker);
     }
 #else
