@@ -97,6 +97,8 @@ struct _EGLDetails {
 #include "PlatformDisplayX11.h"
 #elif PLATFORM(WAYLAND)
 #include "PlatformDisplayWayland.h"
+#elif PLATFORM(BCM_RPI)
+#include "PlatformDisplayBCMRPi.h"
 #endif
 
 // gstglapi.h may include eglplatform.h and it includes X.h, which
@@ -357,6 +359,8 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #elif PLATFORM(WAYLAND)
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).eglDisplay()));
+#elif PLATFORM(BCM_RPI)
+        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayBCMRPi>(sharedDisplay).eglDisplay()));
 #endif
     }
 
