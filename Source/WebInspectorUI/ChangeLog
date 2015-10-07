@@ -1,3 +1,343 @@
+2015-10-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Clicking on a stack trace link does not navigate to the corresponding line
+        https://bugs.webkit.org/show_bug.cgi?id=149405
+
+        lineNumber should be a number type but it was a string.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.openURL):
+        (WebInspector.linkifyStringAsFragmentWithCustomLinkifier):
+        Keep lineNumber undefined when it isn't present in the string.
+        WebInspector.linkifyStringAsFragmentWithCustomLinkifier is only used by
+        WebInspector.linkifyStringAsFragment and it expects lineNumber to be undefined
+        when it wasn't found in the parsed string.
+
+2015-10-06  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Fix spacing of FindBanner prev/next buttons
+        https://bugs.webkit.org/show_bug.cgi?id=149717
+
+        Reviewed by Darin Adler.
+
+        The sizing and spacing of the previous and next buttons in the FindBanner
+        is slightly off and should be readjusted to ensure that both buttons are
+        the same size and have the same spacing.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > button.segmented.right > .glyph):
+        (.find-banner > button.segmented):
+        (.find-banner > button.segmented > .glyph):
+        (.find-banner > button.segmented.left): Deleted.
+        (.find-banner > button.segmented.left > .glyph): Deleted.
+        (.find-banner > button.segmented.right): Deleted.
+
+2015-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Simplify TimelineRecordBar a bit
+        https://bugs.webkit.org/show_bug.cgi?id=149733
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.prototype.set records):
+
+2015-10-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Error displayed as an object when passed as a second argument to console.log
+        https://bugs.webkit.org/show_bug.cgi?id=149799
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendExtraParameters):
+        Don't format errors as objects.
+
+        (WebInspector.ConsoleMessageView.prototype._formatParameter):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsValue):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsString):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsNode):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsObject):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsError):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsArray):
+        Replace an unnecessary span element with a document fragment.
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (.error-object):
+        Display an error object on the same line as a list bullet.
+
+2015-10-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix -webkit-font-feature-settings
+        https://bugs.webkit.org/show_bug.cgi?id=149722
+
+        Reviewed by Sam Weinig.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2015-10-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Wrong column numbers in error object views
+        https://bugs.webkit.org/show_bug.cgi?id=149795
+
+        Convert columnNumber and lineNumber properties from strings to numbers
+        to prevent accidental string concatenations.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/StackTrace.js:
+        (WebInspector.StackTrace._parseStackTrace):
+
+2015-10-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add breakpoint option to ignore n times before stopping
+        https://bugs.webkit.org/show_bug.cgi?id=147664
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings for breakpoint popover labels.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype._createPopoverContent):
+        Add ignoreCount UI to popover, if backend support exists. UI based on same
+        feature in Xcode's breakpoint editing dialog.
+        (WebInspector.BreakpointPopoverController.prototype._popoverIgnoreInputChanged):
+        User input sanity checks on numeric input.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        Listen for changes to breakpoint ignoreCount property.
+
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint):
+        (WebInspector.Breakpoint.prototype.get ignoreCount):
+        (WebInspector.Breakpoint.prototype.set ignoreCount):
+        New property for ignoreCount.
+        (WebInspector.Breakpoint.prototype.get options):
+        Added ignoreCount to options object.
+        (WebInspector.Breakpoint.prototype.get info):
+        Added ignoreCount to info object.
+
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (#edit-breakpoint-popover-ignore):
+        New styles for breakpoint popover.
+
+2015-10-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cleanup DebuggerManager, reduce `delete` and use Maps instead of objects
+        https://bugs.webkit.org/show_bug.cgi?id=149760
+
+        Reviewed by Joseph Pecoraro.
+
+        Replaced objects used as hashmaps with Map.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.breakpointsForSourceCode):
+        (WebInspector.DebuggerManager.prototype.breakpointForIdentifier):
+        (WebInspector.DebuggerManager.prototype.scriptForIdentifier):
+        (WebInspector.DebuggerManager.prototype.scriptsForURL):
+        (WebInspector.DebuggerManager.prototype.get knownNonResourceScripts):
+        (WebInspector.DebuggerManager.prototype.removeBreakpoint):
+        (WebInspector.DebuggerManager.prototype.breakpointResolved):
+        (WebInspector.DebuggerManager.prototype.reset):
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        (WebInspector.DebuggerManager.prototype._sourceCodeLocationFromPayload):
+        (WebInspector.DebuggerManager.prototype._setBreakpoint.didSetBreakpoint):
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        (WebInspector.DebuggerManager.prototype._removeBreakpoint.didRemoveBreakpoint):
+        (WebInspector.DebuggerManager.prototype._removeBreakpoint):
+
+2015-10-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Copying inline style text puts "undefined" in the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=149155
+
+        Reviewed by Brian Burg.
+
+        CSSStyleDeclarations for inline styles do not have a owner CSSRule, which means
+        that they do not have a selector or media list. CSS strings must have a selector
+        and, for inline styles without an owner rule and selector, this was a problem.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration.prototype.get mediaList):
+        (WebInspector.CSSStyleDeclaration.prototype.get selectorText):
+        (WebInspector.CSSStyleDeclaration.prototype.generateCSSRuleString):
+        Added getters for the list of media queries and selector text with fallbacks
+        for CSSStyleDeclarations that do not have an owner CSSRule (inline styles).
+
+        * UserInterface/Test.html:
+        Added CSSMedia include for new inspector/css/generate-css-rule-string.html test.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+        Removed parameter that no longer exists.
+
+2015-10-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, rolling out r190520, some tests assert / crash.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Deleted.
+        * UserInterface/Base/Utilities.js:
+        (value): Deleted.
+        * UserInterface/Controllers/HeapManager.js: Removed.
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager): Deleted.
+        (WebInspector.TimelineManager.prototype._garbageCollected): Deleted.
+        * UserInterface/Images/TimelineRecordGarbageCollection.svg: Removed.
+        * UserInterface/Main.html:
+        * UserInterface/Models/GarbageCollection.js: Removed.
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+        (WebInspector.ScriptTimelineRecord.prototype.isGarbageCollection): Deleted.
+        * UserInterface/Protocol/HeapObserver.js: Removed.
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded): Deleted.
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent): Deleted.
+        (WebInspector.ScriptTimelineDataGridNode): Deleted.
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/SourceCodeTimelineTreeElement.js:
+        (WebInspector.SourceCodeTimelineTreeElement):
+        * UserInterface/Views/TimelineIcons.css:
+        (.garbage-collection-profile-record .icon): Deleted.
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-script.script-timeline-record-garbage-collected > .segment): Deleted.
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.createCombinedBars):
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+
+2015-10-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Option-Click on a property name in the Computed view should jump to resource view
+        https://bugs.webkit.org/show_bug.cgi?id=149521
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.effectivePropertyForName):
+        Now tries to search for a non-canonical property before falling back to
+        the canonical version.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded):
+        If the user option-clicks the goto arrow, it shows the source for the
+        property instead.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorShowProperty.delegateShowProperty):
+        (WebInspector.ComputedStyleDetailsPanel.prototype.cssStyleDeclarationTextEditorShowProperty):
+        Attempts to show the source of the given property. Will fallback to
+        highlighting the property in the rules panel.
+
+2015-10-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include Garbage Collection Event in Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=142510
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Base/Utilities.js:
+        (Array.prototype.parition):
+        Helper to partition an Array into two arrays.
+
+        * UserInterface/Main.html:
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        * UserInterface/Protocol/HeapObserver.js:
+        (WebInspector.HeapObserver.prototype.garbageCollected):
+        (WebInspector.HeapObserver):
+        Create the new observer and manager.
+
+        * UserInterface/Models/GarbageCollection.js:
+        (WebInspector.GarbageCollection):
+        (WebInspector.GarbageCollection.fromPayload):
+        (WebInspector.GarbageCollection.prototype.get type):
+        (WebInspector.GarbageCollection.prototype.get startTime):
+        (WebInspector.GarbageCollection.prototype.get endTime):
+        (WebInspector.GarbageCollection.prototype.get duration):
+        Model object for Heap.GarbageCollection.
+
+        * UserInterface/Controllers/HeapManager.js:
+        (WebInspector.HeapManager):
+        (WebInspector.HeapManager.prototype.garbageCollected):
+        Dispatch events with.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype._garbageCollected):
+        Include new GC Timeline Events as Script events.
+
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        For the Script overview, make two sets of bars, one for Scripts and one for GCs.
+        The GCs bar will be on top of the the Scripts bar. This is particularly useful
+        since a GC can happen during script execution.
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ScriptTimelineDataGridNode):
+        Give a NaN call count to top level Script DataGridNodes.
+        In the UI, display the empty placeholder for NaN call counts.
+
+        * UserInterface/Images/TimelineRecordGarbageCollection.svg: Added.
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype.isGarbageCollection):
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/SourceCodeTimelineTreeElement.js:
+        (WebInspector.SourceCodeTimelineTreeElement):
+        * UserInterface/Views/TimelineIcons.css:
+        (.garbage-collection-profile-record .icon):
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-script.script-timeline-record-garbage-collected > .segment):
+        UI for GC events.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.createCombinedBars):
+        Simplify by storing start time into a variable.
+
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        Icon for GC events.
+
+2015-10-02  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fix indentation of console message parameters
+        https://bugs.webkit.org/show_bug.cgi?id=149740
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message .console-message-stack-trace-container > li):
+        (.console-message .console-message-extra-parameters-container > li::before):
+
+2015-10-02  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Add GTK+ icons for new plus icons in the style sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=149227
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/NewTabPlus.svg: Updated.
+        * UserInterface/Images/gtk/Plus13.svg: Copied from Source/WebInspectorUI/UserInterface/Images/gtk/Plus.svg.
+        * UserInterface/Images/gtk/Plus15.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/gtk/Plus.svg.
+
 2015-10-01  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Simplify filterableData processing

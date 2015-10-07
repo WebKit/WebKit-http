@@ -108,7 +108,6 @@ private:
         Base::finishCreation(vm);
         m_length = length;
         setIs8Bit(m_value.impl()->is8Bit());
-        vm.m_newStringsSinceLastHashCons++;
     }
 
     void finishCreation(VM& vm, size_t length, size_t cost)
@@ -118,7 +117,6 @@ private:
         m_length = length;
         setIs8Bit(m_value.impl()->is8Bit());
         Heap::heap(this)->reportExtraMemoryAllocated(cost);
-        vm.m_newStringsSinceLastHashCons++;
     }
 
 protected:
@@ -127,7 +125,6 @@ protected:
         Base::finishCreation(vm);
         m_length = 0;
         setIs8Bit(true);
-        vm.m_newStringsSinceLastHashCons++;
     }
 
 public:
@@ -176,10 +173,7 @@ public:
     bool canGetIndex(unsigned i) { return i < m_length; }
     JSString* getIndex(ExecState*, unsigned);
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
-    {
-        return Structure::create(vm, globalObject, proto, TypeInfo(StringType, StructureFlags), info());
-    }
+    static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     static size_t offsetOfLength() { return OBJECT_OFFSETOF(JSString, m_length); }
     static size_t offsetOfFlags() { return OBJECT_OFFSETOF(JSString, m_flags); }
@@ -191,8 +185,6 @@ public:
     static void visitChildren(JSCell*, SlotVisitor&);
 
     enum {
-        HashConsLock = 1u << 2,
-        IsHashConsSingleton = 1u << 1,
         Is8Bit = 1u
     };
 
@@ -209,12 +201,6 @@ protected:
         else
             m_flags &= ~Is8Bit;
     }
-    bool shouldTryHashCons();
-    bool isHashConsSingleton() const { return m_flags & IsHashConsSingleton; }
-    void clearHashConsSingleton() { m_flags &= ~IsHashConsSingleton; }
-    void setHashConsSingleton() { m_flags |= IsHashConsSingleton; }
-    bool tryHashConsLock();
-    void releaseHashConsLock();
 
     mutable unsigned m_flags;
 

@@ -408,6 +408,7 @@ webkit.org/b/61932 [ Debug ] jquery/manipulation.html [ Slow ]
 [ Debug ] jquery/traversing.html [ Slow ]
 
 webkit.org/b/139638 [ Debug ] svg/filters/svg-deeply-nested-crash.html [ Slow ]
+webkit.org/b/126420 svg/custom/resource-invalidation-crash.svg [ Failure Pass ]
 
 webkit.org/b/139639 [ Debug ] cssom/non-subpixel-scroll-top-left-values.html [ Slow ]
 
@@ -675,5 +676,3 @@ webkit.org/b/148695 fast/shadow-dom [ Failure ImageOnlyFailure ]
 # Marks as flaky (see also https://bugs.webkit.org/show_bug.cgi?id=132388)
 
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overrides.html [ Failure Pass ]
-
-webkit.org/b/149218 http/tests/notifications/events.html [ Pass Crash Timeout ]

@@ -1225,10 +1225,8 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     ResourceRequest request(url);
     DocumentLoader* documentLoader = frame->loader().documentLoader();
 
-    if (page->userContentController() && documentLoader)
-        page->userContentController()->processContentExtensionRulesForLoad(*page, request, ResourceType::Media, *documentLoader);
-
-    if (request.isNull()) {
+    if (page->userContentController() && documentLoader && page->userContentController()->processContentExtensionRulesForLoad(request, ResourceType::Media, *documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
+        request = { };
         mediaLoadingFailed(MediaPlayer::FormatError);
         return;
     }
@@ -5726,15 +5724,15 @@ void HTMLMediaElement::setMediaGroup(const String& group)
     // 4. If there is another media element whose Document is the same as m's Document (even if one or both
     // of these elements are not actually in the Document), 
     HashSet<HTMLMediaElement*> elements = documentToElementSetMap().get(&document());
-    for (HashSet<HTMLMediaElement*>::iterator i = elements.begin(); i != elements.end(); ++i) {
-        if (*i == this)
+    for (auto& element : elements) {
+        if (element == this)
             continue;
 
         // and which also has a mediagroup attribute, and whose mediagroup attribute has the same value as
         // the new value of m's mediagroup attribute,        
-        if ((*i)->mediaGroup() == group) {
+        if (element->mediaGroup() == group) {
             //  then let controller be that media element's current media controller.
-            setController((*i)->controller());
+            setController(element->controller());
             return;
         }
     }

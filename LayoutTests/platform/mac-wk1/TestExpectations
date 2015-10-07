@@ -133,6 +133,7 @@ loader/navigation-policy [ Skip ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Pass Timeout ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Pass Timeout ]
 [ Mavericks Debug ] fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html [ Pass Timeout ]
+[ Mavericks Debug ] fast/canvas/webgl/oes-texture-half-float.html [ Pass Timeout ]
 
 [ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
@@ -144,3 +145,7 @@ http/tests/contentfiltering/load-substitute-data-from-appcache.html
 
 # Testing the system language declaratively only makes sense in WK2, because it's implemented in WebKitTestRunner by launching a new WebContent process.
 fast/text/international/system-language [ Pass Failure ImageOnlyFailure ]
+
+# Imported Blink tests
+imported/blink/svg/hittest/rect-miterlimit.html [ Pass Timeout ]
+imported/blink/fast/text-autosizing/print-autosizing.html  [ Pass Timeout ]

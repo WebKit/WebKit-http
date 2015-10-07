@@ -1,3 +1,61 @@
+2015-10-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed. Fix a typo in r190645.
+
+        * public/include/db.php:
+
+2015-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        V2 UI shouldn't sort dashboards lexicologically
+        https://bugs.webkit.org/show_bug.cgi?id=149856
+
+        Reviewed by Chris Dumez.
+
+        Don't sort the dashboards by name in App.Manifest.
+
+        * public/v2/app.js:
+        (App.IndexRoute.beforeModel): Don't transition to "undefined" (string) dashboard.
+        * public/v2/manifest.js:
+        (App.Manifest.._fetchedManifest):
+
+2015-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        V2 UI fails to show the data for the very first point in charts
+        https://bugs.webkit.org/show_bug.cgi?id=149857
+
+        Reviewed by Chris Dumez.
+
+        The bug was caused by seriesBetweenPoints returning null for when point.seriesIndex is 0.
+        Explicitly check the type of this property instead.
+
+        * public/v2/data.js:
+        (TimeSeries.prototype.seriesBetweenPoints):
+
+2015-10-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard should have the capability to test local UI with production data
+        https://bugs.webkit.org/show_bug.cgi?id=149834
+
+        Reviewed by Chris Dumez.
+
+        Added tools/run-with-remote-server.py which runs a local httpd server and pulls data from a remote server.
+
+        * Install.md: Added the instruction on how to use the script. Also updated the remaining instructions
+        for El Capitan.
+        * config.json: Added remote server configurations.
+        * public/admin/fetch-from-remote.php: Added. This script fetches JSON from the remote server specified in
+        config.json and caches the results in the location specified as "cacheDirectory" in config.json.
+        (main):
+        (fetch_remote):
+        * public/include/db.php:
+        (config_path): Extracted from generate_data_file.
+        (generate_data_file):
+        * tools/remote-server-relay.conf: Added. Apache 2.4 configuration file for a local http server launched by
+        run-with-remote-server.py.
+        * tools/run-with-remote-server.py: Added. Launches Apache with the right set of directives.
+        (main):
+        (abspath_from_root):
+
 2015-07-13  Ryosuke Niwa  <rniwa@webkit.org>
 
         Fix a typo.

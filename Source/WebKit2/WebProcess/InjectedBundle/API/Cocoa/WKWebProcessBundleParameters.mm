@@ -44,6 +44,11 @@
     return self;
 }
 
+- (NSString *)description
+{
+    return [NSString stringWithFormat:@"<%@: %p; parameters = %@>", NSStringFromClass(self.class), self, _parameters.get()];
+}
+
 - (NSString *)valueForKey:(NSString *)key
 {
     return [_parameters valueForKey:key];

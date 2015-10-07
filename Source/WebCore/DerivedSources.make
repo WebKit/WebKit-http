@@ -1140,6 +1140,8 @@ mathmlMakeNames.intermediate : dom/make_names.pl bindings/scripts/Hasher.pm bind
 
 # --------
 
+# Internal Settings
+
 InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h SettingsMacros.h : MakeSettings.intermediate
 .INTERMEDIATE : MakeSettings.intermediate
 MakeSettings.intermediate : page/make_settings.pl page/Settings.in
@@ -1253,7 +1255,9 @@ WEBCORE_JS_BUILTINS = \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
+    $(WebCore)/Modules/streams/ReadableStreamController.js \
     $(WebCore)/Modules/streams/ReadableStreamInternals.js \
+    $(WebCore)/Modules/streams/ReadableStreamReader.js \
 #
 
 all : $(WEBCORE_JS_BUILTINS:%.js=%Builtins.cpp)

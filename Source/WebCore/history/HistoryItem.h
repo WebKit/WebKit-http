@@ -73,10 +73,6 @@ public:
     {
         return adoptRef(*new HistoryItem(urlString, title, alternateTitle));
     }
-    static Ref<HistoryItem> create(const URL& url, const String& target, const String& parent, const String& title)
-    {
-        return adoptRef(*new HistoryItem(url, target, parent, title));
-    }
     
     WEBCORE_EXPORT ~HistoryItem();
 
@@ -95,7 +91,6 @@ public:
     WEBCORE_EXPORT void setAlternateTitle(const String&);
     WEBCORE_EXPORT const String& alternateTitle() const;
     
-    const String& parent() const;
     WEBCORE_EXPORT URL url() const;
     WEBCORE_EXPORT URL originalURL() const;
     WEBCORE_EXPORT const String& referrer() const;
@@ -126,7 +121,6 @@ public:
     WEBCORE_EXPORT void setOriginalURLString(const String&);
     WEBCORE_EXPORT void setReferrer(const String&);
     WEBCORE_EXPORT void setTarget(const String&);
-    void setParent(const String&);
     WEBCORE_EXPORT void setTitle(const String&);
     WEBCORE_EXPORT void setIsTargetItem(bool);
     
@@ -149,7 +143,6 @@ public:
     void setChildItem(Ref<HistoryItem>&&);
     WEBCORE_EXPORT HistoryItem* childItemWithTarget(const String&);
     HistoryItem* childItemWithDocumentSequenceNumber(long long number);
-    WEBCORE_EXPORT HistoryItem* targetItem();
     WEBCORE_EXPORT const HistoryItemVector& children() const;
     WEBCORE_EXPORT bool hasChildren() const;
     void clearChildren();
@@ -216,19 +209,15 @@ private:
     WEBCORE_EXPORT HistoryItem();
     WEBCORE_EXPORT HistoryItem(const String& urlString, const String& title);
     WEBCORE_EXPORT HistoryItem(const String& urlString, const String& title, const String& alternateTitle);
-    WEBCORE_EXPORT HistoryItem(const URL&, const String& frameName, const String& parent, const String& title);
 
     HistoryItem(const HistoryItem&);
 
     bool hasSameDocumentTree(HistoryItem& otherItem) const;
 
-    HistoryItem* findTargetItem();
-
     String m_urlString;
     String m_originalURLString;
     String m_referrer;
     String m_target;
-    String m_parent;
     String m_title;
     String m_displayTitle;
     
