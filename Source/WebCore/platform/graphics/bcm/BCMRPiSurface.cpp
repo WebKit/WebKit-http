@@ -46,6 +46,12 @@ std::unique_ptr<GLContext> BCMRPiSurface::createGLContext()
     return GLContextEGL::createWindowContext(&m_nativeWindow, GLContext::sharingContext());
 }
 
+void BCMRPiSurface::resize(const IntSize& size)
+{
+    m_nativeWindow.width = size.width();
+    m_nativeWindow.height = size.height();
+}
+
 BCMRPiSurface::BCMBufferExport BCMRPiSurface::lockFrontBuffer()
 {
     return BCMBufferExport{ m_nativeWindow.element, m_nativeWindow.width, m_nativeWindow.height };

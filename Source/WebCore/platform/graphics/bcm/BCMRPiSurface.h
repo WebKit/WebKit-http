@@ -43,6 +43,8 @@ public:
 
     std::unique_ptr<GLContext> createGLContext();
 
+    void resize(const IntSize&);
+
     using BCMBufferExport = std::tuple<uint32_t, uint32_t, uint32_t>;
     BCMBufferExport lockFrontBuffer();
     void releaseBuffer(uint32_t);
