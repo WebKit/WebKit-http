@@ -79,30 +79,23 @@ std::unique_ptr<GBMSurface> PlatformDisplayGBM::createSurface(const IntSize& siz
     return std::make_unique<GBMSurface>(surface, client);
 }
 
-class GBMOffscreenContextData : public GLContext::Data {
-public:
-    GBMOffscreenContextData(struct gbm_surface* surface)
-        : m_surface(surface)
-    { }
-
-    virtual ~GBMOffscreenContextData()
-    {
-        gbm_surface_destroy(m_surface);
-    }
-
-private:
-    struct gbm_surface* m_surface;
-};
-
 std::unique_ptr<GLContextEGL> PlatformDisplayGBM::createOffscreenContext(GLContext* sharingContext)
 {
-    struct gbm_surface* surface = gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0);
-    auto contextData = std::make_unique<GBMOffscreenContextData>(surface);
+    class OffscreenContextData : public GLContext::Data {
+    public:
+        virtual ~OffscreenContextData()
+        {
+            gbm_surface_destroy(surface);
+        }
 
-    auto context = GLContextEGL::createWindowContext(surface, sharingContext);
-    if (context)
-        context->setContextData(WTF::move(contextData));
-    return context;
+        struct gbm_surface* surface;
+    };
+
+    auto contextData = std::make_unique<OffscreenContextData>();
+    contextData->surface = gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0);
+
+    auto* surface = contextData->surface;
+    return GLContextEGL::createWindowContext(surface, sharingContext, WTF::move(contextData));
 }
 
 bool PlatformDisplayGBM::hasFreeBuffers(GBMSurface& surface)
