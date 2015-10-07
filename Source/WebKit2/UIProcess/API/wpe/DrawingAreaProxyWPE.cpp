@@ -51,7 +51,10 @@ void DrawingAreaProxyWPE::deviceScaleFactorDidChange()
 
 void DrawingAreaProxyWPE::sizeDidChange()
 {
-    notImplemented();
+    if (!m_webPageProxy.isValid())
+        return;
+
+    m_webPageProxy.process().send(Messages::DrawingArea::UpdateBackingStoreState(0, false, m_webPageProxy.deviceScaleFactor(), m_size, m_scrollOffset), m_webPageProxy.pageID());
 }
 
 void DrawingAreaProxyWPE::update(uint64_t backingStoreStateID, const UpdateInfo&)
@@ -66,7 +69,7 @@ void DrawingAreaProxyWPE::didUpdateBackingStoreState(uint64_t backingStoreStateI
 
 void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext& layerTreeContext)
 {
-    ASSERT(!backingStoreID);
+    ASSERT(!backingStoreStateID);
 
     m_layerTreeContext = layerTreeContext;
     m_webPageProxy.enterAcceleratedCompositingMode(layerTreeContext);
