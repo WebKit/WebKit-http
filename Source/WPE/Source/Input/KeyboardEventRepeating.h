@@ -38,7 +38,7 @@ class KeyboardEventRepeating {
 public:
     class Client {
     public:
-        virtual void dispatchKeyboardEvent(const KeyboardEvent::Raw&);
+        virtual void dispatchKeyboardEvent(const KeyboardEvent::Raw&) = 0;
     };
 
     KeyboardEventRepeating(Client&);
