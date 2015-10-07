@@ -85,9 +85,14 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t elementHandle, uint32_t width, 
 {
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
-    VC_RECT_T destRect;
+    m_width = width;
+    m_height = height;
+
+    VC_RECT_T srcRect, destRect;
+    vc_dispmanx_rect_set(&srcRect, 0, 0, m_width << 16, m_height << 16);
     vc_dispmanx_rect_set(&destRect, 0, 0, m_width, m_height);
-    vc_dispmanx_element_modified(updateHandle, m_elementHandle, &destRect);
+
+    vc_dispmanx_element_change_attributes(updateHandle, m_elementHandle, 1 << 3 | 1 << 2, 0, 0, &destRect, &srcRect, 0, DISPMANX_NO_ROTATE);
 
     vc_dispmanx_update_submit_sync(updateHandle);
 
