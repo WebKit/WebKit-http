@@ -66,7 +66,7 @@ void DrawingAreaProxyWPE::didUpdateBackingStoreState(uint64_t backingStoreStateI
 
 void DrawingAreaProxyWPE::enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext& layerTreeContext)
 {
-    ASSERT(!backingStoreID);
+    ASSERT(!backingStoreStateID);
 
     m_layerTreeContext = layerTreeContext;
     m_webPageProxy.enterAcceleratedCompositingMode(layerTreeContext);
