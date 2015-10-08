@@ -70,12 +70,10 @@ find_package(LibXml2 2.8.0 REQUIRED)
 find_package(LibXslt 1.1.7 REQUIRED)
 find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
-find_package(Wayland 1.6.0 REQUIRED)
 find_package(WebP REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
-find_package(WaylandEGL REQUIRED)
 find_package(BCMHost REQUIRED)
 
 find_package(Libinput REQUIRED)
