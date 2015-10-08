@@ -681,8 +681,8 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     {
         GST_DEBUG_OBJECT(src, "READY->PAUSED");
         priv->pendingStart = TRUE;
-        GstObjectRef protector(GST_OBJECT(src));
-        priv->startSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcStart(WEBKIT_WEB_SRC(protector.get())); });
+        GRefPtr<WebKitWebSrc> protector(src);
+        priv->startSource.schedule(std::chrono::milliseconds(0), std::function<void()>([protector] { webKitWebSrcStart(protector.get()); }));
         break;
     }
     case GST_STATE_CHANGE_PAUSED_TO_READY:
@@ -846,8 +846,9 @@ static void webKitWebSrcNeedDataCb(GstAppSrc*, guint length, gpointer userData)
     if (priv->needDataSource.isScheduled() || !priv->paused)
         return;
 
-    GstObjectRef protector(GST_OBJECT(src));
-    priv->needDataSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcNeedDataMainCb(WEBKIT_WEB_SRC(protector.get())); });
+    GRefPtr<WebKitWebSrc> protector(src);
+    priv->needDataSource.schedule(std::chrono::milliseconds(0),
+        std::function<void()>([protector] { webKitWebSrcNeedDataMainCb(protector.get()); }));
 }
 
 static void webKitWebSrcEnoughDataMainCb(WebKitWebSrc* src)
@@ -877,8 +878,8 @@ static void webKitWebSrcEnoughDataCb(GstAppSrc*, gpointer userData)
     if (priv->enoughDataSource.isScheduled() || priv->paused)
         return;
 
-    GstObjectRef protector(GST_OBJECT(src));
-    priv->enoughDataSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcEnoughDataMainCb(WEBKIT_WEB_SRC(protector.get())); });
+    GRefPtr<WebKitWebSrc> protector(src);
+    priv->enoughDataSource.schedule(std::chrono::milliseconds(0), std::function<void()>([protector] { webKitWebSrcEnoughDataMainCb(protector.get()); }));
 }
 
 static void webKitWebSrcSeekMainCb(WebKitWebSrc* src)
@@ -905,8 +906,8 @@ static gboolean webKitWebSrcSeekDataCb(GstAppSrc*, guint64 offset, gpointer user
     GST_DEBUG_OBJECT(src, "Doing range-request seek");
     priv->requestedOffset = offset;
 
-    GstObjectRef protector(GST_OBJECT(src));
-    priv->seekSource.schedule(std::chrono::milliseconds(0), [protector] { webKitWebSrcSeekMainCb(WEBKIT_WEB_SRC(protector.get())); });
+    GRefPtr<WebKitWebSrc> protector(src);
+    priv->seekSource.schedule(std::chrono::milliseconds(0), std::function<void()>([protector] { webKitWebSrcSeekMainCb(WEBKIT_WEB_SRC(protector.get())); }));
     return TRUE;
 }
 

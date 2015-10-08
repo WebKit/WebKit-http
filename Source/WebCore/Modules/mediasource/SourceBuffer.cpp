@@ -996,11 +996,12 @@ void SourceBuffer::sourceBufferPrivateDidReceiveInitializationSegment(SourceBuff
         m_source->setDurationInternal(newDuration);
     }
 
-    // 2. If the initialization segment has no audio, video, or text tracks, then run the end of stream
-    // algorithm with the error parameter set to "decode" and abort these steps.
-    if (!segment.audioTracks.size() && !segment.videoTracks.size() && !segment.textTracks.size())
+    // 2. If the initialization segment has no audio, video, or text tracks, then run the append error algorithm
+    // with the decode error parameter set to true and abort these steps.
+    if (segment.audioTracks.isEmpty() && segment.videoTracks.isEmpty() && segment.textTracks.isEmpty()) {
         m_source->streamEndedWithError(decodeError(), IgnorableExceptionCode());
-
+        return;
+    }
 
     // 3. If the first initialization segment flag is true, then run the following steps:
     if (m_receivedFirstInitializationSegment) {

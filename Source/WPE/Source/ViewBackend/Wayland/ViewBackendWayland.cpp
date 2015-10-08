@@ -247,7 +247,7 @@ ViewBackendWayland::~ViewBackendWayland()
         wl_callback_destroy(m_callbackData.frameCallback);
     m_callbackData = { nullptr, nullptr };
 
-    m_bufferData = { nullptr, { } };
+    m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
 
     if (m_seatData.pointer)
         wl_pointer_destroy(m_seatData.pointer);

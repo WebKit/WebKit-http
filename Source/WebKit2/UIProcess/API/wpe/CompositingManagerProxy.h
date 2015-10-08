@@ -63,10 +63,12 @@ private:
     IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Web; }
 
     void establishConnection(IPC::Attachment);
+
 #if PLATFORM(GBM)
     void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment);
     void destroyPrimeBuffer(uint32_t);
 #endif
+
 #if PLATFORM(BCM_RPI)
     void createBCMElement(int32_t width, int32_t height, uint32_t& handle);
     void commitBCMBuffer(uint32_t, uint32_t, uint32_t);

@@ -1,5 +1,7 @@
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
+configure_file(wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
+
 add_definitions(-DWEBKIT2_COMPILATION)
 
 set(WebKit2_USE_PREFIX_HEADER ON)
@@ -23,30 +25,47 @@ list(APPEND NetworkProcess_SOURCES
 list(APPEND WebKit2_SOURCES
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
+
     NetworkProcess/wpe/NetworkProcessMainWPE.cpp
+
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
+
     Platform/unix/SharedMemoryUnix.cpp
+
     Platform/wpe/LoggingWPE.cpp
     Platform/wpe/ModuleWPE.cpp
+
     PluginProcess/unix/PluginControllerProxyUnix.cpp
     PluginProcess/unix/PluginProcessMainUnix.cpp
     PluginProcess/unix/PluginProcessUnix.cpp
+
     Shared/API/c/cairo/WKImageCairo.cpp
+
     Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp
     Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
+
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
+
     Shared/Downloads/soup/DownloadSoup.cpp
+
     Shared/Downloads/wpe/DownloadSoupErrorsWPE.cpp
+
     Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
     Shared/Network/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
+
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+
     Shared/cairo/ShareableBitmapCairo.cpp
+
     Shared/linux/WebMemorySamplerLinux.cpp
+
     Shared/soup/WebCoreArgumentCodersSoup.cpp
+
     Shared/unix/ChildProcessMain.cpp
+
     Shared/wpe/NativeContextMenuItemWPE.cpp
     Shared/wpe/NativeWebKeyboardEventWPE.cpp
     Shared/wpe/NativeWebMouseEventWPE.cpp
@@ -54,59 +73,86 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/NativeWebWheelEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
+
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
+
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
     UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
+
     UIProcess/API/C/wpe/WKView.cpp
+
     UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/WPEView.cpp
+
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
+
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
+
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
+
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
+
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
+
     UIProcess/Network/soup/NetworkProcessProxySoup.cpp
+
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
+
     UIProcess/Storage/StorageManager.cpp
+
     UIProcess/cairo/BackingStoreCairo.cpp
+
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
+
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
+
     UIProcess/wpe/TextCheckerWPE.cpp
     UIProcess/wpe/WebInspectorProxyWPE.cpp
     UIProcess/wpe/WebPageProxyWPE.cpp
     UIProcess/wpe/WebPreferencesWPE.cpp
     UIProcess/wpe/WebProcessPoolWPE.cpp
     UIProcess/wpe/WebProcessProxyWPE.cpp
+
     WebProcess/Cookies/soup/WebCookieManagerSoup.cpp
     WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp
+
     WebProcess/InjectedBundle/wpe/InjectedBundleWPE.cpp
+
     WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
+
     WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
+
     WebProcess/WebCoreSupport/wpe/WebContextMenuClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
+
     WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+
     WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
+
     WebProcess/WebPage/wpe/CompositingManager.cpp
     WebProcess/WebPage/wpe/DrawingAreaWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
+
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
+
     WebProcess/wpe/WebProcessMainWPE.cpp
 )
 
 list(APPEND WebKit2_MESSAGES_IN_FILES
     UIProcess/API/wpe/CompositingManagerProxy.messages.in
+
     WebProcess/WebPage/wpe/CompositingManager.messages.in
 )
 
@@ -256,3 +302,93 @@ add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_S
 add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
+
+set(WPE_INSTALLED_WEBKIT_HEADERS
+    ${WEBKIT2_DIR}/Shared/API/c/WKArray.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKBase.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKData.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDeclarationSpecifiers.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDiagnosticLoggingResultType.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKDictionary.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKErrorRef.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKEvent.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKFindOptions.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKGeometry.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKMutableArray.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKMutableDictionary.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKNumber.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKPageLoadTypes.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKPageVisibilityTypes.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKSecurityOriginRef.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKSerializedScriptValue.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKString.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKType.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURL.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURLRequest.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKURLResponse.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserContentInjectedFrames.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserContentURLPattern.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKUserScriptInjectionTime.h
+
+    ${WEBKIT2_DIR}/Shared/API/c/wpe/WKBaseWPE.h
+
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListItemRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextConfigurationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextConnectionClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextDownloadClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextHistoryClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContextInjectedBundleClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKContext.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKCredential.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKCredentialTypes.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFrame.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFrameInfoRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKFramePolicyListener.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKHitTestResult.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNativeEvent.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationActionRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationDataRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationResponseRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPage.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageConfigurationRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageContextMenuClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageDiagnosticLoggingClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFindClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFindMatchesClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageFormClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageGroup.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageInjectedBundleClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageLoaderClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageNavigationClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPagePolicyClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageRenderingProgressEvents.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPageUIClient.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPluginLoadPolicy.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKPreferencesRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionStateRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKViewportAttributes.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKWindowFeaturesRef.h
+
+    ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKView.h
+)
+
+install(FILES ${WPE_INSTALLED_WEBKIT_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/WebKit"
+)
+
+set(WPE_INSTALLED_HEADERS
+    ${WEBKIT2_DIR}/Shared/API/c/wpe/WebKit.h
+)
+
+install(FILES ${WPE_INSTALLED_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE"
+)
+
+install(FILES ${CMAKE_BINARY_DIR}/wpe-webkit.pc
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+)

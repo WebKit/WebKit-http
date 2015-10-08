@@ -63,12 +63,12 @@ namespace JSC {
     class MarkedAllocator;
     class Register;
     class StructureChain;
+    class StructureStubInfo;
 
     struct Instruction;
     struct OperandTypes;
     struct SimpleJumpTable;
     struct StringJumpTable;
-    struct StructureStubInfo;
 
     struct CallRecord {
         MacroAssembler::Call from;
@@ -400,6 +400,9 @@ namespace JSC {
 
         enum FinalObjectMode { MayBeFinal, KnownNotFinal };
 
+        void emitGetVirtualRegister(int src, JSValueRegs dst);
+        void emitPutVirtualRegister(int dst, JSValueRegs src);
+
 #if USE(JSVALUE32_64)
         bool getOperandConstantInt(int op1, int op2, int& op, int32_t& constant);
 
@@ -422,10 +425,6 @@ namespace JSC {
         void emitJumpSlowCaseIfNotJSCell(int virtualRegisterIndex, RegisterID tag);
 
         void compileGetByIdHotPath(const Identifier*);
-        void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(JSObject* base, RegisterID resultTag, RegisterID resultPayload, PropertyOffset cachedOffset);
-        void compileGetDirectOffset(RegisterID base, RegisterID resultTag, RegisterID resultPayload, RegisterID offset, FinalObjectMode = MayBeFinal);
-        void compilePutDirectOffset(RegisterID base, RegisterID valueTag, RegisterID valuePayload, PropertyOffset cachedOffset);
 
         // Arithmetic opcode helpers
         void emitAdd32Constant(int dst, int op, int32_t constant, ResultType opType);
@@ -669,7 +668,6 @@ namespace JSC {
         void emitVarInjectionCheck(bool needsVarInjectionChecks);
         void emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, unsigned depth);
         void emitLoadWithStructureCheck(int scope, Structure** structureSlot);
-        void emitGetGlobalProperty(uintptr_t* operandSlot);
 #if USE(JSVALUE64)
         void emitGetVarFromPointer(JSValue* operand, GPRReg);
         void emitGetVarFromIndirectPointer(JSValue** operand, GPRReg);
@@ -678,7 +676,6 @@ namespace JSC {
         void emitGetVarFromPointer(JSValue* operand, GPRReg tag, GPRReg payload);
 #endif
         void emitGetClosureVar(int scope, uintptr_t operand);
-        void emitPutGlobalProperty(uintptr_t* operandSlot, int value);
         void emitNotifyWrite(WatchpointSet*);
         void emitNotifyWrite(GPRReg pointerToSet);
         void emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet*);
@@ -708,6 +705,8 @@ namespace JSC {
             ++iter;
         }
         void linkSlowCaseIfNotJSCell(Vector<SlowCaseEntry>::iterator&, int virtualRegisterIndex);
+        void linkAllSlowCasesForBytecodeOffset(Vector<SlowCaseEntry>& slowCases,
+            Vector<SlowCaseEntry>::iterator&, unsigned bytecodeOffset);
 
         MacroAssembler::Call appendCallWithExceptionCheck(const FunctionPtr&);
 #if OS(WINDOWS) && CPU(X86_64)

@@ -81,7 +81,21 @@ std::unique_ptr<GBMSurface> PlatformDisplayGBM::createSurface(const IntSize& siz
 
 std::unique_ptr<GLContextEGL> PlatformDisplayGBM::createOffscreenContext(GLContext* sharingContext)
 {
-    return GLContextEGL::createWindowContext(gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0), sharingContext);
+    class OffscreenContextData : public GLContext::Data {
+    public:
+        virtual ~OffscreenContextData()
+        {
+            gbm_surface_destroy(surface);
+        }
+
+        struct gbm_surface* surface;
+    };
+
+    auto contextData = std::make_unique<OffscreenContextData>();
+    contextData->surface = gbm_surface_create(m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0);
+
+    auto* surface = contextData->surface;
+    return GLContextEGL::createWindowContext(surface, sharingContext, WTF::move(contextData));
 }
 
 bool PlatformDisplayGBM::hasFreeBuffers(GBMSurface& surface)

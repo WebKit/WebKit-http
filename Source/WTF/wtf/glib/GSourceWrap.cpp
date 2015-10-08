@@ -114,7 +114,8 @@ gint64 GSourceWrap::targetTimeForDelay(std::chrono::microseconds delay)
 
 GSourceWrap::Base::~Base()
 {
-    g_source_destroy(m_source.get());
+    if (m_source)
+        g_source_destroy(m_source.get());
 }
 
 bool GSourceWrap::DelayBased::isScheduled() const

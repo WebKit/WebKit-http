@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,13 +26,11 @@
 #ifndef SlotVisitor_h
 #define SlotVisitor_h
 
+#include "CellState.h"
 #include "CopyToken.h"
 #include "HandleTypes.h"
 #include "MarkStack.h"
 #include "OpaqueRootSet.h"
-
-#include <wtf/HashSet.h>
-#include <wtf/text/StringHash.h>
 
 namespace JSC {
 
@@ -46,8 +44,11 @@ class WeakReferenceHarvester;
 template<typename T> class WriteBarrierBase;
 
 class SlotVisitor {
-    WTF_MAKE_NONCOPYABLE(SlotVisitor); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(SlotVisitor);
+    WTF_MAKE_FAST_ALLOCATED;
+
     friend class HeapRootVisitor; // Allowed to mark a JSValue* or JSCell** directly.
+    friend class Heap;
 
 public:
     SlotVisitor(Heap&);
@@ -75,10 +76,9 @@ public:
     template<typename T>
     void appendUnbarrieredReadOnlyPointer(T*);
     void appendUnbarrieredReadOnlyValue(JSValue);
-    void unconditionallyAppend(JSCell*);
     
-    void addOpaqueRoot(void*);
-    bool containsOpaqueRoot(void*) const;
+    JS_EXPORT_PRIVATE void addOpaqueRoot(void*);
+    JS_EXPORT_PRIVATE bool containsOpaqueRoot(void*) const;
     TriState containsOpaqueRootTriState(void*) const;
     int opaqueRootCount();
 
@@ -104,33 +104,26 @@ public:
 
     void copyLater(JSCell*, CopyToken, void*, size_t);
     
-    void reportExtraMemoryVisited(JSCell* owner, size_t);
+    void reportExtraMemoryVisited(size_t);
     
     void addWeakReferenceHarvester(WeakReferenceHarvester*);
     void addUnconditionalFinalizer(UnconditionalFinalizer*);
-
-    inline void resetChildCount() { m_logChildCount = 0; }
-    inline unsigned childCount() { return m_logChildCount; }
-    inline void incrementChildCount() { m_logChildCount++; }
 
     void dump(PrintStream&) const;
 
 private:
     friend class ParallelModeEnabler;
     
-    JS_EXPORT_PRIVATE static void validate(JSCell*);
+    JS_EXPORT_PRIVATE void append(JSValue); // This is private to encourage clients to use WriteBarrier<T>.
 
-    void append(JSValue*);
-    void append(JSValue*, size_t count);
-    void append(JSCell**);
-    
-    void internalAppend(void* from, JSCell*);
-    void internalAppend(void* from, JSValue);
-    void internalAppend(void* from, JSValue*);
+    JS_EXPORT_PRIVATE void setMarkedAndAppendToMarkStack(JSCell*);
+    void appendToMarkStack(JSCell*);
     
     JS_EXPORT_PRIVATE void mergeOpaqueRoots();
     void mergeOpaqueRootsIfNecessary();
     void mergeOpaqueRootsIfProfitable();
+
+    void visitChildren(const JSCell*);
     
     void donateKnownParallel();
 
@@ -144,11 +137,7 @@ private:
     
     Heap& m_heap;
 
-    bool m_shouldHashCons; // Local per-thread copy of shared flag for performance reasons
-    typedef HashMap<StringImpl*, JSValue> UniqueStringMap;
-    UniqueStringMap m_uniqueStrings;
-
-    unsigned m_logChildCount;
+    CellState m_currentObjectCellStateBeforeVisiting { CellState::NewWhite };
 
 public:
 #if !ASSERT_DISABLED

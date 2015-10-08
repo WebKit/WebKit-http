@@ -26,6 +26,8 @@
 #include "config.h"
 #include "DirectArguments.h"
 
+#include "CodeBlock.h"
+#include "CopiedBlockInlines.h"
 #include "CopyVisitorInlines.h"
 #include "GenericArgumentsInlines.h"
 #include "JSCInlines.h"

@@ -1487,7 +1487,7 @@ sub GetFunctionLength
   foreach my $parameter (@{$function->parameters}) {
     # Abort as soon as we find the first optional parameter as no mandatory
     # parameter can follow an optional one.
-    last if $parameter->isOptional;
+    last if $parameter->isOptional || $parameter->isVariadic;
     $numMandatoryParams++;
   }
   return $numMandatoryParams;
@@ -1794,7 +1794,7 @@ sub GenerateImplementation
 
     my $implType = GetImplClassName($interfaceName);
 
-    AddIncludesForJSBuiltinMethods($interface);
+    AddJSBuiltinIncludesIfNeeded($interface);
 
     @implContent = ();
 
@@ -2989,7 +2989,7 @@ sub GenerateImplementation
         }
         push(@implContent, "    thisObject->visitAdditionalChildren(visitor);\n") if $interface->extendedAttributes->{"JSCustomMarkFunction"};
         if ($interface->extendedAttributes->{"ReportExtraMemoryCost"}) {
-            push(@implContent, "    visitor.reportExtraMemoryVisited(cell, thisObject->impl().memoryCost());\n");
+            push(@implContent, "    visitor.reportExtraMemoryVisited(thisObject->impl().memoryCost());\n");
         }
         if ($numCachedAttributes > 0) {
             foreach (@{$interface->attributes}) {
@@ -4607,14 +4607,14 @@ sub GenerateConstructorDeclaration
     push(@$outputArray, "class ${constructorClassName} : public " . $parentClassName . " {\n");
     push(@$outputArray, "private:\n");
     push(@$outputArray, "    ${constructorClassName}(JSC::Structure*, JSDOMGlobalObject*);\n");
-    push(@$outputArray, "    void finishCreation(JSC::VM&, JSDOMGlobalObject*);\n\n");
+    push(@$outputArray, "    void finishCreation(JSC::VM&, JSDOMGlobalObject&);\n\n");
 
     push(@$outputArray, "public:\n");
     push(@$outputArray, "    typedef " . $parentClassName . " Base;\n");
     push(@$outputArray, "    static $constructorClassName* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)\n");
     push(@$outputArray, "    {\n");
     push(@$outputArray, "        $constructorClassName* ptr = new (NotNull, JSC::allocateCell<$constructorClassName>(vm.heap)) $constructorClassName(structure, globalObject);\n");
-    push(@$outputArray, "        ptr->finishCreation(vm, globalObject);\n");
+    push(@$outputArray, "        ptr->finishCreation(vm, *globalObject);\n");
     push(@$outputArray, "        return ptr;\n");
     push(@$outputArray, "    }\n\n");
 
@@ -4654,7 +4654,7 @@ public:
     static JS${interfaceName}NamedConstructor* create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject* globalObject)
     {
         JS${interfaceName}NamedConstructor* constructor = new (NotNull, JSC::allocateCell<JS${interfaceName}NamedConstructor>(vm.heap)) JS${interfaceName}NamedConstructor(structure, globalObject);
-        constructor->finishCreation(vm, globalObject);
+        constructor->finishCreation(vm, *globalObject);
         return constructor;
     }
 
@@ -4669,7 +4669,7 @@ private:
     JS${interfaceName}NamedConstructor(JSC::Structure*, JSDOMGlobalObject*);
     static JSC::EncodedJSValue JSC_HOST_CALL constructJS${interfaceName}(JSC::ExecState*);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
-    void finishCreation(JSC::VM&, JSDOMGlobalObject*);
+    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
 };
 
 END
@@ -4976,11 +4976,11 @@ sub GenerateConstructorHelperMethods
     push(@$outputArray, "{\n");
     push(@$outputArray, "}\n\n");
 
-    push(@$outputArray, "void ${constructorClassName}::finishCreation(VM& vm, JSDOMGlobalObject* globalObject)\n");
+    push(@$outputArray, "void ${constructorClassName}::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)\n");
     push(@$outputArray, "{\n");
 
     if ($generatingNamedConstructor) {
-        push(@$outputArray, "    Base::finishCreation(globalObject);\n");
+        push(@$outputArray, "    Base::finishCreation(&globalObject);\n");
     } else {
         push(@$outputArray, "    Base::finishCreation(vm);\n");
     }
@@ -4990,11 +4990,11 @@ sub GenerateConstructorHelperMethods
     # of whether the interface was declared with the [NoInterfaceObject] extended attribute.
     # https://heycam.github.io/webidl/#interface-prototype-object
     if (IsDOMGlobalObject($interface)) {
-        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject->prototype(), DontDelete | ReadOnly | DontEnum);\n");
+        push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, globalObject.prototype(), DontDelete | ReadOnly | DontEnum);\n");
     } elsif ($interface->isCallback) {
         push(@$outputArray, "    UNUSED_PARAM(globalObject);\n");
     } else {
-       push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);\n");
+       push(@$outputArray, "    putDirect(vm, vm.propertyNames->prototype, ${className}::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);\n");
     }
 
     push(@$outputArray, "    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral(\"$visibleInterfaceName\"))), ReadOnly | DontEnum);\n");
@@ -5009,7 +5009,7 @@ sub GenerateConstructorHelperMethods
 
     if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
         my $initializeFunctionName = GetJSBuiltinFunctionName(${className}, "initialize" . ${interfaceName});
-        push(@$outputArray, "    setInitializeFunction(vm, *JSC::JSFunction::createBuiltinFunction(vm, ${initializeFunctionName}(vm), globalObject));\n");
+        push(@$outputArray, "    setInitializeFunction(vm, *JSC::JSFunction::createBuiltinFunction(vm, ${initializeFunctionName}(vm), &globalObject));\n");
     }
 
     push(@$outputArray, "}\n\n");
@@ -5100,30 +5100,23 @@ sub ComputeFunctionSpecial
     return (@specials > 0) ? join(" | ", @specials) : "0";
 }
 
-sub UseJSBuiltins
+sub AddJSBuiltinIncludesIfNeeded()
 {
     my $interface = shift;
-    foreach my $function (@{$interface->functions}) {
-        if ($function->signature->extendedAttributes->{"JSBuiltin"}) {
-            return 1;
-        }
+
+    my $include = $interface->name . "Builtins.h";
+
+    if ($interface->extendedAttributes->{"JSBuiltinConstructor"}) {
+        AddToImplIncludes($include);
+        return;
     }
-    return 0
-}
-
-sub AddIncludesForJSBuiltinMethods()
-{
-    my $interface = shift;
 
     foreach my $function (@{$interface->functions}) {
-        next unless ($function->signature->extendedAttributes->{"JSBuiltin"});
-        my $scopeName = $function->signature->extendedAttributes->{"ImplementedBy"};
-        if (!$scopeName) {
-            $scopeName = $interface->name;
-        }
-        AddToImplIncludes($scopeName . "Builtins.h", $function->signature->extendedAttributes->{"Conditional"});
+        AddToImplIncludes($include, $function->signature->extendedAttributes->{"Conditional"}) if $function->signature->extendedAttributes->{"JSBuiltin"};
+    }
 
-        return 1;
+    foreach my $attribute (@{$interface->attributes}) {
+        AddToImplIncludes($include, $attribute->signature->extendedAttributes->{"Conditional"}) if $attribute->signature->extendedAttributes->{"JSBuiltin"};
     }
 
 }

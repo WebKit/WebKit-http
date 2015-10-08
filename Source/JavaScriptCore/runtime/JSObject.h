@@ -1232,7 +1232,7 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
     Structure* newStructure = Structure::addPropertyTransitionToExistingStructure(
         structure, propertyName, attributes, offset);
     if (newStructure) {
-        newStructure->willStoreValueForTransition(
+        newStructure->willStoreValueForExistingTransition(
             vm, propertyName, value, slot.context() == PutPropertySlot::PutById);
         
         DeferGC deferGC(vm.heap);
@@ -1283,7 +1283,7 @@ inline bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSVal
     
     newStructure = Structure::addPropertyTransition(
         vm, structure, propertyName, attributes, offset, slot.context(), &deferredWatchpointFire);
-    newStructure->willStoreValueForTransition(
+    newStructure->willStoreValueForNewTransition(
         vm, propertyName, value, slot.context() == PutPropertySlot::PutById);
     
     validateOffset(offset);
@@ -1354,7 +1354,7 @@ inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyNa
     Structure* structure = this->structure();
     PropertyOffset offset = structure->addPropertyWithoutTransition(vm, propertyName, attributes);
     bool shouldOptimize = false;
-    structure->willStoreValueForTransition(vm, propertyName, value, shouldOptimize);
+    structure->willStoreValueForNewTransition(vm, propertyName, value, shouldOptimize);
     setStructureAndButterfly(vm, structure, newButterfly);
     putDirect(vm, offset, value);
 }
@@ -1406,28 +1406,6 @@ inline size_t JSObject::butterflyTotalSize()
     return Butterfly::totalSize(preCapacity, structure->outOfLineCapacity(), hasIndexingHeader, indexingPayloadSizeInBytes);
 }
 
-// Helpers for patching code where you want to emit a load or store and
-// the base is:
-// For inline offsets: a pointer to the out-of-line storage pointer.
-// For out-of-line offsets: the base of the out-of-line storage.
-inline size_t offsetRelativeToPatchedStorage(PropertyOffset offset)
-{
-    if (isOutOfLineOffset(offset))
-        return sizeof(EncodedJSValue) * offsetInButterfly(offset);
-    return JSObject::offsetOfInlineStorage() - JSObject::butterflyOffset() + sizeof(EncodedJSValue) * offsetInInlineStorage(offset);
-}
-
-// Returns the maximum offset (away from zero) a load instruction will encode.
-inline size_t maxOffsetRelativeToPatchedStorage(PropertyOffset offset)
-{
-    ptrdiff_t addressOffset = static_cast<ptrdiff_t>(offsetRelativeToPatchedStorage(offset));
-#if USE(JSVALUE32_64)
-    if (addressOffset >= 0)
-        return static_cast<size_t>(addressOffset) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag);
-#endif
-    return static_cast<size_t>(addressOffset);
-}
-
 inline int indexRelativeToBase(PropertyOffset offset)
 {
     if (isOutOfLineOffset(offset))
@@ -1441,6 +1419,17 @@ inline int offsetRelativeToBase(PropertyOffset offset)
     if (isOutOfLineOffset(offset))
         return offsetInOutOfLineStorage(offset) * sizeof(EncodedJSValue) + Butterfly::offsetOfPropertyStorage();
     return JSObject::offsetOfInlineStorage() + offsetInInlineStorage(offset) * sizeof(EncodedJSValue);
+}
+
+// Returns the maximum offset (away from zero) a load instruction will encode.
+inline size_t maxOffsetRelativeToBase(PropertyOffset offset)
+{
+    ptrdiff_t addressOffset = offsetRelativeToBase(offset);
+#if USE(JSVALUE32_64)
+    if (addressOffset >= 0)
+        return static_cast<size_t>(addressOffset) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag);
+#endif
+    return static_cast<size_t>(addressOffset);
 }
 
 COMPILE_ASSERT(!(sizeof(JSObject) % sizeof(WriteBarrierBase<Unknown>)), JSObject_inline_storage_has_correct_alignment);

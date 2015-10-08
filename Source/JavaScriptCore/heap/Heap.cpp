@@ -544,8 +544,6 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
     if (m_operationInProgress == FullCollection)
         m_opaqueRoots.clear();
 
-    m_shouldHashCons = m_vm->haveEnoughNewStringsToHashCons();
-
     m_parallelMarkersShouldExit = false;
 
     m_helperClient.setFunction(
@@ -599,7 +597,6 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
     // the liveness of the rest of the object graph.
     visitWeakHandles(heapRootVisitor);
 
-    clearRememberedSet(rememberedSet);
     {
         std::lock_guard<Lock> lock(m_markingMutex);
         m_parallelMarkersShouldExit = true;
@@ -855,13 +852,6 @@ void Heap::visitWeakHandles(HeapRootVisitor& visitor)
     }
 }
 
-void Heap::clearRememberedSet(Vector<const JSCell*>& rememberedSet)
-{
-    GCPHASE(ClearRememberedSet);
-    for (auto* cell : rememberedSet)
-        const_cast<JSCell*>(cell)->setRemembered(false);
-}
-
 void Heap::updateObjectCounts(double gcStartTime)
 {
     GCCOUNTER(VisitedValueCount, m_slotVisitor.visitCount());
@@ -896,10 +886,6 @@ void Heap::resetVisitors()
 
     ASSERT(m_sharedMarkStack.isEmpty());
     m_weakReferenceHarvesters.removeAll();
-    if (m_shouldHashCons) {
-        m_vm->resetNewStringsSinceLastHashCons();
-        m_shouldHashCons = false;
-    }
 }
 
 size_t Heap::objectCount()
@@ -1015,10 +1001,14 @@ void Heap::addToRememberedSet(const JSCell* cell)
 {
     ASSERT(cell);
     ASSERT(!Options::enableConcurrentJIT() || !isCompilationThread());
-    if (isRemembered(cell))
-        return;
-    const_cast<JSCell*>(cell)->setRemembered(true);
-    m_slotVisitor.unconditionallyAppend(const_cast<JSCell*>(cell));
+    ASSERT(cell->cellState() == CellState::OldBlack);
+    // Indicate that this object is grey and that it's one of the following:
+    // - A re-greyed object during a concurrent collection.
+    // - An old remembered object.
+    // "OldGrey" doesn't tell us which of these things is true, but we usually treat the two cases the
+    // same.
+    cell->setCellState(CellState::OldGrey);
+    m_slotVisitor.appendToMarkStack(const_cast<JSCell*>(cell));
 }
 
 void Heap::collectAndSweep(HeapOperation collectionType)

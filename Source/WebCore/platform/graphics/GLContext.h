@@ -93,9 +93,8 @@ public:
     public:
         virtual ~Data() = default;
     };
-    void setContextData(std::unique_ptr<Data>&& data) { m_contextData = WTF::move(data); }
 
-private:
+protected:
     std::unique_ptr<Data> m_contextData;
 };
 

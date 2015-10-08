@@ -70,6 +70,12 @@
 #include "Settings.h"
 #endif
 
+#if USE(CG)
+#define DefaultSmoothingQuality SmoothingQuality::Low
+#else
+#define DefaultSmoothingQuality SmoothingQuality::Medium
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -172,7 +178,7 @@ CanvasRenderingContext2D::State::State()
     , hasInvertibleTransform(true)
     , lineDashOffset(0)
     , imageSmoothingEnabled(true)
-    , imageSmoothingQuality(SmoothingQuality::Low)
+    , imageSmoothingQuality(DefaultSmoothingQuality)
     , textAlign(StartTextAlign)
     , textBaseline(AlphabeticTextBaseline)
     , direction(Direction::Inherit)
@@ -2596,7 +2602,7 @@ void CanvasRenderingContext2D::setImageSmoothingQuality(const String& smoothingQ
     realizeSaves();
     modifiableState().imageSmoothingQuality = quality;
 
-    if (!modifiableState().imageSmoothingEnabled)
+    if (!state().imageSmoothingEnabled)
         return;
 
     if (auto* context = drawingContext())

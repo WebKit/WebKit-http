@@ -66,7 +66,11 @@ class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, /* public WebCore::GBMSurface::Client, */ public CompositingManager::Client, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, 
+#if PLATFORM(GBM)
+    public WebCore::GBMSurface::Client,
+#endif
+    public CompositingManager::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:

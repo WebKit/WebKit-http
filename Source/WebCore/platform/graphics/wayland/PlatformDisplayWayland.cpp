@@ -95,8 +95,6 @@ void PlatformDisplayWayland::globalCallback(void* data, struct wl_registry* regi
     auto display = static_cast<PlatformDisplayWayland*>(data);
     if (!std::strcmp(interface, "wl_compositor"))
         display->m_compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
-    else if (!std::strcmp(interface, "wl_wpe"))
-        display->m_wpe = static_cast<struct wl_wpe*>(wl_registry_bind(registry, name, &wl_wpe_interface, 1));
 }
 
 void PlatformDisplayWayland::globalRemoveCallback(void*, struct wl_registry*, uint32_t)
@@ -170,8 +168,6 @@ PlatformDisplayWayland::PlatformDisplayWayland(struct wl_display* wlDisplay)
 
 PlatformDisplayWayland::~PlatformDisplayWayland()
 {
-    if (m_wpe)
-        wl_wpe_destroy(m_wpe);
     if (m_compositor)
         wl_compositor_destroy(m_compositor);
     if (m_registry)
@@ -188,39 +184,26 @@ std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntS
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
 }
 
-void PlatformDisplayWayland::registerSurface(struct wl_surface* surface) const
-{
-    wl_wpe_register_surface(m_wpe, surface);
-}
-
-class OffscreenContextData : public GLContext::Data {
-public:
-    OffscreenContextData(struct wl_surface* wlSurface, EGLNativeWindowType nativeWindow)
-        : m_wlSurface(wlSurface)
-        , m_nativeWindow(nativeWindow)
-    { }
-
-    virtual ~OffscreenContextData()
-    {
-        wl_egl_window_destroy(m_nativeWindow);
-        wl_surface_destroy(m_wlSurface);
-    }
-
-private:
-    struct wl_surface* m_wlSurface;
-    EGLNativeWindowType m_nativeWindow;
-};
-
 std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createOffscreenContext(GLContext* sharingContext)
 {
-    struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
-    EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, 1, 1);
-    auto contextData = std::make_unique<OffscreenContextData>(wlSurface, nativeWindow);
+    class OffscreenContextData : public GLContext::Data {
+    public:
+        virtual ~OffscreenContextData()
+        {
+            wl_egl_window_destroy(nativeWindow);
+            wl_surface_destroy(surface);
+        }
 
-    auto context = GLContextEGL::createWindowContext(nativeWindow, sharingContext);
-    if (context)
-        context->setContextData(WTF::move(contextData));
-    return context;
+        struct wl_surface* surface;
+        EGLNativeWindowType nativeWindow;
+    };
+
+    auto contextData = std::make_unique<OffscreenContextData>();
+    contextData->surface = wl_compositor_create_surface(m_compositor);
+    contextData->nativeWindow = wl_egl_window_create(contextData->surface, 1, 1);
+
+    auto nativeWindow = contextData->nativeWindow;
+    return GLContextEGL::createWindowContext(nativeWindow, nullptr, WTF::move(contextData));
 }
 
 } // namespace WebCore

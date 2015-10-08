@@ -6,8 +6,7 @@ list(APPEND WTF_SOURCES
     glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
-
-    wpe/WorkQueueWPE.cpp
+    glib/WorkQueueGLib.cpp
 )
 
 list(APPEND WTF_LIBRARIES

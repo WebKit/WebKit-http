@@ -4592,6 +4592,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
 #if PLATFORM(IOS)
     frame->setFirstLayerTreeTransactionIDAfterDidCommitLoad(downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID());
     cancelPotentialTapInFrame(*frame);
+    resetAssistedNodeForFrame(frame);
 #endif
 
     if (!frame->isMainFrame())
@@ -4896,9 +4897,13 @@ Ref<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRe
 {
     Ref<WebDocumentLoader> documentLoader = WebDocumentLoader::create(request, substituteData);
 
-    if (m_pendingNavigationID && frame.isMainFrame()) {
-        documentLoader->setNavigationID(m_pendingNavigationID);
-        m_pendingNavigationID = 0;
+    if (frame.isMainFrame()) {
+        if (m_pendingNavigationID) {
+            documentLoader->setNavigationID(m_pendingNavigationID);
+            m_pendingNavigationID = 0;
+        }
+        if (frame.page())
+            documentLoader->setUserContentExtensionsEnabled(frame.page()->userContentExtensionsEnabled());
     }
 
     return WTF::move(documentLoader);

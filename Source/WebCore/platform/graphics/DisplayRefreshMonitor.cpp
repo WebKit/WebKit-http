@@ -44,6 +44,9 @@ RefPtr<DisplayRefreshMonitor> DisplayRefreshMonitor::createDefaultDisplayRefresh
 #if PLATFORM(MAC)
     return DisplayRefreshMonitorMac::create(displayID);
 #endif
+#if PLATFORM(IOS)
+    return DisplayRefreshMonitorIOS::create(displayID);
+#endif
 #if PLATFORM(WPE)
     UNUSED_PARAM(displayID);
     RELEASE_ASSERT_NOT_REACHED();

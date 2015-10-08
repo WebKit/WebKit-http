@@ -22,7 +22,8 @@
 #include "config.h"
 #include "TextureMapperShaderProgram.h"
 
-#if USE(TEXTURE_MAPPER)
+#if USE(TEXTURE_MAPPER_GL)
+
 #include "LengthFunctions.h"
 #include "Logging.h"
 #include "TextureMapperGL.h"
@@ -407,4 +408,4 @@ PassRefPtr<TextureMapperShaderProgram> TextureMapperShaderProgram::create(PassRe
 }
 
 }
-#endif
+#endif // USE(TEXTURE_MAPPER_GL)

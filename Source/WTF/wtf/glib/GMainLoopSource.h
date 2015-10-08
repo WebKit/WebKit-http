@@ -71,30 +71,6 @@ public:
     static void scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<void()>&&, std::chrono::microseconds, int priority = G_PRIORITY_DEFAULT, std::function<void()>&& destroyFunction = nullptr, GMainContext* = nullptr);
     static void scheduleAfterDelayAndDeleteOnDestroy(const char* name, std::function<bool()>&&, std::chrono::microseconds, int priority = G_PRIORITY_DEFAULT, std::function<void()>&& destroyFunction = nullptr, GMainContext* = nullptr);
 
-    class Simple {
-        WTF_MAKE_NONCOPYABLE(Simple);
-    public:
-        Simple(const char*);
-        Simple(const char* name, std::function<void ()>);
-
-        void schedule(std::chrono::microseconds);
-        void schedule(std::chrono::microseconds, std::function<void ()>);
-        void cancel();
-
-        bool isActive() { return m_status != Ready; }
-        bool isScheduled() { return m_status == Scheduled; }
-
-    private:
-        static GSourceFuncs m_sourceFunctions;
-        static gboolean simpleSourceCallback(Simple*);
-
-        enum Status { Ready, Scheduled, Dispatching };
-
-        GRefPtr<GSource> m_source;
-        std::function<void ()> m_function;
-        Status m_status;
-    };
-
 protected:
     enum Status { Ready, Scheduled, Dispatching };
 

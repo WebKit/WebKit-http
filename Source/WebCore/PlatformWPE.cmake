@@ -46,41 +46,42 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${WTF_DIR}
 )
 
-# WaylandWPE protocol extension.
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
-    DEPENDS ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml
-    COMMAND wayland-scanner server-header < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocolServer.h
-    COMMAND wayland-scanner client-header < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocolClient.h
-    COMMAND wayland-scanner code < ${WEBCORE_DIR}/platform/graphics/wayland/WaylandWPEProtocol.xml > ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
-)
-
 list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
+
     page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
     page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+
     page/scrolling/ScrollingStateStickyNode.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
     page/scrolling/ScrollingTreeScrollingNode.cpp
+
     platform/Cursor.cpp
     platform/PlatformStrategies.cpp
     platform/Theme.cpp
+
     platform/audio/glib/AudioBusGlib.cpp
+
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp
     platform/audio/gstreamer/AudioSourceProviderGStreamer.cpp
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
+
     platform/geoclue/GeolocationProviderGeoclue1.cpp
     platform/geoclue/GeolocationProviderGeoclue2.cpp
+
+    platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
+
     platform/graphics/bcm/BCMRPiSurface.cpp
     platform/graphics/bcm/PlatformDisplayBCMRPi.cpp
+
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp
@@ -98,13 +99,17 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/PlatformPathCairo.cpp
     platform/graphics/cairo/RefPtrCairo.cpp
     platform/graphics/cairo/TransformationMatrixCairo.cpp
+
     platform/graphics/egl/GLContextEGL.cpp
+
     platform/graphics/freetype/FontCacheFreeType.cpp
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
+
     platform/graphics/gbm/GBMSurface.cpp
     platform/graphics/gbm/PlatformDisplayGBM.cpp
+
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
@@ -121,19 +126,22 @@ list(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
+
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
+
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
     platform/graphics/opengl/Extensions3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
     platform/graphics/opengl/TemporaryOpenGLSetting.cpp
+
     platform/graphics/opentype/OpenTypeVerticalData.cpp
+
     platform/graphics/texmap/BitmapTexture.cpp
     platform/graphics/texmap/BitmapTextureGL.cpp
     platform/graphics/texmap/BitmapTexturePool.cpp
-    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
     platform/graphics/texmap/TextureMapperGL.cpp
     platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp
     platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp
@@ -146,23 +154,31 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/Tile.cpp
     platform/graphics/texmap/coordinated/TiledBackingStore.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
-    platform/graphics/wayland/PlatformDisplayWayland.cpp
-    platform/graphics/wayland/WaylandSurfaceWPE.cpp
-    platform/graphics/GLContext.cpp
+
     platform/image-decoders/ImageDecoder.cpp
+    platform/image-encoders/JPEGImageEncoder.cpp
+
     platform/image-decoders/bmp/BMPImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageReader.cpp
+
     platform/image-decoders/cairo/ImageDecoderCairo.cpp
+
     platform/image-decoders/gif/GIFImageDecoder.cpp
     platform/image-decoders/gif/GIFImageReader.cpp
+
     platform/image-decoders/ico/ICOImageDecoder.cpp
+
     platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+
     platform/image-decoders/png/PNGImageDecoder.cpp
+
     platform/image-decoders/webp/WEBPImageDecoder.cpp
-    platform/image-encoders/JPEGImageEncoder.cpp
+
     platform/linux/MemoryPressureHandlerLinux.cpp
+
     platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
     platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
+
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
     platform/network/soup/CookieJarSoup.cpp
@@ -179,23 +195,32 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/SoupNetworkSession.cpp
     platform/network/soup/SynchronousLoaderClientSoup.cpp
     platform/network/soup/WebKitSoupRequestGeneric.cpp
+
     platform/soup/SharedBufferSoup.cpp
     platform/soup/URLSoup.cpp
+
     platform/text/icu/UTextProvider.cpp
     platform/text/icu/UTextProviderLatin1.cpp
     platform/text/icu/UTextProviderUTF16.cpp
+
     platform/text/LocaleICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
 
-    # FIXME: Split into a WebCorePlatform library
+    # FIXME: Split build targers below into a WebCorePlatform library
     editing/wpe/EditorWPE.cpp
+
     page/wpe/EventHandlerWPE.cpp
+
     platform/graphics/cairo/GraphicsContextCairo.cpp
+
     platform/graphics/freetype/FontPlatformDataFreeType.cpp
+
     platform/graphics/wpe/IconWPE.cpp
     platform/graphics/wpe/ImageWPE.cpp
+
     platform/text/wpe/TextBreakIteratorInternalICUWPE.cpp
+
     platform/wpe/ContextMenuItemWPE.cpp
     platform/wpe/ContextMenuWPE.cpp
     platform/wpe/CursorWPE.cpp
@@ -217,8 +242,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
-
-    ${DERIVED_SOURCES_WEBCORE_DIR}/WaylandWPEProtocol.c
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -313,6 +336,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/CryptoKey.cpp
         crypto/CryptoKeyPair.cpp
         crypto/SubtleCrypto.cpp
+
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp
         crypto/algorithms/CryptoAlgorithmHMAC.cpp
