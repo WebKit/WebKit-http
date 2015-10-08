@@ -354,9 +354,10 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
     case GST_EVENT_PROTECTION: {
         const gchar* systemId;
         const gchar* origin;
+        GstBuffer* initdatabuffer;
 
         GST_INFO_OBJECT(self, "received protection event");
-        gst_event_parse_protection(event, &systemId, &self->initDataBuffer, &origin);
+        gst_event_parse_protection(event, &systemId, &initdatabuffer, &origin);
         GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
         if (!g_str_equal(systemId, PLAYREADY_PROTECTION_SYSTEM_ID)
             || !g_str_has_prefix(origin, "smooth-streaming")) {
@@ -368,6 +369,7 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
         // Keep the event ref around so that the parsed event data
         // remains valid until the drm-key-need message has been sent.
         self->protectionEvent = event;
+        self->initDataBuffer = initdatabuffer;
         g_timeout_add(0, requestKey, self);
 
         result = TRUE;
