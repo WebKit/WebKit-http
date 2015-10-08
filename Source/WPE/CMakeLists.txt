@@ -50,16 +50,24 @@ set(WPE_SOURCES
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
 
     Source/ViewBackend/ViewBackend.cpp
-
-    Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
-
-    Source/ViewBackend/DRM/ViewBackendDRM.cpp
-
-    Source/ViewBackend/Wayland/ViewBackendWayland.cpp
-    Source/ViewBackend/Wayland/WaylandDisplay.cpp
-    Source/ViewBackend/Wayland/wayland-drm-protocol.c
-    Source/ViewBackend/Wayland/xdg-shell-protocol.c
 )
+
+if (WTF_PLATFORM_BCM_RPI)
+    list(APPEND WPE_SOURCES
+        Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
+    )
+endif ()
+
+if (WTF_PLATFORM_GBM)
+    list(APPEND
+        Source/ViewBackend/DRM/ViewBackendDRM.cpp
+
+        Source/ViewBackend/Wayland/ViewBackendWayland.cpp
+        Source/ViewBackend/Wayland/WaylandDisplay.cpp
+        Source/ViewBackend/Wayland/wayland-drm-protocol.c
+        Source/ViewBackend/Wayland/xdg-shell-protocol.c WPE_SOURCES
+    )
+endif ()
 
 include_directories(${WPE_INCLUDE_DIRECTORIES})
 add_library(WPE SHARED ${WPE_SOURCES})
