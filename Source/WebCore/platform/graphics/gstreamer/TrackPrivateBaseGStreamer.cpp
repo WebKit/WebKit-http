@@ -101,7 +101,7 @@ void TrackPrivateBaseGStreamer::disconnect()
 
 void TrackPrivateBaseGStreamer::activeChanged()
 {
-    m_activeTimerHandler.schedule(std::chrono::milliseconds(0));
+    m_activeTimerHandler.schedule();
 }
 
 void TrackPrivateBaseGStreamer::tagsChanged()
@@ -119,7 +119,7 @@ void TrackPrivateBaseGStreamer::tagsChanged()
         m_tags.swap(tags);
     }
 
-    m_tagTimerHandler.schedule(std::chrono::milliseconds(0));
+    m_tagTimerHandler.schedule();
 }
 
 void TrackPrivateBaseGStreamer::notifyTrackOfActiveChanged()

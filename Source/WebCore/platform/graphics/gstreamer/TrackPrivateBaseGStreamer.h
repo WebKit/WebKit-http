@@ -31,7 +31,7 @@
 #include "GRefPtrGStreamer.h"
 #include <wtf/Lock.h>
 #include <wtf/ThreadingPrimitives.h>
-#include <wtf/glib/GThreadSafeMainLoopSource.h>
+#include <wtf/glib/GSourceWrap.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -71,8 +71,8 @@ private:
     bool getTag(GstTagList* tags, const gchar* tagName, StringType& value);
 
     TrackPrivateBase* m_owner;
-    GMainLoopSource::Simple m_activeTimerHandler;
-    GMainLoopSource::Simple m_tagTimerHandler;
+    GSourceWrap::Static m_activeTimerHandler;
+    GSourceWrap::Static m_tagTimerHandler;
 
     Lock m_tagMutex;
     GRefPtr<GstTagList> m_tags;
