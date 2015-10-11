@@ -41,29 +41,6 @@ namespace WebCore {
 
 class IntSize;
 
-class GstObjectRef {
-public:
-    GstObjectRef(GstObject* object)
-        : m_object(GST_OBJECT(gst_object_ref(object)))
-    {
-    }
-
-    ~GstObjectRef()
-    {
-        gst_object_unref(m_object);
-    }
-
-    GstObjectRef(const GstObjectRef& other)
-        : m_object(GST_OBJECT(gst_object_ref(other.m_object)))
-    {
-    }
-
-    GstObject* get() const { return m_object; }
-
-private:
-    GstObject* m_object;
-};
-
 inline bool webkitGstCheckVersion(guint major, guint minor, guint micro)
 {
     guint currentMajor, currentMinor, currentMicro, currentNano;
