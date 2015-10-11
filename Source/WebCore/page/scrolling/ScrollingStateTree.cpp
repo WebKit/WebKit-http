@@ -35,6 +35,10 @@
 #include "ScrollingStateStickyNode.h"
 #include <wtf/text/CString.h>
 
+#ifndef NDEBUG
+#include <cstdio>
+#endif
+
 namespace WebCore {
 
 ScrollingStateTree::ScrollingStateTree(AsyncScrollingCoordinator* scrollingCoordinator)
