@@ -81,6 +81,9 @@
 #include "MediaPlayerPrivateAVFoundationCF.h"
 #endif
 
+#if USE(HOLE_PUNCH_EXTERNAL)
+#include "MediaPlayerPrivateHolePunchDummy.h"
+#endif
 namespace WebCore {
 
 const PlatformMedia NoPlatformMedia = { PlatformMedia::None, {0} };
@@ -202,6 +205,10 @@ static void buildMediaEnginesVector()
 #if PLATFORM(MAC)
     if (Settings::isQTKitEnabled())
         MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
+#endif
+
+#if USE(HOLE_PUNCH_EXTERNAL)
+    MediaPlayerPrivateHolePunchDummy::registerMediaEngine(addMediaEngine);
 #endif
 
 #if defined(PlatformMediaEngineClassName)

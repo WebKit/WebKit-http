@@ -410,3 +410,14 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2) AND ENABLE_DXDRM)
         )
     endif ()
 endif ()
+
+if (USE_HOLE_PUNCH_EXTERNAL)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/holepunch/MediaPlayerPrivateHolePunchBase.cpp
+        platform/graphics/holepunch/MediaPlayerPrivateHolePunchDummy.cpp
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/holepunch"
+    )
+endif ()

@@ -62,9 +62,14 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper* textu
         return;
     }
 
-    ASSERT(m_textureID);
-    TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-    texmapGL->drawTexture(m_textureID, m_flags, m_size, targetRect, modelViewMatrix, opacity);
+    if (m_flags & TextureMapperGL::ShouldOverwriteRect) {
+        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+        texmapGL->drawSolidColor(targetRect, modelViewMatrix, Color(0, 0, 0, 0), false);
+    } else {
+        ASSERT(m_textureID);
+        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+        texmapGL->drawTexture(m_textureID, m_flags, m_size, targetRect, modelViewMatrix, opacity);
+    }
 }
 
 }; // namespace WebCore
