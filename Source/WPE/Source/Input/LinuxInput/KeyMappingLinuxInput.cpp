@@ -517,10 +517,10 @@ int windowsKeyCodeForKeyEvent(const KeyboardEvent& event)
             return VK_MEDIA_PLAY_PAUSE;
 // VK_MEDIA_LAUNCH_MAIL (0xB4) // Windows 2000/XP: Start Mail key
 // VK_MEDIA_LAUNCH_MEDIA_SELECT (0xB5) // Windows 2000/XP: Select Media key
-        case KEY_EPG:
-            return VK_MEDIA_LAUNCH_APP1;
-        case KEY_APPSELECT:
-            return VK_MEDIA_LAUNCH_APP2;
+//        case KEY_EPG:
+//            return VK_MEDIA_LAUNCH_APP1;
+//        case KEY_APPSELECT:
+//            return VK_MEDIA_LAUNCH_APP2;
         case KEY_SEMICOLON:
             return VK_OEM_1;      // (0xBA) Used for miscellaneous characters; it can vary by keyboard. Windows 2000/XP: For the US standard keyboard, the ';:' key
         case KEY_EQUAL:
