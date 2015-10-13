@@ -303,6 +303,15 @@ add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 
+file(WRITE ${CMAKE_BINARY_DIR}/test_atomic.cpp
+     "#include <atomic>\n"
+     "int main() { std::atomic<int64_t> i(0); i++; return 0; }\n")
+try_compile(ATOMIC_BUILD_SUCCEEDED ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+if (NOT ATOMIC_BUILD_SUCCEEDED)
+    list(APPEND WebKit2_LIBRARIES atomic)
+endif ()
+file(REMOVE ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+
 set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/Shared/API/c/WKArray.h
     ${WEBKIT2_DIR}/Shared/API/c/WKBase.h
