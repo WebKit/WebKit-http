@@ -9,7 +9,7 @@ endif ()
 
 add_definitions(-DWPE_BACKEND_BCM_RPI=1)
 add_definitions(-DWPE_BACKEND_DRM=0)
-add_definitions(-DWPE_BACKEND_WAYLA0ND=0)
+add_definitions(-DWPE_BACKEND_WAYLAND=0)
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
