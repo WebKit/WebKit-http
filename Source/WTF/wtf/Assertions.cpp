@@ -264,7 +264,7 @@ void WTFReportBacktrace()
 #    if defined(__GLIBC__) && !defined(__UCLIBC__)
 #      define USE_BACKTRACE_SYMBOLS 1
 #    endif
-#  else
+#  elif !defined(__UCLIBC__)
 #    define USE_DLADDR 1
 #  endif
 #endif
