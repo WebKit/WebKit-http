@@ -7,9 +7,19 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
-add_definitions(-DWPE_BACKEND_BCM_RPI=1)
+if (WTF_PLATFORM_BCM_RPI)
+    add_definitions(-DWPE_BACKEND_BCM_RPI=1)
+else ()
+    add_definitions(-DWPE_BACKEND_BCM_RPI=0)
+endif ()
+
+if (WTF_PLATFORM_WAYLAND)
+    add_definitions(-DWPE_BACKEND_WAYLAND=1)
+else ()
+    add_definitions(-DWPE_BACKEND_WAYLAND=0)
+endif ()
+
 add_definitions(-DWPE_BACKEND_DRM=0)
-add_definitions(-DWPE_BACKEND_WAYLAND=0)
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
