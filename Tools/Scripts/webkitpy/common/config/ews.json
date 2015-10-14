@@ -34,5 +34,16 @@
             "rniwa@webkit.org"
         ],
         "runTests": true
+    },
+    "Mac Debug EWS": {
+        "port": "mac",
+        "name": "mac-debug-ews",
+        "style": "debug",
+        "runTests": true
+    },
+    "Mac 32-bit EWS": {
+        "port": "mac",
+        "name": "mac-32bit-ews",
+        "architecture": "i386"
     }
 }

@@ -37,11 +37,10 @@
 namespace WebCore {
 
 class AuthorStyleSheets;
-class ContentDistributor;
 class HTMLSlotElement;
 class SlotAssignment;
 
-class ShadowRoot : public DocumentFragment, public TreeScope {
+class ShadowRoot final : public DocumentFragment, public TreeScope {
 public:
     enum class Type : uint8_t {
         UserAgent = 0,
@@ -53,6 +52,13 @@ public:
     {
         return adoptRef(*new ShadowRoot(document, type));
     }
+
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    static Ref<ShadowRoot> create(Document& document, std::unique_ptr<SlotAssignment>&& assignment)
+    {
+        return adoptRef(*new ShadowRoot(document, WTF::move(assignment)));
+    }
+#endif
 
     virtual ~ShadowRoot();
 
@@ -79,9 +85,7 @@ public:
 
     virtual void removeAllEventListeners() override;
 
-    virtual ContentDistributor* distributor() { return nullptr; }
-
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     HTMLSlotElement* findAssignedSlot(const Node&);
 
     void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
@@ -96,6 +100,10 @@ public:
 protected:
     ShadowRoot(Document&, Type);
 
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    ShadowRoot(Document&, std::unique_ptr<SlotAssignment>&&);
+#endif
+
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !m_host; }
 
@@ -104,16 +112,16 @@ private:
 
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
-    bool m_resetStyleInheritance;
-    Type m_type;
+    bool m_resetStyleInheritance { false };
+    Type m_type { Type::UserAgent };
 
-    Element* m_host;
+    Element* m_host { nullptr };
 
     std::unique_ptr<StyleResolver> m_styleResolver;
     std::unique_ptr<AuthorStyleSheets> m_authorStyleSheets;
 
-#if ENABLE(SHADOW_DOM)
-    std::unique_ptr<SlotAssignment> m_slotAssignments;
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    std::unique_ptr<SlotAssignment> m_slotAssignment;
 #endif
 };
 

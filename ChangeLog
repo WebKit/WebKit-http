@@ -1,3 +1,66 @@
+2015-10-14  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK][EFL] Fix build with cmake 3.4
+        https://bugs.webkit.org/show_bug.cgi?id=150117
+
+        Explicitely include the CheckIncludeFiles module before using
+        the CHECK_INCLUDE_FILES command.
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/FindOpenGL.cmake:
+        * Source/cmake/FindWebP.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-10-13  Dean Jackson  <dino@apple.com>
+
+        Device motion and orientation should only be visible from the main frame's security origin
+        https://bugs.webkit.org/show_bug.cgi?id=150072
+        <rdar://problem/23082036>
+
+        Reviewed by Brent Fulgham.
+
+        Add a manual test for cross-origin device orientation events, while
+        we're waiting on the mock client to be supported everywhere.
+
+        * ManualTests/deviceorientation-child-frame.html: Added.
+        * ManualTests/deviceorientation-main-frame-only.html: Added.
+
+2015-10-12  Philip Chimento  <philip.chimento@gmail.com>
+
+        [GTK] OSX linker doesn't understand --whole-archive
+        https://bugs.webkit.org/show_bug.cgi?id=144557
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsGTK.cmake: Turn the macro
+        ADD_WHOLE_ARCHIVE_TO_LIBRARIES into a no-op on Darwin systems,
+        because XCode's linker doesn't have the --whole-archive option.
+
+2015-10-12  Philip Chimento  <philip.chimento@gmail.com>
+
+        [GTK] Use --version-script only on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=144555
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/OptionsGTK.cmake: Don't add --version-script
+        option on Darwin (whose linker doesn't support it.)
+
+2015-10-09  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake] Remove ENABLE_SUBPIXEL_LAYOUT macro
+        https://bugs.webkit.org/show_bug.cgi?id=149947
+
+        Reviewed by Csaba Osztrogonác.
+
+        ENABLE(SUBPIXEL_LAYOUT) was removed though, it is still alive in .cmake.
+        Removed it.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
 2015-10-06  Emanuele Aina  <emanuele.aina@collabora.com>
 
         Fix ENABLE_OPENGL=OFF builds

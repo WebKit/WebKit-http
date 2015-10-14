@@ -44,7 +44,7 @@
 #import "WebEvent.h"
 #import "WebEventConversion.h"
 #import "WebFrame.h"
-#import "WebHitTestResult.h"
+#import "WebHitTestResultData.h"
 #import "WebImage.h"
 #import "WebInspector.h"
 #import "WebPageOverlay.h"
@@ -1075,7 +1075,7 @@ void WebPage::performImmediateActionHitTestAtLocation(WebCore::FloatPoint locati
 
     MainFrame& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view() || !mainFrame.view()->renderView()) {
-        send(Messages::WebPageProxy::DidPerformImmediateActionHitTest(WebHitTestResult::Data(), false, UserData()));
+        send(Messages::WebPageProxy::DidPerformImmediateActionHitTest(WebHitTestResultData(), false, UserData()));
         return;
     }
 
@@ -1089,7 +1089,7 @@ void WebPage::performImmediateActionHitTestAtLocation(WebCore::FloatPoint locati
     if (element)
         immediateActionHitTestPreventsDefault = element->dispatchMouseForceWillBegin();
 
-    WebHitTestResult::Data immediateActionResult(hitTestResult);
+    WebHitTestResultData immediateActionResult(hitTestResult);
 
     RefPtr<Range> selectionRange = corePage()->focusController().focusedOrMainFrame().selection().selection().firstRange();
 

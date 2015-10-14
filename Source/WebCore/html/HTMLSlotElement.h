@@ -26,8 +26,9 @@
 #ifndef HTMLSlotElement_h
 #define HTMLSlotElement_h
 
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+
 #include "HTMLElement.h"
-#include "InsertionPoint.h"
 #include "Range.h"
 
 namespace WebCore {
@@ -48,4 +49,5 @@ private:
 
 }
 
+#endif
 #endif

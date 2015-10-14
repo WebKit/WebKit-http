@@ -54,6 +54,7 @@
 #include <memory>
 #include <wtf/MathExtras.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/PointerComparison.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -400,9 +401,7 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
-        // If the style pointers are the same, don't bother doing the test.
-        // If either is null, return false. If both are null, return true.
-        if ((!a && !b) || a == b)
+        if (a == b)
             return true;
         if (!a || !b)
             return false;
@@ -477,6 +476,24 @@ public:
         : RefCountedPropertyWrapper<ClipPathOperation>(prop, getter, setter)
     {
     }
+
+    virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
+    {
+        // If the style pointers are the same, don't bother doing the test.
+        // If either is null, return false. If both are null, return true.
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
+        ClipPathOperation* clipPathA = (a->*m_getter)();
+        ClipPathOperation* clipPathB = (b->*m_getter)();
+        if (clipPathA == clipPathB)
+            return true;
+        if (!clipPathA || !clipPathB)
+            return false;
+        return *clipPathA == *clipPathB;
+    }
 };
 
 #if ENABLE(CSS_SHAPES)
@@ -486,6 +503,24 @@ public:
     PropertyWrapperShape(CSSPropertyID prop, ShapeValue* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<ShapeValue>))
         : RefCountedPropertyWrapper<ShapeValue>(prop, getter, setter)
     {
+    }
+
+    virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
+    {
+        // If the style pointers are the same, don't bother doing the test.
+        // If either is null, return false. If both are null, return true.
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
+        ShapeValue* shapeA = (a->*m_getter)();
+        ShapeValue* shapeB = (b->*m_getter)();
+        if (shapeA == shapeB)
+            return true;
+        if (!shapeA || !shapeB)
+            return false;
+        return *shapeA == *shapeB;
     }
 };
 #endif
@@ -500,8 +535,6 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
-       // If the style pointers are the same, don't bother doing the test.
-       // If either is null, return false. If both are null, return true.
        if (a == b)
            return true;
        if (!a || !b)
@@ -509,7 +542,7 @@ public:
 
         StyleImage* imageA = (a->*m_getter)();
         StyleImage* imageB = (b->*m_getter)();
-        return StyleImage::imagesEquivalent(imageA, imageB);
+        return arePointingToEqualData(imageA, imageB);
     }
 };
 
@@ -638,6 +671,11 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
         const ShadowData* shadowA = (a->*m_getter)();
         const ShadowData* shadowB = (b->*m_getter)();
 
@@ -754,6 +792,11 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
         Color fromColor = (a->*m_getter)();
         Color toColor = (b->*m_getter)();
 
@@ -848,11 +891,9 @@ public:
 
     virtual bool equals(const FillLayer* a, const FillLayer* b) const
     {
-       // If the style pointers are the same, don't bother doing the test.
-       // If either is null, return false. If both are null, return true.
-       if ((!a && !b) || a == b)
-           return true;
-       if (!a || !b)
+        if (a == b)
+            return true;
+        if (!a || !b)
             return false;
         return (a->*m_getter)() == (b->*m_getter)();
     }
@@ -909,8 +950,6 @@ public:
 
     virtual bool equals(const FillLayer* a, const FillLayer* b) const
     {
-       // If the style pointers are the same, don't bother doing the test.
-       // If either is null, return false. If both are null, return true.
        if (a == b)
            return true;
        if (!a || !b)
@@ -918,7 +957,7 @@ public:
 
         StyleImage* imageA = (a->*m_getter)();
         StyleImage* imageB = (b->*m_getter)();
-        return StyleImage::imagesEquivalent(imageA, imageB);
+        return arePointingToEqualData(imageA, imageB);
     }
 };
 
@@ -957,6 +996,11 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
         const FillLayer* fromLayer = (a->*m_layersGetter)();
         const FillLayer* toLayer = (b->*m_layersGetter)();
 
@@ -1005,6 +1049,11 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
         for (auto& wrapper : m_propertyWrappers) {
             if (!wrapper->equals(a, b))
                 return false;
@@ -1034,9 +1083,7 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
-        // If the style pointers are the same, don't bother doing the test.
-        // If either is null, return false. If both are null, return true.
-        if ((!a && !b) || a == b)
+        if (a == b)
             return true;
         if (!a || !b)
             return false;
@@ -1065,6 +1112,11 @@ public:
 
     virtual bool equals(const RenderStyle* a, const RenderStyle* b) const
     {
+        if (a == b)
+            return true;
+        if (!a || !b)
+            return false;
+
         if ((a->*m_paintTypeGetter)() != (b->*m_paintTypeGetter)())
             return false;
 

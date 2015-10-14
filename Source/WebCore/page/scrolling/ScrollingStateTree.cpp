@@ -36,7 +36,7 @@
 #include <wtf/text/CString.h>
 
 #ifndef NDEBUG
-#include <cstdio>
+#include <stdio.h>
 #endif
 
 namespace WebCore {

@@ -851,7 +851,7 @@ static bool shouldAllowDisplayAndRunningOfInsecureContent()
 
 static bool shouldAllowPictureInPictureMediaPlayback()
 {
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+#if PLATFORM(IOS)
     static bool shouldAllowPictureInPictureMediaPlayback = iosExecutableWasLinkedOnOrAfterVersion(wkIOSSystemVersion_9_0);
     return shouldAllowPictureInPictureMediaPlayback;
 #else
@@ -4708,7 +4708,9 @@ static Vector<String> toStringVector(NSArray* patterns)
     grammarCheckingEnabled = [defaults boolForKey:WebGrammarCheckingEnabled];
 #endif
 
-    FontCascade::setDefaultTypesettingFeatures([defaults boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey] ? Kerning | Ligatures : 0);
+    bool defaultKerningAndLigatures = [defaults boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
+    FontCascade::setDefaultKerning(defaultKerningAndLigatures);
+    FontCascade::setDefaultLigatures(defaultKerningAndLigatures);
 
 #if !PLATFORM(IOS)
     automaticQuoteSubstitutionEnabled = [self _shouldAutomaticQuoteSubstitutionBeEnabled];

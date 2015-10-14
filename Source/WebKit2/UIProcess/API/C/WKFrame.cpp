@@ -27,6 +27,7 @@
 #include "WKFrame.h"
 
 #include "APIData.h"
+#include "APIFrameInfo.h"
 #include "WKAPICast.h"
 #include "WebCertificateInfo.h"
 #include "WebFrameProxy.h"
@@ -125,6 +126,11 @@ bool WKFrameIsFrameSet(WKFrameRef frameRef)
     return toImpl(frameRef)->isFrameSet();
 }
 
+WKFrameInfoRef WKFrameCreateFrameInfo(WKFrameRef frameRef)
+{
+    return toAPI(&API::FrameInfo::create(*toImpl(frameRef), WebCore::SecurityOrigin::createFromString(toImpl(frameRef)->url())).leakRef());
+}
+
 void WKFrameGetMainResourceData(WKFrameRef frameRef, WKFrameGetResourceDataFunction callback, void* context)
 {
     toImpl(frameRef)->getMainResourceData(toGenericCallbackFunction(context, callback));
@@ -138,16 +144,4 @@ void WKFrameGetResourceData(WKFrameRef frameRef, WKURLRef resourceURL, WKFrameGe
 void WKFrameGetWebArchive(WKFrameRef frameRef, WKFrameGetWebArchiveFunction callback, void* context)
 {
     toImpl(frameRef)->getWebArchive(toGenericCallbackFunction(context, callback));
-}
-
-// NOTE: These are deprecated and should be removed. They currently do nothing.
-
-WKArrayRef WKFrameCopyChildFrames(WKFrameRef)
-{
-    return 0;
-}
-
-WKFrameRef WKFrameGetParentFrame(WKFrameRef)
-{
-    return 0;
 }

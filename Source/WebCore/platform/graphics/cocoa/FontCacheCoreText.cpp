@@ -133,7 +133,7 @@ static inline void appendTrueTypeFeature(CFMutableArrayRef features, const FontF
 
 static inline void appendOpenTypeFeature(CFMutableArrayRef features, const FontFeature& feature)
 {
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 80000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000) || PLATFORM(IOS)
     RetainPtr<CFStringRef> featureKey = adoptCF(CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(feature.tag().data()), feature.tag().size() * sizeof(FontFeatureTag::value_type), kCFStringEncodingASCII, false));
     int rawFeatureValue = feature.value();
     RetainPtr<CFNumberRef> featureValue = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &rawFeatureValue));
@@ -595,14 +595,13 @@ void FontCache::setFontWhitelist(const Vector<String>& inputWhitelist)
 }
 
 #if ENABLE(PLATFORM_FONT_LOOKUP)
-static RetainPtr<CTFontRef> platformFontLookupWithFamily(const AtomicString& family, CTFontSymbolicTraits requestedTraits, FontWeight weight, const FontFeatureSettings& featureSettings, const FontVariantSettings& variantSettings, TextRenderingMode textRenderingMode, float size)
+static RetainPtr<CTFontRef> platformFontLookupWithFamily(const AtomicString& family, CTFontSymbolicTraits requestedTraits, FontWeight weight, float size)
 {
     const auto& whitelist = fontWhitelist();
     if (whitelist.size() && !whitelist.contains(family))
         return nullptr;
 
-    auto foundFont = adoptCF(CTFontCreateForCSS(family.string().createCFString().get(), toCoreTextFontWeight(weight), requestedTraits, size));
-    return preparePlatformFont(foundFont.get(), textRenderingMode, featureSettings, variantSettings);
+    return adoptCF(CTFontCreateForCSS(family.string().createCFString().get(), toCoreTextFontWeight(weight), requestedTraits, size));
 }
 #endif
 
@@ -613,12 +612,13 @@ static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, CTFontSym
     if (auto specialCase = platformFontWithFamilySpecialCase(family, weight, desiredTraits, size))
         return specialCase;
 #if ENABLE(PLATFORM_FONT_LOOKUP)
-    return platformFontLookupWithFamily(family, desiredTraits, weight, featureSettings, variantSettings, textRenderingMode, size);
+    RetainPtr<CTFontRef> foundFont = platformFontLookupWithFamily(family, desiredTraits, weight, size);
 #else
     UNUSED_PARAM(featureSettings);
     UNUSED_PARAM(variantSettings);
-    return platformFontWithFamily(family, desiredTraits, weight, textRenderingMode, size);
+    RetainPtr<CTFontRef> foundFont = platformFontWithFamily(family, desiredTraits, weight, textRenderingMode, size);
 #endif
+    return preparePlatformFont(foundFont.get(), textRenderingMode, featureSettings, variantSettings);
 }
 
 #if PLATFORM(MAC)
@@ -712,7 +712,8 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
 #endif
 
     const FontPlatformData& platformData = originalFontData->platformData();
-    RetainPtr<CTFontRef> result = platformLookupFallbackFont(platformData.font(), description.weight(), description.locale(), characters, length);
+    // FIXME: Should pass in the locale instead of nullAtom.
+    RetainPtr<CTFontRef> result = platformLookupFallbackFont(platformData.font(), description.weight(), nullAtom, characters, length);
     result = preparePlatformFont(result.get(), description.textRenderingMode(), description.featureSettings(), description.variantSettings());
     if (!result)
         return lastResortFallbackFont(description);

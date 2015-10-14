@@ -2360,9 +2360,6 @@
     <ClInclude Include="..\heap\MarkStack.h">
       <Filter>heap</Filter>
     </ClInclude>
-    <ClInclude Include="..\heap\RecursiveAllocationScope.h">
-      <Filter>heap</Filter>
-    </ClInclude>
     <ClInclude Include="..\heap\SlotVisitor.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -4513,6 +4510,9 @@
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFunctionCompiler.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\wasm\WASMFunctionLLVMIRGenerator.h">
       <Filter>wasm</Filter>
     </ClInclude>
     <ClInclude Include="..\wasm\WASMFunctionParser.h">

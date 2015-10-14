@@ -57,10 +57,27 @@ CallSiteIndex CommonData::addCodeOrigin(CodeOrigin codeOrigin)
     return CallSiteIndex(index);
 }
 
+CallSiteIndex CommonData::addUniqueCallSiteIndex(CodeOrigin codeOrigin)
+{
+    if (callSiteIndexFreeList.size())
+        return CallSiteIndex(callSiteIndexFreeList.takeAny());
+
+    codeOrigins.append(codeOrigin);
+    unsigned index = codeOrigins.size() - 1;
+    ASSERT(codeOrigins[index] == codeOrigin);
+    return CallSiteIndex(index);
+}
+
 CallSiteIndex CommonData::lastCallSite() const
 {
     RELEASE_ASSERT(codeOrigins.size());
     return CallSiteIndex(codeOrigins.size() - 1);
+}
+
+void CommonData::removeCallSiteIndex(CallSiteIndex callSite)
+{
+    RELEASE_ASSERT(callSite.bits() < codeOrigins.size());
+    callSiteIndexFreeList.add(callSite.bits());
 }
 
 void CommonData::shrinkToFit()
@@ -89,8 +106,8 @@ void CommonData::validateReferences(const TrackedReferences& trackedReferences)
                     trackedReferences.check(recovery.constant());
             }
             
-            if (ScriptExecutable* executable = inlineCallFrame->executable.get())
-                trackedReferences.check(executable);
+            if (CodeBlock* baselineCodeBlock = inlineCallFrame->baselineCodeBlock.get())
+                trackedReferences.check(baselineCodeBlock);
             
             if (inlineCallFrame->calleeRecovery.isConstant())
                 trackedReferences.check(inlineCallFrame->calleeRecovery.constant());

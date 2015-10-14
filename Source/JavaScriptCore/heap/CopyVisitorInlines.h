@@ -26,16 +26,15 @@
 #ifndef CopyVisitorInlines_h
 #define CopyVisitorInlines_h
 
-#include "ClassInfo.h"
 #include "CopyVisitor.h"
 #include "Heap.h"
-#include "JSCell.h"
-#include "JSDestructibleObject.h"
 
 namespace JSC {
 
 inline bool CopyVisitor::checkIfShouldCopy(void* oldPtr)
 {
+    if (!oldPtr)
+        return false;
     CopiedBlock* block = CopiedSpace::blockFor(oldPtr);
     if (block->isOversize() || block->isPinned())
         return false;
@@ -77,4 +76,3 @@ inline void CopyVisitor::didCopy(void* ptr, size_t bytes)
 } // namespace JSC
 
 #endif // CopyVisitorInlines_h
-

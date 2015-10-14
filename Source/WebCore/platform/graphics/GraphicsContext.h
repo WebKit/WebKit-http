@@ -312,14 +312,15 @@ namespace WebCore {
         WEBCORE_EXPORT void drawImage(Image*, ColorSpace, const FloatRect& destination, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawImage(Image*, ColorSpace, const FloatRect& destination, const FloatRect& source, const ImagePaintingOptions& = ImagePaintingOptions());
 
-        void drawTiledImage(Image*, ColorSpace, const FloatRect& destination, const FloatPoint& source, const FloatSize& tileSize,
-            const ImagePaintingOptions& = ImagePaintingOptions());
+        void drawTiledImage(Image*, ColorSpace, const FloatRect& destination, const FloatPoint& source, const FloatSize& tileSize, const FloatSize& spacing, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawTiledImage(Image*, ColorSpace, const FloatRect& destination, const FloatRect& source, const FloatSize& tileScaleFactor,
             Image::TileRule, Image::TileRule, const ImagePaintingOptions& = ImagePaintingOptions());
 
         WEBCORE_EXPORT void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatPoint& destination, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatRect& destination, const ImagePaintingOptions& = ImagePaintingOptions());
         void drawImageBuffer(ImageBuffer*, ColorSpace, const FloatRect& destination, const FloatRect& source, const ImagePaintingOptions& = ImagePaintingOptions());
+
+        void drawPattern(Image&, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing, ColorSpace, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
 
         WEBCORE_EXPORT void setImageInterpolationQuality(InterpolationQuality);
         InterpolationQuality imageInterpolationQuality() const;

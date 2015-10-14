@@ -29,7 +29,7 @@
 // <rdar://problem/16980736>: Web fonts crash on certain OSes when using CTFontManagerCreateFontDescriptorFromData()
 // FIXME: When we have moved entirely to CORETEXT_WEB_FONTS, remove the isCustomFont member variable from Font, since it will no longer be used.
 // See https://bug-145873-attachments.webkit.org/attachment.cgi?id=254710
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 80000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
 #define CORETEXT_WEB_FONTS 0
 #else
 #define CORETEXT_WEB_FONTS 1
@@ -257,6 +257,12 @@ enum FontTraitsMask {
     FontWeight800Mask = 1 << FontWeight800Bit,
     FontWeight900Mask = 1 << FontWeight900Bit,
     FontWeightMask = FontWeight100Mask | FontWeight200Mask | FontWeight300Mask | FontWeight400Mask | FontWeight500Mask | FontWeight600Mask | FontWeight700Mask | FontWeight800Mask | FontWeight900Mask
+};
+
+enum class Kerning {
+    Auto,
+    Normal,
+    NoShift
 };
 
 }

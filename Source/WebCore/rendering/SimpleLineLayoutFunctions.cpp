@@ -44,7 +44,7 @@
 #include "TextPaintStyle.h"
 
 #if ENABLE(TREE_DEBUGGING)
-#include <cstdio>
+#include <stdio.h>
 #endif
 
 namespace WebCore {

@@ -134,7 +134,7 @@ public:
     /* This function performs a layout only if one is needed. */
     void layoutIfNeeded() { if (needsLayout()) layout(); }
 
-    // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isRoot() is true.
+    // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isDocumentElementRenderer() is true.
     RenderElement& rendererForRootBackground();
 
     // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
@@ -210,6 +210,8 @@ public:
     
     const RenderElement* enclosingRendererWithTextDecoration(TextDecoration, bool firstLine) const;
     void drawLineForBoxSide(GraphicsContext&, const FloatRect&, BoxSide, Color, EBorderStyle, float adjacentWidth1, float adjacentWidth2, bool antialias = false) const;
+
+    bool childRequiresTable(const RenderObject& child) const;
 
 protected:
     enum BaseTypeFlags {

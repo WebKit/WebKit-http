@@ -643,7 +643,9 @@ char* JIT_OPERATION operationNewArrayWithSize(ExecState* exec, Structure* arrayS
     if (UNLIKELY(size < 0))
         return bitwise_cast<char*>(exec->vm().throwException(exec, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer."))));
 
-    return bitwise_cast<char*>(JSArray::create(*vm, arrayStructure, size));
+    JSArray* result = JSArray::create(*vm, arrayStructure, size);
+    result->butterfly(); // Ensure that the backing store is in to-space.
+    return bitwise_cast<char*>(result);
 }
 
 char* JIT_OPERATION operationNewArrayBuffer(ExecState* exec, Structure* arrayStructure, size_t start, size_t size)
@@ -1176,6 +1178,24 @@ int32_t JIT_OPERATION operationSwitchStringAndGetBranchOffset(ExecState* exec, s
     return exec->codeBlock()->stringSwitchJumpTable(tableIndex).offsetForValue(string->value(exec).impl(), std::numeric_limits<int32_t>::min());
 }
 
+char* JIT_OPERATION operationGetButterfly(ExecState* exec, JSCell* cell)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    dataLog("Ran the barrier.\n");
+
+    return bitwise_cast<char*>(jsCast<JSObject*>(cell)->butterfly());
+}
+
+char* JIT_OPERATION operationGetArrayBufferVector(ExecState* exec, JSCell* cell)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    return bitwise_cast<char*>(jsCast<JSArrayBufferView*>(cell)->vector());
+}
+
 void JIT_OPERATION operationNotifyWrite(ExecState* exec, WatchpointSet* set)
 {
     VM& vm = exec->vm();
@@ -1307,7 +1327,7 @@ extern "C" void JIT_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock, OSR
     
     bool didTryToEnterIntoInlinedLoops = false;
     for (InlineCallFrame* inlineCallFrame = exit->m_codeOrigin.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame) {
-        if (inlineCallFrame->executable->didTryToEnterInLoop()) {
+        if (inlineCallFrame->baselineCodeBlock->ownerScriptExecutable()->didTryToEnterInLoop()) {
             didTryToEnterIntoInlinedLoops = true;
             break;
         }
@@ -1377,8 +1397,8 @@ static void triggerFTLReplacementCompile(VM* vm, CodeBlock* codeBlock, JITCode* 
 
     // We need to compile the code.
     compile(
-        *vm, codeBlock->newReplacement().get(), codeBlock, FTLMode, UINT_MAX,
-        Operands<JSValue>(), ToFTLDeferredCompilationCallback::create(codeBlock));
+        *vm, codeBlock->newReplacement(), codeBlock, FTLMode, UINT_MAX,
+        Operands<JSValue>(), ToFTLDeferredCompilationCallback::create());
 }
 
 static void triggerTierUpNowCommon(ExecState* exec, bool inLoop)
@@ -1463,7 +1483,7 @@ char* JIT_OPERATION triggerOSREntryNow(
     if (worklistState == Worklist::Compiling)
         return 0;
     
-    if (CodeBlock* entryBlock = jitCode->osrEntryBlock.get()) {
+    if (CodeBlock* entryBlock = jitCode->osrEntryBlock()) {
         void* address = FTL::prepareOSREntry(
             exec, codeBlock, entryBlock, bytecodeIndex, streamIndex);
         if (address)
@@ -1477,7 +1497,7 @@ char* JIT_OPERATION triggerOSREntryNow(
         
         // OSR entry failed. Oh no! This implies that we need to retry. We retry
         // without exponential backoff and we only do this for the entry code block.
-        jitCode->osrEntryBlock = nullptr;
+        jitCode->clearOSREntryBlock();
         jitCode->osrEntryRetry = 0;
         return 0;
     }
@@ -1494,21 +1514,19 @@ char* JIT_OPERATION triggerOSREntryNow(
     Operands<JSValue> mustHandleValues;
     jitCode->reconstruct(
         exec, codeBlock, CodeOrigin(bytecodeIndex), streamIndex, mustHandleValues);
-    RefPtr<CodeBlock> replacementCodeBlock = codeBlock->newReplacement();
+    CodeBlock* replacementCodeBlock = codeBlock->newReplacement();
     CompilationResult forEntryResult = compile(
-        *vm, replacementCodeBlock.get(), codeBlock, FTLForOSREntryMode, bytecodeIndex,
-        mustHandleValues, ToFTLForOSREntryDeferredCompilationCallback::create(codeBlock));
+        *vm, replacementCodeBlock, codeBlock, FTLForOSREntryMode, bytecodeIndex,
+        mustHandleValues, ToFTLForOSREntryDeferredCompilationCallback::create());
     
-    if (forEntryResult != CompilationSuccessful) {
-        ASSERT(forEntryResult == CompilationDeferred || replacementCodeBlock->hasOneRef());
+    if (forEntryResult != CompilationSuccessful)
         return 0;
-    }
 
     // It's possible that the for-entry compile already succeeded. In that case OSR
     // entry will succeed unless we ran out of stack. It's not clear what we should do.
     // We signal to try again after a while if that happens.
     void* address = FTL::prepareOSREntry(
-        exec, codeBlock, jitCode->osrEntryBlock.get(), bytecodeIndex, streamIndex);
+        exec, codeBlock, jitCode->osrEntryBlock(), bytecodeIndex, streamIndex);
     return static_cast<char*>(address);
 }
 #endif // ENABLE(FTL_JIT)

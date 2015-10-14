@@ -175,7 +175,9 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.accessibilityEnhancedUserInterfaceEnabled = false;
 #endif
 
-    parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
+    bool shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
+    parameters.shouldEnableKerningByDefault = shouldEnableKerningAndLigaturesByDefault;
+    parameters.shouldEnableLigaturesByDefault = shouldEnableKerningAndLigaturesByDefault;
     parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
     parameters.shouldEnableFTLJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
     parameters.shouldEnableMemoryPressureReliefLogging = [[NSUserDefaults standardUserDefaults] boolForKey:@"LogMemoryJetsamDetails"];
@@ -220,7 +222,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
             [(NSData *)data release];
         }, data.leakRef());
     }
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 #endif
 
@@ -248,7 +250,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     parameters.httpProxy = [defaults stringForKey:WebKit2HTTPProxyDefaultsKey];
     parameters.httpsProxy = [defaults stringForKey:WebKit2HTTPSProxyDefaultsKey];
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 #endif
 

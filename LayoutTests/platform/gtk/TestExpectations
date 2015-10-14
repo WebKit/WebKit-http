@@ -682,7 +682,6 @@ webkit.org/b/131224 [ Debug ] media/track/track-insert-after-load-crash.html [ C
 webkit.org/b/131225 [ Debug ] media/track/track-remove-quickly.html [ Crash ]
 
 webkit.org/b/131217 [ Debug ] plugins/no-mime-with-valid-extension.html [ Crash ]
-webkit.org/b/131217 [ Debug ] plugins/embed-prefers-plugins-for-images.html [ Crash ]
 
 webkit.org/b/105870 [ Debug ] webaudio/audiobuffersource-loop-points.html [ Crash ]
 webkit.org/b/105870 [ Debug ] webaudio/audionode-channel-rules.html [ Crash Pass ]
@@ -1221,6 +1220,25 @@ webkit.org/b/119264 transitions/created-while-suspended.html [ Pass Slow ]
 
 Bug(GTK) http/tests/media/hls/video-cookie.html [ Pass Slow ]
 
+webkit.org/b/149916 inspector/codemirror/prettyprinting-css-rules.html [ Pass Slow ]
+webkit.org/b/149916 inspector/codemirror/prettyprinting-css.html [ Pass Slow ]
+webkit.org/b/149916 inspector/codemirror/prettyprinting-javascript.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/addInspectedNode.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/clearMessages.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/command-line-api.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/console-api.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/messageRepeatCountUpdated.html [ Pass Slow ]
+webkit.org/b/149916 inspector/console/messagesCleared.html [ Pass Slow ]
+webkit.org/b/149916 inspector/css/createStyleSheet.html [ Pass Slow ]
+webkit.org/b/149916 inspector/css/matched-style-properties.html [ Pass Slow ]
+webkit.org/b/149916 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Slow ]
+webkit.org/b/149916 inspector/css/stylesheet-events-basic.html [ Pass Slow ]
+webkit.org/b/149916 inspector/css/stylesheet-events-imports.html [ Pass Slow ]
+webkit.org/b/149916 inspector/indexeddb/requestDatabaseNames.html [ Pass Slow ]
+webkit.org/b/149916 inspector/protocol/inspector-backend-invocation-return-value.html [ Pass Slow ]
+webkit.org/b/149916 inspector/runtime/parse.html [ Pass Slow ]
+webkit.org/b/149916 http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html [ Pass Slow ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of slow tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1567,7 +1585,6 @@ Bug(GTK) http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Failure ]
 Bug(GTK) platform/gtk/fast/events/event-sender-metakey.html [ Failure ]
-Bug(GTK) platform/gtk/fast/forms/menulist-typeahead-find.html [ Failure ]
 Bug(GTK) plugins/keyboard-events.html [ Failure ]
 Bug(GTK) plugins/netscape-plugin-setwindow-size-2.html [ Failure ]
 Bug(GTK) plugins/npp-set-window-called-during-destruction.html [ Failure ]

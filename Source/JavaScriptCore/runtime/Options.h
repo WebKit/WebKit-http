@@ -131,7 +131,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, enableFunctionDotArguments, true, nullptr) \
-    v(bool, enableTailCalls, true, nullptr) \
+    v(bool, enableTailCalls, false, nullptr) \
     \
     /* showDisassembly implies showDFGDisassembly. */ \
     v(bool, showDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -203,6 +203,7 @@ typedef const char* optionString;
     v(bool, createPreHeaders, true, nullptr) \
     v(bool, enableMovHintRemoval, true, nullptr) \
     v(bool, enableObjectAllocationSinking, true, nullptr) \
+    v(bool, enableCopyBarrierOptimization, true, nullptr) \
     \
     v(bool, enableConcurrentJIT, true, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, nullptr) \

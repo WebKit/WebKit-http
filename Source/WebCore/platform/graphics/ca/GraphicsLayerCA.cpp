@@ -1240,9 +1240,9 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     }
 
     FloatRect coverageRect = clipRectForSelf;
-    std::unique_ptr<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
+    Optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
     if (quad && !mapWasClamped && !applyWasClamped)
-        coverageRect = quad->boundingBox();
+        coverageRect = (*quad).boundingBox();
 
     return VisibleAndCoverageRects(clipRectForSelf, coverageRect);
 }
@@ -1447,6 +1447,11 @@ bool GraphicsLayerCA::platformCALayerShouldAggressivelyRetainTiles(PlatformCALay
 bool GraphicsLayerCA::platformCALayerShouldTemporarilyRetainTileCohorts(PlatformCALayer*) const
 {
     return client().shouldTemporarilyRetainTileCohorts(this);
+}
+
+IntSize GraphicsLayerCA::platformCALayerTileSize() const
+{
+    return client().tileSize();
 }
 
 static PlatformCALayer::LayerType layerTypeForCustomBackdropAppearance(GraphicsLayer::CustomAppearance appearance)
@@ -1790,7 +1795,7 @@ void GraphicsLayerCA::updateChildrenTransform()
     primaryLayer()->setSublayerTransform(m_childrenTransform);
 
     if (LayerMap* layerCloneMap = primaryLayerClones()) {
-        for (auto & layer : layerCloneMap->values())
+        for (auto& layer : layerCloneMap->values())
             layer->setSublayerTransform(m_childrenTransform);
     }
 }
@@ -1800,7 +1805,7 @@ void GraphicsLayerCA::updateMasksToBounds()
     m_layer->setMasksToBounds(m_masksToBounds);
 
     if (LayerMap* layerCloneMap = m_layerClones.get()) {
-        for (auto & layer : layerCloneMap->values())
+        for (auto& layer : layerCloneMap->values())
             layer->setMasksToBounds(m_masksToBounds);
     }
 }
@@ -1815,7 +1820,7 @@ void GraphicsLayerCA::updateContentsVisibility()
         m_layer->setContents(nullptr);
 
         if (LayerMap* layerCloneMap = m_layerClones.get()) {
-            for (auto & layer : layerCloneMap->values())
+            for (auto& layer : layerCloneMap->values())
                 layer->setContents(nullptr);
         }
     }
@@ -1833,7 +1838,7 @@ void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
     m_layer->setOpaque(contentsOpaque);
 
     if (LayerMap* layerCloneMap = m_layerClones.get()) {
-        for (auto & layer : layerCloneMap->values())
+        for (auto& layer : layerCloneMap->values())
             layer->setOpaque(contentsOpaque);
     }
 }

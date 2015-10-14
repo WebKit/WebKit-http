@@ -30,11 +30,11 @@
 #include "AnimationController.h"
 #include "AuthorStyleSheets.h"
 #include "CSSFontSelector.h"
+#include "ComposedTreeIterator.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
 #include "FlowThreadController.h"
 #include "HTMLSlotElement.h"
-#include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
 #include "MainFrame.h"
@@ -222,8 +222,8 @@ static void createRendererIfNeeded(Element& element, RenderStyle& inheritedStyle
 
 static void invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(Node& current)
 {
-    if (is<InsertionPoint>(current))
-        return;
+    // FIXME: This needs to traverse in composed tree order.
+
     // This function finds sibling text renderers where the results of textRendererIsNeeded may have changed as a result of
     // the current node gaining or losing the renderer. This can only affect white space text nodes.
     for (Node* sibling = current.nextSibling(); sibling; sibling = sibling->nextSibling()) {
@@ -263,7 +263,7 @@ static bool textRendererIsNeeded(const Text& textNode, const RenderTreePosition&
     if (parentRenderer.style().preserveNewline()) // pre/pre-wrap/pre-line always make renderers.
         return true;
 
-    RenderObject* previousRenderer = RenderTreePosition::previousSiblingRenderer(textNode);
+    RenderObject* previousRenderer = renderTreePosition.previousSiblingRenderer(textNode);
     if (previousRenderer && previousRenderer->isBR()) // <span><br/> <br/></span>
         return false;
         
@@ -278,7 +278,7 @@ static bool textRendererIsNeeded(const Text& textNode, const RenderTreePosition&
         RenderObject* first = parentRenderer.firstChild();
         while (first && first->isFloatingOrOutOfFlowPositioned())
             first = first->nextSibling();
-        RenderObject* nextRenderer = RenderTreePosition::nextSiblingRenderer(textNode, parentRenderer);
+        RenderObject* nextRenderer = renderTreePosition.nextSiblingRenderer(textNode);
         if (!first || nextRenderer == first) {
             // Whitespace at the start of a block just goes away. Don't even make a render object for this text.
             return false;
@@ -355,32 +355,6 @@ static void attachChildren(ContainerNode& current, RenderStyle& inheritedStyle, 
         if (is<Element>(*child))
             attachRenderTree(downcast<Element>(*child), inheritedStyle, renderTreePosition, nullptr);
     }
-}
-
-static void attachDistributedChildren(InsertionPoint& insertionPoint, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition)
-{
-    if (ShadowRoot* shadowRoot = insertionPoint.containingShadowRoot())
-        ContentDistributor::ensureDistribution(shadowRoot);
-
-    for (Node* current = insertionPoint.firstDistributed(); current; current = insertionPoint.nextDistributedTo(current)) {
-        if (current->renderer())
-            renderTreePosition.invalidateNextSibling(*current->renderer());
-        if (is<Text>(*current)) {
-            if (current->renderer())
-                continue;
-            attachTextRenderer(downcast<Text>(*current), renderTreePosition);
-            continue;
-        }
-        if (is<Element>(*current)) {
-            Element& currentElement = downcast<Element>(*current);
-            if (currentElement.renderer())
-                detachRenderTree(currentElement);
-            attachRenderTree(currentElement, inheritedStyle, renderTreePosition, nullptr);
-        }
-    }
-    // Use actual children as fallback content.
-    if (!insertionPoint.hasDistribution())
-        attachChildren(insertionPoint, inheritedStyle, renderTreePosition);
 }
 
 static void attachShadowRoot(ShadowRoot& shadowRoot)
@@ -470,7 +444,7 @@ static void attachBeforeOrAfterPseudoElementIfNeeded(Element& current, PseudoId 
     attachRenderTree(pseudoElement.get(), *current.renderStyle(), renderTreePosition, nullptr);
 }
 
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 static void attachSlotAssignees(HTMLSlotElement& slot, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition)
 {
     if (auto* assignedNodes = slot.assignedNodes()) {
@@ -480,14 +454,9 @@ static void attachSlotAssignees(HTMLSlotElement& slot, RenderStyle& inheritedSty
             else if (is<Element>(*child))
                 attachRenderTree(downcast<Element>(*child), inheritedStyle, renderTreePosition, nullptr);
         }
-    } else {
-        for (Node* child = slot.firstChild(); child; child = child->nextSibling()) {
-            if (is<Text>(*child))
-                attachTextRenderer(downcast<Text>(*child), renderTreePosition);
-            else if (is<Element>(*child))
-                attachRenderTree(downcast<Element>(*child), inheritedStyle, renderTreePosition, nullptr);
-        }
-    }
+    } else
+        attachChildren(slot, inheritedStyle, renderTreePosition);
+
     slot.clearNeedsStyleRecalc();
     slot.clearChildNeedsStyleRecalc();
 }
@@ -498,18 +467,12 @@ static void attachRenderTree(Element& current, RenderStyle& inheritedStyle, Rend
     PostResolutionCallbackDisabler callbackDisabler(current.document());
     WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
 
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (is<HTMLSlotElement>(current)) {
         attachSlotAssignees(downcast<HTMLSlotElement>(current), inheritedStyle, renderTreePosition);
         return;
     }
 #endif
-    if (is<InsertionPoint>(current)) {
-        attachDistributedChildren(downcast<InsertionPoint>(current), inheritedStyle, renderTreePosition);
-        current.clearNeedsStyleRecalc();
-        current.clearChildNeedsStyleRecalc();
-        return;
-    }
 
     if (current.hasCustomStyleResolveCallbacks())
         current.willAttachRenderers();
@@ -529,7 +492,7 @@ static void attachRenderTree(Element& current, RenderStyle& inheritedStyle, Rend
         } else if (current.firstChild())
             parentPusher.push();
 
-        bool skipChildren = shadowRoot && shadowRoot->type() != ShadowRoot::Type::UserAgent;
+        bool skipChildren = shadowRoot;
         if (!skipChildren)
             attachChildren(current, renderer->style(), childRenderTreePosition);
 
@@ -549,18 +512,6 @@ static void attachRenderTree(Element& current, RenderStyle& inheritedStyle, Rend
         current.didAttachRenderers();
 }
 
-static void detachDistributedChildren(InsertionPoint& insertionPoint)
-{
-    for (Node* current = insertionPoint.firstDistributed(); current; current = insertionPoint.nextDistributedTo(current)) {
-        if (is<Text>(*current)) {
-            detachTextRenderer(downcast<Text>(*current));
-            continue;
-        }
-        if (is<Element>(*current))
-            detachRenderTree(downcast<Element>(*current));
-    }
-}
-
 static void detachChildren(ContainerNode& current, DetachType detachType)
 {
     for (Node* child = current.firstChild(); child; child = child->nextSibling()) {
@@ -577,7 +528,7 @@ static void detachShadowRoot(ShadowRoot& shadowRoot, DetachType detachType)
     detachChildren(shadowRoot, detachType);
 }
 
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 static void detachSlotAssignees(HTMLSlotElement& slot, DetachType detachType)
 {
     ASSERT(!slot.renderer());
@@ -588,14 +539,9 @@ static void detachSlotAssignees(HTMLSlotElement& slot, DetachType detachType)
             else if (is<Element>(*child))
                 detachRenderTree(downcast<Element>(*child), detachType);
         }
-    } else {
-        for (Node* child = slot.firstChild(); child; child = child->nextSibling()) {
-            if (is<Text>(*child))
-                detachTextRenderer(downcast<Text>(*child));
-            else if (is<Element>(*child))
-                detachRenderTree(downcast<Element>(*child), detachType);
-        }
-    }
+    } else
+        detachChildren(slot, detachType);
+
     slot.clearNeedsStyleRecalc();
     slot.clearChildNeedsStyleRecalc();
 }
@@ -615,10 +561,8 @@ static void detachRenderTree(Element& current, DetachType detachType)
     if (detachType != ReattachDetach)
         current.clearHoverAndActiveStatusBeforeDetachingRenderer();
 
-    if (is<InsertionPoint>(current))
-        detachDistributedChildren(downcast<InsertionPoint>(current));
-#if ENABLE(SHADOW_DOM)
-    else if (is<HTMLSlotElement>(current))
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    if (is<HTMLSlotElement>(current))
         detachSlotAssignees(downcast<HTMLSlotElement>(current), detachType);
 #endif
     else if (ShadowRoot* shadowRoot = current.shadowRoot())
@@ -856,7 +800,7 @@ static void resolveChildren(Element& current, RenderStyle& inheritedStyle, Chang
     }
 }
 
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 static void resolveSlotAssignees(HTMLSlotElement& slot, RenderStyle& inheritedStyle, RenderTreePosition& renderTreePosition, Change change)
 {
     if (auto* assignedNodes = slot.assignedNodes()) {
@@ -883,17 +827,12 @@ void resolveTree(Element& current, RenderStyle& inheritedStyle, RenderTreePositi
 {
     ASSERT(change != Detach);
 
-#if ENABLE(SHADOW_DOM)
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (is<HTMLSlotElement>(current)) {
         resolveSlotAssignees(downcast<HTMLSlotElement>(current), inheritedStyle, renderTreePosition, change);
         return;
     }
 #endif
-    if (is<InsertionPoint>(current)) {
-        current.clearNeedsStyleRecalc();
-        current.clearChildNeedsStyleRecalc();
-        return;
-    }
 
     if (current.hasCustomStyleResolveCallbacks()) {
         if (!current.willRecalcStyle(change))
@@ -920,7 +859,7 @@ void resolveTree(Element& current, RenderStyle& inheritedStyle, RenderTreePositi
         RenderTreePosition childRenderTreePosition(*renderer);
         updateBeforeOrAfterPseudoElement(current, change, BEFORE, childRenderTreePosition);
 
-        bool skipChildren = shadowRoot && shadowRoot->type() != ShadowRoot::Type::UserAgent;
+        bool skipChildren = shadowRoot;
         if (!skipChildren)
             resolveChildren(current, renderer->style(), change, childRenderTreePosition);
 
