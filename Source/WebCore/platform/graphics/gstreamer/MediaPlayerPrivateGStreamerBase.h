@@ -212,8 +212,6 @@ public:
 #if USE(GSTREAMER_GL)
     GCond m_drawCondition;
     GMutex m_drawMutex;
-    GRefPtr<GstVideoFrame> m_videoFrame;
-    GRefPtr<GstVideoInfo> m_videoInfo;
 #endif
     unsigned long m_repaintHandler;
     unsigned long m_volumeSignalHandler;

@@ -205,6 +205,48 @@ static void mediaPlayerPrivateApplicationMessageCallback(GstBus*, GstMessage* me
     player->handleApplicationMessage(message);
 }
 
+#if USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
+class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
+public:
+    GstVideoFrameHolder(GstSample& sample)
+    {
+        GstVideoInfo videoInfo;
+        gst_video_info_init(&videoInfo);
+        GstCaps *caps = gst_sample_get_caps(&sample);
+        if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+            return;
+
+        m_size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+        m_flags = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0;
+
+        GstBuffer* buffer = gst_sample_get_buffer(&sample);
+        if (UNLIKELY(!gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL))))
+            return;
+
+        m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
+        m_isValid = true;
+    }
+    virtual ~GstVideoFrameHolder()
+    {
+        if (UNLIKELY(!m_isValid))
+            return;
+        gst_video_frame_unmap(&m_videoFrame);
+    }
+
+    IntSize size() const { return m_size; }
+    TextureMapperGL::Flags flags() const { return m_flags; }
+    GLuint textureID() const { return m_textureID; }
+    bool isValid() const { return m_isValid; }
+
+private:
+    GstVideoFrame m_videoFrame;
+    IntSize m_size;
+    TextureMapperGL::Flags m_flags;
+    GLuint m_textureID;
+    bool m_isValid { false };
+};
+#endif
+
 MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* player)
     : m_player(player)
     , m_fpsSink(0)
@@ -233,9 +275,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #if USE(GSTREAMER_GL)
     g_cond_init(&m_drawCondition);
     g_mutex_init(&m_drawMutex);
-    m_videoFrame = adoptGRef(new GstVideoFrame());
-    m_videoInfo = adoptGRef(new GstVideoInfo());
-    gst_video_info_init(m_videoInfo.get());
 #endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
@@ -271,7 +310,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if USE(GSTREAMER_GL)
     g_cond_clear(&m_drawCondition);
     g_mutex_clear(&m_drawMutex);
-    gst_video_frame_unmap(m_videoFrame.get());
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -746,22 +784,23 @@ void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
 #if USE(GSTREAMER_GL)
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-        if (!GST_IS_SAMPLE(m_sample.get())) {
-            g_cond_signal(&m_updateCondition);
+        if (!GST_IS_SAMPLE(m_sample.get()))
             return;
-        }
 
-        unsigned textureID = *reinterpret_cast<unsigned*>(m_videoFrame->data[0]);
-        IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(m_videoInfo), GST_VIDEO_INFO_HEIGHT(m_videoInfo));
+        std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(*m_sample);
+        if (UNLIKELY(!frameHolder->isValid()))
+            return;
 
         LockHolder locker(m_platformLayerProxy->mutex());
-        if (!m_platformLayerProxy->hasTargetLayer(locker)) {
-            g_cond_signal(&m_updateCondition);
+        if (!m_platformLayerProxy->hasTargetLayer(locker))
             return;
-        }
-        TextureMapperGL::Flags flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(m_videoInfo) ? TextureMapperGL::ShouldBlend : 0);
-        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(textureID, size, flags));
+
+        TextureMapperGL::Flags flags = m_textureMapperRotationFlag | frameHolder->flags();
+        std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), flags);
+        layerBuffer->setUnmanagedBufferDataHolder(WTF::move(frameHolder));
+        m_platformLayerProxy->pushNextBuffer(locker, WTF::move(layerBuffer));
         m_platformLayerProxy->requestUpdate(locker);
+        return;
     }
 #else
     {
@@ -822,34 +861,20 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 {
     {
         WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-
-#if USE(GSTREAMER_GL)
-        if (m_sample)
-            gst_video_frame_unmap(m_videoFrame.get());
-#endif
         m_sample = sample;
-
-#if USE(GSTREAMER_GL)
-        GstCaps* caps = gst_sample_get_caps(m_sample.get());
-        if (!caps)
-            return;
-
-        if (!gst_video_info_from_caps(m_videoInfo.get(), caps))
-            return;
-
-        GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
-        if (!gst_video_frame_map(m_videoFrame.get(), m_videoInfo.get(), buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
-            return;
-#endif
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(GSTREAMER_GL)
+    updateOnCompositorThread();
+#else
     {
         WTF::GMutexLocker<GMutex> lock(m_updateMutex);
         if (!m_platformLayerProxy->scheduleUpdateOnCompositorThread([this] { this->updateOnCompositorThread(); }))
             return;
         g_cond_wait(&m_updateCondition, &m_updateMutex);
     }
+#endif
     return;
 #endif
 

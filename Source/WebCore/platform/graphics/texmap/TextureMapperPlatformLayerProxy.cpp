@@ -134,19 +134,22 @@ void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
 void TextureMapperPlatformLayerProxy::swapBuffer()
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> prevBuffer;
 
     {
         LockHolder locker(m_mutex);
         if (!m_targetLayer || !m_pendingBuffer)
             return;
 
-        if (m_currentBuffer && m_currentBuffer->hasManagedTexture())
-            m_usedBuffers.append(WTF::move(m_currentBuffer));
+        prevBuffer = WTF::move(m_currentBuffer);
 
         m_currentBuffer = WTF::move(m_pendingBuffer);
         m_targetLayer->setContentsLayer(m_currentBuffer.get());
         m_condition.notifyOne();
     }
+
+    if (prevBuffer && prevBuffer->hasManagedTexture())
+        m_usedBuffers.append(WTF::move(prevBuffer));
 }
 
 bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
