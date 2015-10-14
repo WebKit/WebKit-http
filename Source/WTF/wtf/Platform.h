@@ -1100,6 +1100,17 @@
 #endif
 #endif
 
+#if OS(LINUX) && defined(__UCLIBC__)
+#include <features.h>
+#endif
+
+#if defined(__UCLIBC__)
+#undef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#undef _GLIBCXX_USE_C99_MATH
+#define _GLIBCXX_USE_C99_MATH
+#endif
+
 #if PLATFORM(MAC)
 #define HAVE_NS_ACTIVITY 1
 #endif
