@@ -1368,8 +1368,8 @@ static void webKitMediaSrcDemuxerPadRemoved(GstElement*, GstPad* demuxersrcpad, 
             releaseStream(source->parent, stream);
         else {
             WTF::GMutexLocker<GMutex> lock(source->parent->priv->streamMutex);
-            WebCore::GstObjectRef protector(GST_OBJECT(source->parent));
-            source->parent->priv->timeoutSource.schedule([protector, stream] { releaseStream(WEBKIT_MEDIA_SRC(protector.get()), stream); });
+            GRefPtr<WebKitMediaSrc> protector(source->parent);
+            source->parent->priv->timeoutSource.schedule([protector, stream] { releaseStream(protector.get(), stream); });
             g_cond_wait(&source->parent->priv->streamCondition, &source->parent->priv->streamMutex);
         }
 
@@ -1923,8 +1923,8 @@ void MediaSourceClientGStreamer::removedFromMediaSource(PassRefPtr<SourceBufferP
                 releaseStream(source->parent, stream);
             else {
                 WTF::GMutexLocker<GMutex> lock(source->parent->priv->streamMutex);
-                WebCore::GstObjectRef protector(GST_OBJECT(source->parent));
-                source->parent->priv->timeoutSource.schedule([protector, stream] { releaseStream(WEBKIT_MEDIA_SRC(protector.get()), stream); });
+                GRefPtr<WebKitMediaSrc> protector(source->parent);
+                source->parent->priv->timeoutSource.schedule([protector, stream] { releaseStream(protector.get(), stream); });
 
                 g_cond_wait(&source->parent->priv->streamCondition, &source->parent->priv->streamMutex);
             }
