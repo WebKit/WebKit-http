@@ -26,6 +26,7 @@
 #include "config.h"
 #include "RenderTreePosition.h"
 
+#include "ComposedTreeIterator.h"
 #include "NodeRenderingTraversal.h"
 #include "PseudoElement.h"
 #include "RenderObject.h"
@@ -37,11 +38,14 @@ void RenderTreePosition::computeNextSibling(const Node& node)
 {
     ASSERT(!node.renderer());
     if (m_hasValidNextSibling) {
-        // Stop validating at some point so the assert doesn't make us O(N^2) on debug builds.
-        ASSERT(m_parent.isRenderView() || ++m_assertionLimitCounter > 20 || nextSiblingRenderer(node, m_parent) == m_nextSibling);
+#if !ASSERT_DISABLED
+        const unsigned oNSquaredAvoidanceLimit = 20;
+        bool skipAssert = m_parent.isRenderView() || ++m_assertionLimitCounter > oNSquaredAvoidanceLimit;
+        ASSERT(skipAssert || nextSiblingRenderer(node) == m_nextSibling);
+#endif
         return;
     }
-    m_nextSibling = nextSiblingRenderer(node, m_parent);
+    m_nextSibling = nextSiblingRenderer(node);
     m_hasValidNextSibling = true;
 }
 
@@ -53,35 +57,41 @@ void RenderTreePosition::invalidateNextSibling(const RenderObject& siblingRender
         m_hasValidNextSibling = false;
 }
 
-RenderObject* RenderTreePosition::previousSiblingRenderer(const Text& textNode)
+RenderObject* RenderTreePosition::previousSiblingRenderer(const Text& textNode) const
 {
     if (textNode.renderer())
         return textNode.renderer()->previousSibling();
-    for (Node* sibling = NodeRenderingTraversal::previousSibling(&textNode); sibling; sibling = NodeRenderingTraversal::previousSibling(sibling)) {
-        RenderObject* renderer = sibling->renderer();
+
+    auto* parentElement = m_parent.element();
+
+    auto composedChildren = composedTreeChildren(*parentElement);
+    for (auto it = composedChildren.at(textNode), end = composedChildren.end(); it != end; --it) {
+        RenderObject* renderer = it->renderer();
         if (renderer && !RenderTreePosition::isRendererReparented(*renderer))
             return renderer;
     }
-    if (auto* parent = textNode.parentElement()) {
-        if (auto* before = parent->beforePseudoElement())
-            return before->renderer();
-    }
+    if (auto* before = parentElement->beforePseudoElement())
+        return before->renderer();
     return nullptr;
 }
 
-RenderObject* RenderTreePosition::nextSiblingRenderer(const Node& node, const RenderElement& parentRenderer)
+RenderObject* RenderTreePosition::nextSiblingRenderer(const Node& node) const
 {
-    if (!parentRenderer.element())
+    auto* parentElement = m_parent.element();
+    if (!parentElement)
         return nullptr;
     if (node.isAfterPseudoElement())
         return nullptr;
-    Node* sibling = node.isBeforePseudoElement() ? NodeRenderingTraversal::firstChild(parentRenderer.element()) : NodeRenderingTraversal::nextSibling(&node);
-    for (; sibling; sibling = NodeRenderingTraversal::nextSibling(sibling)) {
-        RenderObject* renderer = sibling->renderer();
+
+    auto composedChildren = composedTreeChildren(*parentElement);
+
+    auto it = node.isBeforePseudoElement() ? composedChildren.begin() : composedChildren.at(node);
+    for (auto end = composedChildren.end(); it != end; ++it) {
+        RenderObject* renderer = it->renderer();
         if (renderer && !isRendererReparented(*renderer))
             return renderer;
     }
-    if (PseudoElement* after = parentRenderer.element()->afterPseudoElement())
+    if (PseudoElement* after = parentElement->afterPseudoElement())
         return after->renderer();
     return nullptr;
 }

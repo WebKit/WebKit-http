@@ -74,10 +74,10 @@ public:
             struct xkb_keymap* keymap;
             struct xkb_state* state;
             struct {
-                xkb_mod_mask_t control;
-                xkb_mod_mask_t alt;
-                xkb_mod_mask_t shift;
-            } masks;
+                xkb_mod_index_t control;
+                xkb_mod_index_t alt;
+                xkb_mod_index_t shift;
+            } indexes;
             uint8_t modifiers;
         } xkb;
     };

@@ -26,8 +26,6 @@
 #ifndef WeakBlock_h
 #define WeakBlock_h
 
-#include <wtf/DoublyLinkedList.h>
-#include "WeakHandleOwner.h"
 #include "WeakImpl.h"
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/StdLibExtras.h>
@@ -35,9 +33,7 @@
 namespace JSC {
 
 class HeapRootVisitor;
-class JSValue;
 class MarkedBlock;
-class WeakHandleOwner;
 
 class WeakBlock : public DoublyLinkedListNode<WeakBlock> {
 public:
@@ -77,7 +73,6 @@ private:
     static FreeCell* asFreeCell(WeakImpl*);
 
     explicit WeakBlock(MarkedBlock&);
-    WeakImpl* firstWeakImpl();
     void finalize(WeakImpl*);
     WeakImpl* weakImpls();
     size_t weakImplCount();

@@ -246,7 +246,7 @@ set(WebKit2_SOURCES
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp
-    Shared/WebHitTestResult.cpp
+    Shared/WebHitTestResultData.cpp
     Shared/WebImage.cpp
     Shared/WebKeyboardEvent.cpp
     Shared/WebKit2Initialize.cpp
@@ -390,6 +390,7 @@ set(WebKit2_SOURCES
     UIProcess/WebViewportAttributes.cpp
 
     UIProcess/API/APIFrameInfo.cpp
+    UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp
     UIProcess/API/APIPageConfiguration.cpp

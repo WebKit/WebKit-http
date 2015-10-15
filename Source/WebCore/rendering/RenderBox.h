@@ -53,7 +53,7 @@ public:
     // position:static elements that are not flex-items get their z-index coerced to auto.
     virtual bool requiresLayer() const override
     {
-        return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip()
+        return isDocumentElementRenderer() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip()
             || hasTransformRelatedProperty() || hasHiddenBackface() || hasReflection() || style().specifiesColumns()
             || !style().hasAutoZIndex();
     }
@@ -387,7 +387,7 @@ public:
     void deleteLineBoxWrapper();
 
     virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
-    virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const override;
+    virtual LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, bool fixed = false) const override;
     void repaintDuringLayoutIfMoved(const LayoutRect&);
     virtual void repaintOverhangingFloats(bool paintAllDescendants);
 
@@ -407,7 +407,7 @@ public:
 
     bool stretchesToViewport() const
     {
-        return document().inQuirksMode() && style().logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isRoot() || isBody()) && !isInline();
+        return document().inQuirksMode() && style().logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isDocumentElementRenderer() || isBody()) && !isInline();
     }
 
     virtual LayoutSize intrinsicSize() const { return LayoutSize(); }

@@ -44,7 +44,6 @@ _log = logging.getLogger(__name__)
 
 
 class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDelegate):
-    _build_style = "release"
     # FIXME: Switch _default_run_tests from opt-in to opt-out once more bots are ready to run tests.
     run_tests = False
 
@@ -150,10 +149,11 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
 
         classes = []
         for name, config in ewses.iteritems():
-            classes.append(type(str(name.replace(' ', '')), (AbstractEarlyWarningSystem,), {
-                'name': config['port'] + '-ews',
+            classes.append(type(name.encode('utf-8').translate(None, ' -'), (AbstractEarlyWarningSystem,), {
+                'name': config.get('name', config['port'] + '-ews'),
                 'port_name': config['port'],
                 'architecture': config.get('architecture', None),
+                '_build_style': config.get('style', "release"),
                 'watchers': config.get('watchers', []),
                 'run_tests': config.get('runTests', cls.run_tests),
             }))

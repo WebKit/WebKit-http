@@ -58,7 +58,6 @@ public:
     {
         return !(*this == o);
     }
-    bool shadowDataEquivalent(const StyleRareInheritedData&) const;
 
     RefPtr<StyleImage> listStyleImage;
 
@@ -142,6 +141,8 @@ public:
     short hyphenationLimitBefore;
     short hyphenationLimitAfter;
     short hyphenationLimitLines;
+
+    AtomicString locale;
 
     AtomicString textEmphasisCustomMark;
     RefPtr<QuotesData> quotes;

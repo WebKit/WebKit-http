@@ -27,7 +27,7 @@
 #define HeapStatistics_h
 
 #include "JSExportMacros.h"
-#include <wtf/Deque.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -46,10 +46,6 @@ public:
 #if ENABLE(JS_MEMORY_TRACKING)
     static void showAllocBacktrace(Heap*, size_t, void*);
 #endif
-
-    static const size_t KB = 1024;
-    static const size_t MB = 1024 * KB;
-    static const size_t GB = 1024 * MB;
 
 private:
     static void logStatistics();

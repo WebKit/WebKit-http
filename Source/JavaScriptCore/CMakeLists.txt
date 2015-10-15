@@ -168,6 +168,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGCompilationMode.cpp
     dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGConstantHoistingPhase.cpp
+    dfg/DFGCopyBarrierOptimizationPhase.cpp
     dfg/DFGCriticalEdgeBreakingPhase.cpp
     dfg/DFGDCEPhase.cpp
     dfg/DFGDesiredIdentifiers.cpp
@@ -905,6 +906,7 @@ if (ENABLE_FTL_JIT)
         ftl/FTLJSCallBase.cpp
         ftl/FTLJSCallVarargs.cpp
         ftl/FTLJSTailCall.cpp
+        ftl/FTLLazySlowPath.cpp
         ftl/FTLLink.cpp
         ftl/FTLLocation.cpp
         ftl/FTLLowerDFGToLLVM.cpp

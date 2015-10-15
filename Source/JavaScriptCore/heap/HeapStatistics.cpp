@@ -32,14 +32,16 @@
 #include "JSObject.h"
 #include "Options.h"
 #include <stdlib.h>
+#include <wtf/CurrentTime.h>
+#include <wtf/DataLog.h>
+#include <wtf/StdLibExtras.h>
+
 #include "API/OpaqueJSString.h"
 #include "API/JSContextRefPrivate.h"
+
 #if OS(UNIX)
 #include <sys/resource.h>
 #endif
-#include <wtf/CurrentTime.h>
-#include <wtf/DataLog.h>
-#include <wtf/Deque.h>
 
 namespace JSC {
 

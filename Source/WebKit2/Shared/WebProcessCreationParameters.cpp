@@ -40,7 +40,8 @@ WebProcessCreationParameters::WebProcessCreationParameters()
     , shouldUseFontSmoothing(true)
     , defaultRequestTimeoutInterval(INT_MAX)
 #if PLATFORM(COCOA)
-    , shouldEnableKerningAndLigaturesByDefault(false)
+    , shouldEnableKerningByDefault(false)
+    , shouldEnableLigaturesByDefault(false)
     , shouldEnableJIT(false)
     , shouldEnableFTLJIT(false)
 #endif
@@ -122,7 +123,8 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << acceleratedCompositingPort;
     encoder << uiProcessBundleResourcePath;
     encoder << uiProcessBundleResourcePathExtensionHandle;
-    encoder << shouldEnableKerningAndLigaturesByDefault;
+    encoder << shouldEnableKerningByDefault;
+    encoder << shouldEnableLigaturesByDefault;
     encoder << shouldEnableJIT;
     encoder << shouldEnableFTLJIT;
     encoder << !!bundleParameterData;
@@ -152,7 +154,7 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << pluginLoadClientPolicies;
 #endif
 
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     IPC::encode(encoder, networkATSContext.get());
 #endif
 }
@@ -267,7 +269,9 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
         return false;
     if (!decoder.decode(parameters.uiProcessBundleResourcePathExtensionHandle))
         return false;
-    if (!decoder.decode(parameters.shouldEnableKerningAndLigaturesByDefault))
+    if (!decoder.decode(parameters.shouldEnableKerningByDefault))
+        return false;
+    if (!decoder.decode(parameters.shouldEnableLigaturesByDefault))
         return false;
     if (!decoder.decode(parameters.shouldEnableJIT))
         return false;
@@ -318,7 +322,7 @@ bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProc
         return false;
 #endif
 
-#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     if (!IPC::decode(decoder, parameters.networkATSContext))
         return false;
 #endif

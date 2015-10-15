@@ -40,7 +40,10 @@ enum {
     kWKImmediateActionMailtoLink,
     kWKImmediateActionTelLink
 };
-typedef uint32_t _WKImmediateActionType;
+
+#ifndef _WKImmediateActionType 
+#define _WKImmediateActionType uint32_t
+#endif
 
 #ifdef __cplusplus
 }

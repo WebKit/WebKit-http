@@ -5,7 +5,6 @@ list(APPEND WebKitTestRunner_SOURCES
     ${WEBKIT_TESTRUNNER_DIR}/wpe/PlatformWebViewWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/TestControllerWPE.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/TestInvocationWPE.cpp
-    ${WEBKIT_TESTRUNNER_DIR}/wpe/Module.cpp
     ${WEBKIT_TESTRUNNER_DIR}/wpe/main.cpp
 )
 

@@ -1514,7 +1514,7 @@ static bool pluginSupportsExtension(const PluginData& pluginData, const String& 
     return false;
 }
 
-ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
+ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const String& mimeTypeIn)
 {
     // FIXME: This should be merged with WebCore::FrameLoader::defaultObjectContentType when the plugin code
     // is consolidated.
@@ -1548,7 +1548,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     }
     
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return shouldPreferPlugInsForImages && plugInSupportsMIMEType ? ObjectContentNetscapePlugin : ObjectContentImage;
+        return ObjectContentImage;
 
     if (plugInSupportsMIMEType)
         return ObjectContentNetscapePlugin;

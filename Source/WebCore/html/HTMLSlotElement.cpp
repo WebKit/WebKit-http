@@ -26,8 +26,11 @@
 #include "config.h"
 #include "HTMLSlotElement.h"
 
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+
 #include "ElementChildIterator.h"
 #include "HTMLNames.h"
+#include "ShadowRoot.h"
 
 namespace WebCore {
 
@@ -95,3 +98,5 @@ const Vector<Node*>* HTMLSlotElement::assignedNodes() const
 }
 
 }
+
+#endif

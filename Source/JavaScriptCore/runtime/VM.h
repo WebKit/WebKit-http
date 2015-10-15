@@ -97,7 +97,6 @@ class ScriptExecutable;
 class SourceProvider;
 class SourceProviderCache;
 struct StackFrame;
-class Stringifier;
 class Structure;
 #if ENABLE(REGEXP_TRACING)
 class RegExp;
@@ -309,6 +308,12 @@ public:
     Strong<Structure> promiseDeferredStructure;
     Strong<Structure> internalPromiseDeferredStructure;
     Strong<Structure> nativeStdFunctionCellStructure;
+    Strong<Structure> programCodeBlockStructure;
+    Strong<Structure> moduleProgramCodeBlockStructure;
+    Strong<Structure> evalCodeBlockStructure;
+    Strong<Structure> functionCodeBlockStructure;
+    Strong<Structure> webAssemblyCodeBlockStructure;
+
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
 
@@ -574,7 +579,6 @@ public:
 private:
     friend class LLIntOffsetsExtractor;
     friend class ClearExceptionScope;
-    friend class RecursiveAllocationScope;
 
     VM(VMType, HeapType);
     static VM*& sharedInstanceInternal();

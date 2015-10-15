@@ -62,4 +62,9 @@ void InjectedBundle::setBundleParameter(WTF::String const&, IPC::DataReference c
     notImplemented();
 }
 
+void InjectedBundle::setBundleParameters(const IPC::DataReference&)
+{
+}
+
+
 } // namespace WebKit

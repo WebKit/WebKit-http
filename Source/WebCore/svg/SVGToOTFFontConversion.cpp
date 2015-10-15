@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,6 @@
 #include "SVGGlyphElement.h"
 #include "SVGHKernElement.h"
 #include "SVGMissingGlyphElement.h"
-#include "SVGPathBuilder.h"
 #include "SVGPathParser.h"
 #include "SVGPathStringSource.h"
 #include "SVGVKernElement.h"
@@ -1106,7 +1105,7 @@ void SVGToOTFFontConverter::appendKERNTable()
     size_t sizeOfVerticalSubtable = appendKERNSubtable<SVGVKernElement>(&SVGVKernElement::buildVerticalKerningPair, 0);
     ASSERT_UNUSED(sizeOfVerticalSubtable, subtablesOffset + sizeOfHorizontalSubtable + sizeOfVerticalSubtable == m_result.size());
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED <= 80000)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     // Work around a bug in Apple's font parser by adding some padding bytes. <rdar://problem/18401901>
     for (int i = 0; i < 6; ++i)
         m_result.append(0);
@@ -1126,11 +1125,10 @@ static const char rrCurveTo = 0x08;
 static const char endChar = 0x0e;
 static const char rMoveTo = 0x15;
 
-class CFFBuilder : public SVGPathBuilder {
+class CFFBuilder : public SVGPathConsumer {
 public:
     CFFBuilder(Vector<char>& cffData, float width, FloatPoint origin)
         : m_cffData(cffData)
-        , m_hasBoundingBox(false)
     {
         writeCFFEncodedNumber(m_cffData, width);
         writeCFFEncodedNumber(m_cffData, origin.x());
@@ -1209,10 +1207,21 @@ private:
             lineTo(m_startingPoint, AbsoluteCoordinates);
     }
 
+    virtual void incrementPathSegmentCount() override { }
+    virtual bool continueConsuming() override { return true; }
+
+    virtual void lineToHorizontal(float, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    virtual void lineToVertical(float, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    virtual void curveToCubicSmooth(const FloatPoint&, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    virtual void curveToQuadratic(const FloatPoint&, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    virtual void curveToQuadraticSmooth(const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+    virtual void arcTo(float, float, float, bool, bool, const FloatPoint&, PathCoordinateMode) override { ASSERT_NOT_REACHED(); }
+
     Vector<char>& m_cffData;
     FloatPoint m_startingPoint;
+    FloatPoint m_current;
     FloatRect m_boundingBox;
-    bool m_hasBoundingBox;
+    bool m_hasBoundingBox { false };
 };
 
 Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGElement& glyphOrMissingGlyphElement, FloatRect& boundingBox) const
@@ -1241,13 +1250,7 @@ Vector<char> SVGToOTFFontConverter::transcodeGlyphPaths(float width, const SVGEl
     CFFBuilder builder(result, width, FloatPoint(horizontalOriginX, horizontalOriginY));
     SVGPathStringSource source(dAttribute);
 
-    SVGPathParser parser;
-    parser.setCurrentSource(&source);
-    parser.setCurrentConsumer(&builder);
-
-    ok = parser.parsePathDataFromSource(NormalizedParsing);
-    parser.cleanup();
-
+    ok = SVGPathParser::parse(source, builder);
     if (!ok)
         result.clear();
 
@@ -1404,7 +1407,7 @@ SVGToOTFFontConverter::SVGToOTFFontConverter(const SVGFontElement& fontElement)
             processGlyphElement(glyphElement, &glyphElement, defaultHorizontalAdvance, defaultVerticalAdvance, unicodeAttribute, initialGlyph);
     }
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED <= 80000)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     // <rdar://problem/20086223> Cocoa has a bug where glyph bounding boxes are not correctly respected for frustum culling. Work around this by
     // inflating the font's bounding box
     m_boundingBox.extend(FloatPoint(0, 0));

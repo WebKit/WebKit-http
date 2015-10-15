@@ -38,7 +38,6 @@
 
 #if PLATFORM(COCOA)
 #include "LayerHostingContext.h"
-#include "WebHitTestResult.h"
 
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSObject;

@@ -113,9 +113,9 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         if (!xkb.state)
             return;
 
-        xkb.masks.control = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_CTRL);
-        xkb.masks.alt = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_ALT);
-        xkb.masks.shift = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_SHIFT);
+        xkb.indexes.control = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_CTRL);
+        xkb.indexes.alt = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_ALT);
+        xkb.indexes.shift = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_SHIFT);
     },
     // enter
     [](void*, struct wl_keyboard*, uint32_t, wl_surface*, struct wl_array*) { },
@@ -140,16 +140,15 @@ static const struct wl_keyboard_listener g_keyboardListener = {
     {
         auto& xkb = static_cast<ViewBackendWayland::SeatData*>(data)->xkb;
         xkb_state_update_mask(xkb.state, depressedMods, latchedMods, lockedMods, 0, 0, group);
-        xkb_mod_mask_t mask = xkb_state_serialize_mods(xkb.state,
-            static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED));
 
         auto& modifiers = xkb.modifiers;
         modifiers = 0;
-        if (mask & xkb.masks.control)
+        auto component = static_cast<xkb_state_component>(XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED);
+        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.control, component))
             modifiers |= Input::KeyboardEvent::Control;
-        if (mask & xkb.masks.alt)
+        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.alt, component))
             modifiers |= Input::KeyboardEvent::Alt;
-        if (mask & xkb.masks.shift)
+        if (xkb_state_mod_index_is_active(xkb.state, xkb.indexes.shift, component))
             modifiers |= Input::KeyboardEvent::Shift;
     },
     // repeat_info

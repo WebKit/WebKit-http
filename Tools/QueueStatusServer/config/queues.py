@@ -37,6 +37,8 @@ all_queue_names = [
     "ios-ews",
     "mac-ews",
     "mac-wk2-ews",
+    "mac-debug-ews",
+    "mac-32bit-ews",
     "win-ews",
     "efl-wk2-ews",
 ]

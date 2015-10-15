@@ -258,12 +258,9 @@ compositing/rtl/rtl-iframe-relative.html [ Skip ]
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html
 
-# Font feature settings is not implemented.
-css3/font-feature-settings-rendering.html
-
-webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering-2.html
-webkit.org/b/149246 [ Mavericks ] css3/font-variant-all-webfont.html
-webkit.org/b/149246 [ Mavericks ] css3/font-variant-parsing.html
+# Font features are not implemented on Mavericks.
+webkit.org/b/149246 [ Mavericks ] css3/font-feature-settings-rendering.html [ ImageOnlyFailure ]
+webkit.org/b/149246 [ Mavericks ] css3/font-variant-all.html [ ImageOnlyFailure ]
 
 # This feature is disabled on Mavericks.
 [ Mavericks ] http/tests/navigation/page-cache-pending-image-load.html [ Skip ]
@@ -728,6 +725,9 @@ webkit.org/b/124321 animations/resume-after-page-cache.html [ Pass Failure ]
 
 webkit.org/b/147254 media/restore-from-page-cache.html [ Pass Failure ]
 
+# After Mavericks, native text fields are rendered slightly smaller, causing backgrounds to bleed on platforms.
+[ Mavericks ] fast/forms/hidpi-textfield-background-bleeding.html [ ImageOnlyFailure ]
+
 # These fast/forms/select tests open a pop-up menu (visible on screen even when using run-webkit-tests), and get stuck in its nested event loop.
 webkit.org/b/87748 fast/forms/select/optgroup-clicking.html [ Skip ]
 webkit.org/b/73304 fast/forms/select/menulist-popup-crash.html [ Skip ]
@@ -1091,7 +1091,6 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 [ Yosemite+ ] http/tests/media/media-source/ [ Skip ]
 [ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-readyState.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-removed.html [ Pass ]
-[ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-updating.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-addsourcebuffer.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-append-buffer.html [ Pass ]
@@ -1105,6 +1104,9 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 [ Yosemite+ ] http/tests/media/media-source/mediasource-remove.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-sourcebufferlist.html [ Pass ]
 [ Yosemite+ ] http/tests/media/media-source/mediasource-sourcebuffer-mode.html [ Pass ]
+
+# Flaky Media Source tests
+webkit.org/b/149816 [ Yosemite+ ] http/tests/media/media-source/SourceBuffer-abort-updating.html [ Pass Timeout ]
 
 # These two tests have "Error: InvalidStateError: DOM Exception 11" in output.
 [ Yosemite+ ] media/media-source/media-source-duplicate-seeked.html [ Failure ]
@@ -1325,7 +1327,6 @@ webkit.org/b/143258 [ Mavericks ] http/tests/cache/disk-cache/disk-cache-validat
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
-webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slotted-rule.html [ ImageOnlyFailure ]
 webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.html [ ImageOnlyFailure ]
@@ -1335,3 +1336,12 @@ webkit.org/b/149441 fast/shadow-dom/css-scoping-shadow-slot-display-override.htm
 
 # Marking test as flaky in El Capitan
 webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]
+
+# Marking as flaky again, patch did not work
+webkit.org/b/149218 http/tests/notifications/events.html [ Pass Crash ]
+
+# Flaky on Mac
+webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
+
+# Imported Blink tests which have not been investigated.
+imported/blink/compositing/video/video-controls-layer-creation-squashing.html [ Pass ImageOnlyFailure ]
