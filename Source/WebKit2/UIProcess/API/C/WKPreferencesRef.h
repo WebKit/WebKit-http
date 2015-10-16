@@ -262,6 +262,14 @@ WK_EXPORT bool WKPreferencesGetIgnoreViewportScalingConstraints(WKPreferencesRef
 WK_EXPORT void WKPreferencesSetAllowsAirPlayForMediaPlayback(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetAllowsAirPlayForMediaPlayback(WKPreferencesRef preferencesRef);
 
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef);
+
 #ifdef __cplusplus
 }
 #endif
