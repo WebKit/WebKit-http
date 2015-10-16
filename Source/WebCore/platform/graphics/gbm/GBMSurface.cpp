@@ -31,6 +31,7 @@
 #include "GLContextEGL.h"
 #include "PlatformDisplayGBM.h"
 #include <gbm.h>
+#include <unistd.h>
 
 namespace WebCore {
 
