@@ -72,4 +72,10 @@ void CompositingManagerProxy::frameComplete()
     m_connection->send(Messages::CompositingManager::FrameComplete(), 0);
 }
 
+void CompositingManagerProxy::setSize(uint32_t width, uint32_t height)
+{
+    if (m_webPageProxy.drawingArea())
+        m_webPageProxy.drawingArea()->setSize(WebCore::IntSize(width, height), WebCore::IntSize(), WebCore::IntSize());
+}
+
 } // namespace WebKit

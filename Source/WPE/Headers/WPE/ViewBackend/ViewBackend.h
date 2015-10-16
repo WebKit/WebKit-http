@@ -41,6 +41,7 @@ class Client {
 public:
     virtual void releaseBuffer(uint32_t handle) = 0;
     virtual void frameComplete() = 0;
+    virtual void setSize(uint32_t width, uint32_t height) = 0;
 };
 
 class ViewBackend {

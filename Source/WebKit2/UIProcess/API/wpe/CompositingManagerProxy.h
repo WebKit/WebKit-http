@@ -72,6 +72,7 @@ private:
     // WPE::ViewBackend::Client
     void releaseBuffer(uint32_t) override;
     void frameComplete() override;
+    void setSize(uint32_t, uint32_t) override;
 
     WebPageProxy& m_webPageProxy;
     WPE::ViewBackend::ViewBackend& m_viewBackend;
