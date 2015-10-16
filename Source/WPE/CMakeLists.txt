@@ -47,6 +47,7 @@ set(WPE_SOURCES
 
     Source/ViewBackend/Wayland/ViewBackendWayland.cpp
     Source/ViewBackend/Wayland/WaylandDisplay.cpp
+    Source/ViewBackend/Wayland/ivi-application-protocol.c
     Source/ViewBackend/Wayland/wayland-drm-protocol.c
     Source/ViewBackend/Wayland/xdg-shell-protocol.c
 )
