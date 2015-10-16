@@ -28,6 +28,7 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+#include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <cstring>
@@ -104,6 +105,9 @@ const struct wl_registry_listener g_registryListener = {
 
         if (!std::strcmp(interface, "xdg_shell"))
             interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
+
+        if (!std::strcmp(interface, "ivi_application"))
+            interfaces.ivi_application = static_cast<struct ivi_application*>(wl_registry_bind(registry, name, &ivi_application_interface, 1));
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
@@ -165,7 +169,9 @@ WaylandDisplay::~WaylandDisplay()
         wl_seat_destroy(m_interfaces.seat);
     if (m_interfaces.xdg)
         xdg_shell_destroy(m_interfaces.xdg);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr };
+    if (m_interfaces.ivi_application)
+        ivi_application_destroy(m_interfaces.ivi_application);
+    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
