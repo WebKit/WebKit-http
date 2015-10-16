@@ -27,6 +27,9 @@
 #include "WebPage.h"
 
 #include "NotImplemented.h"
+#include <WebCore/Settings.h>
+#include "WebPreferencesKeys.h"
+#include "WebPreferencesStore.h"
 
 using namespace WebCore;
 
@@ -45,9 +48,10 @@ void WebPage::platformEditorState(Frame&, EditorState&, IncludePostLayoutDataHin
     notImplemented();
 }
 
-void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
+void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
 {
-    notImplemented();
+    m_page->settings().setAllowRunningOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowRunningOfInsecureContentKey()));
+    m_page->settings().setAllowDisplayOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowDisplayOfInsecureContentKey()));
 }
 
 bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)

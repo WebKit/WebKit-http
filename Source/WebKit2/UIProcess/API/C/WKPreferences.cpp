@@ -1406,3 +1406,23 @@ bool WKPreferencesGetAllowsAirPlayForMediaPlayback(WKPreferencesRef preferencesR
 {
     return toImpl(preferencesRef)->allowsAirPlayForMediaPlayback();
 }
+
+void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAllowRunningOfInsecureContent(enabled);
+}
+
+bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowRunningOfInsecureContent();
+}
+
+void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAllowDisplayOfInsecureContent(enabled);
+}
+
+bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowDisplayOfInsecureContent();
+}
