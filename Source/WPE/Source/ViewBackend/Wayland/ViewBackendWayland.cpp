@@ -235,9 +235,11 @@ ViewBackendWayland::ViewBackendWayland()
     wl_seat_add_listener(m_display.interfaces().seat, &g_seatListener, &m_seatData);
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
-    xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
-    xdg_surface_set_title(m_xdgSurface, "WPE");
+    if (m_display.interfaces().xdg) {
+        m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
+        xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
+        xdg_surface_set_title(m_xdgSurface, "WPE");
+    }
 }
 
 ViewBackendWayland::~ViewBackendWayland()
