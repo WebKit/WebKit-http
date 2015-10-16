@@ -162,11 +162,13 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
     });
 }
 
-void ThreadedCompositor::didChangeViewportSize(const IntSize& newSize)
+void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
-        protector->viewportController()->didChangeViewportSize(newSize);
+        if (m_surface)
+            m_surface->resize(size);
+        protector->viewportController()->didChangeViewportSize(size);
     });
 }
 
