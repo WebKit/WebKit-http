@@ -730,6 +730,32 @@ static gboolean app_src_seek_data (GstAppSrc *src, guint64 offset, gpointer user
     return TRUE;
 }
 
+// METRO FIXME: Use gst_app_src_push_sample() instead when we switch to the appropriate GStreamer version.
+static GstFlowReturn push_sample(GstAppSrc* appsrc, GstSample* sample)
+{
+    GstBuffer *buffer;
+    GstCaps *caps;
+
+    g_return_val_if_fail (GST_IS_SAMPLE (sample), GST_FLOW_ERROR);
+
+    caps = gst_sample_get_caps (sample);
+    if (caps != NULL) {
+      gst_app_src_set_caps (appsrc, caps);
+    } else {
+      GST_WARNING_OBJECT (appsrc, "received sample without caps");
+    }
+
+    buffer = gst_sample_get_buffer (sample);
+    if (buffer == NULL) {
+      GST_WARNING_OBJECT (appsrc, "received sample without buffer");
+      return GST_FLOW_OK;
+    }
+
+    // gst_app_src_push_buffer() steals the reference, we need an additional one.
+    gst_sample_ref(sample);
+    return gst_app_src_push_buffer (appsrc, buffer);
+}
+
 namespace WebCore {
 
 PassRefPtr<PlaybackPipeline> PlaybackPipeline::create()
@@ -1156,7 +1182,7 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
         if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
             GstSample* gstsample = gst_sample_ref(sample->sample());
             GST_BUFFER_FLAG_SET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-            gst_app_src_push_sample(GST_APP_SRC(appsrc), gstsample);
+            push_sample(GST_APP_SRC(appsrc), gstsample);
         }
     }
 }
@@ -1187,7 +1213,7 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
         GstSample* gstsample = gst_sample_ref(sample->sample());
         GST_BUFFER_FLAG_UNSET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-        gst_app_src_push_sample(GST_APP_SRC(appsrc), gstsample);
+        push_sample(GST_APP_SRC(appsrc), gstsample);
     }
 }
 
