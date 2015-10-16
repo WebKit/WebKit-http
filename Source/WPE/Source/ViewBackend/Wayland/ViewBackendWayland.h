@@ -33,6 +33,7 @@
 #include <utility>
 #include <xkbcommon/xkbcommon.h>
 
+struct ivi_surface;
 struct wl_buffer;
 struct wl_callback;
 struct wl_keyboard;
@@ -97,6 +98,7 @@ private:
 
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
+    struct ivi_surface* m_iviSurface;
 
     SeatData m_seatData;
     BufferListenerData m_bufferData;

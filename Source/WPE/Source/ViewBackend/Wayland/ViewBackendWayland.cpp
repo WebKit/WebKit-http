@@ -29,6 +29,7 @@
 #if WPE_BACKEND(WAYLAND)
 
 #include "WaylandDisplay.h"
+#include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <WPE/Input/Handling.h>
@@ -197,6 +198,13 @@ static const struct xdg_surface_listener g_xdgSurfaceListener = {
     [](void*, struct xdg_surface*) { },
 };
 
+static const struct ivi_surface_listener g_iviSurfaceListener = {
+    // configure
+    [](void*, struct ivi_surface*, int32_t, int32_t)
+    {
+    },
+};
+
 const struct wl_buffer_listener g_bufferListener = {
     // release
     [](void* data, struct wl_buffer* buffer)
@@ -240,6 +248,13 @@ ViewBackendWayland::ViewBackendWayland()
         xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
         xdg_surface_set_title(m_xdgSurface, "WPE");
     }
+
+    if (m_display.interfaces().ivi_application) {
+        m_iviSurface = ivi_application_surface_create(m_display.interfaces().ivi_application,
+            4200 + getpid(), // a unique identifier
+            m_surface);
+        ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, nullptr);
+    }
 }
 
 ViewBackendWayland::~ViewBackendWayland()
@@ -263,6 +278,9 @@ ViewBackendWayland::~ViewBackendWayland()
     m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
         { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 } };
 
+    if (m_iviSurface)
+        ivi_surface_destroy(m_iviSurface);
+    m_iviSurface = nullptr;
     if (m_xdgSurface)
         xdg_surface_destroy(m_xdgSurface);
     m_xdgSurface = nullptr;
