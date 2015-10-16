@@ -130,6 +130,21 @@ void DrawingAreaWPE::attachViewOverlayGraphicsLayer(WebCore::Frame* frame, WebCo
     m_layerTreeHost->setViewOverlayRootLayer(viewOverlayRootLayer);
 }
 
+void DrawingAreaWPE::updateBackingStoreState(uint64_t, bool, float deviceScaleFactor, const WebCore::IntSize& size, const WebCore::IntSize& scrollOffset)
+{
+    m_webPage.setDeviceScaleFactor(deviceScaleFactor);
+    m_webPage.setSize(size);
+    m_webPage.layoutIfNeeded();
+    m_webPage.scrollMainFrameIfNotAtMaxScrollPosition(scrollOffset);
+
+    ASSERT(m_layerTreeHost);
+    m_layerTreeHost->viewportSizeChanged(m_webPage.size());
+}
+
+void DrawingAreaWPE::didUpdate()
+{
+}
+
 void DrawingAreaWPE::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLayer)
 {
     ASSERT(!m_layerTreeHost);

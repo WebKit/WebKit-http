@@ -52,6 +52,9 @@ void DrawingAreaProxyWPE::deviceScaleFactorDidChange()
 void DrawingAreaProxyWPE::sizeDidChange()
 {
     notImplemented();
+
+    if (m_webPageProxy.isValid())
+        m_webPageProxy.process().send(Messages::DrawingArea::UpdateBackingStoreState(0, false, m_webPageProxy.deviceScaleFactor(), m_size, m_scrollOffset), m_webPageProxy.pageID());
 }
 
 void DrawingAreaProxyWPE::update(uint64_t backingStoreStateID, const UpdateInfo&)

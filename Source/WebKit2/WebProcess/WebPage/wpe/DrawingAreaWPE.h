@@ -67,6 +67,9 @@ private:
 
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
+    virtual void updateBackingStoreState(uint64_t, bool, float, const WebCore::IntSize&, const WebCore::IntSize&) override;
+    virtual void didUpdate() override;
+
     void enterAcceleratedCompositingMode(WebCore::GraphicsLayer*);
 
     // When true, we maintain the layer tree in its current state by not leaving accelerated compositing mode
