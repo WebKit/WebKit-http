@@ -87,14 +87,6 @@ GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
-static const struct xdg_shell_listener g_xdgShellListener = {
-    // ping
-    [](void*, struct xdg_shell* shell, uint32_t serial)
-    {
-        xdg_shell_pong(shell, serial);
-    },
-};
-
 const struct wl_registry_listener g_registryListener = {
     // global
     [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t)
@@ -110,14 +102,19 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_seat"))
             interfaces.seat = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 1));
 
-        if (!std::strcmp(interface, "xdg_shell")) {
+        if (!std::strcmp(interface, "xdg_shell"))
             interfaces.xdg = static_cast<struct xdg_shell*>(wl_registry_bind(registry, name, &xdg_shell_interface, 1)); 
-            xdg_shell_add_listener(interfaces.xdg, &g_xdgShellListener, nullptr);
-            xdg_shell_use_unstable_version(interfaces.xdg, 5);
-        }
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) { },
+};
+
+static const struct xdg_shell_listener g_xdgShellListener = {
+    // ping
+    [](void*, struct xdg_shell* shell, uint32_t serial)
+    {
+        xdg_shell_pong(shell, serial);
+    },
 };
 
 const WaylandDisplay& WaylandDisplay::singleton()
@@ -147,6 +144,11 @@ WaylandDisplay::WaylandDisplay()
     g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
     g_source_set_can_recurse(m_eventSource, TRUE);
     g_source_attach(m_eventSource, g_main_context_get_thread_default());
+
+    if (m_interfaces.xdg) {
+        xdg_shell_add_listener(m_interfaces.xdg, &g_xdgShellListener, nullptr);
+        xdg_shell_use_unstable_version(m_interfaces.xdg, 5);
+    }
 }
 
 WaylandDisplay::~WaylandDisplay()
