@@ -1448,8 +1448,10 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
     m_source.clear();
     g_object_get(m_pipeline.get(), "source", &m_source.outPtr(), nullptr);
 
-    if (WEBKIT_IS_WEB_SRC(m_source.get()))
+    if (WEBKIT_IS_WEB_SRC(m_source.get())) {
+        LOG_MEDIA_MESSAGE("Source element changed, configuring webkitwebsrc");
         webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(m_source.get()), m_player);
+    }
 }
 
 void MediaPlayerPrivateGStreamer::cancelLoad()
