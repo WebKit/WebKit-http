@@ -752,7 +752,7 @@ static GstFlowReturn push_sample(GstAppSrc* appsrc, GstSample* sample)
     }
 
     // gst_app_src_push_buffer() steals the reference, we need an additional one.
-    gst_sample_ref(sample);
+    gst_buffer_ref(buffer);
     return gst_app_src_push_buffer (appsrc, buffer);
 }
 
@@ -1183,6 +1183,8 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
             GstSample* gstsample = gst_sample_ref(sample->sample());
             GST_BUFFER_FLAG_SET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
             push_sample(GST_APP_SRC(appsrc), gstsample);
+            // gst_app_src_push_sample() uses transfer-none for gstsample
+            gst_sample_unref(gstsample);
         }
     }
 }
@@ -1214,6 +1216,8 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
         GstSample* gstsample = gst_sample_ref(sample->sample());
         GST_BUFFER_FLAG_UNSET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
         push_sample(GST_APP_SRC(appsrc), gstsample);
+        // gst_app_src_push_sample() uses transfer-none for gstsample
+        gst_sample_unref(gstsample);
     }
 }
 
