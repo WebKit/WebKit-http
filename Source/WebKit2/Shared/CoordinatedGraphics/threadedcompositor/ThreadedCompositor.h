@@ -132,7 +132,7 @@ private:
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
 #if PLATFORM(GBM)
-    std::unique_ptr<WebCore::GBMSurface> m_gbmSurface;
+    std::unique_ptr<WebCore::GBMSurface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
 

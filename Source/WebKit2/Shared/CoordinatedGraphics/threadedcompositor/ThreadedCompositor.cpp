@@ -255,13 +255,12 @@ GLContext* ThreadedCompositor::glContext()
 
 #if PLATFORM(GBM)
     RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
-    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
-    if (!m_gbmSurface)
+    m_surface = GBMSurface::create(IntSize(viewportController()->visibleContentsRect().size()), *this);
+    if (!m_surface)
         return 0;
 
     setNativeSurfaceHandleForCompositing(0);
-    m_context = m_gbmSurface->createGLContext();
+    m_context = m_surface->createGLContext();
 #endif
 
     return m_context.get();
@@ -292,9 +291,6 @@ void ThreadedCompositor::renderLayerTree()
     if (!ensureGLContext())
         return;
 
-    if (!downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).hasFreeBuffers(*m_gbmSurface))
-        return;
-
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;
@@ -306,7 +302,7 @@ void ThreadedCompositor::renderLayerTree()
 
     glContext()->swapBuffers();
 
-    auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
+    auto bufferExport = m_surface->lockFrontBuffer();
     m_compositingManager.commitPrimeBuffer(bufferExport);
 }
 
@@ -469,7 +465,7 @@ void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
 #if PLATFORM(GBM)
-    downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
+    m_surface->releaseBuffer(handle);
 #endif
 }
 
