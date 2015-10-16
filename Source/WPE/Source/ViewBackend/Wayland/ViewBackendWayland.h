@@ -93,6 +93,12 @@ public:
         struct wl_callback* frameCallback;
     };
 
+    struct ResizingData {
+        Client* client;
+        uint32_t width;
+        uint32_t height;
+    };
+
 private:
     const WaylandDisplay& m_display;
 
@@ -103,6 +109,7 @@ private:
     SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
+    ResizingData m_resizingData;
 };
 
 } // namespace ViewBackend

@@ -200,8 +200,11 @@ static const struct xdg_surface_listener g_xdgSurfaceListener = {
 
 static const struct ivi_surface_listener g_iviSurfaceListener = {
     // configure
-    [](void*, struct ivi_surface*, int32_t, int32_t)
+    [](void* data, struct ivi_surface*, int32_t width, int32_t height)
     {
+        auto& resizingData = *static_cast<ViewBackendWayland::ResizingData*>(data);
+        if (resizingData.client)
+            resizingData.client->setSize(std::max(0, width), std::max(0, height));
     },
 };
 
@@ -253,7 +256,7 @@ ViewBackendWayland::ViewBackendWayland()
         m_iviSurface = ivi_application_surface_create(m_display.interfaces().ivi_application,
             4200 + getpid(), // a unique identifier
             m_surface);
-        ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, nullptr);
+        ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, &m_resizingData);
     }
 }
 
@@ -264,6 +267,8 @@ ViewBackendWayland::~ViewBackendWayland()
     m_callbackData = { nullptr, nullptr };
 
     m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
+
+    m_resizingData = { nullptr, 0, 0 };
 
     if (m_seatData.pointer)
         wl_pointer_destroy(m_seatData.pointer);
@@ -293,19 +298,25 @@ void ViewBackendWayland::setClient(Client* client)
 {
     m_bufferData.client = client;
     m_callbackData.client = client;
+    m_resizingData.client = client;
 }
 
 void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t)
 {
     struct wl_buffer* buffer = nullptr;
     auto& bufferMap = m_bufferData.map;
+    auto it = bufferMap.find(handle);
+
     if (fd >= 0) {
-        assert(bufferMap.find(handle) == bufferMap.end());
         buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
-        bufferMap.insert({ handle, buffer });
+
+        if (it != bufferMap.end()) {
+            wl_buffer_destroy(it->second);
+            it->second = buffer;
+        } else
+            bufferMap.insert({ handle, buffer });
     } else {
-        auto it = bufferMap.find(handle);
         assert(it != bufferMap.end());
         buffer = it->second;
     }
