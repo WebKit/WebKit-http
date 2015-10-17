@@ -403,7 +403,13 @@ SLOW_PATH_DECL(slow_path_mod)
     BEGIN();
     double a = OP_C(2).jsValue().toNumber(exec);
     double b = OP_C(3).jsValue().toNumber(exec);
+#if CPU(MIPS)
+    // When passed a NaN as parameter, fmod() tends to return an impure NaN on
+    // MIPS (both with uclibc and glibc).
+    RETURN(jsNumber(purifyNaN(fmod(a, b))));
+#else
     RETURN(jsNumber(fmod(a, b)));
+#endif
 }
 
 SLOW_PATH_DECL(slow_path_lshift)
