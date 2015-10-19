@@ -265,6 +265,9 @@ static void webKitMediaSrcFinalize(GObject* object)
     if (priv->mediaPlayerPrivate)
         priv->mediaPlayerPrivate = 0;
 
+    // We used a placement new for construction, the destructor won't be called automatically.
+    priv->~_WebKitMediaSrcPrivate();
+
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
