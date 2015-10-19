@@ -650,7 +650,7 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(user_data);
     ASSERT(WEBKIT_IS_MEDIA_SRC(webKitMediaSrc));
 
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("Buffering needed before seek");
 
     ASSERT(WTF::isMainThread());
 
@@ -869,8 +869,6 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
 
 void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstCaps* caps)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
-
     WebKitMediaSrc* webKitMediaSrc = m_webKitMediaSrc.get();
     Stream* stream = 0;
     //GstCaps* appsrccaps = 0;
@@ -1051,7 +1049,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
 void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstCaps* caps)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("Re-attaching track");
 
     UNUSED_PARAM(caps);
 
@@ -1080,7 +1078,8 @@ void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> source
 
         gchar* stroldcaps = gst_caps_to_string(oldAppsrccaps);
         gchar* strnewcaps = gst_caps_to_string(appsrccaps);
-        LOG_MEDIA_MESSAGE("oldcaps: %s\nnewcaps: %s", stroldcaps, strnewcaps);
+        LOG_MEDIA_MESSAGE("oldcaps: %s", stroldcaps);
+        LOG_MEDIA_MESSAGE("newcaps: %s", strnewcaps);
         g_free(stroldcaps);
         g_free(strnewcaps);
     }
@@ -1194,16 +1193,15 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     RefPtr<MediaSample> rsample = prsample;
     AtomicString trackId = rsample->trackID();
 
-    LOG_MEDIA_MESSAGE("enqueueSample: trackId=%s PTS=%f presentationSize=%.0fx%.0f", trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height());
+    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(floatToGstClockTime(rsample->presentationTime().toDouble())));
 
     ASSERT(WTF::isMainThread());
 
-    GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "Enqueing sample to stream %s at %" GST_TIME_FORMAT, trackId.string().utf8().data(), GST_TIME_ARGS(floatToGstClockTime(rsample->presentationTime().toDouble())));
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
     if (!stream) {
-        LOG_MEDIA_MESSAGE("No stream!");
+        WARN_MEDIA_MESSAGE("No stream!");
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }
