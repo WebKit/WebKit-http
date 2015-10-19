@@ -1029,7 +1029,7 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     // We ignore state changes from internal elements. They are forwarded to playbin2 anyway.
     bool messageSourceIsPlaybin = GST_MESSAGE_SRC(message) == reinterpret_cast<GstObject*>(m_pipeline.get());
 
-    LOG_MEDIA_MESSAGE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
+    TRACE_MEDIA_MESSAGE("Message %s received from element %s", GST_MESSAGE_TYPE_NAME(message), GST_MESSAGE_SRC_NAME(message));
 
     switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_TAG:
@@ -1096,7 +1096,7 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         {
             GstState newState;
             gst_message_parse_state_changed(message, &currentState, &newState, 0);
-            LOG_MEDIA_MESSAGE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
+            TRACE_MEDIA_MESSAGE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
         }
        if (!messageSourceIsPlaybin || m_delayingLoad)
             break;

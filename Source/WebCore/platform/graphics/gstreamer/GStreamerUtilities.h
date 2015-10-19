@@ -21,6 +21,10 @@
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
 
+#define TRACE_MEDIA_MESSAGE(...) do { \
+    GST_TRACE(__VA_ARGS__); \
+    LOG_VERBOSE(Media, __VA_ARGS__); } while (0)
+
 #define LOG_MEDIA_MESSAGE(...) do { \
     GST_DEBUG(__VA_ARGS__); \
     LOG_VERBOSE(Media, __VA_ARGS__); } while (0)

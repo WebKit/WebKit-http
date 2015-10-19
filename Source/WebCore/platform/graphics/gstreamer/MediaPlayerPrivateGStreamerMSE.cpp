@@ -287,8 +287,6 @@ static gboolean dumpPipeline(gpointer data)
 
 void MediaPlayerPrivateGStreamerMSE::notifySeekNeedsData(const MediaTime& seekTime)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
-
     // Reenqueue samples needed to resume playback in the new position
     m_mediaSource->seekToTime(seekTime);
 
@@ -297,8 +295,6 @@ void MediaPlayerPrivateGStreamerMSE::notifySeekNeedsData(const MediaTime& seekTi
 
 bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeekFlags seekType)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
-
     gint64 startTime, endTime;
 
     if (rate > 0) {
@@ -400,8 +396,6 @@ void MediaPlayerPrivateGStreamerMSE::waitForSeekCompleted()
 
 void MediaPlayerPrivateGStreamerMSE::seekCompleted()
 {
-    LOG_MEDIA_MESSAGE("%s", "");
-
     if (m_seekCompleted)
         return;
 
@@ -1134,7 +1128,7 @@ AppendPipeline::~AppendPipeline()
 void AppendPipeline::clearPlayerPrivate()
 {
     ASSERT(WTF::isMainThread());
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("cleaning private player");
 
     g_mutex_lock(&m_newSampleMutex);
     // Make sure that AppendPipeline won't process more data from now on and
@@ -1219,7 +1213,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     bool ok = false;
 
     if (oldAppendStage != newAppendStage)
-        LOG_MEDIA_MESSAGE("%s --> %s", dumpAppendStage(oldAppendStage), dumpAppendStage(newAppendStage));
+        TRACE_MEDIA_MESSAGE("%s --> %s", dumpAppendStage(oldAppendStage), dumpAppendStage(newAppendStage));
 
     switch (oldAppendStage) {
     case NotStarted:
@@ -1299,7 +1293,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             }
 
             if (m_lastSampleTimeoutTag) {
-                LOG_MEDIA_MESSAGE("lastSampleTimeoutTag already exists while transitioning Ongoing-->Sampling");
+                TRACE_MEDIA_MESSAGE("lastSampleTimeoutTag already exists while transitioning Ongoing-->Sampling");
                 g_source_remove(m_lastSampleTimeoutTag);
                 m_lastSampleTimeoutTag = 0;
             }
@@ -1545,7 +1539,7 @@ void AppendPipeline::appSinkNewSample(GstSample* sample)
 
     RefPtr<GStreamerMediaSample> mediaSample = WebCore::GStreamerMediaSample::create(sample, m_presentationSize, trackId());
 
-    LOG_MEDIA_MESSAGE("append: trackId=%s PTS=%f presentationSize=%.0fx%.0f", mediaSample->trackID().string().utf8().data(), mediaSample->presentationTime().toFloat(), mediaSample->presentationSize().width(), mediaSample->presentationSize().height());
+    TRACE_MEDIA_MESSAGE("append: trackId=%s PTS=%f presentationSize=%.0fx%.0f", mediaSample->trackID().string().utf8().data(), mediaSample->presentationTime().toFloat(), mediaSample->presentationSize().width(), mediaSample->presentationSize().height());
 
     // If we're beyond the duration, ignore this sample and the remaining ones.
     MediaTime duration = m_mediaSourceClient->duration();
@@ -1602,7 +1596,6 @@ void AppendPipeline::didReceiveInitializationSegment()
 {
     ASSERT(WTF::isMainThread());
 
-    LOG_MEDIA_MESSAGE("%s", "");
 
     WebCore::SourceBufferPrivateClient::InitializationSegment initializationSegment;
 
@@ -1647,7 +1640,7 @@ AtomicString AppendPipeline::trackId()
 void AppendPipeline::resetPipeline()
 {
     ASSERT(WTF::isMainThread());
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("resetting pipeline");
     gst_element_set_state(m_pipeline, GST_STATE_READY);
     gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
 
@@ -1662,7 +1655,7 @@ void AppendPipeline::resetPipeline()
 void AppendPipeline::abort()
 {
     ASSERT(WTF::isMainThread());
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("aborting");
 
     // Abort already ongoing.
     if (m_abortPending)
@@ -1677,7 +1670,7 @@ void AppendPipeline::abort()
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
 {
-    LOG_MEDIA_MESSAGE("thread %d", WTF::currentThread());
+    TRACE_MEDIA_MESSAGE("thread %d", WTF::currentThread());
 
     bool invalid;
 
@@ -1715,7 +1708,7 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
     if (!m_appsink)
         return;
 
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("connecting to appsink");
 
     GRefPtr<GstPad> sinkSinkPad = gst_element_get_static_pad(m_appsink, "sink");
 
@@ -1773,7 +1766,7 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
 void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
 {
     ASSERT(WTF::isMainThread());
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("Connecting to appsink");
 
     GRefPtr<GstPad> sinkSinkPad = gst_element_get_static_pad(m_appsink, "sink");
 
@@ -1821,7 +1814,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
 
 void AppendPipeline::disconnectFromAppSinkFromAnyThread()
 {
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("Disconnecting appsink");
 
     // Must be done in the thread we were called from (usually streaming thread).
     if (m_decryptor) {
@@ -1849,9 +1842,9 @@ void AppendPipeline::disconnectFromAppSinkFromAnyThread()
 void AppendPipeline::disconnectFromAppSink()
 {
     ASSERT(WTF::isMainThread());
-    LOG_MEDIA_MESSAGE("%s", "");
 
     if (m_decryptor) {
+        LOG_MEDIA_MESSAGE("Releasing decryptor");
         gst_object_unref(m_decryptor);
         m_decryptor = NULL;
     }
@@ -1933,7 +1926,7 @@ static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap)
 
 static gboolean appendPipelineNoDataToDecodeTimeout(AppendPipeline* ap)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
+    TRACE_MEDIA_MESSAGE("no data timeout fired");
     if (ap->appendStage()==AppendPipeline::AppendStage::Invalid)
         return G_SOURCE_REMOVE;
 
@@ -1943,7 +1936,7 @@ static gboolean appendPipelineNoDataToDecodeTimeout(AppendPipeline* ap)
 
 static gboolean appendPipelineLastSampleTimeout(AppendPipeline* ap)
 {
-    LOG_MEDIA_MESSAGE("%s", "");
+    TRACE_MEDIA_MESSAGE("last sample timer fired");
     if (ap->appendStage()==AppendPipeline::AppendStage::Invalid)
         return G_SOURCE_REMOVE;
 
@@ -2018,7 +2011,7 @@ void MediaSourceClientGStreamerMSE::abort(PassRefPtr<SourceBufferPrivateGStreame
 {
     ASSERT(WTF::isMainThread());
 
-    LOG_MEDIA_MESSAGE("%s", "");
+    LOG_MEDIA_MESSAGE("aborting");
 
     if (!m_playerPrivate)
         return;
@@ -2032,7 +2025,7 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
 {
     ASSERT(WTF::isMainThread());
 
-    LOG_MEDIA_MESSAGE("%u bytes", length);
+    TRACE_MEDIA_MESSAGE("%u bytes", length);
 
     if (!m_playerPrivate)
         return false;
@@ -2102,7 +2095,7 @@ void MediaSourceClientGStreamerMSE::didReceiveAllPendingSamples(SourceBufferPriv
 {
     ASSERT(WTF::isMainThread());
 
-    LOG_MEDIA_MESSAGE("%s", "");
+    TRACE_MEDIA_MESSAGE("received all pending samples");
     sourceBuffer->didReceiveAllPendingSamples();
 }
 
