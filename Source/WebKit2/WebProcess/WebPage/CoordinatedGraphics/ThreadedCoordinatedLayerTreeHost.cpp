@@ -36,6 +36,7 @@
 #include "NotImplemented.h"
 #include "ThreadSafeCoordinatedSurface.h"
 #include "WebPage.h"
+#include "WebPageProxyMessages.h"
 #include "WebProcess.h"
 #include <WebCore/CoordinatedGraphicsLayer.h>
 #include <WebCore/CoordinatedGraphicsState.h>
@@ -61,7 +62,6 @@ ThreadedCoordinatedLayerTreeHost::~ThreadedCoordinatedLayerTreeHost()
 
 ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webPage)
     : LayerTreeHost(webPage)
-    , m_forceRepaintAsyncCallbackID(0)
     , m_contentLayer(nullptr)
     , m_viewOverlayRootLayer(nullptr)
     , m_notifyAfterScheduledLayerFlush(false)
@@ -139,16 +139,7 @@ void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const WebCore
 
 void ThreadedCoordinatedLayerTreeHost::forceRepaint()
 {
-    notImplemented();
-}
-
-bool ThreadedCoordinatedLayerTreeHost::forceRepaintAsync(uint64_t callbackID)
-{
-    // We expect the UI process to not require a new repaint until the previous one has finished.
-    ASSERT(!m_forceRepaintAsyncCallbackID);
-    m_forceRepaintAsyncCallbackID = callbackID;
     scheduleLayerFlush();
-    return true;
 }
 
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const WebCore::IntSize& newSize)
