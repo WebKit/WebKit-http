@@ -896,8 +896,6 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     stream->parent->priv->numberOfPads++;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
-    stream->type = Unknown;
-
     parserBinName = g_strdup_printf("streamparser%u", padId);
 
     ASSERT(caps != 0);
@@ -986,10 +984,6 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     //gst_caps_unref(appsrccaps);
 
     GST_OBJECT_LOCK(webKitMediaSrc);
-    if (stream->type != Invalid) {
-        LOG_MEDIA_MESSAGE("The track has been attached before, use reattachTrack() instead");
-        ASSERT(stream->type != Invalid);
-    }
     stream->type = Unknown;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
