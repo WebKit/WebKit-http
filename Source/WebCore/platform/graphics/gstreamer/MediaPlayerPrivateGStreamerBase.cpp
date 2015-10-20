@@ -242,6 +242,14 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     g_cond_init(&m_updateCondition);
     g_mutex_init(&m_updateMutex);
 #endif
+
+#if USE(HOLE_PUNCH_GSTREAMER)
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    LockHolder locker(m_platformLayerProxy->mutex());
+    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
+#endif
+#endif
+
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
@@ -400,6 +408,12 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 // Returns the size of the video
 FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 {
+#if USE(HOLE_PUNCH_GSTREAMER)
+    // We don't care about the natural size of the video, the external sink will deal with it.
+    // This means that the video will always have the size of the <video> component or the default 300x150
+    return FloatSize();
+#endif
+
     if (!hasVideo())
         return FloatSize();
 

@@ -36,6 +36,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_TIMING PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_XHR_TIMEOUT PUBLIC ON)
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_HOLE_PUNCH_EXTERNAL "Transparent hole for the video player, rendering done by external application" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_HOLE_PUNCH_GSTREAMER "Transparent hole for the video player, rendering done by GStreamer and platform dependant sink" PRIVATE OFF)
 WEBKIT_OPTION_END()
 
 if (ENABLE_DXDRM)

@@ -2137,7 +2137,17 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     }
 #endif
 
-    g_object_set(m_pipeline.get(), "video-sink", createVideoSink(), "audio-sink", createAudioSink(), nullptr);
+#if !USE(HOLE_PUNCH_GSTREAMER)
+    // If we are using the gstreamer hole punch then we rely on autovideosink
+    // to use the appropriate sink
+
+    g_object_set(m_pipeline.get(), "video-sink", createVideoSink(), nullptr);
+
+    GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+    if (videoSinkPad)
+        g_signal_connect(videoSinkPad.get(), "notify::caps", G_CALLBACK(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
+#endif
+    g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
     configurePlaySink();
 
     // On 1.4.2 and newer we use the audio-filter property instead.
@@ -2152,9 +2162,6 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
     }
 
-    GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
-    if (videoSinkPad)
-        g_signal_connect(videoSinkPad.get(), "notify::caps", G_CALLBACK(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
 }
 
 void MediaPlayerPrivateGStreamer::simulateAudioInterruption()
