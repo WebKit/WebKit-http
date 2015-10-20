@@ -453,8 +453,8 @@ static void webKitMediaSrcLinkStreamToSrcPad(GstPad* srcpad, Stream* stream)
     unsigned padId = static_cast<unsigned>(GPOINTER_TO_INT(g_object_get_data(G_OBJECT(srcpad), "id")));
     GST_DEBUG_OBJECT(stream->parent, "linking stream to src pad (id: %u)", padId);
 
-    gchar* padName = g_strdup_printf("src_%u", padId);
-    GstPad* ghostpad = gst_ghost_pad_new_from_template(padName, srcpad, gst_static_pad_template_get(&srcTemplate));
+    GUniquePtr<gchar> padName(g_strdup_printf("src_%u", padId));
+    GstPad* ghostpad = WebCore::webkitGstGhostPadFromStaticTemplate(&srcTemplate, padName.get(), srcpad);
 
     gst_pad_set_query_function(ghostpad, webKitMediaSrcQueryWithParent);
 

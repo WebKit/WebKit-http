@@ -316,6 +316,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeek
         GstQuery* query= gst_query_new_position(GST_FORMAT_TIME);
         if (gst_element_query(m_pipeline.get(), query))
             gst_query_parse_position(query, 0, &pos);
+        gst_query_unref(query);
         currentTime = static_cast<double>(pos) / GST_SECOND;
         LOG_MEDIA_MESSAGE("seekTime=%f, currentTime=%f", time.toFloat(), currentTime);
     }
@@ -858,7 +859,8 @@ PassRefPtr<GStreamerMediaSample> GStreamerMediaSample::create(GstSample* sample,
 
 PassRefPtr<GStreamerMediaSample> GStreamerMediaSample::createFakeSample(GstCaps* caps, MediaTime pts, MediaTime dts, MediaTime duration, const FloatSize& presentationSize, const AtomicString& trackID)
 {
-    GstSample* sample = gst_sample_new(0, gst_caps_ref(caps), 0, 0);
+    UNUSED_PARAM(caps);
+    GstSample* sample = NULL;
     GStreamerMediaSample* s = new GStreamerMediaSample(sample, presentationSize, trackID);
     s->m_pts = pts;
     s->m_dts = dts;
@@ -1028,7 +1030,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink), TRUE);
     gst_base_sink_set_sync(GST_BASE_SINK(m_appsink), FALSE);
 
-    GRefPtr<GstPad> appSinkPad = gst_element_get_static_pad(m_appsink, "sink");
+    GRefPtr<GstPad> appSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
     g_signal_connect(appSinkPad.get(), "notify::caps", G_CALLBACK(appendPipelineAppSinkCapsChanged), this);
 
     // These signals won't be connected outside of the lifetime of "this".
@@ -1105,7 +1107,7 @@ AppendPipeline::~AppendPipeline()
     ASSERT(!m_decryptor);
 
     if (m_appsink) {
-        GRefPtr<GstPad> appSinkPad = gst_element_get_static_pad(m_appsink, "sink");
+        GRefPtr<GstPad> appSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
         g_signal_handlers_disconnect_by_func(appSinkPad.get(), (gpointer)appendPipelineAppSinkCapsChanged, this);
 
         g_signal_handlers_disconnect_by_func(m_appsink, (gpointer)appendPipelineAppSinkNewSample, this);
@@ -1504,7 +1506,7 @@ void AppendPipeline::appSinkCapsChanged()
     if (!m_appsink)
         return;
 
-    GRefPtr<GstPad> pad = gst_element_get_static_pad(m_appsink, "sink");
+    GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
     GstCaps* caps = gst_pad_get_current_caps(pad.get());
 
     // This means that we're right after a new track has appeared. Otherwise, it's a caps change inside the same track.
@@ -1520,6 +1522,8 @@ void AppendPipeline::appSinkCapsChanged()
         didReceiveInitializationSegment();
         gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
     }
+
+    gst_caps_unref(caps);
 }
 
 void AppendPipeline::appSinkNewSample(GstSample* sample)
@@ -1716,7 +1720,7 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
 
     LOG_MEDIA_MESSAGE("connecting to appsink");
 
-    GRefPtr<GstPad> sinkSinkPad = gst_element_get_static_pad(m_appsink, "sink");
+    GRefPtr<GstPad> sinkSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
 
     // Only one Stream per demuxer is supported.
     ASSERT(!gst_pad_is_linked(sinkSinkPad.get()));
@@ -1755,8 +1759,8 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
         if (m_decryptor) {
             gst_object_ref(m_decryptor);
             gst_bin_add(GST_BIN(m_pipeline), m_decryptor);
-            GRefPtr<GstPad> decryptorSrcPad = gst_element_get_static_pad(m_decryptor, "src");
-            GRefPtr<GstPad> decryptorSinkPad = gst_element_get_static_pad(m_decryptor, "sink");
+            GRefPtr<GstPad> decryptorSrcPad = adoptGRef(gst_element_get_static_pad(m_decryptor, "src"));
+            GRefPtr<GstPad> decryptorSinkPad = adoptGRef(gst_element_get_static_pad(m_decryptor, "sink"));
             gst_pad_link(demuxerSrcPad, decryptorSinkPad.get());
             gst_pad_link(decryptorSrcPad.get(), sinkSinkPad.get());
             gst_element_sync_state_with_parent(m_appsink);
@@ -1775,7 +1779,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("Connecting to appsink");
 
-    GRefPtr<GstPad> sinkSinkPad = gst_element_get_static_pad(m_appsink, "sink");
+    GRefPtr<GstPad> sinkSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
 
     // Only one Stream per demuxer is supported.
     ASSERT(!gst_pad_is_linked(sinkSinkPad.get()));
