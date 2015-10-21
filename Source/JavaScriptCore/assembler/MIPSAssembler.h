@@ -478,6 +478,11 @@ public:
         m_jumps.append(m_buffer.label());
     }
 
+    void clz(RegisterID rd, RegisterID rs)
+    {
+        emitInst(0x70000020 | (rd << OP_SH_RD) | (rd << OP_SH_RT) | (rs << OP_SH_RS));
+    }
+
     void addd(FPRegisterID fd, FPRegisterID fs, FPRegisterID ft)
     {
         emitInst(0x46200000 | (fd << OP_SH_FD) | (fs << OP_SH_FS) | (ft << OP_SH_FT));
