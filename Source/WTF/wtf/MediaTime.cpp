@@ -467,7 +467,7 @@ const MediaTime& MediaTime::indefiniteTime()
 
 const MediaTime& MediaTime::fuzzinessThreshold()
 {
-    static const MediaTime* time = new MediaTime(createWithDouble(0.00002));
+    static const MediaTime* time = new MediaTime(createWithDouble(0.00003));
     return *time;
 }
 
