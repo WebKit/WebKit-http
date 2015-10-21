@@ -1744,7 +1744,8 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
     if (isData) {
         LOG_MEDIA_MESSAGE("Encrypted stream: %s", m_decryptor ? "yes" : "no");
         // FIXME: Only add appsink one time. This method can be called several times.
-        gst_bin_add(GST_BIN(m_pipeline), m_appsink);
+        if (gst_element_get_parent(m_appsink) == NULL)
+            gst_bin_add(GST_BIN(m_pipeline), m_appsink);
         if (m_decryptor) {
             gst_object_ref(m_decryptor);
             gst_bin_add(GST_BIN(m_pipeline), m_decryptor);
