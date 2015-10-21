@@ -2805,6 +2805,17 @@ public:
         return CodeLocationLabel();
     }
 
+    void abortWithReason(AbortReason reason)
+    {
+        move(TrustedImm32(reason), MIPSRegisters::t9);
+        breakpoint();
+    }
+
+    void abortWithReason(AbortReason reason, intptr_t misc)
+    {
+        move(TrustedImm32(misc), MIPSRegisters::t8);
+        abortWithReason(reason);
+    }
 
 private:
     // If m_fixedWidth is true, we will generate a fixed number of instructions.
