@@ -33,6 +33,7 @@
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Node.h>
 #include <WebCore/WindowsKeyboardCodes.h>
+#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
@@ -120,13 +121,11 @@ static const KeyDownEntry keyDownEntries[] = {
 
 static const char* interpretKeyEvent(const KeyboardEvent& event)
 {
-    static HashMap<int, const char*>* keyDownCommandsMap = nullptr;
+    static NeverDestroyed<HashMap<int, const char*>> keyDownCommandsMap;
 
-    if (!keyDownCommandsMap) {
-        keyDownCommandsMap = new HashMap<int, const char*>;
-        unsigned arraysize = sizeof(keyDownEntries)/sizeof(keyDownEntries[0]);
-        for (unsigned i = 0; i < arraysize; i++)
-            keyDownCommandsMap->set(keyDownEntries[i].modifiers << 16 | keyDownEntries[i].virtualKey, keyDownEntries[i].name);
+    if (keyDownCommandsMap.get().isEmpty()) {
+        for (unsigned i = 0; i < WTF_ARRAY_LENGTH(keyDownEntries); i++)
+            keyDownCommandsMap.get().set(keyDownEntries[i].modifiers << 16 | keyDownEntries[i].virtualKey, keyDownEntries[i].name);
     }
 
     unsigned modifiers = 0;
@@ -140,7 +139,7 @@ static const char* interpretKeyEvent(const KeyboardEvent& event)
         modifiers |= MetaKey;
 
     int mapKey = modifiers << 16 | event.keyCode();
-    return mapKey ? keyDownCommandsMap->get(mapKey) : 0;
+    return mapKey ? keyDownCommandsMap.get().get(mapKey) : nullptr;
 }
 
 static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent& platformEvent)
@@ -168,12 +167,14 @@ static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKey
 static void handleKeyDown(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent&)
 {
     String commandName = interpretKeyEvent(event);
-    Editor::Command command = frame.editor().command(commandName);
+    if (commandName.isEmpty())
+        return;
 
     // We shouldn't insert text through the editor. Let WebCore decide
     // how to handle that (say, Tab, which could also be used to
     // change focus).
-    if (command.isTextInsertion() || commandName.isEmpty())
+    Editor::Command command = frame.editor().command(commandName);
+    if (command.isTextInsertion())
         return;
 
     command.execute();
