@@ -41,6 +41,8 @@ MediaPlayerPrivateHolePunchBase::MediaPlayerPrivateHolePunchBase(MediaPlayer* pl
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
+    LockHolder locker(m_platformLayerProxy->mutex());
+    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
 #endif
 }
 
@@ -66,14 +68,6 @@ MediaPlayer::ReadyState MediaPlayerPrivateHolePunchBase::readyState() const
 
 void MediaPlayerPrivateHolePunchBase::setSize(const IntSize& size)
 {
-    if (m_size == size)
-        return;
-
     m_size = size;
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_platformLayerProxy->mutex());
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
-#endif
 }
 }
