@@ -108,11 +108,11 @@ public:
     
     const typename Adaptor::Type* typedVector() const
     {
-        return bitwise_cast<const typename Adaptor::Type*>(m_vector.get(this));
+        return bitwise_cast<const typename Adaptor::Type*>(vector());
     }
     typename Adaptor::Type* typedVector()
     {
-        return bitwise_cast<typename Adaptor::Type*>(m_vector.get(this));
+        return bitwise_cast<typename Adaptor::Type*>(vector());
     }
 
     // These methods are meant to match indexed access methods that JSObject
@@ -171,13 +171,7 @@ public:
         return true;
     }
 
-    static Optional<typename Adaptor::Type> toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue)
-    {
-        typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
-            return Nullopt;
-        return value;
-    }
+    static ElementType toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue) { return toNativeFromValue<Adaptor>(exec, jsValue); }
 
     bool setRangeToValue(ExecState* exec, unsigned start, unsigned end, JSValue jsValue)
     {
@@ -283,7 +277,6 @@ protected:
     static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
     
-    static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     
     static void visitChildren(JSCell*, SlotVisitor&);

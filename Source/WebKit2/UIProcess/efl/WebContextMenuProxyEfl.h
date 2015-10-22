@@ -41,18 +41,19 @@ class WebPageProxy;
 
 class WebContextMenuProxyEfl : public WebContextMenuProxy {
 public:
-    static PassRefPtr<WebContextMenuProxyEfl> create(EwkView* viewImpl, WebPageProxy* page)
-    {
-        return adoptRef(new WebContextMenuProxyEfl(viewImpl, page));
-    }
-
+    WebContextMenuProxyEfl(EwkView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
     ~WebContextMenuProxyEfl();
 
-    void showContextMenu(const WebCore::IntPoint&, const Vector<RefPtr<WebContextMenuItem>>&, const ContextMenuContextData&);
-    void hideContextMenu();
-
 private:
-    WebContextMenuProxyEfl(EwkView*, WebPageProxy*);
+    virtual void show() override;
+
+    void showContextMenu();
+    void hideContextMenu();
+    void cancelTracking();
+
+
+    EwkView* m_ewkView;
+    WebPageProxy& m_page;
 };
 
 

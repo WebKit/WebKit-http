@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,6 +49,7 @@ public:
     static JSDataView* createUninitialized(ExecState*, Structure*, unsigned length);
     static JSDataView* create(ExecState*, Structure*, unsigned length);
     bool set(ExecState*, JSObject*, unsigned offset, unsigned length);
+    bool setIndex(ExecState*, unsigned, JSValue);
     
     ArrayBuffer* buffer() const { return m_buffer; }
     
@@ -58,6 +59,11 @@ public:
 
 protected:
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
+    static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
+    static bool deleteProperty(JSCell*, ExecState*, PropertyName);
+
+    static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 
     static ArrayBuffer* slowDownAndWasteMemory(JSArrayBufferView*);
     static PassRefPtr<ArrayBufferView> getTypedArrayImpl(JSArrayBufferView*);

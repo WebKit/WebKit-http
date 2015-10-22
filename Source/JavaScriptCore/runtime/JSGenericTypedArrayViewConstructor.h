@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +37,11 @@ public:
 
 protected:
     JSGenericTypedArrayViewConstructor(VM&, Structure*);
-    void finishCreation(VM&, JSObject* prototype, const String& name);
+    void finishCreation(VM&, JSGlobalObject*, JSObject* prototype, const String& name, FunctionExecutable* privateAllocator);
 
 public:
     static JSGenericTypedArrayViewConstructor* create(
-        VM&, Structure*, JSObject* prototype, const String& name);
+        VM&, JSGlobalObject*, Structure*, JSObject* prototype, const String& name, FunctionExecutable* privateAllocator);
 
     DECLARE_INFO;
     

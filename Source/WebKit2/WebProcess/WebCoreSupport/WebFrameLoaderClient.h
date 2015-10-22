@@ -242,6 +242,8 @@ private:
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler) override;
 #endif
 
+    void prefetchDNS(const String&) override;
+
     bool shouldPaintBrokenImage(const WebCore::URL&) const override;
 
     WebFrame* m_frame;

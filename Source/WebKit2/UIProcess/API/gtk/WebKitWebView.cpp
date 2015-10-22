@@ -2474,7 +2474,9 @@ void webkit_web_view_reload(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    getPage(webView)->reload(false);
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = true;
+    getPage(webView)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 /**
@@ -2488,7 +2490,9 @@ void webkit_web_view_reload_bypass_cache(WebKitWebView* webView)
 {
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
-    getPage(webView)->reload(true);
+    const bool reloadFromOrigin = true;
+    const bool contentBlockersEnabled = true;
+    getPage(webView)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 /**
@@ -3324,7 +3328,7 @@ void webkit_web_view_save(WebKitWebView* webView, WebKitSaveMode saveMode, GCanc
     g_task_set_task_data(task, createViewSaveAsyncData(), reinterpret_cast<GDestroyNotify>(destroyViewSaveAsyncData));
     getPage(webView)->getContentsAsMHTMLData([task](API::Data* data, WebKit::CallbackBase::Error) {
         getContentsAsMHTMLDataCallback(data, task);
-    }, false);
+    });
 }
 
 /**
@@ -3389,7 +3393,7 @@ void webkit_web_view_save_to_file(WebKitWebView* webView, GFile* file, WebKitSav
 
     getPage(webView)->getContentsAsMHTMLData([task](API::Data* data, WebKit::CallbackBase::Error) {
         getContentsAsMHTMLDataCallback(data, task);
-    }, false);
+    });
 }
 
 /**

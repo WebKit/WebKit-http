@@ -428,9 +428,6 @@ public:
     UserContentController* userContentController() { return m_userContentController.get(); }
     WEBCORE_EXPORT void setUserContentController(UserContentController*);
 
-    bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
-    void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
-
     VisitedLinkStore& visitedLinkStore();
     WEBCORE_EXPORT void setVisitedLinkStore(Ref<VisitedLinkStore>&&);
 
@@ -473,6 +470,9 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionToServer& idbConnection();
 #endif
+
+    void setShowAllPlugins(bool showAll) { m_showAllPlugins = showAll; }
+    bool showAllPlugins() const { return m_showAllPlugins; }
 
 private:
     WEBCORE_EXPORT void initGroup();
@@ -636,8 +636,8 @@ private:
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     
-    bool m_userContentExtensionsEnabled { true };
     bool m_allowsMediaDocumentInlinePlayback { false };
+    bool m_showAllPlugins { false };
 };
 
 inline PageGroup& Page::group()

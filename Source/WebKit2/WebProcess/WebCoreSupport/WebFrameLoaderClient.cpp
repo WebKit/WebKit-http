@@ -144,9 +144,6 @@ void WebFrameLoaderClient::detachedFromParent2()
 
     // Notify the bundle client.
     webPage->injectedBundleLoaderClient().didRemoveFrameFromHierarchy(webPage, m_frame, userData);
-
-    // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidRemoveFrameFromHierarchy(m_frame->frameID(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
 void WebFrameLoaderClient::detachedFromParent3()
@@ -1324,7 +1321,9 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
         int minimumLayoutHeight = std::max(webPage->minimumLayoutSize().height(), 1);
         int maximumSize = std::numeric_limits<int>::max();
         m_frame->coreFrame()->view()->enableAutoSizeMode(true, IntSize(minimumLayoutWidth, minimumLayoutHeight), IntSize(maximumSize, maximumSize));
-        m_frame->coreFrame()->view()->setAutoSizeFixedMinimumHeight(webPage->size().height());
+
+        if (webPage->autoSizingShouldExpandToViewHeight())
+            m_frame->coreFrame()->view()->setAutoSizeFixedMinimumHeight(webPage->size().height());
     }
 
     m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
@@ -1718,6 +1717,11 @@ void WebFrameLoaderClient::didRequestAutocomplete(PassRefPtr<WebCore::FormState>
 {
 }
 #endif
+
+void WebFrameLoaderClient::prefetchDNS(const String& hostname)
+{
+    WebProcess::singleton().prefetchDNS(hostname);
+}
 
 bool WebFrameLoaderClient::shouldPaintBrokenImage(const WebCore::URL&) const
 {

@@ -1,3 +1,101 @@
+2015-10-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Factor out the graph node worklists from DFG into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=150411
+
+        Reviewed by Geoffrey Garen.
+
+        The new GraphNodeWorklist.h file is basically just the functionality from the old
+        DFGBlockWorklist.h, but templatized to work for any graph node type and any kind of graph
+        node set.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/GraphNodeWorklist.h: Added.
+        (WTF::GraphNodeWorklist::push):
+        (WTF::GraphNodeWorklist::notEmpty):
+        (WTF::GraphNodeWorklist::pop):
+        (WTF::GraphNodeWith::GraphNodeWith):
+        (WTF::GraphNodeWith::operator bool):
+        (WTF::ExtendedGraphNodeWorklist::ExtendedGraphNodeWorklist):
+        (WTF::ExtendedGraphNodeWorklist::forcePush):
+        (WTF::ExtendedGraphNodeWorklist::push):
+        (WTF::ExtendedGraphNodeWorklist::notEmpty):
+        (WTF::ExtendedGraphNodeWorklist::pop):
+        (WTF::GraphNodeWithOrder::GraphNodeWithOrder):
+        (WTF::GraphNodeWithOrder::operator bool):
+        (WTF::PostOrderGraphNodeWorklist::PostOrderGraphNodeWorklist):
+        (WTF::PostOrderGraphNodeWorklist::~PostOrderGraphNodeWorklist):
+        (WTF::PostOrderGraphNodeWorklist::pushPre):
+        (WTF::PostOrderGraphNodeWorklist::pushPost):
+        (WTF::PostOrderGraphNodeWorklist::push):
+        (WTF::PostOrderGraphNodeWorklist::notEmpty):
+        (WTF::PostOrderGraphNodeWorklist::pop):
+        * wtf/HashTable.h:
+        (WTF::HashTableAddResult::HashTableAddResult):
+        (WTF::HashTableAddResult::operator bool):
+
+2015-10-20  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the build by disabling MAC_GESTURE_EVENTS on 10.9 and 10.10
+
+        * wtf/FeatureDefines.h:
+
+2015-10-20  Yoav Weiss  <yoav@yoav.ws>
+
+        Rename the PICTURE_SIZES flag to CURRENTSRC
+        https://bugs.webkit.org/show_bug.cgi?id=150275
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h:
+
+2015-10-19  Beth Dakin  <bdakin@apple.com>
+
+        Build fix.
+
+        * wtf/FeatureDefines.h:
+
+2015-10-19  Tim Horton  <timothy_horton@apple.com>
+
+        Add magnify and rotate gesture event support for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=150179
+        <rdar://problem/8036240>
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+        New feature flag.
+
+2015-10-17  Mark Lam  <mark.lam@apple.com>
+
+        Add CPU(X86) to the supported MASM_PROBE CPUs. This was accidentally left out in r191197.
+
+        Not reviewed.
+
+        * wtf/Platform.h:
+
+2015-10-16  Mark Lam  <mark.lam@apple.com>
+
+        Always enable MASM_PROBE for debug builds.
+        https://bugs.webkit.org/show_bug.cgi?id=150190
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+
+2015-10-14  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r190882): Concatenating a character array and an empty string is broken.
+        <https://webkit.org/b/150135>
+
+        Reviewed by Geoffrey Garen.
+
+        StringAdapter templates for raw character arrays were always using 1 as the array length
+        in toString().
+
+        * wtf/text/StringConcatenate.h:
+
 2015-10-14  Per Arne Vollan  <peavo@outlook.com>
 
         [Win64] Enable concurrent JIT.

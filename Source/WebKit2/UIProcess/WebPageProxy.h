@@ -53,7 +53,6 @@
 #include "WebColorPicker.h"
 #include "WebContextMenuItemData.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebFindClient.h"
 #include "WebFrameProxy.h"
 #include "WebPageCreationParameters.h"
 #include "WebPageDiagnosticLoggingClient.h"
@@ -71,6 +70,7 @@
 #include <WebCore/Page.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
+#include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextGranularity.h>
 #include <WebCore/ViewState.h>
@@ -128,6 +128,7 @@ class MediaSessionMetadata;
 namespace API {
 class ContextMenuClient;
 class FindClient;
+class FindMatchesClient;
 class FormClient;
 class HistoryClient;
 class LoaderClient;
@@ -175,6 +176,7 @@ typedef GtkWidget* PlatformWidget;
 namespace WebKit {
 
 class CertificateInfo;
+class NativeWebGestureEvent;
 class NativeWebKeyboardEvent;
 class NativeWebMouseEvent;
 class NativeWebWheelEvent;
@@ -325,13 +327,15 @@ public:
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
+    API::ContextMenuClient& contextMenuClient() { return *m_contextMenuClient; }
     void setContextMenuClient(std::unique_ptr<API::ContextMenuClient>);
 #endif
     API::FindClient& findClient() { return *m_findClient; }
     void setFindClient(std::unique_ptr<API::FindClient>);
+    API::FindMatchesClient& findMatchesClient() { return *m_findMatchesClient; }
+    void setFindMatchesClient(std::unique_ptr<API::FindMatchesClient>);
     API::DiagnosticLoggingClient& diagnosticLoggingClient() { return *m_diagnosticLoggingClient; }
     void setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>);
-    void initializeFindMatchesClient(const WKPageFindMatchesClientBase*);
     void setFormClient(std::unique_ptr<API::FormClient>);
     void setNavigationClient(std::unique_ptr<API::NavigationClient>);
     void setHistoryClient(std::unique_ptr<API::HistoryClient>);
@@ -362,7 +366,7 @@ public:
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
 
     void stopLoading();
-    RefPtr<API::Navigation> reload(bool reloadFromOrigin);
+    RefPtr<API::Navigation> reload(bool reloadFromOrigin, bool contentBlockersEnabled);
 
     RefPtr<API::Navigation> goForward();
     RefPtr<API::Navigation> goBack();
@@ -506,6 +510,7 @@ public:
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
     void viewportMetaTagWidthDidChange(float width);
+    void disableDoubleTapGesturesUntilTapIsFinishedIfNecessary(uint64_t requestID, bool allowsDoubleTapZoom, const WebCore::FloatRect& targetRect, bool isReplacedElement, double minimumScale, double maximumScale);
     void didFinishDrawingPagesToPDF(const IPC::DataReference&);
     void contentSizeCategoryDidChange(const String& contentSizeCategory);
     void getLookupContextAtPoint(const WebCore::IntPoint&, std::function<void(const String&, CallbackBase::Error)>);
@@ -601,6 +606,10 @@ public:
     void handleWheelEvent(const NativeWebWheelEvent&);
     void handleKeyboardEvent(const NativeWebKeyboardEvent&);
 
+#if ENABLE(MAC_GESTURE_EVENTS)
+    void handleGestureEvent(const NativeWebGestureEvent&);
+#endif
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     void handleTouchEventSynchronously(const NativeWebTouchEvent&);
     void handleTouchEventAsynchronously(const NativeWebTouchEvent&);
@@ -650,9 +659,6 @@ public:
     void scaleView(double scale);
     void setShouldScaleViewToFitDocument(bool);
     
-    bool userContentExtensionsEnabled() { return m_userContentExtensionsEnabled; }
-    void setUserContentExtensionsEnabled(bool);
-
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);
     void setCustomDeviceScaleFactor(float);
@@ -747,7 +753,7 @@ public:
     void getBytecodeProfile(std::function<void (const String&, CallbackBase::Error)>);
 
 #if ENABLE(MHTML)
-    void getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)>, bool useBinaryEncoding);
+    void getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)>);
 #endif
     void getMainResourceDataOfFrame(WebFrameProxy*, std::function<void (API::Data*, CallbackBase::Error)>);
     void getResourceDataFromFrame(WebFrameProxy*, API::URL*, std::function<void (API::Data*, CallbackBase::Error)>);
@@ -808,7 +814,8 @@ public:
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
     virtual void exitAcceleratedCompositingMode();
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&);
-    
+    void willEnterAcceleratedCompositingMode();
+
     enum UndoOrRedo { Undo, Redo };
     void addEditCommand(WebEditCommandProxy*);
     void removeEditCommand(WebEditCommandProxy*);
@@ -1118,7 +1125,6 @@ private:
     void didReceiveTitleForFrame(uint64_t frameID, const String&, const UserData&);
     void didFirstLayoutForFrame(uint64_t frameID, const UserData&);
     void didFirstVisuallyNonEmptyLayoutForFrame(uint64_t frameID, const UserData&);
-    void didRemoveFrameFromHierarchy(uint64_t frameID, const UserData&);
     void didDisplayInsecureContentForFrame(uint64_t frameID, const UserData&);
     void didRunInsecureContentForFrame(uint64_t frameID, const UserData&);
     void didDetectXSSForFrame(uint64_t frameID, const UserData&);
@@ -1153,10 +1159,6 @@ private:
     void runJavaScriptPrompt(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
     void setStatusText(const String&);
     void mouseDidMoveOverElement(const WebHitTestResultData&, uint32_t modifiers, const UserData&);
-
-    void didBeginTrackingPotentialLongMousePress(const WebCore::IntPoint& mouseDownPosition, const WebHitTestResultData&, const UserData&);
-    void didRecognizeLongMousePress(const UserData&);
-    void didCancelTrackingPotentialLongMousePress(const UserData&);
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void unavailablePluginButtonClicked(uint32_t opaquePluginUnavailabilityReason, const String& mimeType, const String& pluginURLString, const String& pluginsPageURLString, const String& frameURLString, const String& pageURLString);
@@ -1265,13 +1267,8 @@ private:
     void hidePopupMenu();
 
 #if ENABLE(CONTEXT_MENUS)
-    enum class ContextMenuClientEligibility {
-        EligibleForClient,
-        NotEligibleForClient
-    };
-    void showContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, const UserData&);
-    void internalShowContextMenu(const WebCore::IntPoint& menuLocation, const ContextMenuContextData&, const Vector<WebContextMenuItemData>&, ContextMenuClientEligibility, const UserData&);
-    WebCore::ContextMenuItem platformInitializeShareMenuItem(const ContextMenuContextData&);
+    void showContextMenu(const ContextMenuContextData&, const UserData&);
+    void internalShowContextMenu(const ContextMenuContextData&, const UserData&);
 #endif
 
 #if ENABLE(TELEPHONE_NUMBER_DETECTION)
@@ -1280,13 +1277,9 @@ private:
 #endif
 #endif
 
-#if ENABLE(SERVICE_CONTROLS)
-    void showSelectionServiceMenu(const IPC::DataReference& selectionAsRTFD, const Vector<String>& telephoneNumbers, bool isEditable, const WebCore::IntPoint&);
-#endif
-
     // Search popup results
-    void saveRecentSearches(const String&, const Vector<String>&);
-    void loadRecentSearches(const String&, Vector<String>&);
+    void saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&);
+    void loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&);
 
 #if PLATFORM(COCOA)
     // Speech.
@@ -1484,7 +1477,7 @@ private:
     WebUIPopupMenuClient m_uiPopupMenuClient;
 #endif
     std::unique_ptr<API::FindClient> m_findClient;
-    WebFindMatchesClient m_findMatchesClient;
+    std::unique_ptr<API::FindMatchesClient> m_findMatchesClient;
     std::unique_ptr<API::DiagnosticLoggingClient> m_diagnosticLoggingClient;
 #if ENABLE(CONTEXT_MENUS)
     std::unique_ptr<API::ContextMenuClient> m_contextMenuClient;
@@ -1554,7 +1547,7 @@ private:
 
     RefPtr<WebPopupMenuProxy> m_activePopupMenu;
 #if ENABLE(CONTEXT_MENUS)
-    RefPtr<WebContextMenuProxy> m_activeContextMenu;
+    std::unique_ptr<WebContextMenuProxy> m_activeContextMenu;
     ContextMenuContextData m_activeContextMenuContextData;
 #endif
     RefPtr<API::HitTestResult> m_lastMouseMoveHitTestResult;
@@ -1640,6 +1633,9 @@ private:
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
     Deque<std::unique_ptr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;
+#if ENABLE(MAC_GESTURE_EVENTS)
+    Deque<NativeWebGestureEvent> m_gestureEventQueue;
+#endif
 
     bool m_processingMouseMoveEvent;
     std::unique_ptr<NativeWebMouseEvent> m_nextMouseMoveEvent;
@@ -1769,8 +1765,6 @@ private:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     bool m_requiresTargetMonitoring { false };
 #endif
-
-    bool m_userContentExtensionsEnabled { true };
 
 #if PLATFORM(IOS)
     bool m_hasDeferredStartAssistingNode { false };

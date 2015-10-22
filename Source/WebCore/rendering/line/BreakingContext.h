@@ -444,7 +444,7 @@ inline void BreakingContext::handleOutOfFlowPositioned(Vector<RenderBox*>& posit
 inline void BreakingContext::handleFloat()
 {
     auto& floatBox = downcast<RenderBox>(*m_current.renderer());
-    FloatingObject* floatingObject = m_lineBreaker.insertFloatingObject(floatBox);
+    const auto& floatingObject = *m_lineBreaker.insertFloatingObject(floatBox);
     // check if it fits in the current line.
     // If it does, position it now, otherwise, position
     // it after moving to next line (in clearFloats() func)

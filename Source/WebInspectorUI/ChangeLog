@@ -1,3 +1,373 @@
+2015-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: srcset attributes should have hyperlinks to the resources
+        https://bugs.webkit.org/show_bug.cgi?id=150409
+
+        Reviewed by Timothy Hatcher.
+
+        The "srcset" attribute parsing is a simplification of:
+        https://html.spec.whatwg.org/multipage/embedded-content.html#attr-img-srcset
+
+        The "srcset" attribute value is expected to be in comma
+        separated groups. Within each group we always expect a link,
+        and an optional descriptor. We want to linkify the link.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        (tokenizeSrcSetString):
+        (extendedXMLToken):
+        When parsing srcset attribute, parse links as link tokens
+        so that they are linkified in resource content views.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._buildAttributeDOM):
+        When creating the DOMTree DOM for srcset attributes,
+        create link elements for the link values of attribute value.
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Autocompletion previews in the CSS sidebar do not apply
+        https://bugs.webkit.org/show_bug.cgi?id=147720
+
+        Reviewed by Timothy Hatcher.
+
+        When autocompletion hints are added to styles or the console, the history
+        object used by CodeMirror was edited to remove the last entry. Instead of
+        using this method (which caused glitchy behaviour when undo-ing), call
+        CodeMirror.undo() and adjust accordingly. In addition, a marker was being
+        used as the completion hint instead of applying text, whereas these
+        changes use actual text, ensuring that completions are previewed in the page.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.close):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._handleBeforeChange):
+        (WebInspector.CodeMirrorCompletionController.prototype._createCompletionHintMarker): Deleted.
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.clearMarker): Deleted.
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add forgotten WebInspector.UIString from r190521
+        https://bugs.webkit.org/show_bug.cgi?id=150425
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (UserInterface/Views/CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded)
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Adjust usages of classList.toggle to ensure a true/false value instead of undefined
+        https://bugs.webkit.org/show_bug.cgi?id=150424
+
+        Reviewed by Timothy Hatcher.
+
+        Adds "!!" in front of force parameters in classList.toggle calls that
+        could possibly be undefined (thereby breaking the UI).
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WebInspector.ScopeBarItem):
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._updateSections):
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor):
+
+2015-10-21  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Option-Up doesn't increment certain attribute values
+        https://bugs.webkit.org/show_bug.cgi?id=149257
+
+        Reviewed by Brian Burg.
+
+        If the user tries to modify a numerical attribute in HTML and the cursor
+        was at the beginning of the attribute value, the range of the selection
+        was within a sibling element instead of the text node containin the value.
+        This patch fixes this issue and ensures that the correct text is selected.
+
+        * UserInterface/Views/EditingSupport.js:
+        (WebInspector.startEditing.handleEditingResult):
+        Replaced var with let.
+
+2015-10-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use some CSS Variables in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=150405
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        Include the new variables stylesheet.
+
+        * UserInterface/Views/Variables.css: Added.
+        (:root):
+        Introduce new global variables.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .cm-link):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-preview-divider):
+        (.console-message-enclosed):
+        (.console-message .console-message-extra-parameters-container > li::before):
+        (.console-saved-variable):
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.selected > span::after):
+        * UserInterface/Views/FormattedValue.css:
+        (:matches(.formatted-array, .formatted-map, .formatted-set, .formatted-weakmap, .formatted-weakset) > .size):
+        (.formatted-number):
+        (.formatted-boolean):
+        (.formatted-string):
+        (.formatted-regexp):
+        (.formatted-symbol):
+        * UserInterface/Views/ObjectPreviewView.css:
+        (.object-preview > .size):
+        * UserInterface/Views/ObjectTreeArrayIndexTreeElement.css:
+        (.object-tree-array-index .index-name):
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted :matches(.css-keyword, .css-tag, .css-at-rule, .css-important, .javascript-keyword, .html-tag)):
+        (.syntax-highlighted :matches(.css-number, .javascript-number)):
+        (.syntax-highlighted :matches(.css-string, .javascript-string, .html-attribute-value)):
+        (.syntax-highlighted .javascript-regexp):
+        * UserInterface/Views/TypeTokenView.css:
+        (.type-token-symbol):
+        Make use of variables.
+
+2015-10-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Typo in a property name: style.inerhited
+        https://bugs.webkit.org/show_bug.cgi?id=150391
+
+        Reviewed by Csaba Osztrogonác.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh):
+
+2015-10-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Pressing Command-S while focused on the styles sidebar should save CSS file
+        https://bugs.webkit.org/show_bug.cgi?id=150298
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        Beep when saving didn't work. Inline CSS and CSS in style attributes aren't curently supported.
+
+2015-10-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JavaScriptCore should parse sourceURL and sourceMappingURL directives
+        https://bugs.webkit.org/show_bug.cgi?id=150096
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Test/InspectorProtocol.js:
+        (InspectorProtocol._sendMessage):
+        (InspectorProtocol.dispatchMessageFromBackend):
+        This is only used for tests, so avoid console.log
+        and just dump directly to the system console.
+
+2015-10-19  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Add skeleton for initial WritableStream support
+        https://bugs.webkit.org/show_bug.cgi?id=149951
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Models/NativeFunctionParameters.js: Added support for WritableStream.
+
+2015-10-19  James Craig  <jcraig@apple.com>
+
+        Web Inspector: AX: console list 'input'/'output' markers are not perceivable
+        https://bugs.webkit.org/show_bug.cgi?id=133045
+
+        Enabling WebKit Web Inspector console pseudo-element labels using the new CSS4 'alt' property.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LogContentView.css: 
+        (.search-in-progress .console-item:not(.filtered-out-by-search) .highlighted.selected):
+        (.console-messages:focus .console-item.selected .console-user-command-result.console-log-level::before):
+        (@media reader): Deleted.
+
+2015-10-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Console Search should update when console is cleared
+        https://bugs.webkit.org/show_bug.cgi?id=150141
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._logCleared):
+        Reperform the search if there is a search query.
+
+        (WebInspector.LogContentView.prototype._filterMessageElements):
+        Reperform the current search.
+
+2015-10-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add "unset" to CSS value autocompletion
+        https://bugs.webkit.org/show_bug.cgi?id=127616
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/CSSCompletions.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WebInspector.CSSKeywordCompletions.forProperty):
+        Treat "unset" similiar to "initial". Also, no need for "initial"
+        in an individual property's list. We always include it.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateDisplaySection):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateAlignmentSection):
+        Add "Unset" alongside "Initial".
+
+2015-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include Garbage Collection Event in Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=142510
+
+        Reviewed by Geoffrey Garen and Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        (Array.prototype.partition):
+        Helper to partition an Array into two arrays.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        * UserInterface/Protocol/HeapObserver.js: Added.
+        (WebInspector.HeapObserver.prototype.garbageCollected):
+        (WebInspector.HeapObserver):
+        Create the new observer and manager.
+
+        * UserInterface/Models/GarbageCollection.js: Added.
+        (WebInspector.GarbageCollection):
+        (WebInspector.GarbageCollection.fromPayload):
+        (WebInspector.GarbageCollection.prototype.get type):
+        (WebInspector.GarbageCollection.prototype.get startTime):
+        (WebInspector.GarbageCollection.prototype.get endTime):
+        (WebInspector.GarbageCollection.prototype.get duration):
+        Model object for Heap.GarbageCollection.
+
+        * UserInterface/Controllers/HeapManager.js: Added.
+        (WebInspector.HeapManager):
+        (WebInspector.HeapManager.prototype.garbageCollected):
+        Dispatch events with the GC object.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        (WebInspector.TimelineManager.prototype._garbageCollected):
+        Include new GC Timeline Events as Script events.
+
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        (WebInspector.ScriptTimelineOverviewGraph.prototype.updateLayout):
+        For the Script overview, make two sets of bars, one for Scripts and one for GCs.
+        The GCs bar will be overlaid on top of the the Scripts bar. This is particularly
+        useful since a GC can happen during script execution.
+
+        * UserInterface/Images/TimelineRecordGarbageCollection.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.prototype.isGarbageCollection):
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.get data):
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+        (WebInspector.ScriptTimelineDataGridNode):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/SourceCodeTimelineTreeElement.js:
+        (WebInspector.SourceCodeTimelineTreeElement):
+        * UserInterface/Views/TimelineIcons.css:
+        (.garbage-collection-profile-record .icon):
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-script.script-timeline-record-garbage-collected > .segment):
+        UI for GC events.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.createCombinedBars):
+        Simplify by storing start time into a variable.
+
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        (WebInspector.TimelineRecordTreeElement):
+        Icon for GC events.
+
+2015-10-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r191135.
+        https://bugs.webkit.org/show_bug.cgi?id=150197
+
+        This patch causes 50+ LayoutTest crashes related to the
+        inspector (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: JavaScriptCore should parse sourceURL and
+        sourceMappingURL directives"
+        https://bugs.webkit.org/show_bug.cgi?id=150096
+        http://trac.webkit.org/changeset/191135
+
+2015-10-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: JavaScriptCore should parse sourceURL and sourceMappingURL directives
+        https://bugs.webkit.org/show_bug.cgi?id=150096
+
+        Reviewed by Geoffrey Garen.
+
+        * UserInterface/Test/InspectorProtocol.js:
+        (InspectorProtocol._sendMessage):
+        (InspectorProtocol.dispatchMessageFromBackend):
+        This is only used for tests, so avoid console.log
+        and just dump directly to the system console.
+
+2015-10-13  João Oliveira  <hello@jxs.pt>
+
+        Web Inspector: Console SearchBar should work more like ContentBrowser FindBanner
+        https://bugs.webkit.org/show_bug.cgi?id=149505
+
+        Reviewed by Joseph Pecoraro.
+
+        Console tab now uses findBanner, adapted LogContentView to use findBanner,
+        and findBanner to be more agnostic to both usecases, either as fixed, on console tab,
+        and hideable on other inspector tabs.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner.console-find-banner):
+        (.find-banner.console-findbanner input[type="search"]):
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner):
+        (WebInspector.FindBanner.set targetElement.delayedWork):
+        (WebInspector.FindBanner.prototype.set targetElement):
+        (WebInspector.FindBanner.prototype.get showing):
+        (WebInspector.FindBanner.prototype.focus):
+        (WebInspector.FindBanner.prototype._clearAndBlur):
+        (WebInspector.FindBanner.prototype.show.delayedWork):
+        (WebInspector.FindBanner.prototype.show):
+        (WebInspector.FindBanner.prototype.hide):
+        (WebInspector.FindBanner.prototype.get element): Deleted.
+        (WebInspector.FindBanner.prototype._inputFieldSearch): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype.get navigationItems):
+        (WebInspector.LogContentView.prototype.handleFindEvent):
+        (WebInspector.LogContentView.prototype.findBannerRevealPreviousResult):
+        (WebInspector.LogContentView.prototype.findBannerRevealNextResult):
+        (WebInspector.LogContentView.prototype._filterMessageElements):
+        (WebInspector.LogContentView.prototype.findBannerPerformSearch):
+        (WebInspector.LogContentView.prototype.findBannerSearchCleared):
+        (WebInspector.LogContentView.prototype.revealNextSearchResult):
+        (WebInspector.LogContentView.prototype.revealPreviousSearchResult):
+        (WebInspector.LogContentView.prototype._performSearch):
+        (WebInspector.LogContentView.prototype.searchBarDidActivate): Deleted.
+        (WebInspector.LogContentView.prototype._searchTextDidChange): Deleted.
+
 2015-10-13  Nikita Vasilyev  <nvasilyev@apple.com>
 
         REGRESSION(r189567): Web Inspector: Clipped filter icons when debugger sidebar is narrow

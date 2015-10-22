@@ -224,17 +224,30 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
     VM& vm = exec->vm();
 
     std::unique_ptr<AccessCase> newCase;
+    JSFunction* getter = nullptr;
+    ObjectPropertyConditionSet conditionSet;
+    JSCell* baseCell = baseValue.asCell();
+    Structure* structure = baseCell->structure(vm);
+
+    if (slot.isCacheableGetter())
+        getter = jsDynamicCast<JSFunction*>(slot.getterSetter()->getter());
 
     if (isJSArray(baseValue) && propertyName == exec->propertyNames().length)
         newCase = AccessCase::getLength(vm, codeBlock, AccessCase::ArrayLength);
     else if (isJSString(baseValue) && propertyName == exec->propertyNames().length)
         newCase = AccessCase::getLength(vm, codeBlock, AccessCase::StringLength);
-    else {
+    else if (getter && AccessCase::canEmitIntrinsicGetter(getter, structure)) {
+        if (slot.slotBase() != baseValue) {
+            conditionSet = generateConditionsForPrototypePropertyHit(vm, codeBlock->ownerExecutable(), exec, structure, slot.slotBase(), propertyName.impl());
+            if (!conditionSet.isValid())
+                return GiveUpOnCache;
+        }
+
+        newCase = AccessCase::getIntrinsic(vm, codeBlock, getter, slot.cachedOffset(), structure, conditionSet);
+
+    } else {
         if (!slot.isCacheable() && !slot.isUnset())
             return GiveUpOnCache;
-
-        JSCell* baseCell = baseValue.asCell();
-        Structure* structure = baseCell->structure(vm);
 
         bool loadTargetFromProxy = false;
         if (baseCell->type() == PureForwardingProxyType) {
@@ -265,8 +278,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
         }
 
         PropertyOffset offset = slot.isUnset() ? invalidOffset : slot.cachedOffset();
-        
-        ObjectPropertyConditionSet conditionSet;
+
         if (slot.isUnset() || slot.slotBase() != baseValue) {
             if (structure->typeInfo().prohibitsPropertyCaching() || structure->isDictionary())
                 return GiveUpOnCache;
@@ -550,7 +562,7 @@ void linkFor(
     ASSERT(!callLinkInfo.isLinked());
     callLinkInfo.setCallee(exec->callerFrame()->vm(), callLinkInfo.hotPathBegin(), callerCodeBlock, callee);
     callLinkInfo.setLastSeenCallee(exec->callerFrame()->vm(), callerCodeBlock, callee);
-    if (shouldShowDisassemblyFor(callerCodeBlock))
+    if (shouldDumpDisassemblyFor(callerCodeBlock))
         dataLog("Linking call in ", *callerCodeBlock, " at ", callLinkInfo.codeOrigin(), " to ", pointerDump(calleeCodeBlock), ", entrypoint at ", codePtr, "\n");
     MacroAssembler::repatchNearCall(callLinkInfo.hotPathOther(), CodeLocationLabel(codePtr));
     
@@ -590,7 +602,7 @@ static void revertCall(VM* vm, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef
 
 void unlinkFor(VM& vm, CallLinkInfo& callLinkInfo)
 {
-    if (Options::showDisassembly())
+    if (Options::dumpDisassembly())
         dataLog("Unlinking call from ", callLinkInfo.callReturnLocation(), "\n");
     
     revertCall(&vm, callLinkInfo, vm.getCTIStub(linkCallThunkGenerator));
@@ -602,7 +614,7 @@ void linkVirtualFor(
     CodeBlock* callerCodeBlock = exec->callerFrame()->codeBlock();
     VM* vm = callerCodeBlock->vm();
 
-    if (shouldShowDisassemblyFor(callerCodeBlock))
+    if (shouldDumpDisassemblyFor(callerCodeBlock))
         dataLog("Linking virtual call at ", *callerCodeBlock, " ", exec->callerFrame()->codeOrigin(), "\n");
     
     MacroAssemblerCodeRef virtualThunk = virtualThunkFor(vm, callLinkInfo);
