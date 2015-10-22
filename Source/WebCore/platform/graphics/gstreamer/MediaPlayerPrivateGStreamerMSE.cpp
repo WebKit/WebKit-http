@@ -674,8 +674,10 @@ static HashSet<String> mimeTypeCache()
         return cache;
 
     const char* mimeTypes[] = {
-        "audio/mp4",
-        "video/mp4"
+#if !USE(HOLE_PUNCH_EXTERNAL)
+        "video/mp4",
+#endif
+        "audio/mp4"
     };
 
     for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
