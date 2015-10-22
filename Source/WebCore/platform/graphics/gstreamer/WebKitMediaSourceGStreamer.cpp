@@ -73,6 +73,10 @@ struct _Stream
     RefPtr<WebCore::VideoTrackPrivateGStreamer> videoTrack;
 #endif
     WebCore::FloatSize presentationSize;
+
+    // This helps WebKitMediaSrcPrivate.appSrcNeedDataCount, ensuring that needDatas are
+    // counted only once per each appsrc.
+    bool appSrcNeedDataFlag;
 };
 
 enum OnSeekDataAction {
@@ -238,6 +242,8 @@ static void webkit_media_src_init(WebKitMediaSrc* src)
     src->priv->appSrcSeekDataCount = 0;
     src->priv->appSrcNeedDataCount = 0;
     src->priv->appSrcSeekDataNextAction = Nothing;
+
+    // No need to reset Stream.appSrcNeedDataFlag because there are no Streams at this point yet.
 }
 
 static void webKitMediaSrcFinalize(GObject* object)
@@ -648,6 +654,16 @@ static Stream* getStreamBySourceBufferPrivate(WebKitMediaSrc* src, WebCore::Sour
     return NULL;
 }
 
+static Stream* getStreamByAppSrc(WebKitMediaSrc* src, GstElement* appsrc)
+{
+    for (GList* streams = src->priv->streams; streams; streams = streams->next) {
+        Stream* stream = static_cast<Stream*>(streams->data);
+        if (stream->appsrc == appsrc)
+            return stream;
+    }
+    return NULL;
+}
+
 static gboolean seekNeedsDataMainThread (gpointer user_data)
 {
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(user_data);
@@ -668,7 +684,6 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
 
 static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
 {
-    UNUSED_PARAM(src);
     UNUSED_PARAM(length);
 
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(user_data);
@@ -679,9 +694,13 @@ static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
 
     GST_OBJECT_LOCK(webKitMediaSrc);
     int numAppSrcs = g_list_length(webKitMediaSrc->priv->streams);
+    Stream* appSrcStream = getStreamByAppSrc(webKitMediaSrc, GST_ELEMENT(src));
 
     if (webKitMediaSrc->priv->appSrcSeekDataCount > 0) {
-        ++webKitMediaSrc->priv->appSrcNeedDataCount;
+        if (appSrcStream && !appSrcStream->appSrcNeedDataFlag) {
+            ++webKitMediaSrc->priv->appSrcNeedDataCount;
+            appSrcStream->appSrcNeedDataFlag = true;
+        }
         if (webKitMediaSrc->priv->appSrcSeekDataCount == numAppSrcs && webKitMediaSrc->priv->appSrcNeedDataCount == numAppSrcs) {
             LOG_MEDIA_MESSAGE("All need_datas completed");
             allAppSrcsNeedDataAfterSeek = true;
@@ -689,6 +708,11 @@ static void app_src_need_data (GstAppSrc *src, guint length, gpointer user_data)
             webKitMediaSrc->priv->appSrcSeekDataCount = 0;
             webKitMediaSrc->priv->appSrcNeedDataCount = 0;
             webKitMediaSrc->priv->appSrcSeekDataNextAction = Nothing;
+
+            for (GList* streams = webKitMediaSrc->priv->streams; streams; streams = streams->next) {
+                Stream* stream = static_cast<Stream*>(streams->data);
+                stream->appSrcNeedDataFlag = false;
+            }
         }
     }
     GST_OBJECT_UNLOCK(webKitMediaSrc);
@@ -806,6 +830,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     GUniquePtr<gchar> typefindName(g_strdup_printf("typefind%u", numberOfStreams));
     stream->parent = m_webKitMediaSrc.get();
     stream->appsrc = gst_element_factory_make("appsrc", srcName.get());
+    stream->appSrcNeedDataFlag = false;
     stream->sourceBuffer = sourceBufferPrivate.get();
 
     // No track has been attached yet.
@@ -1240,6 +1265,11 @@ void webkit_media_src_prepare_seek(WebKitMediaSrc* src, const MediaTime& time)
     src->priv->seekTime = time;
     src->priv->appSrcSeekDataCount = 0;
     src->priv->appSrcNeedDataCount = 0;
+
+    for (GList* streams = src->priv->streams; streams; streams = streams->next) {
+        Stream* stream = static_cast<Stream*>(streams->data);
+        stream->appSrcNeedDataFlag = false;
+    }
 
     // The pending action will be performed in app_src_seek_data().
     src->priv->appSrcSeekDataNextAction = MediaSourceSeekToTime;
