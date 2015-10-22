@@ -96,7 +96,7 @@ DiscretixSession::~DiscretixSession()
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode)
+RefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode)
 {
     RefPtr<Uint8Array> result;
 
@@ -108,6 +108,7 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
         GST_ERROR("failed to create DxDrmClient from initData (status: %d)", status);
         reportError(status);
         errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+        result = nullptr;
     } else {
         uint32_t challengeLength = MAX_CHALLENGE_LEN;
         unsigned char* challenge = static_cast<unsigned char*>(g_malloc0(challengeLength));
@@ -117,6 +118,7 @@ PassRefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* ini
         if (status != DX_SUCCESS) {
             GST_ERROR("failed to generate challenge request (status: %d)", status);
             errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+            result = nullptr;
         } else {
             // Get License URL
             destinationURL = static_cast<const char *>(DxDrmStream_GetTextAttribute(m_DxDrmStream, DX_ATTR_SILENT_URL, DX_ACTIVE_CONTENT));

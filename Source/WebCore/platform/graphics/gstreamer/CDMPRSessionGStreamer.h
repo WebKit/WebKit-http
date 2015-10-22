@@ -47,7 +47,7 @@ public:
     virtual CDMSessionType type() override;
     virtual void setClient(CDMSessionClient* client) override;
     virtual const String& sessionId() const override;
-    virtual PassRefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode) override;
+    virtual RefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode) override;
     virtual void releaseKeys() override;
     virtual bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode) override;
     virtual RefPtr<ArrayBuffer> cachedKeyForKeyID(const String&) const;
