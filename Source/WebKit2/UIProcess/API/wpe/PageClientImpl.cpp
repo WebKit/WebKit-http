@@ -177,15 +177,17 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent&, bool)
 {
 }
 
-RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
+RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy&)
 {
     return nullptr;
 }
 
-RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*)
+#if ENABLE(CONTEXT_MENUS)
+std::unique_ptr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&)
 {
     return nullptr;
 }
+#endif
 
 void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
 {
@@ -196,6 +198,10 @@ void PageClientImpl::exitAcceleratedCompositingMode()
 }
 
 void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
+{
+}
+
+void PageClientImpl::willEnterAcceleratedCompositingMode()
 {
 }
 

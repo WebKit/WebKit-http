@@ -80,12 +80,15 @@ private:
     virtual void doneWithKeyEvent(const NativeWebKeyboardEvent&, bool) override;
     virtual void doneWithTouchEvent(const NativeWebTouchEvent&, bool) override;
 
-    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy*) override;
-    virtual RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy*) override;
+    virtual RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
+#if ENABLE(CONTEXT_MENUS)
+    virtual std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
+#endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     virtual void exitAcceleratedCompositingMode() override;
     virtual void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
+    virtual void willEnterAcceleratedCompositingMode() override;
 
     virtual void didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&) override;
 
