@@ -220,7 +220,6 @@ public:
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    PassRefPtr<BitmapTexture> updateTexture(TextureMapper*);
     guint m_orientation;
     void updateTexture(BitmapTextureGL&, GstVideoInfo&);
 #endif

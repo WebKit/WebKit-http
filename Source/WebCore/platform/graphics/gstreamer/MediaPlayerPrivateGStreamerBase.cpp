@@ -618,94 +618,6 @@ void MediaPlayerPrivateGStreamerBase::muteChanged()
 }
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-PassRefPtr<BitmapTexture> MediaPlayerPrivateGStreamerBase::updateTexture(TextureMapper* textureMapper)
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    if (!GST_IS_SAMPLE(m_sample.get()))
-        return nullptr;
-
-    GstCaps* caps = gst_sample_get_caps(m_sample.get());
-    if (!caps)
-        return nullptr;
-
-    GstVideoInfo videoInfo;
-    gst_video_info_init(&videoInfo);
-    if (!gst_video_info_from_caps(&videoInfo, caps))
-        return nullptr;
-
-    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-    RefPtr<BitmapTexture> texture = textureMapper->acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
-    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
-
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 1, 2)
-    GstMemory *mem;
-    if (gst_buffer_n_memory (buffer) >= 1) {
-        if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_egl_image_memory (mem)) {
-            guint n, i;
-
-            n = gst_buffer_n_memory (buffer);
-
-            n = 1; // FIXME
-            const BitmapTextureGL* textureGL = static_cast<const BitmapTextureGL*>(texture.get()); // FIXME
-
-            for (i = 0; i < n; i++) {
-                mem = gst_buffer_peek_memory (buffer, i);
-
-                g_assert (gst_is_egl_image_memory (mem));
-
-                if (i == 0)
-                    glActiveTexture (GL_TEXTURE0);
-                else if (i == 1)
-                    glActiveTexture (GL_TEXTURE1);
-                else if (i == 2)
-                    glActiveTexture (GL_TEXTURE2);
-
-                glBindTexture (GL_TEXTURE_2D, textureGL->id()); // FIXME
-                glEGLImageTargetTexture2DOES (GL_TEXTURE_2D,
-                    gst_egl_image_memory_get_image (mem));
-
-                m_orientation = gst_egl_image_memory_get_orientation (mem);
-                if (m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_NORMAL
-                    && m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_FLIP) {
-                    LOG_ERROR("MediaPlayerPrivateGStreamerBase::updateTexture: invalid GstEGLImage orientation");
-                }
-            }
-
-            return texture;
-        }
-    }
-
-    return 0;
-#else
-#if GST_CHECK_VERSION(1, 1, 0)
-    GstVideoGLTextureUploadMeta* meta;
-    if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
-        if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
-            const BitmapTextureGL* textureGL = static_cast<const BitmapTextureGL*>(texture.get());
-            guint ids[4] = { textureGL->id(), 0, 0, 0 };
-
-            if (gst_video_gl_texture_upload_meta_upload(meta, ids))
-                return texture;
-        }
-    }
-#endif
-
-    // Right now the TextureMapper only supports chromas with one plane
-    ASSERT(GST_VIDEO_INFO_N_PLANES(&videoInfo) == 1);
-
-    GstVideoFrame videoFrame;
-    if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, GST_MAP_READ))
-        return nullptr;
-
-    int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&videoFrame, 0);
-    const void* srcData = GST_VIDEO_FRAME_PLANE_DATA(&videoFrame, 0);
-    texture->updateContents(srcData, WebCore::IntRect(WebCore::IntPoint(0, 0), size), WebCore::IntPoint(0, 0), stride, BitmapTexture::UpdateCannotModifyOriginalImageData);
-    gst_video_frame_unmap(&videoFrame);
-    return texture;
-#endif
-    return 0;
-}
-
 void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, GstVideoInfo& videoInfo)
 {
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
@@ -949,11 +861,27 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper* textur
         return;
 
     if (m_usingFallbackVideoSink) {
-        if (RefPtr<BitmapTexture> texture = updateTexture(textureMapper)) {
-            TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-            BitmapTextureGL* textureGL = static_cast<BitmapTextureGL*>(texture.get());
-            texmapGL->drawTexture(textureGL->id(), m_textureMapperRotationFlag, textureGL->size(), targetRect, modelViewMatrix, opacity);
+        RefPtr<BitmapTexture> texture;
+        {
+            WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+
+            if (!m_sample)
+                return;
+
+            GstCaps* caps = gst_sample_get_caps(m_sample.get());
+            if (UNLIKELY(!caps))
+                return;
+
+            GstVideoInfo videoInfo;
+            gst_video_info_init(&videoInfo);
+            if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+                return;
+
+            IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+            texture = textureMapper->acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo));
+            updateTexture(static_cast<BitmapTextureGL&>(*texture), videoInfo);
         }
+        textureMapper->drawTexture(*texture.get(), targetRect, matrix, opacity);
         return;
     }
 
