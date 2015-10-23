@@ -123,7 +123,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/TextCombinerGStreamer.cpp
     platform/graphics/gstreamer/TextSinkGStreamer.cpp
     platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
-    platform/graphics/gstreamer/VideoSinkGStreamer.cpp
     platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
@@ -270,7 +269,6 @@ list(APPEND WebCore_LIBRARIES
     ${GSTREAMER_BASE_LIBRARIES}
     ${GSTREAMER_AUDIO_LIBRARIES}
     ${GSTREAMER_APP_LIBRARIES}
-    ${GSTREAMER_GL_LIBRARIES}
     ${GSTREAMER_PBUTILS_LIBRARIES}
     ${GSTREAMER_TAG_LIBRARIES}
     ${GSTREAMER_VIDEO_LIBRARIES}
@@ -300,7 +298,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${GSTREAMER_BASE_INCLUDE_DIRS}
     ${GSTREAMER_AUDIO_INCLUDE_DIRS}
     ${GSTREAMER_APP_INCLUDE_DIRS}
-    ${GSTREAMER_GL_INCLUDE_DIRS}
     ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
     ${GSTREAMER_TAG_INCLUDE_DIRS}
     ${GSTREAMER_VIDEO_INCLUDE_DIRS}
@@ -410,6 +407,20 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2) AND ENABLE_DXDRM)
         )
     endif ()
 endif ()
+
+if (NOT USE_HOLE_PUNCH_GSTREAMER)
+    list(APPEND WebCore_SOURCES
+      platform/graphics/gstreamer/VideoSinkGStreamer.cpp
+    )
+
+    list(APPEND WebCore_LIBRARIES
+      ${GSTREAMER_GL_LIBRARIES}
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+      ${GSTREAMER_GL_INCLUDE_DIRS}
+    )
+endif()
 
 if (USE_HOLE_PUNCH_EXTERNAL)
     list(APPEND WebCore_SOURCES

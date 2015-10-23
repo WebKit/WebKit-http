@@ -61,9 +61,11 @@
 
 #if USE(OPENGL_ES_2)
 #if GST_CHECK_VERSION(1, 3, 0)
+#if !USE(HOLE_PUNCH_GSTREAMER)
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/egl/gsteglimagememory.h>
 #undef GST_USE_UNSTABLE_API
+#endif
 #endif
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -172,6 +174,7 @@ static void mediaPlayerPrivateMuteChangedCallback(GObject*, GParamSpec*, MediaPl
     player->muteChanged();
 }
 
+#if !USE(HOLE_PUNCH_GSTREAMER)
 static void mediaPlayerPrivateRepaintCallback(WebKitVideoSink*, GstSample* sample, MediaPlayerPrivateGStreamerBase* playerPrivate)
 {
     playerPrivate->triggerRepaint(sample);
@@ -181,6 +184,7 @@ static void mediaPlayerPrivateDrainCallback(WebKitVideoSink*, MediaPlayerPrivate
 {
     playerPrivate->triggerDrain();
 }
+#endif
 
 #if USE(GSTREAMER_GL)
 static gboolean mediaPlayerPrivateDrawCallback(GstElement*, GstContext*, GstSample* sample, MediaPlayerPrivateGStreamerBase* playerPrivate)
@@ -623,7 +627,7 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
 
-#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 1, 2)
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 1, 2) && !USE(HOLE_PUNCH_GSTREAMER)
     GstMemory *mem;
     if (gst_buffer_n_memory (buffer) >= 1) {
         if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_egl_image_memory (mem)) {
@@ -923,6 +927,7 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamerBase::movieLoadType() cons
     return MediaPlayer::Download;
 }
 
+#if !USE(HOLE_PUNCH_GSTREAMER)
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
     GstElement* videoSink = nullptr;
@@ -969,6 +974,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 
     return videoSink;
 }
+#endif
 
 void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* volume)
 {

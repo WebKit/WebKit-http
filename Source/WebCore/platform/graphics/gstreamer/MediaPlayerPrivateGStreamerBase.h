@@ -185,7 +185,9 @@ public:
  protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
 
+#if !USE(HOLE_PUNCH_GSTREAMER)
     virtual GstElement* createVideoSink();
+#endif
 
     void setStreamVolumeElement(GstStreamVolume*);
     virtual GstElement* createAudioSink() { return 0; }
