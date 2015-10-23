@@ -46,6 +46,11 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/video/video.h>
 
+
+#if USE(DXDRM)
+#include "DiscretixSession.h"
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -741,9 +746,13 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 #if USE(DXDRM)
 void MediaPlayerPrivateGStreamerMSE::emitSession()
 {
+    DiscretixSession* session = dxdrmSession();
+    if (!session->ready())
+        return;
+
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it) {
         gst_element_send_event(it->value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-           gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, dxdrmSession(), nullptr)));
+           gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
         it->value->setAppendStage(AppendPipeline::AppendStage::Ongoing);
     }
 }

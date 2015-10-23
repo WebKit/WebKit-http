@@ -1065,8 +1065,12 @@ DiscretixSession* MediaPlayerPrivateGStreamerBase::dxdrmSession() const
 
 void MediaPlayerPrivateGStreamerBase::emitSession()
 {
+    DiscretixSession* session = dxdrmSession();
+    if (!session->ready())
+        return;
+
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, dxdrmSession(), nullptr)));
+        gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
 }
 #endif
 
@@ -1155,7 +1159,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
             return MediaPlayer::InvalidPlayerState;
         }
 
+        // XXX: use nextMessage here and send a new keyMessage is ack is needed?
         emitSession();
+
         return MediaPlayer::NoError;
     }
 #endif
