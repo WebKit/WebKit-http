@@ -201,7 +201,9 @@ private:
     void cancelLinkingForBlock(InlineStackEntry*, BasicBlock*); // Only works when the given block is the last one to have been added for that inline stack entry.
     // Handle intrinsic functions. Return true if it succeeded, false if we need to plant a call.
     template<typename ChecksFunctor>
-    bool handleIntrinsic(int resultOperand, Intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks);
+    bool handleIntrinsicCall(int resultOperand, Intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks);
+    template<typename ChecksFunctor>
+    bool handleIntrinsicGetter(int resultOperand, const GetByIdVariant& intrinsicVariant, Node* thisNode, const ChecksFunctor& insertChecks);
     template<typename ChecksFunctor>
     bool handleTypedArrayConstructor(int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, TypedArrayType, const ChecksFunctor& insertChecks);
     template<typename ChecksFunctor>
@@ -1590,7 +1592,7 @@ bool ByteCodeParser::attemptToInlineCall(Node* callTargetNode, int resultOperand
     
         Intrinsic intrinsic = callee.intrinsicFor(specializationKind);
         if (intrinsic != NoIntrinsic) {
-            if (handleIntrinsic(resultOperand, intrinsic, registerOffset, argumentCountIncludingThis, prediction, insertChecksWithAccounting)) {
+            if (handleIntrinsicCall(resultOperand, intrinsic, registerOffset, argumentCountIncludingThis, prediction, insertChecksWithAccounting)) {
                 RELEASE_ASSERT(didInsertChecks);
                 addToGraph(Phantom, callTargetNode);
                 emitArgumentPhantoms(registerOffset, argumentCountIncludingThis);
@@ -1763,7 +1765,7 @@ bool ByteCodeParser::handleInlining(
     // the DFG. And by polyvariant profiling we mean polyvariant profiling of *this* call. Note that
     // we could improve that aspect of this by doing polymorphic inlining but having the profiling
     // also.
-    if (!isFTL(m_graph.m_plan.mode) || !Options::enablePolymorphicCallInlining()
+    if (!isFTL(m_graph.m_plan.mode) || !Options::usePolymorphicCallInlining()
         || InlineCallFrame::isVarargs(kind)) {
         if (verbose) {
             dataLog("Bailing inlining (hard).\n");
@@ -1980,9 +1982,12 @@ bool ByteCodeParser::handleMinMax(int resultOperand, NodeType op, int registerOf
 }
 
 template<typename ChecksFunctor>
-bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks)
+bool ByteCodeParser::handleIntrinsicCall(int resultOperand, Intrinsic intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks)
 {
     switch (intrinsic) {
+
+    // Intrinsic Functions:
+
     case AbsIntrinsic: {
         if (argumentCountIncludingThis == 1) { // Math.abs()
             insertChecks();
@@ -2266,6 +2271,80 @@ bool ByteCodeParser::handleIntrinsic(int resultOperand, Intrinsic intrinsic, int
     default:
         return false;
     }
+}
+
+template<typename ChecksFunctor>
+bool ByteCodeParser::handleIntrinsicGetter(int resultOperand, const GetByIdVariant& variant, Node* thisNode, const ChecksFunctor& insertChecks)
+{
+    switch (variant.intrinsic()) {
+    case TypedArrayByteLengthIntrinsic: {
+        insertChecks();
+
+        TypedArrayType type = (*variant.structureSet().begin())->classInfo()->typedArrayStorageType;
+        Array::Type arrayType = toArrayType(type);
+        size_t logSize = logElementSize(type);
+
+        variant.structureSet().forEach([&] (Structure* structure) {
+            TypedArrayType curType = structure->classInfo()->typedArrayStorageType;
+            ASSERT(logSize == logElementSize(curType));
+            arrayType = refineTypedArrayType(arrayType, curType);
+            ASSERT(arrayType != Array::Generic);
+        });
+
+        Node* lengthNode = addToGraph(GetArrayLength, OpInfo(ArrayMode(arrayType).asWord()), thisNode);
+
+        if (!logSize) {
+            set(VirtualRegister(resultOperand), lengthNode);
+            return true;
+        }
+
+        // We can use a BitLShift here because typed arrays will never have a byteLength
+        // that overflows int32.
+        Node* shiftNode = jsConstant(jsNumber(logSize));
+        set(VirtualRegister(resultOperand), addToGraph(BitLShift, lengthNode, shiftNode));
+
+        return true;
+    }
+
+    case TypedArrayLengthIntrinsic: {
+        insertChecks();
+
+        TypedArrayType type = (*variant.structureSet().begin())->classInfo()->typedArrayStorageType;
+        Array::Type arrayType = toArrayType(type);
+
+        variant.structureSet().forEach([&] (Structure* structure) {
+            TypedArrayType curType = structure->classInfo()->typedArrayStorageType;
+            arrayType = refineTypedArrayType(arrayType, curType);
+            ASSERT(arrayType != Array::Generic);
+        });
+
+        set(VirtualRegister(resultOperand), addToGraph(GetArrayLength, OpInfo(ArrayMode(arrayType).asWord()), thisNode));
+
+        return true;
+
+    }
+
+    case TypedArrayByteOffsetIntrinsic: {
+        insertChecks();
+
+        TypedArrayType type = (*variant.structureSet().begin())->classInfo()->typedArrayStorageType;
+        Array::Type arrayType = toArrayType(type);
+
+        variant.structureSet().forEach([&] (Structure* structure) {
+            TypedArrayType curType = structure->classInfo()->typedArrayStorageType;
+            arrayType = refineTypedArrayType(arrayType, curType);
+            ASSERT(arrayType != Array::Generic);
+        });
+
+        set(VirtualRegister(resultOperand), addToGraph(GetTypedArrayByteOffset, OpInfo(ArrayMode(arrayType).asWord()), thisNode));
+
+        return true;
+    }
+
+    default:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 template<typename ChecksFunctor>
@@ -2692,7 +2771,7 @@ Node* ByteCodeParser::load(
     
     SpeculatedType loadPrediction;
     NodeType loadOp;
-    if (variant.callLinkStatus()) {
+    if (variant.callLinkStatus() || variant.intrinsic() != NoIntrinsic) {
         loadPrediction = SpecCellOther;
         loadOp = GetGetterSetterByOffset;
     } else {
@@ -2743,7 +2822,7 @@ void ByteCodeParser::handleGetById(
 {
     NodeType getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
     
-    if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::enableAccessInlining()) {
+    if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::useAccessInlining()) {
         set(VirtualRegister(destinationOperand),
             addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
         return;
@@ -2751,7 +2830,7 @@ void ByteCodeParser::handleGetById(
     
     if (getByIdStatus.numVariants() > 1) {
         if (getByIdStatus.makesCalls() || !isFTL(m_graph.m_plan.mode)
-            || !Options::enablePolymorphicAccessInlining()) {
+            || !Options::usePolymorphicAccessInlining()) {
             set(VirtualRegister(destinationOperand),
                 addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
             return;
@@ -2763,6 +2842,12 @@ void ByteCodeParser::handleGetById(
         //    optimal, if there is some rarely executed case in the chain that requires a lot
         //    of checks and those checks are not watchpointable.
         for (const GetByIdVariant& variant : getByIdStatus.variants()) {
+            if (variant.intrinsic() != NoIntrinsic) {
+                set(VirtualRegister(destinationOperand),
+                    addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
+                return;
+            }
+
             if (variant.conditionSet().isEmpty()) {
                 cases.append(
                     MultiGetByOffsetCase(
@@ -2805,14 +2890,25 @@ void ByteCodeParser::handleGetById(
 
     if (m_graph.compilation())
         m_graph.compilation()->noticeInlinedGetById();
-    
-    if (!variant.callLinkStatus()) {
+
+    if (!variant.callLinkStatus() && variant.intrinsic() == NoIntrinsic) {
         set(VirtualRegister(destinationOperand), loadedValue);
         return;
     }
     
     Node* getter = addToGraph(GetGetter, loadedValue);
-    
+
+    if (handleIntrinsicGetter(destinationOperand, variant, base,
+            [&] () {
+                addToGraph(CheckCell, OpInfo(m_graph.freeze(variant.intrinsicFunction())), getter, base);
+            })) {
+        addToGraph(Phantom, getter);
+        return;
+    }
+
+    if (variant.intrinsic() != NoIntrinsic)
+        ASSERT(variant.intrinsic() == NoIntrinsic);
+
     // Make a call. We don't try to get fancy with using the smallest operand number because
     // the stack layout phase should compress the stack anyway.
     
@@ -2866,7 +2962,7 @@ void ByteCodeParser::handlePutById(
     Node* base, unsigned identifierNumber, Node* value,
     const PutByIdStatus& putByIdStatus, bool isDirect)
 {
-    if (!putByIdStatus.isSimple() || !putByIdStatus.numVariants() || !Options::enableAccessInlining()) {
+    if (!putByIdStatus.isSimple() || !putByIdStatus.numVariants() || !Options::useAccessInlining()) {
         if (!putByIdStatus.isSet())
             addToGraph(ForceOSRExit);
         emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
@@ -2875,7 +2971,7 @@ void ByteCodeParser::handlePutById(
     
     if (putByIdStatus.numVariants() > 1) {
         if (!isFTL(m_graph.m_plan.mode) || putByIdStatus.makesCalls()
-            || !Options::enablePolymorphicAccessInlining()) {
+            || !Options::usePolymorphicAccessInlining()) {
             emitPutById(base, identifierNumber, value, putByIdStatus, isDirect);
             return;
         }
@@ -4830,10 +4926,10 @@ bool ByteCodeParser::parse()
     
     m_dfgCodeBlock = m_graph.m_plan.profiledDFGCodeBlock;
     if (isFTL(m_graph.m_plan.mode) && m_dfgCodeBlock
-        && Options::enablePolyvariantDevirtualization()) {
-        if (Options::enablePolyvariantCallInlining())
+        && Options::usePolyvariantDevirtualization()) {
+        if (Options::usePolyvariantCallInlining())
             CallLinkStatus::computeDFGStatuses(m_dfgCodeBlock, m_callContextMap);
-        if (Options::enablePolyvariantByIdInlining())
+        if (Options::usePolyvariantByIdInlining())
             m_dfgCodeBlock->getStubInfoMap(m_dfgStubInfos);
     }
     

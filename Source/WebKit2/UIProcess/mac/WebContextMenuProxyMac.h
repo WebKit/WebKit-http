@@ -38,46 +38,39 @@ OBJC_CLASS WKView;
 namespace WebKit {
 
 class ShareableBitmap;
+class UserData;
 class WebContextMenuItemData;
 class WebPageProxy;
 
 class WebContextMenuProxyMac : public WebContextMenuProxy {
 public:
-    static Ref<WebContextMenuProxyMac> create(WKView* webView, WebPageProxy* page)
-    {
-        return adoptRef(*new WebContextMenuProxyMac(webView, page));
-    }
+    WebContextMenuProxyMac(WKView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
     ~WebContextMenuProxyMac();
 
-    virtual void showContextMenu(const WebCore::IntPoint&, const Vector<RefPtr<WebContextMenuItem>>&, const ContextMenuContextData&) override;
-
-    virtual void hideContextMenu() override;
-    virtual void cancelTracking() override;
-    
     void contextMenuItemSelected(const WebContextMenuItemData&);
 
 #if ENABLE(SERVICE_CONTROLS)
     void clearServicesMenu();
 #endif
 
-    WebPageProxy& page() const { return *m_page; }
+    WebPageProxy& page() const { return m_page; }
     NSWindow *window() const;
 
 private:
-    WebContextMenuProxyMac(WKView*, WebPageProxy*);
+    virtual void show() override;
 
-    void populate(const Vector<RefPtr<WebContextMenuItem>>&, const ContextMenuContextData&);
+    void showContextMenu();
 
 #if ENABLE(SERVICE_CONTROLS)
-    void setupServicesMenu(const ContextMenuContextData&);
+    void showServicesMenu();
+    void setupServicesMenu();
+    WebCore::ContextMenuItem shareMenuItem();
 #endif
 
-    RetainPtr<NSPopUpButtonCell> m_popup;
-#if ENABLE(SERVICE_CONTROLS)
-    RetainPtr<NSMenu> m_servicesMenu;
-#endif
+    RetainPtr<NSMenu> m_menu;
+
     WKView* m_webView;
-    WebPageProxy* m_page;
+    WebPageProxy& m_page;
 };
 
 } // namespace WebKit

@@ -162,13 +162,13 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
     });
 }
 
-void ThreadedCompositor::didChangeViewportSize(const IntSize& newSize)
+void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
         if (protector->m_surface)
-            protector->m_surface->resize(newSize);
-        protector->viewportController()->didChangeViewportSize(newSize);
+            protector->m_surface->resize(size);
+        protector->viewportController()->didChangeViewportSize(size);
     });
 }
 
@@ -257,13 +257,12 @@ GLContext* ThreadedCompositor::glContext()
 
 #if PLATFORM(GBM)
     RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
-    m_gbmSurface = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
-    if (!m_gbmSurface)
+    m_surface = GBMSurface::create(IntSize(viewportController()->visibleContentsRect().size()), *this);
+    if (!m_surface)
         return 0;
 
     setNativeSurfaceHandleForCompositing(0);
-    m_context = m_gbmSurface->createGLContext();
+    m_context = m_surface->createGLContext();
 #endif
 
 #if PLATFORM(BCM_RPI)
@@ -489,7 +488,7 @@ void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
 #if PLATFORM(GBM)
-    downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).releaseBuffer(*m_gbmSurface, handle);
+    m_surface->releaseBuffer(handle);
 #endif
 #if PLATFORM(BCM_RPI)
     m_surface->releaseBuffer(handle);

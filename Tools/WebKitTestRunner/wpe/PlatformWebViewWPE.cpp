@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PlatformWebView.h"
 
+#include <WebKit/WKImageCairo.h>
+#include <cairo.h>
 #include <cstdio>
 #include <glib.h>
 
@@ -88,7 +90,10 @@ void PlatformWebView::makeWebViewFirstResponder()
 
 WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
 {
-    return nullptr;
+    cairo_surface_t* imageSurface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 800, 600);
+    WKRetainPtr<WKImageRef> wkImage = adoptWK(WKImageCreateFromCairoSurface(imageSurface, 0 /* options */));
+    cairo_surface_destroy(imageSurface);
+    return wkImage;
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)

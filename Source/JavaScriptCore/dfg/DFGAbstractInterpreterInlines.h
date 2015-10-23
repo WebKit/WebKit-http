@@ -527,6 +527,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 typeOfDoubleDifference(
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
             break;
+        case UntypedUse:
+            forNode(node).setType(m_graph, SpecHeapTop);
+            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             break;
@@ -2021,6 +2024,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         case Array::Float64Array:
             filter(node->child1(), SpecFloat64Array);
+            break;
+        case Array::AnyTypedArray:
+            filter(node->child1(), SpecTypedArrayView);
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();

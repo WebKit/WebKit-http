@@ -27,19 +27,19 @@
 #include "IntPoint.h"
 
 #include "FloatPoint.h"
-#include <wtf/PrintStream.h>
+#include "TextStream.h"
 
 namespace WebCore {
-
-void IntPoint::dump(PrintStream& out) const
-{
-    out.printf("(%d, %d)", x(), y());
-}
 
 IntPoint::IntPoint(const FloatPoint& p)
     : m_x(clampToInteger(p.x()))
     , m_y(clampToInteger(p.y()))
 {
+}
+
+TextStream& operator<<(TextStream& ts, const IntPoint& p)
+{
+    return ts << "(" << p.x() << "," << p.y() << ")";
 }
 
 }

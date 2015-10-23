@@ -41,7 +41,7 @@ public:
     static void initialize();
     static void recordGCPauseTime(double start, double end);
 
-    static void showObjectStatistics(Heap*);
+    static void dumpObjectStatistics(Heap*);
 
 #if ENABLE(JS_MEMORY_TRACKING)
     static void showAllocBacktrace(Heap*, size_t, void*);

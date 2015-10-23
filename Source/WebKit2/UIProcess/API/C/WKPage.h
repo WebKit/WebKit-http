@@ -83,6 +83,7 @@ WK_EXPORT void WKPageLoadWebArchiveDataWithUserData(WKPageRef page, WKDataRef we
 
 WK_EXPORT void WKPageStopLoading(WKPageRef page);
 WK_EXPORT void WKPageReload(WKPageRef page);
+WK_EXPORT void WKPageReloadWithoutContentBlockers(WKPageRef page);
 WK_EXPORT void WKPageReloadFromOrigin(WKPageRef page);
 
 WK_EXPORT bool WKPageTryClose(WKPageRef page);
@@ -243,7 +244,7 @@ typedef void (*WKPageGetContentsAsStringFunction)(WKStringRef, WKErrorRef, void*
 WK_EXPORT void WKPageGetContentsAsString(WKPageRef page, void* context, WKPageGetContentsAsStringFunction function);
 
 typedef void (*WKPageGetContentsAsMHTMLDataFunction)(WKDataRef, WKErrorRef, void*);
-WK_EXPORT void WKPageGetContentsAsMHTMLData(WKPageRef page, bool useBinaryEncoding, void* context, WKPageGetContentsAsMHTMLDataFunction function);
+WK_EXPORT void WKPageGetContentsAsMHTMLData(WKPageRef page, void* context, WKPageGetContentsAsMHTMLDataFunction function);
 
 typedef void (*WKPageGetSelectionAsWebArchiveDataFunction)(WKDataRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetSelectionAsWebArchiveData(WKPageRef page, void* context, WKPageGetSelectionAsWebArchiveDataFunction function);

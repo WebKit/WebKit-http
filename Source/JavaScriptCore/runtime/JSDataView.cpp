@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "DataView.h"
 #include "Error.h"
 #include "JSCInlines.h"
+#include "Reject.h"
 
 namespace JSC {
 
@@ -83,6 +84,12 @@ bool JSDataView::set(ExecState*, JSObject*, unsigned, unsigned)
     return false;
 }
 
+bool JSDataView::setIndex(ExecState*, unsigned, JSValue)
+{
+    UNREACHABLE_FOR_PLATFORM();
+    return false;
+}
+
 PassRefPtr<DataView> JSDataView::typedImpl()
 {
     return DataView::create(buffer(), byteOffset(), length());
@@ -96,8 +103,62 @@ bool JSDataView::getOwnPropertySlot(
         slot.setValue(thisObject, DontEnum | ReadOnly, jsNumber(thisObject->m_length));
         return true;
     }
-    
+    if (propertyName == exec->propertyNames().byteOffset) {
+        slot.setValue(thisObject, DontEnum | ReadOnly, jsNumber(thisObject->byteOffset()));
+        return true;
+    }
+
     return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
+}
+
+void JSDataView::put(
+    JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value,
+    PutPropertySlot& slot)
+{
+    JSDataView* thisObject = jsCast<JSDataView*>(cell);
+    if (propertyName == exec->propertyNames().byteLength
+        || propertyName == exec->propertyNames().byteOffset) {
+        reject(exec, slot.isStrictMode(), "Attempting to write to read-only typed array property.");
+        return;
+    }
+
+    Base::put(thisObject, exec, propertyName, value, slot);
+}
+
+bool JSDataView::defineOwnProperty(
+    JSObject* object, ExecState* exec, PropertyName propertyName,
+    const PropertyDescriptor& descriptor, bool shouldThrow)
+{
+    JSDataView* thisObject = jsCast<JSDataView*>(object);
+    if (propertyName == exec->propertyNames().byteLength
+        || propertyName == exec->propertyNames().byteOffset)
+        return reject(exec, shouldThrow, "Attempting to define read-only typed array property.");
+
+    return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
+}
+
+bool JSDataView::deleteProperty(
+    JSCell* cell, ExecState* exec, PropertyName propertyName)
+{
+    JSDataView* thisObject = jsCast<JSDataView*>(cell);
+    if (propertyName == exec->propertyNames().byteLength
+        || propertyName == exec->propertyNames().byteOffset)
+        return false;
+
+    return Base::deleteProperty(thisObject, exec, propertyName);
+}
+
+void JSDataView::getOwnNonIndexPropertyNames(
+    JSObject* object, ExecState* exec, PropertyNameArray& array, EnumerationMode mode)
+{
+    JSDataView* thisObject = jsCast<JSDataView*>(object);
+    
+    if (mode.includeDontEnumProperties()) {
+        array.add(exec->propertyNames().byteOffset);
+        array.add(exec->propertyNames().byteLength);
+    }
+    
+    Base::getOwnNonIndexPropertyNames(thisObject, exec, array, mode);
 }
 
 ArrayBuffer* JSDataView::slowDownAndWasteMemory(JSArrayBufferView*)

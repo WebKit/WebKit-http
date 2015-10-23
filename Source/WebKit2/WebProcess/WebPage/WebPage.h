@@ -96,6 +96,10 @@
 #include <WebCore/PlatformTouchEvent.h>
 #endif
 
+#if ENABLE(MAC_GESTURE_EVENTS)
+#include <WebKitAdditions/PlatformGestureEventMac.h>
+#endif
+
 #if ENABLE(CONTEXT_MENUS)
 #include "InjectedBundlePageContextMenuClient.h"
 #endif
@@ -166,6 +170,7 @@ class WebImage;
 class WebInspector;
 class WebInspectorClient;
 class WebInspectorUI;
+class WebGestureEvent;
 class WebKeyboardEvent;
 class WebMouseEvent;
 class WebNotificationClient;
@@ -794,6 +799,10 @@ public:
     void wheelEventHandlersChanged(bool);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
+#if ENABLE(MAC_GESTURE_EVENTS)
+    void gestureEvent(const WebGestureEvent&);
+#endif
+
     void updateVisibilityState(bool isInitialState = false);
 
 #if PLATFORM(IOS)
@@ -982,7 +991,7 @@ private:
     void loadPlainTextString(const String&, const UserData&);
     void loadWebArchiveData(const IPC::DataReference&, const UserData&);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
-    void reload(uint64_t navigationID, bool reloadFromOrigin, const SandboxExtension::Handle&);
+    void reload(uint64_t navigationID, bool reloadFromOrigin, bool contentBlockersEnabled, const SandboxExtension::Handle&);
     void goForward(uint64_t navigationID, uint64_t);
     void goBack(uint64_t navigationID, uint64_t);
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
@@ -1029,7 +1038,7 @@ private:
 
     void getContentsAsString(uint64_t callbackID);
 #if ENABLE(MHTML)
-    void getContentsAsMHTMLData(uint64_t callbackID, bool useBinaryEncoding);
+    void getContentsAsMHTMLData(uint64_t callbackID);
 #endif
     void getMainResourceDataOfFrame(uint64_t frameID, uint64_t callbackID);
     void getResourceDataFromFrame(uint64_t frameID, const String& resourceURL, uint64_t callbackID);
@@ -1160,7 +1169,6 @@ private:
     void clearWheelEventTestTrigger();
 
     void setShouldScaleViewToFitDocument(bool);
-    void setUserContentExtensionsEnabled(bool);
 
     void pageStoppedScrolling();
 

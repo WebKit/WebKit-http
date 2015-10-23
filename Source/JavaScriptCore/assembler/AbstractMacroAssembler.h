@@ -69,17 +69,17 @@ inline bool isX86()
 
 inline bool optimizeForARMv7IDIVSupported()
 {
-    return isARMv7IDIVSupported() && Options::enableArchitectureSpecificOptimizations();
+    return isARMv7IDIVSupported() && Options::useArchitectureSpecificOptimizations();
 }
 
 inline bool optimizeForARM64()
 {
-    return isARM64() && Options::enableArchitectureSpecificOptimizations();
+    return isARM64() && Options::useArchitectureSpecificOptimizations();
 }
 
 inline bool optimizeForX86()
 {
-    return isX86() && Options::enableArchitectureSpecificOptimizations();
+    return isX86() && Options::useArchitectureSpecificOptimizations();
 }
 
 class LinkBuffer;
@@ -852,7 +852,7 @@ public:
         FOR_EACH_CPU_REGISTER(DECLARE_REGISTER)
         #undef DECLARE_REGISTER
 
-        static const char* registerName(RegisterID regID)
+        static const char* gprName(RegisterID regID)
         {
             switch (regID) {
                 #define DECLARE_REGISTER(_type, _regName) \
@@ -860,11 +860,12 @@ public:
                     return #_regName;
                 FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
                 #undef DECLARE_REGISTER
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
             }
-            RELEASE_ASSERT_NOT_REACHED();
         }
 
-        static const char* registerName(FPRegisterID regID)
+        static const char* fprName(FPRegisterID regID)
         {
             switch (regID) {
                 #define DECLARE_REGISTER(_type, _regName) \
@@ -872,11 +873,12 @@ public:
                     return #_regName;
                 FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
                 #undef DECLARE_REGISTER
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
             }
-            RELEASE_ASSERT_NOT_REACHED();
         }
 
-        void* registerValue(RegisterID regID)
+        void* gpr(RegisterID regID)
         {
             switch (regID) {
                 #define DECLARE_REGISTER(_type, _regName) \
@@ -884,11 +886,12 @@ public:
                     return _regName;
                 FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
                 #undef DECLARE_REGISTER
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
             }
-            RELEASE_ASSERT_NOT_REACHED();
         }
 
-        double registerValue(FPRegisterID regID)
+        double fpr(FPRegisterID regID)
         {
             switch (regID) {
                 #define DECLARE_REGISTER(_type, _regName) \
@@ -896,10 +899,10 @@ public:
                     return _regName;
                 FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
                 #undef DECLARE_REGISTER
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
             }
-            RELEASE_ASSERT_NOT_REACHED();
         }
-
     };
 
     struct ProbeContext;
@@ -910,6 +913,12 @@ public:
         void* arg1;
         void* arg2;
         CPUState cpu;
+
+        // Convenience methods:
+        void* gpr(RegisterID regID) { return cpu.gpr(regID); }
+        double fpr(FPRegisterID regID) { return cpu.gpr(regID); }
+        const char* gprName(RegisterID regID) { return cpu.gprName(regID); }
+        const char* fprName(FPRegisterID regID) { return cpu.fprName(regID); }
     };
 
     // This function emits code to preserve the CPUState (e.g. registers),

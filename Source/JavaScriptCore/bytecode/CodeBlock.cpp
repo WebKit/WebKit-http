@@ -45,7 +45,6 @@
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JIT.h"
-#include "JITStubs.h"
 #include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -2204,8 +2203,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 }
 
 #if ENABLE(WEBASSEMBLY)
-CodeBlock::CodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerExecutable, VM& vm, JSGlobalObject* globalObject)
-    : JSCell(vm, structure)
+CodeBlock::CodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerExecutable, JSGlobalObject* globalObject)
+    : JSCell(*vm, structure)
     , m_globalObject(globalObject->vm(), this, globalObject)
     , m_heap(&m_globalObject->vm().heap)
     , m_numCalleeRegisters(0)
@@ -2218,7 +2217,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerE
     , m_steppingMode(SteppingModeDisabled)
     , m_numBreakpoints(0)
     , m_ownerExecutable(m_globalObject->vm(), this, ownerExecutable)
-    , m_vm(&vm)
+    , m_vm(vm)
     , m_isStrictMode(false)
     , m_needsActivation(false)
     , m_codeType(FunctionCode)
@@ -2957,7 +2956,7 @@ CallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteIndex origina
     // call sites outside the DFG/FTL inline caches.
     UNUSED_PARAM(originalCallSite);
     RELEASE_ASSERT_NOT_REACHED();
-    return CallSiteIndex(static_cast<uint32_t>(0));
+    return CallSiteIndex(0u);
 #endif
 }
 
@@ -3142,7 +3141,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     RELEASE_ASSERT(reason != Profiler::NotJettisoned);
     
 #if ENABLE(DFG_JIT)
-    if (DFG::shouldShowDisassembly()) {
+    if (DFG::shouldDumpDisassembly()) {
         dataLog("Jettisoning ", *this);
         if (mode == CountReoptimization)
             dataLog(" and counting reoptimization");
@@ -3153,7 +3152,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     }
     
     if (reason == Profiler::JettisonDueToWeakReference) {
-        if (DFG::shouldShowDisassembly()) {
+        if (DFG::shouldDumpDisassembly()) {
             dataLog(*this, " will be jettisoned because of the following dead references:\n");
             DFG::CommonData* dfgCommon = m_jitCode->dfgCommon();
             for (unsigned i = 0; i < dfgCommon->transitions.size(); ++i) {
@@ -3195,7 +3194,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         }
     }
     
-    if (DFG::shouldShowDisassembly())
+    if (DFG::shouldDumpDisassembly())
         dataLog("    Did invalidate ", *this, "\n");
     
     // Count the reoptimization if that's what the user wanted.
@@ -3203,7 +3202,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // FIXME: Maybe this should call alternative().
         // https://bugs.webkit.org/show_bug.cgi?id=123677
         baselineAlternative()->countReoptimization();
-        if (DFG::shouldShowDisassembly())
+        if (DFG::shouldDumpDisassembly())
             dataLog("    Did count reoptimization for ", *this, "\n");
     }
     
@@ -3225,7 +3224,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         m_globalObject->vm(), alternative(), codeType(), specializationKind());
 
 #if ENABLE(DFG_JIT)
-    if (DFG::shouldShowDisassembly())
+    if (DFG::shouldDumpDisassembly())
         dataLog("    Did install baseline version of ", *this, "\n");
 #endif // ENABLE(DFG_JIT)
 }

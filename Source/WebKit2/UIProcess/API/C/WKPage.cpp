@@ -32,7 +32,9 @@
 #include "APIData.h"
 #include "APIDictionary.h"
 #include "APIFindClient.h"
+#include "APIFindMatchesClient.h"
 #include "APIFrameInfo.h"
+#include "APIGeometry.h"
 #include "APIHitTestResult.h"
 #include "APILoaderClient.h"
 #include "APINavigationAction.h"
@@ -57,6 +59,7 @@
 #include "WKPluginInformation.h"
 #include "WebBackForwardList.h"
 #include "WebFormClient.h"
+#include "WebImage.h"
 #include "WebInspectorProxy.h"
 #include "WebOpenPanelParameters.h"
 #include "WebOpenPanelResultListenerProxy.h"
@@ -112,6 +115,14 @@ template<> struct ClientTraits<WKPageContextMenuClientBase> {
     typedef std::tuple<WKPageContextMenuClientV0, WKPageContextMenuClientV1, WKPageContextMenuClientV2, WKPageContextMenuClientV3> Versions;
 };
 #endif
+
+template<> struct ClientTraits<WKPageFindClientBase> {
+    typedef std::tuple<WKPageFindClientV0> Versions;
+};
+
+template<> struct ClientTraits<WKPageFindMatchesClientBase> {
+    typedef std::tuple<WKPageFindMatchesClientV0> Versions;
+};
 
 }
 
@@ -228,12 +239,23 @@ void WKPageStopLoading(WKPageRef pageRef)
 
 void WKPageReload(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload(false);
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = true;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
+}
+
+void WKPageReloadWithoutContentBlockers(WKPageRef pageRef)
+{
+    const bool reloadFromOrigin = false;
+    const bool contentBlockersEnabled = false;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 void WKPageReloadFromOrigin(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload(true);
+    const bool reloadFromOrigin = true;
+    const bool contentBlockersEnabled = true;
+    toImpl(pageRef)->reload(reloadFromOrigin, contentBlockersEnabled);
 }
 
 bool WKPageTryClose(WKPageRef pageRef)
@@ -363,7 +385,7 @@ void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 
 void WKPageSetUserContentExtensionsEnabled(WKPageRef pageRef, bool enabled)
 {
-    toImpl(pageRef)->setUserContentExtensionsEnabled(enabled);
+    // FIXME: Remove this function once it is no longer used.
 }
 
 bool WKPageSupportsTextEncoding(WKPageRef pageRef)
@@ -903,7 +925,45 @@ void WKPageSetPageFindClient(WKPageRef pageRef, const WKPageFindClientBase* wkCl
 
 void WKPageSetPageFindMatchesClient(WKPageRef pageRef, const WKPageFindMatchesClientBase* wkClient)
 {
-    toImpl(pageRef)->initializeFindMatchesClient(wkClient);
+    class FindMatchesClient : public API::Client<WKPageFindMatchesClientBase>, public API::FindMatchesClient {
+    public:
+        explicit FindMatchesClient(const WKPageFindMatchesClientBase* client)
+        {
+            initialize(client);
+        }
+
+    private:
+        virtual void didFindStringMatches(WebPageProxy* page, const String& string, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t index) override
+        {
+            if (!m_client.didFindStringMatches)
+                return;
+
+            Vector<RefPtr<API::Object>> matches;
+            matches.reserveInitialCapacity(matchRects.size());
+
+            for (const auto& rects : matchRects) {
+                Vector<RefPtr<API::Object>> apiRects;
+                apiRects.reserveInitialCapacity(rects.size());
+
+                for (const auto& rect : rects)
+                    apiRects.uncheckedAppend(API::Rect::create(toAPI(rect)));
+
+                matches.uncheckedAppend(API::Array::create(WTF::move(apiRects)));
+            }
+
+            m_client.didFindStringMatches(toAPI(page), toAPI(string.impl()), toAPI(API::Array::create(WTF::move(matches)).ptr()), index, m_client.base.clientInfo);
+        }
+
+        virtual void didGetImageForMatchResult(WebPageProxy* page, WebImage* image, int32_t index) override
+        {
+            if (!m_client.didGetImageForMatchResult)
+                return;
+
+            m_client.didGetImageForMatchResult(toAPI(page), toAPI(image), index, m_client.base.clientInfo);
+        }
+    };
+
+    toImpl(pageRef)->setFindMatchesClient(std::make_unique<FindMatchesClient>(wkClient));
 }
 
 void WKPageSetPageInjectedBundleClient(WKPageRef pageRef, const WKPageInjectedBundleClientBase* wkClient)
@@ -1020,14 +1080,6 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
                 return;
 
             m_client.didLayout(toAPI(&page), toWKLayoutMilestones(milestones), nullptr, m_client.base.clientInfo);
-        }
-
-        virtual void didRemoveFrameFromHierarchy(WebPageProxy& page, WebFrameProxy& frame, API::Object* userData) override
-        {
-            if (!m_client.didRemoveFrameFromHierarchy)
-                return;
-
-            m_client.didRemoveFrameFromHierarchy(toAPI(&page), toAPI(&frame), toAPI(userData), m_client.base.clientInfo);
         }
 
         virtual void didDisplayInsecureContentForFrame(WebPageProxy& page, WebFrameProxy& frame, API::Object* userData) override
@@ -1919,31 +1971,6 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.pinnedStateDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
-        virtual void didBeginTrackingPotentialLongMousePress(WebPageProxy* page, const IntPoint& mouseDownPosition, const WebHitTestResultData& data, API::Object* userInfo) override
-        {
-            if (!m_client.didBeginTrackingPotentialLongMousePress)
-                return;
-
-            RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(data);
-            m_client.didBeginTrackingPotentialLongMousePress(toAPI(page), toAPI(mouseDownPosition), toAPI(webHitTestResult.get()), toAPI(userInfo), m_client.base.clientInfo);
-        }
-
-        virtual void didRecognizeLongMousePress(WebPageProxy* page, API::Object* userInfo) override
-        {
-            if (!m_client.didRecognizeLongMousePress)
-                return;
-
-            m_client.didRecognizeLongMousePress(toAPI(page), toAPI(userInfo), m_client.base.clientInfo);
-        }
-
-        virtual void didCancelTrackingPotentialLongMousePress(WebPageProxy* page, API::Object* userInfo) override
-        {
-            if (!m_client.didCancelTrackingPotentialLongMousePress)
-                return;
-
-            m_client.didCancelTrackingPotentialLongMousePress(toAPI(page), toAPI(userInfo), m_client.base.clientInfo);
-        }
-
         virtual void isPlayingAudioDidChange(WebPageProxy& page) override
         {
             if (!m_client.isPlayingAudioDidChange)
@@ -2207,13 +2234,12 @@ void WKPageGetSelectionAsWebArchiveData(WKPageRef pageRef, void* context, WKPage
     toImpl(pageRef)->getSelectionAsWebArchiveData(toGenericCallbackFunction(context, callback));
 }
 
-void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, bool useBinaryEncoding, void* context, WKPageGetContentsAsMHTMLDataFunction callback)
+void WKPageGetContentsAsMHTMLData(WKPageRef pageRef, void* context, WKPageGetContentsAsMHTMLDataFunction callback)
 {
 #if ENABLE(MHTML)
-    toImpl(pageRef)->getContentsAsMHTMLData(toGenericCallbackFunction(context, callback), useBinaryEncoding);
+    toImpl(pageRef)->getContentsAsMHTMLData(toGenericCallbackFunction(context, callback));
 #else
     UNUSED_PARAM(pageRef);
-    UNUSED_PARAM(useBinaryEncoding);
     UNUSED_PARAM(context);
     UNUSED_PARAM(callback);
 #endif

@@ -2165,6 +2165,9 @@
     <ClCompile Include="..\css\CSSReflectValue.cpp">
       <Filter>css</Filter>
     </ClCompile>
+    <ClCompile Include="..\css\CSSRevertValue.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
     <ClCompile Include="..\css\CSSRule.cpp">
       <Filter>css</Filter>
     </ClCompile>
@@ -2201,6 +2204,9 @@
     <ClCompile Include="..\css\CSSUnicodeRangeValue.cpp">
       <Filter>css</Filter>
     </ClCompile>
+    <ClCompile Include="..\css\CSSUnsetValue.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
     <ClCompile Include="..\css\CSSValue.cpp">
       <Filter>css</Filter>
     </ClCompile>
@@ -2208,6 +2214,12 @@
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\CSSValuePool.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
+    <ClCompile Include="..\css\CSSVariableDependentValue.cpp">
+      <Filter>css</Filter>
+    </ClCompile>
+    <ClCompile Include="..\css\CSSVariableValue.cpp">
       <Filter>css</Filter>
     </ClCompile>
     <ClCompile Include="..\css\FontLoader.cpp">
@@ -3872,7 +3884,7 @@
     <ClCompile Include="..\html\HTMLSelectElementWin.cpp">
       <Filter>html</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\HTMLSlotElementWin.cpp">
+    <ClCompile Include="..\html\HTMLSlotElement.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="..\html\HTMLSourceElement.cpp">
@@ -5484,7 +5496,13 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableColElement.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableDataCellElement.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableElement.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableHeaderCellElement.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableRowElement.cpp">
@@ -5671,6 +5689,9 @@
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWritableStream.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSRect.cpp">
@@ -9133,6 +9154,9 @@
     <ClInclude Include="..\css\CSSReflectValue.h">
       <Filter>css</Filter>
     </ClInclude>
+    <ClInclude Include="..\css\CSSRevertValue.h">
+      <Filter>css</Filter>
+    </ClInclude>
     <ClInclude Include="..\css\CSSRule.h">
       <Filter>css</Filter>
     </ClInclude>
@@ -9172,6 +9196,9 @@
     <ClInclude Include="..\css\CSSUnicodeRangeValue.h">
       <Filter>css</Filter>
     </ClInclude>
+    <ClInclude Include="..\css\CSSUnsetValue.h">
+      <Filter>css</Filter>
+    </ClInclude>
     <ClInclude Include="..\css\CSSUnknownRule.h">
       <Filter>css</Filter>
     </ClInclude>
@@ -9182,6 +9209,9 @@
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\css\CSSValuePool.h">
+      <Filter>css</Filter>
+    </ClInclude>
+    <ClInclude Include="..\css\CSSVariableDependentValue.h">
       <Filter>css</Filter>
     </ClInclude>
     <ClInclude Include="..\css\CSSVariableValue.h">
@@ -11773,6 +11803,9 @@
     <ClInclude Include="..\ForwardingHeaders\inspector\agents\InspectorDebuggerAgent.h">
       <Filter>ForwardingHeaders\inspector</Filter>
     </ClInclude>
+    <ClInclude Include="..\ForwardingHeaders\inspector\agents\InspectorHeapAgent.h">
+      <Filter>ForwardingHeaders\inspector</Filter>
+    </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\inspector\agents\InspectorRuntimeAgent.h">
       <Filter>ForwardingHeaders\inspector</Filter>
     </ClInclude>
@@ -12051,6 +12084,9 @@
       <Filter>ForwardingHeaders\heap</Filter>
     </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\heap\Heap.h">
+      <Filter>ForwardingHeaders\heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ForwardingHeaders\heap\HeapObserver.h">
       <Filter>ForwardingHeaders\heap</Filter>
     </ClInclude>
     <ClInclude Include="..\ForwardingHeaders\heap\SlotVisitor.h">
@@ -12891,7 +12927,13 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableColElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableDataCellElement.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableElement.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableHeaderCellElement.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSHTMLTableRowElement.h">
@@ -13627,6 +13669,9 @@
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSReadableStreamReader.h">
+      <Filter>DerivedSources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSWritableStream.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSXMLHttpRequest.h">

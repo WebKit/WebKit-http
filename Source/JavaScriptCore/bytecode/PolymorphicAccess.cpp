@@ -36,7 +36,6 @@
 #include "JITOperations.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
-#include "MaxFrameExtentForSlowPathCall.h"
 #include "ScratchRegisterAllocator.h"
 #include "StructureStubClearingWatchpoint.h"
 #include "StructureStubInfo.h"
@@ -47,167 +46,107 @@ namespace JSC {
 
 static const bool verbose = false;
 
-struct AccessGenerationState {
-    AccessGenerationState() 
-        : m_calculatedRegistersForCallAndExceptionHandling(false)
-        , m_needsToRestoreRegistersIfException(false)
-        , m_calculatedCallSiteIndex(false)
-    {
+Watchpoint* AccessGenerationState::addWatchpoint(const ObjectPropertyCondition& condition)
+{
+    return WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
+        watchpoints, jit->codeBlock(), stubInfo, condition);
+}
+
+void AccessGenerationState::restoreScratch()
+{
+    allocator->restoreReusedRegistersByPopping(*jit, numberOfBytesUsedToPreserveReusedRegisters, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
+}
+
+void AccessGenerationState::succeed()
+{
+    restoreScratch();
+    success.append(jit->jump());
+}
+
+void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling()
+{
+    if (!m_calculatedRegistersForCallAndExceptionHandling) {
+        m_calculatedRegistersForCallAndExceptionHandling = true;
+
+        m_liveRegistersToPreserveAtExceptionHandlingCallSite = jit->codeBlock()->jitCode()->liveRegistersToPreserveAtExceptionHandlingCallSite(jit->codeBlock(), stubInfo->callSiteIndex);
+        m_needsToRestoreRegistersIfException = m_liveRegistersToPreserveAtExceptionHandlingCallSite.numberOfSetRegisters() > 0;
+        if (m_needsToRestoreRegistersIfException)
+            RELEASE_ASSERT(JITCode::isOptimizingJIT(jit->codeBlock()->jitType()));
+
+        m_liveRegistersForCall = RegisterSet(m_liveRegistersToPreserveAtExceptionHandlingCallSite, allocator->usedRegisters());
+        m_liveRegistersForCall.exclude(RegisterSet::registersToNotSaveForJSCall());
     }
-    CCallHelpers* jit { nullptr };
-    ScratchRegisterAllocator* allocator;
-    unsigned numberOfBytesUsedToPreserveReusedRegisters { 0 };
-    PolymorphicAccess* access { nullptr };
-    StructureStubInfo* stubInfo { nullptr };
-    CCallHelpers::JumpList success;
-    CCallHelpers::JumpList failAndRepatch;
-    CCallHelpers::JumpList failAndIgnore;
-    GPRReg baseGPR { InvalidGPRReg };
-    JSValueRegs valueRegs;
-    GPRReg scratchGPR { InvalidGPRReg };
-    Vector<std::function<void(LinkBuffer&)>> callbacks;
-    const Identifier* ident;
-    std::unique_ptr<WatchpointsOnStructureStubInfo> watchpoints;
-    Vector<WriteBarrier<JSCell>> weakReferences;
+}
 
-    Watchpoint* addWatchpoint(const ObjectPropertyCondition& condition = ObjectPropertyCondition())
-    {
-        return WatchpointsOnStructureStubInfo::ensureReferenceAndAddWatchpoint(
-            watchpoints, jit->codeBlock(), stubInfo, condition);
+void AccessGenerationState::preserveLiveRegistersToStackForCall()
+{
+    unsigned extraStackPadding = 0;
+    unsigned numberOfStackBytesUsedForRegisterPreservation = ScratchRegisterAllocator::preserveRegistersToStackForCall(*jit, liveRegistersForCall(), extraStackPadding);
+    if (m_numberOfStackBytesUsedForRegisterPreservation != std::numeric_limits<unsigned>::max())
+        RELEASE_ASSERT(numberOfStackBytesUsedForRegisterPreservation == m_numberOfStackBytesUsedForRegisterPreservation);
+    m_numberOfStackBytesUsedForRegisterPreservation = numberOfStackBytesUsedForRegisterPreservation;
+}
+
+void AccessGenerationState::restoreLiveRegistersFromStackForCall(bool isGetter)
+{
+    RegisterSet dontRestore;
+    if (isGetter) {
+        // This is the result value. We don't want to overwrite the result with what we stored to the stack.
+        // We sometimes have to store it to the stack just in case we throw an exception and need the original value.
+        dontRestore.set(valueRegs);
     }
+    restoreLiveRegistersFromStackForCall(dontRestore);
+}
 
-    void restoreScratch()
-    {
-        allocator->restoreReusedRegistersByPopping(*jit, numberOfBytesUsedToPreserveReusedRegisters);
-    }
+void AccessGenerationState::restoreLiveRegistersFromStackForCallWithThrownException()
+{
+    // Even if we're a getter, we don't want to ignore the result value like we normally do
+    // because the getter threw, and therefore, didn't return a value that means anything.
+    // Instead, we want to restore that register to what it was upon entering the getter
+    // inline cache. The subtlety here is if the base and the result are the same register,
+    // and the getter threw, we want OSR exit to see the original base value, not the result
+    // of the getter call.
+    RegisterSet dontRestore = liveRegistersForCall();
+    // As an optimization here, we only need to restore what is live for exception handling.
+    // We can construct the dontRestore set to accomplish this goal by having it contain only
+    // what is live for call but not live for exception handling. By ignoring things that are
+    // only live at the call but not the exception handler, we will only restore things live
+    // at the exception handler.
+    dontRestore.exclude(liveRegistersToPreserveAtExceptionHandlingCallSite());
+    restoreLiveRegistersFromStackForCall(dontRestore);
+}
 
-    void succeed()
-    {
-        restoreScratch();
-        success.append(jit->jump());
-    }
+void AccessGenerationState::restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore)
+{
+    unsigned extraStackPadding = 0;
+    ScratchRegisterAllocator::restoreRegistersFromStackForCall(*jit, liveRegistersForCall(), dontRestore, m_numberOfStackBytesUsedForRegisterPreservation, extraStackPadding);
+}
 
-    void calculateLiveRegistersForCallAndExceptionHandling()
-    {
-        if (!m_calculatedRegistersForCallAndExceptionHandling) {
-            m_calculatedRegistersForCallAndExceptionHandling = true;
+CallSiteIndex AccessGenerationState::callSiteIndexForExceptionHandlingOrOriginal()
+{
+    RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
 
-            m_liveRegistersToPreserveAtExceptionHandlingCallSite = jit->codeBlock()->jitCode()->liveRegistersToPreserveAtExceptionHandlingCallSite(jit->codeBlock(), stubInfo->callSiteIndex);
-            m_needsToRestoreRegistersIfException = m_liveRegistersToPreserveAtExceptionHandlingCallSite.numberOfSetRegisters() > 0;
-            if (m_needsToRestoreRegistersIfException)
-                RELEASE_ASSERT(JITCode::isOptimizingJIT(jit->codeBlock()->jitType()));
+    if (!m_calculatedCallSiteIndex) {
+        m_calculatedCallSiteIndex = true;
 
-            m_liveRegistersForCall = RegisterSet(m_liveRegistersToPreserveAtExceptionHandlingCallSite, allocator->usedRegisters());
-            m_liveRegistersForCall.exclude(RegisterSet::registersToNotSaveForCall());
-        }
-    }
-
-    void preserveLiveRegistersToStackForCall()
-    {
-        unsigned extraStackPadding = 0;
-        unsigned numberOfStackBytesUsedForRegisterPreservation = ScratchRegisterAllocator::preserveRegistersToStackForCall(*jit, liveRegistersForCall(), extraStackPadding);
-        if (m_numberOfStackBytesUsedForRegisterPreservation != std::numeric_limits<unsigned>::max())
-            RELEASE_ASSERT(numberOfStackBytesUsedForRegisterPreservation == m_numberOfStackBytesUsedForRegisterPreservation);
-        m_numberOfStackBytesUsedForRegisterPreservation = numberOfStackBytesUsedForRegisterPreservation;
-    }
-
-    void restoreLiveRegistersFromStackForCall(bool isGetter)
-    {
-        RegisterSet dontRestore;
-        if (isGetter) {
-            // This is the result value. We don't want to overwrite the result with what we stored to the stack.
-            // We sometimes have to store it to the stack just in case we throw an exception and need the original value.
-            dontRestore.set(valueRegs); 
-        }
-        restoreLiveRegistersFromStackForCall(dontRestore);
-    }
-
-    void restoreLiveRegistersFromStackForCallWithThrownException()
-    {
-        // Even if we're a getter, we don't want to ignore the result value like we normally do 
-        // because the getter threw, and therefore, didn't return a value that means anything. 
-        // Instead, we want to restore that register to what it was upon entering the getter 
-        // inline cache. The subtlety here is if the base and the result are the same register, 
-        // and the getter threw, we want OSR exit to see the original base value, not the result 
-        // of the getter call.
-        RegisterSet dontRestore = liveRegistersForCall();
-        // As an optimization here, we only need to restore what is live for exception handling.
-        // We can construct the dontRestore set to accomplish this goal by having it contain only
-        // what is live for call but not live for exception handling. By ignoring things that are 
-        // only live at the call but not the exception handler, we will only restore things live 
-        // at the exception handler.
-        dontRestore.exclude(liveRegistersToPreserveAtExceptionHandlingCallSite());
-        restoreLiveRegistersFromStackForCall(dontRestore);
+        if (m_needsToRestoreRegistersIfException)
+            m_callSiteIndex = jit->codeBlock()->newExceptionHandlingCallSiteIndex(stubInfo->callSiteIndex);
+        else
+            m_callSiteIndex = originalCallSiteIndex();
     }
 
-    void restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore)
-    {
-        unsigned extraStackPadding = 0;
-        ScratchRegisterAllocator::restoreRegistersFromStackForCall(*jit, liveRegistersForCall(), dontRestore, m_numberOfStackBytesUsedForRegisterPreservation, extraStackPadding);
-    }
+    return m_callSiteIndex;
+}
 
-    const RegisterSet& liveRegistersForCall()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersForCall;
-    }
+const HandlerInfo& AccessGenerationState::originalExceptionHandler() const
+{
+    RELEASE_ASSERT(m_needsToRestoreRegistersIfException);
+    HandlerInfo* exceptionHandler = jit->codeBlock()->handlerForIndex(stubInfo->callSiteIndex.bits());
+    RELEASE_ASSERT(exceptionHandler);
+    return *exceptionHandler;
+}
 
-    CallSiteIndex callSiteIndexForExceptionHandlingOrOriginal()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-
-        if (!m_calculatedCallSiteIndex) {
-            m_calculatedCallSiteIndex = true;
-
-            if (m_needsToRestoreRegistersIfException)
-                m_callSiteIndex = jit->codeBlock()->newExceptionHandlingCallSiteIndex(stubInfo->callSiteIndex);
-            else
-                m_callSiteIndex = originalCallSiteIndex();
-        }
-
-        return m_callSiteIndex;
-    }
-
-    CallSiteIndex callSiteIndexForExceptionHandling()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        RELEASE_ASSERT(m_needsToRestoreRegistersIfException);
-        RELEASE_ASSERT(m_calculatedCallSiteIndex);
-        return m_callSiteIndex;
-    }
-
-    const HandlerInfo& originalExceptionHandler() const
-    { 
-        RELEASE_ASSERT(m_needsToRestoreRegistersIfException);
-        HandlerInfo* exceptionHandler = jit->codeBlock()->handlerForIndex(stubInfo->callSiteIndex.bits());
-        RELEASE_ASSERT(exceptionHandler);
-        return *exceptionHandler;
-    }
-
-    unsigned numberOfStackBytesUsedForRegisterPreservation() const 
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_numberOfStackBytesUsedForRegisterPreservation; 
-    }
-
-    bool needsToRestoreRegistersIfException() const { return m_needsToRestoreRegistersIfException; }
-    CallSiteIndex originalCallSiteIndex() const { return stubInfo->callSiteIndex; }
-
-private:
-    const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersToPreserveAtExceptionHandlingCallSite;
-    }
-    
-    RegisterSet m_liveRegistersToPreserveAtExceptionHandlingCallSite;
-    RegisterSet m_liveRegistersForCall;
-    CallSiteIndex m_callSiteIndex { CallSiteIndex(std::numeric_limits<unsigned>::max()) };
-    unsigned m_numberOfStackBytesUsedForRegisterPreservation { std::numeric_limits<unsigned>::max() };
-    bool m_calculatedRegistersForCallAndExceptionHandling : 1;
-    bool m_needsToRestoreRegistersIfException : 1;
-    bool m_calculatedCallSiteIndex : 1;
-};
+CallSiteIndex AccessGenerationState::originalCallSiteIndex() const { return stubInfo->callSiteIndex; }
 
 AccessCase::AccessCase()
 {
@@ -319,6 +258,23 @@ std::unique_ptr<AccessCase> AccessCase::getLength(VM&, JSCell*, AccessType type)
     return result;
 }
 
+std::unique_ptr<AccessCase> AccessCase::getIntrinsic(
+    VM& vm, JSCell* owner, JSFunction* getter, PropertyOffset offset,
+    Structure* structure, const ObjectPropertyConditionSet& conditionSet)
+{
+    std::unique_ptr<AccessCase> result(new AccessCase());
+
+    result->m_type = IntrinsicGetter;
+    result->m_structure.set(vm, owner, structure);
+    result->m_conditionSet = conditionSet;
+    result->m_offset = offset;
+
+    result->m_rareData = std::make_unique<RareData>();
+    result->m_rareData->intrinsicFunction.set(vm, owner, getter);
+
+    return result;
+}
+
 AccessCase::~AccessCase()
 {
 }
@@ -355,6 +311,7 @@ std::unique_ptr<AccessCase> AccessCase::clone() const
         // NOTE: We don't copy the callLinkInfo, since that's created during code generation.
         result->m_rareData->customAccessor.opaque = rareData->customAccessor.opaque;
         result->m_rareData->customSlotBase = rareData->customSlotBase;
+        result->m_rareData->intrinsicFunction = rareData->intrinsicFunction;
     }
     return result;
 }
@@ -439,6 +396,8 @@ bool AccessCase::visitWeak(VM& vm) const
         if (m_rareData->callLinkInfo)
             m_rareData->callLinkInfo->visitWeak(vm);
         if (m_rareData->customSlotBase && !Heap::isMarked(m_rareData->customSlotBase.get()))
+            return false;
+        if (m_rareData->intrinsicFunction && !Heap::isMarked(m_rareData->intrinsicFunction.get()))
             return false;
     }
     return true;
@@ -784,17 +743,12 @@ void AccessCase::generate(AccessGenerationState& state)
                         CodeLocationLabel(vm.getCTIStub(linkCallThunkGenerator).code()));
                 });
         } else {
-            unsigned stackOffset = 0;
-            // Need to make room for the C call so our spillage isn't overwritten.
-            if (state.numberOfStackBytesUsedForRegisterPreservation()) {
-                if (maxFrameExtentForSlowPathCall)
-                    stackOffset = WTF::roundUpToMultipleOf(stackAlignmentBytes(), maxFrameExtentForSlowPathCall);
-            }
-            if (stackOffset) {
-                jit.subPtr(
-                    CCallHelpers::TrustedImm32(stackOffset),
-                    CCallHelpers::stackPointerRegister);
-            }
+            // Need to make room for the C call so any of our stack spillage isn't overwritten.
+            // We also need to make room because we may be an inline cache in the FTL and not
+            // have a JIT call frame.
+            bool needsToMakeRoomOnStackForCCall = state.numberOfStackBytesUsedForRegisterPreservation() || codeBlock->jitType() == JITCode::FTLJIT;
+            if (needsToMakeRoomOnStackForCCall)
+                jit.makeSpaceOnStackForCCall();
 
             // getter: EncodedJSValue (*GetValueFunc)(ExecState*, JSObject* slotBase, EncodedJSValue thisValue, PropertyName);
             // setter: void (*PutValueFunc)(ExecState*, JSObject* base, EncodedJSValue thisObject, EncodedJSValue value);
@@ -823,12 +777,8 @@ void AccessCase::generate(AccessGenerationState& state)
             operationCall = jit.call();
             if (m_type == CustomGetter)
                 jit.setupResults(valueRegs);
-
-            if (stackOffset) {
-                jit.addPtr(
-                    CCallHelpers::TrustedImm32(stackOffset),
-                    CCallHelpers::stackPointerRegister);
-            }
+            if (needsToMakeRoomOnStackForCCall)
+                jit.reclaimSpaceOnStackForCCall();
 
             CCallHelpers::Jump noException =
                 jit.emitExceptionCheck(CCallHelpers::InvertedExceptionCheck);
@@ -933,11 +883,12 @@ void AccessCase::generate(AccessGenerationState& state)
         else
             scratchGPR3 = InvalidGPRReg;
 
-        size_t numberOfBytesUsedToPreserveReusedRegisters = allocator.preserveReusedRegistersByPushing(jit);
+        size_t numberOfBytesUsedToPreserveReusedRegisters = allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
 
         ASSERT(structure()->transitionWatchpointSetHasBeenInvalidated());
 
         bool scratchGPRHasStorage = false;
+        bool needsToMakeRoomOnStackForCCall = !numberOfBytesUsedToPreserveReusedRegisters && codeBlock->jitType() == JITCode::FTLJIT;
 
         if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
             size_t newSize = newStructure()->outOfLineCapacity() * sizeof(JSValue);
@@ -1044,8 +995,12 @@ void AccessCase::generate(AccessGenerationState& state)
             // barrier slow path was just the normal slow path, below.
             // https://bugs.webkit.org/show_bug.cgi?id=149030
             allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR2);
+            if (needsToMakeRoomOnStackForCCall)
+                jit.makeSpaceOnStackForCCall();
             jit.setupArgumentsWithExecState(baseGPR);
             callFlushWriteBarrierBuffer = jit.call();
+            if (needsToMakeRoomOnStackForCCall)
+                jit.reclaimSpaceOnStackForCCall();
             allocator.restoreUsedRegistersFromScratchBufferForCall(
                 jit, scratchBuffer, scratchGPR2);
 
@@ -1058,13 +1013,15 @@ void AccessCase::generate(AccessGenerationState& state)
                 });
         }
         
-        allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters);
+        allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
         state.succeed();
 
         if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
             slowPath.link(&jit);
-            allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters);
+            allocator.restoreReusedRegistersByPopping(jit, numberOfBytesUsedToPreserveReusedRegisters, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
             allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR);
+            if (needsToMakeRoomOnStackForCCall)
+                jit.makeSpaceOnStackForCCall();
 #if USE(JSVALUE64)
             jit.setupArgumentsWithExecState(
                 baseGPR,
@@ -1079,6 +1036,8 @@ void AccessCase::generate(AccessGenerationState& state)
                 valueRegs.payloadGPR(), valueRegs.tagGPR());
 #endif
             CCallHelpers::Call operationCall = jit.call();
+            if (needsToMakeRoomOnStackForCCall)
+                jit.reclaimSpaceOnStackForCCall();
             allocator.restoreUsedRegistersFromScratchBufferForCall(jit, scratchBuffer, scratchGPR);
             state.succeed();
 
@@ -1105,6 +1064,22 @@ void AccessCase::generate(AccessGenerationState& state)
         jit.load32(CCallHelpers::Address(baseGPR, JSString::offsetOfLength()), valueRegs.payloadGPR());
         jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
+        return;
+    }
+
+    case IntrinsicGetter: {
+        RELEASE_ASSERT(isValidOffset(offset()));
+
+        // We need to ensure the getter value does not move from under us. Note that GetterSetters
+        // are immutable so we just need to watch the property not any value inside it.
+        Structure* currStructure;
+        if (m_conditionSet.isEmpty())
+            currStructure = structure();
+        else
+            currStructure = m_conditionSet.slotBaseCondition().object()->structure();
+        currStructure->startWatchingPropertyForReplacements(vm, offset());
+
+        emitIntrinsicGetter(state);
         return;
     } }
     
@@ -1264,7 +1239,7 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
     CCallHelpers jit(&vm, codeBlock);
     state.jit = &jit;
 
-    state.numberOfBytesUsedToPreserveReusedRegisters = allocator.preserveReusedRegistersByPushing(jit);
+    state.numberOfBytesUsedToPreserveReusedRegisters = allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::NoExtraSpace);
 
     bool allGuardedByStructureCheck = true;
     bool hasJSGetterSetterCall = false;
@@ -1440,6 +1415,9 @@ void printInternal(PrintStream& out, AccessCase::AccessType type)
         return;
     case AccessCase::CustomSetter:
         out.print("CustomSetter");
+        return;
+    case AccessCase::IntrinsicGetter:
+        out.print("IntrinsicGetter");
         return;
     case AccessCase::InHit:
         out.print("InHit");

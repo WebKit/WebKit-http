@@ -26,6 +26,7 @@
 #include "config.h"
 #include "APIFrameInfo.h"
 
+#include "APIFrameHandle.h"
 #include "WebFrameProxy.h"
 
 namespace API {
@@ -35,6 +36,11 @@ FrameInfo::FrameInfo(const WebKit::WebFrameProxy& frame, const WebCore::Security
     : m_isMainFrame(frame.isMainFrame())
     , m_request(WebCore::ResourceRequest(frame.url()))
     , m_securityOrigin(adoptRef(*SecurityOrigin::create(securityOrigin).leakRef()))
+    , m_handle(API::FrameHandle::create(frame.frameID()))
+{
+}
+
+FrameInfo::~FrameInfo()
 {
 }
 

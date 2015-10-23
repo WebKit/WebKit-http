@@ -39,6 +39,14 @@ enum class TransactionMode {
 };
 const unsigned TransactionModeMaximum = 2;
 
+enum class TransactionState {
+    Unstarted,
+    Running,
+    Committing,
+    Aborting,
+    Finished,
+};
+
 enum class CursorDirection {
     Next = 0,
     NextNoDuplicate = 1,
@@ -56,6 +64,12 @@ const unsigned CursorTypeMaximum = 1;
 enum class VersionNullness {
     Null,
     NonNull,
+};
+
+enum class KeyPathType {
+    Null,
+    String,
+    Array,
 };
     
 // In order of the least to the highest precedent in terms of sort order.

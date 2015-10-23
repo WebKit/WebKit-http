@@ -39,7 +39,7 @@ JITCode::JITCode()
 
 JITCode::~JITCode()
 {
-    if (FTL::shouldShowDisassembly()) {
+    if (FTL::shouldDumpDisassembly()) {
         dataLog("Destroying FTL JIT code at ");
         CommaPrinter comma;
         for (auto& handle : m_handles)
@@ -141,7 +141,7 @@ void JITCode::validateReferences(const TrackedReferences& trackedReferences)
     common.validateReferences(trackedReferences);
     
     for (OSRExit& exit : osrExit)
-        exit.validateReferences(trackedReferences);
+        exit.m_descriptor.validateReferences(trackedReferences);
 }
 
 RegisterSet JITCode::liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock*, CallSiteIndex)

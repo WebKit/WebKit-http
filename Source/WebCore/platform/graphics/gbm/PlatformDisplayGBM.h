@@ -31,10 +31,7 @@
 #include "PlatformDisplay.h"
 
 #include "GBMSurface.h"
-#include <tuple>
-#include <wtf/HashMap.h>
 
-struct gbm_bo;
 struct gbm_device;
 
 namespace WebCore {
@@ -48,11 +45,11 @@ public:
     PlatformDisplayGBM();
     virtual ~PlatformDisplayGBM();
 
-    std::unique_ptr<GBMSurface> createSurface(const IntSize&, GBMSurface::Client&);
+    struct gbm_device* native() const { return m_gbm.device; }
+
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
-    using GBMBufferExport = std::tuple<int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int>;
-    bool hasFreeBuffers(GBMSurface&);
+    using GBMBufferExport = GBMSurface::GBMBufferExport;
     GBMBufferExport lockFrontBuffer(GBMSurface&);
     void releaseBuffer(GBMSurface&, uint32_t);
 
@@ -63,9 +60,6 @@ private:
         int fd;
         struct gbm_device* device;
     } m_gbm;
-
-    static void boDataDestroyCallback(struct gbm_bo*, void*);
-    HashMap<uint32_t, struct gbm_bo*> m_lockedBuffers;
 };
 
 } // namespace WebCore

@@ -28,6 +28,7 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+struct ivi_application;
 struct wl_compositor;
 struct wl_display;
 struct wl_drm;
@@ -52,6 +53,7 @@ public:
         struct wl_drm* drm;
         struct wl_seat* seat;
         struct xdg_shell* xdg;
+        struct ivi_application* ivi_application;
     };
     const Interfaces& interfaces() const { return m_interfaces; }
 

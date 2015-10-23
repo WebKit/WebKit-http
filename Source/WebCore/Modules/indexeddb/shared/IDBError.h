@@ -36,6 +36,9 @@ enum class IDBExceptionCode {
     None = 0,
     Unknown,
     VersionError,
+
+    // Indexed DB existing exception codes with IDB-specific error messages:
+    InvalidStateError,
 };
 
 class IDBError {
@@ -50,6 +53,8 @@ public:
     const String& message() const;
 
     bool isNull() const { return m_code == IDBExceptionCode::None; }
+
+    IDBError isolatedCopy() const;
 
 private:
     IDBExceptionCode m_code { IDBExceptionCode::None };

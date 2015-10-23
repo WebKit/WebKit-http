@@ -146,8 +146,8 @@ public:
 class EmptySearchPopupMenu : public SearchPopupMenu {
 public:
     virtual PopupMenu* popupMenu() { return m_popup.get(); }
-    virtual void saveRecentSearches(const AtomicString&, const Vector<String>&) { }
-    virtual void loadRecentSearches(const AtomicString&, Vector<String>&) { }
+    virtual void saveRecentSearches(const AtomicString&, const Vector<RecentSearch>&) { }
+    virtual void loadRecentSearches(const AtomicString&, Vector<RecentSearch>&) { }
     virtual bool enabled() { return false; }
 
 private:
@@ -212,7 +212,7 @@ void EmptyFrameLoaderClient::recreatePlugin(Widget*)
 
 PassRefPtr<Widget> EmptyFrameLoaderClient::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL&, const Vector<String>&, const Vector<String>&)
 {
-    return 0;
+    return nullptr;
 }
 
 PassRefPtr<FrameNetworkingContext> EmptyFrameLoaderClient::createNetworkingContext()
@@ -231,14 +231,5 @@ void EmptyEditorClient::registerUndoStep(PassRefPtr<UndoStep>)
 void EmptyEditorClient::registerRedoStep(PassRefPtr<UndoStep>)
 {
 }
-
-#if ENABLE(CONTEXT_MENUS)
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-std::unique_ptr<ContextMenu> EmptyContextMenuClient::customizeMenu(std::unique_ptr<ContextMenu>)
-{
-    return nullptr;
-}
-#endif
-#endif
 
 }

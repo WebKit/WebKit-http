@@ -102,12 +102,52 @@ void InProcessIDBServer::didOpenDatabase(const IDBResultData& resultData)
     });
 }
 
+void InProcessIDBServer::didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, transactionIdentifier, error] {
+        m_connectionToServer->didAbortTransaction(transactionIdentifier, error);
+    });
+}
+
+void InProcessIDBServer::didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError& error)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, transactionIdentifier, error] {
+        m_connectionToServer->didCommitTransaction(transactionIdentifier, error);
+    });
+}
+
+void InProcessIDBServer::abortTransaction(IDBResourceIdentifier& resourceIdentifier)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resourceIdentifier] {
+        m_server->abortTransaction(resourceIdentifier);
+    });
+}
+
+void InProcessIDBServer::commitTransaction(IDBResourceIdentifier& resourceIdentifier)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resourceIdentifier] {
+        m_server->commitTransaction(resourceIdentifier);
+    });
+}
+
 void InProcessIDBServer::fireVersionChangeEvent(IDBServer::UniqueIDBDatabaseConnection& connection, uint64_t requestedVersion)
 {
     RefPtr<InProcessIDBServer> self(this);
     uint64_t databaseConnectionIdentifier = connection.identifier();
     RunLoop::current().dispatch([this, self, databaseConnectionIdentifier, requestedVersion] {
         m_connectionToServer->fireVersionChangeEvent(databaseConnectionIdentifier, requestedVersion);
+    });
+}
+
+void InProcessIDBServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, databaseConnectionIdentifier] {
+        m_server->databaseConnectionClosed(databaseConnectionIdentifier);
     });
 }
 

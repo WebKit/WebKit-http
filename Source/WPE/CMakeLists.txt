@@ -75,6 +75,7 @@ if (WTF_PLATFORM_GBM)
 
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
+        Source/ViewBackend/Wayland/ivi-application-protocol.c
         Source/ViewBackend/Wayland/wayland-drm-protocol.c
         Source/ViewBackend/Wayland/xdg-shell-protocol.c WPE_SOURCES
     )

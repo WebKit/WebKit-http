@@ -40,6 +40,7 @@
 #include "IntRect.h"
 #include "Length.h"
 #include "SharedBuffer.h"
+#include "TextStream.h"
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPDFDocument.h>
 #include <wtf/MathExtras.h>
@@ -190,7 +191,7 @@ void PDFDocumentImage::draw(GraphicsContext& context, const FloatRect& dstRect, 
         context.setCompositeOperation(op);
 
         if (m_cachedImageBuffer)
-            context.drawImageBuffer(m_cachedImageBuffer.get(), ColorSpaceDeviceRGB, dstRect);
+            context.drawImageBuffer(*m_cachedImageBuffer, ColorSpaceDeviceRGB, dstRect);
         else {
             transformContextForPainting(context, dstRect, srcRect);
             drawPDFPage(context);
@@ -263,6 +264,15 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext& context)
 }
 
 #endif // !USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)
+
+void PDFDocumentImage::dump(TextStream& ts) const
+{
+    Image::dump(ts);
+    ts.dumpProperty("page-count", pageCount());
+    ts.dumpProperty("crop-box", m_cropBox);
+    if (m_rotationDegrees)
+        ts.dumpProperty("rotation", m_rotationDegrees);
+}
 
 }
 

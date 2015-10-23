@@ -28,6 +28,11 @@
 
 #if PLATFORM(GBM)
 
+#include "IntSize.h"
+#include <tuple>
+#include <wtf/HashMap.h>
+
+struct gbm_bo;
 struct gbm_surface;
 
 namespace WebCore {
@@ -41,17 +46,27 @@ public:
         virtual void destroyBuffer(uint32_t) = 0;
     };
 
-    GBMSurface(struct gbm_surface*, Client&);
+    static std::unique_ptr<GBMSurface> create(const IntSize&, Client&);
+    GBMSurface(struct gbm_surface*, const IntSize&, Client&);
     ~GBMSurface();
+
+    void resize(const IntSize&);
 
     std::unique_ptr<GLContextEGL> createGLContext() const;
 
-    struct gbm_surface* native() const { return m_surface; }
     void destroyBuffer(uint32_t handle) { m_client.destroyBuffer(handle); }
+
+    using GBMBufferExport = std::tuple<int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int>;
+    GBMBufferExport lockFrontBuffer();
+    void releaseBuffer(uint32_t);
 
 private:
     struct gbm_surface* m_surface;
+    IntSize m_size;
     Client& m_client;
+
+    static void boDataDestroyCallback(struct gbm_bo*, void*);
+    HashMap<uint32_t, struct gbm_bo*> m_lockedBuffers;
 };
 
 } // namespace WebCore

@@ -29,6 +29,7 @@
 #if WPE_BACKEND(WAYLAND)
 
 #include "WaylandDisplay.h"
+#include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <WPE/Input/Handling.h>
@@ -197,6 +198,16 @@ static const struct xdg_surface_listener g_xdgSurfaceListener = {
     [](void*, struct xdg_surface*) { },
 };
 
+static const struct ivi_surface_listener g_iviSurfaceListener = {
+    // configure
+    [](void* data, struct ivi_surface*, int32_t width, int32_t height)
+    {
+        auto& resizingData = *static_cast<ViewBackendWayland::ResizingData*>(data);
+        if (resizingData.client)
+            resizingData.client->setSize(std::max(0, width), std::max(0, height));
+    },
+};
+
 const struct wl_buffer_listener g_bufferListener = {
     // release
     [](void* data, struct wl_buffer* buffer)
@@ -235,9 +246,18 @@ ViewBackendWayland::ViewBackendWayland()
     wl_seat_add_listener(m_display.interfaces().seat, &g_seatListener, &m_seatData);
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-    m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
-    xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
-    xdg_surface_set_title(m_xdgSurface, "WPE");
+    if (m_display.interfaces().xdg) {
+        m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
+        xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
+        xdg_surface_set_title(m_xdgSurface, "WPE");
+    }
+
+    if (m_display.interfaces().ivi_application) {
+        m_iviSurface = ivi_application_surface_create(m_display.interfaces().ivi_application,
+            4200 + getpid(), // a unique identifier
+            m_surface);
+        ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, &m_resizingData);
+    }
 }
 
 ViewBackendWayland::~ViewBackendWayland()
@@ -247,6 +267,8 @@ ViewBackendWayland::~ViewBackendWayland()
     m_callbackData = { nullptr, nullptr };
 
     m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
+
+    m_resizingData = { nullptr, 0, 0 };
 
     if (m_seatData.pointer)
         wl_pointer_destroy(m_seatData.pointer);
@@ -261,6 +283,9 @@ ViewBackendWayland::~ViewBackendWayland()
     m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
         { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 } };
 
+    if (m_iviSurface)
+        ivi_surface_destroy(m_iviSurface);
+    m_iviSurface = nullptr;
     if (m_xdgSurface)
         xdg_surface_destroy(m_xdgSurface);
     m_xdgSurface = nullptr;
@@ -273,19 +298,25 @@ void ViewBackendWayland::setClient(Client* client)
 {
     m_bufferData.client = client;
     m_callbackData.client = client;
+    m_resizingData.client = client;
 }
 
 void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t)
 {
     struct wl_buffer* buffer = nullptr;
     auto& bufferMap = m_bufferData.map;
+    auto it = bufferMap.find(handle);
+
     if (fd >= 0) {
-        assert(bufferMap.find(handle) == bufferMap.end());
         buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
-        bufferMap.insert({ handle, buffer });
+
+        if (it != bufferMap.end()) {
+            wl_buffer_destroy(it->second);
+            it->second = buffer;
+        } else
+            bufferMap.insert({ handle, buffer });
     } else {
-        auto it = bufferMap.find(handle);
         assert(it != bufferMap.end());
         buffer = it->second;
     }

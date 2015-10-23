@@ -136,7 +136,7 @@ private:
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
 #if PLATFORM(GBM)
-    std::unique_ptr<WebCore::GBMSurface> m_gbmSurface;
+    std::unique_ptr<WebCore::GBMSurface> m_surface;
 #endif
 #if PLATFORM(BCM_RPI)
     std::unique_ptr<WebCore::BCMRPiSurface> m_surface;

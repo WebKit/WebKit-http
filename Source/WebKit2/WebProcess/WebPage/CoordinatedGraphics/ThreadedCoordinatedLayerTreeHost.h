@@ -77,7 +77,6 @@ public:
     virtual void setNonCompositedContentsNeedDisplayInRect(const WebCore::IntRect&) override { };
     virtual void scrollNonCompositedContents(const WebCore::IntRect& scrollRect) override;
     virtual void forceRepaint() override;
-    virtual bool forceRepaintAsync(uint64_t /*callbackID*/) override;
     virtual void sizeDidChange(const WebCore::IntSize& newSize) override;
     virtual void deviceOrPageScaleFactorChanged() override;
 
@@ -134,7 +133,6 @@ private:
 #endif
 
     LayerTreeContext m_layerTreeContext;
-    uint64_t m_forceRepaintAsyncCallbackID;
 
     WebCore::IntPoint m_prevScrollPosition;
 

@@ -184,4 +184,20 @@ TEST(WTF, StringOperators)
 #endif
 }
 
+TEST(WTF, ConcatenateCharacterArrayAndEmptyString)
+{
+    String emptyString;
+    EXPECT_EQ(static_cast<unsigned>(0), emptyString.length());
+
+    UChar ucharArray[] = { 't', 'e', 's', 't', '\0' };
+    String concatenation16 = ucharArray + emptyString;
+    ASSERT_EQ(static_cast<unsigned>(4), concatenation16.length());
+    ASSERT_TRUE(concatenation16 == String(ucharArray));
+
+    LChar lcharArray[] = { 't', 'e', 's', 't', '\0' };
+    String concatenation8 = lcharArray + emptyString;
+    ASSERT_EQ(static_cast<unsigned>(4), concatenation8.length());
+    ASSERT_TRUE(concatenation8 == String(lcharArray));
+}
+
 } // namespace TestWebKitAPI

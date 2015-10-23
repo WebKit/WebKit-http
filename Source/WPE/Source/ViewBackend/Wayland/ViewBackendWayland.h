@@ -33,6 +33,7 @@
 #include <utility>
 #include <xkbcommon/xkbcommon.h>
 
+struct ivi_surface;
 struct wl_buffer;
 struct wl_callback;
 struct wl_keyboard;
@@ -92,15 +93,23 @@ public:
         struct wl_callback* frameCallback;
     };
 
+    struct ResizingData {
+        Client* client;
+        uint32_t width;
+        uint32_t height;
+    };
+
 private:
     const WaylandDisplay& m_display;
 
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
+    struct ivi_surface* m_iviSurface;
 
     SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
+    ResizingData m_resizingData;
 };
 
 } // namespace ViewBackend

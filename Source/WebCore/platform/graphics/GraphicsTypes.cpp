@@ -28,6 +28,7 @@
 #include "config.h"
 #include "GraphicsTypes.h"
 
+#include "TextStream.h"
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
@@ -46,7 +47,8 @@ static const char* const compositeOperatorNames[] = {
     "destination-atop",
     "xor",
     "darker",
-    "lighter"
+    "lighter",
+    "difference"
 };
 
 static const char* const blendOperatorNames[] = {
@@ -76,7 +78,7 @@ bool parseBlendMode(const String& s, BlendMode& blendMode)
 {
     for (int i = 0; i < numBlendOperatorNames; i++) {
         if (s == blendOperatorNames[i]) {
-            blendMode = static_cast<BlendMode>(i+1);
+            blendMode = static_cast<BlendMode>(i + BlendModeNormal);
             return true;
         }
     }
@@ -109,11 +111,18 @@ String compositeOperatorName(CompositeOperator op, BlendMode blendOp)
 {
     ASSERT(op >= 0);
     ASSERT(op < numCompositeOperatorNames);
-    ASSERT(blendOp >= 0);
+    ASSERT(blendOp >= BlendModeNormal);
     ASSERT(blendOp <= numBlendOperatorNames);
-    if (blendOp != BlendModeNormal)
-        return blendOperatorNames[blendOp-1];
+    if (blendOp > BlendModeNormal)
+        return blendOperatorNames[blendOp - BlendModeNormal];
     return compositeOperatorNames[op];
+}
+
+static String blendModeName(BlendMode blendOp)
+{
+    ASSERT(blendOp >= BlendModeNormal);
+    ASSERT(blendOp <= BlendModePlusLighter);
+    return blendOperatorNames[blendOp - BlendModeNormal];
 }
 
 bool parseLineCap(const String& s, LineCap& cap)
@@ -235,5 +244,62 @@ bool parseTextBaseline(const String& s, TextBaseline& baseline)
     }
     return false;
 }
+
+TextStream& operator<<(TextStream& ts, CompositeOperator op)
+{
+    return ts << compositeOperatorName(op, BlendModeNormal);
+}
+
+TextStream& operator<<(TextStream& ts, BlendMode blendMode)
+{
+    return ts << blendModeName(blendMode);
+}
+
+TextStream& operator<<(TextStream& ts, WindRule rule)
+{
+    switch (rule) {
+    case RULE_NONZERO:
+        ts << "NON-ZERO";
+        break;
+    case RULE_EVENODD:
+        ts << "EVEN-ODD";
+        break;
+    }
+
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, LineCap capStyle)
+{
+    switch (capStyle) {
+    case ButtCap:
+        ts << "BUTT";
+        break;
+    case RoundCap:
+        ts << "ROUND";
+        break;
+    case SquareCap:
+        ts << "SQUARE";
+        break;
+    }
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, LineJoin joinStyle)
+{
+    switch (joinStyle) {
+    case MiterJoin:
+        ts << "MITER";
+        break;
+    case RoundJoin:
+        ts << "ROUND";
+        break;
+    case BevelJoin:
+        ts << "BEVEL";
+        break;
+    }
+    return ts;
+}
+
 
 }

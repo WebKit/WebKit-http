@@ -30,6 +30,7 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "Length.h"
+#include "TextStream.h"
 
 namespace WebCore {
 
@@ -61,7 +62,7 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
     // Allow the generator to provide visually-equivalent tiling parameters for better performance.
     FloatSize adjustedSize = size();
     FloatRect adjustedSrcRect = srcRect;
-    m_gradient->adjustParametersForTiledDrawing(adjustedSize, adjustedSrcRect);
+    m_gradient->adjustParametersForTiledDrawing(adjustedSize, adjustedSrcRect, spacing);
 
     // Factor in the destination context's scale to generate at the best resolution
     AffineTransform destContextCTM = destContext.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
@@ -73,7 +74,7 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
 
     unsigned generatorHash = m_gradient->hash();
 
-    if (!m_cachedImageBuffer || m_cachedGeneratorHash != generatorHash || m_cachedAdjustedSize != adjustedSize || !destContext.isCompatibleWithBuffer(m_cachedImageBuffer.get())) {
+    if (!m_cachedImageBuffer || m_cachedGeneratorHash != generatorHash || m_cachedAdjustedSize != adjustedSize || !destContext.isCompatibleWithBuffer(*m_cachedImageBuffer)) {
         m_cachedImageBuffer = destContext.createCompatibleBuffer(adjustedSize, m_gradient->hasAlpha());
         if (!m_cachedImageBuffer)
             return;
@@ -92,6 +93,12 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& s
 
     // Tile the image buffer into the context.
     m_cachedImageBuffer->drawPattern(destContext, adjustedSrcRect, adjustedPatternCTM, phase, spacing, styleColorSpace, compositeOp, destRect, blendMode);
+}
+
+void GradientImage::dump(TextStream& ts) const
+{
+    GeneratedImage::dump(ts);
+    // FIXME: dump the gradient.
 }
 
 }
