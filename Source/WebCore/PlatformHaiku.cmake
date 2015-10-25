@@ -198,7 +198,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
   ${ZLIB_INCLUDE_DIRS}
 )
 
-if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
+if (ENABLE_WEB_AUDIO)
     #    list(APPEND WebCore_INCLUDE_DIRECTORIES
     #    "${WEBCORE_DIR}/platform/graphics/gstreamer"
     #)
