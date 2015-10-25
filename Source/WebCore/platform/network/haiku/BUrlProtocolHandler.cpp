@@ -375,21 +375,17 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
     ResourceHandleClient* client = m_resourceHandle->client();
 
+    // TODO according to RFC7235, there could be more than one challenge in WWW-Authenticate. We
+    // should parse them all, instead of just the first one.
     if (challenge.startsWith("Digest", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
     else if (challenge.startsWith("Basic", false))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-    else if (challenge.startsWith("Bearer", false)) {
-        // OAuth bearer token - will most likely be handled in Javascript?
+    else {
+        // Unknown authentication type, ignore (various websites are intercepting the auth and
+        // handling it by themselves)
         client->didFinishLoading(m_resourceHandle, 0);
         return;
-    } else if (challenge.isEmpty()) {
-        // This shouldn't happen according to the spec, but Google Drive does
-        // it...
-        client->didFinishLoading(m_resourceHandle, 0);
-        return;
-    } else {
-        debugger("Unknown http authentication token received. Please submit a bugreport with the page that triggered this");
     }
 
     String realm;
