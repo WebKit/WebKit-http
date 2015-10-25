@@ -53,7 +53,7 @@ public:
 	};
 
 public:
-								BWebView(const char* name);
+								BWebView(const char* name, BUrlContext* context = nullptr);
 	virtual						~BWebView();
 
 	// The BWebView needs to be deleted by the BWebPage instance running
@@ -93,8 +93,6 @@ public:
 			BString				MainFrameRequestedURL() const;
 			BString				MainFrameURL() const;
 
-            void                SetContext(BUrlContext* context);
-            BUrlContext*        GetContext();
 			void				LoadURL(const char* urlString,
 									bool aquireFocus = true);
 			void				Reload();
@@ -154,7 +152,6 @@ private:
             std::unique_ptr<WebCore::AcceleratedCompositingContext>
                                 fCompositor;
 
-            BUrlContext*        fContext;
 			BWebPage*			fWebPage;
 
 			UserData*			fUserData;

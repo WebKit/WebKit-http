@@ -1042,8 +1042,7 @@ void FrameLoaderClientHaiku::registerForIconNotification(bool /*listen*/)
 
 PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 {
-    return FrameNetworkingContextHaiku::create(m_webFrame->Frame(),
-        *m_webPage->GetContext());
+    return FrameNetworkingContextHaiku::create(m_webFrame->Frame(), m_webPage->GetContext());
 }
 
 // #pragma mark - private

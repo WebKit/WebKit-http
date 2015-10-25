@@ -198,11 +198,12 @@ BMessenger BWebPage::sDownloadListener;
     PageCache::singleton().setMaxSize(pageCacheCapacity);
 }
 
-BWebPage::BWebPage(BWebView* webView)
+BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     : BHandler("BWebPage")
     , fWebView(webView)
     , fMainFrame(NULL)
     , fSettings(NULL)
+    , fContext(context)
     , fPage(NULL)
     , fDumpRenderTree(NULL)
     , fLoadingProgress(100)
@@ -314,9 +315,9 @@ void BWebPage::SetDownloadListener(const BMessenger& listener)
     sDownloadListener = listener;
 }
 
-BUrlContext** BWebPage::GetContext()
+BUrlContext* BWebPage::GetContext()
 {
-    return &WebView()->fContext;
+    return fContext;
 }
 
 void BWebPage::LoadURL(const char* urlString)

@@ -128,7 +128,7 @@ private:
 	friend class BWebView;
 	friend class BPrivate::WebDownloadPrivate;
 
-								BWebPage(BWebView* webView);
+								BWebPage(BWebView* webView, BUrlContext* context);
 
 	// These calls are private, since they are called from the BWebView only.
 	void setVisible(bool visible);
@@ -166,7 +166,7 @@ private:
         bool modalDialog = false, bool resizable = true,
         bool activate = true);
 
-    BUrlContext** GetContext();
+    BUrlContext* GetContext();
     BRect windowFrame();
     BRect windowBounds();
     void setWindowBounds(const BRect& bounds);
@@ -235,6 +235,7 @@ private:
 			BWebView*			fWebView;
 			BWebFrame*			fMainFrame;
 			BWebSettings*		fSettings;
+            BUrlContext*        fContext;
 			WebCore::Page*		fPage;
             WebCore::DumpRenderTreeClient* fDumpRenderTree;
             WebCore::ProgressTrackerClientHaiku* fProgressTracker;

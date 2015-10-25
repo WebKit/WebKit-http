@@ -63,7 +63,7 @@ BWebView::UserData::~UserData()
 }
 
 
-BWebView::BWebView(const char* name)
+BWebView::BWebView(const char* name, BUrlContext* urlContext)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE
     	| B_NAVIGABLE | B_PULSE_NEEDED)
     , fLastMouseButtons(0)
@@ -71,8 +71,7 @@ BWebView::BWebView(const char* name)
     , fLastMousePos(0, 0)
     , fAutoHidePointer(false)
     , fOffscreenBitmap(nullptr)
-    , fContext(nullptr)
-    , fWebPage(new BWebPage(this))
+    , fWebPage(new BWebPage(this, urlContext))
     , fUserData(nullptr)
 {
 #if USE(TEXTURE_MAPPER)
@@ -417,16 +416,6 @@ BString BWebView::MainFrameRequestedURL() const
 BString BWebView::MainFrameURL() const
 {
     return fWebPage->MainFrameURL();
-}
-
-void BWebView::SetContext(BUrlContext* context)
-{
-	fContext = context;
-}
-
-BUrlContext* BWebView::GetContext()
-{
-	return fContext;
 }
 
 void BWebView::LoadURL(const char* urlString, bool aquireFocus)
