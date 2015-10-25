@@ -62,7 +62,7 @@ void GCController::garbageCollectSoon()
     // systems with CoreFoundation. If and when the notion of a run loop is pushed 
     // down into WTF so that more platforms can take advantage of it, we will be 
     // able to use reportAbandonedObjectGraph on more platforms.
-#if USE(CF)
+#if USE(CF) || PLATFORM(WPE)
     JSLockHolder lock(JSDOMWindow::commonVM());
     JSDOMWindow::commonVM().heap.reportAbandonedObjectGraph();
 #else
@@ -92,7 +92,7 @@ void GCController::garbageCollectNow()
 
 void GCController::garbageCollectNowIfNotDoneRecently()
 {
-#if USE(CF)
+#if USE(CF) || PLATFORM(WPE)
     JSLockHolder lock(JSDOMWindow::commonVM());
     if (!JSDOMWindow::commonVM().heap.isBusy())
         JSDOMWindow::commonVM().heap.collectAllGarbageIfNotDoneRecently();
