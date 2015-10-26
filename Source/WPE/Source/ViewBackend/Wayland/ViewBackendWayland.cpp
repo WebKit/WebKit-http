@@ -86,6 +86,17 @@ static const struct wl_pointer_listener g_pointerListener = {
     },
 };
 
+static void
+handleKeyEvent(ViewBackendWayland::SeatData& seatData, uint32_t key, uint32_t state, uint32_t time)
+{
+    auto& xkb = seatData.xkb;
+    uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
+    uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+
+    if (seatData.client)
+        seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
+}
+
 static const struct wl_keyboard_listener g_keyboardListener = {
     // keymap
     [](void* data, struct wl_keyboard*, uint32_t format, int fd, uint32_t size)
@@ -129,12 +140,8 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         key += 8;
 
         auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
-        auto& xkb = seatData.xkb;
-        uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
-        uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+        handleKeyEvent(seatData, key, state, time);
 
-        if (seatData.client)
-            seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
     },
     // modifiers
     [](void* data, struct wl_keyboard*, uint32_t, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
