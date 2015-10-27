@@ -265,12 +265,6 @@ RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, CTFontSy
 RetainPtr<CTFontRef> platformLookupFallbackFont(CTFontRef, FontWeight, const AtomicString& locale, const UChar* characters, unsigned length);
 bool requiresCustomFallbackFont(UChar32 character);
 
-#else
-
-inline void FontCache::platformPurgeInactiveFontData()
-{
-}
-
 #endif
 
 }
