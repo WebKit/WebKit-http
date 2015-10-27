@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <glib.h>
 #include <linux/input.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -86,6 +87,34 @@ static const struct wl_pointer_listener g_pointerListener = {
     },
 };
 
+static void
+handleKeyEvent(ViewBackendWayland::SeatData& seatData, uint32_t key, uint32_t state, uint32_t time)
+{
+    auto& xkb = seatData.xkb;
+    uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
+    uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+
+    if (seatData.client)
+        seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
+}
+
+static gboolean
+repeatRateTimeout(void* data)
+{
+    auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+    handleKeyEvent(seatData, seatData.repeatData.key, seatData.repeatData.state, seatData.repeatData.time);
+    return G_SOURCE_CONTINUE;
+}
+
+static gboolean
+repeatDelayTimeout(void* data)
+{
+    auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
+    handleKeyEvent(seatData, seatData.repeatData.key, seatData.repeatData.state, seatData.repeatData.time);
+    seatData.repeatData.eventSource = g_timeout_add(seatData.repeatInfo.rate, static_cast<GSourceFunc>(repeatRateTimeout), data);
+    return G_SOURCE_REMOVE;
+}
+
 static const struct wl_keyboard_listener g_keyboardListener = {
     // keymap
     [](void* data, struct wl_keyboard*, uint32_t format, int fd, uint32_t size)
@@ -129,12 +158,24 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         key += 8;
 
         auto& seatData = *static_cast<ViewBackendWayland::SeatData*>(data);
-        auto& xkb = seatData.xkb;
-        uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
-        uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
+        handleKeyEvent(seatData, key, state, time);
 
-        if (seatData.client)
-            seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
+        if (!seatData.repeatInfo.rate)
+            return;
+
+        if (state == WL_KEYBOARD_KEY_STATE_RELEASED
+            && seatData.repeatData.key == key) {
+            if (seatData.repeatData.eventSource)
+                g_source_remove(seatData.repeatData.eventSource);
+            seatData.repeatData = { 0, 0, 0, 0 };
+        } else if (state == WL_KEYBOARD_KEY_STATE_PRESSED
+            && xkb_keymap_key_repeats(seatData.xkb.keymap, key)) {
+
+            if (seatData.repeatData.eventSource)
+                g_source_remove(seatData.repeatData.eventSource);
+
+            seatData.repeatData = { key, time, state, g_timeout_add(seatData.repeatInfo.delay, static_cast<GSourceFunc>(repeatDelayTimeout), data) };
+        }
     },
     // modifiers
     [](void* data, struct wl_keyboard*, uint32_t, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
@@ -153,7 +194,20 @@ static const struct wl_keyboard_listener g_keyboardListener = {
             modifiers |= Input::KeyboardEvent::Shift;
     },
     // repeat_info
-    [](void*, struct wl_keyboard*, int32_t, int32_t) { },
+    [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay)
+    {
+        auto& repeatInfo = static_cast<ViewBackendWayland::SeatData*>(data)->repeatInfo;
+        repeatInfo = { rate, delay };
+
+        // A rate of zero disables any repeating.
+        if (!rate) {
+            auto& repeatData = static_cast<ViewBackendWayland::SeatData*>(data)->repeatData;
+            if (repeatData.eventSource) {
+                g_source_remove(repeatData.eventSource);
+                repeatData = { 0, 0, 0, 0 };
+            }
+        }
+    },
 };
 
 static const struct wl_seat_listener g_seatListener = {
@@ -280,8 +334,11 @@ ViewBackendWayland::~ViewBackendWayland()
         xkb_keymap_unref(m_seatData.xkb.keymap);
     if (m_seatData.xkb.state)
         xkb_state_unref(m_seatData.xkb.state);
+    if (m_seatData.repeatData.eventSource)
+        g_source_remove(m_seatData.repeatData.eventSource);
+
     m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
-        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 } };
+        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 }, { 0, 0}, { 0, 0, 0, 0} };
 
     if (m_iviSurface)
         ivi_surface_destroy(m_iviSurface);

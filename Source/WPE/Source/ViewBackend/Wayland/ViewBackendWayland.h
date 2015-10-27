@@ -81,6 +81,18 @@ public:
             } indexes;
             uint8_t modifiers;
         } xkb;
+
+        struct {
+            int32_t rate;
+            int32_t delay;
+        } repeatInfo;
+
+        struct {
+            uint32_t key;
+            uint32_t time;
+            uint32_t state;
+            uint32_t eventSource;
+        } repeatData;
     };
 
     struct BufferListenerData {
