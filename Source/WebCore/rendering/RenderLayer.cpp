@@ -413,8 +413,10 @@ RenderLayerCompositor& RenderLayer::compositor() const
 
 void RenderLayer::contentChanged(ContentChangeType changeType)
 {
-    if ((changeType == CanvasChanged || changeType == VideoChanged || changeType == FullScreenChanged || changeType == ImageChanged) && compositor().updateLayerCompositingState(*this))
+    if ((changeType == CanvasChanged || changeType == VideoChanged || changeType == FullScreenChanged || changeType == ImageChanged) && compositor().updateLayerCompositingState(*this)) {
         compositor().setCompositingLayersNeedRebuild();
+        renderer().setNeedsLayout();
+    }
 
     if (m_backing)
         m_backing->contentChanged(changeType);
