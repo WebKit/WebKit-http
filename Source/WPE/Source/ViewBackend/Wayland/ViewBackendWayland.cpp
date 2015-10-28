@@ -94,6 +94,14 @@ handleKeyEvent(ViewBackendWayland::SeatData& seatData, uint32_t key, uint32_t st
     uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
     uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
 
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED
+        && xkb_compose_state_feed(xkb.composeState, keysym) == XKB_COMPOSE_FEED_ACCEPTED
+        && xkb_compose_state_get_status(xkb.composeState) == XKB_COMPOSE_COMPOSED)
+    {
+        keysym = xkb_compose_state_get_one_sym(xkb.composeState);
+        unicode = xkb_keysym_to_utf32(keysym);
+    }
+
     if (seatData.client)
         seatData.client->handleKeyboardEvent({ time, keysym, unicode, !!state, xkb.modifiers });
 }
@@ -300,6 +308,9 @@ ViewBackendWayland::ViewBackendWayland()
     wl_seat_add_listener(m_display.interfaces().seat, &g_seatListener, &m_seatData);
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
+    m_seatData.xkb.composeTable = xkb_compose_table_new_from_locale(m_seatData.xkb.context, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
+    m_seatData.xkb.composeState = xkb_compose_state_new(m_seatData.xkb.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+
     if (m_display.interfaces().xdg) {
         m_xdgSurface = xdg_shell_get_xdg_surface(m_display.interfaces().xdg, m_surface);
         xdg_surface_add_listener(m_xdgSurface, &g_xdgSurfaceListener, nullptr);
@@ -334,11 +345,15 @@ ViewBackendWayland::~ViewBackendWayland()
         xkb_keymap_unref(m_seatData.xkb.keymap);
     if (m_seatData.xkb.state)
         xkb_state_unref(m_seatData.xkb.state);
+    if (m_seatData.xkb.composeTable)
+        xkb_compose_table_unref(m_seatData.xkb.composeTable);
+    if (m_seatData.xkb.composeState)
+        xkb_compose_state_unref(m_seatData.xkb.composeState);
     if (m_seatData.repeatData.eventSource)
         g_source_remove(m_seatData.repeatData.eventSource);
 
     m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
-        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0 }, { 0, 0}, { 0, 0, 0, 0} };
+        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0, nullptr, nullptr }, { 0, 0}, { 0, 0, 0, 0} };
 
     if (m_iviSurface)
         ivi_surface_destroy(m_iviSurface);

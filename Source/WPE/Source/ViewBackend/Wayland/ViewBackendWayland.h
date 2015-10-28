@@ -31,6 +31,7 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
 #include <utility>
+#include <xkbcommon/xkbcommon-compose.h>
 #include <xkbcommon/xkbcommon.h>
 
 struct ivi_surface;
@@ -80,6 +81,8 @@ public:
                 xkb_mod_index_t shift;
             } indexes;
             uint8_t modifiers;
+            struct xkb_compose_table* composeTable;
+            struct xkb_compose_state* composeState;
         } xkb;
 
         struct {
