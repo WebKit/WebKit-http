@@ -37,6 +37,8 @@
 namespace WebCore {
 namespace IDBServer {
 
+class MemoryObjectStore;
+
 class MemoryIDBBackingStore : public IDBBackingStore {
     friend std::unique_ptr<MemoryIDBBackingStore> std::make_unique<MemoryIDBBackingStore>(const WebCore::IDBDatabaseIdentifier&);
 public:
@@ -50,6 +52,13 @@ public:
     virtual IDBError beginTransaction(const IDBTransactionInfo&) override final;
     virtual IDBError abortTransaction(const IDBResourceIdentifier& transactionIdentifier) override final;
     virtual IDBError commitTransaction(const IDBResourceIdentifier& transactionIdentifier) override final;
+    virtual IDBError createObjectStore(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo&) override final;
+    virtual IDBError keyExistsInObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, bool& keyExists) override final;
+    virtual IDBError deleteRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&) override final;
+    virtual IDBError putRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, const ThreadSafeDataBuffer& value) override final;
+    virtual IDBError getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, ThreadSafeDataBuffer& outValue) override final;
+
+    void removeObjectStoreForVersionChangeAbort(MemoryObjectStore&);
 
 private:
     MemoryIDBBackingStore(const IDBDatabaseIdentifier&);
@@ -58,7 +67,7 @@ private:
     std::unique_ptr<IDBDatabaseInfo> m_databaseInfo;
 
     HashMap<IDBResourceIdentifier, std::unique_ptr<MemoryBackingStoreTransaction>> m_transactions;
-
+    HashMap<uint64_t, std::unique_ptr<MemoryObjectStore>> m_objectStores;
 };
 
 } // namespace IDBServer

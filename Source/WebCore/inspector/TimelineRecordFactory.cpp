@@ -70,13 +70,6 @@ Ref<InspectorObject> TimelineRecordFactory::createBackgroundRecord(double startT
     return WTF::move(record);
 }
 
-Ref<InspectorObject> TimelineRecordFactory::createGCEventData(const size_t usedHeapSizeDelta)
-{
-    Ref<InspectorObject> data = InspectorObject::create();
-    data->setInteger("usedHeapSizeDelta", usedHeapSizeDelta);
-    return WTF::move(data);
-}
-
 Ref<InspectorObject> TimelineRecordFactory::createFunctionCallData(const String& scriptName, int scriptLine)
 {
     Ref<InspectorObject> data = InspectorObject::create();
@@ -123,21 +116,6 @@ Ref<InspectorObject> TimelineRecordFactory::createTimerInstallData(int timerId, 
     return WTF::move(data);
 }
 
-Ref<InspectorObject> TimelineRecordFactory::createXHRReadyStateChangeData(const String& url, int readyState)
-{
-    Ref<InspectorObject> data = InspectorObject::create();
-    data->setString("url", url);
-    data->setInteger("readyState", readyState);
-    return WTF::move(data);
-}
-
-Ref<InspectorObject> TimelineRecordFactory::createXHRLoadData(const String& url)
-{
-    Ref<InspectorObject> data = InspectorObject::create();
-    data->setString("url", url);
-    return WTF::move(data);
-}
-
 Ref<InspectorObject> TimelineRecordFactory::createEvaluateScriptData(const String& url, double lineNumber)
 {
     Ref<InspectorObject> data = InspectorObject::create();
@@ -159,13 +137,6 @@ Ref<InspectorObject> TimelineRecordFactory::createLayoutData(unsigned dirtyObjec
     data->setInteger("dirtyObjects", dirtyObjects);
     data->setInteger("totalObjects", totalObjects);
     data->setBoolean("partialLayout", partialLayout);
-    return WTF::move(data);
-}
-
-Ref<InspectorObject> TimelineRecordFactory::createMarkData(bool isMainFrame)
-{
-    Ref<InspectorObject> data = InspectorObject::create();
-    data->setBoolean("isMainFrame", isMainFrame);
     return WTF::move(data);
 }
 

@@ -58,8 +58,6 @@ namespace WebCore {
         static Ref<Inspector::InspectorObject> createGenericRecord(double startTime, int maxCallStackDepth);
         static Ref<Inspector::InspectorObject> createBackgroundRecord(double startTime, const String& thread);
 
-        static Ref<Inspector::InspectorObject> createGCEventData(const size_t usedHeapSizeDelta);
-
         static Ref<Inspector::InspectorObject> createFunctionCallData(const String& scriptName, int scriptLine);
         static Ref<Inspector::InspectorObject> createConsoleProfileData(const String& title);
 
@@ -71,17 +69,11 @@ namespace WebCore {
 
         static Ref<Inspector::InspectorObject> createTimerInstallData(int timerId, int timeout, bool singleShot);
 
-        static Ref<Inspector::InspectorObject> createXHRReadyStateChangeData(const String& url, int readyState);
-
-        static Ref<Inspector::InspectorObject> createXHRLoadData(const String& url);
-
         static Ref<Inspector::InspectorObject> createEvaluateScriptData(const String&, double lineNumber);
 
         static Ref<Inspector::InspectorObject> createTimeStampData(const String&);
 
         static Ref<Inspector::InspectorObject> createLayoutData(unsigned dirtyObjects, unsigned totalObjects, bool partialLayout);
-
-        static Ref<Inspector::InspectorObject> createMarkData(bool isMainFrame);
 
         static Ref<Inspector::InspectorObject> createParseHTMLData(unsigned startLine);
 

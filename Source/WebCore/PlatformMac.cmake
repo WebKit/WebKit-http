@@ -77,12 +77,9 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.css
 )
 
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.cpp
-    MAIN_DEPENDENCY ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
-    DEPENDS Scripts/make-js-file-arrays.py
-    COMMAND PYTHONPATH=${WebCore_INSPECTOR_SCRIPTS_DIR} ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/Scripts/make-js-file-arrays.py ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.h ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.cpp ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
-    VERBATIM)
+set(WebCore_USER_AGENT_SCRIPTS
+    ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
+)
 
 #FIXME: Use ios-encodings.txt once we get CMake working for iOS.
 add_custom_command(
@@ -95,12 +92,11 @@ add_custom_command(
 
 list(APPEND WebCore_SOURCES
     ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
-    ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScripts.cpp
 )
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-    "/usr/include/libxslt"
-    "/usr/include/libxml2"
+    "${CMAKE_OSX_SYSROOT}/usr/include/libxslt"
+    "${CMAKE_OSX_SYSROOT}/usr/include/libxml2"
 )
 
 list(APPEND WebCore_SOURCES
@@ -233,6 +229,7 @@ list(APPEND WebCore_SOURCES
     page/mac/SettingsMac.mm
     page/mac/TextIndicatorWindow.mm
     page/mac/UserAgentMac.mm
+    page/mac/WheelEventDeltaFilterMac.mm
 
     page/scrolling/AsyncScrollingCoordinator.cpp
 
@@ -264,6 +261,8 @@ list(APPEND WebCore_SOURCES
     platform/cf/CFURLExtras.cpp
     platform/cf/CoreMediaSoftLink.cpp
     platform/cf/FileSystemCF.cpp
+    platform/cf/KeyedDecoderCF.cpp
+    platform/cf/KeyedEncoderCF.cpp
     platform/cf/MediaAccessibilitySoftLink.cpp
     platform/cf/RunLoopObserver.cpp
     platform/cf/SharedBufferCF.cpp
@@ -280,6 +279,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/ParentalControlsContentFilter.mm
     platform/cocoa/ScrollController.mm
     platform/cocoa/ScrollSnapAnimatorState.mm
+    platform/cocoa/SearchPopupMenuCocoa.mm
     platform/cocoa/SystemVersion.mm
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.cpp
@@ -316,6 +316,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ca/GraphicsLayerCA.cpp
     platform/graphics/ca/LayerFlushScheduler.cpp
     platform/graphics/ca/LayerPool.cpp
+    platform/graphics/ca/PlatformCAAnimation.cpp
     platform/graphics/ca/PlatformCALayer.cpp
     platform/graphics/ca/TileController.cpp
     platform/graphics/ca/TileCoverageMap.cpp
@@ -557,8 +558,12 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     page/mac
     page/scrolling
 
+    page/scrolling/mac
+
     platform/animation
     platform/audio
+    platform/cf
+    platform/cocoa
     platform/graphics
     platform/mac
     platform/mediastream
@@ -568,10 +573,13 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/text
 
     platform/graphics/ca
+    platform/graphics/cocoa
     platform/graphics/cg
     platform/graphics/filters
     platform/graphics/mac
     platform/graphics/transforms
+
+    platform/graphics/ca/cocoa
 
     platform/network/cf
     platform/network/cocoa

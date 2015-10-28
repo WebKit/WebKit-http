@@ -73,6 +73,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly) NSURL *_unreachableURL;
 
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL;
+- (WKNavigation *)_loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL userData:(id)userData WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
 @property (nonatomic, readonly) NSArray *_certificateChain WK_DEPRECATED(10_10, 10_11, 8_0, 9_0, "use -certificateChain");
 @property (nonatomic, readonly) NSURL *_committedURL;
@@ -132,10 +133,6 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly) NSData *_dataForDisplayedPDF;
 // FIXME: This can be removed once WKNavigation's response property is implemented.
 @property (nonatomic, readonly) NSString *_suggestedFilenameForDisplayedPDF;
-
-// The viewport meta tag width is negative if the value is not defined.
-@property (nonatomic, readonly) CGFloat _viewportMetaTagWidth;
-@property (nonatomic, readonly) BOOL _viewportIsUserScalable;
 
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
 

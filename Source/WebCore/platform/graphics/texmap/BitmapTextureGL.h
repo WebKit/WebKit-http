@@ -42,7 +42,6 @@ public:
 
     virtual IntSize size() const override;
     virtual bool isValid() const override;
-    virtual bool canReuseWith(const IntSize& contentsSize, bool hasAlpha = true) override;
     virtual void didReset() override;
     void bindAsSurface(GraphicsContext3D*);
     void initializeStencil();

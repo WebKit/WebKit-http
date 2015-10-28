@@ -29,6 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "Logging.h"
+#include "MemoryObjectStore.h"
 
 namespace WebCore {
 namespace IDBServer {
@@ -71,6 +72,13 @@ IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
         return IDBError(IDBExceptionCode::InvalidStateError, "Backing store asked to create transaction it already has a record of");
 
     auto transaction = MemoryBackingStoreTransaction::create(*this, info);
+
+    // VersionChange transactions are scoped to "every object store".
+    if (transaction->isVersionChange()) {
+        for (auto& objectStore : m_objectStores.values())
+            transaction->addExistingObjectStore(*objectStore);
+    }
+
     m_transactions.set(info.identifier(), WTF::move(transaction));
 
     return IDBError();
@@ -99,6 +107,102 @@ IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& t
 
     transaction->commit();
 
+    return IDBError();
+}
+
+IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& info)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::createObjectStore");
+
+    ASSERT(m_databaseInfo);
+    if (m_databaseInfo->hasObjectStore(info.name()))
+        return IDBError(IDBExceptionCode::ConstraintError);
+
+    ASSERT(!m_objectStores.contains(info.identifier()));
+    auto objectStore = MemoryObjectStore::create(info);
+
+    m_databaseInfo->addExistingObjectStore(info);
+
+    auto rawTransaction = m_transactions.get(transactionIdentifier);
+    ASSERT(rawTransaction);
+    ASSERT(rawTransaction->isVersionChange());
+
+    rawTransaction->addNewObjectStore(*objectStore);
+    m_objectStores.set(info.identifier(), WTF::move(objectStore));
+
+    return IDBError();
+}
+
+void MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort(MemoryObjectStore& objectStore)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort");
+
+    ASSERT(m_objectStores.contains(objectStore.info().identifier()));
+    ASSERT(m_objectStores.get(objectStore.info().identifier()) == &objectStore);
+
+    m_objectStores.remove(objectStore.info().identifier());
+}
+
+
+IDBError MemoryIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifier&, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, bool& keyExists)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::keyExistsInObjectStore");
+
+    ASSERT(objectStoreIdentifier);
+
+    MemoryObjectStore* objectStore = m_objectStores.get(objectStoreIdentifier);
+    RELEASE_ASSERT(objectStore);
+
+    keyExists = objectStore->containsRecord(keyData);
+    return IDBError();
+}
+
+IDBError MemoryIDBBackingStore::deleteRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::deleteRecord");
+
+    ASSERT(objectStoreIdentifier);
+
+    MemoryObjectStore* objectStore = m_objectStores.get(objectStoreIdentifier);
+    RELEASE_ASSERT(objectStore);
+    RELEASE_ASSERT(m_transactions.contains(transactionIdentifier));
+
+    objectStore->deleteRecord(keyData);
+    return IDBError();
+}
+
+IDBError MemoryIDBBackingStore::putRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::putRecord");
+
+    ASSERT(objectStoreIdentifier);
+
+    auto transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction)
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store transaction found to get record"));
+
+    MemoryObjectStore* objectStore = m_objectStores.get(objectStoreIdentifier);
+    if (!objectStore)
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found to put record"));
+
+    objectStore->putRecord(*transaction, keyData, value);
+    return IDBError();
+}
+
+IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData& keyData, ThreadSafeDataBuffer& outValue)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::getRecord");
+
+    ASSERT(objectStoreIdentifier);
+
+    if (!m_transactions.contains(transactionIdentifier))
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store transaction found to get record"));
+
+    MemoryObjectStore* objectStore = m_objectStores.get(objectStoreIdentifier);
+    if (!objectStore)
+        return IDBError(IDBExceptionCode::Unknown, WTF::ASCIILiteral("No backing store object store found"));
+
+    outValue = objectStore->valueForKey(keyData);
     return IDBError();
 }
 

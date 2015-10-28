@@ -93,7 +93,6 @@ WebInspector.loaded = function()
 
     // Perform one-time tasks.
     WebInspector.CSSCompletions.requestCSSCompletions();
-    this._generateDisclosureTriangleImages();
 
     // Listen for the ProvisionalLoadStarted event before registering for events so our code gets called before any managers or sidebars.
     // This lets us save a state cookie before any managers or sidebars do any resets that would affect state (namely TimelineManager).
@@ -689,7 +688,8 @@ WebInspector.openURL = function(url, frame, alwaysOpenExternally, lineNumber)
     console.assert(frame);
 
     // WebInspector.Frame.resourceForURL does not check the main resource, only sub-resources. So check both.
-    var resource = frame.url === url ? frame.mainResource : frame.resourceForURL(url, searchChildFrames);
+    let simplifiedURL = removeURLFragment(url);
+    var resource = frame.url === simplifiedURL ? frame.mainResource : frame.resourceForURL(simplifiedURL, searchChildFrames);
     if (resource) {
         var position = new WebInspector.SourceCodePosition(lineNumber, 0);
         this.showSourceCode(resource, position);
@@ -1828,21 +1828,6 @@ WebInspector._decreaseZoom = function(event) {
     event.preventDefault();
 };
 
-WebInspector._generateDisclosureTriangleImages = function()
-{
-    var specifications = {};
-    specifications["normal"] = {fillColor: [140, 140, 140, 1]};
-    specifications["normal-active"] = {fillColor: [128, 128, 128, 1]};
-
-    generateColoredImagesForCSS("Images/DisclosureTriangleSmallOpen.svg", specifications, 13, 13, "disclosure-triangle-small-open-");
-    generateColoredImagesForCSS("Images/DisclosureTriangleSmallClosed.svg", specifications, 13, 13, "disclosure-triangle-small-closed-");
-
-    specifications["selected"] = {fillColor: [255, 255, 255, 1]};
-
-    generateColoredImagesForCSS("Images/DisclosureTriangleTinyOpen.svg", specifications, 8, 8, "disclosure-triangle-tiny-open-");
-    generateColoredImagesForCSS("Images/DisclosureTriangleTinyClosed.svg", specifications, 8, 8, "disclosure-triangle-tiny-closed-");
-};
-
 WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)
 {
     if (WebInspector._elementDraggingEventListener || WebInspector._elementEndDraggingEventListener)
@@ -1906,18 +1891,6 @@ WebInspector.createMessageTextView = function(message, isError)
 
 WebInspector.createGoToArrowButton = function()
 {
-    if (!WebInspector._generatedGoToArrowButtonImages) {
-        WebInspector._generatedGoToArrowButtonImages = true;
-
-        var specifications = {};
-        specifications["go-to-arrow-normal"] = {fillColor: [0, 0, 0, 0.5]};
-        specifications["go-to-arrow-normal-active"] = {fillColor: [0, 0, 0, 0.7]};
-        specifications["go-to-arrow-selected"] = {fillColor: [255, 255, 255, 0.8]};
-        specifications["go-to-arrow-selected-active"] = {fillColor: [255, 255, 255, 1]};
-
-        generateColoredImagesForCSS("Images/GoToArrow.svg", specifications, 10, 10);
-    }
-
     function stopPropagation(event)
     {
         event.stopPropagation()

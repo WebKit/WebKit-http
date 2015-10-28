@@ -136,12 +136,12 @@ void WebContextMenuProxyGtk::populate(Vector<ContextMenuItem>& items)
 void WebContextMenuProxyGtk::populate(const Vector<RefPtr<WebContextMenuItem>>& items)
 {
     for (size_t i = 0; i < items.size(); i++) {
-        ContextMenuItem menuitem = items.at(i)->data()->core();
+        ContextMenuItem menuitem = items.at(i)->data().core();
         append(menuitem);
     }
 }
 
-void WebContextMenuProxyGtk::showContextMenu()
+void WebContextMenuProxyGtk::show()
 {
     Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
     for (auto& item : m_context.menuItems()) {
@@ -173,11 +173,6 @@ void WebContextMenuProxyGtk::showContextMenu()
                    event ? event->button.button : 3, event ? event->button.time : GDK_CURRENT_TIME);
 }
 
-void WebContextMenuProxyGtk::hideContextMenu()
-{
-    gtk_menu_popdown(m_menu.platformDescription());
-}
-
 WebContextMenuProxyGtk::WebContextMenuProxyGtk(GtkWidget* webView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
     : WebContextMenuProxy(context, userData)
     , m_webView(webView)
@@ -188,7 +183,13 @@ WebContextMenuProxyGtk::WebContextMenuProxyGtk(GtkWidget* webView, WebPageProxy&
 
 WebContextMenuProxyGtk::~WebContextMenuProxyGtk()
 {
-    cancelTracking();
+    gtk_menu_popdown(m_menu.platformDescription());
+
+    for (auto& handler : m_signalHandlers)
+        g_signal_handler_disconnect(handler.value, handler.key);
+    m_signalHandlers.clear();
+
+    m_menu.setPlatformDescription(nullptr);
 }
 
 void WebContextMenuProxyGtk::menuPositionFunction(GtkMenu* menu, gint* x, gint* y, gboolean* pushIn, WebContextMenuProxyGtk* popupMenu)
@@ -206,16 +207,6 @@ void WebContextMenuProxyGtk::menuPositionFunction(GtkMenu* menu, gint* x, gint* 
         *y -= menuSize.height;
 
     *pushIn = FALSE;
-}
-
-void WebContextMenuProxyGtk::cancelTracking()
-{
-    for (auto iter = m_signalHandlers.begin(); iter != m_signalHandlers.end(); ++iter)
-        g_signal_handler_disconnect(iter->value, iter->key);
-    m_signalHandlers.clear();
-
-    webkitWebViewBaseSetActiveContextMenuProxy(WEBKIT_WEB_VIEW_BASE(m_webView), nullptr);
-    m_menu.setPlatformDescription(nullptr);
 }
 
 } // namespace WebKit

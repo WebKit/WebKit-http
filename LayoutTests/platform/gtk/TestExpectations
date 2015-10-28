@@ -529,7 +529,6 @@ webkit.org/b/98653  svg/text/lengthAdjust-text-metrics.html [ Failure ]
 
 webkit.org/b/141837 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
 webkit.org/b/141837 fast/borders/border-painting-correctness-dotted.html [ ImageOnlyFailure ]
-webkit.org/b/141838 fast/borders/0px-borders.html [ ImageOnlyFailure ]
 
 webkit.org/b/141458 imported/mozilla/svg/blend-color-burn.svg [ ImageOnlyFailure ]
 webkit.org/b/141458 imported/mozilla/svg/blend-color-dodge.svg [ ImageOnlyFailure ]
@@ -2521,6 +2520,17 @@ webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/forms/the-for
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/telephone.html [ Failure ]
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-dialog-element/dialog-showModal.html [ Failure ]
 webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/focus.html [ Failure ]
+
+# web-platform-tests XHR tests
+imported/w3c/web-platform-tests/XMLHttpRequest/send-accept-language.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-get-head.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/status-async.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm [ Failure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Timeout ]
+imported/w3c/web-platform-tests/XMLHttpRequest/interfaces.html [ Timeout ]
 
 webkit.org/b/148938 accessibility/aria-table-hierarchy.html [ Failure ]
 webkit.org/b/148938 accessibility/aria-table-with-presentational-elements.html [ Failure ]

@@ -88,14 +88,14 @@
             if (state._linkQuoteCharacter)
                 stream.eatWhile(new RegExp("[^," + state._linkQuoteCharacter + "]"));
             else
-                stream.eatWhile(/[^\s\u00a0=<>\"\',]/);
+                stream.eatWhile(/[^\s\u00a0=<>\"\']/);
             stream.eatWhile(/[\s,]/);
         }
 
         // If the stream isn't at the end of line and we found the end quote
         // change _linkTokenize to parse the end of the link next. Otherwise
         // _linkTokenize will stay as-is to parse more of the srcset.
-        if (!stream.eol() && (!state._linkQuoteCharacter || stream.peek() === state._linkQuoteCharacter))
+        if (stream.eol() || (!state._linkQuoteCharacter || stream.peek() === state._linkQuoteCharacter))
             state._linkTokenize = tokenizeEndOfLinkString;
 
         // Link portion.
@@ -124,7 +124,7 @@
             // Look for "href" or "src" attributes. If found then we should
             // expect a string later that should get the "link" style instead.
             var text = stream.current().toLowerCase();
-            if (text === "href" || text === "src")
+            if (text === "src" || /\bhref\b/.test(text))
                 state._expectLink = true;
             else if (text === "srcset")
                 state._expectSrcSet = true;
@@ -144,7 +144,7 @@
                 state._linkTokenize = tokenizeLinkString;
                 state._linkBaseStyle = style;
 
-                // The attribute should be quoted.
+                // The attribute may or may not be quoted.
                 var quote = current[0];
 
                 state._linkQuoteCharacter = quote === "'" || quote === "\"" ? quote : null;

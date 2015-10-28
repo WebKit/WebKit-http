@@ -153,6 +153,9 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
         this._isCapturing = true;
 
+        if (startTime)
+            this.activeRecording.initializeTimeBoundsIfNecessary(startTime);
+
         this.dispatchEventToListeners(WebInspector.TimelineManager.Event.CapturingStarted, {startTime});
     }
 
@@ -224,12 +227,36 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     // Protected
 
-    pageDidLoad(timestamp)
+    pageDOMContentLoadedEventFired(timestamp)
     {
         // Called from WebInspector.PageObserver.
 
-        if (isNaN(WebInspector.frameResourceManager.mainFrame.loadEventTimestamp))
-            WebInspector.frameResourceManager.mainFrame.markLoadEvent(this.activeRecording.computeElapsedTime(timestamp));
+        console.assert(this._activeRecording);
+        console.assert(isNaN(WebInspector.frameResourceManager.mainFrame.domContentReadyEventTimestamp));
+
+        let computedTimestamp = this.activeRecording.computeElapsedTime(timestamp);
+
+        WebInspector.frameResourceManager.mainFrame.markDOMContentReadyEvent(computedTimestamp);
+
+        let eventMarker = new WebInspector.TimelineMarker(computedTimestamp, WebInspector.TimelineMarker.Type.DOMContentEvent);
+        this._activeRecording.addEventMarker(eventMarker);
+    }
+
+    pageLoadEventFired(timestamp)
+    {
+        // Called from WebInspector.PageObserver.
+
+        console.assert(this._activeRecording);
+        console.assert(isNaN(WebInspector.frameResourceManager.mainFrame.loadEventTimestamp));
+
+        let computedTimestamp = this.activeRecording.computeElapsedTime(timestamp);
+
+        WebInspector.frameResourceManager.mainFrame.markLoadEvent(computedTimestamp);
+
+        let eventMarker = new WebInspector.TimelineMarker(computedTimestamp, WebInspector.TimelineMarker.Type.LoadEvent);
+        this._activeRecording.addEventMarker(eventMarker);
+
+        this._stopAutoRecordingSoon();
     }
 
     // Private
@@ -340,12 +367,10 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
                 return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerFired, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.timerId, profileData);
             case TimelineAgent.EventType.EventDispatch:
                 return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.type, profileData);
-            case TimelineAgent.EventType.XHRLoad:
-                return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, "load", profileData);
-            case TimelineAgent.EventType.XHRReadyStateChange:
-                return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.EventDispatched, startTime, endTime, callFrames, sourceCodeLocation, "readystatechange", profileData);
             case TimelineAgent.EventType.FireAnimationFrame:
                 return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameFired, startTime, endTime, callFrames, sourceCodeLocation, parentRecordPayload.data.id, profileData);
+            default:
+                console.assert(false, "Missed FunctionCall embedded inside of: " + parentRecordPayload.type);
             }
 
             break;
@@ -385,48 +410,10 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     _processEvent(recordPayload, parentRecordPayload)
     {
-        var startTime = this.activeRecording.computeElapsedTime(recordPayload.startTime);
-        var endTime = this.activeRecording.computeElapsedTime(recordPayload.endTime);
-
         switch (recordPayload.type) {
-        case TimelineAgent.EventType.MarkLoad:
-            console.assert(isNaN(endTime));
-
-            var frame = WebInspector.frameResourceManager.frameForIdentifier(recordPayload.frameId);
-            console.assert(frame);
-            if (!frame)
-                break;
-
-            frame.markLoadEvent(startTime);
-
-            if (!frame.isMainFrame())
-                break;
-
-            var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.LoadEvent);
-            this._activeRecording.addEventMarker(eventMarker);
-
-            this._stopAutoRecordingSoon();
-            break;
-
-        case TimelineAgent.EventType.MarkDOMContent:
-            console.assert(isNaN(endTime));
-
-            var frame = WebInspector.frameResourceManager.frameForIdentifier(recordPayload.frameId);
-            console.assert(frame);
-            if (!frame)
-                break;
-
-            frame.markDOMContentReadyEvent(startTime);
-
-            if (!frame.isMainFrame())
-                break;
-
-            var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.DOMContentEvent);
-            this._activeRecording.addEventMarker(eventMarker);
-            break;
-
         case TimelineAgent.EventType.TimeStamp:
-            var eventMarker = new WebInspector.TimelineMarker(startTime, WebInspector.TimelineMarker.Type.TimeStamp);
+            var timestamp = this.activeRecording.computeElapsedTime(recordPayload.startTime);
+            var eventMarker = new WebInspector.TimelineMarker(timestamp, WebInspector.TimelineMarker.Type.TimeStamp);
             this._activeRecording.addEventMarker(eventMarker);
             break;
 

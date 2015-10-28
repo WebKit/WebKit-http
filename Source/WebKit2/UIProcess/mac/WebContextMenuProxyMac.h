@@ -59,6 +59,8 @@ public:
 private:
     virtual void show() override;
 
+    RetainPtr<NSMenuItem> createContextMenuItem(const WebContextMenuItemData&);
+    RetainPtr<NSMenu> createContextMenuFromItems(const Vector<WebContextMenuItemData>&);
     void showContextMenu();
 
 #if ENABLE(SERVICE_CONTROLS)

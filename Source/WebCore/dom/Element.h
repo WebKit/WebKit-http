@@ -327,7 +327,7 @@ public:
     static AXTextStateChangeIntent defaultFocusTextStateChangeIntent() { return AXTextStateChangeIntent(AXTextStateChangeTypeSelectionMove, AXTextSelection { AXTextSelectionDirectionDiscontiguous, AXTextSelectionGranularityUnknown, true }); }
     void updateFocusAppearanceAfterAttachIfNeeded();
     virtual void focus(bool restorePreviousSelection = true, FocusDirection = FocusDirectionNone);
-    virtual void updateFocusAppearance(bool restorePreviousSelection);
+    virtual void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode = SelectionRevealMode::Reveal);
     virtual void blur();
 
     String innerHTML() const;
@@ -486,6 +486,10 @@ public:
     void clearHoverAndActiveStatusBeforeDetachingRenderer();
 
     WEBCORE_EXPORT URL absoluteLinkURL() const;
+
+#if ENABLE(TOUCH_EVENTS)
+    virtual bool allowsDoubleTapGesture() const override;
+#endif
 
     StyleResolver& styleResolver();
     Ref<RenderStyle> resolveStyle(RenderStyle* parentStyle);

@@ -172,81 +172,6 @@ void WebContextMenuProxyMac::contextMenuItemSelected(const WebContextMenuItemDat
     m_page.contextMenuItemSelected(item);
 }
 
-static void populateNSMenu(NSMenu* menu, const Vector<RetainPtr<NSMenuItem>>& menuItemVector)
-{
-    for (unsigned i = 0; i < menuItemVector.size(); ++i) {
-        NSInteger oldState = [menuItemVector[i].get() state];
-        [menu addItem:menuItemVector[i].get()];
-        [menuItemVector[i].get() setState:oldState];
-    }
-}
-
-template<typename ItemType> static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<ItemType>&);
-
-static RetainPtr<NSMenuItem> nsMenuItem(const WebContextMenuItemData& item)
-{
-    switch (item.type()) {
-    case ActionType:
-    case CheckableActionType: {
-        NSMenuItem* menuItem = [[NSMenuItem alloc] initWithTitle:nsStringFromWebCoreString(item.title()) action:@selector(forwardContextMenuAction:) keyEquivalent:@""];
-        [menuItem setTag:item.action()];
-        [menuItem setEnabled:item.enabled()];
-        [menuItem setState:item.checked() ? NSOnState : NSOffState];
-
-        if (item.userData()) {
-            WKUserDataWrapper *wrapper = [[WKUserDataWrapper alloc] initWithUserData:item.userData()];
-            [menuItem setRepresentedObject:wrapper];
-            [wrapper release];
-        }
-
-        return adoptNS(menuItem);
-        break;
-    }
-    case SeparatorType:
-        return [NSMenuItem separatorItem];
-        break;
-    case SubmenuType: {
-        NSMenu* menu = [[NSMenu alloc] initWithTitle:nsStringFromWebCoreString(item.title())];
-        [menu setAutoenablesItems:NO];
-        populateNSMenu(menu, nsMenuItemVector(item.submenu()));
-            
-        NSMenuItem* menuItem = [[NSMenuItem alloc] initWithTitle:nsStringFromWebCoreString(item.title()) action:@selector(forwardContextMenuAction:) keyEquivalent:@""];
-        [menuItem setEnabled:item.enabled()];
-        [menuItem setSubmenu:menu];
-        [menu release];
-
-        return adoptNS(menuItem);
-    }
-    default:
-        ASSERT_NOT_REACHED();
-    }
-}
-
-static RetainPtr<NSMenuItem> nsMenuItem(const RefPtr<WebContextMenuItem>& item)
-{
-    if (NativeContextMenuItem* nativeItem = item->nativeContextMenuItem())
-        return nativeItem->nsMenuItem();
-
-    ASSERT(item->data());
-    return nsMenuItem(*item->data());
-}
-
-template<typename ItemType> static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<ItemType>& items)
-{
-    Vector<RetainPtr<NSMenuItem>> result;
-
-    unsigned size = items.size();
-    result.reserveCapacity(size);
-    for (auto& item : items)
-        result.uncheckedAppend(nsMenuItem(item));
-
-    WKMenuTarget* target = [WKMenuTarget sharedMenuTarget];
-    for (auto& item : result)
-        [item.get() setTarget:target];
-    
-    return result;
-}
-
 #if ENABLE(SERVICE_CONTROLS)
 void WebContextMenuProxyMac::setupServicesMenu()
 {
@@ -382,37 +307,79 @@ void WebContextMenuProxyMac::show()
     showContextMenu();
 }
 
+RetainPtr<NSMenu> WebContextMenuProxyMac::createContextMenuFromItems(const Vector<WebContextMenuItemData>& items)
+{
+    auto menu = adoptNS([[NSMenu alloc] initWithTitle:@""]);
+    [menu setAutoenablesItems:NO];
+
+    for (auto& item : items) {
+        if (auto menuItem = createContextMenuItem(item))
+            [menu addItem:menuItem.get()];
+    }
+
+    return menu;
+}
+
+RetainPtr<NSMenuItem> WebContextMenuProxyMac::createContextMenuItem(const WebContextMenuItemData& item)
+{
+#if ENABLE(SERVICE_CONTROLS)
+    if (item.action() == ContextMenuItemTagShareMenu)
+        return shareMenuItem().platformDescription();
+#endif
+
+    switch (item.type()) {
+    case ActionType:
+    case CheckableActionType: {
+        auto menuItem = adoptNS([[NSMenuItem alloc] initWithTitle:item.title() action:@selector(forwardContextMenuAction:) keyEquivalent:@""]);
+
+        [menuItem setTag:item.action()];
+        [menuItem setEnabled:item.enabled()];
+        [menuItem setState:item.checked() ? NSOnState : NSOffState];
+        [menuItem setTarget:[WKMenuTarget sharedMenuTarget]];
+
+        if (item.userData()) {
+            auto wrapper = adoptNS([[WKUserDataWrapper alloc] initWithUserData:item.userData()]);
+            [menuItem setRepresentedObject:wrapper.get()];
+        }
+
+        return menuItem;
+    }
+
+    case SeparatorType:
+        return [NSMenuItem separatorItem];
+
+    case SubmenuType: {
+        auto menuItem = adoptNS([[NSMenuItem alloc] initWithTitle:item.title() action:nullptr keyEquivalent:@""]);
+        [menuItem setEnabled:item.enabled()];
+        [menuItem setSubmenu:createContextMenuFromItems(item.submenu()).get()];
+
+        return menuItem;
+    }
+    }
+}
+
 void WebContextMenuProxyMac::showContextMenu()
 {
     Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
-    for (auto& item : m_context.menuItems()) {
-        if (item.action() != ContextMenuItemTagShareMenu) {
-            proposedAPIItems.append(WebContextMenuItem::create(item));
-            continue;
-        }
-
-#if ENABLE(SERVICE_CONTROLS)
-        ContextMenuItem shareItem = shareMenuItem();
-        if (!shareItem.isNull())
-            proposedAPIItems.append(WebContextMenuItem::create(shareItem));
-#endif
-    }
+    for (auto& item : m_context.menuItems())
+        proposedAPIItems.append(WebContextMenuItem::create(item));
 
     Vector<RefPtr<WebContextMenuItem>> clientItems;
     bool useProposedItems = true;
 
+    // FIXME: Get rid of this once we don't need the C SPI.
     if (m_page.contextMenuClient().getContextMenuFromProposedMenu(m_page, proposedAPIItems, clientItems, m_context.webHitTestResultData(), m_page.process().transformHandlesToObjects(m_userData.object()).get()))
         useProposedItems = false;
 
-    const Vector<RefPtr<WebContextMenuItem>>& items = useProposedItems ? proposedAPIItems : clientItems;
+    Vector<WebContextMenuItemData> items;
+    for (auto& item : (useProposedItems ? proposedAPIItems : clientItems))
+        items.append(item->data());
 
     if (items.isEmpty())
         return;
 
-    m_menu = [[NSMenu alloc] initWithTitle:@""];
-    [m_menu setAutoenablesItems:NO];
-
-    populateNSMenu(m_menu.get(), nsMenuItemVector(items));
+    auto menu = createContextMenuFromItems(items);
+    m_menu = m_page.contextMenuClient().menuFromProposedMenu(m_page, menu.get(), m_context.webHitTestResultData());
 
     [[WKMenuTarget sharedMenuTarget] setMenuProxy:this];
     [m_menu popUpMenuPositioningItem:nil atLocation:m_context.menuLocation() inView:m_webView];
