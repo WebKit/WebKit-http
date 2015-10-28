@@ -67,7 +67,7 @@ public:
     virtual bool isValid() const = 0;
 
     virtual int bpp() const { return 32; }
-    void reset(const IntSize& size, Flags flags = 0)
+    void reset(const IntSize& size, bool hasAlpha = false)
     {
         m_hasAlpha = hasAlpha;
         m_contentSize = size;
