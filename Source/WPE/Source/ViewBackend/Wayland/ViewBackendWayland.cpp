@@ -39,6 +39,7 @@
 #include <cstdio>
 #include <glib.h>
 #include <linux/input.h>
+#include <locale.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
