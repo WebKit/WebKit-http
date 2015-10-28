@@ -54,6 +54,12 @@ struct KeyDownEntry {
     const char* name;
 };
 
+struct KeyPressEntry {
+    unsigned charCode;
+    unsigned modifiers;
+    const char* name;
+};
+
 static const KeyDownEntry keyDownEntries[] = {
     { VK_LEFT,   0,                  "MoveLeft"                                },
     { VK_LEFT,   ShiftKey,           "MoveLeftAndModifySelection"              },
@@ -119,13 +125,26 @@ static const KeyDownEntry keyDownEntries[] = {
     { VK_INSERT, 0,                  "OverWrite"                               },
 };
 
+static const KeyPressEntry keyPressEntries[] = {
+    { '\t',   0,                  "InsertTab"                                  },
+    { '\t',   ShiftKey,           "InsertBacktab"                              },
+    { '\r',   0,                  "InsertNewline"                              },
+    { '\r',   CtrlKey,            "InsertNewline"                              },
+    { '\r',   ShiftKey,           "InsertLineBreak"                            },
+    { '\r',   AltKey,             "InsertNewline"                              },
+    { '\r',   AltKey | ShiftKey,  "InsertNewline"                              },
+};
+
 static const char* interpretKeyEvent(const KeyboardEvent& event)
 {
     static NeverDestroyed<HashMap<int, const char*>> keyDownCommandsMap;
+    static NeverDestroyed<HashMap<int, const char*>> keyPressCommandsMap;
 
     if (keyDownCommandsMap.get().isEmpty()) {
         for (unsigned i = 0; i < WTF_ARRAY_LENGTH(keyDownEntries); i++)
             keyDownCommandsMap.get().set(keyDownEntries[i].modifiers << 16 | keyDownEntries[i].virtualKey, keyDownEntries[i].name);
+        for (unsigned i = 0; i < WTF_ARRAY_LENGTH(keyPressEntries); i++)
+            keyPressCommandsMap.get().set(keyPressEntries[i].modifiers << 16 | keyPressEntries[i].charCode, keyPressEntries[i].name);
     }
 
     unsigned modifiers = 0;
@@ -138,8 +157,13 @@ static const char* interpretKeyEvent(const KeyboardEvent& event)
     if (event.metaKey())
         modifiers |= MetaKey;
 
-    int mapKey = modifiers << 16 | event.keyCode();
-    return mapKey ? keyDownCommandsMap.get().get(mapKey) : nullptr;
+    if (event.type() == eventNames().keydownEvent) {
+        int mapKey = modifiers << 16 | event.keyCode();
+        return mapKey ? keyDownCommandsMap.get().get(mapKey) : nullptr;
+    }
+
+    int mapKey = modifiers << 16 | event.charCode();
+    return mapKey ? keyPressCommandsMap.get().get(mapKey) : nullptr;
 }
 
 static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKeyboardEvent& platformEvent)
