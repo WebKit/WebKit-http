@@ -46,6 +46,9 @@
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
+#include "CachedResourceLoader.h"
+#include "CookieJar.h"
+
 using namespace WebCore;
 
 class StreamingClient {
@@ -743,6 +746,22 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
         break;
     }
 #endif
+    case GST_QUERY_CONTEXT: {
+        const gchar* contextType;
+        if (gst_query_parse_context_type(query, &contextType) && !g_strcmp0(contextType, "http-headers")) {
+            URL url(URL(URL(), src->priv->uri));
+            String c = WebCore::cookies(src->priv->player->cachedResourceLoader()->document(), url);
+            GstContext* context = gst_context_new("http-headers", FALSE);
+            gst_context_make_writable(context);
+            GstStructure* contextStructure = gst_context_writable_structure(context);
+            const gchar* cookies[] = {c.utf8().data(), nullptr};
+            gst_structure_set(contextStructure, "cookies", G_TYPE_STRV, cookies, nullptr);
+
+            gst_query_set_context(query, context);
+            result = TRUE;
+            break;
+        }
+    }
     default: {
         GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD_CAST(pad)));
 
