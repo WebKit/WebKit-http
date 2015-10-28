@@ -660,21 +660,14 @@ static GstStateChangeReturn webKitWebSrcChangeState(GstElement* element, GstStat
     WebKitWebSrcPrivate* priv = src->priv;
 
     switch (transition) {
-    case GST_STATE_CHANGE_NULL_TO_READY: {
+    case GST_STATE_CHANGE_NULL_TO_READY:
         if (!priv->appsrc) {
             gst_element_post_message(element,
                                      gst_missing_element_message_new(element, "appsrc"));
             GST_ELEMENT_ERROR(src, CORE, MISSING_PLUGIN, (0), ("no appsrc"));
             return GST_STATE_CHANGE_FAILURE;
         }
-
-        if (!src->priv->player) {
-            GST_DEBUG_OBJECT(src, "querying the player object");
-            gst_element_post_message(element, gst_message_new_application(GST_OBJECT(element),
-                gst_structure_new_empty("webkit-player")));
-        }
         break;
-    }
     default:
         break;
     }
@@ -940,7 +933,6 @@ void webKitWebSrcSetMediaPlayer(WebKitWebSrc* src, WebCore::MediaPlayer* player)
 {
     ASSERT(player);
     WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(src));
-    GST_DEBUG_OBJECT(src, "Set player pointer to %p", player);
     src->priv->player = player;
 }
 

@@ -101,7 +101,6 @@ public:
     bool ensureGstGLContext();
 #endif
     void handleNeedContextMessage(GstMessage*);
-    void handleApplicationMessage(GstMessage*);
     void handleElementMessage(GstMessage*);
 
     virtual bool supportsMuting() const override { return true; }

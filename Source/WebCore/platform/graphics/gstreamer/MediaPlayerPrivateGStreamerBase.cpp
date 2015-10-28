@@ -204,11 +204,6 @@ static void mediaPlayerPrivateElementMessageCallback(GstBus*, GstMessage* messag
     player->handleElementMessage(message);
 }
 
-static void mediaPlayerPrivateApplicationMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamerBase* player)
-{
-    player->handleApplicationMessage(message);
-}
-
 #if USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
 public:
@@ -326,7 +321,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
         ASSERT(bus);
         g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateNeedContextMessageCallback), this);
         g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateElementMessageCallback), this);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateApplicationMessageCallback), this);
         gst_bus_disable_sync_message_emission(bus.get());
         m_pipeline.clear();
     }
@@ -357,7 +351,6 @@ void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
     gst_bus_enable_sync_message_emission(bus.get());
     g_signal_connect(bus.get(), "sync-message::need-context", G_CALLBACK(mediaPlayerPrivateNeedContextMessageCallback), this);
     g_signal_connect(bus.get(), "sync-message::element", G_CALLBACK(mediaPlayerPrivateElementMessageCallback), this);
-    g_signal_connect(bus.get(), "sync-message::application", G_CALLBACK(mediaPlayerPrivateApplicationMessageCallback), this);
 }
 
 void MediaPlayerPrivateGStreamerBase::clearSamples()
@@ -1079,13 +1072,6 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
         gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
 }
 #endif
-
-void MediaPlayerPrivateGStreamerBase::handleApplicationMessage(GstMessage* message)
-{
-    GstElement* element = GST_ELEMENT(GST_MESSAGE_SRC(message));
-    if (WEBKIT_IS_WEB_SRC(element))
-        webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(GST_MESSAGE_SRC(message)), m_player);
-}
 
 void MediaPlayerPrivateGStreamerBase::handleElementMessage(GstMessage* message)
 {
