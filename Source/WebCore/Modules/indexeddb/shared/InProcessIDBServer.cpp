@@ -30,6 +30,7 @@
 
 #include "IDBConnectionToClient.h"
 #include "IDBConnectionToServer.h"
+#include "IDBKeyData.h"
 #include "IDBOpenDBRequestImpl.h"
 #include "IDBRequestData.h"
 #include "IDBResultData.h"
@@ -118,6 +119,30 @@ void InProcessIDBServer::didCommitTransaction(const IDBResourceIdentifier& trans
     });
 }
 
+void InProcessIDBServer::didCreateObjectStore(const IDBResultData& resultData)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resultData] {
+        m_connectionToServer->didCreateObjectStore(resultData);
+    });
+}
+
+void InProcessIDBServer::didPutOrAdd(const IDBResultData& resultData)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resultData] {
+        m_connectionToServer->didPutOrAdd(resultData);
+    });
+}
+
+void InProcessIDBServer::didGetRecord(const IDBResultData& resultData)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resultData] {
+        m_connectionToServer->didGetRecord(resultData);
+    });
+}
+
 void InProcessIDBServer::abortTransaction(IDBResourceIdentifier& resourceIdentifier)
 {
     RefPtr<InProcessIDBServer> self(this);
@@ -131,6 +156,35 @@ void InProcessIDBServer::commitTransaction(IDBResourceIdentifier& resourceIdenti
     RefPtr<InProcessIDBServer> self(this);
     RunLoop::current().dispatch([this, self, resourceIdentifier] {
         m_server->commitTransaction(resourceIdentifier);
+    });
+}
+
+void InProcessIDBServer::createObjectStore(const IDBRequestData& resultData, const IDBObjectStoreInfo& info)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    RunLoop::current().dispatch([this, self, resultData, info] {
+        m_server->createObjectStore(resultData, info);
+    });
+}
+
+void InProcessIDBServer::putOrAdd(const IDBRequestData& requestData, IDBKey* key, SerializedScriptValue& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    IDBKeyData keyData(key);
+    auto valueData = ThreadSafeDataBuffer::copyVector(value.data());
+
+    RunLoop::current().dispatch([this, self, requestData, keyData, valueData, overwriteMode] {
+        m_server->putOrAdd(requestData, keyData, valueData, overwriteMode);
+    });
+}
+
+void InProcessIDBServer::getRecord(const IDBRequestData& requestData, IDBKey* key)
+{
+    RefPtr<InProcessIDBServer> self(this);
+    IDBKeyData keyData(key);
+
+    RunLoop::current().dispatch([this, self, requestData, keyData] {
+        m_server->getRecord(requestData, keyData);
     });
 }
 

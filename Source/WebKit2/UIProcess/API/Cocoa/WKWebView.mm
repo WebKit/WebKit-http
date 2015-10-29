@@ -36,6 +36,7 @@
 #import "FindClient.h"
 #import "LegacySessionStateCoding.h"
 #import "NavigationState.h"
+#import "ObjCObjectGraph.h"
 #import "RemoteLayerTreeScrollingPerformanceData.h"
 #import "RemoteLayerTreeTransaction.h"
 #import "RemoteObjectRegistry.h"
@@ -79,6 +80,7 @@
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import <WebCore/IOSurface.h>
+#import <WebCore/JSDOMBinding.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
@@ -172,6 +174,9 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     CGSize _maximumUnobscuredSizeOverride;
     CGRect _inputViewBounds;
     CGFloat _viewportMetaTagWidth;
+    CGFloat _initialScaleFactor;
+    BOOL _fastClickingIsDisabled;
+
     BOOL _allowsLinkPreview;
 
     UIEdgeInsets _obscuredInsets;
@@ -351,7 +356,9 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     [_scrollView addSubview:[_contentView unscaledView]];
     [self _updateScrollViewBackground];
 
-    _viewportMetaTagWidth = -1;
+    _viewportMetaTagWidth = WebCore::ViewportArguments::ValueAuto;
+    _initialScaleFactor = 1;
+    _fastClickingIsDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitFastClickingDisabled"];
 
     [self _frameOrBoundsChanged];
 
@@ -447,6 +454,9 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 
 - (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
 {
+#if ENABLE(CONTEXT_MENUS)
+    _page->setContextMenuClient(_uiDelegate->createContextMenuClient());
+#endif
     _page->setUIClient(_uiDelegate->createUIClient());
     _uiDelegate->setDelegate(UIDelegate);
 }
@@ -611,7 +621,7 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 {
     auto handler = adoptNS([completionHandler copy]);
 
-    _page->runJavaScriptInMainFrame(javaScriptString, [handler](API::SerializedScriptValue* serializedScriptValue, bool hadException, WebKit::ScriptValueCallback::Error errorCode) {
+    _page->runJavaScriptInMainFrame(javaScriptString, [handler](API::SerializedScriptValue* serializedScriptValue, bool hadException, const WebCore::ExceptionDetails& details, WebKit::ScriptValueCallback::Error errorCode) {
         if (!handler)
             return;
 
@@ -636,7 +646,18 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
         auto rawHandler = (void (^)(id, NSError *))handler.get();
         if (hadException) {
             ASSERT(!serializedScriptValue);
-            rawHandler(nil, createNSError(WKErrorJavaScriptExceptionOccurred).get());
+
+            RetainPtr<NSMutableDictionary> userInfo = adoptNS([[NSMutableDictionary alloc] init]);
+
+            [userInfo setObject:localizedDescriptionForErrorCode(WKErrorJavaScriptExceptionOccurred) forKey:NSLocalizedDescriptionKey];
+            [userInfo setObject:static_cast<NSString *>(details.message) forKey:_WKJavaScriptExceptionMessageErrorKey];
+            [userInfo setObject:@(details.lineNumber) forKey:_WKJavaScriptExceptionLineNumberErrorKey];
+            [userInfo setObject:@(details.columnNumber) forKey:_WKJavaScriptExceptionColumnNumberErrorKey];
+
+            if (!details.sourceURL.isEmpty())
+                [userInfo setObject:[NSURL _web_URLWithWTFString:details.sourceURL] forKey:_WKJavaScriptExceptionSourceURLErrorKey];
+
+            rawHandler(nil, adoptNS([[NSError alloc] initWithDomain:WKErrorDomain code:WKErrorJavaScriptExceptionOccurred userInfo:userInfo.get()]).get());
             return;
         }
 
@@ -798,11 +819,6 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     _page->didLayoutForCustomContentProvider();
 }
 
-- (void)_setViewportMetaTagWidth:(float)newWidth
-{
-    _viewportMetaTagWidth = newWidth;
-}
-
 - (void)_willInvokeUIScrollViewDelegateCallback
 {
     _delayUpdateVisibleContentRects = YES;
@@ -915,7 +931,8 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     [_scrollView setContentOffset:[self _adjustedContentOffset:CGPointZero]];
     [_scrollView setZoomScale:1];
 
-    _viewportMetaTagWidth = -1;
+    _viewportMetaTagWidth = WebCore::ViewportArguments::ValueAuto;
+    _initialScaleFactor = 1;
     _hasCommittedLoadForMainFrame = NO;
     _needsResetViewStateAfterCommitLoadForMainFrame = NO;
     _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
@@ -997,7 +1014,10 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom])
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
 
-    [_contentView _setDoubleTapGesturesEnabled:self._viewportIsUserScalable];
+    _viewportMetaTagWidth = layerTreeTransaction.viewportMetaTagWidth();
+    _initialScaleFactor = layerTreeTransaction.initialScaleFactor();
+    if (![_contentView _mayDisableDoubleTapGesturesDuringSingleTap])
+        [_contentView _setDoubleTapGesturesEnabled:self._allowsDoubleTapGestures];
 
     [self _updateScrollViewBackground];
 
@@ -1276,6 +1296,12 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [self _zoomToPoint:origin atScale:[_scrollView minimumZoomScale] animated:animated];
 }
 
+- (void)_zoomToInitialScaleWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated
+{
+    ASSERT(_initialScaleFactor > 0);
+    [self _zoomToPoint:origin atScale:_initialScaleFactor animated:animated];
+}
+
 // focusedElementRect and selectionRect are both in document coordinates.
 - (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRectInDocumentCoordinates selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
 {
@@ -1393,11 +1419,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
                         scale:scale
                      duration:UIWebFormAnimationDuration
                         force:YES];
-}
-
-- (CGFloat)_contentZoomScale
-{
-    return contentZoomScale(self);
 }
 
 - (CGFloat)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale
@@ -2003,6 +2024,15 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
 {
     _page->loadAlternateHTMLString(string, [baseURL _web_originalDataAsWTFString], [unreachableURL _web_originalDataAsWTFString]);
+}
+
+- (WKNavigation *)_loadData:(NSData *)data MIMEType:(NSString *)MIMEType characterEncodingName:(NSString *)characterEncodingName baseURL:(NSURL *)baseURL userData:(id)userData
+{
+    auto navigation = _page->loadData(API::Data::createWithoutCopying(data).ptr(), MIMEType, characterEncodingName, baseURL.absoluteString, WebKit::ObjCObjectGraph::create(userData).ptr());
+    if (!navigation)
+        return nil;
+
+    return [wrapper(*navigation.release().leakRef()) autorelease];
 }
 
 - (NSArray *)_certificateChain
@@ -3071,14 +3101,20 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return [(WKPDFView *)_customContentView.get() suggestedFilename];
 }
 
-- (CGFloat)_viewportMetaTagWidth
+- (BOOL)_allowsDoubleTapGestures
 {
-    return _viewportMetaTagWidth;
-}
+    if (_fastClickingIsDisabled)
+        return YES;
 
-- (BOOL)_viewportIsUserScalable
-{
-    return [_scrollView isZoomEnabled] && [_scrollView minimumZoomScale] < [_scrollView maximumZoomScale];
+    // If the page is not user scalable, we don't allow double tap gestures.
+    if (![_scrollView isZoomEnabled] || [_scrollView minimumZoomScale] >= [_scrollView maximumZoomScale])
+        return NO;
+
+    // For scalable viewports, only disable double tap gestures if the viewport width is device width.
+    if (_viewportMetaTagWidth != WebCore::ViewportArguments::ValueDeviceWidth)
+        return YES;
+
+    return !areEssentiallyEqualAsFloat(contentZoomScale(self), _initialScaleFactor);
 }
 
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter
@@ -3204,13 +3240,15 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 // Execute the supplied block after the next transaction from the WebProcess.
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock
 {
-    typeof(updateBlock) updateBlockCopy = nil;
+    void (^updateBlockCopy)(void) = nil;
     if (updateBlock)
         updateBlockCopy = Block_copy(updateBlock);
 
     _page->callAfterNextPresentationUpdate([updateBlockCopy](WebKit::CallbackBase::Error error) {
-        updateBlockCopy();
-        Block_release(updateBlockCopy);
+        if (updateBlockCopy) {
+            updateBlockCopy();
+            Block_release(updateBlockCopy);
+        }
     });
 }
 

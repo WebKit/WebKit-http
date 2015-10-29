@@ -617,7 +617,7 @@
 #endif
 #endif
 
-#if OS(DARWIN) || OS(FREEBSD) || OS(NETBSD)
+#if (OS(DARWIN) || OS(FREEBSD) || OS(NETBSD)) && !defined(__GLIBC__)
 #define HAVE_STAT_BIRTHTIME 1
 #endif
 

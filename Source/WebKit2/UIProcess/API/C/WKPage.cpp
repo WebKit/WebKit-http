@@ -838,14 +838,6 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
             m_client.customContextMenuItemSelected(toAPI(&page), toAPI(WebContextMenuItem::create(itemData).ptr()), m_client.base.clientInfo);
         }
 
-        virtual void contextMenuDismissed(WebPageProxy& page) override
-        {
-            if (!m_client.contextMenuDismissed)
-                return;
-
-            m_client.contextMenuDismissed(toAPI(&page), m_client.base.clientInfo);
-        }
-
         virtual bool showContextMenu(WebPageProxy& page, const WebCore::IntPoint& menuLocation, const Vector<RefPtr<WebContextMenuItem>>& menuItemsVector) override
         {
             if (!m_client.showContextMenu)
@@ -1579,7 +1571,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             auto sourceFrameInfo = API::FrameInfo::create(*initiatingFrame, securityOriginData.securityOrigin());
 
-            bool shouldOpenAppLinks = !protocolHostAndPortAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
+            bool shouldOpenAppLinks = !hostsAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
             auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks);
 
             auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
@@ -2183,7 +2175,7 @@ void WKPageSetSession(WKPageRef pageRef, WKSessionRef session)
 
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)
 {
-    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), [context, callback](API::SerializedScriptValue* returnValue, bool, CallbackBase::Error error) {
+    toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), [context, callback](API::SerializedScriptValue* returnValue, bool, const WebCore::ExceptionDetails&, CallbackBase::Error error) {
         callback(toAPI(returnValue), (error != CallbackBase::Error::None) ? toAPI(API::Error::create().ptr()) : 0, context);
     });
 }
@@ -2423,7 +2415,7 @@ void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)
 void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item)
 {
 #if ENABLE(CONTEXT_MENUS)
-    toImpl(page)->contextMenuItemSelected(*(toImpl(item)->data()));
+    toImpl(page)->contextMenuItemSelected((toImpl(item)->data()));
 #else
     UNUSED_PARAM(page);
     UNUSED_PARAM(item);

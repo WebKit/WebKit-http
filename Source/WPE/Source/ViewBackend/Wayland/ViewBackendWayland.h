@@ -31,6 +31,7 @@
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
 #include <utility>
+#include <xkbcommon/xkbcommon-compose.h>
 #include <xkbcommon/xkbcommon.h>
 
 struct ivi_surface;
@@ -80,7 +81,21 @@ public:
                 xkb_mod_index_t shift;
             } indexes;
             uint8_t modifiers;
+            struct xkb_compose_table* composeTable;
+            struct xkb_compose_state* composeState;
         } xkb;
+
+        struct {
+            int32_t rate;
+            int32_t delay;
+        } repeatInfo;
+
+        struct {
+            uint32_t key;
+            uint32_t time;
+            uint32_t state;
+            uint32_t eventSource;
+        } repeatData;
     };
 
     struct BufferListenerData {

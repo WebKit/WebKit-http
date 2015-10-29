@@ -55,7 +55,6 @@ IDBOpenDBRequest::IDBOpenDBRequest(IDBConnectionToServer& connection, ScriptExec
     , m_databaseIdentifier(databaseIdentifier)
     , m_version(version)
 {
-    suspendIfNeeded();
 }
 
 IDBOpenDBRequest::~IDBOpenDBRequest()
@@ -115,6 +114,8 @@ void IDBOpenDBRequest::requestCompleted(const IDBResultData& data)
     case IDBResultType::OpenDatabaseUpgradeNeeded:
         onUpgradeNeeded(data);
         break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
     }
 }
 

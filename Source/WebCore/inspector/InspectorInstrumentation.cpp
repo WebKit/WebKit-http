@@ -345,23 +345,6 @@ void InspectorInstrumentation::didCallFunctionImpl(const InspectorInstrumentatio
         timelineAgent->didCallFunction(frameForScriptExecutionContext(context));
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willDispatchXHRReadyStateChangeEventImpl(InstrumentingAgents& instrumentingAgents, XMLHttpRequest& request, ScriptExecutionContext* context)
-{
-    int timelineAgentId = 0;
-    InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent();
-    if (timelineAgent && request.hasEventListeners(eventNames().readystatechangeEvent)) {
-        timelineAgent->willDispatchXHRReadyStateChangeEvent(request.url().string(), request.readyState(), frameForScriptExecutionContext(context));
-        timelineAgentId = timelineAgent->id();
-    }
-    return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
-}
-
-void InspectorInstrumentation::didDispatchXHRReadyStateChangeEventImpl(const InspectorInstrumentationCookie& cookie)
-{
-    if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
-        timelineAgent->didDispatchXHRReadyStateChangeEvent();
-}
-
 InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEventImpl(InstrumentingAgents& instrumentingAgents, Document& document, const Event& event, bool hasEventListeners)
 {
     int timelineAgentId = 0;
@@ -484,23 +467,6 @@ void InspectorInstrumentation::didLayoutImpl(const InspectorInstrumentationCooki
         pageAgent->didLayout();
 }
 
-InspectorInstrumentationCookie InspectorInstrumentation::willDispatchXHRLoadEventImpl(InstrumentingAgents& instrumentingAgents, XMLHttpRequest& request, ScriptExecutionContext* context)
-{
-    int timelineAgentId = 0;
-    InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent();
-    if (timelineAgent && request.hasEventListeners(eventNames().loadEvent)) {
-        timelineAgent->willDispatchXHRLoadEvent(request.url(), frameForScriptExecutionContext(context));
-        timelineAgentId = timelineAgent->id();
-    }
-    return InspectorInstrumentationCookie(instrumentingAgents, timelineAgentId);
-}
-
-void InspectorInstrumentation::didDispatchXHRLoadEventImpl(const InspectorInstrumentationCookie& cookie)
-{
-    if (InspectorTimelineAgent* timelineAgent = retrieveTimelineAgent(cookie))
-        timelineAgent->didDispatchXHRLoadEvent();
-}
-
 void InspectorInstrumentation::willCompositeImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
 {
     if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
@@ -526,18 +492,6 @@ void InspectorInstrumentation::didPaintImpl(InstrumentingAgents& instrumentingAg
 
     if (InspectorPageAgent* pageAgent = instrumentingAgents.inspectorPageAgent())
         pageAgent->didPaint(renderer, rect);
-}
-
-void InspectorInstrumentation::willScrollLayerImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
-{
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->willScroll(frame);
-}
-
-void InspectorInstrumentation::didScrollLayerImpl(InstrumentingAgents& instrumentingAgents)
-{
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didScroll();
 }
 
 InspectorInstrumentationCookie InspectorInstrumentation::willRecalculateStyleImpl(InstrumentingAgents& instrumentingAgents, Document& document)
@@ -730,9 +684,6 @@ void InspectorInstrumentation::didReceiveScriptResponseImpl(InstrumentingAgents&
 
 void InspectorInstrumentation::domContentLoadedEventFiredImpl(InstrumentingAgents& instrumentingAgents, Frame& frame)
 {
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didMarkDOMContentEvent(frame);
-
     if (!frame.isMainFrame())
         return;
 
@@ -745,13 +696,7 @@ void InspectorInstrumentation::domContentLoadedEventFiredImpl(InstrumentingAgent
 
 void InspectorInstrumentation::loadEventFiredImpl(InstrumentingAgents& instrumentingAgents, Frame* frame)
 {
-    if (!frame)
-        return;
-
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->didMarkLoadEvent(*frame);
-
-    if (!frame->isMainFrame())
+    if (!frame || !frame->isMainFrame())
         return;
 
     if (InspectorPageAgent* pageAgent = instrumentingAgents.inspectorPageAgent())

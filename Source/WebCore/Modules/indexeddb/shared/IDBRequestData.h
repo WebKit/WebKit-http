@@ -37,21 +37,32 @@ namespace IDBClient {
 class IDBConnectionToServer;
 class IDBOpenDBRequest;
 class IDBTransaction;
+class TransactionOperation;
 }
 
 class IDBRequestData {
 public:
     IDBRequestData(const IDBClient::IDBConnectionToServer&, const IDBClient::IDBOpenDBRequest&);
+    explicit IDBRequestData(IDBClient::TransactionOperation&);
+    IDBRequestData(const IDBRequestData&);
 
-    IDBResourceIdentifier requestIdentifier() const { return m_requestIdentifier; }
+    uint64_t serverConnectionIdentifier() const;
+    IDBResourceIdentifier requestIdentifier() const;
+    IDBResourceIdentifier transactionIdentifier() const;
+    uint64_t objectStoreIdentifier() const;
+
     const IDBDatabaseIdentifier& databaseIdentifier() const { return m_databaseIdentifier; }
-
     uint64_t requestedVersion() const;
 
-private:
-    IDBResourceIdentifier m_requestIdentifier;
-    IDBDatabaseIdentifier m_databaseIdentifier;
+    IDBRequestData isolatedCopy();
 
+private:
+    uint64_t m_serverConnectionIdentifier { 0 };
+    std::unique_ptr<IDBResourceIdentifier> m_requestIdentifier;
+    std::unique_ptr<IDBResourceIdentifier> m_transactionIdentifier;
+    uint64_t m_objectStoreIdentifier { 0 };
+
+    IDBDatabaseIdentifier m_databaseIdentifier;
     uint64_t m_requestedVersion { 0 };
 };
 

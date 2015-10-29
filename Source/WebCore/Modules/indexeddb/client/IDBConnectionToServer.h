@@ -30,6 +30,7 @@
 
 #include "IDBConnectionToServerDelegate.h"
 #include "IDBResourceIdentifier.h"
+#include "TransactionOperation.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
@@ -38,6 +39,7 @@
 namespace WebCore {
 
 class IDBError;
+class IDBObjectStoreInfo;
 class IDBResultData;
 
 namespace IDBClient {
@@ -45,6 +47,7 @@ namespace IDBClient {
 class IDBDatabase;
 class IDBOpenDBRequest;
 class IDBTransaction;
+class TransactionOperation;
 
 class IDBConnectionToServer : public RefCounted<IDBConnectionToServer> {
 public:
@@ -57,6 +60,15 @@ public:
 
     void openDatabase(IDBOpenDBRequest&);
     void didOpenDatabase(const IDBResultData&);
+
+    void createObjectStore(TransactionOperation&, const IDBObjectStoreInfo&);
+    void didCreateObjectStore(const IDBResultData&);
+
+    void putOrAdd(TransactionOperation&, RefPtr<IDBKey>&, RefPtr<SerializedScriptValue>&, const IndexedDB::ObjectStoreOverwriteMode);
+    void didPutOrAdd(const IDBResultData&);
+
+    void getRecord(TransactionOperation&, RefPtr<IDBKey>&);
+    void didGetRecord(const IDBResultData&);
 
     void commitTransaction(IDBTransaction&);
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
@@ -72,13 +84,17 @@ public:
 
 private:
     IDBConnectionToServer(IDBConnectionToServerDelegate&);
-    
+
+    void saveOperation(TransactionOperation&);
+    void completeOperation(const IDBResultData&);
+
     Ref<IDBConnectionToServerDelegate> m_delegate;
 
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::IDBOpenDBRequest>> m_openDBRequestMap;
     HashMap<uint64_t, IDBDatabase*> m_databaseConnectionMap;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
+    HashMap<IDBResourceIdentifier, RefPtr<TransactionOperation>> m_activeOperations;
 };
 
 } // namespace IDBClient

@@ -48,7 +48,7 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 webkit.org/b/146622 [ Yosemite Debug ] webgl/1.0.2/conformance/more/functions/copyTexImage2DBadArgs.html [ Pass Failure ]
 
-webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Pass Timeout ]
+webkit.org/b/150564 svg/repaint/add-background-property-on-root.html [ Pass Timeout ]
 
 ### END OF (1) Failures with bug reports
 ########################################
@@ -131,11 +131,11 @@ http/tests/cache/disk-cache
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
 
-[ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Pass Timeout ]
-[ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Pass Timeout ]
-[ Mavericks Debug ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Pass Timeout ]
-[ Mavericks Debug ] fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html [ Pass Timeout ]
-[ Mavericks Debug ] fast/canvas/webgl/oes-texture-half-float.html [ Pass Timeout ]
+webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Pass Timeout ]
+webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Pass Timeout ]
+webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html [ Pass Timeout ]
+webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/tex-image-and-uniform-binding-bugs.html [ Pass Timeout ]
+webkit.org/b/150367 [ Mavericks ] fast/canvas/webgl/oes-texture-half-float.html [ Pass Timeout ]
 
 [ ElCapitan+ ] css3/masking/mask-repeat-space-padding.html [ ImageOnlyFailure ]
 
@@ -162,7 +162,7 @@ imported/blink/fast/text-autosizing/print-autosizing.html  [ Pass Timeout ]
 imported/blink/paint/theme/search-field-resuts-decoration-crash.html [ Pass Timeout ]
 imported/blink/svg/filters/feColorMatrix-setAttribute-crash1.html [ Pass Timeout ]
 imported/blink/svg/hittest/rect-miterlimit.html [ Pass Timeout ]
-[ Release ] imported/blink/compositing/reorder-z-with-style.html [ Pass Timeout ]
-[ Release ] imported/blink/svg/custom/marker-layout-invalidation.html [ Pass Timeout ]
-[ Release ] imported/blink/fast/css/crash-corner-present.html [ Pass Timeout ]
-[ Release ] imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeout ]
+imported/blink/compositing/reorder-z-with-style.html [ Pass Timeout ]
+imported/blink/svg/custom/marker-layout-invalidation.html [ Pass Timeout ]
+imported/blink/fast/css/crash-corner-present.html [ Pass Timeout ]
+imported/blink/compositing/layer-creation/iframe-clip-removed.html [ Pass Timeout ]

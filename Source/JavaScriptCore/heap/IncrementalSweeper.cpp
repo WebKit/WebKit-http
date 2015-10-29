@@ -37,18 +37,27 @@
 
 namespace JSC {
 
-#if USE(CF)
+#if USE(CF) || PLATFORM(WPE)
 
 static const double sweepTimeSlice = .01; // seconds
 static const double sweepTimeTotal = .10;
 static const double sweepTimeMultiplier = 1.0 / sweepTimeTotal;
 
+#if USE(CF)
 IncrementalSweeper::IncrementalSweeper(Heap* heap, CFRunLoopRef runLoop)
     : HeapTimer(heap->vm(), runLoop)
     , m_blocksToSweep(heap->m_blockSnapshot)
 {
 }
+#elif PLATFORM(WPE)
+IncrementalSweeper::IncrementalSweeper(Heap* heap)
+    : HeapTimer(heap->vm())
+    , m_blocksToSweep(heap->m_blockSnapshot)
+{
+}
+#endif
 
+#if USE(CF)
 void IncrementalSweeper::scheduleTimer()
 {
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + (sweepTimeSlice * sweepTimeMultiplier));
@@ -58,6 +67,17 @@ void IncrementalSweeper::cancelTimer()
 {
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + s_decade);
 }
+#elif PLATFORM(WPE)
+void IncrementalSweeper::scheduleTimer()
+{
+    m_timer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(sweepTimeSlice * sweepTimeMultiplier)));
+}
+
+void IncrementalSweeper::cancelTimer()
+{
+    m_timer.cancel();
+}
+#endif
 
 void IncrementalSweeper::doWork()
 {

@@ -87,19 +87,16 @@ BitmapTextureGL::BitmapTextureGL(PassRefPtr<GraphicsContext3D> context3D)
     , m_type(GraphicsContext3D::UNSIGNED_BYTE)
 #endif
 {
+    // If GL_EXT_texture_format_BGRA8888 is supported in the OpenGLES
+    // internal and external formats need to be BGRA
     m_internalFormat = GraphicsContext3D::RGBA;
     m_format = GraphicsContext3D::BGRA;
     if (m_context3D->isGLES2Compliant()) {
-        if (driverSupportsExternalTextureBGRA(m_context3D.get()))
+        if (m_context3D->getExtensions()->supports("GL_EXT_texture_format_BGRA8888"))
             m_internalFormat = GraphicsContext3D::BGRA;
         else
             m_format = GraphicsContext3D::RGBA;
     }
-}
-
-bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, bool)
-{
-    return contentsSize == m_textureSize;
 }
 
 static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 0)
@@ -176,7 +173,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
         && !(bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && adjustedSourceOffset == IntPoint::zero());
 
     // prepare temporaryData if necessary
-    if ((!driverSupportsExternalTextureBGRA(m_context3D.get()) && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
+    if ((m_format == GraphicsContext3D::RGBA && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
         temporaryData.reserveCapacity(targetRect.width() * targetRect.height() * bytesPerPixel);
         data = temporaryData.data();
         const char* bits = static_cast<const char*>(srcData);
@@ -193,7 +190,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
         adjustedSourceOffset = IntPoint(0, 0);
     }
 
-    if (!driverSupportsExternalTextureBGRA(m_context3D.get()))
+    if (m_format == GraphicsContext3D::RGBA)
         swizzleBGRAToRGBA(reinterpret_cast_ptr<uint32_t*>(data), IntRect(adjustedSourceOffset, targetRect.size()), bytesPerLine / bytesPerPixel);
 
     updateContentsNoSwizzle(data, targetRect, adjustedSourceOffset, bytesPerLine, bytesPerPixel, m_format);

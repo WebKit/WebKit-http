@@ -346,6 +346,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_edenActivityCallback(GCActivityCallback::createEdenTimer(this))
 #if USE(CF)
     , m_sweeper(std::make_unique<IncrementalSweeper>(this, CFRunLoopGetCurrent()))
+#elif PLATFORM(WPE)
+    , m_sweeper(std::make_unique<IncrementalSweeper>(this))
 #else
     , m_sweeper(std::make_unique<IncrementalSweeper>(this->vm()))
 #endif

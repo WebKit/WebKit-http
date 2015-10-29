@@ -31,6 +31,8 @@
 #include "IndexedDB.h"
 #include "Logging.h"
 #include "MemoryIDBBackingStore.h"
+#include "MemoryObjectStore.h"
+#include <wtf/TemporaryChange.h>
 
 namespace WebCore {
 namespace IDBServer {
@@ -53,23 +55,98 @@ MemoryBackingStoreTransaction::~MemoryBackingStoreTransaction()
     ASSERT(!m_inProgress);
 }
 
+void MemoryBackingStoreTransaction::addNewObjectStore(MemoryObjectStore& objectStore)
+{
+    LOG(IndexedDB, "MemoryBackingStoreTransaction::addNewObjectStore()");
+
+    ASSERT(isVersionChange());
+
+    ASSERT(!m_objectStores.contains(&objectStore));
+    m_objectStores.add(&objectStore);
+    m_versionChangeAddedObjectStores.add(&objectStore);
+
+    objectStore.writeTransactionStarted(*this);
+}
+
+void MemoryBackingStoreTransaction::addExistingObjectStore(MemoryObjectStore& objectStore)
+{
+    LOG(IndexedDB, "MemoryBackingStoreTransaction::addExistingObjectStore");
+
+    ASSERT(isWriting());
+
+    ASSERT(!m_objectStores.contains(&objectStore));
+    m_objectStores.add(&objectStore);
+
+    objectStore.writeTransactionStarted(*this);
+}
+
+void MemoryBackingStoreTransaction::recordValueChanged(MemoryObjectStore& objectStore, const IDBKeyData& key)
+{
+    ASSERT(m_objectStores.contains(&objectStore));
+
+    if (m_isAborting)
+        return;
+
+    auto originalAddResult = m_originalValues.add(&objectStore, nullptr);
+    if (originalAddResult.isNewEntry)
+        originalAddResult.iterator->value = std::make_unique<KeyValueMap>();
+
+    auto* map = originalAddResult.iterator->value.get();
+
+    auto addResult = map->add(key, ThreadSafeDataBuffer());
+    if (!addResult.isNewEntry)
+        return;
+
+    addResult.iterator->value = objectStore.valueForKey(key);
+}
+
 void MemoryBackingStoreTransaction::abort()
 {
     LOG(IndexedDB, "MemoryBackingStoreTransaction::abort()");
+
+    TemporaryChange<bool> change(m_isAborting, true);
 
     if (m_originalDatabaseInfo) {
         ASSERT(m_info.mode() == IndexedDB::TransactionMode::VersionChange);
         m_backingStore.setDatabaseInfo(*m_originalDatabaseInfo);
     }
 
-    m_inProgress = false;
+    for (auto objectStore : m_objectStores) {
+        auto keyValueMap = m_originalValues.get(objectStore);
+        if (!keyValueMap)
+            continue;
+
+        for (auto entry : *keyValueMap) {
+            objectStore->deleteRecord(entry.key);
+            objectStore->setKeyValue(entry.key, entry.value);
+        }
+
+        m_originalValues.remove(objectStore);
+    }
+
+
+    finish();
+
+    for (auto objectStore : m_versionChangeAddedObjectStores)
+        m_backingStore.removeObjectStoreForVersionChangeAbort(*objectStore);
 }
 
 void MemoryBackingStoreTransaction::commit()
 {
     LOG(IndexedDB, "MemoryBackingStoreTransaction::commit()");
 
+    finish();
+}
+
+void MemoryBackingStoreTransaction::finish()
+{
     m_inProgress = false;
+
+    if (!isWriting())
+        return;
+
+    for (auto objectStore : m_objectStores)
+        objectStore->writeTransactionFinished(*this);
 }
 
 } // namespace IDBServer

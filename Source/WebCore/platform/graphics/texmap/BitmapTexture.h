@@ -67,7 +67,6 @@ public:
     virtual bool isValid() const = 0;
 
     virtual int bpp() const { return 32; }
-    virtual bool canReuseWith(const IntSize& /* contentsSize */, bool /* hasAlpha */ = 0) { return false; }
     void reset(const IntSize& size, bool hasAlpha = false)
     {
         m_hasAlpha = hasAlpha;

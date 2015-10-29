@@ -148,6 +148,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBKIT2_DIR}/include"
     "${CMAKE_BINARY_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
+    "${CMAKE_SOURCE_DIR}/WebKitLibraries"
 )
 
 set(WebKit2_SYSTEM_INCLUDE_DIRECTORIES "")
@@ -333,7 +334,6 @@ set(WebKit2_SOURCES
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp
-    UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/PageLoadState.cpp
     UIProcess/ProcessAssertion.cpp
     UIProcess/ProcessThrottler.cpp

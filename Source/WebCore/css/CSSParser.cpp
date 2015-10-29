@@ -83,6 +83,8 @@
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGParserUtilities.h"
+#include "SVGPathByteStream.h"
+#include "SVGPathUtilities.h"
 #include "SelectorChecker.h"
 #include "SelectorCheckerTestFunctions.h"
 #include "Settings.h"
@@ -754,6 +756,12 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueNormal || valueID == CSSValueBreakWord)
             return true;
         break;
+#if ENABLE(TOUCH_EVENTS)
+    case CSSPropertyTouchAction: // auto | manipulation
+        if (valueID == CSSValueAuto || valueID == CSSValueManipulation)
+            return true;
+        break;
+#endif
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType: // none | mandatory | proximity
         if (valueID == CSSValueNone || valueID == CSSValueMandatory || valueID == CSSValueProximity)
@@ -1176,6 +1184,9 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWhiteSpace:
     case CSSPropertyWordBreak:
     case CSSPropertyWordWrap:
+#if ENABLE(TOUCH_EVENTS)
+    case CSSPropertyTouchAction:
+#endif
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType:
 #endif
@@ -3267,6 +3278,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWhiteSpace:
     case CSSPropertyWordBreak:
     case CSSPropertyWordWrap:
+#if ENABLE(TOUCH_EVENTS)
+    case CSSPropertyTouchAction:
+#endif
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType:
 #endif
@@ -6626,6 +6640,37 @@ RefPtr<CSSBasicShape> CSSParser::parseBasicShapePolygon(CSSParserValueList& args
     return shape;
 }
 
+RefPtr<CSSBasicShape> CSSParser::parseBasicShapePath(CSSParserValueList& args)
+{
+    unsigned size = args.size();
+    if (size != 1 && size != 3)
+        return nullptr;
+
+    WindRule windRule = RULE_NONZERO;
+
+    CSSParserValue* argument = args.current();
+    if (argument->id == CSSValueEvenodd || argument->id == CSSValueNonzero) {
+        windRule = argument->id == CSSValueEvenodd ? RULE_EVENODD : RULE_NONZERO;
+
+        if (!isComma(args.next()))
+            return nullptr;
+        argument = args.next();
+    }
+
+    if (argument->unit != CSSPrimitiveValue::CSS_STRING)
+        return nullptr;
+
+    auto byteStream = std::make_unique<SVGPathByteStream>();
+    if (!buildSVGPathByteStreamFromString(argument->string, *byteStream, UnalteredParsing))
+        return nullptr;
+
+    RefPtr<CSSBasicShapePath> shape = CSSBasicShapePath::create(WTF::move(byteStream));
+    shape->setWindRule(windRule);
+
+    args.next();
+    return shape;
+}
+
 static bool isBoxValue(CSSValueID valueId, CSSPropertyID propId)
 {
     switch (valueId) {
@@ -6736,6 +6781,8 @@ RefPtr<CSSPrimitiveValue> CSSParser::parseBasicShape()
         shape = parseBasicShapeEllipse(*args);
     else if (equalIgnoringCase(value.function->name, "polygon("))
         shape = parseBasicShapePolygon(*args);
+    else if (equalIgnoringCase(value.function->name, "path("))
+        shape = parseBasicShapePath(*args);
     else if (equalIgnoringCase(value.function->name, "inset("))
         shape = parseBasicShapeInset(*args);
 

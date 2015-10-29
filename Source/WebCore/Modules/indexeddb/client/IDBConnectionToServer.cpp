@@ -32,6 +32,7 @@
 #include "IDBRequestData.h"
 #include "IDBResultData.h"
 #include "Logging.h"
+#include "TransactionOperation.h"
 
 namespace WebCore {
 namespace IDBClient {
@@ -91,6 +92,51 @@ void IDBConnectionToServer::didOpenDatabase(const IDBResultData& resultData)
     ASSERT(request);
 
     request->requestCompleted(resultData);
+}
+
+void IDBConnectionToServer::createObjectStore(TransactionOperation& operation, const IDBObjectStoreInfo& info)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::createObjectStore");
+
+    saveOperation(operation);
+
+    m_delegate->createObjectStore(IDBRequestData(operation), info);
+}
+
+void IDBConnectionToServer::didCreateObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didCreateObjectStore");
+    completeOperation(resultData);
+}
+
+void IDBConnectionToServer::putOrAdd(TransactionOperation& operation, RefPtr<IDBKey>& key, RefPtr<SerializedScriptValue>& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::putOrAdd");
+
+    saveOperation(operation);
+    m_delegate->putOrAdd(IDBRequestData(operation), key.get(), *value, overwriteMode);
+}
+
+void IDBConnectionToServer::didPutOrAdd(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didPutOrAdd");
+    completeOperation(resultData);
+}
+
+void IDBConnectionToServer::getRecord(TransactionOperation& operation, RefPtr<IDBKey>& key)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::getRecord");
+
+    ASSERT(key);
+
+    saveOperation(operation);
+    m_delegate->getRecord(IDBRequestData(operation), key.get());
+}
+
+void IDBConnectionToServer::didGetRecord(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didGetRecord");
+    completeOperation(resultData);
 }
 
 void IDBConnectionToServer::commitTransaction(IDBTransaction& transaction)
@@ -162,6 +208,20 @@ void IDBConnectionToServer::unregisterDatabaseConnection(IDBDatabase& database)
     ASSERT(m_databaseConnectionMap.contains(database.databaseConnectionIdentifier()));
     ASSERT(m_databaseConnectionMap.get(database.databaseConnectionIdentifier()) == &database);
     m_databaseConnectionMap.remove(database.databaseConnectionIdentifier());
+}
+
+void IDBConnectionToServer::saveOperation(TransactionOperation& operation)
+{
+    ASSERT(!m_activeOperations.contains(operation.identifier()));
+    m_activeOperations.set(operation.identifier(), &operation);
+}
+
+void IDBConnectionToServer::completeOperation(const IDBResultData& resultData)
+{
+    auto operation = m_activeOperations.take(resultData.requestIdentifier());
+    ASSERT(operation);
+
+    operation->completed(resultData);
 }
 
 } // namespace IDBClient

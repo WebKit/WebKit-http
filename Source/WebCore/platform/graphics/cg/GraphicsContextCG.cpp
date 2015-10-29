@@ -327,9 +327,11 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
     // fall back to the less efficient CGPattern-based mechanism.
     float scaledTileWidth = tileRect.width() * narrowPrecisionToFloat(patternTransform.a());
     float w = CGImageGetWidth(tileImage);
-    if (w == image.size().width() && h == image.size().height() && !spacing.width() && !spacing.height())
+    if (w == image.size().width() && h == image.size().height() && !spacing.width() && !spacing.height()) {
+        // FIXME: CG seems to snap the images to integral sizes. When we care (e.g. with border-image-repeat: round),
+        // we should tile all but the last, and stetch the last image to fit.
         CGContextDrawTiledImage(context, FloatRect(adjustedX, adjustedY, scaledTileWidth, scaledTileHeight), subImage.get());
-    else {
+    } else {
         static const CGPatternCallbacks patternCallbacks = { 0, drawPatternCallback, patternReleaseCallback };
         CGAffineTransform matrix = CGAffineTransformMake(narrowPrecisionToCGFloat(patternTransform.a()), 0, 0, narrowPrecisionToCGFloat(patternTransform.d()), adjustedX, adjustedY);
         matrix = CGAffineTransformConcat(matrix, CGContextGetCTM(context));
@@ -358,7 +360,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
         CGContextSetPatternPhase(context, CGSizeZero);
 
         CGContextSetFillColorWithColor(context, color.get());
-        CGContextFillRect(context, CGContextGetClipBoundingBox(context));
+        CGContextFillRect(context, CGContextGetClipBoundingBox(context)); // FIXME: we know the clip; we set it above.
     }
 }
 
@@ -583,7 +585,7 @@ void GraphicsContext::clipConvexPolygon(size_t numberOfPoints, const FloatPoint*
 void GraphicsContext::applyStrokePattern()
 {
     CGContextRef cgContext = platformContext();
-    AffineTransform userToBaseCTM = AffineTransform(wkGetUserToBaseCTM(cgContext));
+    AffineTransform userToBaseCTM = AffineTransform(getUserToBaseCTM(cgContext));
 
     RetainPtr<CGPatternRef> platformPattern = adoptCF(m_state.strokePattern->createPlatformPattern(userToBaseCTM));
     if (!platformPattern)
@@ -599,7 +601,7 @@ void GraphicsContext::applyStrokePattern()
 void GraphicsContext::applyFillPattern()
 {
     CGContextRef cgContext = platformContext();
-    AffineTransform userToBaseCTM = AffineTransform(wkGetUserToBaseCTM(cgContext));
+    AffineTransform userToBaseCTM = AffineTransform(getUserToBaseCTM(cgContext));
 
     RetainPtr<CGPatternRef> platformPattern = adoptCF(m_state.fillPattern->createPlatformPattern(userToBaseCTM));
     if (!platformPattern)
@@ -980,20 +982,20 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     if (paintingDisabled())
         return;
 
-    // Why does clipping to an empty path do nothing?
-    // Why is this different from GraphicsContext::clip(const Path&).
-    if (path.isEmpty())
-        return;
-
     CGContextRef context = platformContext();
+    if (path.isEmpty())
+        CGContextClipToRect(context, CGRectZero);
+    else {
+        CGContextBeginPath(platformContext());
+        CGContextAddPath(platformContext(), path.platformPath());
 
-    CGContextBeginPath(platformContext());
-    CGContextAddPath(platformContext(), path.platformPath());
-
-    if (clipRule == RULE_EVENODD)
-        CGContextEOClip(context);
-    else
-        CGContextClip(context);
+        if (clipRule == RULE_EVENODD)
+            CGContextEOClip(context);
+        else
+            CGContextClip(context);
+    }
+    
+    m_data->clip(path);
 }
 
 IntRect GraphicsContext::clipBounds() const
@@ -1070,7 +1072,7 @@ void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, con
     CGContextRef context = platformContext();
 
     if (!m_state.shadowsIgnoreTransforms) {
-        CGAffineTransform userToBaseCTM = wkGetUserToBaseCTM(context);
+        CGAffineTransform userToBaseCTM = getUserToBaseCTM(context);
 
         CGFloat A = userToBaseCTM.a * userToBaseCTM.a + userToBaseCTM.b * userToBaseCTM.b;
         CGFloat B = userToBaseCTM.a * userToBaseCTM.c + userToBaseCTM.b * userToBaseCTM.d;
@@ -1232,31 +1234,9 @@ void GraphicsContext::setLineJoin(LineJoin join)
     }
 }
 
-void GraphicsContext::clip(const Path& path, WindRule fillRule)
-{
-    if (paintingDisabled())
-        return;
-    CGContextRef context = platformContext();
-
-    // CGContextClip does nothing if the path is empty, so in this case, we
-    // instead clip against a zero rect to reduce the clipping region to
-    // nothing - which is the intended behavior of clip() if the path is empty.    
-    if (path.isEmpty())
-        CGContextClipToRect(context, CGRectZero);
-    else {
-        CGContextBeginPath(context);
-        CGContextAddPath(context, path.platformPath());
-        if (fillRule == RULE_NONZERO)
-            CGContextClip(context);
-        else
-            CGContextEOClip(context);
-    }
-    m_data->clip(path);
-}
-
 void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
 {
-    clip(path, fillRule);
+    clipPath(path, fillRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
