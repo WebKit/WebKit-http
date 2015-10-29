@@ -23,6 +23,9 @@ list(APPEND NetworkProcess_SOURCES
 )
 
 list(APPEND WebKit2_SOURCES
+    NetworkProcess/cache/NetworkCacheDataSoup.cpp
+    NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
+
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
