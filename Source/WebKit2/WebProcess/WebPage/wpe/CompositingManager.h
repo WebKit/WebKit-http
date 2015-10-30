@@ -37,6 +37,10 @@
 #include <WebCore/PlatformDisplayBCMRPi.h>
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+#include <WebCore/PlatformDisplayBCMNexus.h>
+#endif
+
 namespace WebKit {
 
 class WebPage;
@@ -62,6 +66,11 @@ public:
     uint32_t createBCMElement(int32_t width, int32_t height);
     void commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport&);
     // void destroyBCMBuffer(...);
+#endif
+
+#if PLATFORM(BCM_NEXUS)
+    uint32_t createBCMNexusElement(int32_t width, int32_t height);
+    void commitBCMNexusBuffer(const WebCore::PlatformDisplayBCMNexus::BufferExport&);
 #endif
 
     CompositingManager(const CompositingManager&) = delete;

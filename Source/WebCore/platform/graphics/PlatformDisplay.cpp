@@ -45,6 +45,10 @@
 #include "PlatformDisplayBCMRPi.h"
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+#include "PlatformDisplayBCMNexus.h"
+#endif
+
 #if PLATFORM(WIN)
 #include "PlatformDisplayWin.h"
 #endif
@@ -103,6 +107,9 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 #endif
 #if PLATFORM(BCM_RPI)
     return std::make_unique<PlatformDisplayBCMRPi>();
+#endif
+#if PLATFORM(BCM_NEXUS)
+    return std::make_unique<PlatformDisplayBCMNexus>();
 #endif
 #endif
 

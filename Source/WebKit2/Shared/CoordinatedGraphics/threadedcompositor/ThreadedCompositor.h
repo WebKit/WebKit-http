@@ -51,6 +51,11 @@
 #include <WebCore/PlatformDisplayBCMRPi.h>
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+#include <WebCore/BCMNexusSurface.h>
+#include <WebCore/PlatformDisplayBCMNexus.h>
+#endif
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
@@ -140,6 +145,9 @@ private:
 #endif
 #if PLATFORM(BCM_RPI)
     std::unique_ptr<WebCore::BCMRPiSurface> m_surface;
+#endif
+#if PLATFORM(BCM_NEXUS)
+    std::unique_ptr<WebCore::BCMNexusSurface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
 

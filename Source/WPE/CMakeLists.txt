@@ -7,6 +7,12 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
+if (WTF_PLATFORM_BCM_NEXUS)
+    add_definitions(-DWPE_BACKEND_BCM_NEXUS=1)
+else ()
+    add_definitions(-DWPE_BACKEND_BCM_NEXUS=0)
+endif ()
+
 if (WTF_PLATFORM_BCM_RPI)
     add_definitions(-DWPE_BACKEND_BCM_RPI=1)
 else ()
@@ -28,6 +34,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/NEXUS"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${BCM_HOST_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -62,6 +69,12 @@ set(WPE_SOURCES
 
     Source/ViewBackend/ViewBackend.cpp
 )
+
+if (WTF_PLATFORM_BCM_NEXUS)
+    list(APPEND WPE_SOURCES
+        Source/ViewBackend/NEXUS/ViewBackendNEXUS.cpp
+    )
+endif ()
 
 if (WTF_PLATFORM_BCM_RPI)
     list(APPEND WPE_SOURCES

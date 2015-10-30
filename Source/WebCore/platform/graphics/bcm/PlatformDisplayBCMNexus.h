@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,40 +24,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendNexus_h
-#define WPE_ViewBackend_ViewBackendNexus_h
+#ifndef PlatformDisplayBCMNexus_h
+#define PlatformDisplayBCMNexus_h
 
-#if WPE_BACKEND(BCM_NEXUS)
+#if PLATFORM(BCM_NEXUS)
 
-#include <WPE/ViewBackend/ViewBackend.h>
+#include "PlatformDisplay.h"
 
-namespace WPE {
+#include "BCMNexusSurface.h"
 
-namespace ViewBackend {
+typedef void* NXPL_PlatformHandle;
 
-class ViewBackendNexus final : public ViewBackend {
+namespace WebCore {
+
+class IntSize;
+
+class PlatformDisplayBCMNexus final : public PlatformDisplay {
 public:
-    ViewBackendNexus();
-    virtual ~ViewBackendNexus();
+    PlatformDisplayBCMNexus();
+    virtual ~PlatformDisplayBCMNexus() = default;
 
-    void setClient(Client*) override;
-    uint32_t createBCMNexusElement(int32_t width, int32_t height) override;
-    void commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
+    std::unique_ptr<BCMNexusSurface> createSurface(const IntSize&, uintptr_t);
 
-    void setInputClient(Input::Client*) override;
+    using BufferExport = BCMNexusSurface::BufferExport;
 
 private:
-    Client* m_client;
+    Type type() const override { return PlatformDisplay::Type::BCMNexus; }
 
-    uint32_t m_width;
-    uint32_t m_height;
+    NXPL_PlatformHandle m_nxplHandle;
 };
 
-} // namespace ViewBackend
+} // namespace WebCore
 
-} // namespace WPE
+SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayBCMNexus, BCMNexus)
 
+#endif // PLATFORM(BCM_NEXUS)
 
-#endif // WPE_BACKEND(NEXUS)
-
-#endif // WPE_ViewBackend_ViewBackendNexus_h
+#endif // PlatformDisplayBCMNexus_h

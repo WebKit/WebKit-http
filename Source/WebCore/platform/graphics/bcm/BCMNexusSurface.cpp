@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,40 +24,43 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendNexus_h
-#define WPE_ViewBackend_ViewBackendNexus_h
+#include "config.h"
+#include "BCMNexusSurface.h"
 
-#if WPE_BACKEND(BCM_NEXUS)
+#if PLATFORM(BCM_NEXUS)
 
-#include <WPE/ViewBackend/ViewBackend.h>
+#include "GLContextEGL.h"
+#include <refsw/nexus_config.h>
+#include <refsw/nexus_platform.h>
+#include <refsw/nexus_display.h>
+#include <refsw/default_nexus.h>
 
-namespace WPE {
+namespace WebCore {
 
-namespace ViewBackend {
+BCMNexusSurface::BCMNexusSurface(const IntSize& size, uintptr_t clientID)
+    : m_width(std::max(0, size.width()))
+    , m_height(std::max(0, size.height()))
+{
+    NXPL_NativeWindowInfo windowInfo;
+    windowInfo.x = 0;
+    windowInfo.y = 0;
+    windowInfo.width = m_width;
+    windowInfo.height = m_height;
+    windowInfo.stretch = false;
+    windowInfo.clientID = clientID;
+    m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
+}
 
-class ViewBackendNexus final : public ViewBackend {
-public:
-    ViewBackendNexus();
-    virtual ~ViewBackendNexus();
+std::unique_ptr<GLContext> BCMNexusSurface::createGLContext()
+{
+    return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
+}
 
-    void setClient(Client*) override;
-    uint32_t createBCMNexusElement(int32_t width, int32_t height) override;
-    void commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
+BCMNexusSurface::BufferExport BCMNexusSurface::lockFrontBuffer()
+{
+    return BufferExport{ (uintptr_t)m_nativeWindow, m_width, m_height };
+}
 
-    void setInputClient(Input::Client*) override;
+} // namespace WebCore
 
-private:
-    Client* m_client;
-
-    uint32_t m_width;
-    uint32_t m_height;
-};
-
-} // namespace ViewBackend
-
-} // namespace WPE
-
-
-#endif // WPE_BACKEND(NEXUS)
-
-#endif // WPE_ViewBackend_ViewBackendNexus_h
+#endif

@@ -85,6 +85,23 @@ void CompositingManager::commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::B
 }
 #endif // PLATFORM(BCM_RPI)
 
+#if PLATFORM(BCM_NEXUS)
+uint32_t CompositingManager::createBCMNexusElement(int32_t width, int32_t height)
+{
+    uint32_t handle = 0;
+    m_connection->sendSync(Messages::CompositingManagerProxy::CreateBCMNexusElement(width, height), Messages::CompositingManagerProxy::CreateBCMNexusElement::Reply(handle), 0);
+    return handle;
+}
+
+void CompositingManager::commitBCMNexusBuffer(const WebCore::PlatformDisplayBCMNexus::BufferExport& bufferExport)
+{
+    m_connection->send(Messages::CompositingManagerProxy::CommitBCMNexusBuffer(
+        std::get<0>(bufferExport),
+        std::get<1>(bufferExport),
+        std::get<2>(bufferExport)), 0);
+}
+#endif
+
 void CompositingManager::releaseBuffer(uint32_t handle)
 {
     m_client.releaseBuffer(handle);

@@ -74,6 +74,11 @@ private:
     void commitBCMBuffer(uint32_t, uint32_t, uint32_t);
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+    void createBCMNexusElement(int32_t, int32_t, uint32_t&);
+    void commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t);
+#endif
+
     // WPE::ViewBackend::Client
     void releaseBuffer(uint32_t) override;
     void frameComplete() override;

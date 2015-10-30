@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,40 +24,36 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendNexus_h
-#define WPE_ViewBackend_ViewBackendNexus_h
+#ifndef BCMNexusSurface_h
+#define BCMNexusSurface_h
 
-#if WPE_BACKEND(BCM_NEXUS)
+#if PLATFORM(BCM_NEXUS)
 
-#include <WPE/ViewBackend/ViewBackend.h>
+#include <memory>
+#include <tuple>
 
-namespace WPE {
+namespace WebCore {
 
-namespace ViewBackend {
+class GLContext;
+class IntSize;
 
-class ViewBackendNexus final : public ViewBackend {
+class BCMNexusSurface {
 public:
-    ViewBackendNexus();
-    virtual ~ViewBackendNexus();
+    BCMNexusSurface(const IntSize&, uintptr_t);
 
-    void setClient(Client*) override;
-    uint32_t createBCMNexusElement(int32_t width, int32_t height) override;
-    void commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
+    std::unique_ptr<GLContext> createGLContext();
 
-    void setInputClient(Input::Client*) override;
+    using BufferExport = std::tuple<uintptr_t, uint32_t, uint32_t>;
+    BufferExport lockFrontBuffer();
 
 private:
-    Client* m_client;
-
+    void* m_nativeWindow;
     uint32_t m_width;
     uint32_t m_height;
 };
 
-} // namespace ViewBackend
+} // namespace WebCore
 
-} // namespace WPE
+#endif // PLATFORM(BCM_NEXUS)
 
-
-#endif // WPE_BACKEND(NEXUS)
-
-#endif // WPE_ViewBackend_ViewBackendNexus_h
+#endif // BCMNexusSurface_h

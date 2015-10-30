@@ -166,8 +166,10 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
+#if PLATFORM(BCM_RPI)
         if (protector->m_surface)
             protector->m_surface->resize(size);
+#endif
         protector->viewportController()->didChangeViewportSize(size);
     });
 }
@@ -278,6 +280,19 @@ GLContext* ThreadedCompositor::glContext()
     m_context = m_surface->createGLContext();
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+    RELEASE_ASSERT(is<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()));
+
+    IntSize size(viewportController()->visibleContentsRect().size());
+    m_surface = downcast<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()).createSurface(size,
+        m_compositingManager.createBCMNexusElement(size.width(), size.height()));
+    if (!m_surface)
+        return nullptr;
+
+    setNativeSurfaceHandleForCompositing(0);
+    m_context = m_surface->createGLContext();
+#endif
+
     return m_context.get();
 }
 
@@ -320,8 +335,15 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
+#if PLATFORM(BCM_RPI)
     auto bufferExport = m_surface->lockFrontBuffer();
     m_compositingManager.commitBCMBuffer(bufferExport);
+#endif
+
+#if PLATFORM(BCM_NEXUS)
+    auto bufferExport = m_surface->lockFrontBuffer();
+    m_compositingManager.commitBCMNexusBuffer(bufferExport);
+#endif
 
     glContext()->swapBuffers();
 
