@@ -359,8 +359,7 @@ static gboolean webkitMediaPlayReadyDecryptSinkEventHandler(GstBaseTransform* tr
         GST_INFO_OBJECT(self, "received protection event");
         gst_event_parse_protection(event, &systemId, &initdatabuffer, &origin);
         GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
-        if (!g_str_equal(systemId, PLAYREADY_PROTECTION_SYSTEM_ID)
-            || !g_str_has_prefix(origin, "smooth-streaming")) {
+        if (!g_str_equal(systemId, PLAYREADY_PROTECTION_SYSTEM_ID)) {
             gst_event_unref(event);
             result = FALSE;
             break;
