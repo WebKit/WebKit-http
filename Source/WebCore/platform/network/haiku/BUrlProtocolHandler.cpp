@@ -343,10 +343,10 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
             client->didFail(m_resourceHandle, error);
             return;
         }
+    } else {
+        ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
+        client->didFail(m_resourceHandle, error);
     }
-
-    ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), strerror(caller->Status()));
-    client->didFail(m_resourceHandle, error);
 }
 
 
