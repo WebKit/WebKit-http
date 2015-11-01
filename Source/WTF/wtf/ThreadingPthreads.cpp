@@ -55,6 +55,10 @@
 #include <sys/time.h>
 #endif
 
+#if PLATFORM(HAIKU)
+#include <OS.h>
+#endif
+
 #if PLATFORM(MAC)
 #include <objc/objc-auto.h>
 #endif
@@ -198,6 +202,8 @@ void initializeCurrentThreadInternal(const char* threadName)
 {
 #if HAVE(PTHREAD_SETNAME_NP)
     pthread_setname_np(threadName);
+#elif PLATFORM(HAIKU)
+    rename_thread(find_thread(NULL), threadName);
 #else
     UNUSED_PARAM(threadName);
 #endif
