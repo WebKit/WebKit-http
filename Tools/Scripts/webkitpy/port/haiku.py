@@ -66,7 +66,7 @@ class HaikuPort(Port):
         # or valgrind.
         if self.get_option('webprocess_cmd_prefix'):
             return 350 * 1000
-        return super(HaikuPort, self).default_timeout_ms()
+        return 6 * 1000
 
     def clean_up_test_run(self):
         super(HaikuPort, self).clean_up_test_run()
