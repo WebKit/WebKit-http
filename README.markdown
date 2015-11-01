@@ -161,14 +161,11 @@ testsuite waits on that, it may mark one or several tests as "timed out".
 WebKit also needs an HTTP server for some of the tests, with CGI support for
 PHP, Perl, and a few others. You can use the --no-http option to
 run-webkit-tests to skip this part. Otherwise you need to install lighttpd
-(build it from haikuports) and PHP. The current PHP recipe leads to a broken
-executable, so the testsuite scripts expect a php-cgi binary in
-system/non-packaged/bin. I used the "PHP 5.2.5 for BeOS" port available on
-HaikuWare.
+and PHP (both available in HaikuPorts package depot).
 
 You can then run the testsuite:
 
-    $ python Tools/Scripts/run-webkit-tests --platform=haiku --no-build \
+    $ python Tools/Scripts/run-webkit-tests --platform=haiku --dump-render-tree --no-build \
         --no-retry-failures --clobber-old-results --no-new-test-results
 
 The options will prevent the script to try updating DumpRenderTree (it doesn't
