@@ -3,6 +3,7 @@
 
 import imp
 import json
+import locale
 import logging
 import os
 import sys
@@ -23,6 +24,7 @@ except ImportError, e:
 
 
 def main(argv, stdout, stderr):
+    locale.setlocale(locale.LC_ALL, 'C')
     # This is a copy of serve.py main function, except for the wait step
     config = WebPlatformTestServer.load_config("config.default.json", "config.json")
     WebPlatformTestServer.setup_logger(config["log_level"])
