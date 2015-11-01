@@ -771,8 +771,11 @@ void BWebPage::internalPaint(BView* offscreenView,
 void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
        const BRect& clipRect)
 {
-    if (!fWebView->LockLooper())
+    if (fLayoutingView || !rectToScroll.IsValid() || !clipRect.IsValid()
+        || (xOffset == 0 && yOffset == 0) || !fWebView->LockLooper()) {
         return;
+    }
+
     BBitmap* bitmap = fWebView->OffscreenBitmap();
     BView* offscreenView = fWebView->OffscreenView();
 
