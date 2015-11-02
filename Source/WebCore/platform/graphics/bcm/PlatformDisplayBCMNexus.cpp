@@ -31,7 +31,11 @@
 
 #include "IntSize.h"
 #include <EGL/egl.h>
+#include <algorithm>
+#include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <refsw/nexus_config.h>
 #include <refsw/nexus_platform.h>
 #include <refsw/nexus_display.h>
@@ -40,32 +44,28 @@
 
 namespace WebCore {
 
-static void hotplugCallback(void *pParam, int iParam)
-{
-   NEXUS_HdmiOutputStatus status;
-   NEXUS_HdmiOutputHandle hdmi = (NEXUS_HdmiOutputHandle)pParam;
-   NEXUS_DisplayHandle display = (NEXUS_DisplayHandle)iParam;
-
-   NEXUS_HdmiOutput_GetStatus(hdmi, &status);
-
-   fprintf (stdout, "HDMI hotplug event: %s", status.connected?"connected":"not connected");
-
-   /* the app can choose to switch to the preferred format, but it's not required. */
-   if (status.connected)
-   {
-      NEXUS_DisplaySettings displaySettings;
-      NEXUS_Display_GetSettings(display, &displaySettings);
-
-      fprintf (stdout, "Switching to preferred format %d", status.preferredVideoFormat);
-
-      displaySettings.format = status.preferredVideoFormat;
-
-      NEXUS_Display_SetSettings(display, &displaySettings);
-   }
-}
+using FormatTuple = std::tuple<const char*, NEXUS_VideoFormat>;
+static const std::array<FormatTuple, 9> s_formatTable = {
+   FormatTuple{ "720p", NEXUS_VideoFormat_e720p },
+   FormatTuple{ "1080i", NEXUS_VideoFormat_e1080i },
+   FormatTuple{ "480p", NEXUS_VideoFormat_e480p },
+   FormatTuple{ "480i", NEXUS_VideoFormat_eNtsc },
+   FormatTuple{ "720p50Hz", NEXUS_VideoFormat_e720p50hz },
+   FormatTuple{ "1080p24Hz", NEXUS_VideoFormat_e1080p24hz },
+   FormatTuple{ "1080i50Hz", NEXUS_VideoFormat_e1080i50hz },
+   FormatTuple{ "1080p50Hz", NEXUS_VideoFormat_e1080p50hz },
+   FormatTuple{ "1080p60Hz", NEXUS_VideoFormat_e1080p60hz },
+};
 
 PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
 {
+    const char* format = std::getenv("WPE_NEXUS_FORMAT");
+    if (!format)
+        format = "720p";
+    auto it = std::find_if(s_formatTable.cbegin(), s_formatTable.cend(), [format](const FormatTuple& t) { return !std::strcmp(std::get<0>(t), format); });
+    assert(it != s_formatTable.end());
+    auto& selectedFormat = *it;
+
     NEXUS_PlatformSettings platformSettings;
     NEXUS_Platform_GetDefaultSettings(&platformSettings);
     platformSettings.openFrontend = false;
@@ -91,26 +91,26 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
     graphicsSettings.verticalFilter = NEXUS_GraphicsFilterCoeffs_eBilinear;
     NEXUS_Display_SetGraphicsSettings(displayHandle, &graphicsSettings);
 
+    NEXUS_Display_GetSettings(displayHandle, &displaySettings);
+
     NEXUS_PlatformConfiguration platformConfiguration;
     NEXUS_Platform_GetConfiguration(&platformConfiguration);
     if (platformConfiguration.outputs.hdmi[0]) {
         NEXUS_Display_AddOutput(displayHandle, NEXUS_HdmiOutput_GetVideoConnector(platformConfiguration.outputs.hdmi[0]));
 
-        NEXUS_HdmiOutputSettings hdmiSettings;
-        NEXUS_HdmiOutput_GetSettings(platformConfiguration.outputs.hdmi[0], &hdmiSettings);
-        hdmiSettings.hotplugCallback.callback = hotplugCallback;
-        hdmiSettings.hotplugCallback.context = platformConfiguration.outputs.hdmi[0];
-        hdmiSettings.hotplugCallback.param = (int)displayHandle;
-
-        NEXUS_HdmiOutput_SetSettings(platformConfiguration.outputs.hdmi[0], &hdmiSettings);
-        hotplugCallback(platformConfiguration.outputs.hdmi[0], (int)displayHandle);
+        NEXUS_HdmiOutputStatus hdmiStatus;
+        NEXUS_HdmiOutput_GetStatus(platformConfiguration.outputs.hdmi[0], &hdmiStatus);
+        if (hdmiStatus.connected) {
+            if (!hdmiStatus.videoFormatSupported[std::get<1>(selectedFormat)]) {
+                fprintf(stderr, "PlatformDisplayBCMNexus: Requested format '%s' is not supported, issues possible.\n",
+                    std::get<0>(selectedFormat));
+                displaySettings.format = hdmiStatus.preferredVideoFormat;
+            } else
+                displaySettings.format = std::get<1>(selectedFormat);
+        }
     }
 
-    NEXUS_VideoFormatInfo videoFormatInfo;
-    NEXUS_Display_GetSettings(displayHandle, &displaySettings);
-    NEXUS_VideoFormat_GetInfo(displaySettings.format, &videoFormatInfo);
-    fprintf(stderr, "PlatformDisplayBCMNexus: video format (%d,%d)\n",
-        videoFormatInfo.width, videoFormatInfo.height);
+    NEXUS_Display_SetSettings(displayHandle, &displaySettings);
     NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, displayHandle);
 
     m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
