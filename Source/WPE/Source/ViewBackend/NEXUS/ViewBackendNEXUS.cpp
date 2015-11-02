@@ -31,16 +31,42 @@
 
 #include "LibinputServer.h"
 #include <cassert>
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <array>
+#include <tuple>
 
 namespace WPE {
 
 namespace ViewBackend {
 
+using FormatTuple = std::tuple<const char*, uint32_t, uint32_t>;
+static const std::array<FormatTuple, 9> s_formatTable = {
+   FormatTuple{ "1080i", 1920, 1080 },
+   FormatTuple{ "720p", 1280, 720 },
+   FormatTuple{ "480p", 640, 480 },
+   FormatTuple{ "480i", 640, 480 },
+   FormatTuple{ "720p50Hz", 1280, 720 },
+   FormatTuple{ "1080p24Hz", 1920, 1080 },
+   FormatTuple{ "1080i50Hz", 1920, 1080 },
+   FormatTuple{ "1080p50Hz", 1920, 1080 },
+   FormatTuple{ "1080p60Hz", 1920, 1080 },
+};
+
 ViewBackendNexus::ViewBackendNexus()
     : m_client(nullptr)
-    , m_width(1280)
-    , m_height(720)
 {
+    const char* format = std::getenv("WPE_NEXUS_FORMAT");
+    if (!format)
+        format = "720p";
+    auto it = std::find_if(s_formatTable.cbegin(), s_formatTable.cend(), [format](const FormatTuple& t) { return !std::strcmp(std::get<0>(t), format); });
+    assert(it != s_formatTable.end());
+    auto& selectedFormat = *it;
+
+    m_width = std::get<1>(selectedFormat);
+    m_height = std::get<2>(selectedFormat);
+    fprintf(stderr, "ViewBackendNexus: selected format '%s' (%d,%d)\n", std::get<0>(selectedFormat), m_width, m_height);
 }
 
 ViewBackendNexus::~ViewBackendNexus()
@@ -52,6 +78,7 @@ void ViewBackendNexus::setClient(Client* client)
 {
     assert ((client != nullptr) ^ (m_client != nullptr));
     m_client = client;
+    m_client->setSize(m_width, m_height);
 }
 
 uint32_t ViewBackendNexus::createBCMNexusElement(int32_t, int32_t)
