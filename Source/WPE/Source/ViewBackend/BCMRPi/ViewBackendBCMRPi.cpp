@@ -30,6 +30,7 @@
 #if WPE_BACKEND(BCM_RPI)
 
 #include "LibinputServer.h"
+#include <cstdio>
 
 namespace WPE {
 
@@ -42,6 +43,7 @@ ViewBackendBCMRPi::ViewBackendBCMRPi()
 {
     bcm_host_init();
     m_displayHandle = vc_dispmanx_display_open(0);
+    graphics_get_display_size(DISPMANX_ID_HDMI, &m_width, &m_height);
 }
 
 ViewBackendBCMRPi::~ViewBackendBCMRPi()
@@ -52,6 +54,8 @@ ViewBackendBCMRPi::~ViewBackendBCMRPi()
 void ViewBackendBCMRPi::setClient(Client* client)
 {
     m_client = client;
+    if (m_client)
+        m_client->setSize(m_width, m_height);
 }
 
 uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
@@ -64,8 +68,10 @@ uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
     if (m_elementHandle != DISPMANX_NO_HANDLE)
         return 0;
 
-    m_width = std::max(width, 0);
-    m_height = std::max(height, 0);
+    uint32_t clampedWidth = std::max(0, width);
+    uint32_t clampedHeight = std::max(0, height);
+    if (m_width != clampedWidth || m_height != clampedHeight)
+        fprintf(stderr, "ViewBackendBCMRPi: mismatch in buffer parameters during creation\n");
 
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
@@ -85,8 +91,8 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t elementHandle, uint32_t width, 
 {
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
-    m_width = width;
-    m_height = height;
+    if (elementHandle != m_elementHandle || m_width != width || m_height != height)
+        fprintf(stderr, "ViewBackendBCMRPi: mismatch in buffer parameters during update\n");
 
     VC_RECT_T srcRect, destRect;
     vc_dispmanx_rect_set(&srcRect, 0, 0, m_width << 16, m_height << 16);

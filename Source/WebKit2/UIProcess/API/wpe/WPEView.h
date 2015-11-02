@@ -48,10 +48,7 @@ public:
         return new View(configuration);
     }
 
-    WebKit::WebPageProxy& page()
-    {
-        return *m_pageProxy;
-    }
+    WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
     WPE::ViewBackend::ViewBackend& viewBackend() { return *m_viewBackend; }
 

@@ -224,6 +224,20 @@ int DiscretixSession::decrypt(void* data, uint32_t dataLength, const void* encry
     return (status == DX_DRM_SUCCESS ? 0 : status);
 }
 
+int DiscretixSession::processPayload(uint32_t trackId, const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize)
+{
+    EDxDrmStatus status = DxDrmStream_ProcessPayload(m_DxDrmStream,
+        trackId, iv, ivSize,
+        0, // blockOffset
+        0, // byteOffset
+        payloadData, payloadDataSize,
+        nullptr, // decryptedPayloadSize
+        nullptr, // last15bytes
+        0, // last15bytesSize
+        nullptr // paddingScheme
+    );
+    return (status == DX_DRM_SUCCESS ? 0 : status);
+}
 }
 
 #endif

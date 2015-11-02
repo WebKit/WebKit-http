@@ -36,11 +36,10 @@
 namespace WebKit {
 
 CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
-    : m_webPageProxy(view.page())
-    , m_viewBackend(view.viewBackend())
+    : m_view(view)
 {
-    m_webPageProxy.process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_webPageProxy.pageID(), *this);
-    m_viewBackend.setClient(this);
+    m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
+    m_view.viewBackend().setClient(this);
 }
 
 void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnectionIdentifier)
@@ -53,24 +52,24 @@ void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnect
 #if PLATFORM(GBM)
 void CompositingManagerProxy::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
 {
-    m_viewBackend.commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
+    m_view.viewBackend().commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
 }
 
 void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
 {
-    m_viewBackend.destroyPrimeBuffer(handle);
+    m_view.viewBackend().destroyPrimeBuffer(handle);
 }
 #endif
 
 #if PLATFORM(BCM_RPI)
 void CompositingManagerProxy::createBCMElement(int32_t width, int32_t height, uint32_t& handle)
 {
-    handle = m_viewBackend.createBCMElement(width, height);
+    handle = m_view.viewBackend().createBCMElement(width, height);
 }
 
 void CompositingManagerProxy::commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height)
 {
-    m_viewBackend.commitBCMBuffer(handle, width, height);
+    m_view.viewBackend().commitBCMBuffer(handle, width, height);
 }
 #endif
 
@@ -98,8 +97,7 @@ void CompositingManagerProxy::frameComplete()
 
 void CompositingManagerProxy::setSize(uint32_t width, uint32_t height)
 {
-    if (m_webPageProxy.drawingArea())
-        m_webPageProxy.drawingArea()->setSize(WebCore::IntSize(width, height), WebCore::IntSize(), WebCore::IntSize());
+    m_view.setSize(WebCore::IntSize(width, height));
 }
 
 } // namespace WebKit
