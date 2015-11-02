@@ -51,6 +51,13 @@ BCMNexusSurface::BCMNexusSurface(const IntSize& size, uintptr_t clientID)
     m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
 }
 
+BCMNexusSurface::~BCMNexusSurface()
+{
+    if (m_nativeWindow)
+        NXPL_DestroyNativeWindow(m_nativeWindow);
+    m_nativeWindow = nullptr;
+}
+
 std::unique_ptr<GLContext> BCMNexusSurface::createGLContext()
 {
     return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());

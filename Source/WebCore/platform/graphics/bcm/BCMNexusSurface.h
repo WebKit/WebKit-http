@@ -40,6 +40,7 @@ class IntSize;
 class BCMNexusSurface {
 public:
     BCMNexusSurface(const IntSize&, uintptr_t);
+    ~BCMNexusSurface();
 
     std::unique_ptr<GLContext> createGLContext();
 
