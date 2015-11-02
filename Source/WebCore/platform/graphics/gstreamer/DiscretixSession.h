@@ -49,6 +49,7 @@ public:
     bool keyRequested() const { return m_keyRequested; }
     bool ready() const { return m_ready; }
     int decrypt(void* data, uint32_t dataLength, const void* encryptionBoxData, uint32_t encryptionBoxLength, uint32_t sampleIndex, uint32_t trackId);
+    int processPayload(uint32_t trackId, const void* iv, uint32_t ivSize, void* payloadData, uint32_t payloadDataSize);
 
 protected:
     RefPtr<ArrayBuffer> m_key;
