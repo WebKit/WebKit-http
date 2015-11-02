@@ -76,12 +76,12 @@ void CompositingManagerProxy::commitBCMBuffer(uint32_t handle, uint32_t width, u
 #if PLATFORM(BCM_NEXUS)
 void CompositingManagerProxy::createBCMNexusElement(int32_t width, int32_t height, uint32_t& handle)
 {
-    handle = m_viewBackend.createBCMNexusElement(width, height);
+    handle = m_view.viewBackend().createBCMNexusElement(width, height);
 }
 
 void CompositingManagerProxy::commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height)
 {
-    m_viewBackend.commitBCMNexusBuffer(handle, width, height);
+    m_view.viewBackend().commitBCMNexusBuffer(handle, width, height);
 }
 #endif
 
