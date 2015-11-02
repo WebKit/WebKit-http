@@ -79,8 +79,7 @@ private:
     void frameComplete() override;
     void setSize(uint32_t, uint32_t) override;
 
-    WebPageProxy& m_webPageProxy;
-    WPE::ViewBackend::ViewBackend& m_viewBackend;
+    WKWPE::View& m_view;
 
     RefPtr<IPC::Connection> m_connection;
 };
