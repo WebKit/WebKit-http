@@ -42,7 +42,7 @@ class IntSize;
 class PlatformDisplayBCMNexus final : public PlatformDisplay {
 public:
     PlatformDisplayBCMNexus();
-    virtual ~PlatformDisplayBCMNexus() = default;
+    virtual ~PlatformDisplayBCMNexus();
 
     std::unique_ptr<BCMNexusSurface> createSurface(const IntSize&, uintptr_t);
 

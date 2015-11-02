@@ -122,6 +122,13 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
     PlatformDisplay::initializeEGLDisplay();
 }
 
+PlatformDisplayBCMNexus::~PlatformDisplayBCMNexus()
+{
+    if (m_nxplHandle)
+        NXPL_UnregisterNexusDisplayPlatform(m_nxplHandle);
+    m_nxplHandle = nullptr;
+}
+
 std::unique_ptr<BCMNexusSurface> PlatformDisplayBCMNexus::createSurface(const IntSize& size, uintptr_t handle)
 {
     return std::make_unique<BCMNexusSurface>(size, handle);
