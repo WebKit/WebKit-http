@@ -42,6 +42,7 @@ ViewBackendBCMRPi::ViewBackendBCMRPi()
 {
     bcm_host_init();
     m_displayHandle = vc_dispmanx_display_open(0);
+    graphics_get_display_size(DISPMANX_ID_HDMI, &m_width, &m_height);
 }
 
 ViewBackendBCMRPi::~ViewBackendBCMRPi()
@@ -52,6 +53,8 @@ ViewBackendBCMRPi::~ViewBackendBCMRPi()
 void ViewBackendBCMRPi::setClient(Client* client)
 {
     m_client = client;
+    if (m_client)
+        m_client->setSize(m_width, m_height);
 }
 
 uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
