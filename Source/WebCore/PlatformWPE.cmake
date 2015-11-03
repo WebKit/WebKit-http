@@ -133,6 +133,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
+    platform/graphics/intelce/IntelCESurface.cpp
+    platform/graphics/intelce/PlatformDisplayIntelCE.cpp
+
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
     platform/graphics/opengl/Extensions3DOpenGLES.cpp
     platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp

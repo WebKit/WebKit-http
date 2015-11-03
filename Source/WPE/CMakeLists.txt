@@ -19,6 +19,12 @@ else ()
     add_definitions(-DWPE_BACKEND_BCM_RPI=0)
 endif ()
 
+if (WTF_PLATFORM_INTEL_CE)
+    add_definitions(-DWPE_BACKEND_INTEL_CE=1)
+else ()
+    add_definitions(-DWPE_BACKEND_INTEL_CE=0)
+endif ()
+
 if (WTF_PLATFORM_WAYLAND)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
 else ()
@@ -34,9 +40,11 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/NEXUS"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${BCM_HOST_INCLUDE_DIRS}
+    ${GDL_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBGBM_INCLUDE_DIRS}
     ${LIBDRM_INCLUDE_DIRS}
@@ -48,6 +56,7 @@ set(WPE_INCLUDE_DIRECTORIES
 
 set(WPE_LIBRARIES
     ${BCM_HOST_LIBRARIES}
+    ${GDL_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
     ${LIBINPUT_LIBRARIES}
@@ -82,6 +91,12 @@ if (WTF_PLATFORM_BCM_RPI)
     )
 endif ()
 
+if (WTF_PLATFORM_INTEL_CE)
+    list(APPEND WPE_SOURCES
+        Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
+    )
+endif ()
+
 if (WTF_PLATFORM_GBM)
     list(APPEND
         Source/ViewBackend/DRM/ViewBackendDRM.cpp
@@ -90,7 +105,7 @@ if (WTF_PLATFORM_GBM)
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
         Source/ViewBackend/Wayland/ivi-application-protocol.c
         Source/ViewBackend/Wayland/wayland-drm-protocol.c
-        Source/ViewBackend/Wayland/xdg-shell-protocol.c WPE_SOURCES
+        Source/ViewBackend/Wayland/xdg-shell-protocol.c
     )
 endif ()
 

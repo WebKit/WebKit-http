@@ -57,6 +57,9 @@ public:
 #if PLATFORM(BCM_NEXUS)
         BCMNexus,
 #endif
+#if PLATFORM(INTEL_CE)
+        IntelCE,
+#endif
 #if PLATFORM(WIN)
         Windows,
 #endif
