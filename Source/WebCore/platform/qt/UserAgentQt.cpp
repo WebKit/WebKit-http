@@ -74,7 +74,7 @@ String UserAgentQt::standardUserAgent(const String &applicationNameForUserAgent,
 
         // Security strength.
         QString securityStrength;
-#if defined(QT_NO_OPENSSL)
+#if defined(QT_NO_SSL)
         securityStrength = QLatin1String("N; ");
 #endif
         ua = ua.arg(securityStrength);
