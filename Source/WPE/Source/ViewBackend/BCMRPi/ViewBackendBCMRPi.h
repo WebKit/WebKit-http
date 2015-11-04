@@ -28,7 +28,10 @@
 
 #include <WPE/ViewBackend/ViewBackend.h>
 
+#include <WPE/Input/Handling.h>
 #include <bcm_host.h>
+#include <memory>
+#include <utility>
 
 namespace WPE {
 
@@ -52,6 +55,33 @@ private:
     DISPMANX_ELEMENT_HANDLE_T m_elementHandle;
     uint32_t m_width;
     uint32_t m_height;
+
+    class Cursor : public Input::Client {
+    public:
+        Cursor(Input::Client*, DISPMANX_DISPLAY_HANDLE_T, uint32_t, uint32_t);
+        virtual ~Cursor();
+
+        void handleKeyboardEvent(Input::KeyboardEvent&&) override;
+        void handlePointerEvent(Input::PointerEvent&&) override;
+        void handleAxisEvent(Input::AxisEvent&&) override;
+        void handleTouchEvent(Input::TouchEvent&&) override;
+
+        static const uint32_t cursorWidth = 16;
+        static const uint32_t cursorHeight = 16;
+
+        struct Data {
+            static const uint32_t width = 48;
+            static const uint32_t height = 48;
+            static uint8_t data[width * height * 4 + 1];
+        };
+
+    private:
+        Input::Client* m_targetClient;
+        DISPMANX_ELEMENT_HANDLE_T m_cursorHandle;
+        std::pair<uint32_t, uint32_t> m_position;
+        std::pair<uint32_t, uint32_t> m_displaySize;
+    };
+    std::unique_ptr<Cursor> m_cursor;
 };
 
 } // namespace ViewBackend
