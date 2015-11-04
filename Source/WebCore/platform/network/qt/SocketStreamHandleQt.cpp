@@ -127,7 +127,7 @@ int SocketStreamHandlePrivate::send(const char* data, int len)
 
 void SocketStreamHandlePrivate::close()
 {
-    if (m_streamHandle && m_streamHandle->m_state == SocketStreamHandleBase::Connecting) {
+    if (m_socket && m_streamHandle && m_streamHandle->m_state == SocketStreamHandleBase::Connecting) {
         m_socket->abort();
         m_streamHandle->client()->didCloseSocketStream(m_streamHandle);
         return;
