@@ -56,6 +56,8 @@ LibinputServer& LibinputServer::singleton()
 LibinputServer::LibinputServer()
     : m_keyboardEventHandler(Input::KeyboardEventHandler::create())
     , m_keyboardEventRepeating(new Input::KeyboardEventRepeating(*this))
+    , m_pointerCoords(0, 0)
+    , m_pointerBounds(1, 1)
 {
     m_udev = udev_new();
     if (!m_udev)
@@ -95,6 +97,11 @@ void LibinputServer::setClient(Input::Client* client)
     m_client = client;
 }
 
+void LibinputServer::setPointerBounds(uint32_t width, uint32_t height)
+{
+    m_pointerBounds = { width, height };
+}
+
 void LibinputServer::processEvents()
 {
     libinput_dispatch(m_libinput);
@@ -120,6 +127,18 @@ void LibinputServer::processEvents()
                 m_keyboardEventRepeating->cancel();
 
             break;
+        }
+        case LIBINPUT_EVENT_POINTER_MOTION:
+        {
+            auto* pointerEvent = libinput_event_get_pointer_event(event);
+
+            double dx = libinput_event_pointer_get_dx(pointerEvent);
+            double dy = libinput_event_pointer_get_dy(pointerEvent);
+            m_pointerCoords.first = std::min<int32_t>(std::max<uint32_t>(0, m_pointerCoords.first + dx), m_pointerBounds.first - 1);
+            m_pointerCoords.second = std::min<int32_t>(std::max<uint32_t>(0, m_pointerCoords.second + dy), m_pointerBounds.second - 1);
+
+            m_client->handlePointerEvent({ Input::PointerEvent::Motion, libinput_event_pointer_get_time(pointerEvent),
+                m_pointerCoords.first, m_pointerCoords.second, 0, 0 });
         }
         default:
             break;

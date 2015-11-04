@@ -45,6 +45,7 @@ public:
     static LibinputServer& singleton();
 
     void setClient(Input::Client* client);
+    void setPointerBounds(uint32_t, uint32_t);
 
 private:
     LibinputServer();
@@ -61,6 +62,9 @@ private:
     Input::Client* m_client;
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
     std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
+
+    std::pair<int32_t, int32_t> m_pointerCoords;
+    std::pair<uint32_t, uint32_t> m_pointerBounds;
 
     class EventSource {
     public:
