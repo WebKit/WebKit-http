@@ -1026,6 +1026,13 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     m_appsrc = gst_element_factory_make("appsrc", NULL);
     m_typefind = gst_element_factory_make("typefind", NULL);
     m_qtdemux = gst_element_factory_make("qtdemux", NULL);
+    {
+        GValue val = G_VALUE_INIT;
+        g_value_init(&val, G_TYPE_BOOLEAN);
+        g_value_set_boolean(&val, TRUE);
+        g_object_set_property(G_OBJECT(m_qtdemux), "always-honor-tfdt", &val);
+        g_value_unset(&val);
+    }
     m_appsink = gst_element_factory_make("appsink", NULL);
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink), TRUE);
     gst_base_sink_set_sync(GST_BASE_SINK(m_appsink), FALSE);
