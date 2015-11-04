@@ -51,13 +51,13 @@ public:
     static const Scale ScalePtr = TimesFour;
 
     // For storing immediate number
-    static const RegisterID immTempRegister = MIPSRegisters::t0;
+    static const RegisterID immTempRegister = MIPSRegisters::t6;
     // For storing data loaded from the memory
-    static const RegisterID dataTempRegister = MIPSRegisters::t1;
+    static const RegisterID dataTempRegister = MIPSRegisters::t7;
     // For storing address base
-    static const RegisterID addrTempRegister = MIPSRegisters::t2;
+    static const RegisterID addrTempRegister = MIPSRegisters::t8;
     // For storing compare result
-    static const RegisterID cmpTempRegister = MIPSRegisters::t3;
+    static const RegisterID cmpTempRegister = MIPSRegisters::s0;
 
     // FP temp register
     static const FPRegisterID fpTempRegister = MIPSRegisters::f16;
