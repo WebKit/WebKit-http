@@ -48,7 +48,7 @@ SocketStreamHandlePrivate::SocketStreamHandlePrivate(SocketStreamHandle* streamH
     bool isSecure = url.protocolIs("wss");
 
     if (isSecure) {
-#ifndef QT_NO_OPENSSL
+#ifndef QT_NO_SSL
         m_socket = new QSslSocket(this);
 #endif
     } else
@@ -63,7 +63,7 @@ SocketStreamHandlePrivate::SocketStreamHandlePrivate(SocketStreamHandle* streamH
 
     QString host = url.host();
     if (isSecure) {
-#ifndef QT_NO_OPENSSL
+#ifndef QT_NO_SSL
         static_cast<QSslSocket*>(m_socket)->connectToHostEncrypted(host, port);
 #endif
     } else
@@ -88,7 +88,7 @@ void SocketStreamHandlePrivate::initConnections()
     connect(m_socket, SIGNAL(readyRead()), this, SLOT(socketReadyRead()));
     connect(m_socket, SIGNAL(disconnected()), this, SLOT(socketClosed()));
     connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(socketError(QAbstractSocket::SocketError)));
-#ifndef QT_NO_OPENSSL
+#ifndef QT_NO_SSL
     if (qobject_cast<QSslSocket*>(m_socket))
         connect(m_socket, SIGNAL(sslErrors(const QList<QSslError>&)), this, SLOT(socketSslErrors(const QList<QSslError>&)));
 #endif
@@ -176,7 +176,7 @@ void SocketStreamHandlePrivate::socketErrorCallback(int error)
     }
 }
 
-#ifndef QT_NO_OPENSSL
+#ifndef QT_NO_SSL
 void SocketStreamHandlePrivate::socketSslErrors(const QList<QSslError>& error)
 {
     QMetaObject::invokeMethod(this, "socketErrorCallback", Qt::QueuedConnection, Q_ARG(int, error[0].error()));

@@ -60,7 +60,7 @@ public Q_SLOTS:
     void socketError(QAbstractSocket::SocketError);
     void socketClosedCallback();
     void socketErrorCallback(int);
-#ifndef QT_NO_OPENSSL
+#ifndef QT_NO_SSL
     void socketSslErrors(const QList<QSslError>&);
 #endif
 public:
