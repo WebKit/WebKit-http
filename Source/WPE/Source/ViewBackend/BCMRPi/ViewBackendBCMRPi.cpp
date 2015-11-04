@@ -36,11 +36,6 @@ namespace WPE {
 
 namespace ViewBackend {
 
-static VC_DISPMANX_ALPHA_T alpha = {
-    static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS),
-    255, 0
-};
-
 ViewBackendBCMRPi::ViewBackendBCMRPi()
     : m_elementHandle(DISPMANX_NO_HANDLE)
     , m_width(0)
@@ -65,6 +60,11 @@ void ViewBackendBCMRPi::setClient(Client* client)
 
 uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
 {
+    static VC_DISPMANX_ALPHA_T alpha = {
+        static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS),
+        255, 0
+    };
+
     if (m_elementHandle != DISPMANX_NO_HANDLE)
         return 0;
 
@@ -121,6 +121,11 @@ ViewBackendBCMRPi::Cursor::Cursor(Input::Client* targetClient, DISPMANX_DISPLAY_
     , m_position(0, 0)
     , m_displaySize(displayWidth, displayHeight)
 {
+    static VC_DISPMANX_ALPHA_T alpha = {
+        static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FROM_SOURCE),
+        255, 0
+    };
+
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
     uint32_t imagePtr;
