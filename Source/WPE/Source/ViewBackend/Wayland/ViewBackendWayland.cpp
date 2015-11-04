@@ -352,9 +352,7 @@ ViewBackendWayland::~ViewBackendWayland()
         xkb_compose_state_unref(m_seatData.xkb.composeState);
     if (m_seatData.repeatData.eventSource)
         g_source_remove(m_seatData.repeatData.eventSource);
-
-    m_seatData = { nullptr, nullptr, nullptr, { 0, 0},
-        { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0, nullptr, nullptr }, { 0, 0}, { 0, 0, 0, 0} };
+    m_seatData = SeatData{ };
 
     if (m_iviSurface)
         ivi_surface_destroy(m_iviSurface);
