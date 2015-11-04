@@ -137,8 +137,6 @@ NON_SVG_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/NavigatorMediaDevices.idl \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
     $(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
-    $(WebCore)/Modules/mediastream/NavigatorUserMediaErrorCallback.idl \
-    $(WebCore)/Modules/mediastream/NavigatorUserMediaSuccessCallback.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
@@ -1257,6 +1255,7 @@ WebReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
 
 WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/mediastream/MediaDevices.js \
+    $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
@@ -1277,7 +1276,6 @@ BUILTINS_GENERATOR_SCRIPTS = \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_combined_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_header.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_implementation.py \
-    $(JavaScriptCore_SCRIPTS_DIR)/builtins_generate_separate_wrapper.py \
     $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py \
     $(JavaScriptCore_SCRIPTS_DIR)/lazywriter.py \
 #

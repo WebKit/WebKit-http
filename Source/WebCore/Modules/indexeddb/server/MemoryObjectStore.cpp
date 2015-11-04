@@ -28,6 +28,9 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBDatabaseException.h"
+#include "IDBError.h"
+#include "IDBKeyRangeData.h"
 #include "Logging.h"
 #include "MemoryBackingStoreTransaction.h"
 
@@ -65,12 +68,46 @@ void MemoryObjectStore::writeTransactionFinished(MemoryBackingStoreTransaction& 
     m_writeTransaction = nullptr;
 }
 
+IDBError MemoryObjectStore::createIndex(MemoryBackingStoreTransaction& transaction, const IDBIndexInfo& info)
+{
+    LOG(IndexedDB, "MemoryObjectStore::createIndex");
+
+    if (!m_writeTransaction || m_writeTransaction->isVersionChange() || m_writeTransaction != &transaction)
+        return IDBError(IDBExceptionCode::ConstraintError);
+
+    ASSERT(!m_indexesByIdentifier.contains(info.identifier()));
+    auto index = MemoryIndex::create(info);
+
+    m_info.addExistingIndex(info);
+
+    transaction.addNewIndex(*index);
+    registerIndex(WTF::move(index));
+
+    return { };
+}
+
 bool MemoryObjectStore::containsRecord(const IDBKeyData& key)
 {
     if (!m_keyValueStore)
         return false;
 
     return m_keyValueStore->contains(key);
+}
+
+void MemoryObjectStore::clear()
+{
+    LOG(IndexedDB, "MemoryObjectStore::clear");
+    ASSERT(m_writeTransaction);
+
+    m_writeTransaction->objectStoreCleared(*this, WTF::move(m_keyValueStore));
+}
+
+void MemoryObjectStore::replaceKeyValueStore(std::unique_ptr<KeyValueMap>&& store)
+{
+    ASSERT(m_writeTransaction);
+    ASSERT(m_writeTransaction->isAborting());
+
+    m_keyValueStore = WTF::move(store);
 }
 
 void MemoryObjectStore::deleteRecord(const IDBKeyData& key)
@@ -83,9 +120,34 @@ void MemoryObjectStore::deleteRecord(const IDBKeyData& key)
     if (!m_keyValueStore)
         return;
 
+    ASSERT(m_orderedKeys);
+
     m_keyValueStore->remove(key);
-    if (m_orderedKeys)
-        m_orderedKeys->erase(key);
+    m_orderedKeys->erase(key);
+}
+
+void MemoryObjectStore::deleteRange(const IDBKeyRangeData& inputRange)
+{
+    LOG(IndexedDB, "MemoryObjectStore::deleteRange");
+
+    ASSERT(m_writeTransaction);
+
+    if (inputRange.isExactlyOneKey()) {
+        deleteRecord(inputRange.lowerKey);
+        return;
+    }
+
+    IDBKeyRangeData range = inputRange;
+    while (true) {
+        auto key = lowestKeyWithRecordInRange(range);
+        if (key.isNull())
+            break;
+
+        deleteRecord(key);
+
+        range.lowerKey = key;
+        range.lowerOpen = true;
+    }
 }
 
 void MemoryObjectStore::putRecord(MemoryBackingStoreTransaction& transaction, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
@@ -102,22 +164,99 @@ void MemoryObjectStore::putRecord(MemoryBackingStoreTransaction& transaction, co
 
 void MemoryObjectStore::setKeyValue(const IDBKeyData& keyData, const ThreadSafeDataBuffer& value)
 {
-    if (!m_keyValueStore)
+    if (!m_keyValueStore) {
+        ASSERT(!m_orderedKeys);
         m_keyValueStore = std::make_unique<KeyValueMap>();
+        m_orderedKeys = std::make_unique<std::set<IDBKeyData>>();
+    }
 
     auto result = m_keyValueStore->set(keyData, value);
-    if (result.isNewEntry && m_orderedKeys)
+    if (result.isNewEntry)
         m_orderedKeys->insert(keyData);
 }
 
-ThreadSafeDataBuffer MemoryObjectStore::valueForKey(const IDBKeyData& keyData) const
+uint64_t MemoryObjectStore::countForKeyRange(const IDBKeyRangeData& inRange) const
+{
+    LOG(IndexedDB, "MemoryObjectStore::countForKeyRange");
+
+    if (!m_keyValueStore)
+        return 0;
+
+    uint64_t count = 0;
+    IDBKeyRangeData range = inRange;
+    while (true) {
+        auto key = lowestKeyWithRecordInRange(range);
+        if (key.isNull())
+            break;
+
+        ++count;
+        range.lowerKey = key;
+        range.lowerOpen = true;
+    }
+
+    return count;
+}
+
+ThreadSafeDataBuffer MemoryObjectStore::valueForKeyRange(const IDBKeyRangeData& keyRangeData) const
 {
     LOG(IndexedDB, "MemoryObjectStore::valueForKey");
 
-    if (!m_keyValueStore)
+    IDBKeyData key = lowestKeyWithRecordInRange(keyRangeData);
+    if (key.isNull())
         return ThreadSafeDataBuffer();
 
-    return m_keyValueStore->get(keyData);
+    ASSERT(m_keyValueStore);
+    return m_keyValueStore->get(key);
+}
+
+IDBKeyData MemoryObjectStore::lowestKeyWithRecordInRange(const IDBKeyRangeData& keyRangeData) const
+{
+    if (!m_keyValueStore)
+        return { };
+
+    if (keyRangeData.isExactlyOneKey() && m_keyValueStore->contains(keyRangeData.lowerKey))
+        return keyRangeData.lowerKey;
+
+    ASSERT(m_orderedKeys);
+
+    auto lowestInRange = m_orderedKeys->lower_bound(keyRangeData.lowerKey);
+
+    if (lowestInRange == m_orderedKeys->end())
+        return { };
+
+    if (keyRangeData.lowerOpen && *lowestInRange == keyRangeData.lowerKey)
+        ++lowestInRange;
+
+    if (lowestInRange == m_orderedKeys->end())
+        return { };
+
+    if (!keyRangeData.upperKey.isNull()) {
+        if (lowestInRange->compare(keyRangeData.upperKey) > 0)
+            return { };
+        if (keyRangeData.upperOpen && *lowestInRange == keyRangeData.upperKey)
+            return { };
+    }
+
+    return *lowestInRange;
+}
+
+void MemoryObjectStore::registerIndex(std::unique_ptr<MemoryIndex>&& index)
+{
+    ASSERT(index);
+    ASSERT(!m_indexesByIdentifier.contains(index->info().identifier()));
+    ASSERT(!m_indexesByName.contains(index->info().name()));
+
+    m_indexesByName.set(index->info().name(), index.get());
+    m_indexesByIdentifier.set(index->info().identifier(), WTF::move(index));
+}
+
+void MemoryObjectStore::unregisterIndex(MemoryIndex& index)
+{
+    ASSERT(m_indexesByIdentifier.contains(index.info().identifier()));
+    ASSERT(m_indexesByName.contains(index.info().name()));
+
+    m_indexesByName.remove(index.info().name());
+    m_indexesByIdentifier.remove(index.info().identifier());
 }
 
 } // namespace IDBServer

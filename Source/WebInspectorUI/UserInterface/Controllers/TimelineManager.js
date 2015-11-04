@@ -342,6 +342,12 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
             console.assert(profileData);
             return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.ConsoleProfileRecorded, startTime, endTime, callFrames, sourceCodeLocation, recordPayload.data.title, profileData);
 
+        case TimelineAgent.EventType.TimerFire:
+        case TimelineAgent.EventType.EventDispatch:
+        case TimelineAgent.EventType.FireAnimationFrame:
+            // These are handled when the parent of FunctionCall or EvaluateScript.
+            break;
+
         case TimelineAgent.EventType.FunctionCall:
             // FunctionCall always happens as a child of another record, and since the FunctionCall record
             // has useful info we just make the timeline record here (combining the data from both records).
@@ -384,7 +390,8 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
             console.assert(isNaN(endTime));
 
             // Pass the startTime as the endTime since this record type has no duration.
-            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerInstalled, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId);
+            let timerDetails = {timerId: recordPayload.data.timerId, timeout: recordPayload.data.timeout, repeating: !recordPayload.data.singleShot};
+            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerInstalled, startTime, startTime, callFrames, sourceCodeLocation, timerDetails);
 
         case TimelineAgent.EventType.TimerRemove:
             console.assert(isNaN(endTime));
@@ -396,13 +403,16 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
             console.assert(isNaN(endTime));
 
             // Pass the startTime as the endTime since this record type has no duration.
-            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameRequested, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId);
+            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameRequested, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.id);
 
         case TimelineAgent.EventType.CancelAnimationFrame:
             console.assert(isNaN(endTime));
 
             // Pass the startTime as the endTime since this record type has no duration.
-            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameCanceled, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.timerId);
+            return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.AnimationFrameCanceled, startTime, startTime, callFrames, sourceCodeLocation, recordPayload.data.id);
+
+        default:
+            console.error("Missing handling of Timeline Event Type: " + recordPayload.type);
         }
 
         return null;
@@ -413,8 +423,14 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         switch (recordPayload.type) {
         case TimelineAgent.EventType.TimeStamp:
             var timestamp = this.activeRecording.computeElapsedTime(recordPayload.startTime);
-            var eventMarker = new WebInspector.TimelineMarker(timestamp, WebInspector.TimelineMarker.Type.TimeStamp);
+            var eventMarker = new WebInspector.TimelineMarker(timestamp, WebInspector.TimelineMarker.Type.TimeStamp, recordPayload.data.message);
             this._activeRecording.addEventMarker(eventMarker);
+            break;
+
+        case TimelineAgent.EventType.Time:
+        case TimelineAgent.EventType.TimeEnd:
+            // FIXME: <https://webkit.org/b/150690> Web Inspector: Show console.time/timeEnd ranges in Timeline
+            // FIXME: Make use of "message" payload properties.
             break;
 
         default:

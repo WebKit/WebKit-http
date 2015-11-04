@@ -77,7 +77,6 @@ public:
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
 #endif
-    void handleNeedContextMessage(GstMessage*);
 
     virtual bool supportsMuting() const override { return true; }
     virtual void setMuted(bool) override;
@@ -136,6 +135,8 @@ protected:
     virtual GstElement* audioSink() const { return 0; }
 
     void setPipeline(GstElement*);
+
+    virtual bool handleSyncMessage(GstMessage*);
 
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;

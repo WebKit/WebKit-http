@@ -30,6 +30,7 @@
 @protocol RemoteObjectProtocol <NSObject>
 
 - (void)sayHello:(NSString *)hello;
+- (void)sayHello:(NSString *)hello completionHandler:(void (^)(NSString *))completionHandler;
 
 @end
 

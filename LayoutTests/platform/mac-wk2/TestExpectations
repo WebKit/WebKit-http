@@ -281,6 +281,8 @@ webkit.org/b/150378 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-wor
 webkit.org/b/150378 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-synconworker.html [ Pass Failure ]
 webkit.org/b/150378 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-twice.html [ Pass Failure ]
 
+webkit.org/b/150736 http/tests/notifications/legacy/events.html [ Pass Crash ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -483,6 +485,9 @@ storage/indexeddb/transaction-complete-workers.html [ Skip ]
 storage/indexeddb/unprefix-workers.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
+
+# Bindings changes in https://bugs.webkit.org/show_bug.cgi?id=150868 cause this to fail, but this test is probably wrong
+storage/indexeddb/keypath-basics.html [ Skip ]
 
 ### END OF (5) IndexedDB related failures
 ########################################

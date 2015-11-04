@@ -84,6 +84,9 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
+OBJC_CLASS NSView;
+OBJC_CLASS _WKRemoteObjectRegistry;
+
 #if ENABLE(DRAG_SUPPORT)
 #include <WebCore/DragActions.h>
 #endif
@@ -165,10 +168,6 @@ struct TextCheckingResult;
 struct ViewportAttributes;
 struct WindowFeatures;
 }
-
-#if USE(APPKIT)
-OBJC_CLASS WKView;
-#endif
 
 #if PLATFORM(GTK)
 typedef GtkWidget* PlatformWidget;
@@ -584,7 +583,14 @@ public:
     void cancelComposition();
 #endif // !USE(ASYNC_NSTEXTINPUTCLIENT)
 
-    WKView* wkView() const;
+    void startWindowDrag();
+    NSWindow *platformWindow();
+
+#if WK_API_ENABLED
+    NSView *inspectorAttachmentView();
+    _WKRemoteObjectRegistry *remoteObjectRegistry();
+#endif
+
     void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
     CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
 #endif // PLATFORM(MAC)
@@ -803,9 +809,11 @@ public:
 #endif
 
     void processDidBecomeUnresponsive();
-    void interactionOccurredWhileProcessUnresponsive();
     void processDidBecomeResponsive();
     void processDidCrash();
+    void willChangeProcessIsResponsive();
+    void didChangeProcessIsResponsive();
+
 #if PLATFORM(IOS)
     void processWillBecomeSuspended();
     void processWillBecomeForeground();
@@ -980,10 +988,10 @@ public:
     void didSaveToPageCache();
         
     void setScrollPinningBehavior(WebCore::ScrollPinningBehavior);
-    WebCore::ScrollPinningBehavior scrollPinningBehavior() { return m_scrollPinningBehavior; }
+    WebCore::ScrollPinningBehavior scrollPinningBehavior() const { return m_scrollPinningBehavior; }
 
     void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle>);
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() { return m_scrollbarOverlayStyle; }
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const { return m_scrollbarOverlayStyle; }
 
     bool shouldRecordNavigationSnapshots() const { return m_shouldRecordNavigationSnapshots; }
     void setShouldRecordNavigationSnapshots(bool shouldRecordSnapshots) { m_shouldRecordNavigationSnapshots = shouldRecordSnapshots; }
@@ -1117,7 +1125,7 @@ private:
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
-    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, const UserData&);
+    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, bool mainFramePluginHandlesPageScaleGesture, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, const UserData&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
@@ -1713,6 +1721,8 @@ private:
 
     bool m_shouldRecordNavigationSnapshots;
     bool m_isShowingNavigationGestureSnapshot;
+
+    bool m_mainFramePluginHandlesPageScaleGesture { false };
 
     unsigned m_pageCount;
 

@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBKeyRangeData.h"
 #include "IndexedDB.h"
 #include "Logging.h"
 #include "MemoryIDBBackingStore.h"
@@ -60,12 +61,29 @@ void MemoryBackingStoreTransaction::addNewObjectStore(MemoryObjectStore& objectS
     LOG(IndexedDB, "MemoryBackingStoreTransaction::addNewObjectStore()");
 
     ASSERT(isVersionChange());
-
-    ASSERT(!m_objectStores.contains(&objectStore));
-    m_objectStores.add(&objectStore);
     m_versionChangeAddedObjectStores.add(&objectStore);
 
-    objectStore.writeTransactionStarted(*this);
+    addExistingObjectStore(objectStore);
+}
+
+void MemoryBackingStoreTransaction::addNewIndex(MemoryIndex& index)
+{
+    LOG(IndexedDB, "MemoryBackingStoreTransaction::addNewIndex()");
+
+    ASSERT(isVersionChange());
+    m_versionChangeAddedIndexes.add(&index);
+
+    addExistingIndex(index);
+}
+
+void MemoryBackingStoreTransaction::addExistingIndex(MemoryIndex& index)
+{
+    LOG(IndexedDB, "MemoryBackingStoreTransaction::addExistingIndex");
+
+    ASSERT(isWriting());
+
+    ASSERT(!m_indexes.contains(&index));
+    m_indexes.add(&index);
 }
 
 void MemoryBackingStoreTransaction::addExistingObjectStore(MemoryObjectStore& objectStore)
@@ -78,6 +96,40 @@ void MemoryBackingStoreTransaction::addExistingObjectStore(MemoryObjectStore& ob
     m_objectStores.add(&objectStore);
 
     objectStore.writeTransactionStarted(*this);
+
+    m_originalKeyGenerators.add(&objectStore, objectStore.currentKeyGeneratorValue());
+}
+
+void MemoryBackingStoreTransaction::objectStoreDeleted(std::unique_ptr<MemoryObjectStore> objectStore)
+{
+    ASSERT(objectStore);
+    ASSERT(m_objectStores.contains(objectStore.get()));
+    m_objectStores.remove(objectStore.get());
+
+    auto addResult = m_deletedObjectStores.add(objectStore->info().name(), nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = WTF::move(objectStore);
+}
+
+void MemoryBackingStoreTransaction::objectStoreCleared(MemoryObjectStore& objectStore, std::unique_ptr<KeyValueMap>&& keyValueMap)
+{
+    ASSERT(m_objectStores.contains(&objectStore));
+
+    auto addResult = m_clearedKeyValueMaps.add(&objectStore, nullptr);
+
+    // If this object store has already been cleared during this transaction, we don't need to remember this clearing.
+    if (!addResult.isNewEntry)
+        return;
+
+    // If values had previously been changed during this transaction, fold those changes back into the
+    // cleared key-value map now, so we have exactly the map that will need to be restored if the transaction is aborted.
+    auto originalValues = m_originalValues.take(&objectStore);
+    if (originalValues) {
+        for (auto iterator : *originalValues)
+            keyValueMap->set(iterator.key, iterator.value);
+    }
+
+    addResult.iterator->value = WTF::move(keyValueMap);
 }
 
 void MemoryBackingStoreTransaction::recordValueChanged(MemoryObjectStore& objectStore, const IDBKeyData& key)
@@ -85,6 +137,11 @@ void MemoryBackingStoreTransaction::recordValueChanged(MemoryObjectStore& object
     ASSERT(m_objectStores.contains(&objectStore));
 
     if (m_isAborting)
+        return;
+
+    // If this object store had been cleared during the transaction, no point in recording this
+    // individual key/value change as its entire key/value map will be restored upon abort.
+    if (m_clearedKeyValueMaps.contains(&objectStore))
         return;
 
     auto originalAddResult = m_originalValues.add(&objectStore, nullptr);
@@ -97,7 +154,7 @@ void MemoryBackingStoreTransaction::recordValueChanged(MemoryObjectStore& object
     if (!addResult.isNewEntry)
         return;
 
-    addResult.iterator->value = objectStore.valueForKey(key);
+    addResult.iterator->value = objectStore.valueForKeyRange(IDBKeyRangeData(key));
 }
 
 void MemoryBackingStoreTransaction::abort()
@@ -106,13 +163,35 @@ void MemoryBackingStoreTransaction::abort()
 
     TemporaryChange<bool> change(m_isAborting, true);
 
+    // This loop moves the underlying unique_ptrs from out of the m_deleteObjectStores map,
+    // but the entries in the map still remain.
+    for (auto& objectStore : m_deletedObjectStores.values()) {
+        MemoryObjectStore* rawObjectStore = objectStore.get();
+        m_backingStore.restoreObjectStoreForVersionChangeAbort(WTF::move(objectStore));
+
+        ASSERT(!m_objectStores.contains(rawObjectStore));
+        m_objectStores.add(rawObjectStore);
+    }
+
+    // This clears the entries from the map.
+    m_deletedObjectStores.clear();
+
     if (m_originalDatabaseInfo) {
         ASSERT(m_info.mode() == IndexedDB::TransactionMode::VersionChange);
         m_backingStore.setDatabaseInfo(*m_originalDatabaseInfo);
     }
 
     for (auto objectStore : m_objectStores) {
-        auto keyValueMap = m_originalValues.get(objectStore);
+        ASSERT(m_originalKeyGenerators.contains(objectStore));
+        objectStore->setKeyGeneratorValue(m_originalKeyGenerators.get(objectStore));
+
+        auto clearedKeyValueMap = m_clearedKeyValueMaps.take(objectStore);
+        if (clearedKeyValueMap) {
+            objectStore->replaceKeyValueStore(WTF::move(clearedKeyValueMap));
+            continue;
+        }
+
+        auto keyValueMap = m_originalValues.take(objectStore);
         if (!keyValueMap)
             continue;
 
@@ -120,10 +199,7 @@ void MemoryBackingStoreTransaction::abort()
             objectStore->deleteRecord(entry.key);
             objectStore->setKeyValue(entry.key, entry.value);
         }
-
-        m_originalValues.remove(objectStore);
     }
-
 
     finish();
 
@@ -145,7 +221,9 @@ void MemoryBackingStoreTransaction::finish()
     if (!isWriting())
         return;
 
-    for (auto objectStore : m_objectStores)
+    for (auto& objectStore : m_objectStores)
+        objectStore->writeTransactionFinished(*this);
+    for (auto& objectStore : m_deletedObjectStores.values())
         objectStore->writeTransactionFinished(*this);
 }
 

@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @optional=STREAMS_API
+// @conditional=ENABLE(STREAMS_API)
 
 function initializeReadableStream(underlyingSource, strategy)
 {
@@ -44,7 +44,7 @@ function initializeReadableStream(underlyingSource, strategy)
     this.@underlyingSource = underlyingSource;
 
     this.@queue = @newQueue();
-    this.@state = @readableStreamReadable;
+    this.@state = @streamReadable;
     this.@started = false;
     this.@closeRequested = false;
     this.@pullAgain = false;
@@ -56,11 +56,11 @@ function initializeReadableStream(underlyingSource, strategy)
 
     var result = @invokeOrNoop(underlyingSource, "start", [this.@controller]);
     var _this = this;
-    Promise.resolve(result).then(function() {
+    @Promise.resolve(result).then(function() {
         _this.@started = true;
         @requestReadableStreamPull(_this);
     }, function(error) {
-        if (_this.@state === @readableStreamReadable)
+        if (_this.@state === @streamReadable)
             @errorReadableStream(_this, error);
     });
 
@@ -72,10 +72,10 @@ function cancel(reason)
     "use strict";
 
     if (!@isReadableStream(this))
-        return Promise.reject(new @TypeError("Function should be called on a ReadableStream"));
+        return @Promise.reject(new @TypeError("Function should be called on a ReadableStream"));
 
     if (@isReadableStreamLocked(this))
-        return Promise.reject(new @TypeError("ReadableStream is locked"));
+        return @Promise.reject(new @TypeError("ReadableStream is locked"));
 
     return @cancelReadableStream(this, reason);
 }

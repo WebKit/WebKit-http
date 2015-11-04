@@ -2207,7 +2207,7 @@ public:
     void compileValueToInt32(Node*);
     void compileUInt32ToNumber(Node*);
     void compileDoubleAsInt32(Node*);
-    void compileAdd(Node*);
+    void compileArithAdd(Node*);
     void compileMakeRope(Node*);
     void compileArithClz32(Node*);
     void compileArithSub(Node*);
@@ -2282,8 +2282,12 @@ public:
     void emitAllocateJSCell(GPRReg resultGPR, GPRReg allocatorGPR, StructureType structure,
         GPRReg scratchGPR, MacroAssembler::JumpList& slowPath)
     {
-        m_jit.loadPtr(MacroAssembler::Address(allocatorGPR, MarkedAllocator::offsetOfFreeListHead()), resultGPR);
-        slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR));
+        if (Options::forceGCSlowPaths())
+            slowPath.append(m_jit.jump());
+        else {
+            m_jit.loadPtr(MacroAssembler::Address(allocatorGPR, MarkedAllocator::offsetOfFreeListHead()), resultGPR);
+            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR));
+        }
         
         // The object is half-allocated: we have what we know is a fresh object, but
         // it's still on the GC's free list.

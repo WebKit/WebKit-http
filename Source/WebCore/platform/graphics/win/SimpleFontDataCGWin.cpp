@@ -34,6 +34,7 @@
 #include "FontDescription.h"
 #include "GlyphPage.h"
 #include "HWndDC.h"
+#include "OpenTypeCG.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <mlang.h>
@@ -63,6 +64,16 @@ void Font::platformInit()
     int iDescent = CGFontGetDescent(font);
     int iLineGap = CGFontGetLeading(font);
     int iCapHeight = CGFontGetCapHeight(font);
+
+    // The Open Font Format describes the OS/2 USE_TYPO_METRICS flag as follows:
+    // "If set, it is strongly recommended to use OS/2.sTypoAscender - OS/2.sTypoDescender+ OS/2.sTypoLineGap as a value for default line spacing for this font."
+    short typoAscent, typoDescent, typoLineGap;
+    if (OpenType::tryGetTypoMetrics(m_platformData.cgFont(), typoAscent, typoDescent, typoLineGap)) {
+        iAscent = typoAscent;
+        iDescent = typoDescent;
+        iLineGap = typoLineGap;
+    }
+
     unsigned unitsPerEm = CGFontGetUnitsPerEm(font);
     float pointSize = m_platformData.size();
     float fAscent = scaleEmToUnits(iAscent, unitsPerEm) * pointSize;

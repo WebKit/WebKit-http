@@ -36,7 +36,7 @@
 #include <wtf/Threading.h>
 
 #if USE(GLIB)
-#include <wtf/glib/GSourceWrap.h>
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 #if PLATFORM(EFL)
@@ -67,7 +67,11 @@ public:
 #if PLATFORM(COCOA)
     WTF_EXPORT_PRIVATE void runForDuration(double duration);
 #endif
-    
+
+#if USE(GLIB) && !PLATFORM(EFL)
+    WTF_EXPORT_PRIVATE GMainContext* mainContext() const { return m_mainContext.get(); }
+#endif
+
     class TimerBase {
         friend class RunLoop;
     public:
@@ -82,6 +86,10 @@ public:
         WTF_EXPORT_PRIVATE bool isActive() const;
 
         virtual void fired() = 0;
+
+#if USE(GLIB) && !PLATFORM(EFL)
+        void setPriority(int);
+#endif
 
     private:
         WTF_EXPORT_PRIVATE void start(double nextFireInterval, bool repeat);
@@ -100,10 +108,10 @@ public:
         Ecore_Timer* m_timer;
         bool m_isRepeating;
 #elif USE(GLIB)
-        void timerFired();
-        double m_fireInterval;
-        bool m_repeating;
-        GSourceWrap::Static m_timerSource;
+        void updateReadyTime();
+        GRefPtr<GSource> m_source;
+        bool m_isRepeating { false };
+        std::chrono::microseconds m_fireInterval { 0 };
 #endif
     };
 
@@ -158,12 +166,9 @@ private:
 
     static void wakeUpEvent(void* data, void*, unsigned);
 #elif USE(GLIB)
-public:
-    static gboolean queueWork(RunLoop*);
-private:
     GRefPtr<GMainContext> m_mainContext;
     Vector<GRefPtr<GMainLoop>> m_mainLoops;
-    GSourceWrap::Static m_workSource;
+    GRefPtr<GSource> m_source;
 #endif
 };
 

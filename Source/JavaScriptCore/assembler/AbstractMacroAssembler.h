@@ -916,7 +916,7 @@ public:
 
         // Convenience methods:
         void* gpr(RegisterID regID) { return cpu.gpr(regID); }
-        double fpr(FPRegisterID regID) { return cpu.gpr(regID); }
+        double fpr(FPRegisterID regID) { return cpu.fpr(regID); }
         const char* gprName(RegisterID regID) { return cpu.gprName(regID); }
         const char* fprName(FPRegisterID regID) { return cpu.fprName(regID); }
     };
@@ -940,7 +940,7 @@ public:
     // Note: probe() should be implemented by the target specific MacroAssembler.
     // This prototype is only provided here to document the interface.
 
-    void probe(ProbeFunction, void* arg1 = 0, void* arg2 = 0);
+    void probe(ProbeFunction, void* arg1, void* arg2);
 
 #endif // ENABLE(MASM_PROBE)
 

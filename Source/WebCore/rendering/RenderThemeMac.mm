@@ -114,8 +114,6 @@
 
 // The methods in this file are specific to the Mac OS X platform.
 
-// FIXME: The platform-independent code in this class should be factored out and merged with RenderThemeSafari.
-
 // We estimate the animation rate of a Mac OS X progress bar is 33 fps.
 // Hard code the value here because we haven't found API for it.
 const double progressAnimationFrameRate = 0.033;
@@ -1691,6 +1689,8 @@ void RenderThemeMac::adjustSearchFieldStyle(StyleResolver& styleResolver, Render
 
 bool RenderThemeMac::paintSearchFieldCancelButton(const RenderObject& o, const PaintInfo& paintInfo, const IntRect& r)
 {
+    if (!o.node())
+        return false;
     Element* input = o.node()->shadowHost();
     if (!input)
         input = downcast<Element>(o.node());
@@ -1773,6 +1773,8 @@ void RenderThemeMac::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&,
 
 bool RenderThemeMac::paintSearchFieldResultsDecorationPart(const RenderObject& o, const PaintInfo& paintInfo, const IntRect& r)
 {
+    if (!o.node())
+        return false;
     Node* input = o.node()->shadowHost();
     if (!input)
         input = o.node();

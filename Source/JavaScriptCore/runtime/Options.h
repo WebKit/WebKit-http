@@ -313,6 +313,7 @@ typedef const char* optionString;
     \
     v(gcLogLevel, logGC, GCLogging::None, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, nullptr) \
+    v(bool, forceGCSlowPaths, false, "If true, we will force all JIT fast allocations down their slow paths.")\
     v(unsigned, gcMaxHeapSize, 0, nullptr) \
     v(unsigned, forceRAMSize, 0, nullptr) \
     v(bool, recordGCPauseTimes, false, nullptr) \
@@ -335,6 +336,8 @@ typedef const char* optionString;
     v(unsigned, fireOSRExitFuzzAtStatic, 0, nullptr) \
     v(unsigned, fireOSRExitFuzzAt, 0, nullptr) \
     v(unsigned, fireOSRExitFuzzAtOrAfter, 0, nullptr) \
+    \
+    v(bool, logB3PhaseTimes, false, nullptr) \
     \
     v(bool, useDollarVM, false, "installs the $vm debugging tool in global objects") \
     v(optionString, functionOverrides, nullptr, "file with debugging overrides for function bodies") \

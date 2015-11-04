@@ -1407,6 +1407,16 @@ bool WKPreferencesGetAllowsAirPlayForMediaPlayback(WKPreferencesRef preferencesR
     return toImpl(preferencesRef)->allowsAirPlayForMediaPlayback();
 }
 
+void WKPreferencesSetResourceUsageOverlayVisible(WKPreferencesRef preferencesRef, bool javaEnabled)
+{
+    toImpl(preferencesRef)->setResourceUsageOverlayVisible(javaEnabled);
+}
+
+bool WKPreferencesGetResourceUsageOverlayVisible(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->resourceUsageOverlayVisible();
+}
+
 void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setAllowRunningOfInsecureContent(enabled);

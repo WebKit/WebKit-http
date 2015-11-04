@@ -32,8 +32,8 @@ class MessageSender;
 }
 
 namespace WebKit {
+class RemoteObjectInvocation;
 class RemoteObjectRegistry;
-class UserData;
 }
 
 @interface _WKRemoteObjectRegistry ()
@@ -44,7 +44,7 @@ class UserData;
 - (void)_invalidate;
 
 - (void)_sendInvocation:(NSInvocation *)invocation interface:(_WKRemoteObjectInterface *)interface;
-- (BOOL)_invokeMethod:(const WebKit::UserData&)invocation;
+- (void)_invokeMethod:(const WebKit::RemoteObjectInvocation&)invocation;
 
 @end
 

@@ -43,11 +43,11 @@ enum FontSmoothingMode { AutoSmoothing, NoSmoothing, Antialiased, SubpixelAntial
 
 // This setting is used to provide ways of switching between multiple rendering modes that may have different
 // metrics. It is used to switch between CG and GDI text on Windows.
-enum FontRenderingMode { NormalRenderingMode, AlternateRenderingMode };
+enum class FontRenderingMode { Normal, Alternate };
 
 enum FontOrientation { Horizontal, Vertical };
 
-enum NonCJKGlyphOrientation { NonCJKGlyphOrientationVerticalRight, NonCJKGlyphOrientationUpright };
+enum class NonCJKGlyphOrientation { Mixed, Upright };
 
 // Here, "Leading" and "Trailing" are relevant after the line has been rearranged for bidi.
 // ("Leading" means "left" and "Trailing" means "right.")
@@ -149,6 +149,59 @@ enum class FontVariantEastAsianRuby {
 };
 
 struct FontVariantSettings {
+    FontVariantSettings()
+        : commonLigatures(FontVariantLigatures::Normal)
+        , discretionaryLigatures(FontVariantLigatures::Normal)
+        , historicalLigatures(FontVariantLigatures::Normal)
+        , contextualAlternates(FontVariantLigatures::Normal)
+        , position(FontVariantPosition::Normal)
+        , caps(FontVariantCaps::Normal)
+        , numericFigure(FontVariantNumericFigure::Normal)
+        , numericSpacing(FontVariantNumericSpacing::Normal)
+        , numericFraction(FontVariantNumericFraction::Normal)
+        , numericOrdinal(FontVariantNumericOrdinal::Normal)
+        , numericSlashedZero(FontVariantNumericSlashedZero::Normal)
+        , alternates(FontVariantAlternates::Normal)
+        , eastAsianVariant(FontVariantEastAsianVariant::Normal)
+        , eastAsianWidth(FontVariantEastAsianWidth::Normal)
+        , eastAsianRuby(FontVariantEastAsianRuby::Normal)
+    {
+    }
+
+    FontVariantSettings(
+        FontVariantLigatures commonLigatures,
+        FontVariantLigatures discretionaryLigatures,
+        FontVariantLigatures historicalLigatures,
+        FontVariantLigatures contextualAlternates,
+        FontVariantPosition position,
+        FontVariantCaps caps,
+        FontVariantNumericFigure numericFigure,
+        FontVariantNumericSpacing numericSpacing,
+        FontVariantNumericFraction numericFraction,
+        FontVariantNumericOrdinal numericOrdinal,
+        FontVariantNumericSlashedZero numericSlashedZero,
+        FontVariantAlternates alternates,
+        FontVariantEastAsianVariant eastAsianVariant,
+        FontVariantEastAsianWidth eastAsianWidth,
+        FontVariantEastAsianRuby eastAsianRuby)
+            : commonLigatures(commonLigatures)
+            , discretionaryLigatures(discretionaryLigatures)
+            , historicalLigatures(historicalLigatures)
+            , contextualAlternates(contextualAlternates)
+            , position(position)
+            , caps(caps)
+            , numericFigure(numericFigure)
+            , numericSpacing(numericSpacing)
+            , numericFraction(numericFraction)
+            , numericOrdinal(numericOrdinal)
+            , numericSlashedZero(numericSlashedZero)
+            , alternates(alternates)
+            , eastAsianVariant(eastAsianVariant)
+            , eastAsianWidth(eastAsianWidth)
+            , eastAsianRuby(eastAsianRuby)
+    {
+    }
+
     bool isAllNormal() const
     {
         return commonLigatures == FontVariantLigatures::Normal

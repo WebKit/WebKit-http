@@ -1,54 +1,11 @@
-add_definitions(-ObjC++)
-
-if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
-elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
-else ()
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
-endif ()
+add_definitions("-ObjC++ -std=c++11")
 link_directories(../../WebKitLibraries)
-
-find_library(ACCELERATE_LIBRARY accelerate)
-find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
-find_library(AUDIOUNIT_LIBRARY AudioUnit)
 find_library(CARBON_LIBRARY Carbon)
-find_library(COCOA_LIBRARY Cocoa)
-find_library(COREAUDIO_LIBRARY CoreAudio)
-find_library(DISKARBITRATION_LIBRARY DiskArbitration)
-find_library(IOKIT_LIBRARY IOKit)
-find_library(IOSURFACE_LIBRARY IOSurface)
-find_library(OPENGL_LIBRARY OpenGL)
 find_library(QUARTZ_LIBRARY Quartz)
-find_library(QUARTZCORE_LIBRARY QuartzCore)
-find_library(SECURITY_LIBRARY Security)
-find_library(SYSTEMCONFIGURATION_LIBRARY SystemConfiguration)
-find_library(SQLITE3_LIBRARY sqlite3)
-find_library(XML2_LIBRARY XML2)
-find_package(ZLIB REQUIRED)
-
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 add_definitions(-iframework ${CARBON_LIBRARY}/Frameworks)
 
 list(APPEND WebKit2_LIBRARIES
-    ${ACCELERATE_LIBRARY}
-    ${AUDIOTOOLBOX_LIBRARY}
-    ${AUDIOUNIT_LIBRARY}
-    ${CARBON_LIBRARY}
-    ${COCOA_LIBRARY}
-    ${COREAUDIO_LIBRARY}
-    ${DISKARBITRATION_LIBRARY}
-    ${IOKIT_LIBRARY}
-    ${IOSURFACE_LIBRARY}
-    ${OPENGL_LIBRARY}
-    ${QUARTZ_LIBRARY}
-    ${QUARTZCORE_LIBRARY}
-    ${SECURITY_LIBRARY}
-    ${SQLITE3_LIBRARY}
-    ${SYSTEMCONFIGURATION_LIBRARY}
-    ${WEBKITSYSTEMINTERFACE_LIBRARY}
-    ${XML2_LIBRARY}
-    ${ZLIB_LIBRARIES}
     WebKit
 )
 
@@ -81,6 +38,8 @@ list(APPEND WebKit2_SOURCES
     Platform/mac/SharedMemoryMac.cpp
     Platform/mac/StringUtilities.mm
 
+    Platform/unix/EnvironmentUtilities.cpp
+
     PluginProcess/mac/PluginControllerProxyMac.mm
     PluginProcess/mac/PluginProcessMac.mm
     PluginProcess/mac/PluginProcessShim.mm
@@ -88,6 +47,7 @@ list(APPEND WebKit2_SOURCES
     Shared/APIWebArchive.mm
     Shared/APIWebArchiveResource.mm
 
+    Shared/API/Cocoa/RemoteObjectInvocation.mm
     Shared/API/Cocoa/RemoteObjectRegistry.mm
     Shared/API/Cocoa/WKBrowsingContextHandle.mm
     Shared/API/Cocoa/WKRemoteObject.mm
@@ -176,6 +136,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/ViewGestureController.cpp
 
     UIProcess/API/APIUserScript.cpp
+    UIProcess/API/APIUserStyleSheet.cpp
     UIProcess/API/APIWebsiteDataRecord.cpp
 
     UIProcess/API/Cocoa/APISerializedScriptValueCocoa.mm
@@ -195,6 +156,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKNavigationData.mm
     UIProcess/API/Cocoa/WKNavigationResponse.mm
     UIProcess/API/Cocoa/WKPreferences.mm
+    UIProcess/API/Cocoa/WKProcessGroup.mm
     UIProcess/API/Cocoa/WKProcessPool.mm
     UIProcess/API/Cocoa/WKScriptMessage.mm
     UIProcess/API/Cocoa/WKSecurityOrigin.mm
@@ -207,14 +169,18 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKWebsiteDataStore.mm
     UIProcess/API/Cocoa/WKWindowFeatures.mm
     UIProcess/API/Cocoa/_WKActivatedElementInfo.mm
+    UIProcess/API/Cocoa/_WKContextMenuElementInfo.mm
     UIProcess/API/Cocoa/_WKDownload.mm
     UIProcess/API/Cocoa/_WKElementAction.mm
+    UIProcess/API/Cocoa/_WKElementInfo.mm
     UIProcess/API/Cocoa/_WKErrorRecoveryAttempting.mm
     UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm
     UIProcess/API/Cocoa/_WKSessionState.mm
     UIProcess/API/Cocoa/_WKThumbnailView.mm
     UIProcess/API/Cocoa/_WKUserContentExtensionStore.mm
     UIProcess/API/Cocoa/_WKUserContentFilter.mm
+    UIProcess/API/Cocoa/_WKUserStyleSheet.mm
+    UIProcess/API/Cocoa/_WKVisitedLinkProvider.mm
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
     UIProcess/API/Cocoa/_WKWebsiteDataStore.mm
 
@@ -254,6 +220,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Scrolling/RemoteScrollingTree.cpp
 
     UIProcess/Storage/StorageManager.cpp
+
+    UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
 
     UIProcess/mac/CorrectionPanel.mm
     UIProcess/mac/LegacySessionStateCoding.cpp
@@ -311,6 +279,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/Plugins/Netscape/mac/PluginProxyMac.mm
     WebProcess/Plugins/Netscape/mac/WKNPAPIPlugInContainer.mm
 
+    WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm
     WebProcess/Plugins/PDF/PDFPlugin.mm
     WebProcess/Plugins/PDF/PDFPluginAnnotation.mm
     WebProcess/Plugins/PDF/PDFPluginChoiceAnnotation.mm
@@ -389,6 +358,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/API/c/mac"
     "${WEBKIT2_DIR}/Shared/cf"
     "${WEBKIT2_DIR}/Shared/Cocoa"
+    "${WEBKIT2_DIR}/Shared/EntryPointUtilities/mac/XPCService"
     "${WEBKIT2_DIR}/Shared/mac"
     "${WEBKIT2_DIR}/Shared/Plugins/mac"
     "${WEBKIT2_DIR}/Shared/Scrolling"
@@ -416,20 +386,30 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 set(WEBKIT2_EXTRA_DEPENDENCIES
      WebKit2-forwarding-headers
 )
+
+set(XPCService_SOURCES
+    Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm
+    Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm
+)
+
 set(WebProcess_SOURCES
     WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm
+    ${XPCService_SOURCES}
 )
 
 set(PluginProcess_SOURCES
     PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm
+    ${XPCService_SOURCES}
 )
 
 list(APPEND NetworkProcess_SOURCES
-     ${NetworkProcess_COMMON_SOURCES}
+    NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm
+    ${XPCService_SOURCES}
 )
 
 list(APPEND DatabaseProcess_SOURCES
     DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm
+    ${XPCService_SOURCES}
 )
 
 add_definitions("-include WebKit2Prefix.h")
@@ -456,16 +436,22 @@ list(APPEND WebKit2_MESSAGES_IN_FILES
 )
 
 set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
+    Platform
     Shared
+
+    Shared/API
+    Shared/Cocoa
+
     Shared/API/Cocoa
     Shared/API/c
 
+    Shared/API/c/cf
     Shared/API/c/mac
 
     UIProcess/Cocoa
 
     UIProcess/API/C
-    UIProcess/API/Cocoa
+    UIProcess/API/cpp
 
     WebProcess/WebPage
 
@@ -473,6 +459,18 @@ set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
     WebProcess/InjectedBundle/API/c
     WebProcess/InjectedBundle/API/mac
 )
+
+# This is needed right now to import ObjC headers instead of including them.
+# FIXME: Forwarding headers should be copies of actual headers.
+file(GLOB ObjCHeaders UIProcess/API/Cocoa/*.h)
+foreach (_file ${ObjCHeaders})
+    get_filename_component(_name ${_file} NAME)
+    if (NOT EXISTS ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_name})
+        file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_name} "#import <WebKit2/UIProcess/API/Cocoa/${_name}>")
+    endif ()
+endforeach ()
+
+set(WebKit2_OUTPUT_NAME WebKit)
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/MessageRecorderProbes.h

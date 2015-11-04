@@ -30,7 +30,7 @@
 #include "config.h"
 #include "MainThread.h"
 
-#include <wtf/glib/GSourceWrap.h>
+#include <wtf/RunLoop.h>
 
 namespace WTF {
 
@@ -40,10 +40,7 @@ void initializeMainThreadPlatform()
 
 void scheduleDispatchFunctionsOnMainThread()
 {
-    static GSourceWrap::Static dispatcher("[WebKit] dispatchFunctionsFromMainThread",
-        std::function<void ()>(dispatchFunctionsFromMainThread), G_PRIORITY_HIGH + 30,
-        g_main_context_default());
-    dispatcher.schedule();
+    RunLoop::main().dispatch(std::function<void()>(dispatchFunctionsFromMainThread));
 }
 
 } // namespace WTF

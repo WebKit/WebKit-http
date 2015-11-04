@@ -15,7 +15,6 @@
                 "Paint",
                 "Composite",
                 "RenderingFrame",
-                "ParseHTML",
                 "TimerInstall",
                 "TimerRemove",
                 "TimerFire",
@@ -28,11 +27,7 @@
                 "ConsoleProfile",
                 "RequestAnimationFrame",
                 "CancelAnimationFrame",
-                "FireAnimationFrame",
-                "WebSocketCreate",
-                "WebSocketSendHandshakeRequest",
-                "WebSocketReceiveHandshakeResponse",
-                "WebSocketDestroy"
+                "FireAnimationFrame"
             ],
             "description": "Timeline record type."
         },

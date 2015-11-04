@@ -557,8 +557,8 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     initSecurityContext();
     initDNSPrefetch();
 
-    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(m_nodeListAndCollectionCounts); ++i)
-        m_nodeListAndCollectionCounts[i] = 0;
+    for (auto& nodeListAndCollectionCount : m_nodeListAndCollectionCounts)
+        nodeListAndCollectionCount = 0;
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -6238,7 +6238,12 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
                 rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
         } else if (is<Element>(keyValuePair.key)) {
             Element* element = downcast<Element>(keyValuePair.key);
-            rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
+            if (is<HTMLBodyElement>(element)) {
+                // For the body, just use the document bounds.
+                // The body may not cover this whole area, but it's OK for this region to be an overestimate.
+                rootRelativeBounds = absoluteEventHandlerBounds(insideFixedPosition);
+            } else
+                rootRelativeBounds = element->absoluteEventHandlerBounds(insideFixedPosition);
         }
         
         if (!rootRelativeBounds.isEmpty())
@@ -6312,12 +6317,12 @@ void Document::adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<Floa
         inverseFrameScale = 1 / frame()->frameScaleFactor();
 
     LayoutRect visibleContentRect = view()->visibleContentRect();
-    for (size_t i = 0; i < quads.size(); ++i) {
-        quads[i].move(-visibleContentRect.x(), -visibleContentRect.y());
+    for (auto& quad : quads) {
+        quad.move(-visibleContentRect.x(), -visibleContentRect.y());
         if (zoom != 1)
-            quads[i].scale(1 / zoom, 1 / zoom);
+            quad.scale(1 / zoom, 1 / zoom);
         if (inverseFrameScale != 1)
-            quads[i].scale(inverseFrameScale, inverseFrameScale);
+            quad.scale(inverseFrameScale, inverseFrameScale);
     }
 }
 
@@ -6473,19 +6478,18 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
             elementsToAddToChain.append(element);
     }
 
-    size_t removeCount = elementsToRemoveFromChain.size();
-    for (size_t i = 0; i < removeCount; ++i)
-        elementsToRemoveFromChain[i]->setHovered(false);
+    for (auto& element : elementsToRemoveFromChain)
+        element->setHovered(false);
 
     bool sawCommonAncestor = false;
-    for (size_t i = 0, size = elementsToAddToChain.size(); i < size; ++i) {
+    for (auto& element : elementsToAddToChain) {
         if (allowActiveChanges)
-            elementsToAddToChain[i]->setActive(true);
-        if (ancestor && elementsToAddToChain[i] == ancestor->element())
+            element->setActive(true);
+        if (ancestor && element == ancestor->element())
             sawCommonAncestor = true;
         if (!sawCommonAncestor) {
             // Elements after the common hover ancestor does not change hover state, but are iterated over because they may change active state.
-            elementsToAddToChain[i]->setHovered(true);
+            element->setHovered(true);
         }
     }
 

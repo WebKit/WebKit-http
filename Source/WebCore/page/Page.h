@@ -109,6 +109,7 @@ class Range;
 class RenderObject;
 class RenderTheme;
 class ReplayController;
+class ResourceUsageOverlay;
 class VisibleSelection;
 class ScrollableArea;
 class ScrollingCoordinator;
@@ -244,6 +245,7 @@ public:
     enum { NoMatchAfterUserSelection = -1 };
     WEBCORE_EXPORT void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range>>&, int& indexForSelection);
 #if PLATFORM(COCOA)
+    void platformInitialize();
     WEBCORE_EXPORT void addSchedulePair(Ref<SchedulePair>&&);
     WEBCORE_EXPORT void removeSchedulePair(Ref<SchedulePair>&&);
     SchedulePairHashSet* scheduledRunLoopPairs() { return m_scheduledRunLoopPairs.get(); }
@@ -331,6 +333,10 @@ public:
 
     void dnsPrefetchingStateChanged();
     void storageBlockingStateChanged();
+
+#if ENABLE(RESOURCE_USAGE_OVERLAY)
+    void setResourceUsageOverlayVisible(bool);
+#endif
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -629,6 +635,10 @@ private:
     RefPtr<WheelEventTestTrigger> m_testTrigger;
 
     HashSet<ViewStateChangeObserver*> m_viewStateChangeObservers;
+
+#if ENABLE(RESOURCE_USAGE_OVERLAY)
+    std::unique_ptr<ResourceUsageOverlay> m_resourceUsageOverlay;
+#endif
 
     SessionID m_sessionID;
 

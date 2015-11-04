@@ -880,8 +880,12 @@ ALWAYS_INLINE bool JIT::isOperandConstantChar(int src)
 template<typename StructureType>
 inline void JIT::emitAllocateJSObject(RegisterID allocator, StructureType structure, RegisterID result, RegisterID scratch)
 {
-    loadPtr(Address(allocator, MarkedAllocator::offsetOfFreeListHead()), result);
-    addSlowCase(branchTestPtr(Zero, result));
+    if (Options::forceGCSlowPaths())
+        addSlowCase(jump());
+    else {
+        loadPtr(Address(allocator, MarkedAllocator::offsetOfFreeListHead()), result);
+        addSlowCase(branchTestPtr(Zero, result));
+    }
 
     // remove the object from the free list
     loadPtr(Address(result), scratch);
@@ -969,6 +973,11 @@ inline JITArrayMode JIT::chooseArrayMode(ArrayProfile* profile)
     if (arrayProfileSaw(arrayModes, ArrayStorageShape))
         return JITArrayStorage;
     return JITContiguous;
+}
+
+ALWAYS_INLINE int32_t JIT::getOperandConstantInt(int src)
+{
+    return getConstantOperand(src).asInt32();
 }
 
 #if USE(JSVALUE32_64)
@@ -1186,11 +1195,6 @@ ALWAYS_INLINE void JIT::emitGetVirtualRegisters(int src1, RegisterID dst1, int s
 ALWAYS_INLINE void JIT::emitGetVirtualRegisters(VirtualRegister src1, RegisterID dst1, VirtualRegister src2, RegisterID dst2)
 {
     emitGetVirtualRegisters(src1.offset(), dst1, src2.offset(), dst2);
-}
-
-ALWAYS_INLINE int32_t JIT::getOperandConstantInt(int src)
-{
-    return getConstantOperand(src).asInt32();
 }
 
 ALWAYS_INLINE bool JIT::isOperandConstantInt(int src)

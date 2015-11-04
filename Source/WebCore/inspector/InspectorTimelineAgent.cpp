@@ -35,23 +35,16 @@
 
 #include "Event.h"
 #include "Frame.h"
-#include "FrameView.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
-#include "IntRect.h"
 #include "JSDOMWindow.h"
-#include "MainFrame.h"
 #include "PageScriptDebugServer.h"
-#include "RenderElement.h"
 #include "RenderView.h"
-#include "ResourceRequest.h"
-#include "ResourceResponse.h"
 #include "ScriptState.h"
 #include "TimelineRecordFactory.h"
-#include <inspector/IdentifiersFactory.h>
 #include <inspector/ScriptBreakpoint.h>
 #include <profiler/LegacyProfiler.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/Stopwatch.h>
 
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecksIOS.h"
@@ -340,20 +333,7 @@ void InspectorTimelineAgent::didInvalidateLayout(Frame& frame)
 
 void InspectorTimelineAgent::willLayout(Frame& frame)
 {
-    auto* root = frame.view()->layoutRoot();
-    bool partialLayout = !!root;
-
-    if (!partialLayout)
-        root = frame.contentRenderer();
-
-    unsigned dirtyObjects = 0;
-    unsigned totalObjects = 0;
-    for (RenderObject* o = root; o; o = o->nextInPreOrder(root)) {
-        ++totalObjects;
-        if (o->needsLayout())
-            ++dirtyObjects;
-    }
-    pushCurrentRecord(TimelineRecordFactory::createLayoutData(dirtyObjects, totalObjects, partialLayout), TimelineRecordType::Layout, true, &frame);
+    pushCurrentRecord(InspectorObject::create(), TimelineRecordType::Layout, true, &frame);
 }
 
 void InspectorTimelineAgent::didLayout(RenderObject* root)
@@ -413,20 +393,6 @@ void InspectorTimelineAgent::didPaint(RenderObject* renderer, const LayoutRect& 
     localToPageQuad(*renderer, clipRect, &quad);
     entry.data = TimelineRecordFactory::createPaintData(quad);
     didCompleteCurrentRecord(TimelineRecordType::Paint);
-}
-
-void InspectorTimelineAgent::willWriteHTML(unsigned startLine, Frame* frame)
-{
-    pushCurrentRecord(TimelineRecordFactory::createParseHTMLData(startLine), TimelineRecordType::ParseHTML, true, frame);
-}
-
-void InspectorTimelineAgent::didWriteHTML(unsigned endLine)
-{
-    if (!m_recordStack.isEmpty()) {
-        const TimelineRecordEntry& entry = m_recordStack.last();
-        entry.data->setInteger("endLine", endLine);
-        didCompleteCurrentRecord(TimelineRecordType::ParseHTML);
-    }
 }
 
 void InspectorTimelineAgent::didInstallTimer(int timerId, int timeout, bool singleShot, Frame* frame)
@@ -521,28 +487,6 @@ void InspectorTimelineAgent::didFireAnimationFrame()
     didCompleteCurrentRecord(TimelineRecordType::FireAnimationFrame);
 }
 
-#if ENABLE(WEB_SOCKETS)
-void InspectorTimelineAgent::didCreateWebSocket(unsigned long identifier, const URL& url, const String& protocol, Frame* frame)
-{
-    appendRecord(TimelineRecordFactory::createWebSocketCreateData(identifier, url, protocol), TimelineRecordType::WebSocketCreate, true, frame);
-}
-
-void InspectorTimelineAgent::willSendWebSocketHandshakeRequest(unsigned long identifier, Frame* frame)
-{
-    appendRecord(TimelineRecordFactory::createGenericWebSocketData(identifier), TimelineRecordType::WebSocketSendHandshakeRequest, true, frame);
-}
-
-void InspectorTimelineAgent::didReceiveWebSocketHandshakeResponse(unsigned long identifier, Frame* frame)
-{
-    appendRecord(TimelineRecordFactory::createGenericWebSocketData(identifier), TimelineRecordType::WebSocketReceiveHandshakeResponse, false, frame);
-}
-
-void InspectorTimelineAgent::didDestroyWebSocket(unsigned long identifier, Frame* frame)
-{
-    appendRecord(TimelineRecordFactory::createGenericWebSocketData(identifier), TimelineRecordType::WebSocketDestroy, true, frame);
-}
-#endif // ENABLE(WEB_SOCKETS)
-
 // ScriptDebugListener
 
 void InspectorTimelineAgent::breakpointActionProbe(JSC::ExecState* exec, const Inspector::ScriptBreakpointAction& action, unsigned batchId, unsigned sampleId, const Deprecated::ScriptValue&)
@@ -572,9 +516,6 @@ static Inspector::Protocol::Timeline::EventType toProtocol(TimelineRecordType ty
         return Inspector::Protocol::Timeline::EventType::Composite;
     case TimelineRecordType::RenderingFrame:
         return Inspector::Protocol::Timeline::EventType::RenderingFrame;
-
-    case TimelineRecordType::ParseHTML:
-        return Inspector::Protocol::Timeline::EventType::ParseHTML;
 
     case TimelineRecordType::TimerInstall:
         return Inspector::Protocol::Timeline::EventType::TimerInstall;
@@ -606,15 +547,6 @@ static Inspector::Protocol::Timeline::EventType toProtocol(TimelineRecordType ty
         return Inspector::Protocol::Timeline::EventType::CancelAnimationFrame;
     case TimelineRecordType::FireAnimationFrame:
         return Inspector::Protocol::Timeline::EventType::FireAnimationFrame;
-
-    case TimelineRecordType::WebSocketCreate:
-        return Inspector::Protocol::Timeline::EventType::WebSocketCreate;
-    case TimelineRecordType::WebSocketSendHandshakeRequest:
-        return Inspector::Protocol::Timeline::EventType::WebSocketSendHandshakeRequest;
-    case TimelineRecordType::WebSocketReceiveHandshakeResponse:
-        return Inspector::Protocol::Timeline::EventType::WebSocketReceiveHandshakeResponse;
-    case TimelineRecordType::WebSocketDestroy:
-        return Inspector::Protocol::Timeline::EventType::WebSocketDestroy;
     }
 
     return Inspector::Protocol::Timeline::EventType::TimeStamp;

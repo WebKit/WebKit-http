@@ -52,7 +52,7 @@ DOMWindow* domWindowFromExecState(JSC::ExecState* scriptState)
     JSC::JSGlobalObject* globalObject = scriptState->lexicalGlobalObject();
     if (!globalObject->inherits(JSDOMWindowBase::info()))
         return nullptr;
-    return &JSC::jsCast<JSDOMWindowBase*>(globalObject)->impl();
+    return &JSC::jsCast<JSDOMWindowBase*>(globalObject)->wrapped();
 }
 
 Frame* frameFromExecState(JSC::ExecState* scriptState)
@@ -92,7 +92,7 @@ JSC::ExecState* execStateFromNode(DOMWrapperWorld& world, Node* node)
 
 JSC::ExecState* execStateFromPage(DOMWrapperWorld& world, Page* page)
 {
-    return page->mainFrame().script().globalObject(world)->globalExec();
+    return page ? page->mainFrame().script().globalObject(world)->globalExec() : nullptr;
 }
 
 JSC::ExecState* execStateFromWorkerGlobalScope(WorkerGlobalScope* workerGlobalScope)
