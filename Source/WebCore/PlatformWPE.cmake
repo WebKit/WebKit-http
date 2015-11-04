@@ -58,6 +58,7 @@ list(APPEND WebCore_SOURCES
     page/scrolling/ScrollingTreeScrollingNode.cpp
 
     platform/Cursor.cpp
+    platform/KillRingNone.cpp
     platform/PlatformStrategies.cpp
     platform/Theme.cpp
 
@@ -199,6 +200,7 @@ list(APPEND WebCore_SOURCES
     platform/text/icu/UTextProviderLatin1.cpp
     platform/text/icu/UTextProviderUTF16.cpp
 
+    platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
@@ -227,6 +229,7 @@ list(APPEND WebCore_SOURCES
     platform/wpe/LoggingWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
     platform/wpe/MIMETypeRegistryWPE.cpp
+    platform/wpe/MainThreadSharedTimerWPE.cpp
     platform/wpe/PasteboardWPE.cpp
     platform/wpe/PlatformKeyboardEventWPE.cpp
     platform/wpe/PlatformScreenWPE.cpp

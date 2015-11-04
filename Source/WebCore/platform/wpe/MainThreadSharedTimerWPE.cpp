@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006 Michael Emmel mike.emmel@gmail.com
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,41 +25,32 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MainThreadSharedTimer_h
-#define MainThreadSharedTimer_h
+#include "config.h"
+#include "MainThreadSharedTimer.h"
 
-#include "SharedTimer.h"
-#include <wtf/NeverDestroyed.h>
-
-#if PLATFORM(GTK) || PLATFORM(WPE)
-#include <wtf/RunLoop.h>
-#endif
+#include <glib.h>
 
 namespace WebCore {
 
-class MainThreadSharedTimer final : public SharedTimer {
-    friend class WTF::NeverDestroyed<MainThreadSharedTimer>;
-public:
-    static MainThreadSharedTimer& singleton();
+MainThreadSharedTimer::MainThreadSharedTimer()
+    : m_timer(RunLoop::main(), this, &MainThreadSharedTimer::fired)
+{
+    m_timer.setPriority(G_PRIORITY_HIGH + 30);
+}
 
-    void setFiredFunction(std::function<void()>&&) override;
-    void setFireInterval(double) override;
-    void stop() override;
-    void invalidate() override;
+void MainThreadSharedTimer::setFireInterval(double interval)
+{
+    ASSERT(m_firedFunction);
+    m_timer.startOneShot(interval);
+}
 
-    // FIXME: This should be private, but CF and Windows implementations
-    // need to call this from non-member functions at the moment.
-    void fired();
+void MainThreadSharedTimer::stop()
+{
+    m_timer.stop();
+}
 
-private:
-    MainThreadSharedTimer();
+void MainThreadSharedTimer::invalidate()
+{
+}
 
-    std::function<void()> m_firedFunction;
-#if PLATFORM(GTK) || PLATFORM(WPE)
-    RunLoop::Timer<MainThreadSharedTimer> m_timer;
-#endif
-};
-
-} // namespace WebCore
-
-#endif // MainThreadSharedTimer
+}
