@@ -34,13 +34,11 @@
 #include <wtf/RefCounted.h>
 #include <wtf/Threading.h>
 
-#if OS(DARWIN) && !PLATFORM(GTK)
+#if OS(DARWIN)
 #include <dispatch/dispatch.h>
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-#include <wtf/Condition.h>
-#include <wtf/RunLoop.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GSourceWrap.h>
 #elif PLATFORM(EFL)
@@ -75,13 +73,14 @@ public:
 
     WTF_EXPORT_PRIVATE static void concurrentApply(size_t iterations, const std::function<void (size_t index)>&);
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
-    RunLoop& runLoop() const { return *m_runLoop; }
+#if OS(DARWIN)
+    dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
+#elif PLATFORM(GTK) || PLATFORM(WPE)
+    void registerSocketEventHandler(int, std::function<void ()>, std::function<void ()>);
+    void unregisterSocketEventHandler(int);
 #elif PLATFORM(EFL)
     void registerSocketEventHandler(int, std::function<void ()>);
     void unregisterSocketEventHandler(int);
-#elif OS(DARWIN)
-    dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
 #endif
 
 private:
@@ -103,18 +102,17 @@ private:
     static DWORD WINAPI unregisterWaitAndDestroyItemCallback(void* context);
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
-    ThreadIdentifier m_workQueueThread;
-    Lock m_initializeRunLoopConditionMutex;
-    Condition m_initializeRunLoopCondition;
-    RunLoop* m_runLoop;
-    Lock m_terminateRunLoopConditionMutex;
-    Condition m_terminateRunLoopCondition;
-#elif PLATFORM(EFL)
-    RefPtr<DispatchQueue> m_dispatchQueue;
-#elif OS(DARWIN)
+#if OS(DARWIN)
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
+#elif PLATFORM(GTK) || PLATFORM(WPE)
+    ThreadIdentifier m_workQueueThread;
+    GRefPtr<GMainContext> m_eventContext;
+    GRefPtr<GMainLoop> m_eventLoop;
+    GSourceWrap::Socket m_socketEventSource;
+    GSourceWrap::Queue m_dispatchQueue;
+#elif PLATFORM(EFL)
+    RefPtr<DispatchQueue> m_dispatchQueue;
 #elif OS(WINDOWS)
     volatile LONG m_isWorkThreadRegistered;
 
