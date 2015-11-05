@@ -58,6 +58,9 @@ public:
     virtual uint32_t createBCMNexusElement(int32_t, int32_t);
     virtual void commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t);
 
+    virtual uint32_t createIntelCEElement(int32_t, int32_t);
+    virtual void commitIntelCEBuffer(uint32_t, uint32_t, uint32_t);
+
     virtual void setInputClient(Input::Client*);
 };
 

@@ -79,6 +79,11 @@ private:
     void commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t);
 #endif
 
+#if PLATFORM(INTEL_CE)
+    void createIntelCEElement(int32_t, int32_t, uint32_t&);
+    void commitIntelCEBuffer(uint32_t, uint32_t, uint32_t);
+#endif
+
     // WPE::ViewBackend::Client
     void releaseBuffer(uint32_t) override;
     void frameComplete() override;

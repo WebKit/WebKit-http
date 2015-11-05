@@ -102,6 +102,23 @@ void CompositingManager::commitBCMNexusBuffer(const WebCore::PlatformDisplayBCMN
 }
 #endif
 
+#if PLATFORM(INTEL_CE)
+uint32_t CompositingManager::createIntelCEElement(int32_t width, int32_t height)
+{
+    uint32_t handle = 0;
+    m_connection->sendSync(Messages::CompositingManagerProxy::CreateIntelCEElement(width, height), Messages::CompositingManagerProxy::CreateIntelCEElement::Reply(handle), 0);
+    return handle;
+}
+
+void CompositingManager::commitIntelCEBuffer(const WebCore::PlatformDisplayIntelCE::BufferExport& bufferExport)
+{
+    m_connection->send(Messages::CompositingManagerProxy::CommitIntelCEBuffer(
+        std::get<0>(bufferExport),
+        std::get<1>(bufferExport),
+        std::get<2>(bufferExport)), 0);
+}
+#endif
+
 void CompositingManager::releaseBuffer(uint32_t handle)
 {
     m_client.releaseBuffer(handle);

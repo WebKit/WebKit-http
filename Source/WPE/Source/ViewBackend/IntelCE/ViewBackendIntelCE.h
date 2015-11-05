@@ -39,11 +39,8 @@ public:
 
     void setClient(Client*) override;
 
-// FIXME: remove/replace.
-#if 0
-    uint32_t createBCMElement(int32_t width, int32_t height);
-    void commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
-#endif
+    uint32_t createIntelCEElement(int32_t width, int32_t height);
+    void commitIntelCEBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
 
     void setInputClient(Input::Client*) override;
 

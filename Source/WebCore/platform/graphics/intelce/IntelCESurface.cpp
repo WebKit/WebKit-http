@@ -38,9 +38,8 @@
 
 namespace WebCore {
 
-IntelCESurface::IntelCESurface(const IntSize& size, uint32_t elementHandle)
+IntelCESurface::IntelCESurface(const IntSize&, uint32_t)
 {
-    // FIXME: implement.
 }
 
 std::unique_ptr<GLContext> IntelCESurface::createGLContext()
@@ -48,20 +47,17 @@ std::unique_ptr<GLContext> IntelCESurface::createGLContext()
     return GLContextEGL::createWindowContext((EGLNativeWindowType)0x07 /* GDL_PLANE_ID_UPP_C */, GLContext::sharingContext());
 }
 
-void IntelCESurface::resize(const IntSize& size)
+void IntelCESurface::resize(const IntSize&)
 {
-    // FIXME: implement.
 }
 
 IntelCESurface::BufferExport IntelCESurface::lockFrontBuffer()
 {
-    // FIXME: implement.
-    return BufferExport{ m_nativeWindow.element, m_nativeWindow.width, m_nativeWindow.height };
+    return BufferExport{ 0, 1280, 720 };
 }
 
 void IntelCESurface::releaseBuffer(uint32_t)
 {
-    // FIXME: implement.
 }
 
 } // namespace WebCore

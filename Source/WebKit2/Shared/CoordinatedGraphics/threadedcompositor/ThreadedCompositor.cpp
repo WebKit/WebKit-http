@@ -293,6 +293,19 @@ GLContext* ThreadedCompositor::glContext()
     m_context = m_surface->createGLContext();
 #endif
 
+#if PLATFORM(INTEL_CE)
+    RELEASE_ASSERT(is<PlatformDisplayIntelCE>(PlatformDisplay::sharedDisplay()));
+
+    IntSize size(viewportController()->visibleContentsRect().size());
+    m_surface = downcast<PlatformDisplayIntelCE>(PlatformDisplay::sharedDisplay()).createSurface(size,
+        m_compositingManager.createIntelCEElement(size.width(), size.height()));
+    if (!m_surface)
+        return nullptr;
+
+    setNativeSurfaceHandleForCompositing(0);
+    m_context = m_surface->createGLContext();
+#endif
+
     return m_context.get();
 }
 
@@ -343,6 +356,11 @@ void ThreadedCompositor::renderLayerTree()
 #if PLATFORM(BCM_NEXUS)
     auto bufferExport = m_surface->lockFrontBuffer();
     m_compositingManager.commitBCMNexusBuffer(bufferExport);
+#endif
+
+#if PLATFORM(INTEL_CE)
+    auto bufferExport = m_surface->lockFrontBuffer();
+    m_compositingManager.commitIntelCEBuffer(bufferExport);
 #endif
 
     glContext()->swapBuffers();

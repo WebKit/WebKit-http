@@ -41,6 +41,10 @@
 #include <WebCore/PlatformDisplayBCMNexus.h>
 #endif
 
+#if PLATFORM(INTEL_CE)
+#include <WebCore/PlatformDisplayIntelCE.h>
+#endif
+
 namespace WebKit {
 
 class WebPage;
@@ -71,6 +75,11 @@ public:
 #if PLATFORM(BCM_NEXUS)
     uint32_t createBCMNexusElement(int32_t width, int32_t height);
     void commitBCMNexusBuffer(const WebCore::PlatformDisplayBCMNexus::BufferExport&);
+#endif
+
+#if PLATFORM(INTEL_CE)
+    uint32_t createIntelCEElement(int32_t width, int32_t height);
+    void commitIntelCEBuffer(const WebCore::PlatformDisplayIntelCE::BufferExport&);
 #endif
 
     CompositingManager(const CompositingManager&) = delete;

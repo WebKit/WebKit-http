@@ -98,8 +98,8 @@ namespace WPE {
 namespace ViewBackend {
 
 ViewBackendIntelCE::ViewBackendIntelCE()
-    : m_width(0)
-    , m_height(0)
+    : m_width(WIDTH)
+    , m_height(HEIGHT)
 {
     gdl_plane_id_t plane = GDL_PLANE_ID_UPP_C;
     gdl_init(0);
@@ -118,19 +118,16 @@ void ViewBackendIntelCE::setClient(Client* client)
         m_client->setSize(m_width, m_height);
 }
 
-// FIXME: replace.
-#if 0
-uint32_t ViewBackendIntelCE::createBCMElement(int32_t width, int32_t height)
+uint32_t ViewBackendIntelCE::createIntelCEElement(int32_t width, int32_t height)
 {
     return 0;
 }
 
-void ViewBackendIntelCE::commitBCMBuffer(uint32_t elementHandle, uint32_t width, uint32_t height)
+void ViewBackendIntelCE::commitIntelCEBuffer(uint32_t elementHandle, uint32_t width, uint32_t height)
 {
     if (m_client)
         m_client->frameComplete();
 }
-#endif
 
 void ViewBackendIntelCE::setInputClient(Input::Client* client)
 {

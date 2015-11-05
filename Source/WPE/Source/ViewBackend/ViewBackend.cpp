@@ -30,6 +30,7 @@
 #include "ViewBackendDRM.h"
 #include "ViewBackendNEXUS.h"
 #include "ViewBackendWayland.h"
+#include "ViewBackendIntelCE.h"
 #include <cstring>
 #include <cstdlib>
 
@@ -59,6 +60,11 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 #if WPE_BACKEND(BCM_NEXUS)
     if (!backendEnv || !std::strcmp(backendEnv, "nexus"))
         return std::unique_ptr<ViewBackendNexus>(new ViewBackendNexus);
+#endif
+
+#if WPE_BACKEND(INTEL_CE)
+    if (!backendEnv || !std::strcmp(backendEnv, "intelce"))
+        return std::unique_ptr<ViewBackendIntelCE>(new ViewBackendIntelCE);
 #endif
 
     return nullptr;
@@ -91,6 +97,15 @@ uint32_t ViewBackend::createBCMNexusElement(int32_t, int32_t)
 }
 
 void ViewBackend::commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t)
+{
+}
+
+uint32_t ViewBackend::createIntelCEElement(int32_t, int32_t)
+{
+    return 0;
+}
+
+void ViewBackend::commitIntelCEBuffer(uint32_t, uint32_t, uint32_t)
 {
 }
 
