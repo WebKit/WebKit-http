@@ -43,7 +43,7 @@
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
 
-#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
+#if OS(DARWIN)
 #include <mach/mach_port.h>
 #include <wtf/OSObjectPtr.h>
 #include <wtf/spi/darwin/XPCSPI.h>
@@ -51,10 +51,6 @@
 
 #if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
 #include "PlatformProcessIdentifier.h"
-#endif
-
-#if PLATFORM(GTK)
-#include "GSocketMonitor.h"
 #endif
 
 namespace IPC {
@@ -105,22 +101,7 @@ public:
     class WorkQueueMessageReceiver : public MessageReceiver, public ThreadSafeRefCounted<WorkQueueMessageReceiver> {
     };
 
-#if USE(UNIX_DOMAIN_SOCKETS)
-    typedef int Identifier;
-    static bool identifierIsNull(Identifier identifier) { return identifier == -1; }
-
-    struct SocketPair {
-        int client;
-        int server;
-    };
-
-    enum ConnectionOptions {
-        SetCloexecOnClient = 1 << 0,
-        SetCloexecOnServer = 1 << 1,
-    };
-
-    static Connection::SocketPair createPlatformConnection(unsigned options = SetCloexecOnClient | SetCloexecOnServer);
-#elif OS(DARWIN)
+#if OS(DARWIN)
     struct Identifier {
         Identifier()
             : port(MACH_PORT_NULL)
@@ -145,6 +126,21 @@ public:
     xpc_connection_t xpcConnection() const { return m_xpcConnection.get(); }
     bool getAuditToken(audit_token_t&);
     pid_t remoteProcessID() const;
+#elif USE(UNIX_DOMAIN_SOCKETS)
+    typedef int Identifier;
+    static bool identifierIsNull(Identifier identifier) { return identifier == -1; }
+
+    struct SocketPair {
+        int client;
+        int server;
+    };
+
+    enum ConnectionOptions {
+        SetCloexecOnClient = 1 << 0,
+        SetCloexecOnServer = 1 << 1,
+    };
+
+    static Connection::SocketPair createPlatformConnection(unsigned options = SetCloexecOnClient | SetCloexecOnServer);
 #endif
 
     static Ref<Connection> createServerConnection(Identifier, Client&, WTF::RunLoop& clientRunLoop = RunLoop::main());
@@ -329,20 +325,7 @@ private:
     bool m_shouldBoostMainThreadOnSyncMessage { false };
 #endif
 
-#if USE(UNIX_DOMAIN_SOCKETS)
-    // Called on the connection queue.
-    void readyReadHandler();
-    bool processMessage();
-
-    Vector<uint8_t> m_readBuffer;
-    size_t m_readBufferSize;
-    Vector<int> m_fileDescriptors;
-    size_t m_fileDescriptorsSize;
-    int m_socketDescriptor;
-#if PLATFORM(GTK)
-    GSocketMonitor m_socketMonitor;
-#endif
-#elif OS(DARWIN)
+#if OS(DARWIN)
     // Called on the connection queue.
     void receiveSourceEventHandler();
     void initializeDeadNameSource();
@@ -363,6 +346,17 @@ private:
 #endif
 
     OSObjectPtr<xpc_connection_t> m_xpcConnection;
+
+#elif USE(UNIX_DOMAIN_SOCKETS)
+    // Called on the connection queue.
+    void readyReadHandler();
+    bool processMessage();
+
+    Vector<uint8_t> m_readBuffer;
+    size_t m_readBufferSize;
+    Vector<int> m_fileDescriptors;
+    size_t m_fileDescriptorsSize;
+    int m_socketDescriptor;
 #endif
 };
 
