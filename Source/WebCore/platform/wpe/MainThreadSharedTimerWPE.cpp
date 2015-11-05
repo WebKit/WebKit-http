@@ -28,25 +28,24 @@
 #include "config.h"
 #include "MainThreadSharedTimer.h"
 
-#include <glib.h>
+#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 
-MainThreadSharedTimer::MainThreadSharedTimer()
-    : m_timer(RunLoop::main(), this, &MainThreadSharedTimer::fired)
-{
-    m_timer.setPriority(G_PRIORITY_HIGH + 30);
-}
+static GSourceWrap::Static s_timer("[WebKit] MainThreadSharedTimer", [] { MainThreadSharedTimer::singleton().fired(); });
 
 void MainThreadSharedTimer::setFireInterval(double interval)
 {
-    ASSERT(m_firedFunction);
-    m_timer.startOneShot(interval);
+    auto intervalDuration = std::chrono::duration<double>(interval);
+    auto useconds = std::chrono::microseconds::max();
+    if (intervalDuration < useconds)
+        useconds = std::chrono::duration_cast<std::chrono::microseconds>(intervalDuration);
+    s_timer.schedule(useconds);
 }
 
 void MainThreadSharedTimer::stop()
 {
-    m_timer.stop();
+    s_timer.cancel();
 }
 
 void MainThreadSharedTimer::invalidate()

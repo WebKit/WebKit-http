@@ -34,7 +34,7 @@ MainThreadSharedTimer& MainThreadSharedTimer::singleton()
     return instance;
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(WPE)
+#if !PLATFORM(GTK)
 MainThreadSharedTimer::MainThreadSharedTimer()
 {
 }

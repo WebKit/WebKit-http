@@ -30,7 +30,7 @@
 #include "SharedTimer.h"
 #include <wtf/NeverDestroyed.h>
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK)
 #include <wtf/RunLoop.h>
 #endif
 
@@ -54,7 +54,7 @@ private:
     MainThreadSharedTimer();
 
     std::function<void()> m_firedFunction;
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK)
     RunLoop::Timer<MainThreadSharedTimer> m_timer;
 #endif
 };
