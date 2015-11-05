@@ -2580,7 +2580,14 @@ class YarrGenerator : private MacroAssembler {
         push(SH4Registers::r11);
         push(SH4Registers::r13);
 #elif CPU(MIPS)
-        // Do nothing.
+        m_assembler.addiu(stackPointerRegister, stackPointerRegister, -8);
+        m_assembler.sw(returnAddressRegister, stackPointerRegister, 4);
+        m_assembler.sw(framePointerRegister, stackPointerRegister, 0);
+        move(stackPointerRegister, framePointerRegister);
+        // the Macroassembler might use the cmpTempRegister which is a callee
+        // saved register, so we need to save it
+        m_assembler.addiu(stackPointerRegister, stackPointerRegister, -4);
+        m_assembler.sw(cmpTempRegister, stackPointerRegister, 0);
 #endif
     }
 
@@ -2608,7 +2615,11 @@ class YarrGenerator : private MacroAssembler {
         pop(SH4Registers::r13);
         pop(SH4Registers::r11);
 #elif CPU(MIPS)
-        // Do nothing
+        move(framePointerRegister, stackPointerRegister);
+        m_assembler.lw(cmpTempRegister, stackPointerRegister, -4);
+        m_assembler.lw(framePointerRegister, stackPointerRegister, 0);
+        m_assembler.lw(returnAddressRegister, stackPointerRegister, 4);
+        m_assembler.addiu(stackPointerRegister, stackPointerRegister, 8);
 #endif
         ret();
     }
