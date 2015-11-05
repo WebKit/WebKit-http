@@ -232,7 +232,7 @@ private:
     GSourceWrap::Static m_textTimerHandler;
     GSourceWrap::Static m_videoTimerHandler;
     GSourceWrap::Static m_videoCapsTimerHandler;
-    RunLoop::Timer<MediaPlayerPrivateGStreamer> m_readyTimerHandler;
+    GSourceWrap::Static m_readyTimerHandler;
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
