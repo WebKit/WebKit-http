@@ -139,6 +139,41 @@ void LibinputServer::processEvents()
 
             m_client->handlePointerEvent({ Input::PointerEvent::Motion, libinput_event_pointer_get_time(pointerEvent),
                 m_pointerCoords.first, m_pointerCoords.second, 0, 0 });
+            break;
+        }
+        case LIBINPUT_EVENT_POINTER_BUTTON:
+        {
+            auto* pointerEvent = libinput_event_get_pointer_event(event);
+            m_client->handlePointerEvent({ Input::PointerEvent::Button, libinput_event_pointer_get_time(pointerEvent),
+                m_pointerCoords.first, m_pointerCoords.second,
+                libinput_event_pointer_get_button(pointerEvent), libinput_event_pointer_get_button_state(pointerEvent) });
+            break;
+        }
+        case LIBINPUT_EVENT_POINTER_AXIS:
+        {
+            auto* pointerEvent = libinput_event_get_pointer_event(event);
+
+            // Support only wheel events for now.
+            if (libinput_event_pointer_get_axis_source(pointerEvent) != LIBINPUT_POINTER_AXIS_SOURCE_WHEEL)
+                break;
+
+            if (libinput_event_pointer_has_axis(pointerEvent, LIBINPUT_POINTER_AXIS_SCROLL_VERTICAL)) {
+                auto axis = LIBINPUT_POINTER_AXIS_SCROLL_VERTICAL;
+                int32_t axisValue = libinput_event_pointer_get_axis_value(pointerEvent, axis);
+                m_client->handleAxisEvent({ Input::AxisEvent::Motion, libinput_event_pointer_get_time(pointerEvent),
+                    m_pointerCoords.first, m_pointerCoords.second,
+                    axis, -axisValue });
+            }
+
+            if (libinput_event_pointer_has_axis(pointerEvent, LIBINPUT_POINTER_AXIS_SCROLL_HORIZONTAL)) {
+                auto axis = LIBINPUT_POINTER_AXIS_SCROLL_HORIZONTAL;
+                int32_t axisValue = libinput_event_pointer_get_axis_value(pointerEvent, axis);
+                m_client->handleAxisEvent({ Input::AxisEvent::Motion, libinput_event_pointer_get_time(pointerEvent),
+                    m_pointerCoords.first, m_pointerCoords.second,
+                    axis, axisValue });
+            }
+
+            break;
         }
         default:
             break;
