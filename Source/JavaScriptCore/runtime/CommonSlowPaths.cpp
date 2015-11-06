@@ -386,7 +386,14 @@ SLOW_PATH_DECL(slow_path_sub)
     BEGIN();
     double a = OP_C(2).jsValue().toNumber(exec);
     double b = OP_C(3).jsValue().toNumber(exec);
+
+#if CPU(MIPS) && defined(__GLIBC__)
+    // on MIPS, the GLIBC version of the softfp double substraction sometimes
+    // returns impure NaNs
+    RETURN(jsNumber(purifyNaN(a - b)));
+#else
     RETURN(jsNumber(a - b));
+#endif
 }
 
 SLOW_PATH_DECL(slow_path_div)
