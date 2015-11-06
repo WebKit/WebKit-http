@@ -1168,7 +1168,7 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
 
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
-        m_playerPrivate->handleElementMessage(message);
+        m_playerPrivate->handleSyncMessage(message);
 }
 
 gint AppendPipeline::id()

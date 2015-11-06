@@ -148,6 +148,8 @@ public:
 
     bool isLiveStream() const override { return m_isStreaming; }
 
+    bool handleSyncMessage(GstMessage*) override;
+
 private:
     static void getSupportedTypes(HashSet<String>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
@@ -183,8 +185,6 @@ private:
     String engineDescription() const override { return "GStreamer"; }
     bool didPassCORSAccessCheck() const override;
     bool canSaveMediaData() const override;
-
-    bool handleSyncMessage(GstMessage*) override;
 
 protected:
     void cacheDuration();
