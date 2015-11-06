@@ -74,6 +74,7 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
+    platform/KillRingNone.cpp
     platform/PlatformStrategies.cpp
 
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
@@ -161,8 +162,8 @@ list(APPEND WebCore_SOURCES
     platform/gtk/LanguageGtk.cpp
     platform/gtk/LoggingGtk.cpp
     platform/gtk/MIMETypeRegistryGtk.cpp
+    platform/gtk/MainThreadSharedTimerGtk.cpp
     platform/gtk/SharedBufferGtk.cpp
-    platform/gtk/SharedTimerGtk.cpp
     platform/gtk/TemporaryLinkStubs.cpp
     platform/gtk/UserAgentGtk.cpp
 
@@ -214,6 +215,7 @@ list(APPEND WebCore_SOURCES
     platform/soup/SharedBufferSoup.cpp
     platform/soup/URLSoup.cpp
 
+    platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
 
     platform/text/enchant/TextCheckerEnchant.cpp

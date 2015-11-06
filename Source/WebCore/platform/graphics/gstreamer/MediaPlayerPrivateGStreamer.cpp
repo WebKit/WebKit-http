@@ -66,28 +66,12 @@
 #include "AudioSourceProviderGStreamer.h"
 #endif
 
-#include <wtf/MainThread.h>
-
-// Max interval in seconds to stay in the READY state on manual
-// state change requests.
-static const unsigned gReadyStateTimerInterval = 60;
-
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
 using namespace std;
 
 namespace WebCore {
-
-static gboolean mediaPlayerPrivateMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
-{
-    return player->handleMessage(message);
-}
-
-static void mediaPlayerPrivateSyncMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamer* player)
-{
-    player->handleSyncMessage(message);
-}
 
 static void mediaPlayerPrivateSourceChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
 {
@@ -184,6 +168,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_buffering(false)
     , m_bufferingPercentage(0)
     , m_cachedPosition(-1)
+    , m_weakPtrFactory(this)
     , m_changingRate(false)
     , m_downloadFinished(false)
     , m_errorOccured(false)
@@ -270,9 +255,7 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateMessageCallback), this);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateSyncMessageCallback), this);
-        gst_bus_remove_signal_watch(bus.get());
+        gst_bus_set_sync_handler(bus.get(), nullptr, nullptr, nullptr);
 
         g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateSourceChangedCallback), this);
         g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoChangedCallback), this);
@@ -435,10 +418,12 @@ bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
     // Also lets remove the timer if we request a state change for any state other than READY.
     // See also https://bugs.webkit.org/show_bug.cgi?id=117354
     if (newState == GST_STATE_READY && !m_readyTimerHandler.isScheduled()) {
-        m_readyTimerHandler.schedule(std::chrono::seconds(gReadyStateTimerInterval));
-    } else if (newState != GST_STATE_READY && m_readyTimerHandler.isScheduled()) {
+        // Max interval in seconds to stay in the READY state on manual
+        // state change requests.
+        static const unsigned readyStateTimerDelay = 60;
+        m_readyTimerHandler.schedule(std::chrono::seconds(readyStateTimerDelay));
+    } else if (newState != GST_STATE_READY)
         m_readyTimerHandler.cancel();
-    }
 
     return true;
 }
@@ -991,23 +976,7 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamer::buffered() cons
     return timeRanges;
 }
 
-void MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
-{
-    switch (GST_MESSAGE_TYPE(message)) {
-        case GST_MESSAGE_DURATION_CHANGED:
-        {
-            m_pendingAsyncOperationsLock.lock();
-            guint asyncOperationId = g_timeout_add(0, (GSourceFunc)mediaPlayerPrivateNotifyDurationChanged, this);
-            m_pendingAsyncOperations = g_list_append(m_pendingAsyncOperations, GUINT_TO_POINTER(asyncOperationId));
-            m_pendingAsyncOperationsLock.unlock();
-            break;
-        }
-        default:
-            break;
-    }
-}
-
-gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
+void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 {
     GUniqueOutPtr<GError> err;
     GUniqueOutPtr<gchar> debug;
@@ -1026,7 +995,7 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         // notify of the new location(s) of the media.
         if (!g_strcmp0(messageTypeName, "redirect")) {
             mediaLocationChanged(message);
-            return TRUE;
+            return;
         }
     }
 
@@ -1195,7 +1164,7 @@ gboolean MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                     GST_MESSAGE_TYPE_NAME(message));
         break;
     }
-    return TRUE;
+    return;
 }
 
 void MediaPlayerPrivateGStreamer::processBufferingStats(GstMessage* message)
@@ -2103,11 +2072,24 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_object_set(m_pipeline.get(), "flags", flagText | flagAudio | flagVideo | flagNativeVideo, nullptr);
 
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
-    gst_bus_add_signal_watch(bus.get());
-    g_signal_connect(bus.get(), "message", G_CALLBACK(mediaPlayerPrivateMessageCallback), this);
+    gst_bus_set_sync_handler(bus.get(), [](GstBus*, GstMessage* message, gpointer userData) {
+        auto& player = *static_cast<MediaPlayerPrivateGStreamer*>(userData);
 
-    gst_bus_enable_sync_message_emission(bus.get());
-    g_signal_connect(bus.get(), "sync-message", G_CALLBACK(mediaPlayerPrivateSyncMessageCallback), this);
+        if (!player.handleSyncMessage(message)) {
+            if (isMainThread())
+                player.handleMessage(message);
+            else {
+                GRefPtr<GstMessage> protectMessage(message);
+                auto weakThis = player.createWeakPtr();
+                RunLoop::main().dispatch([weakThis, protectMessage] {
+                    if (weakThis)
+                        weakThis->handleMessage(protectMessage.get());
+                });
+            }
+        }
+        gst_message_unref(message);
+        return GST_BUS_DROP;
+    }, this, nullptr);
 
     g_object_set(m_pipeline.get(), "mute", m_player->muted(), nullptr);
 
@@ -2191,6 +2173,19 @@ bool MediaPlayerPrivateGStreamer::canSaveMediaData() const
         return true;
 
     return false;
+}
+
+bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
+{
+    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_DURATION_CHANGED) {
+        m_pendingAsyncOperationsLock.lock();
+        guint asyncOperationId = g_timeout_add(0, (GSourceFunc)mediaPlayerPrivateNotifyDurationChanged, this);
+        m_pendingAsyncOperations = g_list_append(m_pendingAsyncOperations, GUINT_TO_POINTER(asyncOperationId));
+        m_pendingAsyncOperationsLock.unlock();
+        return true;
+    }
+
+    return MediaPlayerPrivateGStreamerBase::handleSyncMessage(message);
 }
 
 }

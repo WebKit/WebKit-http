@@ -75,6 +75,10 @@
 #include "MediaPlayerPrivateMediaSourceAVFObjC.h"
 #endif
 
+#if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
+#include "MediaPlayerPrivateMediaStreamAVFObjC.h"
+#endif
+
 #endif // PLATFORM(COCOA)
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION) && !USE(GSTREAMER)
@@ -194,6 +198,10 @@ static void buildMediaEnginesVector()
 
 #if ENABLE(MEDIA_SOURCE)
         MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+        MediaPlayerPrivateMediaStreamAVFObjC::registerMediaEngine(addMediaEngine);
 #endif
 
 #if PLATFORM(WIN)
@@ -871,8 +879,11 @@ MediaPlayer::SupportsType MediaPlayer::supportsType(const MediaEngineSupportPara
 
 void MediaPlayer::getSupportedTypes(HashSet<String>& types)
 {
-    for (auto& engine : installedMediaEngines())
-        engine.getSupportedTypes(types);
+    for (auto& engine : installedMediaEngines()) {
+        HashSet<String> engineTypes;
+        engine.getSupportedTypes(engineTypes);
+        types.add(engineTypes.begin(), engineTypes.end());
+    }
 } 
 
 bool MediaPlayer::isAvailable()
@@ -1339,6 +1350,11 @@ unsigned long long MediaPlayer::fileSize() const
         return 0;
     
     return m_private->fileSize();
+}
+
+bool MediaPlayer::ended() const
+{
+    return m_private->ended();
 }
 
 #if ENABLE(MEDIA_SOURCE)

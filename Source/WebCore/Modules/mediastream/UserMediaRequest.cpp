@@ -47,8 +47,6 @@
 #include "MediaConstraintsImpl.h"
 #include "MediaStream.h"
 #include "MediaStreamPrivate.h"
-#include "NavigatorUserMediaErrorCallback.h"
-#include "NavigatorUserMediaSuccessCallback.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "SecurityOrigin.h"
 #include "UserMediaController.h"
@@ -167,12 +165,16 @@ void UserMediaRequest::didCreateStream(PassRefPtr<MediaStreamPrivate> privateStr
     // 4 - Create the MediaStream and pass it to the success callback.
     RefPtr<MediaStream> stream = MediaStream::create(*m_scriptExecutionContext, privateStream);
     if (m_audioConstraints) {
-        for (auto& track : stream->getAudioTracks())
+        for (auto& track : stream->getAudioTracks()) {
             track->applyConstraints(*m_audioConstraints);
+            track->source()->startProducingData();
+        }
     }
     if (m_videoConstraints) {
-        for (auto& track : stream->getVideoTracks())
+        for (auto& track : stream->getVideoTracks()) {
             track->applyConstraints(*m_videoConstraints);
+            track->source()->startProducingData();
+        }
     }
 
     m_promise.resolve(stream);

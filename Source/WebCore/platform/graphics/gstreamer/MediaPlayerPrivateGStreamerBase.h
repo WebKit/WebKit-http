@@ -100,8 +100,6 @@ public:
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
 #endif
-    void handleNeedContextMessage(GstMessage*);
-    void handleElementMessage(GstMessage*);
 
     virtual bool supportsMuting() const override { return true; }
     virtual void setMuted(bool) override;
@@ -196,6 +194,8 @@ public:
     void clearSamples();
 
     virtual GRefPtr<GstCaps> currentDemuxerCaps() const { return nullptr; }
+
+    virtual bool handleSyncMessage(GstMessage*);
 
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;

@@ -37,7 +37,9 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "AudioSourceProvider.h"
+#include "Image.h"
 #include "MediaConstraints.h"
+#include "PlatformLayer.h"
 #include "RealtimeMediaSourceCapabilities.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -45,6 +47,8 @@
 
 namespace WebCore {
 
+class FloatRect;
+class GraphicsContext;
 class MediaConstraints;
 class MediaStreamPrivate;
 class RealtimeMediaSourceStates;
@@ -66,8 +70,6 @@ public:
 
     virtual ~RealtimeMediaSource() { }
 
-    bool isAudioStreamSource() const { return type() == Audio; }
-
     const String& id() const { return m_id; }
 
     const String& persistentID() const { return m_persistentID; }
@@ -82,7 +84,7 @@ public:
     virtual unsigned fitnessScore() const { return m_fitnessScore; }
     virtual void setFitnessScore(const unsigned fitnessScore) { m_fitnessScore = fitnessScore; }
 
-    virtual RefPtr<RealtimeMediaSourceCapabilities> capabilities() const = 0;
+    virtual RefPtr<RealtimeMediaSourceCapabilities> capabilities() = 0;
     virtual const RealtimeMediaSourceStates& states() = 0;
     void statesDidChanged();
     
@@ -102,14 +104,19 @@ public:
 
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
+    virtual bool isProducingData() const { return false; }
 
     void stop(Observer* callingObserver = nullptr);
     void requestStop(Observer* callingObserver = nullptr);
 
-    void reset();
+    virtual void reset();
 
     virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
-    
+
+    virtual PlatformLayer* platformLayer() const { return nullptr; }
+    virtual RefPtr<Image> currentFrameImage() { return nullptr; }
+    virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) { }
+
 protected:
     RealtimeMediaSource(const String& id, Type, const String& name);
 

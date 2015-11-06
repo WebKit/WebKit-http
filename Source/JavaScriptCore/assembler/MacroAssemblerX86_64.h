@@ -329,6 +329,20 @@ public:
         m_assembler.shlq_i8r(imm.m_value, dest);
     }
     
+    void lshift64(RegisterID src, RegisterID dest)
+    {
+        ASSERT(src != dest);
+        
+        if (src == X86Registers::ecx)
+            m_assembler.shlq_CLr(dest);
+        else {
+            // Can only shift by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.shlq_CLr(dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+    
     void rshift64(TrustedImm32 imm, RegisterID dest)
     {
         m_assembler.sarq_i8r(imm.m_value, dest);
@@ -480,14 +494,20 @@ public:
         }
     }
 
+    void store64(TrustedImm32 imm, ImplicitAddress address)
+    {
+        m_assembler.movq_i32m(imm.m_value, address.offset, address.base);
+    }
+
     void store64(TrustedImm64 imm, ImplicitAddress address)
     {
-        if (CAN_SIGN_EXTEND_32_64(imm.m_value))
-            m_assembler.movq_i32m(static_cast<int>(imm.m_value), address.offset, address.base);
-        else {
-            move(imm, scratchRegister);
-            store64(scratchRegister, address);
+        if (CAN_SIGN_EXTEND_32_64(imm.m_value)) {
+            store64(TrustedImm32(static_cast<int32_t>(imm.m_value)), address);
+            return;
         }
+
+        move(imm, scratchRegister);
+        store64(scratchRegister, address);
     }
 
     void store64(TrustedImm64 imm, BaseIndex address)

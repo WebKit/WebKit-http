@@ -3,6 +3,7 @@
  *  Copyright (C) 2006 Jon Shier (jshier@iastate.edu)
  *  Copyright (C) 2003-2009, 2014 Apple Inc. All rights reseved.
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
+ *  Copyright (c) 2015 Canon Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -33,6 +34,7 @@
 #include "JSNode.h"
 #include "Logging.h"
 #include "Page.h"
+#include "RuntimeApplicationChecks.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
@@ -60,7 +62,7 @@ namespace WebCore {
 
 static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* exec)
 {
-    return BindingSecurity::shouldAllowAccessToDOMWindow(exec, asJSDOMWindow(thisObject)->impl());
+    return BindingSecurity::shouldAllowAccessToDOMWindow(exec, asJSDOMWindow(thisObject)->wrapped());
 }
 
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
@@ -70,7 +72,7 @@ const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &sh
 JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWindow> window, JSDOMWindowShell* shell)
     : JSDOMGlobalObject(vm, structure, &shell->world(), &s_globalObjectMethodTable)
     , m_windowCloseWatchpoints((window && window->frame()) ? IsWatched : IsInvalidated)
-    , m_impl(window)
+    , m_wrapped(window)
     , m_shell(shell)
     , m_privateFunctions(vm)
 {
@@ -83,31 +85,35 @@ void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowShell* shell)
 
     m_privateFunctions.init(*this);
 
+#if ENABLE(STREAMS_API)
+    JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
+#endif
+
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->document, jsNull(), DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->window, m_shell, DontDelete | ReadOnly),
 #if ENABLE(STREAMS_API)
-        GlobalPropertyInfo(static_cast<JSVMClientData*>(vm.clientData)->builtinNames().readableStreamClosedPrivateName(), jsNumber(1), DontDelete | ReadOnly),
-        GlobalPropertyInfo(static_cast<JSVMClientData*>(vm.clientData)->builtinNames().readableStreamErroredPrivateName(), jsNumber(2), DontDelete | ReadOnly),
-        GlobalPropertyInfo(static_cast<JSVMClientData*>(vm.clientData)->builtinNames().readableStreamReadablePrivateName(), jsNumber(3), DontDelete | ReadOnly),
-        GlobalPropertyInfo(static_cast<JSVMClientData*>(vm.clientData)->builtinNames().ReadableStreamControllerPrivateName(), createReadableStreamControllerPrivateConstructor(vm, *this), DontDelete | ReadOnly),
-        GlobalPropertyInfo(static_cast<JSVMClientData*>(vm.clientData)->builtinNames().ReadableStreamReaderPrivateName(), createReadableStreamReaderPrivateConstructor(vm, *this), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamClosedPrivateName(), jsNumber(1), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamClosingPrivateName(), jsNumber(2), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamErroredPrivateName(), jsNumber(3), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamReadablePrivateName(), jsNumber(4), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamWaitingPrivateName(), jsNumber(5), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().streamWritablePrivateName(), jsNumber(6), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().ReadableStreamControllerPrivateName(), createReadableStreamControllerPrivateConstructor(vm, *this), DontDelete | ReadOnly),
+        GlobalPropertyInfo(clientData.builtinNames().ReadableStreamReaderPrivateName(), createReadableStreamReaderPrivateConstructor(vm, *this), DontDelete | ReadOnly),
 #define DECLARE_GLOBAL_STATIC(name)\
         GlobalPropertyInfo(\
-            static_cast<JSVMClientData*>(vm.clientData)->builtinFunctions().readableStreamInternalsBuiltins().name##PrivateName(), \
-            m_privateFunctions.readableStreamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
+            clientData.builtinFunctions().readableStreamInternalsBuiltins().name##PrivateName(), m_privateFunctions.readableStreamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
         WEBCORE_FOREACH_READABLESTREAMINTERNALS_BUILTIN_FUNCTION_NAME(DECLARE_GLOBAL_STATIC)
 #undef DECLARE_GLOBAL_STATIC
 #define DECLARE_GLOBAL_STATIC(name)\
         GlobalPropertyInfo(\
-            static_cast<JSVMClientData*>(vm.clientData)->builtinFunctions().streamInternalsBuiltins().name##PrivateName(), \
-            m_privateFunctions.streamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
+            clientData.builtinFunctions().streamInternalsBuiltins().name##PrivateName(), m_privateFunctions.streamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
         WEBCORE_FOREACH_STREAMINTERNALS_BUILTIN_FUNCTION_NAME(DECLARE_GLOBAL_STATIC)
 #undef DECLARE_GLOBAL_STATIC
 #define DECLARE_GLOBAL_STATIC(name)\
         GlobalPropertyInfo(\
-            static_cast<JSVMClientData*>(vm.clientData)->builtinFunctions().writableStreamInternalsBuiltins().name##PrivateName(), \
-            m_privateFunctions.writableStreamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
+            clientData.builtinFunctions().writableStreamInternalsBuiltins().name##PrivateName(), m_privateFunctions.writableStreamInternals().m_##name##Function.get() , DontDelete | ReadOnly),
         WEBCORE_FOREACH_WRITABLESTREAMINTERNALS_BUILTIN_FUNCTION_NAME(DECLARE_GLOBAL_STATIC)
 #undef DECLARE_GLOBAL_STATIC
 #endif
@@ -131,25 +137,25 @@ void JSDOMWindowBase::destroy(JSCell* cell)
 
 void JSDOMWindowBase::updateDocument()
 {
-    ASSERT(m_impl->document());
+    ASSERT(m_wrapped->document());
     ExecState* exec = globalExec();
-    symbolTablePutWithAttributesTouchWatchpointSet(this, exec, exec->vm().propertyNames->document, toJS(exec, this, m_impl->document()), DontDelete | ReadOnly);
+    symbolTablePutWithAttributesTouchWatchpointSet(this, exec, exec->vm().propertyNames->document, toJS(exec, this, m_wrapped->document()), DontDelete | ReadOnly);
 }
 
 ScriptExecutionContext* JSDOMWindowBase::scriptExecutionContext() const
 {
-    return m_impl->document();
+    return m_wrapped->document();
 }
 
 void JSDOMWindowBase::printErrorMessage(const String& message) const
 {
-    printErrorMessageForFrame(impl().frame(), message);
+    printErrorMessageForFrame(wrapped().frame(), message);
 }
 
 bool JSDOMWindowBase::supportsProfiling(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl().frame();
+    Frame* frame = thisObject->wrapped().frame();
     if (!frame)
         return false;
 
@@ -163,7 +169,7 @@ bool JSDOMWindowBase::supportsProfiling(const JSGlobalObject* object)
 bool JSDOMWindowBase::supportsRichSourceInfo(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl().frame();
+    Frame* frame = thisObject->wrapped().frame();
     if (!frame)
         return false;
 
@@ -192,16 +198,16 @@ static inline bool shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPag
 bool JSDOMWindowBase::shouldInterruptScript(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    ASSERT(thisObject->impl().frame());
-    Page* page = thisObject->impl().frame()->page();
+    ASSERT(thisObject->wrapped().frame());
+    Page* page = thisObject->wrapped().frame()->page();
     return shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPage(page);
 }
 
 bool JSDOMWindowBase::shouldInterruptScriptBeforeTimeout(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    ASSERT(thisObject->impl().frame());
-    Page* page = thisObject->impl().frame()->page();
+    ASSERT(thisObject->wrapped().frame());
+    Page* page = thisObject->wrapped().frame()->page();
 
     if (shouldInterruptScriptToPreventInfiniteRecursionWhenClosingPage(page))
         return true;
@@ -217,7 +223,7 @@ bool JSDOMWindowBase::shouldInterruptScriptBeforeTimeout(const JSGlobalObject* o
 RuntimeFlags JSDOMWindowBase::javaScriptRuntimeFlags(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->impl().frame();
+    Frame* frame = thisObject->wrapped().frame();
     if (!frame)
         return RuntimeFlags();
     return frame->settings().javaScriptRuntimeFlags();
@@ -256,6 +262,12 @@ VM& JSDOMWindowBase::commonVM()
         vm->heap.setIncrementalSweeper(std::make_unique<WebSafeIncrementalSweeper>(&vm->heap));
         vm->heap.machineThreads().addCurrentThread();
 #endif
+
+#if PLATFORM(MAC)
+        if (applicationIsITunes() || applicationIsIBooks() || Settings::shouldRewriteConstAsVar())
+            vm->setShouldRewriteConstAsVar(true);
+#endif
+
         initNormalWorldClientData(vm);
     }
 
@@ -325,7 +337,7 @@ void JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(DOMWindow* window)
 JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleName, JSC::JSValue importerModuleKey)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
-    if (RefPtr<Document> document = thisObject->impl().document())
+    if (RefPtr<Document> document = thisObject->wrapped().document())
         return document->moduleLoader()->resolve(globalObject, exec, moduleName, importerModuleKey);
     JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
     return deferred->reject(exec, jsUndefined());
@@ -334,7 +346,7 @@ JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject
 JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
-    if (RefPtr<Document> document = thisObject->impl().document())
+    if (RefPtr<Document> document = thisObject->wrapped().document())
         return document->moduleLoader()->fetch(globalObject, exec, moduleKey);
     JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
     return deferred->reject(exec, jsUndefined());
@@ -343,7 +355,7 @@ JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* 
 JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey, JSC::JSValue moduleRecord)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
-    if (RefPtr<Document> document = thisObject->impl().document())
+    if (RefPtr<Document> document = thisObject->wrapped().document())
         return document->moduleLoader()->evaluate(globalObject, exec, moduleKey, moduleRecord);
     return JSC::jsUndefined();
 }

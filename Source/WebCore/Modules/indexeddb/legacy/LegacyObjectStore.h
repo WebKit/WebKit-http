@@ -64,11 +64,11 @@ public:
     RefPtr<IDBAny> keyPathAny() const { return LegacyAny::create(m_metadata.keyPath); }
     const IDBKeyPath keyPath() const { return m_metadata.keyPath; }
     RefPtr<DOMStringList> indexNames() const;
-    RefPtr<IDBTransaction> transaction() const { return m_transaction; }
+    RefPtr<IDBTransaction> transaction() { return m_transaction; }
     bool autoIncrement() const { return m_metadata.autoIncrement; }
 
-    RefPtr<IDBRequest> add(JSC::ExecState&, Deprecated::ScriptValue&, ExceptionCode&);
-    RefPtr<IDBRequest> put(JSC::ExecState&, Deprecated::ScriptValue&, ExceptionCode&);
+    RefPtr<IDBRequest> add(JSC::ExecState&, JSC::JSValue, ExceptionCode&);
+    RefPtr<IDBRequest> put(JSC::ExecState&, JSC::JSValue, ExceptionCode&);
     RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, ExceptionCode&);
     RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&);
     RefPtr<IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&);
@@ -78,8 +78,8 @@ public:
 
     RefPtr<IDBRequest> get(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&);
     RefPtr<IDBRequest> get(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&);
-    RefPtr<IDBRequest> add(JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue& key, ExceptionCode&);
-    RefPtr<IDBRequest> put(JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue& key, ExceptionCode&);
+    RefPtr<IDBRequest> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCode&);
+    RefPtr<IDBRequest> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCode&);
     RefPtr<IDBRequest> put(IDBDatabaseBackend::PutMode, RefPtr<LegacyAny>, JSC::ExecState&, Deprecated::ScriptValue&, RefPtr<IDBKey>, ExceptionCode&);
     RefPtr<IDBRequest> put(IDBDatabaseBackend::PutMode, RefPtr<LegacyAny> source, JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue& key, ExceptionCode&);
 

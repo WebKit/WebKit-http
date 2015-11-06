@@ -23,6 +23,9 @@ list(APPEND NetworkProcess_SOURCES
 )
 
 list(APPEND WebKit2_SOURCES
+    NetworkProcess/cache/NetworkCacheDataSoup.cpp
+    NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
+
     NetworkProcess/soup/NetworkProcessSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
@@ -105,6 +108,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
     UIProcess/Storage/StorageManager.cpp
+
+    UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
 
     UIProcess/cairo/BackingStoreCairo.cpp
 

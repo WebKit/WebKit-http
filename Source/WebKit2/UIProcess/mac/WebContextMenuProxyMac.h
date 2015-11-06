@@ -32,8 +32,8 @@
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS NSPopUpButtonCell;
+OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
-OBJC_CLASS WKView;
 
 namespace WebKit {
 
@@ -44,7 +44,7 @@ class WebPageProxy;
 
 class WebContextMenuProxyMac : public WebContextMenuProxy {
 public:
-    WebContextMenuProxyMac(WKView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
+    WebContextMenuProxyMac(NSView*, WebPageProxy&, const ContextMenuContextData&, const UserData&);
     ~WebContextMenuProxyMac();
 
     void contextMenuItemSelected(const WebContextMenuItemData&);
@@ -64,14 +64,14 @@ private:
     void showContextMenu();
 
 #if ENABLE(SERVICE_CONTROLS)
+    RetainPtr<NSMenuItem> createShareMenuItem();
     void showServicesMenu();
     void setupServicesMenu();
-    WebCore::ContextMenuItem shareMenuItem();
 #endif
 
     RetainPtr<NSMenu> m_menu;
 
-    WKView* m_webView;
+    NSView* m_webView;
     WebPageProxy& m_page;
 };
 

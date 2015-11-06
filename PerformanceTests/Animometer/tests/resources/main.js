@@ -94,11 +94,11 @@ Animator.prototype =
         if (!this._frameCount)
             this._startTimeOffset = this._currentTimeOffset;
 
+        ++this._frameCount;
+
         // Start measuring after dropping _dropFrameCount frames.
         if (this._frameCount == this._dropFrameCount)
             this._measureTimeOffset = this._currentTimeOffset;
-
-        ++this._frameCount;
 
         // Drop _dropFrameCount frames and measure the average of _measureFrameCount frames.
         if (this._frameCount < this._dropFrameCount + this._measureFrameCount)
@@ -109,7 +109,7 @@ Animator.prototype =
         var currentFrameRate = Math.floor(1000 / (measureTimeDelta / this._measureFrameCount));
          
         // Use Kalman filter to get a more non-fluctuating frame rate.
-        if (this._benchmark.options.estimatedFrameRate)
+        if (this._benchmark.options["estimated-frame-rate"])
             currentFrameRate = this._estimator.estimate(measureTimeDelta, currentFrameRate);
         
         // Adjust the test to reach the desired FPS.
@@ -146,9 +146,9 @@ function Benchmark(options)
     var lowValue = -parseInt(this._options["addLimit"]) || 1;
     var highValue = parseInt(this._options["removeLimit"]) || 1;
     
-    this._controller = new PIDController(gain, options.frameRate, lowValue, highValue);
+    this._controller = new PIDController(gain, options["frame-rate"], lowValue, highValue);
     this._sampler = new Sampler(2);
-    this._state = new BenchmarkState(this.options.testInterval);    
+    this._state = new BenchmarkState(this.options["test-interval"] * 1000);
 }
 
 Benchmark.prototype =
@@ -179,7 +179,11 @@ Benchmark.prototype =
         }
 
         var tuneValue = 0;
-        if (!(this._isSampling && this.options.fixTestComplexity)) {
+        if (this.options["complexity"] && !this.options["adaptive-test"]) {
+            // this.tune(0) returns the current complexity of the test.
+            tuneValue = this.options["complexity"] - this.tune(0);
+        }
+        else if (!(this._isSampling && this.options["fix-test-complexity"])) {
             // The relationship between frameRate and test complexity is inverse-proportional so we
             // need to use the negative of PIDController.tune() to change the complexity of the test.
             tuneValue = -this._controller.tune(currentFrameRate, timeDelta / 1000);
@@ -237,7 +241,9 @@ window.addEventListener("load", function()
 // This function is called from the suite controller run-callback when running the benchmark runner.
 window.runBenchmark = function(suite, test, options, recordTable, progressBar)
 {
-    var mergedOptions = Utilities.mergeObjects(options, Utilities.parseParameters());
-    window.benchmark = window.benchmarkClient.create(suite, test, mergedOptions, recordTable, progressBar);
+    var benchmarkOptions = { complexity: test.complexity };
+    benchmarkOptions = Utilities.mergeObjects(benchmarkOptions, options);
+    benchmarkOptions = Utilities.mergeObjects(benchmarkOptions, Utilities.parseParameters());
+    window.benchmark = window.benchmarkClient.create(suite, test, benchmarkOptions, recordTable, progressBar);
     return window.benchmark.run();
 }

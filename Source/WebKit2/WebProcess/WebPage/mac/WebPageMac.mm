@@ -98,12 +98,6 @@ namespace WebKit {
 
 void WebPage::platformInitialize()
 {
-#if USE(CFNETWORK)
-    m_page->addSchedulePair(SchedulePair::create([[NSRunLoop currentRunLoop] getCFRunLoop], kCFRunLoopCommonModes));
-#else
-    m_page->addSchedulePair(SchedulePair::create([NSRunLoop currentRunLoop], kCFRunLoopCommonModes));
-#endif
-
     WKAccessibilityWebPageObject* mockAccessibilityElement = [[[WKAccessibilityWebPageObject alloc] init] autorelease];
 
     // Get the pid for the starting process.
@@ -594,7 +588,7 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForSelectionInPDFPlugin(PDFSelec
     if (!selection.string.length)
         return dictionaryPopupInfo;
 
-    NSRect rangeRect = pdfPlugin.viewRectForSelection(selection);
+    NSRect rangeRect = pdfPlugin.rectForSelectionInRootView(selection);
 
     NSAttributedString *nsAttributedString = selection.attributedString;
     

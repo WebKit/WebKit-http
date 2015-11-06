@@ -53,10 +53,12 @@ public:
 
     void platformFinalize() override
     {
+#if !ENABLE(NETWORK_CACHE)
         if (SoupCache* soupCache = SoupNetworkSession::defaultSession().cache()) {
             soup_cache_flush(soupCache);
             soup_cache_dump(soupCache);
         }
+#endif
     }
 };
 

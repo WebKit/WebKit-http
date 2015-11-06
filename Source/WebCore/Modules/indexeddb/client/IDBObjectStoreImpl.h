@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBIndexImpl.h"
 #include "IDBObjectStore.h"
 #include "IDBObjectStoreInfo.h"
 #include "IndexedDB.h"
@@ -35,6 +36,8 @@
 namespace WebCore {
 
 class IDBKey;
+
+struct IDBKeyRangeData;
 
 namespace IDBClient {
 
@@ -47,16 +50,15 @@ public:
     virtual ~IDBObjectStore() override final;
 
     // Implement the IDBObjectStore IDL
-    virtual int64_t id() const override final;
     virtual const String name() const override final;
     virtual RefPtr<WebCore::IDBAny> keyPathAny() const override final;
     virtual const IDBKeyPath keyPath() const override final;
     virtual RefPtr<DOMStringList> indexNames() const override final;
-    virtual RefPtr<WebCore::IDBTransaction> transaction() const override final;
+    virtual RefPtr<WebCore::IDBTransaction> transaction() override final;
     virtual bool autoIncrement() const override final;
 
-    virtual RefPtr<WebCore::IDBRequest> add(JSC::ExecState&, Deprecated::ScriptValue&, ExceptionCode&) override final;
-    virtual RefPtr<WebCore::IDBRequest> put(JSC::ExecState&, Deprecated::ScriptValue&, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBRequest> add(JSC::ExecState&, JSC::JSValue, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBRequest> put(JSC::ExecState&, JSC::JSValue, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> openCursor(ScriptExecutionContext*, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> openCursor(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
@@ -64,8 +66,8 @@ public:
     virtual RefPtr<WebCore::IDBRequest> openCursor(ScriptExecutionContext*, const Deprecated::ScriptValue& key, const String& direction, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> get(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> get(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&) override final;
-    virtual RefPtr<WebCore::IDBRequest> add(JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
-    virtual RefPtr<WebCore::IDBRequest> put(JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBRequest> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCode&) override final;
+    virtual RefPtr<WebCore::IDBRequest> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> deleteFunction(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> deleteFunction(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> clear(ScriptExecutionContext*, ExceptionCode&) override final;
@@ -76,17 +78,22 @@ public:
     virtual RefPtr<WebCore::IDBRequest> count(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&) override final;
     virtual RefPtr<WebCore::IDBRequest> count(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&) override final;
 
+    void markAsDeleted();
+
     const IDBObjectStoreInfo& info() const { return m_info; }
 
 private:
     IDBObjectStore(const IDBObjectStoreInfo&, IDBTransaction&);
 
-    RefPtr<WebCore::IDBRequest> putOrAdd(JSC::ExecState&, Deprecated::ScriptValue&, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, ExceptionCode&);
+    RefPtr<WebCore::IDBRequest> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, ExceptionCode&);
+    RefPtr<WebCore::IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCode&);
 
     IDBObjectStoreInfo m_info;
     Ref<IDBTransaction> m_transaction;
 
     bool m_deleted { false };
+
+    HashMap<String, RefPtr<IDBIndex>> m_referencedIndexes;
 };
 
 } // namespace IDBClient

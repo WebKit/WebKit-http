@@ -30,8 +30,11 @@
 
 #include "DOMRequestState.h"
 #include "IDBBindingUtilities.h"
+#include "IDBDatabaseException.h"
 #include "IDBError.h"
+#include "IDBIndexImpl.h"
 #include "IDBKey.h"
+#include "IDBKeyRangeData.h"
 #include "IDBRequestImpl.h"
 #include "IDBTransactionImpl.h"
 #include "IndexedDB.h"
@@ -56,24 +59,19 @@ IDBObjectStore::~IDBObjectStore()
 {
 }
 
-int64_t IDBObjectStore::id() const
-{
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
 const String IDBObjectStore::name() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    return m_info.name();
 }
 
 RefPtr<WebCore::IDBAny> IDBObjectStore::keyPathAny() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    return IDBAny::create(m_info.keyPath());
 }
 
 const IDBKeyPath IDBObjectStore::keyPath() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    return m_info.keyPath();
 }
 
 RefPtr<DOMStringList> IDBObjectStore::indexNames() const
@@ -81,24 +79,14 @@ RefPtr<DOMStringList> IDBObjectStore::indexNames() const
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-RefPtr<WebCore::IDBTransaction> IDBObjectStore::transaction() const
+RefPtr<WebCore::IDBTransaction> IDBObjectStore::transaction()
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    return &m_transaction.get();
 }
 
 bool IDBObjectStore::autoIncrement() const
 {
     return m_info.autoIncrement();
-}
-
-RefPtr<WebCore::IDBRequest> IDBObjectStore::add(JSC::ExecState&, Deprecated::ScriptValue&, ExceptionCode&)
-{
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-RefPtr<WebCore::IDBRequest> IDBObjectStore::put(JSC::ExecState& state, Deprecated::ScriptValue& value, ExceptionCode& ec)
-{
-    return putOrAdd(state, value, nullptr, IndexedDB::ObjectStoreOverwriteMode::Overwrite, ec);
 }
 
 RefPtr<WebCore::IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext*, ExceptionCode&)
@@ -152,27 +140,62 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context,
         return nullptr;
     }
 
-    Ref<IDBRequest> request = m_transaction->requestGetRecord(*context, *this, *idbKey);
-    return adoptRef(request.leakRef());
+    Ref<IDBRequest> request = m_transaction->requestGetRecord(*context, *this, idbKey.get());
+    return WTF::move(request);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context, IDBKeyRange* keyRange, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::get");
+
+    if (!context) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    if (!m_transaction->isActive()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::TransactionInactiveError);
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    IDBKeyRangeData keyRangeData(keyRange);
+    if (!keyRangeData.isValid()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::DataError);
+        return nullptr;
+    }
+
+    Ref<IDBRequest> request = m_transaction->requestGetRecord(*context, *this, keyRangeData);
+    return WTF::move(request);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::add(JSC::ExecState&, Deprecated::ScriptValue&, const Deprecated::ScriptValue&, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::add(JSC::ExecState& state, JSC::JSValue value, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    return putOrAdd(state, value, nullptr, IndexedDB::ObjectStoreOverwriteMode::NoOverwrite, ec);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::put(JSC::ExecState& execState, Deprecated::ScriptValue& value, const Deprecated::ScriptValue& key, ExceptionCode& ec)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::add(JSC::ExecState& execState, JSC::JSValue value, JSC::JSValue key, ExceptionCode& ec)
+{
+    auto idbKey = scriptValueToIDBKey(execState, key);
+    return putOrAdd(execState, value, idbKey, IndexedDB::ObjectStoreOverwriteMode::NoOverwrite, ec);
+}
+
+RefPtr<WebCore::IDBRequest> IDBObjectStore::put(JSC::ExecState& execState, JSC::JSValue value, JSC::JSValue key, ExceptionCode& ec)
 {
     auto idbKey = scriptValueToIDBKey(execState, key);
     return putOrAdd(execState, value, idbKey, IndexedDB::ObjectStoreOverwriteMode::Overwrite, ec);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, Deprecated::ScriptValue& value, RefPtr<IDBKey> key, IndexedDB::ObjectStoreOverwriteMode overwriteMode, ExceptionCode& ec)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::put(JSC::ExecState& state, JSC::JSValue value, ExceptionCode& ec)
+{
+    return putOrAdd(state, value, nullptr, IndexedDB::ObjectStoreOverwriteMode::Overwrite, ec);
+}
+
+RefPtr<WebCore::IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, JSC::JSValue value, RefPtr<IDBKey> key, IndexedDB::ObjectStoreOverwriteMode overwriteMode, ExceptionCode& ec)
 {
     LOG(IndexedDB, "IDBObjectStore::putOrAdd");
 
@@ -191,7 +214,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, Depr
         return nullptr;
     }
 
-    RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::create(&state, value.jsValue(), nullptr, nullptr);
+    RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::create(&state, value, nullptr, nullptr);
     if (state.hadException()) {
         ec = DATA_CLONE_ERR;
         return nullptr;
@@ -254,29 +277,151 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, Depr
 }
 
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* context, IDBKeyRange* keyRange, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::deleteFunction");
+
+    if (m_transaction->isReadOnly()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::ReadOnlyError);
+        return nullptr;
+    }
+
+    if (!m_transaction->isActive()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::TransactionInactiveError);
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    IDBKeyRangeData keyRangeData(keyRange);
+    if (!keyRangeData.isValid()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::DataError);
+        return nullptr;
+    }
+
+    Ref<IDBRequest> request = m_transaction->requestDeleteRecord(*context, *this, keyRangeData);
+    return WTF::move(request);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext*, const Deprecated::ScriptValue&, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    DOMRequestState requestState(context);
+    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(&requestState, key);
+    if (!idbKey || idbKey->type() == KeyType::Invalid) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::DataError);
+        return nullptr;
+    }
+
+    return deleteFunction(context, &IDBKeyRange::create(idbKey.get()).get(), ec);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::clear(ScriptExecutionContext*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::clear(ScriptExecutionContext* context, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::clear");
+
+    if (m_transaction->isReadOnly()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::ReadOnlyError);
+        return nullptr;
+    }
+
+    if (!m_transaction->isActive()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::TransactionInactiveError);
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::InvalidStateError);
+        return nullptr;
+    }
+
+    Ref<IDBRequest> request = m_transaction->requestClearObjectStore(*context, *this);
+    return adoptRef(request.leakRef());
 }
 
-RefPtr<WebCore::IDBIndex> IDBObjectStore::createIndex(ScriptExecutionContext*, const String&, const IDBKeyPath&, bool, bool, ExceptionCode&)
+RefPtr<WebCore::IDBIndex> IDBObjectStore::createIndex(ScriptExecutionContext* context, const String& name, const IDBKeyPath& keyPath, bool unique, bool multiEntry, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::createIndex %s", name.utf8().data());
+
+    if (!context) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::InvalidStateError);
+        return nullptr;
+    }
+
+    if (!m_transaction->isVersionChange()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::InvalidStateError);
+        return nullptr;
+    }
+
+    if (!m_transaction->isActive()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::TransactionInactiveError);
+        return nullptr;
+    }
+
+    if (!keyPath.isValid()) {
+        ec = IDBDatabaseException::SyntaxError;
+        return nullptr;
+    }
+
+    if (name.isNull()) {
+        ec = TypeError;
+        return nullptr;
+    }
+
+    if (m_info.hasIndex(name)) {
+        ec = IDBDatabaseException::ConstraintError;
+        return nullptr;
+    }
+
+    if (keyPath.type() == IndexedDB::KeyPathType::Array && multiEntry) {
+        ec = IDBDatabaseException::InvalidAccessError;
+        return nullptr;
+    }
+
+    // Install the new Index into the ObjectStore's info.
+    IDBIndexInfo info = m_info.createNewIndex(name, keyPath, unique, multiEntry);
+    m_transaction->database().didCreateIndexInfo(info);
+
+    // Create the actual IDBObjectStore from the transaction, which also schedules the operation server side.
+    Ref<IDBIndex> index = m_transaction->createIndex(*this, info);
+    return WTF::move(index);
 }
 
-RefPtr<WebCore::IDBIndex> IDBObjectStore::index(const String&, ExceptionCode&)
+RefPtr<WebCore::IDBIndex> IDBObjectStore::index(const String& indexName, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::index");
+
+    if (indexName.isEmpty()) {
+        ec = NOT_FOUND_ERR;
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    auto iterator = m_referencedIndexes.find(indexName);
+    if (iterator != m_referencedIndexes.end())
+        return iterator->value;
+
+    auto* info = m_info.infoForExistingIndex(indexName);
+    if (!info) {
+        ec = NOT_FOUND_ERR;
+        return nullptr;
+    }
+
+    auto index = IDBIndex::create(*info, *this);
+    m_referencedIndexes.set(indexName, &index.get());
+
+    return WTF::move(index);
 }
 
 void IDBObjectStore::deleteIndex(const String&, ExceptionCode&)
@@ -284,19 +429,74 @@ void IDBObjectStore::deleteIndex(const String&, ExceptionCode&)
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext* context, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::count");
+
+    if (!context) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    IDBKeyRangeData range;
+    range.isNull = false;
+    return doCount(*context, range, ec);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext*, IDBKeyRange*, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::count");
+
+    if (!context) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    DOMRequestState requestState(context);
+    RefPtr<IDBKey> idbKey = scriptValueToIDBKey(&requestState, key);
+    if (!idbKey || idbKey->type() == KeyType::Invalid) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::DataError);
+        return nullptr;
+    }
+
+    return doCount(*context, IDBKeyRangeData(idbKey.get()), ec);
 }
 
-RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext*, const Deprecated::ScriptValue&, ExceptionCode&)
+RefPtr<WebCore::IDBRequest> IDBObjectStore::count(ScriptExecutionContext* context, IDBKeyRange* range, ExceptionCode& ec)
 {
-    RELEASE_ASSERT_NOT_REACHED();
+    LOG(IndexedDB, "IDBObjectStore::count");
+
+    if (!context) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    return doCount(*context, IDBKeyRangeData(range), ec);
+}
+
+RefPtr<WebCore::IDBRequest> IDBObjectStore::doCount(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCode& ec)
+{
+    if (!m_transaction->isActive()) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::TransactionInactiveError);
+        return nullptr;
+    }
+
+    if (m_deleted) {
+        ec = INVALID_STATE_ERR;
+        return nullptr;
+    }
+
+    if (range.isNull) {
+        ec = static_cast<ExceptionCode>(IDBExceptionCode::DataError);
+        return nullptr;
+    }
+
+    return m_transaction->requestCount(context, *this, range);
+}
+
+void IDBObjectStore::markAsDeleted()
+{
+    m_deleted = true;
 }
 
 } // namespace IDBClient

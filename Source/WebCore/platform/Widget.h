@@ -155,7 +155,7 @@ public:
 
     virtual void notifyWidget(WidgetNotification) { }
 
-    IntRect convertToRootView(const IntRect&) const;
+    WEBCORE_EXPORT IntRect convertToRootView(const IntRect&) const;
     IntRect convertFromRootView(const IntRect&) const;
 
     IntPoint convertToRootView(const IntPoint&) const;

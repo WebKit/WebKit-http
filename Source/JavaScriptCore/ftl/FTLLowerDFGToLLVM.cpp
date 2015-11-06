@@ -30,6 +30,7 @@
 
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
+#include "DFGDominators.h"
 #include "DFGInPlaceAbstractState.h"
 #include "DFGOSRAvailabilityAnalysisPhase.h"
 #include "DFGOSRExitFuzz.h"
@@ -121,7 +122,7 @@ public:
         } else
             name = "jsBody";
         
-        m_graph.m_dominators.computeIfNecessary(m_graph);
+        m_graph.ensureDominators();
         
         m_ftlState.module =
             moduleCreateWithNameInContext(name.data(), m_ftlState.context);
@@ -382,7 +383,7 @@ private:
             BasicBlock* target = m_graph.block(blockIndex);
             if (!target)
                 continue;
-            if (m_graph.m_dominators.dominates(m_highBlock, target)) {
+            if (m_graph.m_dominators->dominates(m_highBlock, target)) {
                 if (verboseCompilationEnabled())
                     dataLog("Block ", *target, " will bail also.\n");
                 target->cfaHasVisited = false;
@@ -1476,7 +1477,36 @@ private:
             setDouble(isSub ? m_out.doubleSub(C1, C2) : m_out.doubleAdd(C1, C2));
             break;
         }
+
+        case UntypedUse: {
+            if (!isSub) {
+                DFG_CRASH(m_graph, m_node, "Bad use kind");
+                break;
+            }
             
+            unsigned stackmapID = m_stackmapIDs++;
+
+            if (Options::verboseCompilation())
+                dataLog("    Emitting ArithSub patchpoint with stackmap #", stackmapID, "\n");
+
+            LValue left = lowJSValue(m_node->child1());
+            LValue right = lowJSValue(m_node->child2());
+
+            // Arguments: id, bytes, target, numArgs, args...
+            LValue call = m_out.call(
+                m_out.patchpointInt64Intrinsic(),
+                m_out.constInt64(stackmapID), m_out.constInt32(sizeOfArithSub()),
+                constNull(m_out.ref8), m_out.constInt32(2), left, right);
+            setInstructionCallingConvention(call, LLVMAnyRegCallConv);
+
+            m_ftlState.arithSubs.append(ArithSubDescriptor(stackmapID, m_node->origin.semantic,
+                abstractValue(m_node->child1()).resultType(),
+                abstractValue(m_node->child2()).resultType()));
+
+            setJSValue(call);
+            break;
+        }
+
         default:
             DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
@@ -6382,18 +6412,25 @@ private:
     LValue allocateCell(LValue allocator, LBasicBlock slowPath)
     {
         LBasicBlock success = FTL_NEW_BLOCK(m_out, ("object allocation success"));
-        
-        LValue result = m_out.loadPtr(
-            allocator, m_heaps.MarkedAllocator_freeListHead);
-        
-        m_out.branch(m_out.notNull(result), usually(success), rarely(slowPath));
+    
+        LValue result;
+        LValue condition;
+        if (Options::forceGCSlowPaths()) {
+            result = getUndef(m_out.int64);
+            condition = m_out.booleanFalse;
+        } else {
+            result = m_out.loadPtr(
+                allocator, m_heaps.MarkedAllocator_freeListHead);
+            condition = m_out.notNull(result);
+        }
+        m_out.branch(condition, usually(success), rarely(slowPath));
         
         m_out.appendTo(success);
         
         m_out.storePtr(
             m_out.loadPtr(result, m_heaps.JSCell_freeListNext),
             allocator, m_heaps.MarkedAllocator_freeListHead);
-        
+
         return result;
     }
     
@@ -8707,7 +8744,7 @@ private:
             // to baz and baz is inlined in bar. And then baz makes a tail-call to jaz,
             // and jaz is inlined in baz. We want the callframe for jaz to appear to 
             // have caller be bar.
-            codeOrigin = *codeOrigin.inlineCallFrame->getCallerSkippingDeadFrames();
+            codeOrigin = *codeOrigin.inlineCallFrame->getCallerSkippingTailCalls();
         }
 
         return codeOrigin;
@@ -9120,7 +9157,7 @@ private:
     {
         if (!value)
             return false;
-        if (!m_graph.m_dominators.dominates(value.block(), m_highBlock))
+        if (!m_graph.m_dominators->dominates(value.block(), m_highBlock))
             return false;
         return true;
     }

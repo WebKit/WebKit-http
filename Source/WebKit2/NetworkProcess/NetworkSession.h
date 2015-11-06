@@ -31,6 +31,7 @@ OBJC_CLASS NSURLSessionDataTask;
 OBJC_CLASS NSOperationQueue;
 OBJC_CLASS NetworkSessionDelegate;
 
+#include <WebCore/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -67,55 +68,60 @@ class NetworkSessionTaskClient {
 public:
     virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, std::function<void(const WebCore::ResourceRequest&)>) = 0;
     virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, std::function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>) = 0;
-    virtual void didReceiveResponse(WebCore::ResourceResponse&, std::function<void(ResponseDisposition)>) = 0;
-    virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>) = 0;
+    virtual void didReceiveResponse(const WebCore::ResourceResponse&, std::function<void(ResponseDisposition)>) = 0;
+    virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
 
     virtual ~NetworkSessionTaskClient() { }
 };
 
-class NetworkingDataTask : public RefCounted<NetworkingDataTask> {
+class NetworkDataTask : public RefCounted<NetworkDataTask> {
     friend class NetworkSession;
 public:
-    void suspend();
+    void cancel();
     void resume();
 
     uint64_t taskIdentifier();
 
-    ~NetworkingDataTask();
+    ~NetworkDataTask();
 
     NetworkSessionTaskClient* client() { return m_client; }
     void clearClient() { m_client = nullptr; }
 
 private:
-    explicit NetworkingDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>);
-
     NetworkSession& m_session;
-    RetainPtr<NSURLSessionDataTask> m_task;
     NetworkSessionTaskClient* m_client;
+#if PLATFORM(COCOA)
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>&&);
+    RetainPtr<NSURLSessionDataTask> m_task;
+#else
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&);
+#endif
 };
 
-class NetworkSession : public RefCounted<NetworkSession> {
-    friend class NetworkingDataTask;
+class NetworkSession {
+    friend class NetworkDataTask;
 public:
     enum class Type {
         Normal,
         Ephemeral
     };
-
-    RefPtr<NetworkingDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
-
-    static Ref<NetworkSession> singleton(); // FIXME: This shouldn't actually be a singleton.
-    NetworkingDataTask* dataTaskForIdentifier(uint64_t);
-
+    NetworkSession(Type, WebCore::SessionID);
     ~NetworkSession() { ASSERT(m_dataTaskMap.isEmpty()); }
-private:
-    static Ref<NetworkSession> create(Type);
 
-    NetworkSession(Type);
-    HashMap<uint64_t, NetworkingDataTask*> m_dataTaskMap;
+    static NetworkSession& defaultSession();
+    
+    Ref<NetworkDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
+
+    NetworkDataTask* dataTaskForIdentifier(uint64_t);
+
+private:
+    WebCore::SessionID m_sessionID;
+    HashMap<uint64_t, NetworkDataTask*> m_dataTaskMap;
+#if PLATFORM(COCOA)
     RetainPtr<NSURLSession> m_session;
     RetainPtr<NetworkSessionDelegate> m_sessionDelegate;
+#endif
 };
 
 } // namespace WebKit

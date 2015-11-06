@@ -57,6 +57,7 @@ list(APPEND WebCore_SOURCES
     page/win/FrameWin.cpp
 
     platform/Cursor.cpp
+    platform/KillRingNone.cpp
     platform/LocalizedStrings.cpp
     platform/PlatformStrategies.cpp
     platform/VNodeTracker.cpp
@@ -103,6 +104,8 @@ list(APPEND WebCore_SOURCES
 
     platform/text/LocaleNone.cpp
 
+    platform/text/cf/HyphenationCF.cpp
+
     platform/text/win/TextBreakIteratorInternalICUWin.cpp
 
     platform/win/BString.cpp
@@ -124,6 +127,7 @@ list(APPEND WebCore_SOURCES
     platform/win/LoggingWin.cpp
     platform/win/MemoryPressureHandlerWin.cpp
     platform/win/MIMETypeRegistryWin.cpp
+    platform/win/MainThreadSharedTimerWin.cpp
     platform/win/PasteboardWin.cpp
     platform/win/PathWalker.cpp
     platform/win/PlatformMouseEventWin.cpp
@@ -133,7 +137,6 @@ list(APPEND WebCore_SOURCES
     platform/win/ScrollbarThemeWin.cpp
     platform/win/SearchPopupMenuWin.cpp
     platform/win/SharedBufferWin.cpp
-    platform/win/SharedTimerWin.cpp
     platform/win/SoundWin.cpp
     platform/win/StructuredExceptionHandlerSuppressor.cpp
     platform/win/SystemInfo.cpp

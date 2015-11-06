@@ -6,6 +6,7 @@ set(WTF_HEADERS
     BagToHashMap.h
     BitVector.h
     Bitmap.h
+    BubbleSort.h
     BumpPointerAllocator.h
     ByteOrder.h
     CompilationThread.h
@@ -16,6 +17,7 @@ set(WTF_HEADERS
     CurrentTime.h
     DataLog.h
     DateMath.h
+    Dominators.h
     DecimalNumber.h
     DeferrableRefCounted.h
     Deque.h
@@ -87,6 +89,7 @@ set(WTF_HEADERS
     SHA1.h
     SharedTask.h
     SaturatedArithmetic.h
+    ScopedLambda.h
     SegmentedVector.h
     StackBounds.h
     StackStats.h
@@ -234,6 +237,15 @@ set(WTF_LIBRARIES
     ${CMAKE_DL_LIBS}
 )
 
+if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    list(APPEND WTF_HEADERS
+        spi/darwin/CommonCryptoSPI.h
+    )
+    list(APPEND WTF_INCLUDE_DIRECTORIES
+        "${WTF_DIR}/wtf/spi/darwin"
+    )
+endif ()
+
 # FIXME: Port bmalloc to Windows. https://bugs.webkit.org/show_bug.cgi?id=143310
 if (NOT WIN32)
     list(APPEND WTF_LIBRARIES bmalloc)
@@ -289,3 +301,5 @@ endif ()
 if (WTF_OUTPUT_NAME)
     set_target_properties(WTF PROPERTIES OUTPUT_NAME ${WTF_OUTPUT_NAME})
 endif ()
+
+WEBKIT_FRAMEWORK(WTF)

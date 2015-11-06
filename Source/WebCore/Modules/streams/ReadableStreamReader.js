@@ -23,23 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @optional=STREAMS_API
+// @conditional=ENABLE(STREAMS_API)
 
 function cancel(reason)
 {
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
+        return @Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
 
-    if (this.@state === @readableStreamClosed)
-        return Promise.resolve();
+    if (this.@state === @streamClosed)
+        return @Promise.resolve();
 
-    if (this.@state === @readableStreamErrored)
-        return Promise.reject(this.@storedError);
+    if (this.@state === @streamErrored)
+        return @Promise.reject(this.@storedError);
 
-    // TODO ASSERT(@isReadableStream(this.@ownerReadableStream));
-    // TODO ASSERT(this.@ownerReadableStream.@state === @readableStreamReadable);
+    // FIXME: ASSERT(@isReadableStream(this.@ownerReadableStream));
+    // FIXME: ASSERT(this.@ownerReadableStream.@state === @streamReadable);
     return @cancelReadableStream(this.@ownerReadableStream, reason);
 }
 
@@ -48,7 +48,7 @@ function read()
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
+        return @Promise.reject(new @TypeError("Function should be called on a ReadableStreamReader"));
 
     return @readFromReadableStreamReader(this);
 }
@@ -74,7 +74,7 @@ function closed()
     "use strict";
 
     if (!@isReadableStreamReader(this))
-        return Promise.reject(new @TypeError("Callee of closed is not a ReadableStreamReader"));
+        return @Promise.reject(new @TypeError("Callee of closed is not a ReadableStreamReader"));
 
-    return this.@closedPromise;
+    return this.@closedPromiseCapability.@promise;
 }

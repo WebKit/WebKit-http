@@ -241,8 +241,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/NavigatorMediaDevices.idl
     Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/NavigatorUserMediaError.idl
-    Modules/mediastream/NavigatorUserMediaErrorCallback.idl
-    Modules/mediastream/NavigatorUserMediaSuccessCallback.idl
     Modules/mediastream/RTCConfiguration.idl
     Modules/mediastream/RTCDTMFSender.idl
     Modules/mediastream/RTCDTMFToneChangeEvent.idl
@@ -869,8 +867,11 @@ set(WebCore_SOURCES
 
     Modules/indexeddb/client/IDBAnyImpl.cpp
     Modules/indexeddb/client/IDBConnectionToServer.cpp
+    Modules/indexeddb/client/IDBCursorImpl.cpp
+    Modules/indexeddb/client/IDBCursorWithValueImpl.cpp
     Modules/indexeddb/client/IDBDatabaseImpl.cpp
     Modules/indexeddb/client/IDBFactoryImpl.cpp
+    Modules/indexeddb/client/IDBIndexImpl.cpp
     Modules/indexeddb/client/IDBObjectStoreImpl.cpp
     Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp
     Modules/indexeddb/client/IDBRequestImpl.cpp
@@ -903,6 +904,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/IDBServerOperation.cpp
     Modules/indexeddb/server/MemoryBackingStoreTransaction.cpp
     Modules/indexeddb/server/MemoryIDBBackingStore.cpp
+    Modules/indexeddb/server/MemoryIndex.cpp
     Modules/indexeddb/server/MemoryObjectStore.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
     Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp
@@ -910,6 +912,7 @@ set(WebCore_SOURCES
 
     Modules/indexeddb/shared/IDBDatabaseInfo.cpp
     Modules/indexeddb/shared/IDBError.cpp
+    Modules/indexeddb/shared/IDBIndexInfo.cpp
     Modules/indexeddb/shared/IDBObjectStoreInfo.cpp
     Modules/indexeddb/shared/IDBRequestData.cpp
     Modules/indexeddb/shared/IDBResourceIdentifier.cpp
@@ -1201,7 +1204,6 @@ set(WebCore_SOURCES
     bindings/js/JSMutationCallback.cpp
     bindings/js/JSMutationObserverCustom.cpp
     bindings/js/JSNamedNodeMapCustom.cpp
-    bindings/js/JSNavigatorCustom.cpp
     bindings/js/JSNodeCustom.cpp
     bindings/js/JSNodeFilterCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
@@ -1884,10 +1886,10 @@ set(WebCore_SOURCES
     inspector/InspectorInstrumentation.cpp
     inspector/InspectorInstrumentationCookie.cpp
     inspector/InspectorLayerTreeAgent.cpp
+    inspector/InspectorNetworkAgent.cpp
     inspector/InspectorNodeFinder.cpp
     inspector/InspectorOverlay.cpp
     inspector/InspectorPageAgent.cpp
-    inspector/InspectorResourceAgent.cpp
     inspector/InspectorStyleSheet.cpp
     inspector/InspectorTimelineAgent.cpp
     inspector/InspectorWorkerAgent.cpp
@@ -2045,6 +2047,7 @@ set(WebCore_SOURCES
     page/PerformanceUserTiming.cpp
     page/PointerLockController.cpp
     page/PrintContext.cpp
+    page/ResourceUsageOverlay.cpp
     page/Screen.cpp
     page/SecurityOrigin.cpp
     page/SecurityOriginData.cpp
@@ -2104,13 +2107,13 @@ set(WebCore_SOURCES
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
-    platform/KillRingNone.cpp
     platform/Language.cpp
     platform/Length.cpp
     platform/LengthSize.cpp
     platform/LinkHash.cpp
     platform/Logging.cpp
     platform/MIMETypeRegistry.cpp
+    platform/MainThreadSharedTimer.cpp
     platform/MemoryPressureHandler.cpp
     platform/NotImplemented.cpp
     platform/PlatformEvent.cpp
@@ -2347,7 +2350,6 @@ set(WebCore_SOURCES
 
     platform/text/BidiContext.cpp
     platform/text/DateTimeFormat.cpp
-    platform/text/Hyphenation.cpp
     platform/text/LineEnding.cpp
     platform/text/LocaleToScriptMappingDefault.cpp
     platform/text/PlatformLocale.cpp
@@ -3382,7 +3384,7 @@ add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
     MAIN_DEPENDENCY inspector/CommandLineAPIModuleSource.js
     DEPENDS ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py
-    COMMAND echo "//# sourceURL=__WebInspectorCommandLineAPIModuleSource__" > ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
+    COMMAND ${CMAKE_COMMAND} -E echo "//# sourceURL=__WebInspectorCommandLineAPIModuleSource__" > ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py < ${WEBCORE_DIR}/inspector/CommandLineAPIModuleSource.js >> ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl CommandLineAPIModuleSource_js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.min.js ${DERIVED_SOURCES_WEBCORE_DIR}/CommandLineAPIModuleSource.h
     VERBATIM)
@@ -3590,6 +3592,7 @@ GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
 
 set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/mediastream/MediaDevices.js
+    ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/CountQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
@@ -3610,7 +3613,6 @@ set(BUILTINS_GENERATOR_SCRIPTS
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_header.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_implementation.py
-    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_wrapper.py
     ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
     ${JavaScriptCore_SCRIPTS_DIR}/lazywriter.py
 )
@@ -3620,14 +3622,12 @@ foreach (_builtinSource ${WebCore_BUILTINS_SOURCES})
     add_custom_command(
         OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.cpp
                ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.h
-               ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}BuiltinsWrapper.h 
         MAIN_DEPENDENCY ${_builtinSource}
         DEPENDS ${BUILTINS_GENERATOR_SCRIPTS}
         COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework WebCore --output-directory ${DERIVED_SOURCES_WEBCORE_DIR} ${_builtinSource}
         VERBATIM)
     list(APPEND WebCore_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}Builtins.h
-        ${DERIVED_SOURCES_WEBCORE_DIR}/${_objectName}BuiltinsWrapper.h
     )
     ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/bindings/js/WebCoreJSBuiltins.cpp ${_objectName}Builtins.cpp)
 endforeach ()
@@ -3774,3 +3774,5 @@ endif ()
 if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND WTF_CPU_ARM AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.3"))
     set_source_files_properties(svg/SVGPathElement.cpp PROPERTIES COMPILE_FLAGS "-O2")
 endif ()
+
+WEBKIT_FRAMEWORK(WebCore)

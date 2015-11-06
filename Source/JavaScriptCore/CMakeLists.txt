@@ -8,6 +8,8 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/API"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/assembler"
+    "${JAVASCRIPTCORE_DIR}/b3"
+    "${JAVASCRIPTCORE_DIR}/b3/air"
     "${JAVASCRIPTCORE_DIR}/bindings"
     "${JAVASCRIPTCORE_DIR}/builtins"
     "${JAVASCRIPTCORE_DIR}/bytecode"
@@ -65,6 +67,65 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssemblerARMv7.cpp
     assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
+
+    b3/air/AirAllocateStack.cpp
+    b3/air/AirArg.cpp
+    b3/air/AirBasicBlock.cpp
+    b3/air/AirCCallSpecial.cpp
+    b3/air/AirCode.cpp
+    b3/air/AirEliminateDeadCode.cpp
+    b3/air/AirGenerate.cpp
+    b3/air/AirGenerated.cpp
+    b3/air/AirHandleCalleeSaves.cpp
+    b3/air/AirInsertionSet.cpp
+    b3/air/AirInst.cpp
+    b3/air/AirPhaseScope.cpp
+    b3/air/AirRegisterPriority.cpp
+    b3/air/AirReportUsedRegisters.cpp
+    b3/air/AirSpecial.cpp
+    b3/air/AirSpillEverything.cpp
+    b3/air/AirStackSlot.cpp
+    b3/air/AirTmp.cpp
+    b3/air/AirValidate.cpp
+
+    b3/B3ArgumentRegValue.cpp
+    b3/B3BasicBlock.cpp
+    b3/B3CheckSpecial.cpp
+    b3/B3CheckValue.cpp
+    b3/B3ConstrainedValue.cpp
+    b3/B3Common.cpp
+    b3/B3Commutativity.cpp
+    b3/B3Const32Value.cpp
+    b3/B3Const64Value.cpp
+    b3/B3ConstDoubleValue.cpp
+    b3/B3ControlValue.cpp
+    b3/B3Effects.cpp
+    b3/B3FrequencyClass.cpp
+    b3/B3Generate.cpp
+    b3/B3HeapRange.cpp
+    b3/B3InsertionSet.cpp
+    b3/B3LowerToAir.cpp
+    b3/B3MemoryValue.cpp
+    b3/B3Opcode.cpp
+    b3/B3Origin.cpp
+    b3/B3PatchpointSpecial.cpp
+    b3/B3PatchpointValue.cpp
+    b3/B3PhaseScope.cpp
+    b3/B3Procedure.cpp
+    b3/B3ReduceStrength.cpp
+    b3/B3StackmapSpecial.cpp
+    b3/B3StackmapValue.cpp
+    b3/B3StackSlotKind.cpp
+    b3/B3StackSlotValue.cpp
+    b3/B3SwitchCase.cpp
+    b3/B3SwitchValue.cpp
+    b3/B3TimingScope.cpp
+    b3/B3Type.cpp
+    b3/B3UpsilonValue.cpp
+    b3/B3UseCounts.cpp
+    b3/B3Validate.cpp
+    b3/B3Value.cpp
+    b3/B3ValueRep.cpp
 
     bindings/ScriptFunctionCall.cpp
     bindings/ScriptObject.cpp
@@ -176,7 +237,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGDesiredWeakReferences.cpp
     dfg/DFGDisassembler.cpp
     dfg/DFGDoesGC.cpp
-    dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGEdge.cpp
     dfg/DFGEpoch.cpp
@@ -213,7 +273,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGMinifiedNode.cpp
     dfg/DFGMovHintRemovalPhase.cpp
     dfg/DFGMultiGetByOffsetData.cpp
-    dfg/DFGNaiveDominators.cpp
     dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
     dfg/DFGNodeFlags.cpp
@@ -375,6 +434,7 @@ set(JavaScriptCore_SOURCES
     jit/HostCallReturnValue.cpp
     jit/IntrinsicEmitter.cpp
     jit/JIT.cpp
+    jit/JITAddGenerator.cpp
     jit/JITArithmetic.cpp
     jit/JITArithmetic32_64.cpp
     jit/JITCall.cpp
@@ -389,6 +449,7 @@ set(JavaScriptCore_SOURCES
     jit/JITPropertyAccess.cpp
     jit/JITPropertyAccess32_64.cpp
     jit/JITStubRoutine.cpp
+    jit/JITSubGenerator.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
     jit/PolymorphicCallStubRoutine.cpp
@@ -906,7 +967,7 @@ if (ENABLE_FTL_JIT)
 
     WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
     add_library(llvmForJSC SHARED ${llvmForJSC_SOURCES} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h)
-    target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} "pthread" "dl" -Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version)
+    target_link_libraries(llvmForJSC ${LLVM_STATIC_LIBRARIES} ${LLVM_SYSTEM_LIBRARIES} -Wl,--version-script=${JAVASCRIPTCORE_DIR}/llvm/library/libllvmForJSC.version)
 
     # Added extra items for JavaScriptCore
     list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -1136,7 +1197,6 @@ set(BUILTINS_GENERATOR_SCRIPTS
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_combined_implementation.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_header.py
     ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_implementation.py
-    ${JavaScriptCore_SCRIPTS_DIR}/builtins_generate_separate_wrapper.py
     ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
     ${JavaScriptCore_SCRIPTS_DIR}/lazywriter.py
 )
@@ -1163,12 +1223,42 @@ set(JavaScriptCore_BUILTINS_SOURCES
 )
 
 add_custom_command(
-   OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp
-          ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
-   MAIN_DEPENDENCY ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
-   DEPENDS ${JavaScriptCore_BUILTINS_SOURCES} ${BUILTINS_GENERATOR_SCRIPTS}
-   COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework JavaScriptCore --output-directory ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} --combined ${JavaScriptCore_BUILTINS_SOURCES}
-   VERBATIM)
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3AddressMatcher.h
+    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/B3AddressMatcher.patterns
+    DEPENDS ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb ${JAVASCRIPTCORE_DIR}/b3/B3AddressMatcher.patterns VERBATIM
+    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+)
+
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3LoweringMatcher.h
+    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/B3LoweringMatcher.patterns
+    DEPENDS ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/b3/generate_pattern_matcher.rb ${JAVASCRIPTCORE_DIR}/b3/B3LoweringMatcher.patterns VERBATIM
+    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+)
+
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcode.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcodeGenerated.h
+    MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/b3/air/AirOpcode.opcodes
+    DEPENDS ${JAVASCRIPTCORE_DIR}/b3/air/opcode_generator.rb
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/b3/air/opcode_generator.rb ${JAVASCRIPTCORE_DIR}/b3/air/AirOpcode.opcodes VERBATIM
+    WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+)
+
+list(APPEND JavaScriptCore_SOURCES
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcode.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/AirOpcodeGenerated.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3AddressMatcher.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/B3LoweringMatcher.h
+)
+
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/JSCBuiltins.h
+    MAIN_DEPENDENCY ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py
+    DEPENDS ${JavaScriptCore_BUILTINS_SOURCES} ${BUILTINS_GENERATOR_SCRIPTS}
+    COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/generate-js-builtins.py --framework JavaScriptCore --output-directory ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} --combined ${JavaScriptCore_BUILTINS_SOURCES}
+    VERBATIM)
 
 list(APPEND JavaScriptCore_SOURCES
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendDispatchers.cpp
@@ -1188,7 +1278,7 @@ add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/inspector/InjectedScriptSource.js
     DEPENDS ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py
-    COMMAND echo "//# sourceURL=__WebInspectorInjectedScript__" > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
+    COMMAND ${CMAKE_COMMAND} -E echo "//# sourceURL=__WebInspectorInjectedScript__" > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/jsmin.py < ${JAVASCRIPTCORE_DIR}/inspector/InjectedScriptSource.js >> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js
     COMMAND ${PERL_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/xxd.pl InjectedScriptSource_js ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.min.js ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InjectedScriptSource.h
     VERBATIM)
@@ -1275,3 +1365,5 @@ endif ()
 
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})
 add_dependencies(JavaScriptCore stageSharedScripts)
+
+WEBKIT_FRAMEWORK(JavaScriptCore)

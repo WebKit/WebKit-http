@@ -28,10 +28,12 @@
 
 #if USE(NETWORK_SESSION)
 
+#import "SessionTracker.h"
 #import <Foundation/NSURLSession.h>
-
 #import <WebCore/AuthenticationChallenge.h>
+#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Credential.h>
+#import <WebCore/NetworkStorageSession.h>
 #import <WebCore/ResourceError.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
@@ -157,17 +159,6 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
 
 namespace WebKit {
     
-Ref<NetworkSession> NetworkSession::create(Type type)
-{
-    return adoptRef(*new NetworkSession(type));
-}
-
-Ref<NetworkSession> NetworkSession::singleton()
-{
-    static NeverDestroyed<Ref<NetworkSession>> sharedInstance(NetworkSession::create(Type::Normal));
-    return sharedInstance.get().copyRef();
-}
-    
 static NSURLSessionConfiguration *configurationForType(NetworkSession::Type type)
 {
     switch (type) {
@@ -178,37 +169,48 @@ static NSURLSessionConfiguration *configurationForType(NetworkSession::Type type
     }
 }
 
-NetworkSession::NetworkSession(Type type)
+NetworkSession& NetworkSession::defaultSession()
+{
+    ASSERT(isMainThread());
+    static NeverDestroyed<NetworkSession> session(NetworkSession::Type::Normal, WebCore::SessionID::defaultSessionID());
+    return session;
+}
+
+NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID)
+    : m_sessionID(sessionID)
 {
     m_sessionDelegate = adoptNS([[NetworkSessionDelegate alloc] initWithNetworkSession:*this]);
 
     NSURLSessionConfiguration *configuration = configurationForType(type);
+    if (auto* storageSession = SessionTracker::storageSession(sessionID)) {
+        if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
+            configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
+    }
     m_session = [NSURLSession sessionWithConfiguration:configuration delegate:static_cast<id>(m_sessionDelegate.get()) delegateQueue:[NSOperationQueue mainQueue]];
 }
 
-RefPtr<NetworkingDataTask> NetworkSession::createDataTaskWithRequest(const WebCore::ResourceRequest& request, NetworkSessionTaskClient& client)
+Ref<NetworkDataTask> NetworkSession::createDataTaskWithRequest(const WebCore::ResourceRequest& request, NetworkSessionTaskClient& client)
 {
-    RefPtr<NetworkingDataTask> task = adoptRef(new NetworkingDataTask(*this, client, [m_session dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)]));
-    return task;
+    return adoptRef(*new NetworkDataTask(*this, client, [m_session dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)]));
 }
 
-NetworkingDataTask* NetworkSession::dataTaskForIdentifier(uint64_t taskIdentifier)
+NetworkDataTask* NetworkSession::dataTaskForIdentifier(uint64_t taskIdentifier)
 {
     ASSERT(isMainThread());
     return m_dataTaskMap.get(taskIdentifier);
 }
 
-NetworkingDataTask::NetworkingDataTask(NetworkSession& session, NetworkSessionTaskClient& client, RetainPtr<NSURLSessionDataTask> task)
+NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkSessionTaskClient& client, RetainPtr<NSURLSessionDataTask>&& task)
     : m_session(session)
-    , m_task(task)
     , m_client(&client)
+    , m_task(WTF::move(task))
 {
     ASSERT(!m_session.m_dataTaskMap.contains(taskIdentifier()));
     ASSERT(isMainThread());
     m_session.m_dataTaskMap.add(taskIdentifier(), this);
 }
 
-NetworkingDataTask::~NetworkingDataTask()
+NetworkDataTask::~NetworkDataTask()
 {
     ASSERT(m_session.m_dataTaskMap.contains(taskIdentifier()));
     ASSERT(m_session.m_dataTaskMap.get(taskIdentifier()) == this);
@@ -216,17 +218,17 @@ NetworkingDataTask::~NetworkingDataTask()
     m_session.m_dataTaskMap.remove(taskIdentifier());
 }
 
-void NetworkingDataTask::suspend()
+void NetworkDataTask::cancel()
 {
-    [m_task suspend];
+    [m_task cancel];
 }
 
-void NetworkingDataTask::resume()
+void NetworkDataTask::resume()
 {
     [m_task resume];
 }
 
-uint64_t NetworkingDataTask::taskIdentifier()
+uint64_t NetworkDataTask::taskIdentifier()
 {
     return [m_task taskIdentifier];
 }

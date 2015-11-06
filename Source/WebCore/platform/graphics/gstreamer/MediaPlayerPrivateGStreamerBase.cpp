@@ -194,16 +194,6 @@ static gboolean mediaPlayerPrivateDrawCallback(GstElement*, GstContext*, GstSamp
 }
 #endif
 
-static void mediaPlayerPrivateNeedContextMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamerBase* player)
-{
-    player->handleNeedContextMessage(message);
-}
-
-static void mediaPlayerPrivateElementMessageCallback(GstBus*, GstMessage* message, MediaPlayerPrivateGStreamerBase* player)
-{
-    player->handleElementMessage(message);
-}
-
 #if USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
 public:
@@ -319,9 +309,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateNeedContextMessageCallback), this);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateElementMessageCallback), this);
-        gst_bus_disable_sync_message_emission(bus.get());
         m_pipeline.clear();
     }
 
@@ -346,11 +333,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
 {
     m_pipeline = pipeline;
-
-    GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
-    gst_bus_enable_sync_message_emission(bus.get());
-    g_signal_connect(bus.get(), "sync-message::need-context", G_CALLBACK(mediaPlayerPrivateNeedContextMessageCallback), this);
-    g_signal_connect(bus.get(), "sync-message::element", G_CALLBACK(mediaPlayerPrivateElementMessageCallback), this);
 }
 
 void MediaPlayerPrivateGStreamerBase::clearSamples()
@@ -373,32 +355,82 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     m_sample = nullptr;
 }
 
-void MediaPlayerPrivateGStreamerBase::handleNeedContextMessage(GstMessage* message)
+bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 {
 #if USE(GSTREAMER_GL)
-    const gchar* contextType;
-    gst_message_parse_context_type(message, &contextType);
+    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_NEED_CONTEXT) {
+        const gchar* contextType;
+        gst_message_parse_context_type(message, &contextType);
 
-    if (!ensureGstGLContext())
-        return;
+        if (!ensureGstGLContext())
+            return false;
 
-    if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-        GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-        gst_context_set_gl_display(displayContext, m_glDisplay.get());
-        gst_element_set_context(GST_ELEMENT(message->src), displayContext);
-        return;
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+            GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+            gst_context_set_gl_display(displayContext, m_glDisplay.get());
+            gst_element_set_context(GST_ELEMENT(message->src), displayContext);
+            return true;
+        }
+
+        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+            GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
+            GstStructure* structure = gst_context_writable_structure(appContext);
+            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
+            gst_element_set_context(GST_ELEMENT(message->src), appContext);
+            return true;
+        }
     }
-
-    if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-        GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
-        GstStructure* structure = gst_context_writable_structure(appContext);
-        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
-        gst_element_set_context(GST_ELEMENT(message->src), appContext);
-        return;
-    }
-#else
-    UNUSED_PARAM(message);
 #endif // USE(GSTREAMER_GL)
+
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
+        const GstStructure* structure = gst_message_get_structure(message);
+        if (!gst_structure_has_name(structure, "drm-key-needed"))
+            return false;
+
+        LOG_MEDIA_MESSAGE("handling drm-key-needed message");
+#if USE(DXDRM)
+        DiscretixSession* session = dxdrmSession();
+        if (session && session->keyRequested()) {
+            LOG_MEDIA_MESSAGE("key requested already");
+            if (session->ready()) {
+                LOG_MEDIA_MESSAGE("key already negotiated");
+                emitSession();
+            }
+            return false;
+        }
+#endif
+        // Here we receive the DRM init data from the pipeline: we will emit
+        // the needkey event with that data and the browser might create a
+        // CDMSession from this event handler. If such a session was created
+        // We will emit the message event from the session to provide the
+        // DRM challenge to the browser and wait for an update. If on the
+        // contrary no session was created we won't wait and let the pipeline
+        // error out by itself.
+        GstBuffer* data;
+        const char* keySystemId;
+        gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
+                                           "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
+        GstMapInfo mapInfo;
+        if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
+            return false;
+
+        GST_DEBUG("scheduling keyNeeded event");
+        // FIXME: Provide a somehow valid sessionId.
+#if ENABLE(ENCRYPTED_MEDIA)
+        needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+        RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+        needKey(initData);
+#else
+        ASSERT_NOT_REACHED();
+#endif
+        gst_buffer_unmap(data, &mapInfo);
+        return true;
+    }
+#endif
+
+    return false;
 }
 
 #if USE(GSTREAMER_GL)
@@ -1072,57 +1104,6 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
         gst_structure_new("dxdrm-session", "session", G_TYPE_POINTER, session, nullptr)));
 }
 #endif
-
-void MediaPlayerPrivateGStreamerBase::handleElementMessage(GstMessage* message)
-{
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    const GstStructure* structure = gst_message_get_structure(message);
-    if (!gst_structure_has_name(structure, "drm-key-needed"))
-        return;
-
-    LOG_MEDIA_MESSAGE("handling drm-key-needed message");
-#if USE(DXDRM)
-    DiscretixSession* session = dxdrmSession();
-    if (session && session->keyRequested()) {
-        LOG_MEDIA_MESSAGE("key requested already");
-        if (session->ready()) {
-            LOG_MEDIA_MESSAGE("key already negotiated");
-            emitSession();
-        }
-        return;
-    }
-#endif
-    // Here we receive the DRM init data from the pipeline: we will emit
-    // the needkey event with that data and the browser might create a
-    // CDMSession from this event handler. If such a session was created
-    // We will emit the message event from the session to provide the
-    // DRM challenge to the browser and wait for an update. If on the
-    // contrary no session was created we won't wait and let the pipeline
-    // error out by itself.
-    GstBuffer* data;
-    const char* keySystemId;
-    gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
-                                       "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
-    GstMapInfo mapInfo;
-    if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
-        return;
-
-    GST_DEBUG("scheduling keyNeeded event");
-    // FIXME: Provide a somehow valid sessionId.
-#if ENABLE(ENCRYPTED_MEDIA)
-    needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-#elif ENABLE(ENCRYPTED_MEDIA_V2)
-    RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-    needKey(initData);
-#else
-    ASSERT_NOT_REACHED();
-#endif
-    gst_buffer_unmap(data, &mapInfo);
-#else
-    UNUSED_PARAM(message);
-#endif
-}
-
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)

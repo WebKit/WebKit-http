@@ -652,7 +652,7 @@ private:
 
     bool allInlineFramesAreTailCalls()
     {
-        return !inlineCallFrame() || !inlineCallFrame()->getCallerSkippingDeadFrames();
+        return !inlineCallFrame() || !inlineCallFrame()->getCallerSkippingTailCalls();
     }
 
     CodeOrigin currentCodeOrigin()
@@ -815,7 +815,7 @@ private:
                         prediction = SpecFullTop;
                         break;
                     }
-                    CodeOrigin* codeOrigin = inlineCallFrame()->getCallerSkippingDeadFrames();
+                    CodeOrigin* codeOrigin = inlineCallFrame()->getCallerSkippingTailCalls();
                     if (!codeOrigin) {
                         prediction = SpecFullTop;
                         break;
@@ -3760,14 +3760,14 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_getter_by_id);
         }
 
-        case op_put_getter_setter: {
+        case op_put_getter_setter_by_id: {
             Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[2].u.operand];
             unsigned attributes = currentInstruction[3].u.operand;
             Node* getter = get(VirtualRegister(currentInstruction[4].u.operand));
             Node* setter = get(VirtualRegister(currentInstruction[5].u.operand));
             addToGraph(PutGetterSetterById, OpInfo(identifierNumber), OpInfo(attributes), base, getter, setter);
-            NEXT_OPCODE(op_put_getter_setter);
+            NEXT_OPCODE(op_put_getter_setter_by_id);
         }
 
         case op_put_getter_by_val:

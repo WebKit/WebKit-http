@@ -31,6 +31,7 @@
 #include "PluginComplexTextInputState.h"
 #include "WKLayoutMode.h"
 #include "WebPageProxy.h"
+#include "_WKOverlayScrollbarStyle.h"
 #include <WebCore/TextIndicatorWindow.h>
 #include <functional>
 #include <wtf/RetainPtr.h>
@@ -40,57 +41,92 @@
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
+OBJC_CLASS WKBrowsingContextController;
 OBJC_CLASS WKEditorUndoTargetObjC;
 OBJC_CLASS WKFullScreenWindowController;
 OBJC_CLASS WKImmediateActionController;
 OBJC_CLASS WKViewLayoutStrategy;
+OBJC_CLASS WKWebView;
 OBJC_CLASS WKWindowVisibilityObserver;
 OBJC_CLASS _WKThumbnailView;
 
 @protocol WebViewImplDelegate
 
-- (NSTextInputContext *)_superInputContext;
-- (void)_superQuickLookWithEvent:(NSEvent *)event;
-- (void)_superRemoveTrackingRect:(NSTrackingRectTag)tag;
-- (void)_superSwipeWithEvent:(NSEvent *)event;
-- (void)_superMagnifyWithEvent:(NSEvent *)event;
-- (void)_superSmartMagnifyWithEvent:(NSEvent *)event;
-- (id)_superAccessibilityAttributeValue:(NSString *)attribute;
+- (NSTextInputContext *)_web_superInputContext;
+- (void)_web_superQuickLookWithEvent:(NSEvent *)event;
+- (void)_web_superRemoveTrackingRect:(NSTrackingRectTag)tag;
+- (void)_web_superSwipeWithEvent:(NSEvent *)event;
+- (void)_web_superMagnifyWithEvent:(NSEvent *)event;
+- (void)_web_superSmartMagnifyWithEvent:(NSEvent *)event;
+- (id)_web_superAccessibilityAttributeValue:(NSString *)attribute;
+- (void)_web_superDoCommandBySelector:(SEL)selector;
+- (BOOL)_web_superPerformKeyEquivalent:(NSEvent *)event;
+- (void)_web_superKeyDown:(NSEvent *)event;
+- (NSView *)_web_superHitTest:(NSPoint)point;
 
-// This is a hack; these things live can live on a category (e.g. WKView (Private)) but WKView itself conforms to this protocol.
-// They're not actually optional.
-@optional
+- (id)_web_immediateActionAnimationControllerForHitTestResultInternal:(API::HitTestResult*)hitTestResult withType:(uint32_t)type userData:(API::Object*)userData;
+- (void)_web_prepareForImmediateActionAnimation;
+- (void)_web_cancelImmediateActionAnimation;
+- (void)_web_completeImmediateActionAnimation;
 
-- (id)_immediateActionAnimationControllerForHitTestResult:(WKHitTestResultRef)hitTestResult withType:(uint32_t)type userData:(WKTypeRef)userData;
-- (void)_prepareForImmediateActionAnimation;
-- (void)_cancelImmediateActionAnimation;
-- (void)_completeImmediateActionAnimation;
-- (void)_dismissContentRelativeChildWindows;
-- (void)_dismissContentRelativeChildWindowsWithAnimation:(BOOL)animate;
-- (void)_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
+- (void)_web_dismissContentRelativeChildWindows;
+- (void)_web_dismissContentRelativeChildWindowsWithAnimation:(BOOL)animate;
+
+- (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
+
+- (void)_web_didChangeContentSize:(NSSize)newSize;
 
 @end
 
+namespace WebCore {
+struct KeyPressCommand;
+}
+
 namespace WebKit {
 
+class PageClientImpl;
+class DrawingAreaProxy;
 class ViewGestureController;
 class WebEditCommandProxy;
 class WebPageProxy;
 struct ColorSpaceData;
 
+typedef id <NSValidatedUserInterfaceItem> ValidationItem;
+typedef Vector<RetainPtr<ValidationItem>> ValidationVector;
+typedef HashMap<String, ValidationVector> ValidationMap;
+
+#if !USE(ASYNC_NSTEXTINPUTCLIENT)
+struct WKViewInterpretKeyEventsParameters {
+    bool eventInterpretationHadSideEffects;
+    bool consumedByIM;
+    bool executingSavedKeypressCommands;
+    Vector<WebCore::KeypressCommand>* commands;
+};
+#endif
+
 class WebViewImpl {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(WebViewImpl);
 public:
-    WebViewImpl(NSView <WebViewImplDelegate> *, WebPageProxy&, PageClient&);
+    WebViewImpl(NSView <WebViewImplDelegate> *, WKWebView *outerWebView, WebProcessPool&, Ref<API::PageConfiguration>&&);
 
     ~WebViewImpl();
+
+    NSWindow *window();
+
+    WebPageProxy& page() { return m_page.get(); }
+
+    void processDidExit();
+    void pageClosed();
+    void didRelaunchProcess();
 
     void setDrawsBackground(bool);
     bool drawsBackground() const;
     void setDrawsTransparentBackground(bool);
     bool drawsTransparentBackground() const;
+    bool isOpaque() const;
 
+    bool acceptsFirstMouse(NSEvent *);
     bool acceptsFirstResponder();
     bool becomeFirstResponder();
     bool resignFirstResponder();
@@ -110,7 +146,17 @@ public:
     void setFixedLayoutSize(CGSize);
     CGSize fixedLayoutSize() const;
 
+    std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy();
+    bool isUsingUISideCompositing() const;
     void setDrawingAreaSize(CGSize);
+    void forceAsyncDrawingAreaSizeUpdate(CGSize);
+    void waitForAsyncDrawingAreaSizeUpdate();
+    void updateLayer();
+    static bool wantsUpdateLayer() { return true; }
+
+    void drawRect(CGRect);
+    bool canChangeFrameLayout(WebFrameProxy&);
+    NSPrintOperation *printOperationWithPrintInfo(NSPrintInfo *, WebFrameProxy&);
 
     void setAutomaticallyAdjustsContentInsets(bool);
     bool automaticallyAdjustsContentInsets() const { return m_automaticallyAdjustsContentInsets; }
@@ -118,11 +164,15 @@ public:
     void setTopContentInset(CGFloat);
     CGFloat topContentInset() const { return m_topContentInset; }
 
-    void setContentPreparationRect(CGRect);
+    void prepareContentInRect(CGRect);
     void updateViewExposedRect();
     void setClipsToVisibleRect(bool);
     bool clipsToVisibleRect() const { return m_clipsToVisibleRect; }
 
+    void setMinimumSizeForAutoLayout(CGSize);
+    CGSize minimumSizeForAutoLayout() const;
+    void setShouldExpandToViewHeightForAutoLayout(bool);
+    bool shouldExpandToViewHeightForAutoLayout() const;
     void setIntrinsicContentSize(CGSize);
     CGSize intrinsicContentSize() const;
 
@@ -148,18 +198,39 @@ public:
     void windowDidChangeScreen();
     void windowDidChangeLayerHosting();
     void windowDidChangeOcclusionState();
+    bool shouldDelayWindowOrderingForEvent(NSEvent *);
+    bool windowResizeMouseLocationIsInVisibleScrollerThumb(CGPoint);
+
+    // -[NSView mouseDownCanMoveWindow] returns YES when the NSView is transparent,
+    // but we don't want a drag in the NSView to move the window, even if it's transparent.
+    static bool mouseDownCanMoveWindow() { return false; }
 
     void viewWillMoveToWindow(NSWindow *);
     void viewDidMoveToWindow();
     void viewDidChangeBackingProperties();
+    void viewDidHide();
+    void viewDidUnhide();
+    void activeSpaceDidChange();
+
+    NSView *hitTest(CGPoint);
 
     ColorSpaceData colorSpace();
+
+    void setUnderlayColor(NSColor *);
+    NSColor *underlayColor() const;
+    NSColor *pageExtendedBackgroundColor() const;
+
+    void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
+    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
 
     void beginDeferringViewInWindowChanges();
     // FIXME: Merge these two?
     void endDeferringViewInWindowChanges();
     void endDeferringViewInWindowChangesSync();
     bool isDeferringViewInWindowChanges() const { return m_shouldDeferViewInWindowChanges; }
+
+    void setWindowOcclusionDetectionEnabled(bool enabled) { m_windowOcclusionDetectionEnabled = enabled; }
+    bool windowOcclusionDetectionEnabled() const { return m_windowOcclusionDetectionEnabled; }
 
     void prepareForMoveToWindow(NSWindow *targetWindow, std::function<void()> completionHandler);
     NSWindow *targetWindowForMovePreparation() const { return m_targetWindowForMovePreparation; }
@@ -192,14 +263,49 @@ public:
     NSWindow *createFullScreenWindow();
 
     bool isEditable() const;
-    void executeEditCommand(const String& commandName, const String& argument = String());
+    bool executeSavedCommandBySelector(SEL);
+    void executeEditCommandForSelector(SEL, const String& argument = String());
     void registerEditCommand(RefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo);
     void clearAllEditCommands();
     bool writeSelectionToPasteboard(NSPasteboard *, NSArray *types);
+    bool readSelectionFromPasteboard(NSPasteboard *);
+    id validRequestorForSendAndReturnTypes(NSString *sendType, NSString *returnType);
     void centerSelectionInVisibleArea();
     void selectionDidChange();
     void startObservingFontPanel();
     void updateFontPanelIfNeeded();
+    void changeFontFromFontPanel();
+    bool validateUserInterfaceItem(id <NSValidatedUserInterfaceItem>);
+
+    void startSpeaking();
+    void stopSpeaking(id);
+
+    void showGuessPanel(id);
+    void checkSpelling();
+    void changeSpelling(id);
+    void toggleContinuousSpellChecking();
+
+    bool isGrammarCheckingEnabled();
+    void setGrammarCheckingEnabled(bool);
+    void toggleGrammarChecking();
+    void toggleAutomaticSpellingCorrection();
+    void orderFrontSubstitutionsPanel(id);
+    void toggleSmartInsertDelete();
+    bool isAutomaticQuoteSubstitutionEnabled();
+    void setAutomaticQuoteSubstitutionEnabled(bool);
+    void toggleAutomaticQuoteSubstitution();
+    bool isAutomaticDashSubstitutionEnabled();
+    void setAutomaticDashSubstitutionEnabled(bool);
+    void toggleAutomaticDashSubstitution();
+    bool isAutomaticLinkDetectionEnabled();
+    void setAutomaticLinkDetectionEnabled(bool);
+    void toggleAutomaticLinkDetection();
+    bool isAutomaticTextReplacementEnabled();
+    void setAutomaticTextReplacementEnabled(bool);
+    void toggleAutomaticTextReplacement();
+    void uppercaseWord();
+    void lowercaseWord();
+    void capitalizeWord();
 
     void preferencesDidChange();
 
@@ -210,17 +316,18 @@ public:
     void dismissContentRelativeChildWindowsFromViewOnly();
     void dismissContentRelativeChildWindowsWithAnimation(bool);
     void dismissContentRelativeChildWindowsWithAnimationFromViewOnly(bool);
+    static void hideWordDefinitionWindow();
 
     void quickLookWithEvent(NSEvent *);
     void prepareForDictionaryLookup();
     void setAllowsLinkPreview(bool);
     bool allowsLinkPreview() const { return m_allowsLinkPreview; }
-    void* immediateActionAnimationControllerForHitTestResult(WKHitTestResultRef, uint32_t type, WKTypeRef userData);
-    void* immediateActionAnimationControllerForHitTestResultFromViewOnly(WKHitTestResultRef, uint32_t type, WKTypeRef userData);
+    void* immediateActionAnimationControllerForHitTestResult(API::HitTestResult*, uint32_t type, API::Object* userData);
     void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object* userData);
     void prepareForImmediateActionAnimation();
     void cancelImmediateActionAnimation();
     void completeImmediateActionAnimation();
+    void didChangeContentSize(CGSize);
 
     void setIgnoresNonWheelEvents(bool);
     bool ignoresNonWheelEvents() const { return m_ignoresNonWheelEvents; }
@@ -251,11 +358,17 @@ public:
 
     void setAcceleratedCompositingRootLayer(CALayer *);
     CALayer *acceleratedCompositingRootLayer() const { return m_rootLayer.get(); }
-    NSView *layerHostingView() const { return m_layerHostingView.get(); }
 
 #if WK_API_ENABLED
     void setThumbnailView(_WKThumbnailView *);
     _WKThumbnailView *thumbnailView() const { return m_thumbnailView; }
+
+    void setInspectorAttachmentView(NSView *);
+    NSView *inspectorAttachmentView();
+
+    _WKRemoteObjectRegistry *remoteObjectRegistry();
+
+    WKBrowsingContextController *browsingContextController();
 #endif // WK_API_ENABLED
 
 #if ENABLE(DRAG_SUPPORT)
@@ -284,10 +397,11 @@ public:
     NSArray *namesOfPromisedFilesDroppedAtDestination(NSURL *dropDestination);
 
     RefPtr<ViewSnapshot> takeViewSnapshot();
+    void saveBackForwardSnapshotForCurrentItem();
+    void saveBackForwardSnapshotForItem(WebBackForwardListItem&);
 
     ViewGestureController* gestureController() { return m_gestureController.get(); }
     ViewGestureController& ensureGestureController();
-    void resetGestureController();
     void setAllowsBackForwardNavigationGestures(bool);
     bool allowsBackForwardNavigationGestures() const { return m_allowsBackForwardNavigationGestures; }
     void setAllowsMagnification(bool);
@@ -312,6 +426,54 @@ public:
     void gestureEventWasNotHandledByWebCore(NSEvent *);
     void gestureEventWasNotHandledByWebCoreFromViewOnly(NSEvent *);
 
+    void setTotalHeightOfBanners(CGFloat totalHeightOfBanners) { m_totalHeightOfBanners = totalHeightOfBanners; }
+    CGFloat totalHeightOfBanners() const { return m_totalHeightOfBanners; }
+
+    void doneWithKeyEvent(NSEvent *, bool eventWasHandled);
+    NSArray *validAttributesForMarkedText();
+    void doCommandBySelector(SEL);
+    void insertText(id string);
+    void insertText(id string, NSRange replacementRange);
+    NSTextInputContext *inputContext();
+    void unmarkText();
+    void setMarkedText(id string, NSRange selectedRange, NSRange replacementRange);
+    NSRange selectedRange();
+    bool hasMarkedText();
+    NSRange markedRange();
+    NSAttributedString *attributedSubstringForProposedRange(NSRange, NSRangePointer actualRange);
+    NSUInteger characterIndexForPoint(NSPoint);
+    NSRect firstRectForCharacterRange(NSRange, NSRangePointer actualRange);
+    bool performKeyEquivalent(NSEvent *);
+    void keyUp(NSEvent *);
+    void keyDown(NSEvent *);
+    void flagsChanged(NSEvent *);
+
+    // Override this so that AppKit will send us arrow keys as key down events so we can
+    // support them via the key bindings mechanism.
+    static bool wantsKeyDownForEvent(NSEvent *) { return true; }
+
+#if USE(ASYNC_NSTEXTINPUTCLIENT)
+    void selectedRangeWithCompletionHandler(void(^)(NSRange));
+    void hasMarkedTextWithCompletionHandler(void(^)(BOOL hasMarkedText));
+    void markedRangeWithCompletionHandler(void(^)(NSRange));
+    void attributedSubstringForProposedRange(NSRange, void(^)(NSAttributedString *attrString, NSRange actualRange));
+    void firstRectForCharacterRange(NSRange, void(^)(NSRect firstRect, NSRange actualRange));
+    void characterIndexForPoint(NSPoint, void(^)(NSUInteger));
+#endif // USE(ASYNC_NSTEXTINPUTCLIENT)
+
+    void mouseMoved(NSEvent *);
+    void mouseDown(NSEvent *);
+    void mouseUp(NSEvent *);
+    void mouseDragged(NSEvent *);
+    void mouseEntered(NSEvent *);
+    void mouseExited(NSEvent *);
+    void otherMouseDown(NSEvent *);
+    void otherMouseDragged(NSEvent *);
+    void otherMouseUp(NSEvent *);
+    void rightMouseDown(NSEvent *);
+    void rightMouseDragged(NSEvent *);
+    void rightMouseUp(NSEvent *);
+
 private:
     WeakPtr<WebViewImpl> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
@@ -329,9 +491,24 @@ private:
     void reparentLayerTreeInThumbnailView();
     void updateThumbnailViewLayer();
 
+    void setUserInterfaceItemState(NSString *commandName, bool enabled, int state);
+
+#if USE(ASYNC_NSTEXTINPUTCLIENT)
+    Vector<WebCore::KeypressCommand> collectKeyboardLayoutCommandsForEvent(NSEvent *);
+    void interpretKeyEvent(NSEvent *, void(^completionHandler)(BOOL handled, const Vector<WebCore::KeypressCommand>&));
+#else
+    void executeSavedKeypressCommands();
+    bool interpretKeyEvent(NSEvent *, Vector<WebCore::KeypressCommand>&);
+#endif
+
+    void mouseMovedInternal(NSEvent *);
+    void mouseDownInternal(NSEvent *);
+    void mouseUpInternal(NSEvent *);
+    void mouseDraggedInternal(NSEvent *);
+
     NSView <WebViewImplDelegate> *m_view;
-    WebPageProxy& m_page;
-    PageClient& m_pageClient;
+    std::unique_ptr<PageClient> m_pageClient;
+    Ref<WebPageProxy> m_page;
 
     WeakPtrFactory<WebViewImpl> m_weakPtrFactory;
 
@@ -345,6 +522,7 @@ private:
     bool m_needsViewFrameInWindowCoordinates;
     bool m_didScheduleWindowAndViewFrameUpdate { false };
     bool m_isDeferringViewInWindowChanges { false };
+    bool m_windowOcclusionDetectionEnabled { true };
 
     bool m_automaticallyAdjustsContentInsets { false };
     CGFloat m_topContentInset { 0 };
@@ -361,6 +539,8 @@ private:
 
     bool m_inSecureInputState { false };
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
+
+    ValidationMap m_validationMap;
 
     // The identifier of the plug-in we want to send complex text input to, or 0 if there is none.
     uint64_t m_pluginComplexTextInputIdentifier { 0 };
@@ -410,6 +590,10 @@ private:
 
 #if WK_API_ENABLED
     _WKThumbnailView *m_thumbnailView { nullptr };
+
+    RetainPtr<_WKRemoteObjectRegistry> m_remoteObjectRegistry;
+
+    RetainPtr<WKBrowsingContextController> m_browsingContextController;
 #endif
 
     std::unique_ptr<ViewGestureController> m_gestureController;
@@ -423,6 +607,20 @@ private:
     String m_promisedURL;
 
     WTF::Optional<NSInteger> m_spellCheckerDocumentTag;
+
+    CGFloat m_totalHeightOfBanners { 0 };
+
+    RetainPtr<NSView> m_inspectorAttachmentView;
+
+    // We keep here the event when resending it to
+    // the application to distinguish the case of a new event from one
+    // that has been already sent to WebCore.
+    RetainPtr<NSEvent> m_keyDownEventBeingResent;
+#if USE(ASYNC_NSTEXTINPUTCLIENT)
+    Vector<WebCore::KeypressCommand>* m_collectedKeypressCommands { nullptr };
+#else
+    WKViewInterpretKeyEventsParameters* m_interpretKeyEventsParameters { nullptr };
+#endif
 };
     
 } // namespace WebKit

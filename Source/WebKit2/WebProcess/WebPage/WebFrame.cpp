@@ -514,6 +514,16 @@ bool WebFrame::handlesPageScaleGesture() const
     return pluginView && pluginView->handlesPageScaleFactor();
 }
 
+bool WebFrame::requiresUnifiedScaleFactor() const
+{
+    if (!m_coreFrame->document()->isPluginDocument())
+        return 0;
+
+    PluginDocument* pluginDocument = static_cast<PluginDocument*>(m_coreFrame->document());
+    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
+    return pluginView && pluginView->requiresUnifiedScaleFactor();
+}
+
 void WebFrame::setAccessibleName(const String& accessibleName)
 {
     if (!AXObjectCache::accessibilityEnabled())
@@ -683,7 +693,7 @@ WebFrame* WebFrame::frameForContext(JSContextRef context)
     if (strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell") != 0)
         return 0;
 
-    Frame* frame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->impl().frame();
+    Frame* frame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->wrapped().frame();
     return WebFrame::fromCoreFrame(*frame);
 }
 
@@ -728,7 +738,7 @@ String WebFrame::counterValue(JSObjectRef element)
     if (!toJS(element)->inherits(JSElement::info()))
         return String();
 
-    return counterValueForElement(&jsCast<JSElement*>(toJS(element))->impl());
+    return counterValueForElement(&jsCast<JSElement*>(toJS(element))->wrapped());
 }
 
 String WebFrame::provisionalURL() const

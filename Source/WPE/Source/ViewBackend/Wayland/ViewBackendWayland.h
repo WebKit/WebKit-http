@@ -65,11 +65,11 @@ public:
     void setInputClient(Input::Client*) override;
 
     struct SeatData {
-        Input::Client* client;
-        struct wl_pointer* pointer;
-        struct wl_keyboard* keyboard;
+        Input::Client* client { nullptr };
+        struct wl_pointer* pointer { nullptr };
+        struct wl_keyboard* keyboard { nullptr };
 
-        std::pair<int, int> pointerCoords;
+        std::pair<int, int> pointerCoords { 0, 0 };
 
         struct {
             struct xkb_context* context;
@@ -83,19 +83,19 @@ public:
             uint8_t modifiers;
             struct xkb_compose_table* composeTable;
             struct xkb_compose_state* composeState;
-        } xkb;
+        } xkb { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0, nullptr, nullptr };
 
         struct {
             int32_t rate;
             int32_t delay;
-        } repeatInfo;
+        } repeatInfo { 0, 0 };
 
         struct {
             uint32_t key;
             uint32_t time;
             uint32_t state;
             uint32_t eventSource;
-        } repeatData;
+        } repeatData { 0, 0, 0, 0 };
     };
 
     struct BufferListenerData {
