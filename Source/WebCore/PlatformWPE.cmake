@@ -237,7 +237,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SSLKeyGeneratorWPE.cpp
     platform/wpe/ScrollbarThemeWPE.cpp
     platform/wpe/SharedBufferWPE.cpp
-    platform/wpe/SharedTimerWPE.cpp
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
