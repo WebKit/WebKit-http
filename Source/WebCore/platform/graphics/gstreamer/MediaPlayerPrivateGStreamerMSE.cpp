@@ -380,6 +380,10 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState state
             bool ok = gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED) == GST_STATE_CHANGE_SUCCESS;
             LOG_MEDIA_MESSAGE("Changing pipeline to PAUSED: %s", (ok)?"OK":"ERROR");
         }
+        if (oldReadyState < MediaPlayer::HaveCurrentData && m_readyState >= MediaPlayer::HaveCurrentData) {
+            LOG_MEDIA_MESSAGE("[Seek] Reporting load state changed to trigger seek continuation");
+            loadStateChanged();
+        }
         m_player->readyStateChanged();
     }
 }
@@ -1654,7 +1658,7 @@ void AppendPipeline::resetPipeline()
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("resetting pipeline");
     gst_element_set_state(m_pipeline, GST_STATE_READY);
-    gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
+    gst_element_get_state(m_pipeline, NULL, NULL, 0);
 
     {
         static int i = 0;

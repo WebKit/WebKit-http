@@ -252,7 +252,7 @@ void MediaSource::monitorSourceBuffers()
     // playback position:
     auto begin = m_activeSourceBuffers->begin();
     auto end = m_activeSourceBuffers->end();
-    if (std::all_of(begin, end, [](RefPtr<SourceBuffer>& sourceBuffer) {
+    if (std::any_of(begin, end, [](RefPtr<SourceBuffer>& sourceBuffer) {
         return !sourceBuffer->hasCurrentTime();
     })) {
         // 1. Set the HTMLMediaElement.readyState attribute to HAVE_METADATA.
