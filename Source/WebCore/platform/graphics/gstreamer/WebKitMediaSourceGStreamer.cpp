@@ -77,6 +77,9 @@ struct _Stream
     // This helps WebKitMediaSrcPrivate.appSrcNeedDataCount, ensuring that needDatas are
     // counted only once per each appsrc.
     bool appSrcNeedDataFlag;
+
+    // Used to enforce continuity in the appended data and avoid breaking the decoder.
+    MediaTime lastEnqueuedTime;
 };
 
 enum OnSeekDataAction {
@@ -790,6 +793,8 @@ PassRefPtr<PlaybackPipeline> PlaybackPipeline::create()
     return adoptRef(new PlaybackPipeline());
 }
 
+const float PlaybackPipeline::lastSampleTolerance = 3.0f;
+
 PlaybackPipeline::PlaybackPipeline()
     : RefCounted<PlaybackPipeline>()
 {
@@ -836,6 +841,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     stream->videoTrack = nullptr;
 #endif
     stream->presentationSize = WebCore::FloatSize();
+    stream->lastEnqueuedTime = MediaTime::invalidTime();
 
     gst_app_src_set_callbacks(GST_APP_SRC(stream->appsrc), &appsrcCallbacks, stream->parent, 0);
     gst_app_src_set_emit_signals(GST_APP_SRC(stream->appsrc), FALSE);
@@ -1188,20 +1194,33 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     }
 
     GstElement* appsrc = stream->appsrc;
+    MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     // Actually no need to flush. The seek preparations have done it for us.
 
-    for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
-        GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(it->get());
-        if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
-            GstSample* gstsample = gst_sample_ref(sample->sample());
-            GST_BUFFER_FLAG_SET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-            push_sample(GST_APP_SRC(appsrc), gstsample);
-            // gst_app_src_push_sample() uses transfer-none for gstsample
-            gst_sample_unref(gstsample);
+    // Never enqueue non-consecutive-ish samples to avoid breaking the decoder.
+    MediaSample* lastSample = samples[samples.size()-1].get();
+    if (!stream->lastEnqueuedTime.isValid() || (lastEnqueuedTime.isValid() && lastSample->presentationTime().isValid() && abs(lastEnqueuedTime.toFloat() - lastSample->presentationTime().toFloat()) < lastSampleTolerance)) {
+        for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
+            GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(it->get());
+            if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
+                GstSample* gstsample = gst_sample_ref(sample->sample());
+                lastEnqueuedTime = sample->presentationTime();
+
+                GST_BUFFER_FLAG_SET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
+                push_sample(GST_APP_SRC(appsrc), gstsample);
+                // gst_app_src_push_sample() uses transfer-none for gstsample
+
+                gst_sample_unref(gstsample);
+            }
         }
-    }
+    } else
+        LOG_MEDIA_MESSAGE("Not pushing, last sample PTS=%f too far away from lastEnqueuedTime=%f", lastSample->presentationTime().toFloat(), lastEnqueuedTime.toFloat());
+
+    GST_OBJECT_LOCK(m_webKitMediaSrc.get());
+    stream->lastEnqueuedTime = lastEnqueuedTime;
+    GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 }
 
 void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
@@ -1223,14 +1242,27 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     }
 
     GstElement* appsrc = stream->appsrc;
+    MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(rsample.get());
     if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
         GstSample* gstsample = gst_sample_ref(sample->sample());
-        GST_BUFFER_FLAG_UNSET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-        push_sample(GST_APP_SRC(appsrc), gstsample);
-        // gst_app_src_push_sample() uses transfer-none for gstsample
+
+        // Never enqueue non-consecutive-ish samples to avoid breaking the decoder.
+        if (!lastEnqueuedTime.isValid() || (lastEnqueuedTime.isValid() && sample->presentationTime().isValid() && abs(lastEnqueuedTime.toFloat() - sample->presentationTime().toFloat()) < lastSampleTolerance)) {
+            lastEnqueuedTime = sample->presentationTime();
+
+            GST_BUFFER_FLAG_UNSET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
+            push_sample(GST_APP_SRC(appsrc), gstsample);
+            // gst_app_src_push_sample() uses transfer-none for gstsample
+
+            GST_OBJECT_LOCK(m_webKitMediaSrc.get());
+            stream->lastEnqueuedTime = lastEnqueuedTime;
+            GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+        } else
+            LOG_MEDIA_MESSAGE("Not pushing, PTS=%f too far away from lastEnqueuedTime=%f", sample->presentationTime().toFloat(), stream->lastEnqueuedTime.toFloat());
+
         gst_sample_unref(gstsample);
     }
 }
@@ -1263,6 +1295,8 @@ void webkit_media_src_prepare_seek(WebKitMediaSrc* src, const MediaTime& time)
     for (GList* streams = src->priv->streams; streams; streams = streams->next) {
         Stream* stream = static_cast<Stream*>(streams->data);
         stream->appSrcNeedDataFlag = false;
+        // Don't allow samples away from the seekTime to be enqueued.
+        stream->lastEnqueuedTime = time;
     }
 
     // The pending action will be performed in app_src_seek_data().
