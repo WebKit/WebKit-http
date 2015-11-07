@@ -451,20 +451,18 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    URL location;
-
     if (httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(
             httpRequest->Result());
         BString locationString(result.Headers()["Location"]);
-        if (locationString.Length())
+        if (locationString.Length()) {
             m_redirected = true;
-        else
+            url = URL(url, locationString);
+        } else
             m_redirected = false;
-        location = URL(url, locationString);
     }
 
-    ResourceResponse response(location, mimeType, contentLength, encoding);
+    ResourceResponse response(url, mimeType, contentLength, encoding);
 
     if (httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(
@@ -499,7 +497,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
         m_redirectionTries--;
 
         if (m_redirectionTries == 0) {
-            ResourceError error(location.host(), 400, location.string(),
+            ResourceError error(url.host(), 400, url.string(),
                 "Redirection limit reached");
             client->didFail(m_resourceHandle, error);
             return;
@@ -507,7 +505,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 
         // Notify the client that we are redirecting.
         ResourceRequest& request = m_resourceHandle->firstRequest();
-        request.setURL(location);
+        request.setURL(url);
 
         client->willSendRequest(m_resourceHandle, request, response);
     } else {
