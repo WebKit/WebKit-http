@@ -149,7 +149,7 @@ $ cp LayoutTests/resources/Ahem.ttf /system/non-packaged/data/fonts/
 It is also a good idea to enable automated debug reports for DumpRenderTree.
 Create the file ~/config/settings/system/debug\_server/settings and add:
 
-    exectuable_actions {
+    executable_actions {
         DumpRenderTree log
     }
 
