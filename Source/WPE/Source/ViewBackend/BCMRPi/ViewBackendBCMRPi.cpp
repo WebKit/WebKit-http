@@ -111,9 +111,11 @@ void ViewBackendBCMRPi::setInputClient(Input::Client* client)
     if (std::getenv("WPE_BCMRPI_CURSOR")) {
         m_cursor.reset(new Cursor(client, m_displayHandle, m_width, m_height));
         client = m_cursor.get();
+        LibinputServer::singleton().setHandlePointerEvents(true);
+        LibinputServer::singleton().setPointerBounds(m_width, m_height);
     }
+
     LibinputServer::singleton().setClient(client);
-    LibinputServer::singleton().setPointerBounds(m_width, m_height);
 }
 
 ViewBackendBCMRPi::Cursor::Cursor(Input::Client* targetClient, DISPMANX_DISPLAY_HANDLE_T displayHandle, uint32_t displayWidth, uint32_t displayHeight)

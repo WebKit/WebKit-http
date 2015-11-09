@@ -97,6 +97,12 @@ void LibinputServer::setClient(Input::Client* client)
     m_client = client;
 }
 
+void LibinputServer::setHandlePointerEvents(bool handle)
+{
+    m_handlePointerEvents = handle;
+    fprintf(stderr, "[LibinputServer] %s pointer events.\n", handle ? "Enabling" : "Disabling");
+}
+
 void LibinputServer::setPointerBounds(uint32_t width, uint32_t height)
 {
     m_pointerBounds = { width, height };
@@ -130,6 +136,9 @@ void LibinputServer::processEvents()
         }
         case LIBINPUT_EVENT_POINTER_MOTION:
         {
+            if (!m_handlePointerEvents)
+                break;
+
             auto* pointerEvent = libinput_event_get_pointer_event(event);
 
             double dx = libinput_event_pointer_get_dx(pointerEvent);
@@ -143,6 +152,9 @@ void LibinputServer::processEvents()
         }
         case LIBINPUT_EVENT_POINTER_BUTTON:
         {
+            if (!m_handlePointerEvents)
+                break;
+
             auto* pointerEvent = libinput_event_get_pointer_event(event);
             m_client->handlePointerEvent({ Input::PointerEvent::Button, libinput_event_pointer_get_time(pointerEvent),
                 m_pointerCoords.first, m_pointerCoords.second,
@@ -151,6 +163,9 @@ void LibinputServer::processEvents()
         }
         case LIBINPUT_EVENT_POINTER_AXIS:
         {
+            if (!m_handlePointerEvents)
+                break;
+
             auto* pointerEvent = libinput_event_get_pointer_event(event);
 
             // Support only wheel events for now.

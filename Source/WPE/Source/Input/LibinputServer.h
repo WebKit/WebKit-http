@@ -45,6 +45,7 @@ public:
     static LibinputServer& singleton();
 
     void setClient(Input::Client* client);
+    void setHandlePointerEvents(bool handle);
     void setPointerBounds(uint32_t, uint32_t);
 
 private:
@@ -63,6 +64,7 @@ private:
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
     std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
 
+    bool m_handlePointerEvents { false };
     std::pair<int32_t, int32_t> m_pointerCoords;
     std::pair<uint32_t, uint32_t> m_pointerBounds;
 
