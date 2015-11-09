@@ -821,15 +821,9 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
 
     GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "State %d", (int)GST_STATE(m_webKitMediaSrc.get()));
 
-    GST_OBJECT_LOCK(m_webKitMediaSrc.get());
-    guint numberOfStreams = g_list_length(priv->streams);
-    GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
-
     Stream* stream = g_new0(Stream, 1);
-    GUniquePtr<gchar> srcName(g_strdup_printf("src%u", numberOfStreams));
-    GUniquePtr<gchar> typefindName(g_strdup_printf("typefind%u", numberOfStreams));
     stream->parent = m_webKitMediaSrc.get();
-    stream->appsrc = gst_element_factory_make("appsrc", srcName.get());
+    stream->appsrc = gst_element_factory_make("appsrc", nullptr);
     stream->appSrcNeedDataFlag = false;
     stream->sourceBuffer = sourceBufferPrivate.get();
 
