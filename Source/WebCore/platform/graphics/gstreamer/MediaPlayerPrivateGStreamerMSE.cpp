@@ -352,13 +352,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeek
 
 void MediaPlayerPrivateGStreamerMSE::updatePlaybackRate()
 {
-    if (!m_changingRate)
-        return;
-
-    LOG_MEDIA_MESSAGE("%s", "Not implemented");
-
-    // Not implemented
-    return;
+    notImplemented();
 }
 
 bool MediaPlayerPrivateGStreamerMSE::seeking() const
