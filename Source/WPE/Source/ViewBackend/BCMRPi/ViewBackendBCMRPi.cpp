@@ -181,9 +181,8 @@ void ViewBackendBCMRPi::Cursor::handleAxisEvent(Input::AxisEvent&& event)
     m_targetClient->handleAxisEvent(std::move(event));
 }
 
-void ViewBackendBCMRPi::Cursor::handleTouchEvent(Input::TouchEvent&& event)
+void ViewBackendBCMRPi::Cursor::handleTouchEvent(Input::TouchEvent&&)
 {
-    m_targetClient->handleTouchEvent(std::move(event));
 }
 
 // The cursor pointer data uses the modified left_ptr cursor from the
