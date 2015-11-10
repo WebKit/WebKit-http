@@ -50,7 +50,16 @@ public:
     inline void markUsed() { m_timeLastUsed = monotonicallyIncreasingTime(); }
     double lastUsedTime() const { return m_timeLastUsed; }
 
+    class UnmanagedBufferDataHolder {
+        WTF_MAKE_NONCOPYABLE(UnmanagedBufferDataHolder);
+        WTF_MAKE_FAST_ALLOCATED();
+    public:
+        UnmanagedBufferDataHolder() {}
+        virtual ~UnmanagedBufferDataHolder() = default;
+    };
+
     bool hasManagedTexture() const { return m_hasManagedTexture; }
+    void setUnmanagedBufferDataHolder(std::unique_ptr<UnmanagedBufferDataHolder> holder) { m_unmanagedBufferDataHolder = WTF::move(holder); }
 
 private:
 
@@ -61,6 +70,7 @@ private:
     IntSize m_size;
     TextureMapperGL::Flags m_flags;
     bool m_hasManagedTexture;
+    std::unique_ptr<UnmanagedBufferDataHolder> m_unmanagedBufferDataHolder;
 };
 
 };
