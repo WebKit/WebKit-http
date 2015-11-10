@@ -534,13 +534,13 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
     drawTexturedQuadWithProgram(program.get(), texture, flags, textureSize, targetRect, modelViewMatrix, opacity);
 }
 
-void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
+void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color, bool allowBlend)
 {
     Flags flags = 0;
     TextureMapperShaderProgram::Options options = TextureMapperShaderProgram::SolidColor;
     if (!matrix.mapQuad(rect).isRectilinear()) {
         options |= TextureMapperShaderProgram::Antialiasing;
-        flags |= ShouldBlend | ShouldAntialias;
+        flags |= ShouldAntialias | (allowBlend ? ShouldBlend : 0);
     }
 
     RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(options);
@@ -549,7 +549,7 @@ void TextureMapperGL::drawSolidColor(const FloatRect& rect, const Transformation
     float r, g, b, a;
     Color(premultipliedARGBFromColor(color)).getRGBA(r, g, b, a);
     m_context3D->uniform4f(program->colorLocation(), r, g, b, a);
-    if (a < 1)
+    if (allowBlend && a < 1)
         flags |= ShouldBlend;
 
     draw(rect, matrix, program.get(), GraphicsContext3D::TRIANGLE_FAN, flags);

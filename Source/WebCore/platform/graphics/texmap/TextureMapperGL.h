@@ -92,7 +92,8 @@ public:
         ShouldBlend = 0x01,
         ShouldFlipTexture = 0x02,
         ShouldUseARBTextureRect = 0x04,
-        ShouldAntialias = 0x08
+        ShouldAntialias = 0x08,
+        ShouldOverwriteRect = 0x80
     };
 
     typedef int Flags;
@@ -102,7 +103,7 @@ public:
     virtual void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
     virtual void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
     virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges = AllEdges);
-    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
+    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool) override;
 
     virtual void bindSurface(BitmapTexture* surface) override;
     BitmapTexture* currentSurface();
