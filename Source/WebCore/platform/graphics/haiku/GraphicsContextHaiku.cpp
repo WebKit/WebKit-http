@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ * Copyright (C) 2015 Julian Harnath <julian.harnath@rwth-aachen.de>
  *
  * All rights reserved.
  *
@@ -53,119 +54,31 @@ public:
     GraphicsContextPlatformPrivate(BView* view);
     ~GraphicsContextPlatformPrivate();
 
-    struct Layer {
-    public:
-        Layer(BView* _view)
-            : view(_view)
-            , bitmap(nullptr)
-            , clipping()
-            , clippingSet(false)
-            , opacity(255)
-            , globalAlpha(1.f)
-            , currentShape(nullptr)
-            , locationInParent(B_ORIGIN)
-            , accumulatedOrigin(B_ORIGIN)
-            , previous(nullptr)
-        {
-        }
-        Layer(Layer* previous)
-            : view(nullptr)
-            , bitmap(nullptr)
-            , clipping()
-            , clippingSet(false)
-            , opacity(255)
-            , globalAlpha(1.f)
-            , currentShape(nullptr)
-            , locationInParent(B_ORIGIN)
-            , accumulatedOrigin(B_ORIGIN)
-            , previous(previous)
-        {
-            BRegion parentClipping;
-            previous->view->GetClippingRegion(&parentClipping);
-            BRect frameInParent = parentClipping.Frame();
-            if (!frameInParent.IsValid())
-                frameInParent = previous->view->Bounds();
-
-            // TODO: locationInParent and accumulatedOrigin can
-            // probably somehow be merged. But for now it works.
-            accumulatedOrigin.x = -frameInParent.left;
-            accumulatedOrigin.y = -frameInParent.top;
-            locationInParent += frameInParent.LeftTop();
-
-            // FIXME not so good design here. Creating a BBitmap that accept
-            // views is not cheap (spawns a window thread in app_server, etc),
-            // and layers are created and deleted a lot in WebKit. We really
-            // need a cheaper way to handle this.
-            frameInParent.OffsetTo(B_ORIGIN);
-            view = new BView(frameInParent, "WebCore transparency layer", 0, 0);
-            bitmap = new BBitmap(frameInParent, B_RGBA32, true);
-            bitmap->Lock();
-            bitmap->AddChild(view);
-
-            view->SetHighColor(255, 255, 255, 0);
-            view->FillRect(view->Bounds());
-
-            view->SetHighColor(previous->view->HighColor());
-            view->SetLowColor(previous->view->LowColor());
-            view->SetViewColor(previous->view->ViewColor());
-            view->SetDrawingMode(previous->view->DrawingMode());
-            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
-            view->SetOrigin(accumulatedOrigin);
-            view->SetPenSize(previous->view->PenSize());
-        }
-        ~Layer()
-        {
-            if (bitmap) {
-                bitmap->Unlock();
-                // Deleting the bitmap will also take care of the view,
-                // if there is no bitmap, the view does not belong to us (initial layer).
-                delete bitmap;
-            }
-            delete currentShape;
-        }
-
-        BView* view;
-        BBitmap* bitmap;
-        BRegion clipping;
-        bool clippingSet;
-        uint8 opacity;
-        float globalAlpha;
-        BShape* currentShape;
-        BPoint locationInParent;
-        BPoint accumulatedOrigin;
-
-        Layer* previous;
-    };
-
     struct CustomGraphicsState {
         CustomGraphicsState()
             : previous(0)
             , imageInterpolationQuality(InterpolationDefault)
+            , globalAlpha(1.0f)
         {
         }
 
         CustomGraphicsState(CustomGraphicsState* previous)
             : previous(previous)
             , imageInterpolationQuality(previous->imageInterpolationQuality)
+            , globalAlpha(previous->globalAlpha)
         {
         }
 
         CustomGraphicsState* previous;
-        InterpolationQuality imageInterpolationQuality;
 
-        bool clippingSet;
-        BRegion clippingRegion;
-        BPicture clipOutPicture;
+        InterpolationQuality imageInterpolationQuality;
+        float globalAlpha;
     };
 
     void pushState()
     {
     	m_graphicsState = new CustomGraphicsState(m_graphicsState);
         view()->PushState();
-
-        m_graphicsState->clippingSet = m_currentLayer->clippingSet;
-        m_graphicsState->clippingRegion = m_currentLayer->clipping;
-        resetClipping();
     }
 
     void popState()
@@ -178,162 +91,17 @@ public:
     	m_graphicsState = oldTop->previous;
     	delete oldTop;
 
-        m_currentLayer->accumulatedOrigin -= view()->Origin();
         view()->PopState();
-
-        m_currentLayer->clippingSet = m_graphicsState->clippingSet;
-        m_currentLayer->clipping = m_graphicsState->clippingRegion;
     }
 
     BView* view() const
     {
-        return m_currentLayer->view;
+        return m_view;
     }
 
-    // Unlike in Haiku, all clipping operations are cumulative. It's possible
-    // to clip several times, and the intersection of all the clipping path is
-    // used. In Haiku, calling ConstrainClippingRegion or ClipToPicture removes
-    // existing clippings at the same level. So, we have to implement the
-    // combination of clipping levels here.
-    void constrainClipping(const BRegion& region)
+    CustomGraphicsState* state() const
     {
-        // Region-clipping in Haiku applies the clipping after the view
-        // transformation, whereas WebKit would want it applied before.
-        // However, the fast region clipping that reduces the viewport to
-        // small dimensions when drawing is an essential element in getting
-        // acceptable performances when drawing (performing alpha-blended
-        // picture clipping on the whole view is extremely slow).
-        // However, there is no way to transform a region with an arbitrary
-        // transformation. The result would not be represented as a set of
-        // grid-aligned (vertical/horizontal) rectangles.
-        // So, the idea is to use region-clipping when the transformation is
-        // simple enough (translation + scaling only), and picture-based
-        // clipping for more complex cases.
-        BAffineTransform t = m_currentLayer->view->Transform();
-        BRegion regionCopy(region);
-        // region.ScaleBy(t.sx, t.sy);
-        regionCopy.OffsetBy(t.tx, t.ty);
-
-        // Matrix is made only of translation and scaling. We can transform
-        // the region safely.
-        if (m_currentLayer->clippingSet)
-            m_currentLayer->clipping.IntersectWith(&regionCopy);
-        else
-            m_currentLayer->clipping = regionCopy;
-
-        m_currentLayer->clippingSet = true;
-        m_currentLayer->view->ConstrainClippingRegion(
-            &m_currentLayer->clipping);
-    }
-
-    void excludeClipping(const FloatRect& rect)
-    {
-        if (!m_currentLayer->clippingSet) {
-            BRegion region(m_currentLayer->view->Bounds());
-            m_currentLayer->clipping = region;
-            m_currentLayer->clippingSet = true;
-        }
-
-        m_currentLayer->clipping.Exclude(rect);
-        m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
-    }
-
-    BRegion& clipping()
-    {
-        return m_currentLayer->clipping;
-    }
-
-    void resetClipping()
-    {
-        m_currentLayer->clippingSet = false;
-    	m_currentLayer->clipping = BRegion();
-        m_currentLayer->view->ConstrainClippingRegion(NULL);
-    }
-
-
-    void clipToShape(BShape* shape, bool inverse, WindRule windRule)
-    {
-        // FIXME calling clipToShape several times without interleaved
-        // Push/PopState should still intersect the clipping. In Haiku, it is
-        // replaced instead. So, we must keep the clipping picture ourselves
-        // and handle the intersection.
-
-        BPicture picture;
-        BView* view = m_currentLayer->view;
-        view->LockLooper();
-
-        if (inverse)
-            view->AppendToPicture(&m_graphicsState->clipOutPicture);
-        else
-            view->BeginPicture(&picture);
-        view->PushState();
-
-        view->SetLowColor(make_color(255, 255, 255, 0));
-        view->SetViewColor(make_color(255, 255, 255, 0));
-        view->SetHighColor(make_color(0, 0, 0, 255));
-        view->SetDrawingMode(B_OP_ALPHA);
-		view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
-        view->SetFillRule(windRule == RULE_EVENODD ? B_EVEN_ODD : B_NONZERO);
-
-        view->FillShape(shape);
-
-        view->PopState();
-        BPicture* result = view->EndPicture();
-
-        if (inverse)
-            view->ClipToInversePicture(result);
-        else
-            view->ClipToPicture(result);
-
-        view->UnlockLooper();
-    }
-
-    void pushLayer(float opacity)
-    {
-        m_currentLayer = new Layer(m_currentLayer);
-        m_currentLayer->opacity = (uint8)(opacity * 255.0);
-        m_currentLayer->view->SetOrigin(m_currentLayer->accumulatedOrigin + m_scrollPos);
-    }
-
-    void popLayer()
-    {
-        if (!m_currentLayer->previous)
-            return;
-        Layer* layer = m_currentLayer;
-        m_currentLayer = layer->previous;
-        if (layer->opacity > 0) {
-            layer->view->Sync();
-
-            BView* target = m_currentLayer->view;
-            target->PushState();
-
-            // We use a clipping picture which covers the current target bounds
-            // and is filled with white at the right opacity. The effect is
-            // compositing this opacity with the layer bitmap one as it is
-            // blended onto the target, giving us the correct result even if
-            // the bitmap itself has some partially transparent areas.
-            // TODO this relies on the compositing operation to do the right
-            // thing with the alpha channel, but right now it doesn't really
-            // work.
-            BPoint bitmapLocation(layer->locationInParent);
-
-            BPicture picture;
-            target->BeginPicture(&picture);
-
-            target->SetDrawingMode(B_OP_COPY);
-            target->SetHighColor(make_color(255, 255, 255, layer->opacity));
-
-            target->FillRect(target->Bounds());
-
-            target->EndPicture();
-            target->ClipToPicture(&picture);
-
-            target->SetDrawingMode(B_OP_ALPHA);
-
-            target->DrawBitmap(layer->bitmap, bitmapLocation - m_scrollPos);
-            target->PopState();
-        }
-        delete layer;
+        return m_graphicsState;
     }
 
     ShadowBlur& shadowBlur()
@@ -341,28 +109,21 @@ public:
         return blur;
     }
 
-    Layer* m_currentLayer;
     CustomGraphicsState* m_graphicsState;
+    BView* m_view;
     ShadowBlur blur;
     pattern m_strokeStyle;
-    BPoint m_scrollPos;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
-    : m_currentLayer(new Layer(view))
-    , m_graphicsState(new CustomGraphicsState)
+    : m_graphicsState(new CustomGraphicsState)
+    , m_view(view)
     , m_strokeStyle(B_SOLID_HIGH)
 {
 }
 
 GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
 {
-    while (Layer* previous = m_currentLayer->previous) {
-        delete m_currentLayer;
-        m_currentLayer = previous;
-    }
-    delete m_currentLayer;
-
     while (CustomGraphicsState* previous = m_graphicsState->previous) {
         delete m_graphicsState;
         m_graphicsState = previous;
@@ -423,7 +184,6 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
 {
     if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
         return;
-
     m_data->view()->StrokeLine(point1, point2, m_data->m_strokeStyle);
 }
 
@@ -513,11 +273,9 @@ void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* poin
     BShape* shape = new BShape();
     shape->MoveTo(points[0]);
     for(unsigned int i = 1; i < numPoints; i ++)
-    {
         shape->LineTo(points[i]);
-    }
     shape->Close();
-    m_data->clipToShape(shape, false, fillRule());
+    m_data->view()->ClipToShape(shape);
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace /*colorSpace*/)
@@ -651,24 +409,19 @@ void GraphicsContext::clip(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
-
-    if(rect.isEmpty())
-        m_data->constrainClipping(BRegion()); // Clip everything
-    else if(!rect.isInfinite()) {
-        BRegion newRegion(rect);
-        m_data->constrainClipping(newRegion);
-    }
+    m_data->view()->ClipToRect(rect);
 }
 
 IntRect GraphicsContext::clipBounds() const
 {
-    BRect r(m_data->clipping().Frame());
-    if(!r.IsValid()) {
+    BRect rect;
+	// TODO
+    if (!rect.IsValid()) {
         // No clipping, return view bounds
         return IntRect(m_data->view()->Bounds());
     }
 
-    return IntRect(r);
+    return IntRect(rect);
 }
 
 void GraphicsContext::clip(const Path& path, WindRule windRule)
@@ -676,7 +429,9 @@ void GraphicsContext::clip(const Path& path, WindRule windRule)
     if (paintingDisabled())
         return;
 
-    m_data->clipToShape(path.platformPath(), false, windRule);
+    m_data->view()->SetFillRule(windRule == RULE_EVENODD ? B_EVEN_ODD : B_NONZERO);
+    m_data->view()->ClipToShape(path.platformPath());
+    // TODO: reset wind rule
 }
 
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
@@ -686,13 +441,10 @@ void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
 
 void GraphicsContext::clipOut(const Path& path)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || path.isEmpty())
         return;
 
-    if (path.isEmpty()) {
-        return;
-    }
-    m_data->clipToShape(path.platformPath(), true, fillRule());
+    m_data->view()->ClipToInverseShape(path.platformPath());
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
@@ -700,11 +452,7 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if(rect.isInfinite())
-        m_data->constrainClipping(BRegion()); // Clip everything
-    else if(!rect.isEmpty()) {
-        m_data->excludeClipping(rect);
-    }
+    m_data->view()->ClipToInverseRect(rect);
 }
 
 void GraphicsContext::drawFocusRing(const Path& path, int width, int /*offset*/, const Color& color)
@@ -785,7 +533,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
     if (paintingDisabled())
         return;
 
-    m_data->pushLayer(opacity);
+    m_data->view()->BeginLayer(static_cast<uint8>(opacity * 255.0));
 }
 
 void GraphicsContext::endPlatformTransparencyLayer()
@@ -793,12 +541,12 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (paintingDisabled())
         return;
 
-    m_data->popLayer();
+    m_data->view()->EndLayer();
 }
 
 bool GraphicsContext::supportsTransparencyLayers()
 {
-    return false;
+    return true;
 }
 
 /* Used by canvas.clearRect. Must clear the given rectangle with transparent black. */
@@ -807,7 +555,7 @@ void GraphicsContext::clearRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    m_data->view()->PushState();
+	m_data->view()->PushState();
     m_data->view()->SetHighColor(0, 0, 0, 0);
     m_data->view()->SetDrawingMode(B_OP_COPY);
     m_data->view()->FillRect(rect);
@@ -878,7 +626,7 @@ void GraphicsContext::setPlatformAlpha(float opacity)
     // FIXME the alpha is only applied to plain colors, not bitmaps, gradients,
     // or anything else. Support should be moved to app_server using the trick
     // mentionned here: http://permalink.gmane.org/gmane.comp.graphics.agg/2241
-    m_data->m_currentLayer->globalAlpha = opacity;
+    m_data->state()->globalAlpha = opacity;
 }
 
 void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendMode blend)
@@ -928,14 +676,9 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
-    // TODO: Maybe this needs to use the accumulated transform?
     BAffineTransform t = m_data->view()->Transform();
+    	// TODO: we actually need to ues the combined transform here
     AffineTransform matrix(t.sx, t.shy, t.shx, t.sy, t.tx, t.ty);
-
-    // TODO the translation would better be handled directly in the matrix?
-    BPoint origin = m_data->view()->Origin();
-    matrix.translate(origin.x, origin.y);
-
     return matrix;
 }
 
@@ -944,16 +687,7 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled() || (x == 0.f && y == 0.f))
         return;
 
-#if 0
-    // FIXME it would be simpler to use the BAffineTransform here , but it has
-    // clipping problems. For now we avoid this by using SetOrigin instead.
-    BAffineTransform current = m_data->view()->Transform();
-    current.TranslateBy(x, y);
-    m_data->view()->SetTransform(current);
-#endif
-    m_data->m_scrollPos = BPoint(x, y);
-    BPoint org = m_data->view()->Origin() + m_data->m_scrollPos;
-    m_data->view()->SetOrigin(org);
+	m_data->view()->TranslateBy(x, y);
 }
 
 void GraphicsContext::rotate(float radians)
@@ -961,9 +695,7 @@ void GraphicsContext::rotate(float radians)
     if (paintingDisabled() || radians == 0.f)
         return;
 
-    BAffineTransform current = m_data->view()->Transform();
-    current.RotateBy(radians);
-    m_data->view()->SetTransform(current);
+	m_data->view()->RotateBy(radians);
 }
 
 void GraphicsContext::scale(const FloatSize& size)
@@ -971,9 +703,7 @@ void GraphicsContext::scale(const FloatSize& size)
     if (paintingDisabled())
         return;
 
-    BAffineTransform current = m_data->view()->Transform();
-    current.ScaleBy(size.width(), size.height());
-    m_data->view()->SetTransform(current);
+    m_data->view()->ScaleBy(size.width(), size.height());
 }
 
 void GraphicsContext::concatCTM(const AffineTransform& transform)
@@ -982,8 +712,7 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
         return;
 
     BAffineTransform current = m_data->view()->Transform();
-    current.Multiply(transform);
-        // Should we use PreMultiply?
+    current.PreMultiply(transform);
     m_data->view()->SetTransform(current);
 }
 
@@ -1005,12 +734,12 @@ void GraphicsContext::setPlatformShouldAntialias(bool /*enable*/)
 
 void GraphicsContext::setImageInterpolationQuality(InterpolationQuality quality)
 {
-    m_data->m_graphicsState->imageInterpolationQuality = quality;
+    m_data->state()->imageInterpolationQuality = quality;
 }
 
 InterpolationQuality GraphicsContext::imageInterpolationQuality() const
 {
-    return m_data->m_graphicsState->imageInterpolationQuality;
+    return m_data->state()->imageInterpolationQuality;
 }
 
 void GraphicsContext::setURLForRect(const URL& /*link*/, const IntRect& /*destRect*/)
@@ -1067,7 +796,7 @@ void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace /*colo
         return;
 
     rgb_color fixed = color;
-    fixed.alpha *= m_data->m_currentLayer->globalAlpha;
+    fixed.alpha *= m_data->state()->globalAlpha;
     m_data->view()->SetHighColor(fixed);
 }
 
