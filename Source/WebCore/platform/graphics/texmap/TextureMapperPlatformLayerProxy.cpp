@@ -75,7 +75,10 @@ bool TextureMapperPlatformLayerProxy::hasTargetLayer(LockHolder&)
 void TextureMapperPlatformLayerProxy::pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
 {
     m_pendingBuffer = WTF::move(newBuffer);
+}
 
+void TextureMapperPlatformLayerProxy::requestUpdate(LockHolder&)
+{
     if (m_compositor)
         m_compositor->onNewBufferAvailable();
 }
