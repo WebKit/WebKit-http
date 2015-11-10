@@ -59,7 +59,7 @@ void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
 {
     m_view.viewBackend().destroyPrimeBuffer(handle);
 }
-#endif // PLATFORM(GBM)
+#endif
 
 void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 {
