@@ -7,34 +7,24 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
-if (WTF_PLATFORM_BCM_NEXUS)
+if (USE_WPE_BACKEND_BCM_NEXUS)
     add_definitions(-DWPE_BACKEND_BCM_NEXUS=1)
-else ()
-    add_definitions(-DWPE_BACKEND_BCM_NEXUS=0)
 endif ()
 
-if (WTF_PLATFORM_BCM_RPI)
+if (USE_WPE_BACKEND_BCM_RPI)
     add_definitions(-DWPE_BACKEND_BCM_RPI=1)
-else ()
-    add_definitions(-DWPE_BACKEND_BCM_RPI=0)
 endif ()
 
-if (WTF_PLATFORM_INTEL_CE)
+if (USE_WPE_BACKEND_INTEL_CE)
     add_definitions(-DWPE_BACKEND_INTEL_CE=1)
-else ()
-    add_definitions(-DWPE_BACKEND_INTEL_CE=0)
 endif ()
 
-if (WTF_PLATFORM_GBM)
+if (USE_WPE_BACKEND_DRM)
     add_definitions(-DWPE_BACKEND_DRM=1)
-else ()
-    add_definitions(-DWPE_BACKEND_DRM=0)
 endif ()
 
-if (WTF_PLATFORM_WAYLAND)
+if (USE_WPE_BACKEND_WAYLAND)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
-else ()
-    add_definitions(-DWPE_BACKEND_WAYLAND=0)
 endif ()
 
 set(WPE_INCLUDE_DIRECTORIES
@@ -83,31 +73,31 @@ set(WPE_SOURCES
     Source/ViewBackend/ViewBackend.cpp
 )
 
-if (WTF_PLATFORM_BCM_NEXUS)
+if (USE_WPE_BACKEND_BCM_NEXUS)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/NEXUS/ViewBackendNEXUS.cpp
     )
 endif ()
 
-if (WTF_PLATFORM_BCM_RPI)
+if (USE_WPE_BACKEND_BCM_RPI)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
     )
 endif ()
 
-if (WTF_PLATFORM_INTEL_CE)
+if (USE_WPE_BACKEND_INTEL_CE)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
     )
 endif ()
 
-if (WTF_PLATFORM_GBM)
+if (USE_WPE_BACKEND_DRM)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/DRM/ViewBackendDRM.cpp
     )
 endif ()
 
-if (WTF_PLATFORM_WAYLAND)
+if (USE_WPE_BACKEND_WAYLAND)
     list(APPEND
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
