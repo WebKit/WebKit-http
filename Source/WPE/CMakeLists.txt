@@ -25,13 +25,17 @@ else ()
     add_definitions(-DWPE_BACKEND_INTEL_CE=0)
 endif ()
 
+if (WTF_PLATFORM_DRM)
+    add_definitions(-DWPE_BACKEND_DRM=1)
+else ()
+    add_definitions(-DWPE_BACKEND_DRM=0)
+endif ()
+
 if (WTF_PLATFORM_WAYLAND)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
 else ()
     add_definitions(-DWPE_BACKEND_WAYLAND=0)
 endif ()
-
-add_definitions(-DWPE_BACKEND_DRM=0)
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
@@ -97,10 +101,14 @@ if (WTF_PLATFORM_INTEL_CE)
     )
 endif ()
 
-if (WTF_PLATFORM_GBM)
-    list(APPEND
+if (WTF_PLATFORM_DRM)
+    list(APPEND WPE_SOURCES
         Source/ViewBackend/DRM/ViewBackendDRM.cpp
+    )
+endif ()
 
+if (WTF_PLATFORM_WAYLAND)
+    list(APPEND
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
         Source/ViewBackend/Wayland/ivi-application-protocol.c
