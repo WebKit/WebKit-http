@@ -122,7 +122,7 @@ static WKViewRef createView(WKPageConfigurationRef pageConfiguration)
 {
     auto view = WKViewCreate(pageConfiguration);
     auto page = WKViewGetPage(view);
-    WKViewResize(view, WKSizeMake(1280, 720));
+    WKViewResize(view, WKSizeMake(800, 600));
 
     auto pageUIClient = createPageUIClient();
     WKPageSetPageUIClient(page, &pageUIClient.base);
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
 
     auto view = adoptWK(createView(pageConfiguration.get()));
 
-    const char* url = "http://widgets.metrological.com/metrological/nl/rpi";
+    const char* url = "http://www.webkit.org/blog-files/3d-transforms/poster-circle.html";
     if (argc > 1)
         url = argv[1];
 
