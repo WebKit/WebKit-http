@@ -68,7 +68,6 @@ find_package(WebP REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
-find_package(WaylandEGL REQUIRED)
 find_package(LibGBM REQUIRED)
 find_package(LibDRM REQUIRED)
 
