@@ -334,11 +334,6 @@ void ThreadedCompositor::renderLayerTree()
     if (!ensureGLContext())
         return;
 
-#if 0
-    if (!downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).hasFreeBuffers(*m_gbmSurface))
-        return;
-#endif
-
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;
@@ -364,9 +359,6 @@ void ThreadedCompositor::renderLayerTree()
 #endif
 
     glContext()->swapBuffers();
-
-    // auto bufferExport = downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).lockFrontBuffer(*m_gbmSurface);
-    // m_compositingManager.commitPrimeBuffer(bufferExport);
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
