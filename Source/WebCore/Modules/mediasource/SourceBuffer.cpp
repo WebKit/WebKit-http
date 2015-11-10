@@ -907,7 +907,11 @@ size_t SourceBuffer::maximumBufferSize() const
     if (isRemoved())
         return 0;
 
-    return 150 * 1024 * 1024;
+    if (m_videoTracks && m_videoTracks->length() > 0)
+        return 100 * 1024 * 1024;
+    if (m_audioTracks && m_audioTracks->length() > 0)
+        return 10 * 1024 * 1024;
+    return 1 * 1024 * 1024;
 }
 
 const AtomicString& SourceBuffer::decodeError()
