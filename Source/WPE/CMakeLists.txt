@@ -7,8 +7,13 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
-add_definitions(-DWPE_BACKEND_DRM=1)
-add_definitions(-DWPE_BACKEND_WAYLAND=1)
+if (USE_WPE_BACKEND_DRM)
+    add_definitions(-DWPE_BACKEND_DRM=1)
+endif ()
+
+if (USE_WPE_BACKEND_WAYLAND)
+    add_definitions(-DWPE_BACKEND_WAYLAND=1)
+endif ()
 
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
@@ -42,15 +47,23 @@ set(WPE_SOURCES
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
 
     Source/ViewBackend/ViewBackend.cpp
-
-    Source/ViewBackend/DRM/ViewBackendDRM.cpp
-
-    Source/ViewBackend/Wayland/ViewBackendWayland.cpp
-    Source/ViewBackend/Wayland/WaylandDisplay.cpp
-    Source/ViewBackend/Wayland/ivi-application-protocol.c
-    Source/ViewBackend/Wayland/wayland-drm-protocol.c
-    Source/ViewBackend/Wayland/xdg-shell-protocol.c
 )
+
+if (USE_WPE_BACKEND_DRM)
+    list(APPEND WPE_SOURCES
+        Source/ViewBackend/DRM/ViewBackendDRM.cpp
+    )
+endif ()
+
+if (USE_WPE_BACKEND_WAYLAND)
+    list(APPEND WPE_SOURCES
+        Source/ViewBackend/Wayland/ViewBackendWayland.cpp
+        Source/ViewBackend/Wayland/WaylandDisplay.cpp
+        Source/ViewBackend/Wayland/ivi-application-protocol.c
+        Source/ViewBackend/Wayland/wayland-drm-protocol.c
+        Source/ViewBackend/Wayland/xdg-shell-protocol.c
+    )
+endif ()
 
 include_directories(${WPE_INCLUDE_DIRECTORIES})
 add_library(WPE SHARED ${WPE_SOURCES})
