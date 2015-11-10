@@ -25,7 +25,7 @@ else ()
     add_definitions(-DWPE_BACKEND_INTEL_CE=0)
 endif ()
 
-if (WTF_PLATFORM_DRM)
+if (WTF_PLATFORM_GBM)
     add_definitions(-DWPE_BACKEND_DRM=1)
 else ()
     add_definitions(-DWPE_BACKEND_DRM=0)
@@ -101,7 +101,7 @@ if (WTF_PLATFORM_INTEL_CE)
     )
 endif ()
 
-if (WTF_PLATFORM_DRM)
+if (WTF_PLATFORM_GBM)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/DRM/ViewBackendDRM.cpp
     )
