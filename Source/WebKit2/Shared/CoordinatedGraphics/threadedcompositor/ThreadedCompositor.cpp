@@ -167,8 +167,8 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
 #if PLATFORM(GBM)
-        if (m_surface)
-            m_surface->resize(size);
+        if (protector->m_surface)
+            protector->m_surface->resize(size);
 #endif
         protector->viewportController()->didChangeViewportSize(size);
     });
