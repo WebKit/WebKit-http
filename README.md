@@ -4,7 +4,7 @@ WebKit for Wayland
 To build:
 
     $ Tools/Scripts/update-webkitwpe-libs
-    $ Tools/Scripts/build-webkit --wpe --threaded-compositor
+    $ Tools/Scripts/build-webkit --wpe
 
 To run (assuming you're executing under a Wayland compositor):
 
