@@ -615,7 +615,6 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
 void CoordinatedGraphicsScene::renderNextFrame()
 {
-    ASSERT(WTF::isMainThread());
     if (m_client)
         m_client->renderNextFrame();
 }
