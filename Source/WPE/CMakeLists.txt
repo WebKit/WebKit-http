@@ -7,6 +7,14 @@ else ()
     add_definitions(-DKEY_INPUT_HANDLING_XKB=1)
 endif ()
 
+if (USE_WPE_BACKEND_DRM)
+    add_definitions(-DWPE_BACKEND_DRM=1)
+endif ()
+
+if (USE_WPE_BACKEND_WAYLAND)
+    add_definitions(-DWPE_BACKEND_WAYLAND=1)
+endif ()
+
 if (USE_WPE_BACKEND_BCM_NEXUS)
     add_definitions(-DWPE_BACKEND_BCM_NEXUS=1)
 endif ()
@@ -17,14 +25,6 @@ endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
     add_definitions(-DWPE_BACKEND_INTEL_CE=1)
-endif ()
-
-if (USE_WPE_BACKEND_DRM)
-    add_definitions(-DWPE_BACKEND_DRM=1)
-endif ()
-
-if (USE_WPE_BACKEND_WAYLAND)
-    add_definitions(-DWPE_BACKEND_WAYLAND=1)
 endif ()
 
 set(WPE_INCLUDE_DIRECTORIES
@@ -98,7 +98,7 @@ if (USE_WPE_BACKEND_DRM)
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
-    list(APPEND
+    list(APPEND WPE_SOURCES
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
         Source/ViewBackend/Wayland/ivi-application-protocol.c

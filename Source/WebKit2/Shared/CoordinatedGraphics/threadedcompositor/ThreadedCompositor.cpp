@@ -359,6 +359,11 @@ void ThreadedCompositor::renderLayerTree()
 #endif
 
     glContext()->swapBuffers();
+
+#if PLATFORM(GBM)
+    auto bufferExport = m_surface->lockFrontBuffer();
+    m_compositingManager.commitPrimeBuffer(bufferExport);
+#endif
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
