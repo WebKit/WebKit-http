@@ -828,7 +828,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
         internalPaint(offscreenView, view, &repaintRegion);
     }
 
-    //offscreenView->Sync();
+    offscreenView->Sync();
     bitmap->Unlock();
 }
 
