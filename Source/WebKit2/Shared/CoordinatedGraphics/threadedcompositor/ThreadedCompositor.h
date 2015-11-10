@@ -66,7 +66,6 @@ class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, publ
     public WebCore::GBMSurface::Client,
 #endif
     public CompositingManager::Client {
-
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
