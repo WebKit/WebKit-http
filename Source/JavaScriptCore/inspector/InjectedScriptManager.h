@@ -54,6 +54,7 @@ public:
     virtual ~InjectedScriptManager();
 
     virtual void disconnect();
+    virtual void discardInjectedScripts();
 
     InjectedScriptHost* injectedScriptHost();
     InspectorEnvironment& inspectorEnvironment() const { return m_environment; }
@@ -62,12 +63,11 @@ public:
     InjectedScript injectedScriptForId(int);
     int injectedScriptIdFor(JSC::ExecState*);
     InjectedScript injectedScriptForObjectId(const String& objectId);
-    void discardInjectedScripts();
     void releaseObjectGroup(const String& objectGroup);
     void clearExceptionValue();
 
 protected:
-    virtual void didCreateInjectedScript(InjectedScript);
+    virtual void didCreateInjectedScript(const InjectedScript&);
 
     HashMap<int, InjectedScript> m_idToInjectedScript;
     HashMap<JSC::ExecState*, int> m_scriptStateToId;

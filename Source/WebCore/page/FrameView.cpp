@@ -1076,6 +1076,25 @@ void FrameView::scheduleLayerFlushAllowingThrottling()
     view->compositor().scheduleLayerFlush(true /* canThrottle */);
 }
 
+LayoutRect FrameView::fixedScrollableAreaBoundsInflatedForScrolling(const LayoutRect& uninflatedBounds) const
+{
+    LayoutSize scrollPosition = scrollOffsetRespectingCustomFixedPosition();
+
+    LayoutSize topLeftExpansion = scrollPosition - toLayoutSize(minimumScrollPosition());
+    LayoutSize bottomRightExpansion = toLayoutSize(maximumScrollPosition()) - scrollPosition;
+
+    return LayoutRect(uninflatedBounds.location() - topLeftExpansion, uninflatedBounds.size() + topLeftExpansion + bottomRightExpansion);
+}
+
+LayoutSize FrameView::scrollOffsetRespectingCustomFixedPosition() const
+{
+#if PLATFORM(IOS)
+    return useCustomFixedPositionLayoutRect() ? customFixedPositionLayoutRect().location() - LayoutPoint() : scrollOffset();
+#else
+    return scrollOffsetForFixedPosition();
+#endif
+}
+
 void FrameView::setHeaderHeight(int headerHeight)
 {
     if (frame().page())
@@ -1259,19 +1278,14 @@ void FrameView::layout(bool allowSubtree)
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(frame());
     AnimationUpdateBlock animationUpdateBlock(&frame().animation());
     
-    if (!allowSubtree && m_layoutRoot) {
-        m_layoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No);
-        m_layoutRoot = nullptr;
-    }
+    if (!allowSubtree && m_layoutRoot)
+        convertSubtreeLayoutToFullLayout();
 
     ASSERT(frame().view() == this);
     ASSERT(frame().document());
 
     Document& document = *frame().document();
     ASSERT(!document.inPageCache());
-
-    bool subtree;
-    RenderElement* root;
 
     {
         TemporaryChange<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
@@ -1302,32 +1316,33 @@ void FrameView::layout(bool allowSubtree)
         // Always ensure our style info is up-to-date. This can happen in situations where
         // the layout beats any sort of style recalc update that needs to occur.
         document.updateStyleIfNeeded();
-        m_layoutPhase = InPreLayout;
-
-        subtree = m_layoutRoot;
-
-        // If there is only one ref to this view left, then its going to be destroyed as soon as we exit, 
+        // If there is only one ref to this view left, then its going to be destroyed as soon as we exit,
         // so there's no point to continuing to layout
         if (hasOneRef())
             return;
-
-        root = subtree ? m_layoutRoot : document.renderView();
-        if (!root) {
-            // FIXME: Do we need to set m_size here?
-            return;
-        }
 
         // Close block here so we can set up the font cache purge preventer, which we will still
         // want in scope even after we want m_layoutSchedulingEnabled to be restored again.
         // The next block sets m_layoutSchedulingEnabled back to false once again.
     }
 
-    RenderLayer* layer;
+    m_layoutPhase = InPreLayout;
+
+    RenderLayer* layer = nullptr;
+    bool subtree = false;
+    RenderElement* root = nullptr;
 
     ++m_nestedLayoutCount;
 
     {
         TemporaryChange<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
+
+        autoSizeIfEnabled();
+
+        root = m_layoutRoot ? m_layoutRoot : document.renderView();
+        if (!root)
+            return;
+        subtree = m_layoutRoot;
 
         if (!m_layoutRoot) {
             auto* body = document.bodyOrFrameset();
@@ -1343,10 +1358,8 @@ void FrameView::layout(bool allowSubtree)
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
             if (m_firstLayout && !frame().ownerElement())
                 printf("Elapsed time before first layout: %lld\n", document.elapsedTime().count());
-#endif        
+#endif
         }
-
-        autoSizeIfEnabled();
 
         m_needsFullRepaint = !subtree && (m_firstLayout || downcast<RenderView>(*root).printing());
 
@@ -2567,6 +2580,12 @@ void FrameView::show()
         adjustTiledBackingCoverage();
     }
 }
+void FrameView::convertSubtreeLayoutToFullLayout()
+{
+    ASSERT(m_layoutRoot);
+    m_layoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No);
+    m_layoutRoot = nullptr;
+}
 
 void FrameView::layoutTimerFired()
 {
@@ -2583,10 +2602,8 @@ void FrameView::scheduleRelayout()
     // too many false assertions.  See <rdar://problem/7218118>.
     ASSERT(frame().view() == this);
 
-    if (m_layoutRoot) {
-        m_layoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No);
-        m_layoutRoot = nullptr;
-    }
+    if (m_layoutRoot)
+        convertSubtreeLayoutToFullLayout();
     if (!m_layoutSchedulingEnabled)
         return;
     if (!needsLayout())
@@ -2675,8 +2692,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     }
 
     // Just do a full relayout.
-    m_layoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No);
-    m_layoutRoot = nullptr;
+    convertSubtreeLayoutToFullLayout();
     newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No);
     InspectorInstrumentation::didInvalidateLayout(frame());
 }
@@ -3219,6 +3235,8 @@ void FrameView::autoSizeIfEnabled()
     if (!documentView || !documentElement)
         return;
 
+    if (m_layoutRoot)
+        convertSubtreeLayoutToFullLayout();
     // Start from the minimum size and allow it to grow.
     resize(m_minAutoSize.width(), m_minAutoSize.height());
 
@@ -3544,7 +3562,7 @@ ScrollableArea* FrameView::enclosingScrollableArea() const
     return nullptr;
 }
 
-IntRect FrameView::scrollableAreaBoundingBox() const
+IntRect FrameView::scrollableAreaBoundingBox(bool*) const
 {
     RenderWidget* ownerRenderer = frame().ownerRenderer();
     if (!ownerRenderer)
@@ -3736,7 +3754,7 @@ void FrameView::paintScrollCorner(GraphicsContext& context, const IntRect& corne
 
     if (m_scrollCorner) {
         if (frame().isMainFrame())
-            context.fillRect(cornerRect, baseBackgroundColor(), ColorSpaceDeviceRGB);
+            context.fillRect(cornerRect, baseBackgroundColor());
         m_scrollCorner->paintIntoRect(context, cornerRect.location(), cornerRect);
         return;
     }
@@ -3749,7 +3767,7 @@ void FrameView::paintScrollbar(GraphicsContext& context, Scrollbar& bar, const I
     if (bar.isCustomScrollbar() && frame().isMainFrame()) {
         IntRect toFill = bar.frameRect();
         toFill.intersect(rect);
-        context.fillRect(toFill, baseBackgroundColor(), ColorSpaceDeviceRGB);
+        context.fillRect(toFill, baseBackgroundColor());
     }
 
     ScrollView::paintScrollbar(context, bar, rect);
@@ -4017,7 +4035,7 @@ void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect
         fillWithRed = true;
     
     if (fillWithRed)
-        context.fillRect(dirtyRect, Color(0xFF, 0, 0), ColorSpaceDeviceRGB);
+        context.fillRect(dirtyRect, Color(0xFF, 0, 0));
 #endif
 
     if (m_layoutPhase == InViewSizeAdjust)

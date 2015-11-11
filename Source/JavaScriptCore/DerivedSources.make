@@ -60,8 +60,6 @@ all : \
     Lexer.lut.h \
     KeywordLookup.h \
     RegExpJitTables.h \
-    B3LoweringMatcher.h \
-    B3AddressMatcher.h \
     AirOpcode.h \
 #
 
@@ -114,11 +112,14 @@ JSCBuiltins.h: $(BUILTINS_GENERATOR_SCRIPTS) $(JavaScriptCore_BUILTINS_SOURCES) 
 
 # Perfect hash lookup tables for JavaScript classes.
 
-NATIVE_OBJECT_LUT_HEADERS = \
+OBJECT_LUT_HEADERS = \
+    ArrayConstructor.lut.h \
+    ArrayIteratorPrototype.lut.h \
     BooleanPrototype.lut.h \
     DateConstructor.lut.h \
     DatePrototype.lut.h \
     ErrorPrototype.lut.h \
+    InspectorInstrumentationObject.lut.h \
     IntlCollatorConstructor.lut.h \
     IntlCollatorPrototype.lut.h \
     IntlDateTimeFormatConstructor.lut.h \
@@ -126,40 +127,29 @@ NATIVE_OBJECT_LUT_HEADERS = \
     IntlNumberFormatConstructor.lut.h \
     IntlNumberFormatPrototype.lut.h \
     JSDataViewPrototype.lut.h \
+    JSGlobalObject.lut.h \
+    JSInternalPromiseConstructor.lut.h \
     JSONObject.lut.h \
+    JSPromisePrototype.lut.h \
+    JSPromiseConstructor.lut.h \
+    ModuleLoaderObject.lut.h \
     NumberConstructor.lut.h \
     NumberPrototype.lut.h \
+    ObjectConstructor.lut.h \
+    ReflectObject.lut.h \
     RegExpConstructor.lut.h \
     RegExpPrototype.lut.h \
+    StringConstructor.lut.h \
+    StringIteratorPrototype.lut.h \
     SymbolConstructor.lut.h \
     SymbolPrototype.lut.h \
 #
 
-# If an object's implementation contains at least one builtin, then it must
-# be added to this section so it is generated with builtin-specific includes.
-
-BUILTIN_OBJECT_LUT_HEADERS = \
-    ArrayConstructor.lut.h \
-    ArrayIteratorPrototype.lut.h \
-    InspectorInstrumentationObject.lut.h \
-    JSGlobalObject.lut.h \
-    JSInternalPromiseConstructor.lut.h \
-    JSPromisePrototype.lut.h \
-    JSPromiseConstructor.lut.h \
-    ModuleLoaderObject.lut.h \
-    ObjectConstructor.lut.h \
-    ReflectObject.lut.h \
-    StringConstructor.lut.h \
-    StringIteratorPrototype.lut.h \
-#
-
-$(NATIVE_OBJECT_LUT_HEADERS): %.lut.h : %.cpp $(JavaScriptCore)/create_hash_table
-	$(PERL) $(JavaScriptCore)/create_hash_table -i $< > $@
-$(BUILTIN_OBJECT_LUT_HEADERS): %.lut.h : %.cpp $(JavaScriptCore)/create_hash_table
-	$(PERL) $(JavaScriptCore)/create_hash_table -i -b $< > $@
+$(OBJECT_LUT_HEADERS): %.lut.h : %.cpp $(JavaScriptCore)/create_hash_table
+	$(PERL) $(JavaScriptCore)/create_hash_table $< > $@
 
 Lexer.lut.h: Keywords.table $(JavaScriptCore)/create_hash_table
-	$(PERL) $(JavaScriptCore)/create_hash_table -i $< > $@
+	$(PERL) $(JavaScriptCore)/create_hash_table $< > $@
 
 # character tables for Yarr
 
@@ -265,17 +255,11 @@ INPUT_GENERATOR_SPECIFICATIONS = \
 JSReplayInputs.h : $(INPUT_GENERATOR_SPECIFICATIONS) $(INPUT_GENERATOR_SCRIPTS)
 	$(PYTHON) $(JavaScriptCore)/replay/scripts/CodeGeneratorReplayInputs.py --outputDir . --framework JavaScriptCore $(INPUT_GENERATOR_SPECIFICATIONS)
 
-B3LoweringMatcher.h: $(JavaScriptCore)/b3/generate_pattern_matcher.rb $(JavaScriptCore)/b3/B3LoweringMatcher.patterns
-	$(RUBY) $^ 
-B3AddressMatcher.h: $(JavaScriptCore)/b3/generate_pattern_matcher.rb $(JavaScriptCore)/b3/B3AddressMatcher.patterns
-	$(RUBY) $^
-
 AirOpcode.h: $(JavaScriptCore)/b3/air/opcode_generator.rb $(JavaScriptCore)/b3/air/AirOpcode.opcodes
 	$(RUBY) $^
 
 # Dynamically-defined targets are listed below. Static targets belong up top.
 
 all : \
-    $(BUILTIN_OBJECT_LUT_HEADERS) \
-    $(NATIVE_OBJECT_LUT_HEADERS) \
+    $(OBJECT_LUT_HEADERS) \
 #

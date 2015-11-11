@@ -47,7 +47,14 @@ void WebInjectedScriptManager::disconnect()
     m_commandLineAPIHost = nullptr;
 }
 
-void WebInjectedScriptManager::didCreateInjectedScript(InjectedScript injectedScript)
+void WebInjectedScriptManager::discardInjectedScripts()
+{
+    InjectedScriptManager::discardInjectedScripts();
+
+    m_commandLineAPIHost->clearAllWrappers();
+}
+
+void WebInjectedScriptManager::didCreateInjectedScript(const Inspector::InjectedScript& injectedScript)
 {
     CommandLineAPIModule::injectIfNeeded(this, injectedScript);
 }

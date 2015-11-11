@@ -40,12 +40,32 @@ bool shouldValidateIRAtEachPhase();
 bool shouldSaveIRBeforePhase();
 bool shouldMeasurePhaseTiming();
 
+template<typename BitsType, typename InputType>
+inline bool isIdentical(InputType left, InputType right)
+{
+    BitsType leftBits = bitwise_cast<BitsType>(left);
+    BitsType rightBits = bitwise_cast<BitsType>(right);
+    return leftBits == rightBits;
+}
+
+inline bool isIdentical(int32_t left, int32_t right)
+{
+    return isIdentical<int32_t>(left, right);
+}
+
+inline bool isIdentical(int64_t left, int64_t right)
+{
+    return isIdentical<int64_t>(left, right);
+}
+
+inline bool isIdentical(double left, double right)
+{
+    return isIdentical<int64_t>(left, right);
+}
+
 template<typename ResultType, typename InputType, typename BitsType>
 inline bool isRepresentableAsImpl(InputType originalValue)
 {
-    // Get the raw bits of the original value.
-    BitsType originalBits = bitwise_cast<BitsType>(originalValue);
-
     // Convert the original value to the desired result type.
     ResultType result = static_cast<ResultType>(originalValue);
 
@@ -53,10 +73,7 @@ inline bool isRepresentableAsImpl(InputType originalValue)
     // using the new type if such round-tripping doesn't lose bits.
     InputType newValue = static_cast<InputType>(result);
 
-    // Get the raw bits of the round-tripped value.
-    BitsType newBits = bitwise_cast<BitsType>(newValue);
-    
-    return originalBits == newBits;
+    return isIdentical<BitsType>(originalValue, newValue);
 }
 
 template<typename ResultType>
@@ -75,6 +92,24 @@ template<typename ResultType>
 inline bool isRepresentableAs(double value)
 {
     return isRepresentableAsImpl<ResultType, double, int64_t>(value);
+}
+
+inline int32_t chillDiv(int32_t num, int32_t den)
+{
+    if (!den)
+        return 0;
+    if (den == -1 && num == std::numeric_limits<int32_t>::min())
+        return num;
+    return num / den;
+}
+
+inline int64_t chillDiv(int64_t num, int64_t den)
+{
+    if (!den)
+        return 0;
+    if (den == -1 && num == std::numeric_limits<int64_t>::min())
+        return num;
+    return num / den;
 }
 
 } } // namespace JSC::B3

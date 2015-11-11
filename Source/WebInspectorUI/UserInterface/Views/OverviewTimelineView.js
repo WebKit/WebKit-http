@@ -41,8 +41,7 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
 
         this._timelineRuler = new WebInspector.TimelineRuler;
         this._timelineRuler.allowsClippedLabels = true;
-        // FIXME: change to `this.addSubview(this._timelineRuler)` once <https://webkit.org/b/150703> is fixed.
-        this.element.appendChild(this._timelineRuler.element);
+        this.addSubview(this._timelineRuler);
 
         this._currentTimeMarker = new WebInspector.TimelineMarker(0, WebInspector.TimelineMarker.Type.CurrentTime);
         this._timelineRuler.addMarker(this._currentTimeMarker);
@@ -55,6 +54,7 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
 
         recording.addEventListener(WebInspector.TimelineRecording.Event.SourceCodeTimelineAdded, this._sourceCodeTimelineAdded, this);
         recording.addEventListener(WebInspector.TimelineRecording.Event.MarkerAdded, this._markerAdded, this);
+        recording.addEventListener(WebInspector.TimelineRecording.Event.Reset, this._recordingReset, this);
 
         this._pendingRepresentedObjects = [];
     }
@@ -180,9 +180,6 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
                 dataGridNode = dataGridNode.traverseNextNode(true, null, true);
             }
         }
-
-        // FIXME: remove once <https://webkit.org/b/150703> is fixed.
-        this._timelineRuler.updateLayout();
 
         this._processPendingRepresentedObjects();
     }
@@ -362,5 +359,11 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
     _dataGridNodeSelected(event)
     {
         this.dispatchEventToListeners(WebInspector.ContentView.Event.SelectionPathComponentsDidChange);
+    }
+
+    _recordingReset(event)
+    {
+        this._timelineRuler.clearMarkers();
+        this._timelineRuler.addMarker(this._currentTimeMarker);
     }
 };

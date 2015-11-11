@@ -80,8 +80,6 @@ enum class ConstructAbility : unsigned;
         lines.extend(self.generate_externs_for_object(object))
         lines.append("")
         lines.extend(self.generate_macros_for_object(object))
-        lines.append("")
-        lines.extend(self.generate_defines_for_object(object))
         return '\n'.join(lines)
 
     def generate_externs_for_object(self, object):
@@ -116,18 +114,6 @@ extern const JSC::ConstructAbility s_%(codeName)sConstructAbility;""" % function
             lines.append("    macro(%(funcName)s, %(mangledName)s, %(paramCount)d) \\" % function_args)
         return lines
 
-    def generate_defines_for_object(self, object):
-        lines = []
-        for function in object.functions:
-            args = {
-                'macroPrefix': self.model().framework.setting('macro_prefix'),
-                'objectMacro': object.object_name.replace('.', '').upper(),
-                'functionMacro': function.function_name.upper(),
-            }
-            lines.append("#define %(macroPrefix)s_BUILTIN_%(objectMacro)s_%(functionMacro)s 1" % args)
-
-        return lines
-
     def generate_section_for_code_table_macro(self):
         args = {
             'macroPrefix': self.model().framework.setting('macro_prefix'),
@@ -148,6 +134,10 @@ extern const JSC::ConstructAbility s_%(codeName)sConstructAbility;""" % function
         args = {
             'macroPrefix': self.model().framework.setting('macro_prefix'),
         }
+
+        internal_function_names = [function.function_name for function in self.model().all_internal_functions()]
+        if len(internal_function_names) != len(set(internal_function_names)):
+            log.error("There are several internal functions with the same name. Private identifiers may clash.")
 
         lines = []
         lines.append("#define %(macroPrefix)s_FOREACH_BUILTIN_FUNCTION_NAME(macro) \\" % args)

@@ -58,6 +58,10 @@
 #include "MediaSessionEvents.h"
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+#include "MediaPlaybackTargetContext.h"
+#endif
+
 namespace JSC {
 class Debugger;
 }
@@ -419,9 +423,10 @@ public:
     void captionPreferencesChanged();
 #endif
 
-    void incrementFrameHandlingBeforeUnloadEventCount();
-    void decrementFrameHandlingBeforeUnloadEventCount();
-    bool isAnyFrameHandlingBeforeUnloadEvent();
+    void forbidPrompts();
+    void allowPrompts();
+    bool arePromptsAllowed();
+
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
@@ -455,8 +460,10 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
-    void showPlaybackTargetPicker(uint64_t, const WebCore::IntPoint&, bool);
+    void showPlaybackTargetPicker(uint64_t, const IntPoint&, bool);
     void playbackTargetPickerClientStateDidChange(uint64_t, MediaProducer::MediaStateFlags);
+    WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerEnabled(bool);
+    WEBCORE_EXPORT void setMockMediaPlaybackTargetPickerState(const String&, MediaPlaybackTargetContext::State);
 
     WEBCORE_EXPORT void setPlaybackTarget(uint64_t, Ref<MediaPlaybackTarget>&&);
     WEBCORE_EXPORT void playbackTargetAvailabilityDidChange(uint64_t, bool);
@@ -625,7 +632,7 @@ private:
     HashSet<String> m_seenMediaEngines;
 
     unsigned m_lastSpatialNavigationCandidatesCount;
-    unsigned m_framesHandlingBeforeUnloadEvent;
+    unsigned m_forbidPromptsDepth;
 
     Ref<ApplicationCacheStorage> m_applicationCacheStorage;
     Ref<DatabaseProvider> m_databaseProvider;

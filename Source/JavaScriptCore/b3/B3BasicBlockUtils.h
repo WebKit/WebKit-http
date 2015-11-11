@@ -64,14 +64,25 @@ bool removePredecessor(BasicBlock* block, BasicBlock* predecessor)
 template<typename BasicBlock>
 bool replacePredecessor(BasicBlock* block, BasicBlock* from, BasicBlock* to)
 {
-    auto& predecessors = block->predecessors();
-    for (unsigned i = 0; i < predecessors.size(); ++i) {
-        if (predecessors[i] == from) {
-            predecessors[i] = to;
-            return true;
+    bool changed = false;
+    // We do it this way because 'to' may already be a predecessor of 'block'.
+    changed |= removePredecessor(block, from);
+    changed |= addPredecessor(block, to);
+    return changed;
+}
+
+template<typename BasicBlock>
+void updatePredecessorsAfter(BasicBlock* root)
+{
+    Vector<BasicBlock*, 16> worklist;
+    worklist.append(root);
+    while (!worklist.isEmpty()) {
+        BasicBlock* block = worklist.takeLast();
+        for (BasicBlock* successor : block->successorBlocks()) {
+            if (addPredecessor(successor, block))
+                worklist.append(successor);
         }
     }
-    return false;
 }
 
 // This recomputes predecessors and removes blocks that aren't reachable.
@@ -80,19 +91,16 @@ void resetReachability(
     Vector<std::unique_ptr<BasicBlock>>& blocks, const DeleteFunctor& deleteFunctor)
 {
     // Clear all predecessor lists first.
-    for (auto& block : blocks)
-        block->predecessors().resize(0);
-
-    GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> worklist;
-    worklist.push(blocks[0].get());
-    while (BasicBlock* block = worklist.pop()) {
-        for (BasicBlock* successor : block->successorBlocks()) {
-            addPredecessor(successor, block);
-            worklist.push(successor);
-        }
+    for (auto& block : blocks) {
+        if (block)
+            block->predecessors().resize(0);
     }
 
+    updatePredecessorsAfter(blocks[0].get());
+
     for (unsigned i = 1; i < blocks.size(); ++i) {
+        if (!blocks[i])
+            continue;
         if (blocks[i]->predecessors().isEmpty()) {
             deleteFunctor(blocks[i].get());
             blocks[i] = nullptr;

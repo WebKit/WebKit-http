@@ -27,8 +27,7 @@
 #include "CommandLineAPIModule.h"
 
 #include "CommandLineAPIModuleSource.h"
-#include "DOMWrapperWorld.h"
-#include "JSCommandLineAPIHost.h"
+#include "JSDOMGlobalObject.h"
 #include "WebInjectedScriptManager.h"
 #include <inspector/InjectedScript.h>
 
@@ -37,15 +36,15 @@ using namespace Inspector;
 
 namespace WebCore {
 
-CommandLineAPIModule::CommandLineAPIModule()
-    : InjectedScriptModule(ASCIILiteral("CommandLineAPI"))
-{
-}
-
-void CommandLineAPIModule::injectIfNeeded(InjectedScriptManager* injectedScriptManager, InjectedScript injectedScript)
+void CommandLineAPIModule::injectIfNeeded(InjectedScriptManager* injectedScriptManager, const InjectedScript& injectedScript)
 {
     CommandLineAPIModule module;
     module.ensureInjected(injectedScriptManager, injectedScript);
+}
+
+CommandLineAPIModule::CommandLineAPIModule()
+    : InjectedScriptModule(ASCIILiteral("CommandLineAPI"))
+{
 }
 
 String CommandLineAPIModule::source() const
@@ -53,13 +52,14 @@ String CommandLineAPIModule::source() const
     return StringImpl::createWithoutCopying(CommandLineAPIModuleSource_js, sizeof(CommandLineAPIModuleSource_js));
 }
 
-JSC::JSValue CommandLineAPIModule::host(InjectedScriptManager* injectedScriptManager, JSC::ExecState* exec) const
+JSValue CommandLineAPIModule::host(InjectedScriptManager* injectedScriptManager, ExecState* exec) const
 {
     // CommandLineAPIModule should only ever be used by a WebInjectedScriptManager.
     WebInjectedScriptManager* pageInjectedScriptManager = static_cast<WebInjectedScriptManager*>(injectedScriptManager);
     ASSERT(pageInjectedScriptManager->commandLineAPIHost());
+
     JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
-    return toJS(exec, globalObject, pageInjectedScriptManager->commandLineAPIHost());
+    return pageInjectedScriptManager->commandLineAPIHost()->wrapper(exec, globalObject);
 }
 
 } // namespace WebCore

@@ -39,26 +39,20 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
 
 namespace WebCore {
 
-static GstPadProbeReturn textTrackPrivateEventCallback(GstPad*, GstPadProbeInfo* info, InbandTextTrackPrivateGStreamer* track)
-{
-    GstEvent* event = gst_pad_probe_info_get_event(info);
-    switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_STREAM_START:
-        track->streamChanged();
-        break;
-    default:
-        break;
-    }
-    return GST_PAD_PROBE_OK;
-}
-
 InbandTextTrackPrivateGStreamer::InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad> pad)
     : InbandTextTrackPrivate(WebVTT), TrackPrivateBaseGStreamer(this, index, pad)
-    , m_sampleTimerHandler("[WebKit] InbandTextTrackPrivateGStreamer::notifyTrackOfSample", std::bind(&InbandTextTrackPrivateGStreamer::notifyTrackOfSample, this))
-    , m_streamTimerHandler("[WebKit] InbandTextTrackPrivateGStreamer::notifyTrackOfStreamChanged", std::bind(&InbandTextTrackPrivateGStreamer::notifyTrackOfStreamChanged, this))
 {
-    m_eventProbe = gst_pad_add_probe(m_pad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM,
-        reinterpret_cast<GstPadProbeCallback>(textTrackPrivateEventCallback), this, 0);
+    m_eventProbe = gst_pad_add_probe(m_pad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, [] (GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {
+        auto* track = static_cast<InbandTextTrackPrivateGStreamer*>(userData);
+        switch (GST_EVENT_TYPE(gst_pad_probe_info_get_event(info))) {
+        case GST_EVENT_STREAM_START:
+            track->streamChanged();
+            break;
+        default:
+            break;
+        }
+        return GST_PAD_PROBE_OK;
+    }, this, nullptr);
 
     notifyTrackOfStreamChanged();
 }
@@ -70,24 +64,24 @@ void InbandTextTrackPrivateGStreamer::disconnect()
 
     gst_pad_remove_probe(m_pad.get(), m_eventProbe);
 
-    m_streamTimerHandler.cancel();
-
     TrackPrivateBaseGStreamer::disconnect();
 }
 
 void InbandTextTrackPrivateGStreamer::handleSample(GRefPtr<GstSample> sample)
 {
-    m_sampleTimerHandler.cancel();
     {
         LockHolder lock(m_sampleMutex);
         m_pendingSamples.append(sample);
     }
-    m_sampleTimerHandler.schedule();
+
+    RefPtr<InbandTextTrackPrivateGStreamer> protector(this);
+    m_notifier.notify(MainThreadNotification::NewSample, [protector] { protector->notifyTrackOfSample(); });
 }
 
 void InbandTextTrackPrivateGStreamer::streamChanged()
 {
-    m_streamTimerHandler.schedule();
+    RefPtr<InbandTextTrackPrivateGStreamer> protector(this);
+    m_notifier.notify(MainThreadNotification::StreamChanged, [protector] { protector->notifyTrackOfStreamChanged(); });
 }
 
 void InbandTextTrackPrivateGStreamer::notifyTrackOfSample()

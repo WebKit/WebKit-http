@@ -32,7 +32,6 @@
 #include "InbandTextTrackPrivate.h"
 #include "TrackPrivateBaseGStreamer.h"
 #include <wtf/Lock.h>
-#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 
@@ -55,6 +54,10 @@ public:
     String streamId() const { return m_streamId; }
 
     void handleSample(GRefPtr<GstSample>);
+
+private:
+    InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad>);
+
     void streamChanged();
 
     void notifyTrackOfSample();
@@ -63,8 +66,6 @@ public:
 private:
     InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad>);
 
-    GSourceWrap::Static m_sampleTimerHandler;
-    GSourceWrap::Static m_streamTimerHandler;
     gulong m_eventProbe;
     Vector<GRefPtr<GstSample> > m_pendingSamples;
     String m_streamId;

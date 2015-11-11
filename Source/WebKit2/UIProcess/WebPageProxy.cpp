@@ -361,7 +361,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_topContentInset(0)
     , m_layerHostingMode(LayerHostingMode::InProcess)
     , m_drawsBackground(true)
-    , m_drawsTransparentBackground(false)
     , m_useFixedLayout(false)
     , m_suppressScrollbarAnimations(false)
     , m_paginationMode(Pagination::Unpaginated)
@@ -1243,17 +1242,6 @@ void WebPageProxy::setDrawsBackground(bool drawsBackground)
 
     if (isValid())
         m_process->send(Messages::WebPage::SetDrawsBackground(drawsBackground), m_pageID);
-}
-
-void WebPageProxy::setDrawsTransparentBackground(bool drawsTransparentBackground)
-{
-    if (m_drawsTransparentBackground == drawsTransparentBackground)
-        return;
-
-    m_drawsTransparentBackground = drawsTransparentBackground;
-
-    if (isValid())
-        m_process->send(Messages::WebPage::SetDrawsTransparentBackground(drawsTransparentBackground), m_pageID);
 }
 
 void WebPageProxy::setTopContentInset(float contentInset)
@@ -4079,9 +4067,9 @@ void WebPageProxy::setTextIndicatorAnimationProgress(float progress)
 #endif
 }
 
-void WebPageProxy::didFindString(const String& string, uint32_t matchCount, int32_t matchIndex)
+void WebPageProxy::didFindString(const String& string, const Vector<WebCore::IntRect>& matchRects, uint32_t matchCount, int32_t matchIndex)
 {
-    m_findClient->didFindString(this, string, matchCount, matchIndex);
+    m_findClient->didFindString(this, string, matchRects, matchCount, matchIndex);
 }
 
 void WebPageProxy::didFindStringMatches(const String& string, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection)
@@ -5079,6 +5067,8 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
     m_pageLoadState.reset(transaction);
+
+    m_process->responsivenessTimer().processTerminated();
 }
 
 WebPageCreationParameters WebPageProxy::creationParameters()
@@ -5092,7 +5082,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.pageGroupData = m_pageGroup->data();
     parameters.drawsBackground = m_drawsBackground;
     parameters.isEditable = m_isEditable;
-    parameters.drawsTransparentBackground = m_drawsTransparentBackground;
     parameters.underlayColor = m_underlayColor;
     parameters.useFixedLayout = m_useFixedLayout;
     parameters.fixedLayoutSize = m_fixedLayoutSize;
@@ -6026,6 +6015,16 @@ void WebPageProxy::showPlaybackTargetPicker(uint64_t contextId, const WebCore::F
 void WebPageProxy::playbackTargetPickerClientStateDidChange(uint64_t contextId, WebCore::MediaProducer::MediaStateFlags state)
 {
     m_pageClient.mediaSessionManager().clientStateDidChange(*this, contextId, state);
+}
+
+void WebPageProxy::setMockMediaPlaybackTargetPickerEnabled(bool enabled)
+{
+    m_pageClient.mediaSessionManager().setMockMediaPlaybackTargetPickerEnabled(enabled);
+}
+
+void WebPageProxy::setMockMediaPlaybackTargetPickerState(const String& name, WebCore::MediaPlaybackTargetContext::State state)
+{
+    m_pageClient.mediaSessionManager().setMockMediaPlaybackTargetPickerState(name, state);
 }
 
 void WebPageProxy::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)

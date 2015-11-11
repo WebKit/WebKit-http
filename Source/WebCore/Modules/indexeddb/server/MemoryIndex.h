@@ -28,24 +28,59 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBGetResult.h"
 #include "IDBIndexInfo.h"
+#include "IDBKeyData.h"
+#include "IndexValueStore.h"
+#include <set>
+#include <wtf/HashMap.h>
 
 namespace WebCore {
+
+class IDBError;
+class IndexKey;
+class ThreadSafeDataBuffer;
+
+struct IDBKeyRangeData;
+
+namespace IndexedDB {
+enum class IndexRecordType;
+}
+
 namespace IDBServer {
 
+class MemoryBackingStoreTransaction;
+class MemoryObjectStore;
+
 class MemoryIndex {
-    friend std::unique_ptr<MemoryIndex> std::make_unique<MemoryIndex>(const WebCore::IDBIndexInfo&);
+    friend std::unique_ptr<MemoryIndex> std::make_unique<MemoryIndex>(const WebCore::IDBIndexInfo&, WebCore::IDBServer::MemoryObjectStore&);
 public:
-    static std::unique_ptr<MemoryIndex> create(const IDBIndexInfo&);
+    static std::unique_ptr<MemoryIndex> create(const IDBIndexInfo&, MemoryObjectStore&);
 
     ~MemoryIndex();
 
     const IDBIndexInfo& info() const { return m_info; }
 
-private:
-    MemoryIndex(const IDBIndexInfo&);
+    IDBGetResult getResultForKeyRange(IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
+    uint64_t countForKeyRange(const IDBKeyRangeData&);
 
+    IDBError putIndexKey(const IDBKeyData&, const IndexKey&);
+
+    void removeEntriesWithValueKey(const IDBKeyData&);
+    void removeRecord(const IDBKeyData&, const IndexKey&);
+
+    void objectStoreCleared();
+    void replaceIndexValueStore(std::unique_ptr<IndexValueStore>&&);
+
+private:
+    MemoryIndex(const IDBIndexInfo&, MemoryObjectStore&);
+
+    uint64_t recordCountForKey(const IDBKeyData&) const;
+    
     IDBIndexInfo m_info;
+    MemoryObjectStore& m_objectStore;
+
+    std::unique_ptr<IndexValueStore> m_records;
 };
 
 } // namespace IDBServer

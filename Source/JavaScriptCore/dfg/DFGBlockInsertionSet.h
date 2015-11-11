@@ -45,7 +45,7 @@ public:
     void insert(size_t index, PassRefPtr<BasicBlock>);
     BasicBlock* insert(size_t index, float executionCount);
     BasicBlock* insertBefore(BasicBlock* before, float executionCount);
-    
+
     bool execute();
 
 private:

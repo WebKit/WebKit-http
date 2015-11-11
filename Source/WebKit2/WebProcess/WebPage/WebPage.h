@@ -131,6 +131,7 @@ class HTMLPlugInElement;
 class HTMLPlugInImageElement;
 class IntPoint;
 class KeyboardEvent;
+class MediaPlaybackTargetContext;
 class Page;
 class PrintContext;
 class Range;
@@ -143,7 +144,6 @@ class URL;
 class VisibleSelection;
 struct Highlight;
 struct KeypressCommand;
-struct MediaPlaybackTargetContext;
 struct TextCheckingResult;
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
@@ -400,7 +400,6 @@ public:
     void postInjectedBundleMessage(const String& messageName, const UserData&);
 
     bool drawsBackground() const { return m_drawsBackground; }
-    bool drawsTransparentBackground() const { return m_drawsTransparentBackground; }
 
     void setUnderlayColor(const WebCore::Color& color) { m_underlayColor = color; }
     WebCore::Color underlayColor() const { return m_underlayColor; }
@@ -1029,7 +1028,6 @@ private:
 #endif
 
     void setDrawsBackground(bool);
-    void setDrawsTransparentBackground(bool);
 
     void setTopContentInset(float);
 
@@ -1197,7 +1195,6 @@ private:
     bool m_useFixedLayout;
 
     bool m_drawsBackground;
-    bool m_drawsTransparentBackground;
 
     WebCore::Color m_underlayColor;
 

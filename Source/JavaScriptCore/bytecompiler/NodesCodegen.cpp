@@ -218,7 +218,6 @@ RegisterID* ResolveNode::emitBytecode(BytecodeGenerator& generator, RegisterID* 
     return result;
 }
 
-#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
 // ------------------------------ TemplateStringNode -----------------------------------
 
 RegisterID* TemplateStringNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -324,7 +323,6 @@ RegisterID* TaggedTemplateNode::emitBytecode(BytecodeGenerator& generator, Regis
 
     return generator.emitCall(generator.finalDestination(dst, tag.get()), tag.get(), expectedFunction, callArguments, divot(), divotStart(), divotEnd());
 }
-#endif
 
 // ------------------------------ ArrayNode ------------------------------------
 
@@ -774,6 +772,19 @@ RegisterID* FunctionCallResolveNode::emitBytecode(BytecodeGenerator& generator, 
 RegisterID* BytecodeIntrinsicNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     return (this->*m_emitter)(generator, dst);
+}
+
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_assert(BytecodeGenerator& generator, RegisterID* dst)
+{
+#ifndef NDEBUG
+    ArgumentListNode* node = m_args->m_listNode;
+    RefPtr<RegisterID> condition = generator.emitNode(node);
+    generator.emitAssert(condition.get(), node->firstLine());
+    return dst;
+#else
+    UNUSED_PARAM(generator);
+    return dst;
+#endif
 }
 
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_putByValDirect(BytecodeGenerator& generator, RegisterID* dst)
@@ -3009,7 +3020,6 @@ RegisterID* YieldExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
     return generator.emitLoad(dst, jsUndefined());
 }
 
-#if ENABLE(ES6_CLASS_SYNTAX)
 // ------------------------------ ClassDeclNode ---------------------------------
 
 void ClassDeclNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -3098,7 +3108,6 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
 
     return generator.moveToDestinationIfNeeded(dst, constructor.get());
 }
-#endif
 
 // ------------------------------ ImportDeclarationNode -----------------------
 
