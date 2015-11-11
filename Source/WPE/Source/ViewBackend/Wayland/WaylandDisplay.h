@@ -28,23 +28,35 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+#include <unordered_map>
+#include <utility>
+#include <xkbcommon/xkbcommon-compose.h>
+#include <xkbcommon/xkbcommon.h>
+
 struct ivi_application;
 struct wl_compositor;
 struct wl_display;
 struct wl_drm;
+struct wl_keyboard;
+struct wl_pointer;
 struct wl_registry;
 struct wl_seat;
+struct wl_surface;
 struct xdg_shell;
 
 typedef struct _GSource GSource;
 
 namespace WPE {
 
+namespace Input {
+class Client;
+}
+
 namespace ViewBackend {
 
 class WaylandDisplay {
 public:
-    static const WaylandDisplay& singleton();
+    static WaylandDisplay& singleton();
 
     struct wl_display* display() const { return m_display; }
 
@@ -57,6 +69,49 @@ public:
     };
     const Interfaces& interfaces() const { return m_interfaces; }
 
+    struct SeatData {
+        std::unordered_map<struct wl_surface*, Input::Client*> inputClients;
+
+        struct {
+            struct wl_pointer* object;
+            std::pair<struct wl_surface*, Input::Client*> target;
+            std::pair<int, int> coords;
+        } pointer { nullptr, { }, { 0, 0 } };
+        struct {
+            struct wl_keyboard* object;
+            std::pair<struct wl_surface*, Input::Client*> target;
+        } keyboard { nullptr, { } };
+
+        struct {
+            struct xkb_context* context;
+            struct xkb_keymap* keymap;
+            struct xkb_state* state;
+            struct {
+                xkb_mod_index_t control;
+                xkb_mod_index_t alt;
+                xkb_mod_index_t shift;
+            } indexes;
+            uint8_t modifiers;
+            struct xkb_compose_table* composeTable;
+            struct xkb_compose_state* composeState;
+        } xkb { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0, nullptr, nullptr };
+
+        struct {
+            int32_t rate;
+            int32_t delay;
+        } repeatInfo { 0, 0 };
+
+        struct {
+            uint32_t key;
+            uint32_t time;
+            uint32_t state;
+            uint32_t eventSource;
+        } repeatData { 0, 0, 0, 0 };
+    };
+
+    void registerInputClient(struct wl_surface*, Input::Client*);
+    void unregisterInputClient(struct wl_surface*);
+
 private:
     WaylandDisplay();
     ~WaylandDisplay();
@@ -64,6 +119,8 @@ private:
     struct wl_display* m_display;
     struct wl_registry* m_registry;
     Interfaces m_interfaces;
+
+    SeatData m_seatData;
 
     GSource* m_eventSource;
 };
