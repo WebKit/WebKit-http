@@ -540,7 +540,7 @@ void TextureMapperGL::drawSolidColor(const FloatRect& rect, const Transformation
     TextureMapperShaderProgram::Options options = TextureMapperShaderProgram::SolidColor;
     if (!matrix.mapQuad(rect).isRectilinear()) {
         options |= TextureMapperShaderProgram::Antialiasing;
-        flags |= ShouldAntialias | allowBlend ? ShouldBlend : 0;
+        flags |= ShouldAntialias | (allowBlend ? ShouldBlend : 0);
     }
 
     RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(options);
@@ -549,7 +549,7 @@ void TextureMapperGL::drawSolidColor(const FloatRect& rect, const Transformation
     float r, g, b, a;
     Color(premultipliedARGBFromColor(color)).getRGBA(r, g, b, a);
     m_context3D->uniform4f(program->colorLocation(), r, g, b, a);
-    if (allowBlend && (a < 1))
+    if (allowBlend && a < 1)
         flags |= ShouldBlend;
 
     draw(rect, matrix, program.get(), GraphicsContext3D::TRIANGLE_FAN, flags);
@@ -638,18 +638,12 @@ void TextureMapperGL::drawTexturedQuadWithProgram(TextureMapperShaderProgram* pr
     }
 
     TransformationMatrix patternTransform = this->patternTransform();
-    if (flags & ShouldRotateTexture90) {
-        patternTransform.rotate(-90);
-        patternTransform.translate(-1, 0);
-    }
-    if (flags & ShouldRotateTexture180) {
-        patternTransform.rotate(180);
-        patternTransform.translate(-1, -1);
-    }
-    if (flags & ShouldRotateTexture270) {
-        patternTransform.rotate(-270);
-        patternTransform.translate(0, -1);
-    }
+    if (flags & ShouldRotateTexture90)
+        patternTransform.rotate(-90).translate(-1, 0);
+    if (flags & ShouldRotateTexture180)
+        patternTransform.rotate(180).translate(-1, -1);
+    if (flags & ShouldRotateTexture270)
+        patternTransform.rotate(-270).translate(0, -1);
     if (flags & ShouldFlipTexture)
         patternTransform.flipY();
     if (flags & ShouldUseARBTextureRect)

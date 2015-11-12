@@ -32,7 +32,9 @@
 #include "AirGenerate.h"
 #include "AirInstInlines.h"
 #include "B3Common.h"
+#include "B3LowerMacros.h"
 #include "B3LowerToAir.h"
+#include "B3MoveConstants.h"
 #include "B3Procedure.h"
 #include "B3ReduceStrength.h"
 #include "B3TimingScope.h"
@@ -44,7 +46,7 @@ void generate(Procedure& procedure, CCallHelpers& jit)
 {
     TimingScope timingScope("generate");
 
-    Air::Code code;
+    Air::Code code(procedure);
     generateToAir(procedure, code);
     Air::generate(code, jit);
 }
@@ -65,10 +67,14 @@ void generateToAir(Procedure& procedure, Air::Code& code)
         dataLog(procedure);
     }
 
+    lowerMacros(procedure);
+
     reduceStrength(procedure);
     
     // FIXME: Add more optimizations here.
     // https://bugs.webkit.org/show_bug.cgi?id=150507
+
+    moveConstants(procedure);
 
     if (shouldValidateIR())
         validate(procedure);

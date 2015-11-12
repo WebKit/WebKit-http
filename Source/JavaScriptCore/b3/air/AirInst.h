@@ -83,6 +83,8 @@ public:
     {
     }
 
+    explicit operator bool() const { return origin || opcode != Nop || args.size(); }
+
     // Note that these functors all avoid using "const" because we want to use them for things that
     // edit IR. IR is meant to be edited; if you're carrying around a "const Inst&" then you're
     // probably doing it wrong.
@@ -148,6 +150,9 @@ public:
     // For example, "Move $42, (%rax)" will return false because the effect of storing to (%rax) is
     // implied by the second argument.
     bool hasNonArgEffects();
+
+    // Tells you if this operation has arg effects.
+    bool hasArgEffects();
 
     // Generate some code for this instruction. This is, like, literally our backend. If this is the
     // terminal, it returns the jump that needs to be linked for the "then" case, with the "else"

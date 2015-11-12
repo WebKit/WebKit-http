@@ -30,15 +30,10 @@
 
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <unordered_map>
-#include <utility>
-#include <xkbcommon/xkbcommon-compose.h>
-#include <xkbcommon/xkbcommon.h>
 
 struct ivi_surface;
 struct wl_buffer;
 struct wl_callback;
-struct wl_keyboard;
-struct wl_pointer;
 struct wl_surface;
 struct xdg_surface;
 
@@ -64,40 +59,6 @@ public:
 
     void setInputClient(Input::Client*) override;
 
-    struct SeatData {
-        Input::Client* client { nullptr };
-        struct wl_pointer* pointer { nullptr };
-        struct wl_keyboard* keyboard { nullptr };
-
-        std::pair<int, int> pointerCoords { 0, 0 };
-
-        struct {
-            struct xkb_context* context;
-            struct xkb_keymap* keymap;
-            struct xkb_state* state;
-            struct {
-                xkb_mod_index_t control;
-                xkb_mod_index_t alt;
-                xkb_mod_index_t shift;
-            } indexes;
-            uint8_t modifiers;
-            struct xkb_compose_table* composeTable;
-            struct xkb_compose_state* composeState;
-        } xkb { nullptr, nullptr, nullptr, { 0, 0, 0 }, 0, nullptr, nullptr };
-
-        struct {
-            int32_t rate;
-            int32_t delay;
-        } repeatInfo { 0, 0 };
-
-        struct {
-            uint32_t key;
-            uint32_t time;
-            uint32_t state;
-            uint32_t eventSource;
-        } repeatData { 0, 0, 0, 0 };
-    };
-
     struct BufferListenerData {
         Client* client;
         std::unordered_map<uint32_t, struct wl_buffer*> map;
@@ -115,13 +76,12 @@ public:
     };
 
 private:
-    const WaylandDisplay& m_display;
+    WaylandDisplay& m_display;
 
     struct wl_surface* m_surface;
     struct xdg_surface* m_xdgSurface;
     struct ivi_surface* m_iviSurface;
 
-    SeatData m_seatData;
     BufferListenerData m_bufferData;
     CallbackListenerData m_callbackData;
     ResizingData m_resizingData;

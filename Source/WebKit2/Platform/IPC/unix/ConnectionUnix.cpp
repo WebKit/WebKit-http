@@ -39,7 +39,11 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/UniStdExtras.h>
 
-#ifdef SOCK_SEQPACKET
+#if PLATFORM(GTK)
+#include <gio/gio.h>
+#endif
+
+#if defined(SOCK_SEQPACKET)
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
 #if PLATFORM(GTK) || PLATFORM(WPE)

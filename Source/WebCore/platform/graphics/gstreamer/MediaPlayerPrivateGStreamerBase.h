@@ -25,10 +25,9 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
+#include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
-
 #include <glib.h>
-
 #include <wtf/Forward.h>
 #include <wtf/glib/GSourceWrap.h>
 
@@ -94,8 +93,6 @@ public:
 
     virtual void setVolume(float) override;
     virtual float volume() const override;
-    void volumeChanged();
-    void notifyPlayerOfVolumeChange();
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
@@ -104,8 +101,6 @@ public:
     virtual bool supportsMuting() const override { return true; }
     virtual void setMuted(bool) override;
     bool muted() const;
-    void muteChanged();
-    void notifyPlayerOfMute();
 
     virtual MediaPlayer::NetworkState networkState() const override;
     virtual MediaPlayer::ReadyState readyState() const override;
@@ -197,6 +192,24 @@ public:
 
     virtual bool handleSyncMessage(GstMessage*);
 
+    void notifyPlayerOfVolumeChange();
+    void notifyPlayerOfMute();
+
+    static void volumeChangedCallback(MediaPlayerPrivateGStreamerBase*);
+    static void muteChangedCallback(MediaPlayerPrivateGStreamerBase*);
+
+    enum MainThreadNotification {
+        VideoChanged = 1 << 0,
+        VideoCapsChanged = 1 << 1,
+        AudioChanged = 1 << 2,
+        VolumeChanged = 1 << 3,
+        MuteChanged = 1 << 4,
+#if ENABLE(VIDEO_TRACK)
+        TextChanged = 1 << 5,
+#endif
+    };
+
+    MainThreadNotifier<MainThreadNotification> m_notifier;
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstStreamVolume> m_volumeElement;
@@ -208,15 +221,11 @@ public:
     IntSize m_size;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-    GSourceWrap::Static m_volumeTimerHandler;
-    GSourceWrap::Static m_muteTimerHandler;
 #if USE(GSTREAMER_GL)
     GCond m_drawCondition;
     GMutex m_drawMutex;
 #endif
     unsigned long m_repaintHandler;
-    unsigned long m_volumeSignalHandler;
-    unsigned long m_muteSignalHandler;
     unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;

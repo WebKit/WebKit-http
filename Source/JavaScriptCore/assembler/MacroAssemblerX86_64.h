@@ -347,17 +347,69 @@ public:
     {
         m_assembler.sarq_i8r(imm.m_value, dest);
     }
-    
+
+    void rshift64(RegisterID src, RegisterID dest)
+    {
+        ASSERT(src != dest);
+
+        if (src == X86Registers::ecx)
+            m_assembler.sarq_CLr(dest);
+        else {
+            // Can only shift by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.sarq_CLr(dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
     void urshift64(TrustedImm32 imm, RegisterID dest)
     {
         m_assembler.shrq_i8r(imm.m_value, dest);
     }
-    
+
+    void urshift64(RegisterID src, RegisterID dest)
+    {
+        ASSERT(src != dest);
+
+        if (src == X86Registers::ecx)
+            m_assembler.shrq_CLr(dest);
+        else {
+            // Can only shift by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.shrq_CLr(dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
     void mul64(RegisterID src, RegisterID dest)
     {
         m_assembler.imulq_rr(src, dest);
     }
     
+    void x86ConvertToQuadWord64()
+    {
+        m_assembler.cqo();
+    }
+
+    void x86ConvertToQuadWord64(RegisterID rax, RegisterID rdx)
+    {
+        ASSERT_UNUSED(rax, rax == X86Registers::eax);
+        ASSERT_UNUSED(rdx, rdx == X86Registers::edx);
+        x86ConvertToQuadWord64();
+    }
+
+    void x86Div64(RegisterID denominator)
+    {
+        m_assembler.idivq_r(denominator);
+    }
+
+    void x86Div64(RegisterID rax, RegisterID rdx, RegisterID denominator)
+    {
+        ASSERT_UNUSED(rax, rax == X86Registers::eax);
+        ASSERT_UNUSED(rdx, rdx == X86Registers::edx);
+        x86Div64(denominator);
+    }
+
     void neg64(RegisterID dest)
     {
         m_assembler.negq_r(dest);
@@ -549,7 +601,41 @@ public:
         m_assembler.setCC_r(x86Condition(cond), dest);
         m_assembler.movzbl_rr(dest, dest);
     }
-    
+
+    void compareDouble(DoubleCondition cond, FPRegisterID left, FPRegisterID right, RegisterID dest)
+    {
+        if (cond & DoubleConditionBitInvert)
+            m_assembler.ucomisd_rr(left, right);
+        else
+            m_assembler.ucomisd_rr(right, left);
+
+        if (cond == DoubleEqual) {
+            if (left == right) {
+                m_assembler.setnp_r(dest);
+                return;
+            }
+
+            Jump isUnordered(m_assembler.jp());
+            m_assembler.sete_r(dest);
+            isUnordered.link(this);
+            return;
+        }
+
+        if (cond == DoubleNotEqualOrUnordered) {
+            if (left == right) {
+                m_assembler.setp_r(dest);
+                return;
+            }
+
+            m_assembler.setp_r(dest);
+            m_assembler.setne_r(dest);
+            return;
+        }
+
+        ASSERT(!(cond & DoubleConditionBitSpecial));
+        m_assembler.setCC_r(static_cast<X86Assembler::Condition>(cond & ~DoubleConditionBits), dest);
+    }
+
     Jump branch64(RelationalCondition cond, RegisterID left, RegisterID right)
     {
         m_assembler.cmpq_rr(right, left);

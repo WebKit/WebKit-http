@@ -43,10 +43,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 
-namespace WTF {
-class Stopwatch;
-}
-
 namespace Inspector {
 
 class InjectedScript;
@@ -108,13 +104,13 @@ public:
     };
     void setListener(Listener* listener) { m_listener = listener; }
 
-    virtual ScriptDebugServer& scriptDebugServer() = 0;
-
 protected:
     InspectorDebuggerAgent(AgentContext&);
 
     InjectedScriptManager& injectedScriptManager() const { return m_injectedScriptManager; }
     virtual InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) = 0;
+
+    ScriptDebugServer& scriptDebugServer() { return m_scriptDebugServer; }
 
     virtual void muteConsole() = 0;
     virtual void unmuteConsole() = 0;
@@ -129,7 +125,7 @@ protected:
     void didClearGlobalObject();
 
 private:
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::Debugger::CallFrame>> currentCallFrames(InjectedScript);
+    Ref<Inspector::Protocol::Array<Inspector::Protocol::Debugger::CallFrame>> currentCallFrames(const InjectedScript&);
 
     virtual void didParseSource(JSC::SourceID, const Script&) override final;
     virtual void failedToParseSource(const String& url, const String& data, int firstLine, int errorLine, const String& errorMessage) override final;
@@ -157,6 +153,7 @@ private:
     InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<DebuggerFrontendDispatcher> m_frontendDispatcher;
     RefPtr<DebuggerBackendDispatcher> m_backendDispatcher;
+    ScriptDebugServer& m_scriptDebugServer;
     Listener* m_listener { nullptr };
     JSC::ExecState* m_pausedScriptState { nullptr };
     Deprecated::ScriptValue m_currentCallStack;

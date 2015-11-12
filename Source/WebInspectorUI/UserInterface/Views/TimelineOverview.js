@@ -33,10 +33,14 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.Obje
         this._recording.addEventListener(WebInspector.TimelineRecording.Event.TimelineAdded, this._timelineAdded, this);
         this._recording.addEventListener(WebInspector.TimelineRecording.Event.TimelineRemoved, this._timelineRemoved, this);
         this._recording.addEventListener(WebInspector.TimelineRecording.Event.MarkerAdded, this._markerAdded, this);
+        this._recording.addEventListener(WebInspector.TimelineRecording.Event.Reset, this._recordingReset, this);
 
         this._element = document.createElement("div");
         this._element.classList.add("timeline-overview", identifier);
         this._element.addEventListener("wheel", this._handleWheelEvent.bind(this));
+        this._element.addEventListener("gesturestart", this._handleGestureStart.bind(this));
+        this._element.addEventListener("gesturechange", this._handleGestureChange.bind(this));
+        this._element.addEventListener("gestureend", this._handleGestureEnd.bind(this));
 
         this._graphsContainerElement = document.createElement("div");
         this._graphsContainerElement.classList.add("graphs-container");
@@ -422,6 +426,10 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.Obje
         if (event.__cloned)
             return;
 
+        // Ignore wheel events while handing gestures.
+        if (this._handlingGesture)
+            return;
+
         // Require twice the vertical delta to overcome horizontal scrolling. This prevents most
         // cases of inadvertent zooming for slightly diagonal scrolls.
         if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) * 0.5) {
@@ -457,6 +465,46 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.Obje
 
         event.preventDefault();
         event.stopPropagation();
+    }
+
+    _handleGestureStart(event)
+    {
+        if (this._handlingGesture) {
+            // FIXME: <https://webkit.org/b/151068> [Mac] Unexpected gesturestart events when already handling gesture
+            return;
+        }
+
+        let mouseOffset = event.pageX - this._element.totalOffsetLeft;
+        let mousePositionTime = this._scrollStartTime + (mouseOffset * this._durationPerPixel);
+
+        this._handlingGesture = true;
+        this._gestureStartStartTime = mousePositionTime;
+        this._gestureStartDurationPerPixel = this._durationPerPixel;
+
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    _handleGestureChange(event)
+    {
+        // Cap zooming out at 5x.
+        let scale = Math.max(1/5, event.scale);
+
+        let mouseOffset = event.pageX - this._element.totalOffsetLeft;
+        let newSecondsPerPixel = this._gestureStartDurationPerPixel / scale;
+
+        this.secondsPerPixel = newSecondsPerPixel;
+        this.scrollStartTime = this._gestureStartStartTime - (mouseOffset * this._durationPerPixel);
+
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    _handleGestureEnd(event)
+    {
+        this._handlingGesture = false;
+        this._gestureStartStartTime = NaN;
+        this._gestureStartDurationPerPixel = NaN;
     }
 
     _timelineAdded(timelineOrEvent)
@@ -542,6 +590,12 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.Obje
         this.secondsPerPixel = this._defaultSettingsValues.durationPerPixel;
         this.selectionStartTime = this._defaultSettingsValues.selectionStartValue;
         this.selectionDuration = this._defaultSettingsValues.selectionDuration;
+    }
+
+    _recordingReset(event)
+    {
+        this._timelineRuler.clearMarkers();
+        this._timelineRuler.addMarker(this._currentTimeMarker);
     }
 };
 

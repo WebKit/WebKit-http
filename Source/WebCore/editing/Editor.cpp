@@ -708,6 +708,9 @@ bool Editor::hasBidiSelection() const
     } else
         startNode = m_frame.selection().selection().visibleStart().deepEquivalent().deprecatedNode();
 
+    if (!startNode)
+        return false;
+
     auto renderer = startNode->renderer();
     while (renderer && !is<RenderBlockFlow>(*renderer))
         renderer = renderer->parent();
@@ -1902,7 +1905,7 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
         // when spell checking the whole document before sending the message.
         // In that case the document might not be editable, but there are editable pockets that need to be spell checked.
 
-        position = firstEditablePositionAfterPositionInRoot(position, document().documentElement()).deepEquivalent();
+        position = VisiblePosition(firstEditablePositionAfterPositionInRoot(position, document().documentElement())).deepEquivalent();
         if (position.isNull())
             return;
         

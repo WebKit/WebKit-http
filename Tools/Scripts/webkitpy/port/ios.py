@@ -123,8 +123,12 @@ class IOSSimulatorPort(Port):
     @property
     @memoized
     def relay_path(self):
-        mac_config = port_config.Config(self._executive, self._filesystem, 'mac')
-        return self._filesystem.join(mac_config.build_directory(self.get_option('configuration')), self.relay_name)
+        if self._root_was_set:
+            path = self._filesystem.abspath(self.get_option('root'))
+        else:
+            mac_config = port_config.Config(self._executive, self._filesystem, 'mac')
+            path = mac_config.build_directory(self.get_option('configuration'))
+        return self._filesystem.join(path, self.relay_name)
 
     def default_timeout_ms(self):
         if self.get_option('guard_malloc'):
@@ -140,16 +144,12 @@ class IOSSimulatorPort(Port):
             return False
         return True
 
-    def _check_build_relay(self):
-        if self.get_option('build') and not self._build_relay():
+    def _check_port_build(self):
+        if not self._root_was_set and self.get_option('build') and not self._build_relay():
             return False
         if not self._check_relay():
             return False
         return True
-
-    def check_build(self, needs_http):
-        needs_driver = super(IOSSimulatorPort, self).check_build(needs_http)
-        return needs_driver and self._check_build_relay()
 
     def _build_relay(self):
         environment = self.host.copy_current_environment()

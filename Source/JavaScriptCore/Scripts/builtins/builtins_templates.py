@@ -75,18 +75,14 @@ THE POSSIBILITY OF SUCH DAMAGE.
     JSC::FunctionExecutable* codeName##Generator(JSC::VM&);
 
 ${macroPrefix}_FOREACH_BUILTIN_CODE(DECLARE_BUILTIN_GENERATOR)
-#undef DECLARE_BUILTIN_GENERATOR
-
-#define ${macroPrefix}_BUILTIN_EXISTS(object, func) defined ${macroPrefix}_BUILTIN_ ## object ## _ ## func""")
+#undef DECLARE_BUILTIN_GENERATOR""")
 
     SeparateHeaderStaticMacros = (
     """#define DECLARE_BUILTIN_GENERATOR(codeName, functionName, argumentCount) \\
     JSC::FunctionExecutable* codeName##Generator(JSC::VM&);
 
 ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(DECLARE_BUILTIN_GENERATOR)
-#undef DECLARE_BUILTIN_GENERATOR
-
-#define ${macroPrefix}_BUILTIN_${objectMacro}_EXISTS(object, func) defined ${macroPrefix}_BUILTIN_ ## object ## _ ## func""")
+#undef DECLARE_BUILTIN_GENERATOR""")
 
     CombinedJSCImplementationStaticMacros = (
     """
@@ -184,9 +180,10 @@ inline void ${objectName}BuiltinsWrapper::exportNames()
 #define EXPORT_FUNCTION_NAME(name) m_vm.propertyNames->appendExternalName(name##PublicName(), name##PrivateName());
     ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_FUNCTION_NAME(EXPORT_FUNCTION_NAME)
 #undef EXPORT_FUNCTION_NAME
-}
+}""")
 
-class ${objectName}BuiltinFunctions {
+    SeparateHeaderInternalFunctionsBoilerplate = (
+    """class ${objectName}BuiltinFunctions {
 public:
     explicit ${objectName}BuiltinFunctions(JSC::VM& vm) : m_vm(vm) { }
 

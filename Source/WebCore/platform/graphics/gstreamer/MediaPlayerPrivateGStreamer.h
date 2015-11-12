@@ -117,26 +117,10 @@ public:
     virtual void durationChanged();
     void loadingFailed(MediaPlayer::NetworkState);
 
-    void videoChanged();
-    void videoCapsChanged();
-    void audioChanged();
-    void notifyPlayerOfVideo();
-    void notifyPlayerOfVideoCaps();
-    void notifyPlayerOfAudio();
-
-#if ENABLE(VIDEO_TRACK)
-    void textChanged();
-    void notifyPlayerOfText();
-
-    void newTextSample();
-    void notifyPlayerOfNewTextSample();
-#endif
-
     virtual void sourceChanged();
+
     GstElement* audioSink() const override;
     void configurePlaySink();
-
-    void setAudioStreamProperties(GObject*);
 
     void simulateAudioInterruption() override;
 
@@ -208,6 +192,28 @@ protected:
 
     void readyTimerFired();
 
+    void notifyPlayerOfVideo();
+    void notifyPlayerOfVideoCaps();
+    void notifyPlayerOfAudio();
+
+#if ENABLE(VIDEO_TRACK)
+    void notifyPlayerOfText();
+    void newTextSample();
+#endif
+
+    void setAudioStreamProperties(GObject*);
+
+    static void setAudioStreamPropertiesCallback(MediaPlayerPrivateGStreamer*, GObject*);
+
+    static void sourceChangedCallback(MediaPlayerPrivateGStreamer*);
+    static void videoChangedCallback(MediaPlayerPrivateGStreamer*);
+    static void videoSinkCapsChangedCallback(MediaPlayerPrivateGStreamer*);
+    static void audioChangedCallback(MediaPlayerPrivateGStreamer*);
+#if ENABLE(VIDEO_TRACK)
+    static void textChangedCallback(MediaPlayerPrivateGStreamer*);
+    static GstFlowReturn newTextSampleCallback(MediaPlayerPrivateGStreamer*);
+#endif
+
     WeakPtrFactory<MediaPlayerPrivateGStreamer> m_weakPtrFactory;
 
     GRefPtr<GstElement> m_source;
@@ -230,10 +236,6 @@ protected:
     mutable float m_maxTimeLoadedAtLastDidLoadingProgress;
     bool m_hasVideo;
     bool m_hasAudio;
-    GSourceWrap::Static m_audioTimerHandler;
-    GSourceWrap::Static m_textTimerHandler;
-    GSourceWrap::Static m_videoTimerHandler;
-    GSourceWrap::Static m_videoCapsTimerHandler;
     GSourceWrap::Static m_readyTimerHandler;
     mutable unsigned long long m_totalBytes;
     URL m_url;

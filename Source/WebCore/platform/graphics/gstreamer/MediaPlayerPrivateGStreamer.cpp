@@ -73,49 +73,9 @@ using namespace std;
 
 namespace WebCore {
 
-static void mediaPlayerPrivateSourceChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
-{
-    player->sourceChanged();
-}
-
-static void mediaPlayerPrivateVideoSinkCapsChangedCallback(GObject*, GParamSpec*, MediaPlayerPrivateGStreamer* player)
-{
-    player->videoCapsChanged();
-}
-
-static void mediaPlayerPrivateVideoChangedCallback(GObject*, MediaPlayerPrivateGStreamer* player)
-{
-    player->videoChanged();
-}
-
-static void mediaPlayerPrivateAudioChangedCallback(GObject*, MediaPlayerPrivateGStreamer* player)
-{
-    player->audioChanged();
-}
-
-static void setAudioStreamPropertiesCallback(GstChildProxy*, GObject* object, gchar*,
-    MediaPlayerPrivateGStreamer* player)
+void MediaPlayerPrivateGStreamer::setAudioStreamPropertiesCallback(MediaPlayerPrivateGStreamer* player, GObject* object)
 {
     player->setAudioStreamProperties(object);
-}
-
-#if ENABLE(VIDEO_TRACK)
-static void mediaPlayerPrivateTextChangedCallback(GObject*, MediaPlayerPrivateGStreamer* player)
-{
-    player->textChanged();
-}
-
-static GstFlowReturn mediaPlayerPrivateNewTextSampleCallback(GObject*, MediaPlayerPrivateGStreamer* player)
-{
-    player->newTextSample();
-    return GST_FLOW_OK;
-}
-#endif
-
-static gboolean mediaPlayerPrivateNotifyDurationChanged(MediaPlayerPrivateGStreamer* player)
-{
-    player->notifyDurationChanged();
-    return G_SOURCE_REMOVE;
 }
 
 void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
@@ -198,10 +158,6 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_maxTimeLoadedAtLastDidLoadingProgress(0)
     , m_hasVideo(false)
     , m_hasAudio(false)
-    , m_audioTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::audioChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfAudio, this))
-    , m_textTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::textChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfText, this))
-    , m_videoTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::videoChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideo, this))
-    , m_videoCapsTimerHandler("[WebKit] MediaPlayerPrivateGStreamer::videoCapsChanged", std::bind(&MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps, this))
     , m_readyTimerHandler("[WebKit] mediaPlayerPrivateReadyStateTimeoutCallback", [this] { changePipelineState(GST_STATE_NULL); })
     , m_totalBytes(0)
     , m_preservesPitch(false)
@@ -256,18 +212,15 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
         ASSERT(bus);
         gst_bus_set_sync_handler(bus.get(), nullptr, nullptr, nullptr);
-
-        g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateSourceChangedCallback), this);
-        g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoChangedCallback), this);
-        g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateAudioChangedCallback), this);
-#if ENABLE(VIDEO_TRACK)
-        g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateNewTextSampleCallback), this);
-        g_signal_handlers_disconnect_by_func(m_pipeline.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
-#endif
-
+        g_signal_handlers_disconnect_matched(m_pipeline.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 
+
+    if (m_videoSink) {
+        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+        g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(videoSinkCapsChangedCallback), this);
+    }
 
     // Cancel pending mediaPlayerPrivateNotifyDurationChanged() delayed calls
     m_pendingAsyncOperationsLock.lock();
@@ -679,17 +632,9 @@ bool MediaPlayerPrivateGStreamer::seeking() const
     return m_seeking;
 }
 
-void MediaPlayerPrivateGStreamer::videoChanged()
+void MediaPlayerPrivateGStreamer::videoChangedCallback(MediaPlayerPrivateGStreamer* player)
 {
-    if (isMainThread())
-        notifyPlayerOfVideo();
-    else
-        m_videoTimerHandler.schedule();
-}
-
-void MediaPlayerPrivateGStreamer::videoCapsChanged()
-{
-    m_videoCapsTimerHandler.schedule();
+    player->m_notifier.notify(MainThreadNotification::VideoChanged, [player] { player->notifyPlayerOfVideo(); });
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
@@ -742,18 +687,20 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
     m_player->client().mediaPlayerEngineUpdated(m_player);
 }
 
+void MediaPlayerPrivateGStreamer::videoSinkCapsChangedCallback(MediaPlayerPrivateGStreamer* player)
+{
+    player->m_notifier.notify(MainThreadNotification::VideoCapsChanged, [player] { player->notifyPlayerOfVideoCaps(); });
+}
+
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideoCaps()
 {
     m_videoSize = IntSize();
     m_player->client().mediaPlayerEngineUpdated(m_player);
 }
 
-void MediaPlayerPrivateGStreamer::audioChanged()
+void MediaPlayerPrivateGStreamer::audioChangedCallback(MediaPlayerPrivateGStreamer* player)
 {
-    if (isMainThread())
-        notifyPlayerOfAudio();
-    else
-        m_audioTimerHandler.schedule();
+    player->m_notifier.notify(MainThreadNotification::AudioChanged, [player] { player->notifyPlayerOfAudio(); });
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
@@ -807,12 +754,9 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 }
 
 #if ENABLE(VIDEO_TRACK)
-void MediaPlayerPrivateGStreamer::textChanged()
+void MediaPlayerPrivateGStreamer::textChangedCallback(MediaPlayerPrivateGStreamer* player)
 {
-    if (isMainThread())
-        notifyPlayerOfText();
-    else
-        m_textTimerHandler.schedule();
+    player->m_notifier.notify(MainThreadNotification::TextChanged, [player] { player->notifyPlayerOfText(); });
 }
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
@@ -853,6 +797,12 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
         m_textTracks.removeLast();
         m_player->removeTextTrack(track.release());
     }
+}
+
+GstFlowReturn MediaPlayerPrivateGStreamer::newTextSampleCallback(MediaPlayerPrivateGStreamer* player)
+{
+    player->newTextSample();
+    return GST_FLOW_OK;
 }
 
 void MediaPlayerPrivateGStreamer::newTextSample()
@@ -1414,6 +1364,11 @@ unsigned long long MediaPlayerPrivateGStreamer::totalBytes() const
     m_totalBytes = static_cast<unsigned long long>(length);
     m_isStreaming = !length;
     return m_totalBytes;
+}
+
+void MediaPlayerPrivateGStreamer::sourceChangedCallback(MediaPlayerPrivateGStreamer* player)
+{
+    player->sourceChanged();
 }
 
 void MediaPlayerPrivateGStreamer::sourceChanged()
@@ -1985,7 +1940,7 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
         return nullptr;
     }
 
-    g_signal_connect(m_autoAudioSink.get(), "child-added", G_CALLBACK(setAudioStreamPropertiesCallback), this);
+    g_signal_connect_swapped(m_autoAudioSink.get(), "child-added", G_CALLBACK(setAudioStreamPropertiesCallback), this);
 
     GstElement* audioSinkBin;
 
@@ -2093,16 +2048,15 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 
     g_object_set(m_pipeline.get(), "mute", m_player->muted(), nullptr);
 
-    g_signal_connect(m_pipeline.get(), "notify::source", G_CALLBACK(mediaPlayerPrivateSourceChangedCallback), this);
-
     // If we load a MediaSource later, we will also listen the signals from
     // WebKitMediaSrc, which will be connected later in sourceChanged()
     // METRO FIXME: In that case, we shouldn't listen to these signals coming from playbin, or the callbacks will be called twice.
-    g_signal_connect(m_pipeline.get(), "video-changed", G_CALLBACK(mediaPlayerPrivateVideoChangedCallback), this);
-    g_signal_connect(m_pipeline.get(), "audio-changed", G_CALLBACK(mediaPlayerPrivateAudioChangedCallback), this);
+    g_signal_connect_swapped(m_pipeline.get(), "notify::source", G_CALLBACK(sourceChangedCallback), this);
+    g_signal_connect_swapped(m_pipeline.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
+    g_signal_connect_swapped(m_pipeline.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
 #if ENABLE(VIDEO_TRACK)
     if (webkitGstCheckVersion(1, 1, 2)) {
-        g_signal_connect(m_pipeline.get(), "text-changed", G_CALLBACK(mediaPlayerPrivateTextChangedCallback), this);
+        g_signal_connect_swapped(m_pipeline.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
 
         GstElement* textCombiner = webkitTextCombinerNew();
         ASSERT(textCombiner);
@@ -2115,7 +2069,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         ASSERT(m_textAppSinkPad);
 
         g_object_set(m_textAppSink.get(), "emit-signals", true, "enable-last-sample", false, "caps", gst_caps_new_empty_simple("text/vtt"), NULL);
-        g_signal_connect(m_textAppSink.get(), "new-sample", G_CALLBACK(mediaPlayerPrivateNewTextSampleCallback), this);
+        g_signal_connect_swapped(m_textAppSink.get(), "new-sample", G_CALLBACK(newTextSampleCallback), this);
 
         g_object_set(m_pipeline.get(), "text-sink", m_textAppSink.get(), NULL);
     }
@@ -2146,6 +2100,9 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
     }
 
+    GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+    if (videoSinkPad)
+        g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
 }
 
 void MediaPlayerPrivateGStreamer::simulateAudioInterruption()

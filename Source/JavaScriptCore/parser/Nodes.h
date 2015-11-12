@@ -448,7 +448,6 @@ namespace JSC {
         uint16_t m_subexpressionLineStartOffset;
     };
 
-#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
     class TemplateExpressionListNode : public ParserArenaFreeable {
     public:
         TemplateExpressionListNode(ExpressionNode*);
@@ -516,7 +515,6 @@ namespace JSC {
         ExpressionNode* m_tag;
         TemplateLiteralNode* m_templateLiteral;
     };
-#endif
 
     class RegExpNode : public ExpressionNode, public ThrowableExpressionData {
     public:
@@ -1943,7 +1941,6 @@ namespace JSC {
         bool m_delegate;
     };
 
-#if ENABLE(ES6_CLASS_SYNTAX)
     class ClassExprNode final : public ExpressionNode, public VariableEnvironmentNode {
     public:
         using ParserArenaDeletable::operator new;
@@ -1962,7 +1959,6 @@ namespace JSC {
         PropertyListNode* m_instanceMethods;
         PropertyListNode* m_staticMethods;
     };
-#endif
 
     class DestructuringPatternNode : public ParserArenaFreeable {
     public:
@@ -2079,7 +2075,6 @@ namespace JSC {
         FunctionMetadataNode* m_metadata;
     };
 
-#if ENABLE(ES6_CLASS_SYNTAX)
     class ClassDeclNode final : public StatementNode {
     public:
         ClassDeclNode(const JSTokenLocation&, ExpressionNode* classExpression);
@@ -2089,7 +2084,6 @@ namespace JSC {
 
         ExpressionNode* m_classDeclaration;
     };
-#endif
 
     class CaseClauseNode : public ParserArenaFreeable {
     public:

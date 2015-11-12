@@ -28,6 +28,8 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3Type.h"
+#include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC { namespace B3 {
@@ -67,7 +69,7 @@ enum Opcode : int16_t {
     Add,
     Sub,
     Mul,
-    Div,
+    Div, // All bets are off as to what will happen when you execute this for -2^31/-1 and x/0.
 
     // Integer math.
     ChillDiv, // doesn't trap ever, behaves like JS (x/y)|0.
@@ -76,8 +78,8 @@ enum Opcode : int16_t {
     BitOr,
     BitXor,
     Shl,
-    SShr,
-    ZShr,
+    SShr, // Arithmetic Shift.
+    ZShr, // Logical Shift.
 
     // Casts and such.
     // Takes and returns Int32:
@@ -131,7 +133,7 @@ enum Opcode : int16_t {
     Store,
 
     // This is a regular ordinary C function call, using the system C calling convention. Make sure
-    // that the arguments are passed using the right types.
+    // that the arguments are passed using the right types. The first argument is the callee.
     CCall,
 
     // This is a patchpoint. Use the PatchpointValue class. This is viewed as behaving like a call,
@@ -166,7 +168,7 @@ enum Opcode : int16_t {
     CheckMul,
 
     // Check that side-exits. Use the CheckValue class. Like CheckAdd and friends, this has a
-    // stackmap with a generation callback. This takes an Int32 argument that this branches on, with
+    // stackmap with a generation callback. This takes an int argument that this branches on, with
     // full branch fusion in the instruction selector. A true value jumps to the generator's slow
     // path.
     Check,
@@ -178,7 +180,7 @@ enum Opcode : int16_t {
     // Jump. Uses the ControlValue class.
     Jump,
     
-    // Polymorphic branch, usable with any value type. Branches if not equal to zero. Uses the
+    // Polymorphic branch, usable with any integer type. Branches if not equal to zero. Uses the
     // ControlValue class, with the 0-index successor being the true successor.
     Branch,
 
@@ -203,6 +205,15 @@ inline bool isCheckMath(Opcode opcode)
     default:
         return false;
     }
+}
+
+Optional<Opcode> invertedCompare(Opcode, Type);
+
+inline Opcode constPtrOpcode()
+{
+    if (is64Bit())
+        return Const64;
+    return Const32;
 }
 
 } } // namespace JSC::B3

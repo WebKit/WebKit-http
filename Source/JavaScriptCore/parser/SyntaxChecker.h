@@ -116,17 +116,13 @@ public:
     typedef int PropertyList;
     typedef int ElementList;
     typedef int ArgumentsList;
-#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
     typedef int TemplateExpressionList;
     typedef int TemplateString;
     typedef int TemplateStringList;
     typedef int TemplateLiteral;
-#endif
     typedef int FormalParameterList;
     typedef int FunctionBody;
-#if ENABLE(ES6_CLASS_SYNTAX)
     typedef int ClassExpression;
-#endif
     typedef int ModuleName;
     typedef int ImportSpecifier;
     typedef int ImportSpecifierList;
@@ -184,9 +180,7 @@ public:
     ExpressionType createEmptyLetExpression(const JSTokenLocation&, const Identifier&) { return AssignmentExpr; }
     ExpressionType createYield(const JSTokenLocation&) { return YieldExpr; }
     ExpressionType createYield(const JSTokenLocation&, ExpressionType, bool) { return YieldExpr; }
-#if ENABLE(ES6_CLASS_SYNTAX)
     ClassExpression createClassExpr(const JSTokenLocation&, const Identifier&, VariableEnvironment&, ExpressionType, ExpressionType, PropertyList, PropertyList) { return ClassExpr; }
-#endif
     ExpressionType createFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
     int createFunctionMetadata(const JSTokenLocation&, const JSTokenLocation&, int, int, bool, int, int, int, ConstructorKind, unsigned, SourceParseMode, bool, bool) { return FunctionBodyResult; }
     ExpressionType createArrowFunctionExpr(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return FunctionExpr; }
@@ -194,7 +188,6 @@ public:
     int createArguments() { return ArgumentsResult; }
     int createArguments(int) { return ArgumentsResult; }
     ExpressionType createSpreadExpression(const JSTokenLocation&, ExpressionType, int, int, int) { return SpreadExpr; }
-#if ENABLE(ES6_TEMPLATE_LITERAL_SYNTAX)
     TemplateString createTemplateString(const JSTokenLocation&, const Identifier&, const Identifier&) { return TemplateStringResult; }
     TemplateStringList createTemplateStringList(TemplateString) { return TemplateStringListResult; }
     TemplateStringList createTemplateStringList(TemplateStringList, TemplateString) { return TemplateStringListResult; }
@@ -203,7 +196,6 @@ public:
     TemplateLiteral createTemplateLiteral(const JSTokenLocation&, TemplateStringList) { return TemplateExpr; }
     TemplateLiteral createTemplateLiteral(const JSTokenLocation&, TemplateStringList, TemplateExpressionList) { return TemplateExpr; }
     ExpressionType createTaggedTemplate(const JSTokenLocation&, ExpressionType, TemplateLiteral, int, int, int) { return TaggedTemplateExpr; }
-#endif
 
     int createArgumentsList(const JSTokenLocation&, int) { return ArgumentsListResult; }
     int createArgumentsList(const JSTokenLocation&, int, int) { return ArgumentsListResult; }
@@ -234,10 +226,8 @@ public:
     int createClauseList(int) { return ClauseListResult; }
     int createClauseList(int, int) { return ClauseListResult; }
     int createFuncDeclStatement(const JSTokenLocation&, const ParserFunctionInfo<SyntaxChecker>&) { return StatementResult; }
-#if ENABLE(ES6_CLASS_SYNTAX)
     int createClassDeclStatement(const JSTokenLocation&, ClassExpression,
         const JSTextPosition&, const JSTextPosition&, int, int) { return StatementResult; }
-#endif
     int createBlockStatement(const JSTokenLocation&, int, int, int, VariableEnvironment&) { return StatementResult; }
     int createExprStatement(const JSTokenLocation&, int, int, int) { return StatementResult; }
     int createIfStatement(const JSTokenLocation&, int, int, int, int) { return StatementResult; }

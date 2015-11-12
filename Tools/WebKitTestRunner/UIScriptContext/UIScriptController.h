@@ -77,17 +77,13 @@ private:
     void platformSetDidEndZoomingCallback();
     void platformSetDidShowKeyboardCallback();
     void platformSetDidHideKeyboardCallback();
+    void platformClearAllCallbacks();
 
     virtual JSClassRef wrapperClass() override;
 
     JSObjectRef objectFromRect(const WKRect&) const;
 
     UIScriptContext& m_context;
-
-    unsigned m_willBeginZoomingCallback { 0 };
-    unsigned m_didEndZoomingCallback { 0 };
-    unsigned m_didShowKeyboardCallback { 0 };
-    unsigned m_didHideKeyboardCallback { 0 };
 };
 
 }

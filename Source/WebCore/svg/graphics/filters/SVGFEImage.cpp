@@ -112,8 +112,8 @@ void FEImage::platformApplySoftware()
     IntPoint paintLocation = absolutePaintRect().location();
     destRect.move(-paintLocation.x(), -paintLocation.y());
 
-    // FEImage results are always in ColorSpaceDeviceRGB
-    setResultColorSpace(ColorSpaceDeviceRGB);
+    // FEImage results are always in ColorSpaceSRGB
+    setResultColorSpace(ColorSpaceSRGB);
 
     if (renderer) {
         const AffineTransform& absoluteTransform = filter().absoluteTransform();
@@ -135,7 +135,7 @@ void FEImage::platformApplySoftware()
         return;
     }
 
-    resultImage->context().drawImage(*m_image, ColorSpaceDeviceRGB, destRect, srcRect);
+    resultImage->context().drawImage(*m_image, destRect, srcRect);
 }
 
 void FEImage::dump()

@@ -81,11 +81,11 @@ void ThemeWPE::paintCheckbox(ControlStates& states, GraphicsContext& context, co
     Path path;
     path.addRoundedRect(roundedRect);
 
-    context.setFillColor(makeRGB(224, 224, 224), ColorSpaceDeviceRGB);
+    context.setFillColor(makeRGB(224, 224, 224));
     context.fillPath(path);
 
     context.setStrokeThickness(1);
-    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.setStrokeColor(makeRGB(94, 94, 94));
     context.strokePath(path);
 
     if (states.states() & ControlStates::CheckedState) {
@@ -96,7 +96,7 @@ void ThemeWPE::paintCheckbox(ControlStates& states, GraphicsContext& context, co
         checkerPath.addLineTo(FloatPoint(rect.maxX() - 3, rect.y() + 3));
 
         context.setStrokeThickness(2);
-        context.setStrokeColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
+        context.setStrokeColor(makeRGB(84, 84, 84));
         context.strokePath(checkerPath);
     }
 }
@@ -108,11 +108,11 @@ void ThemeWPE::paintRadio(ControlStates& states, GraphicsContext& context, const
     Path path;
     path.addEllipse(zoomedRect);
 
-    context.setFillColor(makeRGB(224, 224, 224), ColorSpaceDeviceRGB);
+    context.setFillColor(makeRGB(224, 224, 224));
     context.fillPath(path);
 
     context.setStrokeThickness(1);
-    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.setStrokeColor(makeRGB(94, 94, 94));
     context.strokePath(path);
 
     if (states.states() & ControlStates::CheckedState) {
@@ -122,7 +122,7 @@ void ThemeWPE::paintRadio(ControlStates& states, GraphicsContext& context, const
         Path checkerPath;
         checkerPath.addEllipse(checkerRect);
 
-        context.setFillColor(makeRGB(84, 84, 84), ColorSpaceDeviceRGB);
+        context.setFillColor(makeRGB(84, 84, 84));
         context.fillPath(checkerPath);
     }
 }
@@ -137,11 +137,11 @@ void ThemeWPE::paintButton(ControlStates& states, GraphicsContext& context, cons
     path.addRoundedRect(roundedRect);
 
     Color fillColor = states.states() & ControlStates::PressedState ? makeRGB(244, 244, 244) : makeRGB(224, 224, 224);
-    context.setFillColor(fillColor, ColorSpaceDeviceRGB);
+    context.setFillColor(fillColor);
     context.fillPath(path);
 
     context.setStrokeThickness(1);
-    context.setStrokeColor(makeRGB(94, 94, 94), ColorSpaceDeviceRGB);
+    context.setStrokeColor(makeRGB(94, 94, 94));
     context.strokePath(path);
 }
 

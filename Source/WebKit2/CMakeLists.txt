@@ -174,6 +174,8 @@ set(WebKit2_SOURCES
     DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
 
     NetworkProcess/NetworkConnectionToWebProcess.cpp
+    NetworkProcess/NetworkLoad.cpp
+    NetworkProcess/NetworkLoadParameters.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
     NetworkProcess/NetworkResourceLoader.cpp
@@ -189,6 +191,8 @@ set(WebKit2_SOURCES
     NetworkProcess/cache/NetworkCacheEntry.cpp
     NetworkProcess/cache/NetworkCacheFileSystem.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
+    NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp
+    NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp
     NetworkProcess/cache/NetworkCacheStatistics.cpp
     NetworkProcess/cache/NetworkCacheStorage.cpp
 

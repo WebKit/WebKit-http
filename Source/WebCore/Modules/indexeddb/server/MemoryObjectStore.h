@@ -42,6 +42,10 @@ class IDBKeyData;
 
 struct IDBKeyRangeData;
 
+namespace IndexedDB {
+enum class IndexRecordType;
+}
+
 namespace IDBServer {
 
 class MemoryBackingStoreTransaction;
@@ -57,15 +61,14 @@ public:
 
     void writeTransactionStarted(MemoryBackingStoreTransaction&);
     void writeTransactionFinished(MemoryBackingStoreTransaction&);
+    MemoryBackingStoreTransaction* writeTransaction() { return m_writeTransaction; }
 
     IDBError createIndex(MemoryBackingStoreTransaction&, const IDBIndexInfo&);
 
     bool containsRecord(const IDBKeyData&);
     void deleteRecord(const IDBKeyData&);
     void deleteRange(const IDBKeyRangeData&);
-    void putRecord(MemoryBackingStoreTransaction&, const IDBKeyData&, const ThreadSafeDataBuffer& value);
-
-    void setKeyValue(const IDBKeyData&, const ThreadSafeDataBuffer& value);
+    IDBError addRecord(MemoryBackingStoreTransaction&, const IDBKeyData&, const ThreadSafeDataBuffer& value);
 
     uint64_t currentKeyGeneratorValue() const { return m_keyGeneratorValue; }
     void setKeyGeneratorValue(uint64_t value) { m_keyGeneratorValue = value; }
@@ -74,7 +77,8 @@ public:
     void replaceKeyValueStore(std::unique_ptr<KeyValueMap>&&);
 
     ThreadSafeDataBuffer valueForKeyRange(const IDBKeyRangeData&) const;
-    uint64_t countForKeyRange(const IDBKeyRangeData&) const;
+    IDBGetResult indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
+    uint64_t countForKeyRange(uint64_t indexIdentifier, const IDBKeyRangeData&) const;
 
     const IDBObjectStoreInfo& info() const { return m_info; }
 
@@ -82,6 +86,9 @@ private:
     MemoryObjectStore(const IDBObjectStoreInfo&);
 
     IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
+
+    IDBError updateIndexesForPutRecord(const IDBKeyData&, const ThreadSafeDataBuffer& value);
+    void updateIndexesForDeleteRecord(const IDBKeyData& value);
 
     IDBObjectStoreInfo m_info;
 

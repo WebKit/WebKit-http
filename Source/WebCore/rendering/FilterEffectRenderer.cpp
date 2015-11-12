@@ -284,7 +284,7 @@ bool FilterEffectRenderer::build(RenderElement* renderer, const FilterOperations
             // Unlike SVG Filters and CSSFilterImages, filter functions on the filter
             // property applied here should not clip to their primitive subregions.
             effect->setClipsToBounds(consumer == FilterFunction);
-            effect->setOperatingColorSpace(ColorSpaceDeviceRGB);
+            effect->setOperatingColorSpace(ColorSpaceSRGB);
             
             if (filterOperation.type() != FilterOperation::REFERENCE) {
                 effect->inputEffects().append(previousEffect);
@@ -339,7 +339,7 @@ void FilterEffectRenderer::apply()
 {
     RefPtr<FilterEffect> effect = lastEffect();
     effect->apply();
-    effect->transformResultColorSpace(ColorSpaceDeviceRGB);
+    effect->transformResultColorSpace(ColorSpaceSRGB);
 }
 
 LayoutRect FilterEffectRenderer::computeSourceImageRectForDirtyRect(const LayoutRect& filterBoxRect, const LayoutRect& dirtyRect)
@@ -429,10 +429,8 @@ void FilterEffectRendererHelper::applyFilterEffect(GraphicsContext& destinationC
     LayoutRect destRect = filter->outputRect();
     destRect.move(m_paintOffset.x(), m_paintOffset.y());
 
-    if (ImageBuffer* outputBuffer = filter->output()) {
-        destinationContext.drawImageBuffer(*outputBuffer, m_renderLayer->renderer().style().colorSpace(),
-            snapRectToDevicePixels(destRect, m_renderLayer->renderer().document().deviceScaleFactor()));
-    }
+    if (ImageBuffer* outputBuffer = filter->output())
+        destinationContext.drawImageBuffer(*outputBuffer, snapRectToDevicePixels(destRect, m_renderLayer->renderer().document().deviceScaleFactor()));
 
     filter->clearIntermediateResults();
 }
