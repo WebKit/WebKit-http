@@ -142,6 +142,11 @@ namespace WebCore {
         void setNeedsOneShotDrawingSynchronization() override;
         void scheduleCompositingLayerFlush() override;
 
+        CompositingTriggerFlags allowedCompositingTriggers() const override
+        {
+            return static_cast<CompositingTriggerFlags>(AllTriggers ^ ThreeDTransformTrigger);
+        }
+
         void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
         void setPanelDirectory(entry_ref dir) { m_filePanelDirectory = dir; }
 
