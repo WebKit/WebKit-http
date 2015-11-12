@@ -63,9 +63,6 @@ private:
     void notifyTrackOfSample();
     void notifyTrackOfStreamChanged();
 
-private:
-    InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad>);
-
     gulong m_eventProbe;
     Vector<GRefPtr<GstSample> > m_pendingSamples;
     String m_streamId;

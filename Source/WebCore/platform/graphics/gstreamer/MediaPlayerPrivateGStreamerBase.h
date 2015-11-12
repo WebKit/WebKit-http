@@ -133,8 +133,6 @@ protected:
 
     virtual bool handleSyncMessage(GstMessage*);
 
-    void triggerRepaint(GstSample*);
-
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 #if USE(GSTREAMER_GL)
     static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstContext*, GstSample*);
