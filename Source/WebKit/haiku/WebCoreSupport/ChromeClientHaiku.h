@@ -144,7 +144,7 @@ namespace WebCore {
 
         CompositingTriggerFlags allowedCompositingTriggers() const override
         {
-            return static_cast<CompositingTriggerFlags>(AllTriggers ^ ThreeDTransformTrigger);
+            return static_cast<CompositingTriggerFlags>(0);
         }
 
         void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;

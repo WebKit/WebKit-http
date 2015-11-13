@@ -521,6 +521,7 @@ void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
 void ChromeClientHaiku::attachViewOverlayGraphicsLayer(Frame*, GraphicsLayer*)
 {
     // FIXME: If we want view-relative page overlays, this would be the place to hook them up.
+	fprintf(stderr, "!!! Trying to create an overlay layer!\n");
     notImplemented();
 }
 
