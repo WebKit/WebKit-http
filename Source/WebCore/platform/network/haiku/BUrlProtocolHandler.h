@@ -54,6 +54,9 @@ private:
 	off_t m_currentFileSize;
 	BFile* m_currentFile;
 	off_t m_currentOffset;
+
+	int m_currentItem;
+	int m_lastItem;
 };
 
 

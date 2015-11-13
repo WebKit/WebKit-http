@@ -49,6 +49,8 @@ BFormDataIO::BFormDataIO(FormData& form)
 	: m_formElements(form.elements())
 	, m_currentFile(NULL)
 	, m_currentOffset(0)
+	, m_currentItem(0)
+	, m_lastItem(0)
 {
     _ParseCurrentElement();
 }
@@ -103,7 +105,7 @@ BFormDataIO::Read(void* buffer, size_t size)
             {
                 BlobRegistryImpl& registry = static_cast<BlobRegistryImpl&>(blobRegistry());
                 RefPtr<BlobData> blobData = registry.getBlobDataFromURL(URL(ParsedURLString, element.m_url));
-                const BlobDataItem& item = blobData->items()[0];
+                const BlobDataItem& item = blobData->items()[m_currentItem];
                 if (item.type == BlobDataItem::Data) {
                     size_t toCopy = 0;
 
@@ -175,7 +177,11 @@ BFormDataIO::_NextElement()
 {
     m_currentOffset = 0;
     m_currentFileSize = 0;
-    m_formElements.remove(0);
+
+    if (m_currentItem == m_lastItem)
+        m_formElements.remove(0);
+    else
+        m_currentItem++;
 
     _ParseCurrentElement();
 }
@@ -194,6 +200,8 @@ BFormDataIO::_ParseCurrentElement()
 
     switch (currentElement.m_type) {
         case FormDataElement::Type::EncodedFile:
+            m_currentItem = 0;
+            m_lastItem = 0;
             m_currentFile->SetTo(BString(currentElement.m_filename).String(), B_READ_ONLY);
             m_currentFile->GetSize(&m_currentFileSize);
             return;
@@ -204,8 +212,7 @@ BFormDataIO::_ParseCurrentElement()
             if (!blobData)
                 debugger("Empty blob! This shouldn't happen!");
 
-            if (blobData->items().size() != 1)
-                debugger("Composite blobs are currently unsupported. Please submit a bugreport with the webpage that triggered this.");
+            m_lastItem = blobData->items().size() - 1;
 
             // FIXME handle blobs with multiple items
             const BlobDataItem& item = blobData->items()[0];
@@ -227,7 +234,8 @@ BFormDataIO::_ParseCurrentElement()
             }
         }
         default:
-            // Nothing to do for other types.
+            m_currentItem = 0;
+            m_lastItem = 0;
             return;
     }
 }
