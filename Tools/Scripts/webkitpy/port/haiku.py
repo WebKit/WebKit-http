@@ -31,7 +31,6 @@ import os
 
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
-from webkitpy.port.pulseaudio_sanitizer import PulseAudioSanitizer
 from webkitpy.port.haikudriver import HaikuDriver
 from webkitpy.port.haiku_get_crash_log import HaikuCrashLogGenerator
 
@@ -44,14 +43,11 @@ class HaikuPort(Port):
 
         self.webprocess_cmd_prefix = self.get_option('webprocess_cmd_prefix')
 
-        self._pulseaudio_sanitizer = PulseAudioSanitizer()
-
     def _port_flag_for_scripts(self):
         return "--haiku"
 
     def setup_test_run(self):
         super(HaikuPort, self).setup_test_run()
-        self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
     def setup_environ_for_server(self, server_name=None):
         env = super(HaikuPort, self).setup_environ_for_server(server_name)
@@ -70,7 +66,6 @@ class HaikuPort(Port):
 
     def clean_up_test_run(self):
         super(HaikuPort, self).clean_up_test_run()
-        self._pulseaudio_sanitizer.restore_pulseaudio_module()
 
     def _generate_all_test_configurations(self):
         return [TestConfiguration(version=self._version, architecture='x86', build_type=build_type) for build_type in self.ALL_BUILD_TYPES]
