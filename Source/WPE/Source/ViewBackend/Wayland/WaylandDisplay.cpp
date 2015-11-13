@@ -32,6 +32,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <WPE/Input/Handling.h>
+#include <cassert>
 #include <cstring>
 #include <glib.h>
 #include <linux/input.h>
