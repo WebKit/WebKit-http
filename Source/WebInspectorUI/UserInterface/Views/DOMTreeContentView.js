@@ -79,11 +79,6 @@ WebInspector.DOMTreeContentView.prototype = {
 
     // Public
 
-    get allowedNavigationSidebarPanels()
-    {
-        return [WebInspector.resourceSidebarPanel.identifier];
-    },
-
     get navigationItems()
     {
         return [this._showsShadowDOMButtonNavigationItem, this._compositingBordersButtonNavigationItem, this._paintFlashingButtonNavigationItem];
@@ -143,6 +138,18 @@ WebInspector.DOMTreeContentView.prototype = {
         }
 
         return pathComponents;
+    },
+
+    restoreFromCookie: function(cookie)
+    {
+        if (!cookie || !cookie.nodeToSelect)
+            return;
+
+        this.selectAndRevealDOMNode(cookie.nodeToSelect);
+
+        // Because nodeToSelect is ephemeral, we don't want to keep
+        // it around in the back-forward history entries.
+        cookie.nodeToSelect = undefined;
     },
 
     selectAndRevealDOMNode: function(domNode, preventFocusChange)

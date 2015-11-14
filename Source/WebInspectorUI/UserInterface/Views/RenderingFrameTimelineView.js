@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.RenderingFrameTimelineView = function(timeline)
+WebInspector.RenderingFrameTimelineView = function(timeline, extraArguments)
 {
-    WebInspector.TimelineView.call(this, timeline);
+    WebInspector.TimelineView.call(this, timeline, extraArguments);
 
     console.assert(WebInspector.TimelineRecord.Type.RenderingFrame);
 
@@ -157,7 +157,7 @@ WebInspector.RenderingFrameTimelineView.prototype = {
     showContentViewForTreeElement: function(treeElement)
     {
         if (treeElement instanceof WebInspector.ProfileNodeTreeElement && treeElement.profileNode.sourceCodeLocation) {
-            WebInspector.resourceSidebarPanel.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
+            WebInspector.showOriginalOrFormattedSourceCodeLocation(treeElement.profileNode.sourceCodeLocation);
             return true;
         }
 

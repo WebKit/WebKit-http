@@ -53,11 +53,6 @@ WebInspector.ApplicationCacheFrameContentView.StyleClassName = "application-cach
 WebInspector.ApplicationCacheFrameContentView.prototype = {
     constructor: WebInspector.ApplicationCacheFrameContentView,
 
-    get allowedNavigationSidebarPanels()
-    {
-        return [WebInspector.resourceSidebarPanel.identifier];
-    },
-
     shown: function()
     {
         this._maybeUpdate();
@@ -65,7 +60,7 @@ WebInspector.ApplicationCacheFrameContentView.prototype = {
 
     closed: function()
     {
-        WebInspector.applicationCacheManager.removeEventListener(WebInspector.ApplicationCacheManager.Event.FrameManifestStatusChanged, this._updateStatus, this);
+        WebInspector.applicationCacheManager.removeEventListener(null, null, this);
     },
 
     updateLayout: function()

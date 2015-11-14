@@ -1,3 +1,259 @@
+2015-04-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Implement Math.clz32(), remove Number.clz()
+        https://bugs.webkit.org/show_bug.cgi?id=144205
+
+        Reviewed by Michael Saboff.
+
+        This patch adds the ES6 function Math.clz32(), and remove the non-standard
+        Number.clz(). Number.clz() probably came from an older draft.
+
+        The new function has a corresponding instrinsic: Clz32Intrinsic,
+        and a corresponding DFG node: ArithClz32, optimized all the way to LLVM.
+
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::countLeadingZeros32):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::bsr_rr):
+        The x86 assembler did not have countLeadingZeros32() because there is
+        no native CLZ instruction on that architecture.
+
+        I have added the version with bsr + branches for the case of zero.
+        An other popular version uses cmov to handle the case of zero. I kept
+        it simple since the Assembler has no support for cmov.
+
+        It is unlikely to matter much. If the code is hot enough, LLVM picks
+        something good based on the surrounding code.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        Constant handling + effect propagation. The node only produces integer (between 0 and 32).
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        Thanks to the definition of toUint32(), we can ignore plenty of details
+        from doubles.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsic):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithClz32):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileArithClz32):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::ctlz32):
+        * jit/ThunkGenerators.cpp:
+        (JSC::clz32ThunkGenerator):
+        * jit/ThunkGenerators.h:
+        * runtime/Intrinsic.h:
+        * runtime/MathCommon.h:
+        (JSC::clz32):
+        Fun fact: InstCombine does not recognize this pattern to eliminate
+        the branch which makes our FTL version better than the C version.
+
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+        (JSC::mathProtoFuncClz32):
+        * runtime/NumberPrototype.cpp:
+        (JSC::clz): Deleted.
+        (JSC::numberProtoFuncClz): Deleted.
+        * runtime/VM.cpp:
+        (JSC::thunkGeneratorForIntrinsic):
+        * tests/stress/math-clz32-basics.js: Added.
+        (mathClz32OnInteger):
+        (testMathClz32OnIntegers):
+        (verifyMathClz32OnIntegerWithOtherTypes):
+        (mathClz32OnDouble):
+        (testMathClz32OnDoubles):
+        (verifyMathClz32OnDoublesWithOtherTypes):
+        (mathClz32NoArguments):
+        (mathClz32TooManyArguments):
+        (testMathClz32OnConstants):
+        (mathClz32StructTransition):
+        (Math.clz32):
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Array.from need to accept iterables
+        https://bugs.webkit.org/show_bug.cgi?id=141055
+
+        Reviewed by Darin Adler.
+
+        ES6 spec requires that Array.from accepts iterable objects.
+        This patch introduces this functionality, Array.from accepting iterable objects.
+
+        Currently, `isConstructor` is not used. Instead of it, `typeof thiObj === "function"` is used.
+        However, it doesn't conform to the spec. While `isConstructor` queries the given object has `[[Construct]]`,
+        `typeof thisObj === "function"` queries the given object has `[[Call]]`.
+        This will be fixed in the subsequent patch[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=144093
+
+        * builtins/ArrayConstructor.js:
+        (from):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * tests/stress/array-from-with-iterable.js: Added.
+        (shouldBe):
+        (.set for):
+        (.set var):
+        (.get var):
+        (argumentsGenerators):
+        (.set shouldBe):
+        (.set new):
+        * tests/stress/array-from-with-iterator.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (createIterator.iterator.return):
+        (createIterator):
+        (.):
+
+2015-04-25  Jordan Harband  <ljharb@gmail.com>
+
+        Set#keys !== Set#values
+        https://bugs.webkit.org/show_bug.cgi?id=144190
+
+        Reviewed by Darin Adler.
+
+        per https://people.mozilla.org/~jorendorff/es6-draft.html#sec-set.prototype.keys
+        Set#keys should === Set#values
+
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        (JSC::setProtoFuncValues):
+        (JSC::setProtoFuncEntries):
+        (JSC::setProtoFuncKeys): Deleted.
+
+2015-04-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Allow for pausing a JSContext when opening a Web Inspector
+        <rdar://problem/20564788>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        * inspector/remote/RemoteInspectorConstants.h:
+        * inspector/remote/RemoteInspectorDebuggable.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.h:
+        * inspector/remote/RemoteInspectorDebuggableConnection.mm:
+        (Inspector::RemoteInspectorDebuggableConnection::setup):
+        On any incoming setup message, we may want to automatically
+        pause the debuggable. If requested, pause the debuggable
+        after we have setup the frontend connection.
+
+        * runtime/JSGlobalObjectDebuggable.h:
+        * runtime/JSGlobalObjectDebuggable.cpp:
+        (JSC::JSGlobalObjectDebuggable::pause):
+        Pass through to the inspector controller.
+
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::pause):
+        Enable pause on next statement.
+
+2015-04-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        class methods should be non-enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=143181
+
+        Reviewed by Darin Adler.
+
+        Fixed the bug by using Object.defineProperty to define methods.
+
+        This patch adds the concept of link time constants and uses it to resolve Object.defineProperty
+        inside CodeBlock's constructor since bytecode can be linked against multiple global objects.
+
+        * bytecode/CodeBlock.cpp: 
+        (JSC::CodeBlock::CodeBlock): Resolve link time constants that are used. Ignore ones with register
+        index of zero.
+        * bytecode/SpecialPointer.h: Added a new enum for link time constants. It currently contains
+        exactly one entry for Object.defineProperty.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::addConstant): Added. Like addConstant that takes JSValue, allocate a new
+        constant register for the link time constant we're adding.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Added.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitMoveLinkTimeConstant): Added. Like addConstantValue, allocate a new
+        register for the specified link time constant and notify UnlinkedCodeBlock about it.
+        (JSC::BytecodeGenerator::emitCallDefineProperty): Added. Create a new property descriptor and call
+        Object.defineProperty with it.
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode): Make static and non-static getters and setters for classes
+        non-enumerable by using emitCallDefineProperty to define them.
+        (JSC::PropertyListNode::emitPutConstantProperty): Ditto for a non-accessor properties.
+        (JSC::ClassExprNode::emitBytecode): Make prototype.constructor non-enumerable and make prototype
+        property on the class non-writable, non-configurable, and non-enumerable by using defineProperty.
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Set m_definePropertyFunction.
+        (JSC::JSGlobalObject::visitChildren): Visit m_definePropertyFunction.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::definePropertyFunction): Added.
+        (JSC::JSGlobalObject::actualPointerFor): Added a variant that takes LinkTimeConstant.
+        (JSC::JSGlobalObject::jsCellForLinkTimeConstant): Like actualPointerFor, takes LinkTimeConstant and
+        returns a JSCell; e.g. Object.defineProperty.
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::addDefineProperty): Added. Returns Object.defineProperty.
+        * runtime/ObjectConstructor.h:
+
+2015-04-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement String.fromCodePoint
+        https://bugs.webkit.org/show_bug.cgi?id=144160
+
+        Reviewed by Darin Adler.
+
+        This patch implements String.fromCodePoint.
+        It accepts multiple code points and generates a string that consists of given code points.
+        The range [0x0000 - 0x10FFFF] is valid for code points.
+        If the given value is out of range, throw a range error.
+
+        When a 0xFFFF <= valid code point is given,
+        String.fromCodePoint generates a string that contains surrogate pairs.
+
+        * runtime/StringConstructor.cpp:
+        (JSC::stringFromCodePoint):
+        (JSC::constructWithStringConstructor):
+        * tests/stress/string-from-code-point.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (toCodePoints):
+        (passThrough):
+
+2015-04-25  Martin Robinson  <mrobinson@igalia.com>
+
+        Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=144182
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+
 2015-04-25  Mark Lam  <mark.lam@apple.com>
 
         mayExit() is wrong about Branch nodes with ObjectOrOtherUse: they can exit.

@@ -27,7 +27,7 @@ WebInspector.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel ext
 {
     constructor()
     {
-        super("resource-details", WebInspector.UIString("Resource"), WebInspector.UIString("Resource"), "Images/NavigationItemFile.svg", "1");
+        super("resource-details", WebInspector.UIString("Resource"), WebInspector.UIString("Resource"));
 
         this.element.classList.add("resource");
 
@@ -398,7 +398,7 @@ WebInspector.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel ext
 
     _goToRequestDataClicked()
     {
-        WebInspector.resourceSidebarPanel.showResourceRequest(this._resource);
+        WebInspector.showResourceRequest(this._resource);
     }
 
     _refreshRequestDataSection()

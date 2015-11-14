@@ -1,3 +1,198 @@
+2015-04-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Expand compositing coverage rect when scrolling and animating
+        https://bugs.webkit.org/show_bug.cgi?id=144214
+        rdar://problem/20695926
+
+        Reviewed by Darin Adler.
+        
+        r183300 added a secondary rect that gets mapped through graphics layers during
+        layer flushing, which represents a rect, in layer coordinates, that represents
+        the portion of this layer that's visible in the viewport.
+        
+        This patch extends that rect based on scrolling and animating, with the extended
+        coverage rect being mapped into descendants (where it's used to determine whether
+        they should detach their backing store). This required moving the responsibility for
+        extending the coverage rect from TileController (where it was used to compute
+        tiled extent), to GraphicsLayerCA. Thus, GraphicsLayerCA now owns the concept
+        of coverage rect, and pushes it onto TileControllers.
+
+        Test: compositing/tiling/transform-origin-tiled.html
+
+        * platform/graphics/TiledBacking.h: Coverage rect is now pushed onto
+        TiledBacking from outside; new functions reflect that.
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::flushCompositingStateForThisLayerOnly): No need to pass
+        old visible rect to commitLayerChangesBeforeSublayers.
+        (WebCore::accumulatesTransform):
+        (WebCore::GraphicsLayerCA::recursiveVisibleRectChangeRequiresFlush): Now calls computeVisibleAndCoverageRect(),
+        then adjustCoverageRect() which adjusts for scrolling and animations.
+        (WebCore::GraphicsLayerCA::computeVisibleAndCoverageRect): Fetch the coverage rect from the
+        TransformState, but we can only use this if mapping it through various transforms didn't clamp
+        it (which can happen with severe rotations in perspective).
+        (WebCore::GraphicsLayerCA::adjustCoverageRect): If this layer represents the page tiled backing,
+        ask the TileController to do coverage adjustment (code which should move into here eventually).
+        For other tiled layers, do motion-based adjustment. This should really be done for all layers
+        (an animating non-tiled layer may contain a tiled layer).
+        (WebCore::GraphicsLayerCA::setVisibleAndCoverageRects): The VisibleRectChanged wasn't needed
+        any more; layers only react to changed in coverage rect now.
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges): If adjustCoverageRect() changed the
+        coverage rect, here we push the new rect back into the TransformState so it will affect
+        descendants.
+        (WebCore::GraphicsLayerCA::commitLayerChangesBeforeSublayers):
+        (WebCore::GraphicsLayerCA::updateCoverage): Coverage and backing store attachment go
+        hand-in-hand now.
+        (WebCore::GraphicsLayerCA::changeLayerTypeTo):
+        (WebCore::GraphicsLayerCA::computeVisibleRect): Deleted.
+        (WebCore::GraphicsLayerCA::updateBackingStoreAttachment): Deleted.
+        (WebCore::GraphicsLayerCA::updateVisibleRect): Deleted.
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        * platform/graphics/ca/TileController.cpp:
+        (WebCore::TileController::setVisibleRect): Visible rect is only used for scroll performance
+        logging now.
+        (WebCore::TileController::setCoverageRect):
+        (WebCore::TileController::tilesWouldChangeForCoverageRect):
+        (WebCore::TileController::revalidateTiles):
+        (WebCore::TileController::boundsForSize): This is required because when computeTileCoverageRect()
+        is called at the top of committing the owning layer, we haven't yet pushed a new size to the
+        underlying platform layer (which TileController::bounds() consults).
+        (WebCore::TileController::bounds):
+        (WebCore::TileController::computeTileCoverageRect): Have to push the new size in, since the
+        underlying layer hasn't been updated yet.
+        (WebCore::TileController::didRevalidateTiles):
+        (WebCore::TileController::tilesWouldChangeForVisibleRect): Deleted.
+        * platform/graphics/ca/TileController.h:
+        * platform/graphics/ca/TileCoverageMap.cpp:
+        (WebCore::TileCoverageMap::TileCoverageMap): Add a layer to the tile map that shows 
+        a dark blue outline for the coverage rect.
+        (WebCore::TileCoverageMap::update): Fix some minor issues with map position when top
+        content inset is non-zero.
+        * platform/graphics/ca/TileCoverageMap.h:
+        * platform/graphics/ca/TileGrid.cpp: Everything is in terms of coverage rect now.
+        (WebCore::TileGrid::tilesWouldChangeForCoverageRect):
+        (WebCore::TileGrid::revalidateTiles):
+        (WebCore::TileGrid::tilesWouldChangeForVisibleRect): Deleted.
+        * platform/graphics/ca/TileGrid.h:
+        * platform/graphics/transforms/TransformState.cpp:
+        (WebCore::TransformState::operator=):
+        (WebCore::TransformState::mappedQuad): Pass direction into mapQuad().
+        (WebCore::TransformState::mappedSecondaryQuad): Ditto.
+        (WebCore::TransformState::setLastPlanarSecondaryQuad): This function allows a caller
+        to pass in a secondary quad, and get it mapped into the coordinate space of the last
+        "flattening" state (since the TransformState may have in-flight XY offset, or transform).
+        This mapping is achieved by re-using mapQuad(), but in the inverse direction.
+        (WebCore::TransformState::mapQuad): Make direction a parameter.
+        (WebCore::TransformState::flattenWithTransform): This code omitted to map the secondary
+        quad. Failure was detected by tests.
+        * platform/graphics/transforms/TransformState.h:
+        (WebCore::TransformState::isMappingSecondaryQuad):
+        (WebCore::TransformState::direction):
+        (WebCore::TransformState::inverseDirection):
+        (WebCore::TransformState::lastPlanarSecondaryQuad): Deleted.
+
+2015-04-25  Dan Bernstein  <mitz@apple.com>
+
+        Updated expected bindings generation test results after r183343.
+
+        * bindings/scripts/test/ObjC/DOMTestActiveDOMObject.h:
+        * bindings/scripts/test/ObjC/DOMTestCallback.h:
+        * bindings/scripts/test/ObjC/DOMTestCustomNamedGetter.h:
+        * bindings/scripts/test/ObjC/DOMTestEventConstructor.h:
+        * bindings/scripts/test/ObjC/DOMTestEventTarget.h:
+        * bindings/scripts/test/ObjC/DOMTestException.h:
+        * bindings/scripts/test/ObjC/DOMTestGenerateIsReachable.h:
+        * bindings/scripts/test/ObjC/DOMTestInterface.h:
+        * bindings/scripts/test/ObjC/DOMTestMediaQueryListListener.h:
+        * bindings/scripts/test/ObjC/DOMTestNamedConstructor.h:
+        * bindings/scripts/test/ObjC/DOMTestNode.h:
+        * bindings/scripts/test/ObjC/DOMTestNondeterministic.h:
+        * bindings/scripts/test/ObjC/DOMTestObj.h:
+        * bindings/scripts/test/ObjC/DOMTestOverloadedConstructors.h:
+        * bindings/scripts/test/ObjC/DOMTestSerializedScriptValueInterface.h:
+        * bindings/scripts/test/ObjC/DOMTestTypedefs.h:
+        * bindings/scripts/test/ObjC/DOMattribute.h:
+        * bindings/scripts/test/ObjC/DOMreadonly.h:
+
+2015-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-synthesis's initial value is "style weight"
+        https://bugs.webkit.org/show_bug.cgi?id=144195
+
+        Reviewed by Darin Adler.
+
+        Updated fast/css3-text/font-synthesis-parse.html.
+
+        * rendering/style/RenderStyle.h:
+
+2015-04-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183305.
+        https://bugs.webkit.org/show_bug.cgi?id=144213
+
+        Crashes on wikipedia (Requested by litherum on #webkit).
+
+        Reverted changeset:
+
+        "[Cocoa] FontPlatformData's equality check should always use
+        reference URLs"
+        https://bugs.webkit.org/show_bug.cgi?id=144168
+        http://trac.webkit.org/changeset/183305
+
+2015-04-25  Dan Bernstein  <mitz@apple.com>
+
+        WebCore part of <rdar://problem/20697966> Avoid using TBD as an argument to NS_AVAILABLE
+        https://bugs.webkit.org/show_bug.cgi?id=144201
+
+        Reviewed by Darin Adler.
+
+        Instead of TBD, use the high version number to which it corresponds in CFAvailability.h,
+        9876.5.
+
+        * bindings/objc/WebKitAvailability.h: Added a definition of __NSi_9876_5, so that we can
+        use 9876_5 in availability macros. Removed the definition of
+        __AVAILABILITY_INTERNAL__MAC_TBD, which will no longer be used.
+
+        * bindings/scripts/CodeGeneratorObjC.pm:
+        (ReadPublicInterfaces): Use 9876_5 instead of TBD.
+
+2015-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Update localized strings.
+
+        * English.lproj/Localizable.strings: Updated.
+
+2015-04-25  Darin Adler  <darin@apple.com>
+
+        Crash if IDBTransaction is aborted right after it's created
+        https://bugs.webkit.org/show_bug.cgi?id=144199
+
+        Reviewed by Simon Fraser.
+
+        Test: storage/indexeddb/transaction-abort.html
+
+        * Modules/indexeddb/IDBTransactionBackend.cpp:
+        (WebCore::IDBTransactionBackend::IDBTransactionBackend): Don't start the
+        transaction if it is already complete (has been aborted).
+
+2015-04-25  Martin Robinson  <mrobinson@igalia.com>
+
+        Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS
+        https://bugs.webkit.org/show_bug.cgi?id=144182
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * WebCore.vcxproj/WebCoreCommon.props: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * WebCore.vcxproj/WebCoreTestSupportCommon.props: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * css/CSSComputedStyleDeclaration.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * css/MediaQueryEvaluator.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * platform/graphics/GraphicsContext.h: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * platform/graphics/cairo/GraphicsContextCairo.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * platform/graphics/texmap/TextureMapperImageBuffer.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * rendering/RenderLayer.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * rendering/RenderLayerCompositor.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+        * rendering/RenderObject.cpp: Replace all instances of 3D_RENDERING with 3D_TRANSFORMS.
+
 2015-04-24  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [Cocoa] FontPlatformData's equality check should always use reference URLs

@@ -42,11 +42,6 @@ WebInspector.FrameDOMTreeContentView.prototype = {
 
     // Public
 
-    get allowedNavigationSidebarPanels()
-    {
-        return [WebInspector.resourceSidebarPanel.identifier];
-    },
-
     get domTree()
     {
         return this._domTree;
@@ -55,6 +50,7 @@ WebInspector.FrameDOMTreeContentView.prototype = {
     closed: function()
     {
         this._domTree.removeEventListener(null, null, this);
+
         WebInspector.DOMTreeContentView.prototype.closed.call(this);
     },
 

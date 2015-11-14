@@ -79,12 +79,9 @@ WebInspector.LogContentView = function(representedObject)
 
     this._clearLogOnReloadSetting = new WebInspector.Setting("clear-log-on-reload", true);
 
-    var toolTip = WebInspector.UIString("Show split console");
-    var altToolTip = WebInspector.UIString("Show full-height console");
-
-    this._toggleSplitNavigationItem = new WebInspector.ToggleButtonNavigationItem("split-toggle", toolTip, altToolTip, platformImagePath("SplitToggleDown.svg"), platformImagePath("SplitToggleUp.svg"), 16, 16);
-    this._toggleSplitNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._toggleSplit, this);
-    this._toggleSplitNavigationItem.toggled = WebInspector.isShowingSplitConsole();
+    var toolTip = WebInspector.UIString("Show console tab");
+    this._showConsoleTabNavigationItem = new WebInspector.ButtonNavigationItem("show-tab", toolTip, platformImagePath("SplitToggleUp.svg"), 16, 16);
+    this._showConsoleTabNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._showConsoleTab, this);
 
     this.messagesElement.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this), false);
 
@@ -115,15 +112,13 @@ WebInspector.LogContentView.prototype = {
     constructor: WebInspector.LogContentView,
 
     // Public
-    get allowedNavigationSidebarPanels()
-    {
-        // Don't show any sidebars when the Console is opened.
-        return null;
-    },
 
     get navigationItems()
     {
-        return [this._searchBar, this._scopeBar, this._clearLogNavigationItem, this._toggleSplitNavigationItem];
+        var navigationItems = [this._searchBar, this._scopeBar, this._clearLogNavigationItem];
+        if (WebInspector.isShowingSplitConsole())
+            navigationItems.push(this._showConsoleTabNavigationItem);
+        return navigationItems;
     },
 
     get scopeBar()
@@ -145,8 +140,6 @@ WebInspector.LogContentView.prototype = {
 
     shown: function()
     {
-        this._toggleSplitNavigationItem.toggled = WebInspector.isShowingSplitConsole();
-
         this.prompt.focus();
     },
 
@@ -209,7 +202,7 @@ WebInspector.LogContentView.prototype = {
         if (type !== WebInspector.ConsoleMessage.MessageType.Result)
             return;
 
-        if (!WebInspector.isShowingConsoleView())
+        if (!WebInspector.isShowingConsoleTab())
             WebInspector.showSplitConsole();
 
         this._logViewController.scrollToBottom();
@@ -644,12 +637,9 @@ WebInspector.LogContentView.prototype = {
         this._ignoreDidClearMessages = false;
     },
 
-    _toggleSplit: function()
+    _showConsoleTab: function()
     {
-        if (WebInspector.isShowingSplitConsole())
-            WebInspector.showFullHeightConsole();
-        else
-            WebInspector.showSplitConsole();
+        WebInspector.showConsoleTab();
     },
 
     _toggleClearLogOnReloadSetting: function()
@@ -950,7 +940,7 @@ WebInspector.LogContentView.prototype = {
 
         for (var provisionalMessage of this._provisionalMessages) {
             var messageView = this._logViewController.appendConsoleMessage(provisionalMessage);
-            if (message.type !== WebInspector.ConsoleMessage.MessageType.EndGroup)
+            if (messageView.message.type !== WebInspector.ConsoleMessage.MessageType.EndGroup)
                 this._filterMessageElements([messageView.element]);
         }
 

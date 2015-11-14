@@ -1,3 +1,203 @@
+2015-04-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Implement Math.clz32(), remove Number.clz()
+        https://bugs.webkit.org/show_bug.cgi?id=144205
+
+        Reviewed by Michael Saboff.
+
+        Basic conformance tests.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/math-clz32-expected.txt: Added.
+        * js/math-clz32.html: Renamed from LayoutTests/js/number-clz.html.
+        * js/number-clz-expected.txt: Removed.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * js/script-tests/math-clz32.js: Added.
+        (objectConvertToString.toString):
+        (objectRecordToStringCall.toString):
+        (objectThrowOnToString.toString):
+        (objectWithValueOf.valueOf):
+        (objectThrowOnValueOf.valueOf):
+        (objectThrowOnValueOf.toString):
+        (objectRecordValueOfCall.valueOf):
+        (objectRecordConversionCalls.toString):
+        (objectRecordConversionCalls.valueOf):
+        * js/script-tests/number-clz.js: Removed.
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Array.from need to accept iterables
+        https://bugs.webkit.org/show_bug.cgi?id=141055
+
+        Reviewed by Darin Adler.
+
+        Array.from now accepts iterables.
+
+        * js/array-from-expected.txt:
+
+2015-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        New baselines for iOS.
+
+        * platform/ios-simulator-wk2/compositing/contents-scale/rounded-contents-scale-expected.txt:
+        * platform/ios-simulator-wk2/compositing/contents-scale/scaled-ancestor-expected.txt:
+        * platform/ios-simulator-wk2/compositing/contents-scale/simple-scale-expected.txt:
+        * platform/ios-simulator-wk2/compositing/contents-scale/z-translate-expected.txt:
+        * platform/ios-simulator-wk2/compositing/repaint/invalidations-on-composited-layers-expected.txt:
+        * platform/ios-simulator-wk2/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/2d-transformed-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/3d-transformed-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/clipped-by-viewport-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/clipped-visible-rect-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/coverage-clipped-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/coverage-scrolling-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/flipped-preserve-3d-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/nested-transform-expected.txt:
+        * platform/ios-simulator-wk2/compositing/visible-rect/scrolled-expected.txt:
+
+2015-04-26  Simon Fraser  <simon.fraser@apple.com>
+
+        New WK1 results for this test.
+
+        * platform/mac-wk1/compositing/tiling/transform-origin-tiled-expected.txt: Added.
+
+2015-04-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Expand compositing coverage rect when scrolling and animating
+        https://bugs.webkit.org/show_bug.cgi?id=144214
+        rdar://problem/20695926
+
+        Reviewed by Darin Adler.
+        
+        New baselines for tests dumping layer output, with coverage rect being affected
+        by this changeset. One new test for tiling a layer inside overflow:hidden with transform-origin.
+
+        * compositing/contents-scale/animating-expected.txt:
+        * compositing/contents-scale/rounded-contents-scale-expected.txt:
+        * compositing/contents-scale/scaled-ancestor-expected.txt:
+        * compositing/contents-scale/simple-scale-expected.txt:
+        * compositing/tiling/transform-origin-tiled.html: Added.
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac-wk2/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/mac-wk2/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/mac-wk2/compositing/visible-rect/iframe-no-layers-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-div-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-div-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-iframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-mainframe-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fast-scroll-select-latched-select-with-handler-expected.txt:
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/simple-document-with-margin-tiles-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tile-size-slow-zoomed-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-zoom-expected.txt:
+        * platform/mac-wk2/tiled-drawing/tiled-drawing-zoom-scrolled-expected.txt:
+        * platform/mac/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/mac/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/mac/compositing/tiling/tile-cache-zoomed-expected.txt:
+        * platform/mac/compositing/visible-rect/2d-transformed-expected.txt:
+        * platform/mac/compositing/visible-rect/3d-transformed-expected.txt:
+        * platform/mac/compositing/visible-rect/clipped-by-viewport-expected.txt:
+        * platform/mac/compositing/visible-rect/clipped-visible-rect-expected.txt:
+        * platform/mac/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * platform/mac/compositing/visible-rect/iframe-no-layers-expected.txt:
+        * platform/mac/compositing/visible-rect/scrolled-expected.txt:
+
+2015-04-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Mark some tests that take >10 seconds on debug bots as slow.
+
+        This is too close to 30 second timeout, so it's likely that these tests would flakily
+        time out on other configurations, e.g. locally.
+
+        * TestExpectations:
+
+2015-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-synthesis's initial value is "style weight"
+        https://bugs.webkit.org/show_bug.cgi?id=144195
+
+        Reviewed by Darin Adler.
+
+        Updating test.
+
+        * fast/css3-text/font-synthesis-parse-expected.txt:
+        * fast/css3-text/font-synthesis-parse.html:
+
+2015-04-25  Jordan Harband  <ljharb@gmail.com>
+
+        Set#keys !== Set#values
+        https://bugs.webkit.org/show_bug.cgi?id=144190
+
+        Reviewed by Darin Adler.
+
+        * js/script-tests/set-keys.js: Added.
+        * js/set-keys-expected.txt: Added.
+        * js/set-keys.html: Added.
+
+2015-04-25  Darin Adler  <darin@apple.com>
+
+        Crash if IDBTransaction is aborted right after it's created
+        https://bugs.webkit.org/show_bug.cgi?id=144199
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/TestExpectations: Unskip storage/indexeddb/transaction-abort.html.
+        * storage/indexeddb/transaction-abort-expected.txt: Updated since the exact text of
+        the execptions is different from what was marked here as expected.
+
+2015-04-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        class methods should be non-enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=143181
+
+        Reviewed by Darin Adler.
+
+        Added a regression test.
+
+        Also fixed a test that previously relied on "prototype" property being writable
+        since this is no longer the case.
+
+        * js/class-syntax-extends-expected.txt:
+        * js/class-syntax-prototype.html: Added.
+        * js/script-tests/class-syntax-extends.js:
+        * js/script-tests/class-syntax-prototype.js: Added.
+
+2015-04-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement String.fromCodePoint
+        https://bugs.webkit.org/show_bug.cgi?id=144160
+
+        Reviewed by Darin Adler.
+
+        Add String.fromCodePoint.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-04-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Mavericks fix - no window.performance there.
+
+        * fast/frames/flattening/resources/iframe-to-resize.html:
+
+2015-04-25  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/frames/flattening/iframe-flattening-resize-event-count.html times out on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=144155
+
+        Unreviewed. Add more temporary logging to figure out what's going on with the test on bots.
+
+        * fast/frames/flattening/resources/iframe-to-resize.html:
+
 2015-04-24  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r183288.
