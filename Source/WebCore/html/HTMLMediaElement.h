@@ -30,6 +30,7 @@
 #include "HTMLElement.h"
 #include "ActiveDOMObject.h"
 #include "GenericEventQueue.h"
+#include "GenericTaskQueue.h"
 #include "HTMLMediaSession.h"
 #include "MediaCanStartListener.h"
 #include "MediaControllerInterface.h"
@@ -587,7 +588,7 @@ private:
     virtual bool mediaPlayerIsPaused() const override;
     virtual bool mediaPlayerIsLooping() const override;
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() override;
-    virtual PassRefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>) override;
+    virtual RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient>) override;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
@@ -611,7 +612,7 @@ private:
     void progressEventTimerFired();
     void playbackProgressTimerFired();
     void scanTimerFired();
-    void seekTimerFired();
+    void seekTask();
     void startPlaybackProgressTimer();
     void startProgressEventTimer();
     void stopPeriodicTimers();
@@ -740,7 +741,7 @@ private:
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
-    Timer m_seekTimer;
+    GenericTaskQueue<ScriptExecutionContext> m_seekTaskQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -883,6 +884,8 @@ private:
 
     CueList m_currentlyActiveCues;
     int m_ignoreTrackDisplayUpdate;
+
+    bool m_requireCaptionPreferencesChangedCallbacks { false };
 #endif
 
 #if ENABLE(WEB_AUDIO)

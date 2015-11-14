@@ -19,6 +19,8 @@
 #ifndef GtkUtilities_h 
 #define GtkUtilities_h 
 
+#include <wtf/text/CString.h>
+
 namespace WebCore {
 
 class IntPoint;
@@ -26,12 +28,9 @@ class IntPoint;
 IntPoint convertWidgetPointToScreenPoint(GtkWidget*, const IntPoint&);
 bool widgetIsOnscreenToplevelWindow(GtkWidget*);
 
-enum class DisplaySystemType {
-    X11,
-    Wayland
-};
-
-DisplaySystemType getDisplaySystemType();
+#if defined(DEVELOPMENT_BUILD)
+CString webkitBuildDirectory();
+#endif
 
 } // namespace WebCore
 

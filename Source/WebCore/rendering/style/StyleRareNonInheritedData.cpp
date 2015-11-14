@@ -71,6 +71,12 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_order(RenderStyle::initialOrder())
     , m_flowThread(RenderStyle::initialFlowThread())
     , m_regionThread(RenderStyle::initialRegionThread())
+    , m_alignContent(RenderStyle::initialContentAlignment())
+    , m_alignItems(RenderStyle::initialSelfAlignment())
+    , m_alignSelf(RenderStyle::initialSelfAlignment())
+    , m_justifyContent(RenderStyle::initialContentAlignment())
+    , m_justifyItems(RenderStyle::initialSelfAlignment())
+    , m_justifySelf(RenderStyle::initialSelfAlignment())
 #if ENABLE(CSS_SCROLL_SNAP)
     , m_scrollSnapType(static_cast<unsigned>(RenderStyle::initialScrollSnapType()))
 #endif
@@ -81,17 +87,6 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_pageSizeType(PAGE_SIZE_AUTO)
     , m_transformStyle3D(RenderStyle::initialTransformStyle3D())
     , m_backfaceVisibility(RenderStyle::initialBackfaceVisibility())
-    , m_alignContent(RenderStyle::initialAlignContent())
-    , m_alignItems(RenderStyle::initialAlignItems())
-    , m_alignItemsOverflowAlignment(RenderStyle::initialAlignItemsOverflowAlignment())
-    , m_alignSelf(RenderStyle::initialAlignSelf())
-    , m_alignSelfOverflowAlignment(RenderStyle::initialAlignSelfOverflowAlignment())
-    , m_justifyContent(RenderStyle::initialJustifyContent())
-    , m_justifyItems(RenderStyle::initialJustifyItems())
-    , m_justifyItemsOverflowAlignment(RenderStyle::initialJustifyItemsOverflowAlignment())
-    , m_justifyItemsPositionType(NonLegacyPosition)
-    , m_justifySelf(RenderStyle::initialJustifySelf())
-    , m_justifySelfOverflowAlignment(RenderStyle::initialJustifySelfOverflowAlignment())
     , userDrag(RenderStyle::initialUserDrag())
     , textOverflow(RenderStyle::initialTextOverflow())
     , marginBeforeCollapse(MCOLLAPSE)
@@ -164,6 +159,12 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_order(o.m_order)
     , m_flowThread(o.m_flowThread)
     , m_regionThread(o.m_regionThread)
+    , m_alignContent(o.m_alignContent)
+    , m_alignItems(o.m_alignItems)
+    , m_alignSelf(o.m_alignSelf)
+    , m_justifyContent(o.m_justifyContent)
+    , m_justifyItems(o.m_justifyItems)
+    , m_justifySelf(o.m_justifySelf)
 #if ENABLE(CSS_SCROLL_SNAP)
     , m_scrollSnapType(o.m_scrollSnapType)
 #endif
@@ -174,17 +175,6 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_pageSizeType(o.m_pageSizeType)
     , m_transformStyle3D(o.m_transformStyle3D)
     , m_backfaceVisibility(o.m_backfaceVisibility)
-    , m_alignContent(o.m_alignContent)
-    , m_alignItems(o.m_alignItems)
-    , m_alignItemsOverflowAlignment(o.m_alignItemsOverflowAlignment)
-    , m_alignSelf(o.m_alignSelf)
-    , m_alignSelfOverflowAlignment(o.m_alignSelfOverflowAlignment)
-    , m_justifyContent(o.m_justifyContent)
-    , m_justifyItems(o.m_justifyItems)
-    , m_justifyItemsOverflowAlignment(o.m_justifyItemsOverflowAlignment)
-    , m_justifyItemsPositionType(o.m_justifyItemsPositionType)
-    , m_justifySelf(o.m_justifySelf)
-    , m_justifySelfOverflowAlignment(o.m_justifySelfOverflowAlignment)
     , userDrag(o.userDrag)
     , textOverflow(o.textOverflow)
     , marginBeforeCollapse(o.marginBeforeCollapse)
@@ -266,6 +256,12 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_visitedLinkBorderBottomColor == o.m_visitedLinkBorderBottomColor
         && m_order == o.m_order
         && m_flowThread == o.m_flowThread
+        && m_alignContent == o.m_alignContent
+        && m_alignItems == o.m_alignItems
+        && m_alignSelf == o.m_alignSelf
+        && m_justifyContent == o.m_justifyContent
+        && m_justifyItems == o.m_justifyItems
+        && m_justifySelf == o.m_justifySelf
         && m_regionThread == o.m_regionThread
         && m_regionFragment == o.m_regionFragment
         && m_regionBreakAfter == o.m_regionBreakAfter
@@ -274,12 +270,6 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_pageSizeType == o.m_pageSizeType
         && m_transformStyle3D == o.m_transformStyle3D
         && m_backfaceVisibility == o.m_backfaceVisibility
-        && m_alignContent == o.m_alignContent
-        && m_alignItems == o.m_alignItems
-        && m_alignItemsOverflowAlignment == o.m_alignItemsOverflowAlignment
-        && m_alignSelf == o.m_alignSelf
-        && m_alignSelfOverflowAlignment == o.m_alignSelfOverflowAlignment
-        && m_justifyContent == o.m_justifyContent
         && userDrag == o.userDrag
         && textOverflow == o.textOverflow
         && marginBeforeCollapse == o.marginBeforeCollapse
@@ -297,12 +287,7 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_isolation == o.m_isolation
 #endif
         && m_aspectRatioType == o.m_aspectRatioType
-        && m_objectFit == o.m_objectFit
-        && m_justifyItems == o.m_justifyItems
-        && m_justifyItemsOverflowAlignment == o.m_justifyItemsOverflowAlignment
-        && m_justifyItemsPositionType == o.m_justifyItemsPositionType
-        && m_justifySelf == o.m_justifySelf
-        && m_justifySelfOverflowAlignment == o.m_justifySelfOverflowAlignment;
+        && m_objectFit == o.m_objectFit;
 }
 
 bool StyleRareNonInheritedData::contentDataEquivalent(const StyleRareNonInheritedData& o) const

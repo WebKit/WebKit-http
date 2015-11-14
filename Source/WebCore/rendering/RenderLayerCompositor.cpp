@@ -81,7 +81,7 @@ WEBCORE_EXPORT bool WebCoreHas3DRendering = true;
 #endif
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
-#define WTF_USE_COMPOSITING_FOR_SMALL_CANVASES 1
+#define USE_COMPOSITING_FOR_SMALL_CANVASES 1
 #endif
 
 namespace WebCore {
@@ -384,6 +384,20 @@ void RenderLayerCompositor::setCompositingLayersNeedRebuild(bool needRebuild)
         m_compositingLayersNeedRebuild = needRebuild;
 }
 
+void RenderLayerCompositor::willRecalcStyle()
+{
+    m_layerNeedsCompositingUpdate = false;
+}
+
+void RenderLayerCompositor::didRecalcStyleWithNoPendingLayout()
+{
+    if (!m_layerNeedsCompositingUpdate)
+        return;
+    
+    cacheAcceleratedCompositingFlags();
+    updateCompositingLayers(CompositingUpdateAfterStyleChange);
+}
+
 void RenderLayerCompositor::customPositionForVisibleRectComputation(const GraphicsLayer* graphicsLayer, FloatPoint& position) const
 {
     if (graphicsLayer != m_scrollLayer.get())
@@ -656,6 +670,8 @@ void RenderLayerCompositor::cancelCompositingLayerUpdate()
 
 void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
+    LOG(Compositing, "RenderLayerCompositor %p updateCompositingLayers %d %p", this, updateType, updateRoot);
+
     m_updateCompositingLayersTimer.stop();
 
     ASSERT(!m_renderView.document().inPageCache());
@@ -673,6 +689,8 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     if (!m_reevaluateCompositingAfterLayout && !m_compositing)
         return;
+
+    ++m_compositingUpdateCount;
 
     AnimationUpdateBlock animationUpdateBlock(&m_renderView.frameView().frame().animation());
 
@@ -709,6 +727,8 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     if (isFullUpdate && updateType == CompositingUpdateAfterLayout)
         m_reevaluateCompositingAfterLayout = false;
+
+    LOG(Compositing, " checkForHierarchyUpdate %d, needGeometryUpdate %d", checkForHierarchyUpdate, needHierarchyUpdate);
 
 #if !LOG_DISABLED
     double startTime = 0;
@@ -919,6 +939,8 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
 {
     if (diff == StyleDifferenceEqual)
         return;
+
+    m_layerNeedsCompositingUpdate = true;
 
     const RenderStyle& newStyle = layer.renderer().style();
     if (updateLayerCompositingState(layer) || (oldStyle && styleChangeRequiresLayerRebuild(layer, *oldStyle, newStyle)))
@@ -3192,6 +3214,22 @@ bool RenderLayerCompositor::viewHasTransparentBackground(Color* backgroundColor)
     return documentBackgroundColor.hasAlpha();
 }
 
+void RenderLayerCompositor::rootBackgroundTransparencyChanged()
+{
+    if (!inCompositingMode())
+        return;
+
+    Color documentBackgroundColor = m_renderView.frameView().documentBackgroundColor();
+    if (m_lastDocumentBackgroundColor.isValid() && documentBackgroundColor.hasAlpha() == m_lastDocumentBackgroundColor.hasAlpha())
+        return;
+
+    m_lastDocumentBackgroundColor = documentBackgroundColor;
+
+    // FIXME: We should do something less expensive than a full layer rebuild.
+    setCompositingLayersNeedRebuild();
+    scheduleCompositingLayerUpdate();
+}
+
 void RenderLayerCompositor::setRootExtendedBackgroundColor(const Color& color)
 {
     if (color == m_rootExtendedBackgroundColor)
@@ -4184,6 +4222,16 @@ void RenderLayerCompositor::startTrackingLayerFlushes()
 unsigned RenderLayerCompositor::layerFlushCount() const
 {
     return m_layerFlushCount;
+}
+
+void RenderLayerCompositor::startTrackingCompositingUpdates()
+{
+    m_compositingUpdateCount = 0;
+}
+
+unsigned RenderLayerCompositor::compositingUpdateCount() const
+{
+    return m_compositingUpdateCount;
 }
 
 } // namespace WebCore

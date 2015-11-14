@@ -186,6 +186,9 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
         postLayoutData.isReplaceAllowed = result.isContentEditable && !result.isInPasswordField && !selectedText.containsOnlyWhitespace();
     }
     if (!selection.isNone()) {
+        if (m_assistedNode && m_assistedNode->renderer())
+            postLayoutData.selectionClipRect = view->contentsToRootView(m_assistedNode->renderer()->absoluteBoundingBoxRect());
+        
         Node* nodeToRemove;
         if (RenderStyle* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
             CTFontRef font = style->fontCascade().primaryFont().getCTFont();
@@ -964,11 +967,13 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
             // Don't cross line boundaries.
             result = position;
         } else if (withinTextUnitOfGranularity(position, WordGranularity, DirectionForward)) {
-            // The position lies within a word, we want to select the word.
-            if (frame.selection().isCaret())
-                range = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionForward);
-            else if (frame.selection().isRange() && (position < frame.selection().selection().start() || position > frame.selection().selection().end()))
-                result = position;
+            // The position lies within a word.
+            RefPtr<Range> wordRange = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionForward);
+            if (wordRange) {
+                result = wordRange->startPosition();
+                if (distanceBetweenPositions(position, result) > 1)
+                    result = wordRange->endPosition();
+            }
         } else if (atBoundaryOfGranularity(position, WordGranularity, DirectionBackward)) {
             // The position is at the end of a word.
             result = position;
@@ -1691,6 +1696,20 @@ void WebPage::selectPositionAtBoundaryWithDirection(const WebCore::IntPoint& poi
         position = positionOfNextBoundaryOfGranularity(position, static_cast<WebCore::TextGranularity>(granularity), static_cast<SelectionDirection>(direction));
         if (position.isNotNull())
             frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).ptr(), UPSTREAM, true);
+    }
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::moveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_t direction, uint64_t callbackID)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    
+    if (!frame.selection().selection().isNone()) {
+        bool isForward = (direction == DirectionForward || direction == DirectionRight);
+        VisiblePosition position = (isForward) ? frame.selection().selection().visibleEnd() : frame.selection().selection().visibleStart();
+        position = positionOfNextBoundaryOfGranularity(position, static_cast<WebCore::TextGranularity>(granularity), static_cast<SelectionDirection>(direction));
+        if (position.isNotNull())
+            frame.selection().setSelectedRange(Range::create(*frame.document(), position, position).ptr(), isForward? UPSTREAM : DOWNSTREAM, true);
     }
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }

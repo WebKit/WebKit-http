@@ -111,6 +111,7 @@ RenderView::RenderView(Document& document, Ref<RenderStyle>&& style)
     , m_renderCounterCount(0)
     , m_selectionWasCaret(false)
     , m_hasSoftwareFilters(false)
+    , m_hasFlippedBlockDescendants(false)
 #if ENABLE(SERVICE_CONTROLS)
     , m_selectionRectGatherer(*this)
 #endif
@@ -943,6 +944,11 @@ void RenderView::updateSelectionForSubtrees(RenderSubtreesMap& renderSubtreesMap
     }
 }
 
+static inline bool isValidObjectForNewSelection(const SelectionSubtreeRoot& root, const RenderObject& object)
+{
+    return (object.canBeSelectionLeaf() || &object == root.selectionData().selectionStart() || &object == root.selectionData().selectionEnd()) && object.selectionState() != RenderObject::SelectionNone && object.containingBlock();
+}
+
 void RenderView::clearSubtreeSelection(const SelectionSubtreeRoot& root, SelectionRepaintMode blockRepaintMode, OldSelectionData& oldSelectionData) const
 {
     // Record the old selected objects.  These will be used later
@@ -958,8 +964,7 @@ void RenderView::clearSubtreeSelection(const SelectionSubtreeRoot& root, Selecti
     RenderObject* stop = rendererAfterPosition(root.selectionData().selectionEnd(), root.selectionData().selectionEndPos());
     SelectionIterator selectionIterator(os);
     while (os && os != stop) {
-        if ((os->canBeSelectionLeaf() || os == root.selectionData().selectionStart() || os == root.selectionData().selectionEnd())
-            && os->selectionState() != SelectionNone) {
+        if (isValidObjectForNewSelection(root, *os)) {
             // Blocks are responsible for painting line gaps and margin gaps.  They must be examined as well.
             oldSelectionData.selectedObjects.set(os, std::make_unique<RenderSelectionInfo>(*os, true));
             if (blockRepaintMode == RepaintNewXOROld) {
@@ -1013,7 +1018,7 @@ void RenderView::applySubtreeSelection(const SelectionSubtreeRoot& root, Selecti
     o = root.selectionData().selectionStart();
     selectionIterator = SelectionIterator(o);
     while (o && o != stop) {
-        if ((o->canBeSelectionLeaf() || o == root.selectionData().selectionStart() || o == root.selectionData().selectionEnd()) && o->selectionState() != SelectionNone) {
+        if (isValidObjectForNewSelection(root, *o)) {
             std::unique_ptr<RenderSelectionInfo> selectionInfo = std::make_unique<RenderSelectionInfo>(*o, true);
 
 #if ENABLE(SERVICE_CONTROLS)

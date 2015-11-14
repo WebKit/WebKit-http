@@ -179,9 +179,9 @@
       },
       "Andres Gomez" : {
          "emails" : [
+            "agomez@igalia.com",
             "tanty0@gmail.com",
-            "agomez@gnome.org",
-            "agomez@igalia.com"
+            "agomez@gnome.org"
          ],
          "expertise" : "WebKitGTK+",
          "nicks" : [
@@ -347,6 +347,14 @@
          "nicks" : [
             "kbalazs"
          ]
+      },
+      "Basile Clement" : {
+        "emails" : [
+            "basile_clement@apple.com"
+        ],
+        "nicks" : [
+            "elarnon"
+        ]
       },
       "Bear Travis" : {
          "emails" : [
@@ -4372,6 +4380,7 @@
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
+            "mario@endlessm.com",
             "mario.prada@samsung.com",
             "msanchez@igalia.com"
          ],

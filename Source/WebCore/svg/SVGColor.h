@@ -24,7 +24,6 @@
 
 #include "CSSValue.h"
 #include "Color.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -60,7 +59,7 @@ public:
 
     const Color& color() const { return m_color; }
     const SVGColorType& colorType() const { return m_colorType; }
-    PassRefPtr<RGBColor> rgbColor() const;
+    Ref<RGBColor> rgbColor() const;
 
     static Color colorFromRGBColorString(const String&);
 
@@ -72,7 +71,7 @@ public:
 
     ~SVGColor() { }
     
-    PassRefPtr<SVGColor> cloneForCSSOM() const;
+    Ref<SVGColor> cloneForCSSOM() const;
 
     bool equals(const SVGColor&) const;
 

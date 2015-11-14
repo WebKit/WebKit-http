@@ -35,12 +35,6 @@ namespace WebCore {
 
 ScrollingTreeFrameScrollingNode::ScrollingTreeFrameScrollingNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
     : ScrollingTreeScrollingNode(scrollingTree, FrameScrollingNode, nodeID)
-    , m_frameScaleFactor(1)
-    , m_headerHeight(0)
-    , m_footerHeight(0)
-    , m_topContentInset(0)
-    , m_synchronousScrollingReasons(0)
-    , m_behaviorForFixed(StickToDocumentBounds)
 {
 }
 
@@ -71,6 +65,9 @@ void ScrollingTreeFrameScrollingNode::updateBeforeChildren(const ScrollingStateN
 
     if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::TopContentInset))
         m_topContentInset = state.topContentInset();
+
+    if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::FixedElementsLayoutRelativeToFrame))
+        m_fixedElementsLayoutRelativeToFrame = state.fixedElementsLayoutRelativeToFrame();
 }
 
 void ScrollingTreeFrameScrollingNode::scrollBy(const FloatSize& offset)
@@ -90,6 +87,11 @@ void ScrollingTreeFrameScrollingNode::setScrollPosition(const FloatPoint& scroll
     newScrollPosition = newScrollPosition.expandedTo(minimumScrollPosition());
 
     setScrollPositionWithoutContentEdgeConstraints(newScrollPosition);
+}
+
+FloatSize ScrollingTreeFrameScrollingNode::viewToContentsOffset(const FloatPoint& scrollOffset) const
+{
+    return toFloatSize(scrollOffset) - FloatSize(0, headerHeight() + topContentInset());
 }
 
 } // namespace WebCore

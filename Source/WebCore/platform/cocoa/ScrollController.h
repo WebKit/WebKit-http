@@ -31,6 +31,7 @@
 #include "FloatPoint.h"
 #include "FloatSize.h"
 #include "ScrollTypes.h"
+#include "WheelEventTestTrigger.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RunLoop.h>
 
@@ -42,6 +43,7 @@ namespace WebCore {
 
 class PlatformWheelEvent;
 class ScrollableArea;
+class WheelEventTestTrigger;
 
 class ScrollControllerClient {
 protected:
@@ -74,6 +76,9 @@ public:
     // If the current scroll position is within the overhang area, this function will cause
     // the page to scroll to the nearest boundary point.
     virtual void adjustScrollPositionToBoundsIfNecessary() = 0;
+
+    virtual void deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const { /* Do nothing */ }
+    virtual void removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const { /* Do nothing */ }
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
     virtual LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const = 0;
@@ -163,12 +168,12 @@ private:
     RunLoop::Timer<ScrollController> m_verticalScrollSnapTimer;
 #endif
 
-    bool m_inScrollGesture;
-    bool m_momentumScrollInProgress;
-    bool m_ignoreMomentumScrolls;
-    bool m_snapRubberbandTimerIsActive;
+    bool m_inScrollGesture { false };
+    bool m_momentumScrollInProgress { false };
+    bool m_ignoreMomentumScrolls { false };
+    bool m_snapRubberbandTimerIsActive { false };
 };
-
+    
 } // namespace WebCore
 
 #endif // ENABLE(RUBBER_BANDING)

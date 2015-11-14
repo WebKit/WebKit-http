@@ -72,7 +72,7 @@ class BenchmarkRunner(object):
 
     @classmethod
     def dump(cls, results, outputFile):
-        _log.info('Dumpping the results to file')
+        _log.info('Dumping the results to file')
         try:
             with open(outputFile, 'w') as fp:
                 json.dump(results, fp)
@@ -82,11 +82,13 @@ class BenchmarkRunner(object):
 
     @classmethod
     def wrap(cls, dicts):
+        _log.info('Merging following results:\n%s', json.dumps(dicts))
         if not dicts:
             return None
         ret = {}
         for dic in dicts:
             ret = cls.merge(ret, dic)
+        _log.info('Results after merging:\n%s', json.dumps(ret))
         return ret
 
     @classmethod
@@ -94,9 +96,7 @@ class BenchmarkRunner(object):
         assert(isinstance(a, type(b)))
         argType = type(a)
         # special handle for list type, and should be handle before equal check
-        if argType == types.ListType:
-            return a + b
-        if a == b:
+        if argType == types.ListType and len(a) and (type(a[0]) == types.StringType or type(a[0]) == types.UnicodeType):
             return a
         if argType == types.DictType:
             result = {}

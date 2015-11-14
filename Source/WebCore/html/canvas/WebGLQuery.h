@@ -28,7 +28,6 @@
 
 #include "WebGLSharedObject.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,7 +36,7 @@ class WebGLQuery final : public WebGLSharedObject {
 public:
     virtual ~WebGLQuery();
 
-    static PassRefPtr<WebGLQuery> create(WebGLRenderingContextBase*);
+    static Ref<WebGLQuery> create(WebGLRenderingContextBase*);
 
 protected:
     WebGLQuery(WebGLRenderingContextBase*);

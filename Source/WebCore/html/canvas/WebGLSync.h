@@ -28,7 +28,6 @@
 
 #include "WebGLSharedObject.h"
 
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -37,7 +36,7 @@ class WebGLSync final : public WebGLSharedObject {
 public:
     virtual ~WebGLSync();
 
-    static PassRefPtr<WebGLSync> create(WebGLRenderingContextBase*);
+    static Ref<WebGLSync> create(WebGLRenderingContextBase*);
 
 protected:
     WebGLSync(WebGLRenderingContextBase*);

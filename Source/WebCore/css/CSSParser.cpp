@@ -33,6 +33,7 @@
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
 #include "CSSCanvasValue.h"
+#include "CSSContentDistributionValue.h"
 #include "CSSCrossfadeValue.h"
 #include "CSSCursorImageValue.h"
 #include "CSSFilterImageValue.h"
@@ -514,10 +515,15 @@ static inline bool isColorPropertyID(CSSPropertyID propertyId)
     }
 }
 
+bool CSSParser::isValidSystemColorValue(CSSValueID valueID)
+{
+    return valueID >= CSSValueAqua && valueID <= CSSValueAppleSystemYellow;
+}
+
 static bool validPrimitiveValueColor(CSSValueID valueID, bool strict = false)
 {
     return (valueID == CSSValueWebkitText || valueID == CSSValueCurrentcolor || valueID == CSSValueMenu
-        || (valueID >= CSSValueAlpha && valueID <= CSSValueWindowtext)
+        || CSSParser::isValidSystemColorValue(valueID) || valueID == CSSValueAlpha
         || (valueID >= CSSValueWebkitFocusRingColor && valueID < CSSValueWebkitText && !strict));
 }
 
@@ -874,11 +880,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueAuto || valueID == CSSValueBalance)
             return true;
         break;
-    case CSSPropertyAlignContent:
-        // FIXME: Per CSS alignment, this property should accept an optional <overflow-position>. We should share this parsing code with 'justify-self'.
-        if (valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueSpaceBetween || valueID == CSSValueSpaceAround || valueID == CSSValueStretch)
-            return true;
-        break;
     case CSSPropertyFlexDirection:
         if (valueID == CSSValueRow || valueID == CSSValueRowReverse || valueID == CSSValueColumn || valueID == CSSValueColumnReverse)
             return true;
@@ -886,11 +887,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
     case CSSPropertyFlexWrap:
         if (valueID == CSSValueNowrap || valueID == CSSValueWrap || valueID == CSSValueWrapReverse)
              return true;
-        break;
-    case CSSPropertyJustifyContent:
-        // FIXME: Per CSS alignment, this property should accept an optional <overflow-position>. We should share this parsing code with 'justify-self'.
-        if (valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueSpaceBetween || valueID == CSSValueSpaceAround)
-            return true;
         break;
     case CSSPropertyWebkitFontKerning:
         if (valueID == CSSValueAuto || valueID == CSSValueNormal || valueID == CSSValueNone)
@@ -1120,10 +1116,8 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitColumnBreakInside:
     case CSSPropertyColumnFill:
     case CSSPropertyColumnRuleStyle:
-    case CSSPropertyAlignContent:
     case CSSPropertyFlexDirection:
     case CSSPropertyFlexWrap:
-    case CSSPropertyJustifyContent:
     case CSSPropertyWebkitFontKerning:
     case CSSPropertyWebkitFontSmoothing:
     case CSSPropertyWebkitHyphens:
@@ -1670,18 +1664,12 @@ bool CSSParser::validateCalculationUnit(ValueWithCalculation& valueWithCalculati
             isValid = true;
         if (!isValid && (unitFlags & FPositiveInteger) && calculation->isInt() && calculation->isPositive())
             isValid = true;
-        if (isValid && mustBeNonNegative && calculation->isNegative())
-            isValid = false;
         break;
     case CalcLength:
         isValid = (unitFlags & FLength);
-        if (isValid && mustBeNonNegative && calculation->isNegative())
-            isValid = false;
         break;
     case CalcPercent:
         isValid = (unitFlags & FPercent);
-        if (isValid && mustBeNonNegative && calculation->isNegative())
-            isValid = false;
         break;
     case CalcPercentLength:
         isValid = (unitFlags & FPercent) && (unitFlags & FLength);
@@ -2038,8 +2026,8 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                                     // since we use this in our UA sheets.
         else if (id == CSSValueCurrentcolor)
             validPrimitive = true;
-        else if ((id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu ||
-             (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
+        else if (isValidSystemColorValue(id) || id == CSSValueMenu
+            || (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
             validPrimitive = true;
         } else {
             parsedValue = parseColor();
@@ -2708,6 +2696,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
         return false;
     }
+    case CSSPropertyJustifyContent:
+        parsedValue = parseContentDistributionOverflowPosition();
+        break;
     case CSSPropertyJustifySelf:
         return parseItemPositionOverflowPosition(propId, important);
     case CSSPropertyJustifyItems:
@@ -2879,7 +2870,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 #endif
 #if ENABLE(TOUCH_EVENTS)
     case CSSPropertyWebkitTapHighlightColor:
-        if ((id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu
+        if (isValidSystemColorValue(id) || id == CSSValueMenu
             || (id >= CSSValueWebkitFocusRingColor && id < CSSValueWebkitText && inQuirksMode())) {
             validPrimitive = true;
         } else {
@@ -3046,6 +3037,9 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         parsedValue = parseImageResolution();
         break;
 #endif
+    case CSSPropertyAlignContent:
+        parsedValue = parseContentDistributionOverflowPosition();
+        break;
     case CSSPropertyAlignSelf:
         return parseItemPositionOverflowPosition(propId, important);
 
@@ -3111,10 +3105,8 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitColumnBreakInside:
     case CSSPropertyColumnFill:
     case CSSPropertyColumnRuleStyle:
-    case CSSPropertyAlignContent:
     case CSSPropertyFlexDirection:
     case CSSPropertyFlexWrap:
-    case CSSPropertyJustifyContent:
     case CSSPropertyWebkitFontKerning:
     case CSSPropertyWebkitFontSmoothing:
     case CSSPropertyWebkitHyphens:
@@ -3227,9 +3219,27 @@ void CSSParser::addFillValue(RefPtr<CSSValue>& lval, Ref<CSSValue>&& rval)
     lval = WTF::move(list);
 }
 
+static bool isContentDistributionKeyword(CSSValueID id)
+{
+    return id == CSSValueSpaceBetween || id == CSSValueSpaceAround
+        || id == CSSValueSpaceEvenly || id == CSSValueStretch;
+}
+
+static bool isContentPositionKeyword(CSSValueID id)
+{
+    return id == CSSValueStart || id == CSSValueEnd || id == CSSValueCenter
+        || id == CSSValueFlexStart || id == CSSValueFlexEnd
+        || id == CSSValueLeft || id == CSSValueRight;
+}
+
 static inline bool isBaselinePositionKeyword(CSSValueID id)
 {
     return id == CSSValueBaseline || id == CSSValueLastBaseline;
+}
+
+static bool isAlignmentOverflowKeyword(CSSValueID id)
+{
+    return id == CSSValueTrue || id == CSSValueSafe;
 }
 
 static bool isItemPositionKeyword(CSSValueID id)
@@ -3263,6 +3273,57 @@ bool CSSParser::parseLegacyPosition(CSSPropertyID propId, bool important)
     return !m_valueList->next();
 }
 
+PassRefPtr<CSSValue> CSSParser::parseContentDistributionOverflowPosition()
+{
+    // auto | <baseline-position> | <content-distribution> || [ <overflow-position>? && <content-position> ]
+    // <baseline-position> = baseline | last-baseline;
+    // <content-distribution> = space-between | space-around | space-evenly | stretch;
+    // <content-position> = center | start | end | flex-start | flex-end | left | right;
+    // <overflow-position> = true | safe
+
+    CSSParserValue* value = m_valueList->current();
+    if (!value)
+        return nullptr;
+
+    // auto | <baseline-position>
+    if (value->id == CSSValueAuto || isBaselinePositionKeyword(value->id)) {
+        m_valueList->next();
+        return CSSContentDistributionValue::create(CSSValueInvalid, value->id, CSSValueInvalid);
+    }
+
+    CSSValueID distribution = CSSValueInvalid;
+    CSSValueID position = CSSValueInvalid;
+    CSSValueID overflow = CSSValueInvalid;
+    while (value) {
+        if (isContentDistributionKeyword(value->id)) {
+            if (distribution != CSSValueInvalid)
+                return nullptr;
+            distribution = value->id;
+        } else if (isContentPositionKeyword(value->id)) {
+            if (position != CSSValueInvalid)
+                return nullptr;
+            position = value->id;
+        } else if (isAlignmentOverflowKeyword(value->id)) {
+            if (overflow != CSSValueInvalid)
+                return nullptr;
+            overflow = value->id;
+        } else
+            return nullptr;
+        value = m_valueList->next();
+    }
+
+    // The grammar states that we should have at least <content-distribution> or
+    // <content-position> ( <content-distribution> || <content-position> ).
+    if (position == CSSValueInvalid && distribution == CSSValueInvalid)
+        return nullptr;
+
+    // The grammar states that <overflow-position> must be associated to <content-position>.
+    if (overflow != CSSValueInvalid && position == CSSValueInvalid)
+        return nullptr;
+
+    return CSSContentDistributionValue::create(distribution, position, overflow);
+}
+
 bool CSSParser::parseItemPositionOverflowPosition(CSSPropertyID propId, bool important)
 {
     // auto | stretch | <baseline-position> | [<item-position> && <overflow-position>? ]
@@ -3292,16 +3353,15 @@ bool CSSParser::parseItemPositionOverflowPosition(CSSPropertyID propId, bool imp
                 return false;
             overflowAlignmentKeyword = cssValuePool().createIdentifierValue(value->id);
         }
-    } else if (value->id != CSSValueTrue && value->id != CSSValueSafe)
-        return false;
-    else {
+    } else if (isAlignmentOverflowKeyword(value->id)) {
         overflowAlignmentKeyword = cssValuePool().createIdentifierValue(value->id);
         value = m_valueList->next();
         if (value && isItemPositionKeyword(value->id))
             position = cssValuePool().createIdentifierValue(value->id);
         else
             return false;
-    }
+    } else
+        return false;
 
     if (m_valueList->next())
         return false;
@@ -4130,8 +4190,8 @@ PassRefPtr<CSSValue> CSSParser::parseAttr(CSSParserValueList& args)
 PassRefPtr<CSSValue> CSSParser::parseBackgroundColor()
 {
     CSSValueID id = m_valueList->current()->id;
-    if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu || id == CSSValueCurrentcolor ||
-        (id >= CSSValueGrey && id < CSSValueWebkitText && inQuirksMode()))
+    if (id == CSSValueWebkitText || isValidSystemColorValue(id) || id == CSSValueMenu || id == CSSValueCurrentcolor
+        || (id >= CSSValueGrey && id < CSSValueWebkitText && inQuirksMode()))
         return cssValuePool().createIdentifierValue(id);
     return parseColor();
 }
@@ -7624,7 +7684,7 @@ PassRefPtr<CSSValueList> CSSParser::parseShadow(CSSParserValueList& valueList, C
         } else {
             // The only other type of value that's ok is a color value.
             RefPtr<CSSPrimitiveValue> parsedColor;
-            bool isColor = ((value->id >= CSSValueAqua && value->id <= CSSValueWindowtext) || value->id == CSSValueMenu
+            bool isColor = (isValidSystemColorValue(value->id) || value->id == CSSValueMenu
                 || (value->id >= CSSValueWebkitFocusRingColor && value->id <= CSSValueWebkitText && inQuirksMode())
                 || value->id == CSSValueCurrentcolor);
             if (isColor) {
@@ -8385,7 +8445,7 @@ static bool parseDeprecatedGradientColorStop(CSSParser& parser, CSSParserValue& 
             stop.m_position = cssValuePool().createValue(1, CSSPrimitiveValue::CSS_NUMBER);
 
         CSSValueID id = args->current()->id;
-        if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu)
+        if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu)
             stop.m_color = cssValuePool().createIdentifierValue(id);
         else
             stop.m_color = parser.parseColor(args->current());
@@ -8412,7 +8472,7 @@ static bool parseDeprecatedGradientColorStop(CSSParser& parser, CSSParserValue& 
 
         stopArg = args->next();
         CSSValueID id = stopArg->id;
-        if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu)
+        if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu)
             stop.m_color = cssValuePool().createIdentifierValue(id);
         else
             stop.m_color = parser.parseColor(stopArg);
@@ -8583,7 +8643,7 @@ static PassRefPtr<CSSPrimitiveValue> valueFromSideKeyword(CSSParserValue& value,
 static PassRefPtr<CSSPrimitiveValue> parseGradientColorOrKeyword(CSSParser& parser, CSSParserValue& value)
 {
     CSSValueID id = value.id;
-    if (id == CSSValueWebkitText || (id >= CSSValueAqua && id <= CSSValueWindowtext) || id == CSSValueMenu || id == CSSValueCurrentcolor)
+    if (id == CSSValueWebkitText || CSSParser::isValidSystemColorValue(id) || id == CSSValueMenu || id == CSSValueCurrentcolor)
         return cssValuePool().createIdentifierValue(id);
 
     return parser.parseColor(&value);
@@ -10762,9 +10822,8 @@ unsigned CSSParser::parseEscape(CharacterType*& src)
             unicode = (unicode << 4) + toASCIIHexValue(*src++);
         } while (--length && isASCIIHexDigit(*src));
 
-        // Characters above 0x10ffff are not handled.
-        if (unicode > 0x10ffff)
-            unicode = 0xfffd;
+        if (unicode > UCHAR_MAX_VALUE)
+            unicode = replacementCharacter;
 
         // Optional space after the escape sequence.
         if (isHTMLSpace(*src))

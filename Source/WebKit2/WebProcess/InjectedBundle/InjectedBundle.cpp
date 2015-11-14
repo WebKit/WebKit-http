@@ -206,7 +206,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
     macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
     macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
-    macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled)
+    macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled) \
+    macro(WebKitMetaRefreshEnabled, MetaRefreshEnabled, metaRefreshEnabled)
 
 #define OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES(TestRunnerName, SettingsName, WebPreferencesName) \
     if (preference == #TestRunnerName) { \
@@ -603,11 +604,6 @@ void InjectedBundle::setTabKeyCyclesThroughElements(WebPage* page, bool enabled)
     page->corePage()->setTabKeyCyclesThroughElements(enabled);
 }
 
-void InjectedBundle::setSerialLoadingEnabled(bool enabled)
-{
-    resourceLoadScheduler()->setSerialLoadingEnabled(enabled);
-}
-
 void InjectedBundle::setCSSAnimationTriggersEnabled(bool enabled)
 {
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
@@ -633,11 +629,6 @@ void InjectedBundle::setCSSCompositingEnabled(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
-}
-
-void InjectedBundle::dispatchPendingLoadRequests()
-{
-    resourceLoadScheduler()->servePendingRequests();
 }
 
 } // namespace WebKit

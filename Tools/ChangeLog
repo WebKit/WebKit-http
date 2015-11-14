@@ -1,3 +1,495 @@
+2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Async operations running in the WorkQueue thread should schedule their sources to the WorkQueue main lopp
+        https://bugs.webkit.org/show_bug.cgi?id=144541
+
+        Reviewed by Žan Doberšek.
+
+        Add a test case to WorkQueue unit test, to check that sources of
+        asynchronous IO operations running in the WorkQueue thread are
+        dispatched by the WorkQueue main loop.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WTF/gtk/WorkQueueGtk.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2015-05-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct '--show-webview' option for Tiled Drawing tests
+        https://bugs.webkit.org/show_bug.cgi?id=144621
+
+        Reviewed by Simon Fraser.
+
+        The scrolling thread/tiled drawing tests recreate the standard test runner web view. My earlier patch did not make
+        sure that the state of the '--show-webview' option was propagated to this additional view creation routine.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest): Include the value of the 'shouldShowWebView' state in the
+        WKMutableDictionary passed to the 'ensureViewSupportsOptions' method.
+
+2015-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Large array shouldn't be slow
+        https://bugs.webkit.org/show_bug.cgi?id=144617
+
+        Reviewed by Geoffrey Garen.
+        
+        Add the hash-map benchmark to LongSpider. LongSpider was already not a perfect match of
+        SunSpider. It's not an official benchmark. It contains benchmarks that are relatively
+        long-running. So, hash-map sort of belongs here.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-05-04  Doug Russell  <d_russell@apple.com>
+
+        AX: setting focus via accessibility object needs to set isSynchronizing in resulting selection intent
+        https://bugs.webkit.org/show_bug.cgi?id=144489
+
+        Reviewed by Chris Fleizach.
+
+        Resolves infinite looping when navigating rapidly between controls with the search API and then focusing
+        on the returned control.
+        Remove isSynchronizing flag from AXTextStateChangeIntent and put it on AXObjectCache.
+        Move AXTextStateChangeIntent logic in AccessibilityRenderObject into a helper method.
+        Call new AXTextStateChangeIntent helper from AccessibilityRenderObject::setFocus().
+        Add support for setSelectedVisibleTextRange() in accessibility tests.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (setSelectedVisibleTextRangeCallback):
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::getJSClass):
+        (AccessibilityUIElement::textMarkerForIndex): Deleted.
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+        (WTR::AccessibilityUIElement::setSelectedTextRange): Deleted.
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setSelectedVisibleTextRange):
+
+2015-05-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Implement the "--show-webview" option for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=144589
+
+        Reviewed by Alex Christensen.
+
+        Add another runtime flag (--show-webview) that causes DumpRenderTree
+        to draw its view on-screen, rather than the standard offscreen mode.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (createWebViewAndOffscreenWindow): Honor the 'showWebView' flag.
+        (initializeGlobalsFromCommandLineOptions): Recognize the new
+        command-line argument, and set the global 'showWebView' state if
+        appropriate.
+
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove dead code from TestInvocationCairo.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=144564
+
+        Reviewed by Gyuyoung Kim.
+
+        Only EFL and GTK port use TestInvocationCairo.cpp, there isn't other platform.
+
+        * WebKitTestRunner/cairo/TestInvocationCairo.cpp:
+        (WTR::TestInvocation::dumpPixelsAndCompareWithExpected):
+
+2015-05-04  Joonghun Park  <jh718.park@samsung.com>
+
+        [GTK] Add libnotify in gtk install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=144379
+
+        Reviewed by Csaba Osztrogonác.
+
+        * gtk/install-dependencies:
+
+2015-05-01  Mario Sanchez Prada  <mario@endlessm.com>
+
+        check-webkit-style fails due to system pylint
+        https://bugs.webkit.org/show_bug.cgi?id=144360
+
+        Reviewed by Darin Adler.
+
+        Make sure that the directory containing third party autoinstalled modules
+        is at the beginning of the search path, to avoid conflicts with other
+        versions of the same modules installed in the system (e.g. pylint).
+
+        * Scripts/webkitpy/thirdparty/__init__.py: Prepend the autoinstalled
+        modules directory to sys.path, instead of appending it.
+
+2015-05-01  Mario Sanchez Prada  <mario@endlessm.com>
+
+        Unreviewed, updated my list of email addresses.
+
+        * Scripts/webkitpy/common/config/contributors.json: Updated.
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        USE(...) macro should expect unprefixed variables
+        https://bugs.webkit.org/show_bug.cgi?id=144454
+
+        Reviewed by Daniel Bates.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Replace all occurrences WTF_USE with USE.
+        * DumpRenderTree/config.h: Ditto.
+        * TestWebKitAPI/config.h: Ditto.
+
+2015-05-01  Basile Clement  <basile_clement@apple.com>
+
+        Unreviewed. Add myself as a commiter in contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-05-01  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update speedometer patch to provide better UI, fix merge result bug and add "Score" metric to speedometer benchmark.
+        https://bugs.webkit.org/show_bug.cgi?id=144487
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.merge): Fix bug.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Speedometer.patch: Update appearance and add "Score" metric.
+
+2015-05-01  Brady Eidson  <beidson@apple.com>
+
+        Add API to disable meta refreshes.
+        <rdar://problem/20333198> and https://bugs.webkit.org/show_bug.cgi?id=144269
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Reset the meta refresh pref between tests.
+
+2015-05-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Provide a runtime flag to run-webkit-tests that shows the test view
+        https://bugs.webkit.org/show_bug.cgi?id=144079.
+
+        Unreviewed correction to r183651.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize): Make sure the state of the '--show-webview'
+        flag is included in the options dictionary passed to the PlatformWebView.
+
+2015-05-01  Antti Koivisto  <antti@apple.com>
+
+        Remove network process load serialization code
+        https://bugs.webkit.org/show_bug.cgi?id=144448
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setSerializeHTTPLoads):
+        (WTR::TestRunner::dispatchPendingLoadRequests):
+
+2015-05-01  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Add libhyphen-dev to the build dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=144452
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: Added hyphen as Fedora and Arch
+        dependencies.
+
+2015-04-30  Brent Fulgham  <bfulgham@apple.com>
+
+        Provide a runtime flag to run-webkit-tests that shows the test view
+        https://bugs.webkit.org/show_bug.cgi?id=144079.
+
+        Reviewed by Dean Jackson.
+
+        Add a new flag (--show-webview) that causes DumpRenderTree and WebKitTestRunner to display
+        their WebViews on-screen. This can be used when running tests via the "--additional-drt-flag"
+        option:
+        
+        --additional-drt-flag="--show-webview"
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (createWebViewAndOffscreenWindow): Use an on-screen window rect if the user passed the
+        '--show-webview' flag.
+        (initializeGlobalsFromCommandLineOptions): Recognize the "--show-webview" option.
+        * WebKitTestRunner/Options.cpp:
+        (WTR::Options::Options):
+        (WTR::handleOptionShowWebView):
+        (WTR::OptionsHandler::OptionsHandler): Recognize the new "--show-webview" option.
+        * WebKitTestRunner/Options.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::TestController::initialize): Use value of 'shouldShowWebView' from the Options bundle.
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::shouldShowWebView):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::PlatformWebView): Retrieve the value of the 'ShouldShowWebView' key from the
+        options dictionary. If it is true, display the web view while running the test.
+
+2015-04-30  Alexey Proskuryakov  <ap@apple.com>
+
+        r183355 didn't trigger Mac tests
+        https://bugs.webkit.org/show_bug.cgi?id=144464
+
+        Reviewed by Simon Fraser.
+
+        Update badly neglected filters and unit tests.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        (ShouldBuildTest):
+        (ShouldBuildTest.test_should_build):
+
+2015-04-30  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Add libhyphen-dev to the build dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=144452
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: Added libhyphen-dev to the WebKitGTK+
+        build dependencies.
+
+2015-04-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Testing dictionaries are not installed automatically
+        https://bugs.webkit.org/show_bug.cgi?id=144460
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules: Add the testing dictionaries to the main moduleset.
+
+2015-04-30  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix return code issue, check return code of safari process and dump results to log
+        https://bugs.webkit.org/show_bug.cgi?id=144436
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/run-benchmark:
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.dump): Correct typo.
+        (BenchmarkRunner.wrap): Add results to console.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py: Check return code to detect Safari crashes.
+        (OSXSafariDriver.prepareEnv):
+        (OSXSafariDriver.launchUrl):
+        (OSXSafariDriver.closeBrowsers):
+
+2015-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Should no longer need to worry about very old versions of Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=144437
+
+        Reviewed by Dan Bernstein.
+
+        * Scripts/check-for-exit-time-destructors:
+        * Scripts/check-for-global-initializers:
+        * Scripts/check-for-weak-vtables-and-externals:
+
+2015-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(183583): [Mac] make without SDKROOT has issues
+        https://bugs.webkit.org/show_bug.cgi?id=144431
+
+        Reviewed by Dan Bernstein.
+
+        * Makefile:
+        * WebKitTestRunner/Makefile:
+        Assume an empty SDKROOT means an macosx variant, so only
+        enable settings if the SDKROOT is not empty and does not
+        contain "macosx".
+
+2015-04-29  Brent Fulgham  <bfulgham@apple.com>
+
+        Expand test infrastructure to support scrolling tests
+        https://bugs.webkit.org/show_bug.cgi?id=143684
+        <rdar://problem/20375516>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting): Make sure the WheelEventTestTrigger state is
+        reset before the next test run.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Ditto."
+
+2015-04-29  Alex Christensen  <achristensen@webkit.org>
+
+        Run javascriptcore tests on Windows without cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=144419
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        Just call ruby, not /usr/bin/env ruby.
+
+2015-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Add --enable-shared option to LLVM to build mesa
+        https://bugs.webkit.org/show_bug.cgi?id=144393
+
+        Reviewed by Martin Robinson.
+
+        The updated mesa requires the shared LLVM libraries.
+        To build mesa with LLVM in FTL build, this patch added `--enable-shared` option
+        to LLVM configure script. It will provide shared libraries in addition to static libraries.
+
+        * gtk/jhbuild-optional.modules:
+
+2015-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add support for automatic hyphenation
+        https://bugs.webkit.org/show_bug.cgi?id=44478
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules: Add a module for testing dictionaries, so that
+        all systems will use the same dictionaries for testing purposes.
+
+2015-04-29  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Failure when building WebKit for appletvsimulator.
+        https://bugs.webkit.org/show_bug.cgi?id=144356
+
+        Reviewed by Alexey Proskuryakov.
+
+        Changes Makefile logic to check for "not OS X" rather than "is iOS" to
+        make TVOS and WatchOS behave correctly.
+
+        * Makefile:
+        * WebKitTestRunner/Makefile:
+
+2015-04-29  Alexey Proskuryakov  <ap@apple.com>
+
+        Use-after-free when invalidating WKPageForceRepaint callback
+        https://bugs.webkit.org/show_bug.cgi?id=144401
+        rdar://problem/20741111
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.h: (WTR::TestController::isCurrentInvocation): Added.
+
+        * WebKitTestRunner/TestInvocation.cpp: (WTR::TestInvocation::forceRepaintDoneCallback):
+        Don't do anything on error, because the context may be a stale pointer now.
+
+2015-04-29  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style: Don't complain about returning value from Objective-C method call in header
+        <http://webkit.org/b/144395>
+
+        Reviewed by Andy Estes.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_spacing): Update regex so 'return' is ignored if it
+        precedes the whitespace and bracket.  Change category name to
+        'whitespace/brackets'.  Add period to error message.
+        (CppChecker): Add 'whitespace/brackets' as a category.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (ErrorCollector.__call__): Replace 'STYLE_CATEGORIES' with
+        'CppChecker.categories' since that's where the list lives now.
+        (CppStyleTest.test_spacing_before_brackets): Add tests for
+        'whitespace/brackets' issues and non-issues.
+
+2015-04-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix WinCairo bot.
+
+        * Scripts/webkitdirs.pm:
+        (determinePassedConfiguration):
+        WinCairo bot doesn't use cygwin, but it needs Release_WinCairo for its configuration.
+
+2015-04-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Use CTFontCreateForCSS instead of doing font search ourselves
+        https://bugs.webkit.org/show_bug.cgi?id=132159
+
+        Reviewed by Darin Adler.
+
+        Make DumpRenderTree and WebKitTestRunner use the new font whitelist instead of
+        swizzling NSFontManager methods. This is predicated on ENABLE(PLATFORM_FONT_LOOKUP).
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (fontWhitelist):
+        (adjustFonts):
+        (createWebViewAndOffscreenWindow):
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::activateFonts):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+        (WTR::systemHiddenFontFamilySet):
+        (WTR::generateWhitelist):
+        (WTR::TestController::platformInitializeContext):
+
+2015-04-29  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/frames/flattening/iframe-flattening-resize-event-count.html times out on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=144155
+
+        Reviewed by Andreas Kling.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::resetStateToConsistentValues):
+        Make sure that test window is "visible" before each test. While there is no concrete
+        evidence that this is the problem indeed, the behavior is consistent with what would
+        happen for an invisible window. Also, WKTR obviously needs to do this to protect
+        against potential buggy tests that hide the window and don't show it.
+
+2015-04-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix /webkit2/WebKitWebInspectorServer/test-open-debugging-session.
+
+        Latest changes in the inspector UI made this test fail. We were
+        relying that the sidebar was always visible and the first 'li'
+        element of the inspector was the one containing the title. This is
+        no longer true, so better use document title that is not likely
+        to change.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestInspectorServer.cpp:
+        (openRemoteDebuggingSession):
+
+2015-04-29  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed. Re-sorted my contributor's mails to help bugzilla on showing the proper one.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-04-29  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed. Created a new watchlist for changes in WebInspectorUI images and added myself to it.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-04-29  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Allow to run the tests on the native X display
+        https://bugs.webkit.org/show_bug.cgi?id=144247
+
+        Reviewed by Gyuyoung Kim.
+
+        Added the USE_NATIVE_XDISPLAY option for the WTR.
+        We can select the Xorg driver if environment variable is set up before running the tests.
+
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort._driver_class):
+
+2015-04-29  Joonghun Park  <jh718.park@samsung.com>
+
+        [GTK] Add libnotify-dev in gtk install-dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=144379
+
+        Reviewed by Žan Doberšek.
+
+        * gtk/install-dependencies:
+
 2015-04-28  Ryuan Choi  <ryuan.choi@navercorp.com>
 
         [CoordinatedGraphics] Merge TILED_BACKING_STORE guard with COORDINATED_GRAPHICS

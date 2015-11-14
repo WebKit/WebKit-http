@@ -461,17 +461,17 @@ void Internals::setOverrideCachePolicy(const String& policy)
 static ResourceLoadPriority stringToResourceLoadPriority(const String& policy)
 {
     if (policy == "ResourceLoadPriorityVeryLow")
-        return ResourceLoadPriorityVeryLow;
+        return ResourceLoadPriority::VeryLow;
     if (policy == "ResourceLoadPriorityLow")
-        return ResourceLoadPriorityLow;
+        return ResourceLoadPriority::Low;
     if (policy == "ResourceLoadPriorityMedium")
-        return ResourceLoadPriorityMedium;
+        return ResourceLoadPriority::Medium;
     if (policy == "ResourceLoadPriorityHigh")
-        return ResourceLoadPriorityHigh;
+        return ResourceLoadPriority::High;
     if (policy == "ResourceLoadPriorityVeryHigh")
-        return ResourceLoadPriorityVeryHigh;
+        return ResourceLoadPriority::VeryHigh;
     ASSERT_NOT_REACHED();
-    return ResourceLoadPriorityLow;
+    return ResourceLoadPriority::Low;
 }
 
 void Internals::setOverrideResourceLoadPriority(const String& priority)
@@ -985,6 +985,17 @@ void Internals::setScrollViewPosition(long x, long y, ExceptionCode& ec)
     frameView->setScrollOffsetFromInternals(IntPoint(x, y));
     frameView->setScrollbarsSuppressed(scrollbarsSuppressedOldValue);
     frameView->setConstrainsScrollingToContentEdge(constrainsScrollingToContentEdgeOldValue);
+}
+
+void Internals::setViewBaseBackgroundColor(const String& colorValue, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->view()->setBaseBackgroundColor(Color(colorValue));
 }
 
 void Internals::setPagination(const String& mode, int gap, int pageLength, ExceptionCode& ec)
@@ -1797,7 +1808,7 @@ RefPtr<ClientRectList> Internals::nonFastScrollableRects(ExceptionCode& ec) cons
     if (!page)
         return nullptr;
 
-    return page->nonFastScrollableRects(*document->frame());
+    return page->nonFastScrollableRects();
 }
 
 void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
@@ -2112,6 +2123,28 @@ unsigned long Internals::styleRecalcCount(ExceptionCode& ec)
     }
     
     return document->styleRecalcCount();
+}
+
+void Internals::startTrackingCompositingUpdates(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    document->renderView()->compositor().startTrackingCompositingUpdates();
+}
+
+unsigned long Internals::compositingUpdateCount(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->renderView()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    
+    return document->renderView()->compositor().compositingUpdateCount();
 }
 
 void Internals::updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode& ec)

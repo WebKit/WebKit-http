@@ -88,6 +88,12 @@ WebInspector.OverviewTimelineView.prototype = {
         this._treeOutlineDataGridSynchronizer.synchronize();
     },
 
+    closed: function()
+    {
+        this._networkTimeline.removeEventListener(null, null, this);
+        this._recording.removeEventListener(null, null, this);
+    },
+
     updateLayout: function()
     {
         WebInspector.TimelineView.prototype.updateLayout.call(this);
@@ -367,7 +373,7 @@ WebInspector.OverviewTimelineView.prototype = {
             return;
         }
 
-        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
+        wrappedSVGDocument("Images/Close.svg", null, WebInspector.UIString("Close resource view"), function(element) {
             this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
             this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
             if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)

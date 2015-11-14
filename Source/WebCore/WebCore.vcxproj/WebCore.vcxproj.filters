@@ -8178,6 +8178,9 @@
     <ClInclude Include="..\platform\FloatConversion.h">
       <Filter>platform</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\GenericTaskQueue.h">
+      <Filter>platform</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\HostWindow.h">
       <Filter>platform</Filter>
     </ClInclude>

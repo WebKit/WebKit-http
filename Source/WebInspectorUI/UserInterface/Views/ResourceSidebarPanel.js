@@ -33,32 +33,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
         this.filterBar.placeholder = WebInspector.UIString("Filter Resource List");
 
-        this._waitingForInitialMainFrame = true;
-
-        this._localStorageRootTreeElement = null;
-        this._sessionStorageRootTreeElement = null;
-
-        this._databaseRootTreeElement = null;
-        this._databaseHostTreeElementMap = {};
-
-        this._indexedDatabaseRootTreeElement = null;
-        this._indexedDatabaseHostTreeElementMap = {};
-
-        this._cookieStorageRootTreeElement = null;
-
-        this._applicationCacheRootTreeElement = null;
-        this._applicationCacheURLTreeElementMap = {};
-
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.CookieStorageObjectWasAdded, this._cookieStorageObjectWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DOMStorageObjectWasAdded, this._domStorageObjectWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DOMStorageObjectWasInspected, this._domStorageObjectWasInspected, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DatabaseWasAdded, this._databaseWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.DatabaseWasInspected, this._databaseWasInspected, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.IndexedDatabaseWasAdded, this._indexedDatabaseWasAdded, this);
-        WebInspector.storageManager.addEventListener(WebInspector.StorageManager.Event.Cleared, this._storageCleared, this);
-
-        WebInspector.applicationCacheManager.addEventListener(WebInspector.ApplicationCacheManager.Event.FrameManifestAdded, this._frameManifestAdded, this);
-        WebInspector.applicationCacheManager.addEventListener(WebInspector.ApplicationCacheManager.Event.FrameManifestRemoved, this._frameManifestRemoved, this);
+        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
         WebInspector.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
 
@@ -72,9 +47,20 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
         if (WebInspector.debuggableType === WebInspector.DebuggableType.JavaScript)
             this.contentTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName);
+
+        if (WebInspector.frameResourceManager.mainFrame)
+            this._mainFrameMainResourceDidChange(WebInspector.frameResourceManager.mainFrame);
     }
 
     // Public
+
+    closed()
+    {
+        WebInspector.Frame.removeEventListener(null, null, this);
+        WebInspector.frameResourceManager.removeEventListener(null, null, this);
+        WebInspector.debuggerManager.removeEventListener(null, null, this);
+        WebInspector.notifications.removeEventListener(null, null, this);
+    }
 
     showDefaultContentView()
     {
@@ -135,8 +121,10 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
             return treeElement;
 
         // Only special case Script objects.
-        if (!(representedObject instanceof WebInspector.Script))
+        if (!(representedObject instanceof WebInspector.Script)) {
+            console.error("Didn't find a TreeElement for representedObject", representedObject);
             return null;
+        }
 
         // If the Script has a URL we should have found it earlier.
         if (representedObject.url) {
@@ -164,21 +152,36 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
     // Private
 
+    _mainResourceDidChange(event)
+    {
+        if (!event.target.isMainFrame())
+            return;
+
+        this._mainFrameMainResourceDidChange(event.target);
+    }
+
     _mainFrameDidChange(event)
     {
+        this._mainFrameMainResourceDidChange(WebInspector.frameResourceManager.mainFrame);
+    }
+
+    _mainFrameMainResourceDidChange(mainFrame)
+    {
+        this.contentBrowser.contentViewContainer.closeAllContentViews();
+
         if (this._mainFrameTreeElement) {
-            this._mainFrameTreeElement.frame.removeEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainFrameMainResourceDidChange, this);
             this.contentTreeOutline.removeChild(this._mainFrameTreeElement);
             this._mainFrameTreeElement = null;
         }
 
-        var newFrame = WebInspector.frameResourceManager.mainFrame;
-        if (newFrame) {
-            newFrame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainFrameMainResourceDidChange, this);
-            this._mainFrameTreeElement = new WebInspector.FrameTreeElement(newFrame);
-            this.contentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
+        if (!mainFrame)
+            return;
 
-            // Select a tree element by default. Allow onselect if we aren't showing a content view.
+        this._mainFrameTreeElement = new WebInspector.FrameTreeElement(mainFrame);
+        this.contentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
+
+        function delayedWork()
+        {
             if (!this.contentTreeOutline.selectedTreeElement) {
                 var currentContentView = this.contentBrowser.currentContentView;
                 var treeElement = currentContentView ? this.treeElementForRepresentedObject(currentContentView.representedObject) : null;
@@ -188,45 +191,9 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
             }
         }
 
-        // The navigation path needs update when the main frame changes, since all resources are under the main frame.
-        this.contentBrowser.updateHierarchicalPathForCurrentContentView();
-
-        // We only care about the first time the main frame changes.
-        if (!this._waitingForInitialMainFrame)
-            return;
-
-        // Only if there is a main frame.
-        if (!newFrame)
-            return;
-
-        this._waitingForInitialMainFrame = false;
-    }
-
-    _mainFrameMainResourceDidChange(event)
-    {
-        var wasShowingResourceSidebar = this.selected;
-        var currentContentView = this.contentBrowser.currentContentView;
-        var wasShowingResourceContentView = currentContentView instanceof WebInspector.ResourceContentView
-            || currentContentView instanceof WebInspector.ResourceClusterContentView
-            || currentContentView instanceof WebInspector.FrameContentView
-            || currentContentView instanceof WebInspector.ScriptContentView;
-
-        this.contentBrowser.contentViewContainer.closeAllContentViews();
-
-        function delayedWork()
-        {
-            // Show the main frame since there is no content view showing or we were showing a resource before.
-            // Cookie restoration will attempt to re-select the resource we were showing.
-            if (!this.contentBrowser.currentContentView || wasShowingResourceContentView) {
-                // NOTE: This selection, during provisional loading, won't be saved, so it is
-                // safe to do and not-clobber cookie restoration.
-                this.showDefaultContentViewForTreeElement(this._mainFrameTreeElement);
-            }
-        }
-
-        // Delay this work because other listeners of this event might not have fired yet. So selecting the main frame
-        // before those listeners do their work might cause the content of the old page to show instead of the new page.
-        setTimeout(delayedWork.bind(this), 0);
+        // Cookie restoration will attempt to re-select the resource we were showing.
+        // Give it time to do that before selecting the main frame resource.
+        setTimeout(delayedWork.bind(this));
     }
 
     _scriptWasAdded(event)
@@ -300,104 +267,15 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
 
     _treeElementSelected(treeElement, selectedByUser)
     {
-        if (treeElement instanceof WebInspector.FolderTreeElement || treeElement instanceof WebInspector.DatabaseHostTreeElement ||
-            treeElement instanceof WebInspector.IndexedDatabaseHostTreeElement || treeElement instanceof WebInspector.IndexedDatabaseTreeElement)
+        if (treeElement instanceof WebInspector.FolderTreeElement)
             return;
 
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement ||
-            treeElement instanceof WebInspector.StorageTreeElement || treeElement instanceof WebInspector.DatabaseTableTreeElement ||
-            treeElement instanceof WebInspector.DatabaseTreeElement || treeElement instanceof WebInspector.ApplicationCacheFrameTreeElement ||
-            treeElement instanceof WebInspector.ContentFlowTreeElement || treeElement instanceof WebInspector.IndexedDatabaseObjectStoreTreeElement ||
-            treeElement instanceof WebInspector.IndexedDatabaseObjectStoreIndexTreeElement) {
+        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
             WebInspector.showRepresentedObject(treeElement.representedObject);
             return;
         }
 
         console.error("Unknown tree element", treeElement);
-    }
-
-    _domStorageObjectWasAdded(event)
-    {
-        var domStorage = event.data.domStorage;
-        var storageElement = new WebInspector.DOMStorageTreeElement(domStorage);
-
-        if (domStorage.isLocalStorage())
-            this._localStorageRootTreeElement = this._addStorageChild(storageElement, this._localStorageRootTreeElement, WebInspector.UIString("Local Storage"));
-        else
-            this._sessionStorageRootTreeElement = this._addStorageChild(storageElement, this._sessionStorageRootTreeElement, WebInspector.UIString("Session Storage"));
-    }
-
-    _domStorageObjectWasInspected(event)
-    {
-        var domStorage = event.data.domStorage;
-        var treeElement = this.treeElementForRepresentedObject(domStorage);
-        treeElement.revealAndSelect(true);
-    }
-
-    _databaseWasAdded(event)
-    {
-        var database = event.data.database;
-
-        console.assert(database instanceof WebInspector.DatabaseObject);
-
-        if (!this._databaseHostTreeElementMap[database.host]) {
-            this._databaseHostTreeElementMap[database.host] = new WebInspector.DatabaseHostTreeElement(database.host);
-            this._databaseRootTreeElement = this._addStorageChild(this._databaseHostTreeElementMap[database.host], this._databaseRootTreeElement, WebInspector.UIString("Databases"));
-        }
-
-        var databaseElement = new WebInspector.DatabaseTreeElement(database);
-        this._databaseHostTreeElementMap[database.host].appendChild(databaseElement);
-    }
-
-    _databaseWasInspected(event)
-    {
-        var database = event.data.database;
-        var treeElement = this.treeElementForRepresentedObject(database);
-        treeElement.revealAndSelect(true);
-    }
-
-    _indexedDatabaseWasAdded(event)
-    {
-        var indexedDatabase = event.data.indexedDatabase;
-
-        console.assert(indexedDatabase instanceof WebInspector.IndexedDatabase);
-
-        if (!this._indexedDatabaseHostTreeElementMap[indexedDatabase.host]) {
-            this._indexedDatabaseHostTreeElementMap[indexedDatabase.host] = new WebInspector.IndexedDatabaseHostTreeElement(indexedDatabase.host);
-            this._indexedDatabaseRootTreeElement = this._addStorageChild(this._indexedDatabaseHostTreeElementMap[indexedDatabase.host], this._indexedDatabaseRootTreeElement, WebInspector.UIString("Indexed Databases"));
-        }
-
-        var indexedDatabaseElement = new WebInspector.IndexedDatabaseTreeElement(indexedDatabase);
-        this._indexedDatabaseHostTreeElementMap[indexedDatabase.host].appendChild(indexedDatabaseElement);
-    }
-
-    _cookieStorageObjectWasAdded(event)
-    {
-        console.assert(event.data.cookieStorage instanceof WebInspector.CookieStorageObject);
-
-        var cookieElement = new WebInspector.CookieStorageTreeElement(event.data.cookieStorage);
-        this._cookieStorageRootTreeElement = this._addStorageChild(cookieElement, this._cookieStorageRootTreeElement, WebInspector.UIString("Cookies"));
-    }
-
-    _frameManifestAdded(event)
-    {
-        var frameManifest = event.data.frameManifest;
-        console.assert(frameManifest instanceof WebInspector.ApplicationCacheFrame);
-
-        var manifest = frameManifest.manifest;
-        var manifestURL = manifest.manifestURL;
-        if (!this._applicationCacheURLTreeElementMap[manifestURL]) {
-            this._applicationCacheURLTreeElementMap[manifestURL] = new WebInspector.ApplicationCacheManifestTreeElement(manifest);
-            this._applicationCacheRootTreeElement = this._addStorageChild(this._applicationCacheURLTreeElementMap[manifestURL], this._applicationCacheRootTreeElement, WebInspector.UIString("Application Cache"));
-        }
-
-        var frameCacheElement = new WebInspector.ApplicationCacheFrameTreeElement(frameManifest);
-        this._applicationCacheURLTreeElementMap[manifestURL].appendChild(frameCacheElement);
-    }
-
-    _frameManifestRemoved(event)
-    {
-         // FIXME: Implement this.
     }
 
     _compareTreeElements(a, b)
@@ -412,76 +290,6 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         console.assert(b.mainTitle);
 
         return (a.mainTitle || "").localeCompare(b.mainTitle || "");
-    }
-
-    _addStorageChild(childElement, parentElement, folderName)
-    {
-        if (!parentElement) {
-            childElement.flattened = true;
-
-            this.contentTreeOutline.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, this.contentTreeOutline.children, this._compareTreeElements));
-
-            return childElement;
-        }
-
-        if (parentElement instanceof WebInspector.StorageTreeElement) {
-            console.assert(parentElement.flattened);
-
-            var previousOnlyChild = parentElement;
-            previousOnlyChild.flattened = false;
-            this.contentTreeOutline.removeChild(previousOnlyChild);
-
-            var folderElement = new WebInspector.FolderTreeElement(folderName);
-            this.contentTreeOutline.insertChild(folderElement, insertionIndexForObjectInListSortedByFunction(folderElement, this.contentTreeOutline.children, this._compareTreeElements));
-
-            folderElement.appendChild(previousOnlyChild);
-            folderElement.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, folderElement.children, this._compareTreeElements));
-
-            return folderElement;
-        }
-
-        console.assert(parentElement instanceof WebInspector.FolderTreeElement);
-        parentElement.insertChild(childElement, insertionIndexForObjectInListSortedByFunction(childElement, parentElement.children, this._compareTreeElements));
-
-        return parentElement;
-    }
-
-    _storageCleared(event)
-    {
-        // Close all DOM and cookie storage content views since the main frame has navigated and all storages are cleared.
-        this.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.CookieStorageContentView);
-        this.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DOMStorageContentView);
-        this.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DatabaseTableContentView);
-        this.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.DatabaseContentView);
-        this.contentBrowser.contentViewContainer.closeAllContentViewsOfPrototype(WebInspector.ApplicationCacheFrameContentView);
-
-        if (this._localStorageRootTreeElement && this._localStorageRootTreeElement.parent)
-            this._localStorageRootTreeElement.parent.removeChild(this._localStorageRootTreeElement);
-
-        if (this._sessionStorageRootTreeElement && this._sessionStorageRootTreeElement.parent)
-            this._sessionStorageRootTreeElement.parent.removeChild(this._sessionStorageRootTreeElement);
-
-        if (this._databaseRootTreeElement && this._databaseRootTreeElement.parent)
-            this._databaseRootTreeElement.parent.removeChild(this._databaseRootTreeElement);
-
-        if (this._indexedDatabaseRootTreeElement && this._indexedDatabaseRootTreeElement.parent)
-            this._indexedDatabaseRootTreeElement.parent.removeChild(this._indexedDatabaseRootTreeElement);
-
-        if (this._cookieStorageRootTreeElement && this._cookieStorageRootTreeElement.parent)
-            this._cookieStorageRootTreeElement.parent.removeChild(this._cookieStorageRootTreeElement);
-
-        if (this._applicationCacheRootTreeElement && this._applicationCacheRootTreeElement.parent)
-            this._applicationCacheRootTreeElement.parent.removeChild(this._applicationCacheRootTreeElement);
-
-        this._localStorageRootTreeElement = null;
-        this._sessionStorageRootTreeElement = null;
-        this._databaseRootTreeElement = null;
-        this._databaseHostTreeElementMap = {};
-        this._indexedDatabaseRootTreeElement = null;
-        this._indexedDatabaseHostTreeElementMap = {};
-        this._cookieStorageRootTreeElement = null;
-        this._applicationCacheRootTreeElement = null;
-        this._applicationCacheURLTreeElementMap = {};
     }
 
     _extraDomainsActivated()

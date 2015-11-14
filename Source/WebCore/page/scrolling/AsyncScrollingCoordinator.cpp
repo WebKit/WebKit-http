@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,14 +32,17 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsLayer.h"
+#include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
+#include "ScrollAnimator.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateFrameScrollingNode.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 #include "ScrollingStateStickyNode.h"
 #include "ScrollingStateTree.h"
+#include "WheelEventTestTrigger.h"
 
 namespace WebCore {
 
@@ -93,7 +96,7 @@ void AsyncScrollingCoordinator::updateNonFastScrollableRegion()
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
     m_nonFastScrollableRegionDirty = false;
 }
 
@@ -111,7 +114,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     // frame view whose layout was updated is not the main frame.
     // In the future, we may want to have the ability to set non-fast scrolling regions for more than
     // just the root node. But right now, this concept only applies to the root.
-    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+    m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
     m_nonFastScrollableRegionDirty = false;
 
     if (!coordinatesScrollingForFrameView(frameView))
@@ -134,6 +137,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     node->setScrollableAreaSize(frameView.visibleContentRect().size());
     node->setTotalContentsSize(frameView.totalContentsSize());
     node->setReachableContentsSize(frameView.totalContentsSize());
+    node->setFixedElementsLayoutRelativeToFrame(frameView.fixedElementsLayoutRelativeToFrame());
 
 #if ENABLE(CSS_SCROLL_SNAP)
     frameView.updateSnapOffsets();
@@ -142,6 +146,14 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
 
     if (const Vector<LayoutUnit>* verticalSnapOffsets = frameView.verticalSnapOffsets())
         setStateScrollingNodeSnapOffsetsAsFloat(*node, ScrollEventAxis::Vertical, *verticalSnapOffsets, m_page->deviceScaleFactor());
+#endif
+
+#if PLATFORM(COCOA)
+    Page* page = frameView.frame().page();
+    if (page && page->expectsWheelEventTriggers()) {
+        LOG(WheelEventTestTriggers, "    AsyncScrollingCoordinator::frameViewLayoutUpdated: Expects wheel event test trigger=%d", page->expectsWheelEventTriggers());
+        node->setExpectsWheelEventTestTrigger(page->expectsWheelEventTriggers());
+    }
 #endif
 
     ScrollableAreaParameters scrollParameters;
@@ -354,6 +366,14 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
             }
         }
 
+#if PLATFORM(COCOA)
+        if (m_page->expectsWheelEventTriggers()) {
+            frameView.scrollAnimator().setWheelEventTestTrigger(m_page->testTrigger());
+            if (const auto& trigger = m_page->testTrigger())
+                trigger->removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(scrollingNodeID), WheelEventTestTrigger::ScrollingThreadSyncNeeded);
+        }
+#endif
+        
         return;
     }
 
@@ -364,6 +384,14 @@ void AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll(ScrollingNo
         scrollableArea->setIsUserScroll(false);
         if (scrollingLayerPositionAction == SetScrollingLayerPosition)
             m_page->editorClient().overflowScrollPositionChanged();
+
+#if PLATFORM(COCOA)
+        if (m_page->expectsWheelEventTriggers()) {
+            frameView.scrollAnimator().setWheelEventTestTrigger(m_page->testTrigger());
+            if (const auto& trigger = m_page->testTrigger())
+                trigger->removeTestDeferralForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(scrollingNodeID), WheelEventTestTrigger::ScrollingThreadSyncNeeded);
+        }
+#endif
     }
 }
 
@@ -526,12 +554,36 @@ String AsyncScrollingCoordinator::scrollingStateTreeAsText() const
 {
     if (m_scrollingStateTree->rootStateNode()) {
         if (m_nonFastScrollableRegionDirty)
-            m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(computeNonFastScrollableRegion(m_page->mainFrame(), IntPoint()));
+            m_scrollingStateTree->rootStateNode()->setNonFastScrollableRegion(absoluteNonFastScrollableRegion());
         return m_scrollingStateTree->rootStateNode()->scrollingStateTreeAsText();
     }
 
     return String();
 }
+
+#if PLATFORM(COCOA)
+void AsyncScrollingCoordinator::deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const
+{
+    if (!m_page || !m_page->expectsWheelEventTriggers())
+        return;
+
+    if (const auto& trigger = m_page->testTrigger()) {
+        LOG(WheelEventTestTriggers, "    (!) AsyncScrollingCoordinator::deferTestsForReason: Deferring %p for reason %d.", identifier, reason);
+        trigger->deferTestsForReason(identifier, reason);
+    }
+}
+
+void AsyncScrollingCoordinator::removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const
+{
+    if (!m_page || !m_page->expectsWheelEventTriggers())
+        return;
+
+    if (const auto& trigger = m_page->testTrigger()) {
+        LOG(WheelEventTestTriggers, "    (!) AsyncScrollingCoordinator::removeTestDeferralForReason: Deferring %p for reason %d.", identifier, reason);
+        trigger->removeTestDeferralForReason(identifier, reason);
+    }
+}
+#endif
 
 } // namespace WebCore
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2009, 2015 Apple Inc. All rights reserved.
  *           (C) 2007 Graham Dennis (graham.dennis@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -154,6 +154,12 @@ using namespace std;
 - (BOOL)_flushCompositingChanges;
 @end
 
+#if !PLATFORM(IOS)
+@interface WebView (WebViewInternalForTesting)
+- (WebCore::Frame*)_mainCoreFrame;
+@end
+#endif
+
 static void runTest(const string& testURL);
 
 // Deciding when it's OK to dump out the state is a bit tricky.  All these must be true:
@@ -199,6 +205,7 @@ static int useTimeoutWatchdog = YES;
 static int forceComplexText;
 static int useAcceleratedDrawing;
 static int gcBetweenTests;
+static int showWebView = NO;
 static BOOL printSeparators;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
 static std::set<std::string> allowedHosts;
@@ -414,6 +421,7 @@ static NSSet *allowedFontFamilySet()
     return fontFamilySet;
 }
 
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
 static IMP appKitAvailableFontFamiliesIMP;
 static IMP appKitAvailableFontsIMP;
 
@@ -472,6 +480,29 @@ static void swizzleNSFontManagerMethods()
     
     appKitAvailableFontsIMP = method_setImplementation(availableFontsMethod, (IMP)drt_NSFontManager_availableFonts);
 }
+
+#else
+
+static NSArray *fontWhitelist()
+{
+    static NSArray *availableFonts;
+    if (availableFonts)
+        return availableFonts;
+
+    NSMutableArray *availableFontList = [[NSMutableArray alloc] init];
+    for (NSString *fontFamily in allowedFontFamilySet()) {
+        NSArray* fontsForFamily = [[NSFontManager sharedFontManager] availableMembersOfFontFamily:fontFamily];
+        [availableFontList addObject:fontFamily];
+        for (NSArray* fontInfo in fontsForFamily) {
+            // Font name is the first entry in the array.
+            [availableFontList addObject:[fontInfo objectAtIndex:0]];
+        }
+    }
+
+    availableFonts = availableFontList;
+    return availableFonts;
+}
+#endif
 
 // Activating system copies of these fonts overrides any others that could be preferred, such as ones
 // in /Library/Fonts/Microsoft, and which don't always have the same metrics.
@@ -549,7 +580,9 @@ static void activateTestingFonts()
 
 static void adjustFonts()
 {
+#if !ENABLE(PLATFORM_FONT_LOOKUP)
     swizzleNSFontManagerMethods();
+#endif
     activateSystemCoreWebFonts();
     activateTestingFonts();
 }
@@ -732,6 +765,10 @@ WebView *createWebViewAndOffscreenWindow()
     [WebView registerURLSchemeAsLocal:@"feeds"];
     [WebView registerURLSchemeAsLocal:@"feedsearch"];
     
+#if PLATFORM(MAC) && ENABLE(PLATFORM_FONT_LOOKUP)
+    [WebView _setFontWhitelist:fontWhitelist()];
+#endif
+
 #if !PLATFORM(IOS)
     [webView setContinuousSpellCheckingEnabled:YES];
     [webView setAutomaticQuoteSubstitutionEnabled:NO];
@@ -748,13 +785,16 @@ WebView *createWebViewAndOffscreenWindow()
     // To make things like certain NSViews, dragging, and plug-ins work, put the WebView a window, but put it off-screen so you don't see it.
     // Put it at -10000, -10000 in "flipped coordinates", since WebCore and the DOM use flipped coordinates.
     NSScreen *firstScreen = [[NSScreen screens] firstObject];
-    NSRect windowRect = NSOffsetRect(rect, -10000, [firstScreen frame].size.height - rect.size.height + 10000);
+    NSRect windowRect = (showWebView) ? NSOffsetRect(rect, 100, 100) : NSOffsetRect(rect, -10000, [firstScreen frame].size.height - rect.size.height + 10000);
     DumpRenderTreeWindow *window = [[DumpRenderTreeWindow alloc] initWithContentRect:windowRect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:YES];
 
     [window setColorSpace:[firstScreen colorSpace]];
     [window setCollectionBehavior:NSWindowCollectionBehaviorStationary];
     [[window contentView] addSubview:webView];
-    [window orderBack:nil];
+    if (showWebView)
+        [window orderFront:nil];
+    else
+        [window orderBack:nil];
     [window setAutodisplay:NO];
 
     [window startListeningForAcceleratedCompositingChanges];
@@ -888,6 +928,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setLoadsSiteIconsIgnoringImageLoadingPreference:NO];
     [preferences setFrameFlatteningEnabled:NO];
     [preferences setSpatialNavigationEnabled:NO];
+    [preferences setMetaRefreshEnabled:YES];
+
     if (persistentUserStyleSheetLocation) {
         [preferences setUserStyleSheetLocation:[NSURL URLWithString:(NSString *)(persistentUserStyleSheetLocation.get())]];
         [preferences setUserStyleSheetEnabled:YES];
@@ -1085,6 +1127,7 @@ static void initializeGlobalsFromCommandLineOptions(int argc, const char *argv[]
         {"gc-between-tests", no_argument, &gcBetweenTests, YES},
         {"no-timeout", no_argument, &useTimeoutWatchdog, NO},
         {"allowed-host", required_argument, nullptr, 'a'},
+        {"show-webview", no_argument, &showWebView, YES},
         {nullptr, 0, nullptr, 0}
     };
     
@@ -1792,6 +1835,11 @@ static void resetWebViewToConsistentStateBeforeTesting()
         // in the case that a test using the chrome input field failed, be sure to clean up for the next test
         gTestRunner->removeChromeInputField();
     }
+
+#if !PLATFORM(IOS)
+    if (WebCore::Frame* frame = [webView _mainCoreFrame])
+        WebCoreTestSupport::clearWheelEventTestTrigger(*frame);
+#endif
 
 #if !PLATFORM(IOS)
     [webView setContinuousSpellCheckingEnabled:YES];

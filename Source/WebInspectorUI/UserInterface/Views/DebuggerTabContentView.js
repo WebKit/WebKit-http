@@ -28,9 +28,6 @@ WebInspector.DebuggerTabContentView = function(identifier)
     var tabBarItem = new WebInspector.TabBarItem("Images/Debugger.svg", WebInspector.UIString("Debugger"));
     var detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.scopeChainDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
 
-    // FIME: Until DebuggerSidebarPanel supports instantiating after inspector launch, disable closing.
-    tabBarItem.hideCloseButton = true;
-
     WebInspector.ContentBrowserTabContentView.call(this, identifier || "debugger", "debugger", tabBarItem, WebInspector.DebuggerSidebarPanel, detailsSidebarPanels);
 };
 
@@ -54,6 +51,23 @@ WebInspector.DebuggerTabContentView.prototype = {
             return false;
 
         return representedObject.type === WebInspector.Resource.Type.Document || representedObject.type === WebInspector.Resource.Type.Script;
+    },
+
+    showDetailsSidebarPanels: function()
+    {
+        WebInspector.ContentBrowserTabContentView.prototype.showDetailsSidebarPanels.call(this);
+
+        if (!this._showScopeChainDetailsSidebarPanel || !WebInspector.scopeChainDetailsSidebarPanel.parentSidebar)
+            return;
+
+        WebInspector.scopeChainDetailsSidebarPanel.show();
+
+        this._showScopeChainDetailsSidebarPanel = false;
+    },
+
+    showScopeChainDetailsSidebarPanel: function()
+    {
+        this._showScopeChainDetailsSidebarPanel = true;
     },
 
     revealAndSelectBreakpoint: function(breakpoint)

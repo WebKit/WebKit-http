@@ -397,6 +397,11 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     if (!inCanvasSubtree && !isHidden && !insideMeterElement)
         return nullptr;
 
+    // Fallback content is only focusable as long as the canvas is displayed and visible.
+    // Update the style before Element::isFocusable() gets called.
+    if (inCanvasSubtree)
+        node->document().updateStyleIfNeeded();
+
     RefPtr<AccessibilityObject> newObj = createFromNode(node);
 
     // Will crash later if we have two objects for the same node.
@@ -911,6 +916,9 @@ void AXObjectCache::showIntent(const AXTextStateChangeIntent &intent)
         case AXTextEditTypePaste:
             dataLog("Paste");
             break;
+        case AXTextEditTypeAttributesChange:
+            dataLog("AttributesChange");
+            break;
         }
         break;
     case AXTextStateChangeTypeSelectionMove:
@@ -976,15 +984,18 @@ void AXObjectCache::showIntent(const AXTextStateChangeIntent &intent)
         }
         break;
     }
-    if (intent.isSynchronizing)
-        dataLog("-Sync");
     dataLog("\n");
 }
 #endif
 
-void AXObjectCache::setTextSelectionIntent(AXTextStateChangeIntent intent)
+void AXObjectCache::setTextSelectionIntent(const AXTextStateChangeIntent& intent)
 {
     m_textSelectionIntent = intent;
+}
+    
+void AXObjectCache::setIsSynchronizingSelection(bool isSynchronizing)
+{
+    m_isSynchronizingSelection = isSynchronizing;
 }
 
 static bool isPasswordFieldOrContainedByPasswordField(AccessibilityObject* object)
@@ -1007,7 +1018,7 @@ void AXObjectCache::postTextStateChangeNotification(Node* node, const AXTextStat
         object = object->observableObject();
     }
 
-    postTextStateChangePlatformNotification(object, (intent.type == AXTextStateChangeTypeUnknown) ? m_textSelectionIntent : intent, selection);
+    postTextStateChangePlatformNotification(object, (intent.type == AXTextStateChangeTypeUnknown || m_isSynchronizingSelection) ? m_textSelectionIntent : intent, selection);
 #else
     postNotification(node->renderer(), AXObjectCache::AXSelectedTextChanged, TargetObservableParent);
     UNUSED_PARAM(intent);
@@ -1015,6 +1026,7 @@ void AXObjectCache::postTextStateChangeNotification(Node* node, const AXTextStat
 #endif
 
     setTextSelectionIntent(AXTextStateChangeIntent());
+    setIsSynchronizingSelection(false);
 }
 
 void AXObjectCache::postTextStateChangeNotification(Node* node, AXTextEditType type, const String& text, const VisiblePosition& position)
@@ -1337,6 +1349,8 @@ AXTextChange AXObjectCache::textChangeForEditType(AXTextEditType type)
     case AXTextEditTypeTyping:
     case AXTextEditTypePaste:
         return AXTextInserted;
+    case AXTextEditTypeAttributesChange:
+        return AXTextAttributesChanged;
     case AXTextEditTypeUnknown:
         break;
     }

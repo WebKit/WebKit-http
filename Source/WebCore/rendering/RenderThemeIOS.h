@@ -118,8 +118,12 @@ private:
     const Color& shadowColor() const;
     FloatRect addRoundedBorderClip(const RenderObject& box, GraphicsContext*, const IntRect&);
 
+    virtual Color systemColor(CSSValueID) const override;
+
     String m_mediaControlsScript;
     String m_mediaControlsStyleSheet;
+
+    mutable HashMap<int, Color> m_systemColorCache;
 };
 
 }

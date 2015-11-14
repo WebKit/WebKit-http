@@ -40,6 +40,7 @@
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/RunLoop.h>
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(COCOA)
@@ -300,7 +301,7 @@ static StoreDecision makeStoreDecision(const WebCore::ResourceRequest& originalR
     }
 
     bool isMainResource = originalRequest.requester() == WebCore::ResourceRequest::Requester::Main;
-    bool storeUnconditionallyForHistoryNavigation = isMainResource || originalRequest.priority() == WebCore::ResourceLoadPriorityVeryHigh;
+    bool storeUnconditionallyForHistoryNavigation = isMainResource || originalRequest.priority() == WebCore::ResourceLoadPriority::VeryHigh;
     if (!storeUnconditionallyForHistoryNavigation) {
         auto now = std::chrono::system_clock::now();
         bool hasNonZeroLifetime = !response.cacheControlContainsNoCache() && WebCore::computeFreshnessLifetimeForHTTPFamily(response, now) > 0_ms;
@@ -342,7 +343,7 @@ void Cache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t w
     }
 
     auto startTime = std::chrono::system_clock::now();
-    unsigned priority = originalRequest.priority();
+    auto priority = static_cast<unsigned>(originalRequest.priority());
 
     m_storage->retrieve(storageKey, priority, [this, originalRequest, completionHandler, startTime, storageKey, webPageID](std::unique_ptr<Storage::Record> record) {
         if (!record) {
@@ -387,7 +388,14 @@ void Cache::store(const WebCore::ResourceRequest& originalRequest, const WebCore
     ASSERT(isEnabled());
     ASSERT(responseData);
 
-    LOG(NetworkCache, "(NetworkProcess) storing %s, partition %s", originalRequest.url().string().latin1().data(), originalRequest.cachePartition().latin1().data());
+#if !LOG_DISABLED
+#if ENABLE(CACHE_PARTITIONING)
+    CString partition = originalRequest.cachePartition().latin1();
+#else
+    CString partition = "No partition";
+#endif
+    LOG(NetworkCache, "(NetworkProcess) storing %s, partition %s", originalRequest.url().string().latin1().data(), partition.data());
+#endif // !LOG_DISABLED
 
     StoreDecision storeDecision = makeStoreDecision(originalRequest, response);
     if (storeDecision != StoreDecision::Yes) {
@@ -517,20 +525,33 @@ void Cache::dumpContentsToFile()
     });
 }
 
-void Cache::clear()
+void Cache::deleteDumpFile()
+{
+    auto queue = WorkQueue::create("com.apple.WebKit.Cache.delete");
+    StringCapture dumpFilePathCapture(dumpFilePath());
+    queue->dispatch([dumpFilePathCapture] {
+        WebCore::deleteFile(dumpFilePathCapture.string());
+    });
+}
+
+void Cache::clear(std::chrono::system_clock::time_point modifiedSince, std::function<void ()>&& completionHandler)
 {
     LOG(NetworkCache, "(NetworkProcess) clearing cache");
-    if (m_storage) {
-        m_storage->clear();
+    deleteDumpFile();
 
-        auto queue = WorkQueue::create("com.apple.WebKit.Cache.delete");
-        StringCapture dumpFilePathCapture(dumpFilePath());
-        queue->dispatch([dumpFilePathCapture] {
-            WebCore::deleteFile(dumpFilePathCapture.string());
-        });
-    }
     if (m_statistics)
         m_statistics->clear();
+
+    if (!m_storage) {
+        RunLoop::main().dispatch(completionHandler);
+        return;
+    }
+    m_storage->clear(modifiedSince, WTF::move(completionHandler));
+}
+
+void Cache::clear()
+{
+    clear(std::chrono::system_clock::time_point::min(), nullptr);
 }
 
 String Cache::recordsPath() const

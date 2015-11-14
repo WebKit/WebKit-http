@@ -32,7 +32,6 @@
 
 #if ENABLE(STREAMS_API)
 
-#include "JSReadableStreamController.h"
 #include "ReadableStream.h"
 #include "ReadableStreamReader.h"
 #include "ReadableStreamSource.h"
@@ -44,37 +43,44 @@
 
 namespace WebCore {
 
-class JSReadableStream;
+class JSDOMGlobalObject;
+class ReadableJSStream;
+class ReadableStreamController;
 
 class ReadableStreamJSSource: public ReadableStreamSource {
 public:
     static Ref<ReadableStreamJSSource> create(JSC::ExecState*);
     ~ReadableStreamJSSource();
 
-    void start(JSC::ExecState*, JSReadableStream*);
+    JSDOMGlobalObject* globalObject();
+    void start(JSC::ExecState&, ReadableJSStream&);
 
 private:
     ReadableStreamJSSource(JSC::ExecState*);
 
     // Object passed to constructor.
     JSC::Strong<JSC::JSObject> m_source;
-
-    JSC::Strong<JSReadableStreamController> m_controller;
 };
 
 class ReadableJSStream: public ReadableStream {
 public:
-    static Ref<ReadableJSStream> create(ScriptExecutionContext&, Ref<ReadableStreamJSSource>&&);
+    static Ref<ReadableJSStream> create(JSC::ExecState&, ScriptExecutionContext&);
     virtual Ref<ReadableStreamReader> createReader() override;
+
+    ReadableStreamJSSource& jsSource();
+    JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
+
 private:
     ReadableJSStream(ScriptExecutionContext&, Ref<ReadableStreamJSSource>&&);
-};
 
-class ReadableJSStreamReader: public ReadableStreamReader {
-public:
-    static Ref<ReadableJSStreamReader> create(ReadableJSStream&);
-private:
-    ReadableJSStreamReader(ReadableJSStream&);
+    class Reader: public ReadableStreamReader {
+    public:
+        static Ref<Reader> create(ReadableJSStream&);
+    private:
+        explicit Reader(ReadableJSStream&);
+    };
+
+    std::unique_ptr<ReadableStreamController> m_controller;
 };
 
 void setInternalSlotToObject(JSC::ExecState*, JSC::JSValue, JSC::PrivateName&, JSC::JSValue);

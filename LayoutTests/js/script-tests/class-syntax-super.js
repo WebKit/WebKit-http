@@ -37,13 +37,11 @@ shouldBe('(new Derived).baseMethodInGetterSetter', '(new Base).baseMethod');
 shouldBe('(new Derived).baseMethodInGetterSetter = 1; valueInSetter', '(new Base).baseMethod');
 shouldBe('Derived.staticMethod()', '"base3"');
 shouldBe('(new SecondDerived).chainMethod()', '["base", "derived", "secondDerived"]');
-shouldThrow('x = class extends Base { constructor() { super(); } super() {} }', '"SyntaxError: Unexpected keyword \'super\'. Expected an identifier."');
+shouldThrow('x = class extends Base { constructor() { super(); } super() {} }', '"SyntaxError: Unexpected keyword \'super\'"');
 shouldThrow('x = class extends Base { constructor() { super(); } method() { super() } }',
     '"SyntaxError: Cannot call super() outside of a class constructor."');
 shouldThrow('x = class extends Base { constructor() { super(); } method() { super } }', '"SyntaxError: Cannot reference super."');
-shouldNotThrow('x = class extends Base { constructor() { super(); } method() { return new super } }');
-shouldBeTrue('(new x).method() instanceof Base');
-shouldBeFalse('(new x).method() instanceof x');
+shouldThrow('x = class extends Base { constructor() { super(); } method() { return new super } }', '"SyntaxError: Cannot use new with super."');
 shouldNotThrow('x = class extends Base { constructor() { super(); } method1() { delete (super.foo) } method2() { delete super["foo"] } }');
 shouldThrow('(new x).method1()', '"ReferenceError: Cannot delete a super property"');
 shouldThrow('(new x).method2()', '"ReferenceError: Cannot delete a super property"');

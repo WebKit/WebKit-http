@@ -1053,6 +1053,7 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
     }
 
     auto list = CSSValueList::createSpaceSeparated();
+    unsigned insertionIndex;
     if (isRenderGrid) {
         const Vector<LayoutUnit>& trackPositions = direction == ForColumns ? downcast<RenderGrid>(*renderer).columnPositions() : downcast<RenderGrid>(*renderer).rowPositions();
         // There are at least #tracks + 1 grid lines (trackPositions). Apart from that, the grid container can generate implicit grid tracks,
@@ -1063,15 +1064,17 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
             addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
             list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i], style));
         }
+        insertionIndex = trackPositions.size() - 1;
     } else {
         for (unsigned i = 0; i < trackSizes.size(); ++i) {
             addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, i, list.get());
             list.get().append(specifiedValueForGridTrackSize(trackSizes[i], style));
         }
+        insertionIndex = trackSizes.size();
     }
 
     // Those are the trailing <ident>* allowed in the syntax.
-    addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, trackSizes.size(), list.get());
+    addValuesForNamedGridLinesAtIndex(orderedNamedGridLines, insertionIndex, list.get());
     return WTF::move(list);
 }
 
@@ -1714,8 +1717,7 @@ static ItemPosition resolveContainerAlignmentAuto(ItemPosition position, RenderO
     if (position != ItemPositionAuto || !element)
         return position;
 
-    bool isFlexOrGrid = element->style().isDisplayFlexibleOrGridBox();
-    return isFlexOrGrid ? ItemPositionStretch : ItemPositionStart;
+    return element->style().isDisplayFlexibleOrGridBox() ? ItemPositionStretch : ItemPositionStart;
 }
 
 static ItemPosition resolveSelfAlignmentAuto(ItemPosition position, OverflowAlignment& overflow, RenderObject* element)
@@ -1728,7 +1730,20 @@ static ItemPosition resolveSelfAlignmentAuto(ItemPosition position, OverflowAlig
         return ItemPositionStart;
 
     overflow = parent->style().alignItemsOverflowAlignment();
-    return resolveContainerAlignmentAuto(parent->style().alignItems(), parent);
+    return resolveContainerAlignmentAuto(parent->style().alignItemsPosition(), parent);
+}
+
+static void resolveContentAlignmentAuto(ContentPosition& position, ContentDistributionType& distribution, RenderObject* element)
+{
+    if (position != ContentPositionAuto || distribution != ContentDistributionDefault || !element)
+        return;
+
+    // Even that both align-content and justify-content 'auto' values are resolved to 'stretch'
+    // in case of flexbox containers, 'stretch' value in justify-content will behave like 'flex-start'. 
+    if (element->style().isDisplayFlexibleBox())
+        distribution = ContentDistributionStretch;
+    else
+        position = ContentPositionStart;
 }
 
 PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
@@ -1820,6 +1835,20 @@ static PassRefPtr<CSSValueList> valueForItemPositionWithOverflowAlignment(ItemPo
     if (overflowAlignment != OverflowAlignmentDefault)
         result->append(cssValuePool().createValue(overflowAlignment));
     ASSERT(result->length() <= 2);
+    return result.release();
+}
+
+static PassRefPtr<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlignment(ContentPosition position, ContentDistributionType distribution, OverflowAlignment overflowAlignment)
+{
+    RefPtr<CSSValueList> result = CSSValueList::createSpaceSeparated();
+    if (distribution != ContentDistributionDefault)
+        result->append(CSSPrimitiveValue::create(distribution));
+    if (distribution == ContentDistributionDefault || position != ContentPositionAuto)
+        result->append(CSSPrimitiveValue::create(position));
+    if ((position >= ContentPositionCenter || distribution != ContentDistributionDefault) && overflowAlignment != OverflowAlignmentDefault)
+        result->append(CSSPrimitiveValue::create(overflowAlignment));
+    ASSERT(result->length() > 0);
+    ASSERT(result->length() <= 3);
     return result.release();
 }
 
@@ -2183,13 +2212,17 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return cssValuePool().createValue(style->display());
         case CSSPropertyEmptyCells:
             return cssValuePool().createValue(style->emptyCells());
-        case CSSPropertyAlignContent:
-            return cssValuePool().createValue(style->alignContent());
+        case CSSPropertyAlignContent: {
+            ContentPosition position = style->alignContentPosition();
+            ContentDistributionType distribution = style->alignContentDistribution();
+            resolveContentAlignmentAuto(position, distribution, renderer);
+            return valueForContentPositionAndDistributionWithOverflowAlignment(position, distribution, style->alignContentOverflowAlignment());
+        }
         case CSSPropertyAlignItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->alignItems(), renderer), style->alignItemsOverflowAlignment(), NonLegacyPosition);
+            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->alignItemsPosition(), renderer), style->alignItemsOverflowAlignment(), NonLegacyPosition);
         case CSSPropertyAlignSelf: {
             OverflowAlignment overflow = style->alignSelfOverflowAlignment();
-            ItemPosition alignSelf = resolveSelfAlignmentAuto(style->alignSelf(), overflow, renderer);
+            ItemPosition alignSelf = resolveSelfAlignmentAuto(style->alignSelfPosition(), overflow, renderer);
             return valueForItemPositionWithOverflowAlignment(alignSelf, overflow, NonLegacyPosition);
         }
         case CSSPropertyFlex:
@@ -2206,13 +2239,17 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return cssValuePool().createValue(style->flexShrink());
         case CSSPropertyFlexWrap:
             return cssValuePool().createValue(style->flexWrap());
-        case CSSPropertyJustifyContent:
-            return cssValuePool().createValue(style->justifyContent());
+        case CSSPropertyJustifyContent: {
+            ContentPosition position = style->justifyContentPosition();
+            ContentDistributionType distribution = style->justifyContentDistribution();
+            resolveContentAlignmentAuto(position, distribution, renderer);
+            return valueForContentPositionAndDistributionWithOverflowAlignment(position, distribution, style->justifyContentOverflowAlignment());
+        }
         case CSSPropertyJustifyItems:
-            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->justifyItems(), renderer), style->justifyItemsOverflowAlignment(), style->justifyItemsPositionType());
+            return valueForItemPositionWithOverflowAlignment(resolveContainerAlignmentAuto(style->justifyItemsPosition(), renderer), style->justifyItemsOverflowAlignment(), style->justifyItemsPositionType());
         case CSSPropertyJustifySelf: {
             OverflowAlignment overflow = style->justifySelfOverflowAlignment();
-            ItemPosition justifySelf = resolveSelfAlignmentAuto(style->justifySelf(), overflow, renderer);
+            ItemPosition justifySelf = resolveSelfAlignmentAuto(style->justifySelfPosition(), overflow, renderer);
             return valueForItemPositionWithOverflowAlignment(justifySelf, overflow, NonLegacyPosition);
         }
         case CSSPropertyOrder:

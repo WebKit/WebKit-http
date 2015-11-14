@@ -103,9 +103,10 @@ JSCell* JIT_OPERATION operationCreateScopedArguments(ExecState*, Structure*, Reg
 JSCell* JIT_OPERATION operationCreateClonedArgumentsDuringExit(ExecState*, InlineCallFrame*, JSFunction*, int32_t argumentCount);
 JSCell* JIT_OPERATION operationCreateClonedArguments(ExecState*, Structure*, Register* argumentStart, int32_t length, JSFunction* callee);
 double JIT_OPERATION operationFModOnInts(int32_t, int32_t) WTF_INTERNAL;
-size_t JIT_OPERATION operationIsObjectOrNull(ExecState*, EncodedJSValue) WTF_INTERNAL;
-size_t JIT_OPERATION operationIsFunction(EncodedJSValue) WTF_INTERNAL;
-JSCell* JIT_OPERATION operationTypeOf(ExecState*, JSCell*) WTF_INTERNAL;
+size_t JIT_OPERATION operationObjectIsObject(ExecState*, JSGlobalObject*, JSCell*) WTF_INTERNAL;
+size_t JIT_OPERATION operationObjectIsFunction(ExecState*, JSGlobalObject*, JSCell*) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationTypeOfObject(ExecState*, JSGlobalObject*, JSCell*) WTF_INTERNAL;
+int32_t JIT_OPERATION operationTypeOfObjectAsTypeofType(ExecState*, JSGlobalObject*, JSCell*) WTF_INTERNAL;
 char* JIT_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecState*) WTF_INTERNAL;
 char* JIT_OPERATION operationAllocatePropertyStorage(ExecState*, size_t newSize) WTF_INTERNAL;
 char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitialCapacity(ExecState*, JSObject*) WTF_INTERNAL;
@@ -113,7 +114,6 @@ char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
 char* JIT_OPERATION operationEnsureInt32(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureDouble(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureContiguous(ExecState*, JSCell*);
-char* JIT_OPERATION operationRageEnsureContiguous(ExecState*, JSCell*);
 char* JIT_OPERATION operationEnsureArrayStorage(ExecState*, JSCell*);
 StringImpl* JIT_OPERATION operationResolveRope(ExecState*, JSString*);
 JSString* JIT_OPERATION operationSingleCharacterString(ExecState*, int32_t);

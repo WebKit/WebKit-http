@@ -2886,22 +2886,6 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
         generator.emitReturn(r0);
         return;
     }
-
-    // If there is a return statment, and it is the only statement in the function, check if this is a numeric compare.
-    if (static_cast<BlockNode*>(singleStatement)->singleStatement()) {
-        ExpressionNode* returnValueExpression = returnNode->value();
-        if (returnValueExpression && returnValueExpression->isSubtract()) {
-            ExpressionNode* lhsExpression = static_cast<SubNode*>(returnValueExpression)->lhs();
-            ExpressionNode* rhsExpression = static_cast<SubNode*>(returnValueExpression)->rhs();
-            if (lhsExpression->isResolveNode()
-                && rhsExpression->isResolveNode()
-                && generator.isArgumentNumber(static_cast<ResolveNode*>(lhsExpression)->identifier(), 0)
-                && generator.isArgumentNumber(static_cast<ResolveNode*>(rhsExpression)->identifier(), 1)) {
-                
-                generator.setIsNumericCompareFunction(true);
-            }
-        }
-    }
 }
 
 // ------------------------------ FuncDeclNode ---------------------------------
@@ -2953,12 +2937,17 @@ RegisterID* ClassExprNode::emitBytecode(BytecodeGenerator& generator, RegisterID
         generator.emitLoad(protoParent.get(), jsNull());
 
         RefPtr<RegisterID> tempRegister = generator.newTemporary();
+
+        // FIXME: Throw TypeError if it's a generator function.
+        RefPtr<Label> superclassIsUndefinedLabel = generator.newLabel();
+        generator.emitJumpIfTrue(generator.emitIsUndefined(tempRegister.get(), superclass.get()), superclassIsUndefinedLabel.get());
+
         RefPtr<Label> superclassIsNullLabel = generator.newLabel();
         generator.emitJumpIfTrue(generator.emitUnaryOp(op_eq_null, tempRegister.get(), superclass.get()), superclassIsNullLabel.get());
 
-        // FIXME: Throw TypeError if it's a generator function.
         RefPtr<Label> superclassIsObjectLabel = generator.newLabel();
         generator.emitJumpIfTrue(generator.emitIsObject(tempRegister.get(), superclass.get()), superclassIsObjectLabel.get());
+        generator.emitLabel(superclassIsUndefinedLabel.get());
         generator.emitThrowTypeError(ASCIILiteral("The superclass is not an object."));
         generator.emitLabel(superclassIsObjectLabel.get());
         generator.emitGetById(protoParent.get(), superclass.get(), generator.propertyNames().prototype);

@@ -151,8 +151,7 @@ ArrayMode ArrayMode::fromObserved(const ConcurrentJITLocker& locker, ArrayProfil
 
 ArrayMode ArrayMode::refine(
     Graph& graph, Node* node,
-    SpeculatedType base, SpeculatedType index, SpeculatedType value,
-    NodeFlags flags) const
+    SpeculatedType base, SpeculatedType index, SpeculatedType value) const
 {
     if (!base || !index) {
         // It can be that we had a legitimate arrayMode but no incoming predictions. That'll
@@ -197,15 +196,11 @@ ArrayMode ArrayMode::refine(
         return withTypeAndConversion(Array::Contiguous, Array::Convert);
         
     case Array::Double:
-        if (flags & NodeBytecodeUsesAsInt)
-            return withTypeAndConversion(Array::Contiguous, Array::RageConvert);
         if (!value || isFullNumberSpeculation(value))
             return *this;
         return withTypeAndConversion(Array::Contiguous, Array::Convert);
         
     case Array::Contiguous:
-        if (doesConversion() && (flags & NodeBytecodeUsesAsInt))
-            return withConversion(Array::RageConvert);
         return *this;
 
     case Array::Int8Array:
@@ -333,7 +328,7 @@ Structure* ArrayMode::originalArrayStructure(Graph& graph, Node* node) const
     return originalArrayStructure(graph, node->origin.semantic);
 }
 
-bool ArrayMode::alreadyChecked(Graph& graph, Node* node, AbstractValue& value, IndexingType shape) const
+bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& value, IndexingType shape) const
 {
     switch (arrayClass()) {
     case Array::OriginalArray: {
@@ -380,7 +375,7 @@ bool ArrayMode::alreadyChecked(Graph& graph, Node* node, AbstractValue& value, I
     } }
 }
 
-bool ArrayMode::alreadyChecked(Graph& graph, Node* node, AbstractValue& value) const
+bool ArrayMode::alreadyChecked(Graph& graph, Node* node, const AbstractValue& value) const
 {
     switch (type()) {
     case Array::Generic:
@@ -579,8 +574,6 @@ const char* arrayConversionToString(Array::Conversion conversion)
         return "AsIs";
     case Array::Convert:
         return "Convert";
-    case Array::RageConvert:
-        return "RageConvert";
     default:
         return "Unknown!";
     }

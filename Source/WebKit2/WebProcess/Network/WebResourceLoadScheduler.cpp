@@ -60,7 +60,6 @@ namespace WebKit {
 
 WebResourceLoadScheduler::WebResourceLoadScheduler()
     : m_internallyFailedLoadTimer(RunLoop::main(), this, &WebResourceLoadScheduler::internallyFailedLoadTimerFired)
-    , m_suspendPendingRequestsCount(0)
 {
 }
 
@@ -244,32 +243,25 @@ void WebResourceLoadScheduler::crossOriginRedirectReceived(ResourceLoader*, cons
     // We override this call in the WebProcess to make it a no-op.
 }
 
-void WebResourceLoadScheduler::servePendingRequests(ResourceLoadPriority minimumPriority)
+void WebResourceLoadScheduler::servePendingRequests(ResourceLoadPriority)
 {
-    LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::servePendingRequests");
-    
-    // The NetworkProcess scheduler is good at making sure loads are serviced until there are no more pending requests.
-    // If this WebProcess isn't expecting requests to be served then we can ignore messaging the NetworkProcess right now.
-    if (m_suspendPendingRequestsCount)
-        return;
-
-    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::ServePendingRequests(minimumPriority), 0);
+    // This overrides the base class version.
+    // We don't need to do anything as this is handled by the network process.
 }
 
 void WebResourceLoadScheduler::suspendPendingRequests()
 {
-    ++m_suspendPendingRequestsCount;
+    // Network process does keep requests in pending state.
 }
 
 void WebResourceLoadScheduler::resumePendingRequests()
 {
-    ASSERT(m_suspendPendingRequestsCount);
-    --m_suspendPendingRequestsCount;
+    // Network process does keep requests in pending state.
 }
 
-void WebResourceLoadScheduler::setSerialLoadingEnabled(bool enabled)
+void WebResourceLoadScheduler::setSerialLoadingEnabled(bool)
 {
-    WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::SetSerialLoadingEnabled(enabled), Messages::NetworkConnectionToWebProcess::SetSerialLoadingEnabled::Reply(), 0);
+    // Network process does not reorder loads.
 }
 
 void WebResourceLoadScheduler::networkProcessCrashed()

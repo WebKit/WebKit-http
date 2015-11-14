@@ -70,10 +70,6 @@ public:
     // OK to use on new arrays, but not if it might be a RegExpMatchArray.
     JS_EXPORT_PRIVATE bool setLength(ExecState*, unsigned, bool throwException = false);
 
-    JS_EXPORT_PRIVATE void sort(ExecState*);
-    JS_EXPORT_PRIVATE void sort(ExecState*, JSValue compareFunction, CallType, const CallData&);
-    JS_EXPORT_PRIVATE void sortNumeric(ExecState*, JSValue compareFunction, CallType, const CallData&);
-
     JS_EXPORT_PRIVATE void push(ExecState*, JSValue);
     JS_EXPORT_PRIVATE JSValue pop(ExecState*);
 
@@ -163,20 +159,8 @@ private:
     bool unshiftCountWithArrayStorage(ExecState*, unsigned startIndex, unsigned count, ArrayStorage*);
     bool unshiftCountSlowCase(VM&, bool, unsigned);
 
-    template<IndexingType indexingType>
-    void sortNumericVector(ExecState*, JSValue compareFunction, CallType, const CallData&);
-        
-    template<IndexingType indexingType, typename StorageType>
-    void sortCompactedVector(ExecState*, ContiguousData<StorageType>, unsigned relevantLength);
-        
-    template<IndexingType indexingType>
-    void sortVector(ExecState*, JSValue compareFunction, CallType, const CallData&);
-
     bool setLengthWithArrayStorage(ExecState*, unsigned newLength, bool throwException, ArrayStorage*);
     void setLengthWritable(ExecState*, bool writable);
-        
-    template<IndexingType indexingType>
-    void compactForSorting(unsigned& numDefined, unsigned& newRelevantLength);
 };
 
 inline Butterfly* createContiguousArrayButterfly(VM& vm, JSCell* intendedOwner, unsigned length, unsigned& vectorLength)
@@ -216,7 +200,7 @@ inline JSArray* JSArray::create(VM& vm, Structure* structure, unsigned initialLe
             || hasContiguous(structure->indexingType()));
         unsigned vectorLength;
         butterfly = createContiguousArrayButterfly(vm, 0, initialLength, vectorLength);
-        ASSERT(initialLength < MIN_SPARSE_ARRAY_INDEX);
+        ASSERT(initialLength < MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH);
         if (hasDouble(structure->indexingType())) {
             for (unsigned i = 0; i < vectorLength; ++i)
                 butterfly->contiguousDouble()[i] = PNaN;

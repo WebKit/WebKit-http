@@ -33,6 +33,8 @@
 #import "NetworkResourceLoader.h"
 #import "SandboxExtension.h"
 #import <WebCore/CFNetworkSPI.h>
+#import <WebCore/ResourceRequestCFNet.h>
+#import <WebKitSystemInterface.h>
 #import <wtf/RAMSize.h>
 
 namespace WebKit {
@@ -41,6 +43,23 @@ void NetworkProcess::platformLowMemoryHandler(bool)
 {
     CFURLConnectionInvalidateConnectionCache();
     _CFURLCachePurgeMemoryCache(adoptCF(CFURLCacheCopySharedURLCache()).get());
+}
+
+static void initializeNetworkSettings()
+{
+    static const unsigned preferredConnectionCount = 6;
+
+    WKInitializeMaximumHTTPConnectionCountPerHost(preferredConnectionCount);
+
+    Boolean keyExistsAndHasValidFormat = false;
+    Boolean prefValue = CFPreferencesGetAppBooleanValue(CFSTR("WebKitEnableHTTPPipelining"), kCFPreferencesCurrentApplication, &keyExistsAndHasValidFormat);
+    if (keyExistsAndHasValidFormat)
+        WebCore::ResourceRequest::setHTTPPipeliningEnabled(prefValue);
+
+    if (WebCore::ResourceRequest::resourcePrioritiesEnabled()) {
+        WKSetHTTPRequestMaximumPriority(toPlatformRequestPriority(WebCore::ResourceLoadPriority::Highest));
+        WKSetHTTPRequestMinimumFastLanePriority(toPlatformRequestPriority(WebCore::ResourceLoadPriority::Medium));
+    }
 }
 
 void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters& parameters)
@@ -55,6 +74,8 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     _CFNetworkSetATSContext(parameters.networkATSContext.get());
 #endif
+
+    initializeNetworkSettings();
 
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
     // - memory cache size passed from UI process is always ignored;
@@ -134,16 +155,9 @@ void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
         [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
-void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+static void clearNSURLCache(dispatch_group_t group, std::chrono::system_clock::time_point modifiedSince, const std::function<void ()>& completionHandler)
 {
-#if ENABLE(NETWORK_CACHE)
-    NetworkCache::singleton().clear();
-#endif
-
-    if (!m_clearCacheDispatchGroup)
-        m_clearCacheDispatchGroup = dispatch_group_create();
-
-    dispatch_group_async(m_clearCacheDispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [modifiedSince, completionHandler] {
+    dispatch_group_async(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [modifiedSince, completionHandler] {
         NSURLCache *cache = [NSURLCache sharedURLCache];
 
 #if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
@@ -157,6 +171,24 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
             completionHandler();
         });
     });
+}
+
+void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+{
+    if (!m_clearCacheDispatchGroup)
+        m_clearCacheDispatchGroup = dispatch_group_create();
+
+#if ENABLE(NETWORK_CACHE)
+    auto group = m_clearCacheDispatchGroup;
+    dispatch_group_async(group, dispatch_get_main_queue(), [group, modifiedSince, completionHandler] {
+        NetworkCache::singleton().clear(modifiedSince, [group, modifiedSince, completionHandler] {
+            // FIXME: Probably not necessary.
+            clearNSURLCache(group, modifiedSince, completionHandler);
+        });
+    });
+#else
+    clearNSURLCache(m_clearCacheDispatchGroup, modifiedSince, completionHandler);
+#endif
 }
 
 }

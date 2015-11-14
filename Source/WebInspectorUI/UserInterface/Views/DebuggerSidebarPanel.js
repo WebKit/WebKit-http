@@ -48,14 +48,12 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         this._navigationBar = new WebInspector.NavigationBar;
         this.element.appendChild(this._navigationBar.element);
 
-        var imageSize = WebInspector.Platform.isLegacyMacOS ? 16 : 15;
-
-        var breakpointsImage = {src: platformImagePath("Breakpoints.svg"), width: imageSize, height: imageSize};
-        var pauseImage = {src: platformImagePath("Pause.svg"), width: imageSize, height: imageSize};
-        var resumeImage = {src: platformImagePath("Resume.svg"), width: imageSize, height: imageSize};
-        var stepOverImage = {src: platformImagePath("StepOver.svg"), width: imageSize, height: imageSize};
-        var stepIntoImage = {src: platformImagePath("StepInto.svg"), width: imageSize, height: imageSize};
-        var stepOutImage = {src: platformImagePath("StepOut.svg"), width: imageSize, height: imageSize};
+        var breakpointsImage = {src: "Images/Breakpoints.svg", width: 15, height: 15};
+        var pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};
+        var resumeImage = {src: "Images/Resume.svg", width: 15, height: 15};
+        var stepOverImage = {src: "Images/StepOver.svg", width: 15, height: 15};
+        var stepIntoImage = {src: "Images/StepInto.svg", width: 15, height: 15};
+        var stepOutImage = {src: "Images/StepOut.svg", width: 15, height: 15};
 
         var toolTip = WebInspector.UIString("Enable all breakpoints (%s)").format(WebInspector.toggleBreakpointsKeyboardShortcut.displayName);
         var altToolTip = WebInspector.UIString("Disable all breakpoints (%s)").format(WebInspector.toggleBreakpointsKeyboardShortcut.displayName);
@@ -127,8 +125,8 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
             return false;
         };
 
-        this.filterBar.addFilterBarButton("debugger-show-resources-with-breakpoints-only", showResourcesWithBreakpointsOnlyFilterFunction, true, WebInspector.UIString("Show only resources with breakpoints."), WebInspector.UIString("Show resources with and without breakpoints."), platformImagePath("Breakpoints.svg"), 15, 15);
-        this.filterBar.addFilterBarButton("debugger-show-resources-with-issues-only", showResourcesWithIssuesOnlyFilterFunction, true, WebInspector.UIString("Show only resources with issues."), WebInspector.UIString("Show resources with and without issues."), platformImagePath("Errors.svg"), 15, 15);
+        this.filterBar.addFilterBarButton("debugger-show-resources-with-breakpoints-only", showResourcesWithBreakpointsOnlyFilterFunction, true, WebInspector.UIString("Show only resources with breakpoints."), WebInspector.UIString("Show resources with and without breakpoints."), "Images/Breakpoints.svg", 15, 15);
+        this.filterBar.addFilterBarButton("debugger-show-resources-with-issues-only", showResourcesWithIssuesOnlyFilterFunction, true, WebInspector.UIString("Show only resources with issues."), WebInspector.UIString("Show resources with and without issues."), "Images/Errors.svg", 15, 15);
 
         this._breakpointsContentTreeOutline = this.contentTreeOutline;
         this._breakpointsContentTreeOutline.onselect = this._treeElementSelected.bind(this);
@@ -168,9 +166,25 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         WebInspector.IssueMessage.addEventListener(WebInspector.IssueMessage.Event.DisplayLocationDidChange, this._handleDebuggerObjectDisplayLocationDidChange, this);
         WebInspector.issueManager.addEventListener(WebInspector.IssueManager.Event.IssueWasAdded, this._handleIssueAdded, this);
         WebInspector.issueManager.addEventListener(WebInspector.IssueManager.Event.Cleared, this._handleIssuesCleared, this);
+
+        if (WebInspector.frameResourceManager.mainFrame)
+            this._addResourcesRecursivelyForFrame(WebInspector.frameResourceManager.mainFrame);
+
+        for (var script of WebInspector.debuggerManager.knownNonResourceScripts)
+            this._addScript(script);
     }
 
     // Public
+
+    closed()
+    {
+        super.closed();
+
+        WebInspector.Frame.removeEventListener(null, null, this);
+        WebInspector.debuggerManager.removeEventListener(null, null, this);
+        WebInspector.Breakpoint.removeEventListener(null, null, this);
+        WebInspector.IssueMessage.removeEventListener(null, null, this);
+    }
 
     get hasSelectedElement()
     {
@@ -304,6 +318,13 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
             this._addBreakpoint(breakpoints[i], sourceCode);
     }
 
+    _addIssuesForSourceCode(sourceCode)
+    {
+        var issues = WebInspector.issueManager.issuesForSourceCode(sourceCode);
+        for (var issue of issues)
+            this._addIssue(issue);
+    }
+
     _addTreeElementForSourceCodeToContentTreeOutline(sourceCode)
     {
         var treeElement = this._breakpointsContentTreeOutline.getCachedTreeElement(sourceCode);
@@ -331,15 +352,30 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         return treeElement;
     }
 
+    _addResourcesRecursivelyForFrame(frame)
+    {
+        this._addResource(frame.mainResource);
+
+        for (var resource of frame.resources)
+            this._addResource(resource);
+
+        for (var childFrame of frame.childFrames)
+            this._addResourcesRecursivelyForFrame(childFrame);
+    }
+
     _resourceAdded(event)
     {
-        var resource = event.data.resource;
+        this._addResource(event.data.resource);
+    }
 
+    _addResource(resource)
+    {
         if (![WebInspector.Resource.Type.Document, WebInspector.Resource.Type.Script].includes(resource.type))
             return;
 
         this._addTreeElementForSourceCodeToContentTreeOutline(resource);
         this._addBreakpointsForSourceCode(resource);
+        this._addIssuesForSourceCode(resource);
     }
 
     _mainResourceChanged(event)
@@ -347,12 +383,16 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         var resource = event.target.mainResource;
         this._addTreeElementForSourceCodeToContentTreeOutline(resource);
         this._addBreakpointsForSourceCode(resource);
+        this._addIssuesForSourceCode(resource);
     }
 
     _scriptAdded(event)
     {
-        var script = event.data.script;
+        this._addScript(event.data.script);
+    }
 
+    _addScript(script)
+    {
         // FIXME: Allow for scripts generated by eval statements to appear, but filter out JSC internals
         // and other WebInspector internals lacking __WebInspector in the url attribute.
         if (!script.url)
@@ -369,6 +409,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         this._addTreeElementForSourceCodeToContentTreeOutline(script);
         this._addBreakpointsForSourceCode(script);
+        this._addIssuesForSourceCode(script);
     }
 
     _scriptsCleared(event)

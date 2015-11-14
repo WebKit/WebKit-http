@@ -26,15 +26,12 @@
 WebInspector.ResourcesTabContentView = function(identifier)
 {
     var tabBarItem = new WebInspector.TabBarItem("Images/Resources.svg", WebInspector.UIString("Resources"));
-    var detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.applicationCacheDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
+    var detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
 
     // FIXME: Until ContentFlows are moved to the Elements tab, these details sidebar panels need to be included.
     detailsSidebarPanels = detailsSidebarPanels.concat([WebInspector.domNodeDetailsSidebarPanel, WebInspector.cssStyleDetailsSidebarPanel]);
     if (WebInspector.layerTreeDetailsSidebarPanel)
         detailsSidebarPanels.push(WebInspector.layerTreeDetailsSidebarPanel);
-
-    // FIME: Until ResourceSidebarPanel supports instantiating after inspector launch, disable closing.
-    tabBarItem.hideCloseButton = true;
 
     WebInspector.ContentBrowserTabContentView.call(this, identifier || "resources", "resources", tabBarItem, WebInspector.ResourceSidebarPanel, detailsSidebarPanels);
 };
@@ -52,12 +49,7 @@ WebInspector.ResourcesTabContentView.prototype = {
 
     canShowRepresentedObject: function(representedObject)
     {
-        return representedObject instanceof WebInspector.Frame || representedObject instanceof WebInspector.Resource ||
-            representedObject instanceof WebInspector.Script || representedObject instanceof WebInspector.ContentFlow ||
-            representedObject instanceof WebInspector.DOMStorageObject || representedObject instanceof WebInspector.CookieStorageObject ||
-            representedObject instanceof WebInspector.DatabaseTableObject || representedObject instanceof WebInspector.DatabaseObject ||
-            representedObject instanceof WebInspector.ApplicationCacheFrame || representedObject instanceof WebInspector.IndexedDatabaseObjectStore ||
-            representedObject instanceof WebInspector.IndexedDatabaseObjectStoreIndex;
+        return representedObject instanceof WebInspector.Frame || representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Script;
     }
 };
 

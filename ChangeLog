@@ -1,3 +1,123 @@
+2015-05-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Disable GNU Gold linker on Cortex A53
+        https://bugs.webkit.org/show_bug.cgi?id=144382
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2015-05-01  Martin Robinson  <mrobinson@igalia.com>
+
+        USE(...) macro should expect unprefixed variables
+        https://bugs.webkit.org/show_bug.cgi?id=144454
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/OptionsAppleWin.cmake: Replace all occurrences WTF_USE with USE.
+        * Source/cmake/OptionsEfl.cmake: Ditto.
+        * Source/cmake/OptionsGTK.cmake: Ditto.
+        * Source/cmake/OptionsMac.cmake: Ditto.
+        * Source/cmake/OptionsWinCairo.cmake: Ditto.
+        * Source/cmake/WebKitFeatures.cmake: No longer expose WTF_USE when encountering
+        USE variables.
+
+2015-04-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Automatically expose WTF_USE_FOO to the build when USE_FOO is exposed
+        https://bugs.webkit.org/show_bug.cgi?id=144394
+
+        Reviewed by Carlos Garcia Campos.
+
+        Automatically expose WTF_USE_FOO when USE_FOO is exposed. A side-effect of this change
+        is that it fixes the redirected XComposite window for GTK+, which was accidentally
+        disabled in previous reworking of the CMake configuration.
+
+        * Source/cmake/OptionsGTK.cmake: We no longer need to expose the WTF_ prefixed
+        version of USE variables.
+        * Source/cmake/WebKitFeatures.cmake: Automatically expose WTF_USE_FOO when USE_FOO
+        is exposed to the build.
+
+2015-04-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bump GTK+ version numbers.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-04-29  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] CMake should be failed if openwebrtc package does not exist but ENABLE_MEDIA_STREAM is ON
+        https://bugs.webkit.org/show_bug.cgi?id=144435
+
+        Reviewed by Gyuyoung Kim.
+
+        This patch adds REQUIRED option for OpenWebRTC when ENABLE_MEDIA_STREAM is ON.
+        In addition, this adds DEFAULT_PORT_VALUE for ENABLE_MEDIA_STREAM to match with FeatureList.pm
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2015-04-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(183583): [Mac] make without SDKROOT has issues
+        https://bugs.webkit.org/show_bug.cgi?id=144431
+
+        Reviewed by Dan Bernstein.
+
+        * Source/Makefile:
+        Assume an empty SDKROOT means an macosx variant, so only
+        enable settings if the SDKROOT is not empty and does not
+        contain "macosx".
+
+2015-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        Fix the GTK+ build after r183584
+
+        * Source/cmake/OptionsGTK.cmake: Properly use the USE_LIBHYPHEN and HYPHEN_FOUND variables.
+
+2015-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add support for automatic hyphenation
+        https://bugs.webkit.org/show_bug.cgi?id=44478
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/FindHyphen.cmake: Added. A CMake module for finding libhyphen.
+        * Source/cmake/OptionsGTK.cmake: Look for libhyphen and enable hyphenation if found.
+        * Source/cmakeconfig.h.cmake: Pass through the whether libhyphen is enabled.
+
+2015-04-29  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Failure when building WebKit for appletvsimulator.
+        https://bugs.webkit.org/show_bug.cgi?id=144356
+
+        Reviewed by Alexey Proskuryakov.
+
+        Changes Makefile logic to check for "not OS X" rather than "is iOS" to
+        make TVOS and WatchOS behave correctly.
+
+        * Source/Makefile:
+
+2015-04-29  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] [GTK] Organize and clean up unused CMake variables
+        https://bugs.webkit.org/show_bug.cgi?id=144364
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsGTK.cmake: Remove unused variables and move variables
+        specific to certain projects into their PlatformGTK.cmake files.
+
+2015-04-29  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Build failure to find gio-unix
+        https://bugs.webkit.org/show_bug.cgi?id=144083
+
+        Reviewed by Gyuyoung Kim.
+
+        Original patch by Doug Newgard <scimma22@outlook.com>
+
+        * Source/cmake/OptionsEfl.cmake: Moved geoclue block before find_package(GLIB...)
+
 2015-04-28  Ryuan Choi  <ryuan.choi@navercorp.com>
 
         [CoordinatedGraphics] Merge TILED_BACKING_STORE guard with COORDINATED_GRAPHICS

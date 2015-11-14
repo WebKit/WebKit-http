@@ -28,14 +28,13 @@
 #define WebGLShaderPrecisionFormat_h
 
 #include "GraphicsContext3D.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class WebGLShaderPrecisionFormat : public RefCounted<WebGLShaderPrecisionFormat> {
 public:
-    static PassRefPtr<WebGLShaderPrecisionFormat> create(GC3Dint rangeMin, GC3Dint rangeMax, GC3Dint precision);
+    static Ref<WebGLShaderPrecisionFormat> create(GC3Dint rangeMin, GC3Dint rangeMax, GC3Dint precision);
 
     GC3Dint rangeMin() const;
     GC3Dint rangeMax() const;

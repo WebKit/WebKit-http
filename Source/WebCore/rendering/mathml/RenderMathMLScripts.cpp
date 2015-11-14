@@ -95,12 +95,17 @@ void RenderMathMLScripts::fixAnonymousStyleForSubSupPair(RenderObject* subSupPai
     // (respectively superscript) with the bottom (respectively top) edge of
     // the flex container. Note that for valid <msub> and <msup> elements, the
     // subSupPair should actually have only one script.
-    scriptsStyle.setJustifyContent(m_kind == Sub ? JustifyFlexStart : m_kind == Super ? JustifyFlexEnd : JustifySpaceBetween);
+    if (m_kind == Sub)
+        scriptsStyle.setJustifyContentPosition(ContentPositionFlexStart);
+    else if (m_kind == Super)
+        scriptsStyle.setJustifyContentPosition(ContentPositionFlexEnd);
+    else
+        scriptsStyle.setJustifyContentDistribution(ContentDistributionSpaceBetween);
 
     // The MathML specification does not specify vertical alignment of scripts.
     // Let's right align prescripts and left align postscripts.
     // See http://lists.w3.org/Archives/Public/www-math/2012Aug/0006.html
-    scriptsStyle.setAlignItems(isPostScript ? ItemPositionFlexStart : ItemPositionFlexEnd);
+    scriptsStyle.setAlignItemsPosition(isPostScript ? ItemPositionFlexStart : ItemPositionFlexEnd);
 
     // We set the order property so that the prescripts are drawn before the base.
     scriptsStyle.setOrder(isPostScript ? 0 : -1);
@@ -114,7 +119,7 @@ void RenderMathMLScripts::fixAnonymousStyles()
 {
     // We set the base wrapper's style so that baseHeight in layout() will be an unstretched height.
     ASSERT(m_baseWrapper && m_baseWrapper->style().hasOneRef());
-    m_baseWrapper->style().setAlignSelf(ItemPositionFlexStart);
+    m_baseWrapper->style().setAlignSelfPosition(ItemPositionFlexStart);
 
     // This sets the style for postscript pairs.
     RenderObject* subSupPair = m_baseWrapper;
@@ -133,8 +138,8 @@ void RenderMathMLScripts::fixAnonymousStyles()
             ASSERT(subSupPair && subSupPair->style().refCount() == 1);
             RenderStyle& scriptsStyle = subSupPair->style();
             scriptsStyle.setFlexDirection(FlowRow);
-            scriptsStyle.setJustifyContent(JustifyFlexStart);
-            scriptsStyle.setAlignItems(ItemPositionCenter);
+            scriptsStyle.setJustifyContentPosition(ContentPositionFlexStart);
+            scriptsStyle.setAlignItemsPosition(ItemPositionCenter);
             scriptsStyle.setOrder(0);
             scriptsStyle.setFontSize(style().fontSize());
         }

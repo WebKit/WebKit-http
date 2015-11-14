@@ -1,0 +1,38 @@
+<style>
+span {
+    font-size: 24px
+}
+
+#a {
+    font-family: -apple-system;
+}
+
+#b {
+    font-family: -apple-system-font;
+}
+</style>
+<script>
+if (window.testRunner)
+    window.testRunner.dumpAsText();
+
+window.addEventListener("load", run, false);
+
+function run() {
+    var a = document.getElementById("a");
+    var b = document.getElementById("b");
+    var result = document.getElementById("result");
+
+    var aRect = a.getBoundingClientRect();
+    var bRect = b.getBoundingClientRect();
+
+    if (aRect.width == bRect.width)
+        result.textContent = "PASS: widths were the same";
+    else
+        result.textContent = "FAIL: widths were not the same";
+}
+</script>
+<p>These next two lines should be the same width</p>
+<p><span id="a">This is some text</span></p>
+<p><span id="b">This is some text</span></p>
+
+<p id="result"></p>

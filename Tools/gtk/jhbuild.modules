@@ -7,6 +7,7 @@
     <dependencies>
       <dep package="cairo"/>
       <dep package="fonts"/>
+      <dep package="dicts"/>
       <dep package="fontconfig"/>
       <dep package="freetype6"/>
       <dep package="harfbuzz"/>
@@ -89,6 +90,11 @@
   <autotools id="fonts"
              skip-autogen="true">
     <branch repo="github.com" module="mrobinson/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.5"/>
+  </autotools>
+
+  <autotools id="dicts"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-dicts.git" checkoutdir="webkitgtk-test-dicts" tag="0.0.1"/>
   </autotools>
 
   <autotools id="freetype6" autogen-sh="configure">

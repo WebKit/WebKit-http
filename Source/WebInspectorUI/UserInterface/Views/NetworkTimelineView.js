@@ -125,6 +125,12 @@ WebInspector.NetworkTimelineView.prototype = {
         WebInspector.ContentView.prototype.hidden.call(this);
     },
 
+    closed: function()
+    {
+        console.assert(this.representedObject instanceof WebInspector.Timeline);
+        this.representedObject.removeEventListener(null, null, this);
+    },
+
     updateLayout: function()
     {
         WebInspector.TimelineView.prototype.updateLayout.call(this);
@@ -224,7 +230,7 @@ WebInspector.NetworkTimelineView.prototype = {
             return;
         }
 
-        wrappedSVGDocument(platformImagePath("Close.svg"), null, WebInspector.UIString("Close resource view"), function(element) {
+        wrappedSVGDocument("Images/Close.svg", null, WebInspector.UIString("Close resource view"), function(element) {
             this._closeStatusButton = new WebInspector.TreeElementStatusButton(element);
             this._closeStatusButton.addEventListener(WebInspector.TreeElementStatusButton.Event.Clicked, this._closeStatusButtonClicked, this);
             if (treeElement === this.navigationSidebarTreeOutline.selectedTreeElement)
