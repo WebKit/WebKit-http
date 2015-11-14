@@ -323,6 +323,19 @@ static const struct wl_keyboard_listener g_keyboardListener = {
     },
 };
 
+static const struct wl_touch_listener g_touchListener = {
+    // down
+    [](void*, struct wl_touch*, uint32_t, uint32_t, struct wl_surface*, int32_t, wl_fixed_t, wl_fixed_t) { },
+    // up
+    [](void*, struct wl_touch*, uint32_t, uint32_t, int32_t) { },
+    // motion
+    [](void*, struct wl_touch*, uint32_t, int32_t, wl_fixed_t, wl_fixed_t) { },
+    // frame
+    [](void*, struct wl_touch*) { },
+    // cancel
+    [](void*, struct wl_touch*) { },
+};
+
 static const struct wl_seat_listener g_seatListener = {
     // capabilities
     [](void* data, struct wl_seat* seat, uint32_t capabilities)
@@ -349,6 +362,17 @@ static const struct wl_seat_listener g_seatListener = {
         if (!hasKeyboardCap && seatData.keyboard.object) {
             wl_keyboard_destroy(seatData.keyboard.object);
             seatData.keyboard.object = nullptr;
+        }
+
+        // WL_SEAT_CAPABILITY_TOUCH
+        const bool hasTouchCap = capabilities & WL_SEAT_CAPABILITY_TOUCH;
+        if (hasTouchCap && !seatData.touch.object) {
+            seatData.touch.object = wl_seat_get_touch(seat);
+            wl_touch_add_listener(seatData.touch.object, &g_touchListener, &seatData);
+        }
+        if (!hasTouchCap && seatData.touch.object) {
+            wl_touch_destroy(seatData.touch.object);
+            seatData.touch.object = nullptr;
         }
     },
     // name
@@ -424,6 +448,8 @@ WaylandDisplay::~WaylandDisplay()
         wl_pointer_destroy(m_seatData.pointer.object);
     if (m_seatData.keyboard.object)
         wl_keyboard_destroy(m_seatData.keyboard.object);
+    if (m_seatData.touch.object)
+        wl_touch_destroy(m_seatData.touch.object);
     if (m_seatData.xkb.context)
         xkb_context_unref(m_seatData.xkb.context);
     if (m_seatData.xkb.keymap)
