@@ -147,6 +147,7 @@ public:
     void setNeedsVisibleRectAdjustment();
     void purgeBackingStores();
 
+    static void setShouldSupportContentsTiling(bool);
     CoordinatedGraphicsLayer* findFirstDescendantWithContentsRecursively();
 
 private:
