@@ -325,13 +325,70 @@ static const struct wl_keyboard_listener g_keyboardListener = {
 
 static const struct wl_touch_listener g_touchListener = {
     // down
-    [](void*, struct wl_touch*, uint32_t, uint32_t, struct wl_surface*, int32_t, wl_fixed_t, wl_fixed_t) { },
+    [](void* data, struct wl_touch*, uint32_t, uint32_t time, struct wl_surface* surface, int32_t id, wl_fixed_t x, wl_fixed_t y)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(!target.first && !target.second);
+
+        auto it = seatData.inputClients.find(surface);
+        if (it == seatData.inputClients.end())
+            return;
+
+        target = { surface, it->second };
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        touchPoints[id] = { Input::TouchEvent::Down, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Down, id, time });
+    },
     // up
-    [](void*, struct wl_touch*, uint32_t, uint32_t, int32_t) { },
+    [](void* data, struct wl_touch*, uint32_t, uint32_t time, int32_t id)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(target.first && target.second);
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        auto& point = touchPoints[id];
+        point = { Input::TouchEvent::Up, time, id, point.x, point.y };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Up, id, time });
+
+        point = { Input::TouchEvent::Null, 0, 0, 0, 0 };
+        target = { nullptr, nullptr };
+    },
     // motion
-    [](void*, struct wl_touch*, uint32_t, int32_t, wl_fixed_t, wl_fixed_t) { },
+    [](void* data, struct wl_touch*, uint32_t time, int32_t id, wl_fixed_t x, wl_fixed_t y)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(target.first && target.second);
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        touchPoints[id] = { Input::TouchEvent::Motion, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Motion, id, time });
+    },
     // frame
-    [](void*, struct wl_touch*) { },
+    [](void*, struct wl_touch*)
+    {
+        // FIXME: Dispatching events via frame() would avoid dispatching events
+        // for every single event that's encapsulated in a frame with multiple
+        // other events.
+    },
     // cancel
     [](void*, struct wl_touch*) { },
 };
