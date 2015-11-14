@@ -1068,6 +1068,12 @@ FPRReg SpeculativeJIT::fillSpeculateDouble(Edge edge)
         }
         
         DataFormat spillFormat = info.spillFormat();
+        if (spillFormat != DataFormatDouble) {
+            DFG_CRASH(
+                m_jit.graph(), m_currentNode, toCString(
+                    "Expected ", edge, " to have double format but instead it is spilled as ",
+                    dataFormatToString(spillFormat)).data());
+        }
         DFG_ASSERT(m_jit.graph(), m_currentNode, spillFormat == DataFormatDouble);
         FPRReg fpr = fprAllocate();
         m_jit.loadDouble(JITCompiler::addressFor(virtualRegister), fpr);
@@ -1739,6 +1745,11 @@ void SpeculativeJIT::emitBranch(Node* node)
         jump(notTaken);
         
         noResult(node);
+        return;
+    }
+
+    case StringUse: {
+        emitStringBranch(node->child1(), taken, notTaken);
         return;
     }
 
@@ -4338,7 +4349,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case Phantom:
-    case MustGenerate:
     case Check:
         DFG_NODE_DO_TO_CHILDREN(m_jit.graph(), node, speculate);
         noResult(node);

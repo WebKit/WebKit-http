@@ -115,6 +115,15 @@ template <> struct iterator_traits<HashSet<RefPtr<WebCore::MediaSelectionOptionA
     for (CALayer* layer in self.sublayers)
         layer.frame = bounds;
 }
+
+- (void)setPosition:(CGPoint)position
+{
+    if (!CATransform3DIsIdentity(self.transform)) {
+        // Pre-apply the transform added in the WebProcess to fix <rdar://problem/18316542> to the position.
+        position = CGPointApplyAffineTransform(position, CATransform3DGetAffineTransform(self.transform));
+    }
+    [super setPosition:position];
+}
 @end
 
 #if ENABLE(AVF_CAPTIONS)
@@ -2789,8 +2798,8 @@ void MediaPlayerPrivateAVFoundationObjC::setShouldPlayToPlaybackTarget(bool shou
         return;
 
     AVOutputContext *newContext = shouldPlay ? m_outputContext.get() : nil;
-    AVOutputContext *currentContext = m_avPlayer.get().outputContext;
-    if ((!newContext && !currentContext) || [currentContext isEqual:newContext])
+    RetainPtr<AVOutputContext> currentContext = m_avPlayer.get().outputContext;
+    if ((!newContext && !currentContext.get()) || [currentContext.get() isEqual:newContext])
         return;
 
     setDelayCallbacks(true);
@@ -2805,10 +2814,8 @@ bool MediaPlayerPrivateAVFoundationObjC::isPlayingToWirelessPlaybackTarget()
     if (!m_avPlayer)
         return false;
 
-    if (!m_outputContext || !m_outputContext.get().deviceName)
-        return false;
-
-    return m_cachedRate;
+    RetainPtr<AVOutputContext> currentContext = m_avPlayer.get().outputContext;
+    return currentContext && currentContext.get().deviceName;
 }
 #endif // !PLATFORM(IOS)
 

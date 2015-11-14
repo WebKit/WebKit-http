@@ -133,10 +133,12 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncForEach(CallFrame* callFrame)
     JSValue key;
     if (callType == CallTypeJS) {
         JSFunction* function = jsCast<JSFunction*>(callBack);
-        CachedCall cachedCall(callFrame, function, 1);
+        CachedCall cachedCall(callFrame, function, 3);
         while (iterator->next(callFrame, key) && !vm->exception()) {
             cachedCall.setThis(thisValue);
             cachedCall.setArgument(0, key);
+            cachedCall.setArgument(1, key);
+            cachedCall.setArgument(2, set);
             cachedCall.call();
         }
         iterator->finish();
@@ -144,6 +146,8 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncForEach(CallFrame* callFrame)
         while (iterator->next(callFrame, key) && !vm->exception()) {
             MarkedArgumentBuffer args;
             args.append(key);
+            args.append(key);
+            args.append(set);
             JSC::call(callFrame, callBack, callType, callData, thisValue, args);
         }
         iterator->finish();
@@ -179,7 +183,7 @@ EncodedJSValue JSC_HOST_CALL setProtoFuncEntries(CallFrame* callFrame)
 {
     JSSet* thisObj = jsDynamicCast<JSSet*>(callFrame->thisValue());
     if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Set key iterator for a non-Set object.")));
+        return JSValue::encode(throwTypeError(callFrame, ASCIILiteral("Cannot create a Set entry iterator for a non-Set object.")));
     return JSValue::encode(JSSetIterator::create(callFrame->vm(), callFrame->callee()->globalObject()->setIteratorStructure(), thisObj, SetIterateKeyValue));
 }
 

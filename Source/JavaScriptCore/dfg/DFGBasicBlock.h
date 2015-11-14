@@ -61,6 +61,12 @@ struct BasicBlock : RefCounted<BasicBlock> {
     bool isEmpty() const { return !size(); }
     Node*& at(size_t i) { return m_nodes[i]; }
     Node* at(size_t i) const { return m_nodes[i]; }
+    Node* tryAt(size_t i) const
+    {
+        if (i >= size())
+            return nullptr;
+        return at(i);
+    }
     Node*& operator[](size_t i) { return at(i); }
     Node* operator[](size_t i) const { return at(i); }
     
@@ -88,7 +94,8 @@ struct BasicBlock : RefCounted<BasicBlock> {
             case Return:
             case Unreachable:
                 return NodeAndIndex(node, i);
-            // The bitter end can contain Phantoms and the like. There will probably only be one or two nodes after the terminal.
+            // The bitter end can contain Phantoms and the like. There will probably only be one or two nodes after the terminal. They are all no-ops and will not have any checked children.
+            case Check: // This is here because it's our universal no-op.
             case Phantom:
             case PhantomLocal:
             case Flush:

@@ -1,3 +1,460 @@
+2015-04-28  Alexey Proskuryakov  <ap@apple.com>
+
+        [WK2] fast/forms/input-search-press-escape-key.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=87168
+        rdar://problem/11508829
+
+        * platform/wk2/TestExpectations: This doesn't crash for me any more, unskipping.
+
+2015-04-28  Zalan Bujtas  <zalan@apple.com>
+
+        Checkboxes on bugs.webkit.org are painted with stripes at some zoom levels.
+        https://bugs.webkit.org/show_bug.cgi?id=144351
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that CG context is properly restored after painting dashed/dotted lines.
+
+        * fast/forms/checkbox-painting-with-hr-expected.html: Added.
+        * fast/forms/checkbox-painting-with-hr.html: Added.
+
+2015-04-28  Andreas Kling  <akling@apple.com>
+
+        DFG should generate efficient code for branching on a string's boolean value.
+        <https://webkit.org/b/144317>
+
+        Reviewed by Geoff Garen & Filip Pizlo.
+
+        * js/regress/branch-on-string-as-boolean-expected.txt: Added.
+        * js/regress/branch-on-string-as-boolean.html: Added.
+        * js/regress/script-tests/branch-on-string-as-boolean.js: Added.
+
+2015-04-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement font-synthesis CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=144305
+
+        Reviewed by Andreas Kling.
+
+        Test all combinations of font-weight, font-style, and font-synthesis.
+
+        * fast/css3-text/font-synthesis-expected.html: Added.
+        * fast/css3-text/font-synthesis.html: Added.
+
+2015-04-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Temporarily disable WebGL support
+        https://bugs.webkit.org/show_bug.cgi?id=144291
+
+        * platform/win/TestExpectations:
+        * platform/win/js/dom/constructor-length-expected.txt: Added.
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-04-28  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed gardening; add results for new tests.
+
+        * media/audio-playback-restriction-autoplay-expected.txt: Added.
+        * media/audio-playback-restriction-play-expected.txt: Added.
+
+2015-04-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] PHP scripts fail if HTTP_ORIGIN is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=144333
+
+        Rubberstamped by Brady Eidson.
+
+        * http/tests/security/resources/cors-post-redirect-target.php: Check
+        that HTTP_ORIGIN key exists before using it to avoid PHP error.
+
+2015-04-28  Andy Estes  <aestes@apple.com>
+
+        Add expectations for tests added in r183428 and r183450.
+
+        * js/regress/typed-array-get-set-by-val-profiling-expected.txt: Added.
+        * media/audio-playback-restriction-autoplay-expected.txt: Added.
+        * media/audio-playback-restriction-play-expected.txt: Added.
+
+2015-04-28  Antti Koivisto  <antti@apple.com>
+
+        Network Cache: Disk cache getting filled by YouTube video data
+        https://bugs.webkit.org/show_bug.cgi?id=144259
+
+        Reviewed by Darin Adler.
+
+        * http/tests/cache/disk-cache/disk-cache-media-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-media.html: Added.
+        * http/tests/cache/disk-cache/resources/cache-test.js:
+        (generateTestURL):
+
+2015-04-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Eliminate styleDidChange with StyleDifferenceEqual when updates are actually necessary
+        https://bugs.webkit.org/show_bug.cgi?id=144198
+
+        Reviewed by Darin Adler, Antti Koivisto.
+        
+        New test that detects whether a "hardware" animation is firing the style recalc
+        timer on every frame, which happened during development of this patch.
+
+        * compositing/animation/no-style-recalc-during-accelerated-animation-expected.txt: Added.
+        * compositing/animation/no-style-recalc-during-accelerated-animation.html: Added.
+
+2015-04-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add support for typed arrays to the Array profiling
+        https://bugs.webkit.org/show_bug.cgi?id=143913
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/script-tests/typed-array-get-set-by-val-profiling.js: Added.
+        * js/regress/typed-array-get-set-by-val-profiling.html: Added.
+
+2015-04-27  Doug Russell  <d_russell@apple.com>
+
+        Break up select text into multiple tests
+        https://bugs.webkit.org/show_bug.cgi?id=144301
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+        * platform/mac/accessibility/select-text-expected.txt: Removed.
+        * platform/mac/accessibility/select-text.html: Removed.
+        * platform/mac/accessibility/select-text/select-text-1-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-1.html: Added.
+        * platform/mac/accessibility/select-text/select-text-135546-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-135546.html: Added.
+        * platform/mac/accessibility/select-text/select-text-135575-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-135575.html: Added.
+        * platform/mac/accessibility/select-text/select-text-2-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-2.html: Added.
+        * platform/mac/accessibility/select-text/select-text-3-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-3.html: Added.
+        * platform/mac/accessibility/select-text/select-text-4-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-4.html: Added.
+        * platform/mac/accessibility/select-text/select-text-5-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-5.html: Added.
+        * platform/mac/accessibility/select-text/select-text-6-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-6.html: Added.
+        * platform/mac/accessibility/select-text/select-text-7-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-7.html: Added.
+        * platform/mac/accessibility/select-text/select-text-8-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-8.html: Added.
+        * platform/mac/accessibility/select-text/select-text-9-expected.txt: Added.
+        * platform/mac/accessibility/select-text/select-text-9.html: Added.
+
+2015-04-27  Daniel Bates  <dabates@apple.com>
+
+        Form control may be associated with the wrong HTML Form element after form id change
+        https://bugs.webkit.org/show_bug.cgi?id=133456
+        <rdar://problem/17095055>
+
+        Reviewed by Andy Estes.
+
+        Add tests to ensure that we associate the correct HTML Form element with a
+        <select> after changing the id of its associated HTML form element.
+
+        * fast/forms/change-form-id-to-be-unique-expected.txt: Added.
+        * fast/forms/change-form-id-to-be-unique-then-submit-form-expected.txt: Added.
+        * fast/forms/change-form-id-to-be-unique-then-submit-form.html: Added.
+        * fast/forms/change-form-id-to-be-unique.html: Added.
+
+2015-04-27  Jer Noble  <jer.noble@apple.com>
+
+        Add a setting & restriction which prevents non-interactivte playback of audible media elements.
+        https://bugs.webkit.org/show_bug.cgi?id=143486
+
+        Reviewed by Eric Carlson.
+
+        * media/audio-playback-restriction-autoplay.html: Added.
+        * media/audio-playback-restriction-play.html: Added.
+        * media/video-test.js:
+        (setCaptionDisplayMode):
+        (runWithKeyDown.eventName.window.testRunner.eventSender.keyDown.string_appeared_here.string_appeared_here.thunk):
+        (runWithKeyDown):
+
+2015-04-27  Jer Noble  <jer.noble@apple.com>
+
+        [WebAudio] AudioContext does not remove user-gesture restriction during resume()
+        https://bugs.webkit.org/show_bug.cgi?id=144211
+
+        Reviewed by Eric Carlson.
+
+        * webaudio/audiocontext-restriction-audiobuffersourcenode-start-expected.txt: Added.
+        * webaudio/audiocontext-restriction-audiobuffersourcenode-start.html: Added.
+        * webaudio/audiocontext-restriction-expected.txt: Added.
+        * webaudio/audiocontext-restriction.html: Added.
+        * webaudio/resources/audio-testing.js:
+        (runWithKeyDown):
+
+2015-04-27  Alexey Proskuryakov  <ap@apple.com>
+
+        rdar://problem/16678392 Page visibility tests are broken in Yosemite
+
+        * platform/mac-wk2/TestExpectations: They don't seem to be broken any more, unskipping.
+        Maybe <http://trac.webkit.org/changeset/181866> fixed them?
+        Also updated the next line (media/video-background-tab-playback.html), as it didn't match what bots see now.
+
+2015-04-27  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Wrong text offsetting when range does not start from the first renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=144167
+        rdar://problem/20639857
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that TextIterator returns the right text when the input range starts
+        from a sibling node.
+
+        TextIterator::m_previousTextLengthInFlow keeps track of the current node offset from the parent.
+        it is required to map simple line layout runs to RenderText positions.
+        This patch sets the offset value when the iteration start with a sibling node.
+
+        * fast/text/range-text-with-simple-line-layout-expected.txt: Added.
+        * fast/text/range-text-with-simple-line-layout.html: Added.
+
+2015-04-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183393.
+        https://bugs.webkit.org/show_bug.cgi?id=144272
+
+        Caused memory corruption detected by GuardMalloc (Requested by
+        ap on #webkit).
+
+        Reverted changeset:
+
+        "Synchronous XMLHttpRequest should get access to AppCache
+        resources stored as flat files"
+        https://bugs.webkit.org/show_bug.cgi?id=143711
+        http://trac.webkit.org/changeset/183393
+
+2015-04-27  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix viewport units in Media Queries
+        https://bugs.webkit.org/show_bug.cgi?id=144260
+
+        Reviewed by Darin Adler.
+
+        These tests make sure that viewport units are working as expected inside of Media Queries.
+
+        * fast/media/mq-viewport-units-expected.txt: Added.
+        * fast/media/mq-viewport-units.html: Added.
+
+2015-04-27  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Support for the justify-self and justify-items in grid layout
+        https://bugs.webkit.org/show_bug.cgi?id=133280
+
+        Implementation of justify-self and justify-items properties for grid.
+        Added additional testing for ensuring margin, padding and border are considered when
+        computing grid item's position.
+
+        Reviewed by David Hyatt.
+
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-lr-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-lr.html: Added.
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-rl-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding-vertical-rl.html: Added.
+        * fast/css-grid-layout/grid-align-justify-margin-border-padding.html: Added.
+        * fast/css-grid-layout/justify-self-cell-expected.txt: Added.
+        * fast/css-grid-layout/justify-self-cell.html: Added.
+        * fast/css-grid-layout/resources/grid.css:
+        (.directionLTR): Added. Useful for defining orthogonal flows.
+
+2015-04-27  Youenn Fablet  <youenn.fablet@crf.canon.fr> and Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Fixed timeout expectation of "closed should fulfill with
+        undefined" test. This doesn't time out anymore.
+
+        * streams/reference-implementation/readable-stream-templated.html:
+
+2015-04-27  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream constructor start function should be able to close the stream
+        https://bugs.webkit.org/show_bug.cgi?id=143363
+
+        Reviewed by Benjamin Poulain.
+
+        Updated expectations with new passes.
+
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+
+2015-04-27  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Synchronous XMLHttpRequest should get access to AppCache resources stored as flat files
+        https://bugs.webkit.org/show_bug.cgi?id=143711
+
+        Reviewed by Darin Adler.
+
+        * http/tests/appcache/resources/fake-video.mp4: Added.
+        * http/tests/appcache/resources/simple-video-sync.manifest: Added.
+        * http/tests/appcache/simple-video-sync-expected.txt: Added.
+        * http/tests/appcache/simple-video-sync.html: Added.
+
+2015-04-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Also skip it in run-javascriptcore-tests.
+
+        * js/script-tests/class-syntax-semicolon.js:
+
+2015-04-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Temporarily skip the test added in r183384 as it's hitting an assertion per an existing bug.
+
+        The newly uncovered bug is tracked by webkit.org/b/144258.
+
+        * TestExpectations:
+
+2015-04-26  Alexey Proskuryakov  <ap@apple.com>
+
+        editing/selection/programmatic-selection-on-mac-is-directionless.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=141122
+
+        * platform/wk2/TestExpectations: Mark the test as such. Unfortunately, there are
+        almost certainly other tests affected by this.
+
+2015-04-26  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] LayoutBox::hasDefiniteLogicalHeight() should consider abspos boxes as definite
+        https://bugs.webkit.org/show_bug.cgi?id=144144
+
+        Reviewed by Darin Adler.
+
+        Add new test case to check absolutely positioned elements.
+
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size-expected.txt:
+        * fast/css-grid-layout/percent-track-breadths-regarding-container-size.html:
+
+2015-04-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class body ending with a semicolon throws a SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=144244
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for having a semicolon inside the class definition.
+
+        * js/class-syntax-semicolon-expected.txt: Added.
+        * js/class-syntax-semicolon.html: Added.
+        * js/script-tests/class-syntax-semicolon.js: Added.
+
+2015-04-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Getter or setter method named "prototype" or "constrcutor" should throw SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=144243
+
+        Reviewed by Darin Adler.
+
+        Added tests cases to both tests. Also added test cases missing from expression tests.
+
+        * js/class-syntax-declaration-expected.txt:
+        * js/class-syntax-expression-expected.txt:
+        * js/script-tests/class-syntax-declaration.js:
+        * js/script-tests/class-syntax-expression.js:
+
+2015-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGFilterBuilder should drive the builtin sourceAlpha from the passed sourceGraphic
+        https://bugs.webkit.org/show_bug.cgi?id=144137
+
+        Reviewed by Darin Adler.
+
+        Ensure the SourceAlpha is driven from last applied FilterEffect.
+
+        * svg/filters/sourceAlpha-input-filter-effect-expected.html: Added.
+        * svg/filters/sourceAlpha-input-filter-effect.html: Added.
+
+2015-04-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed gardening fix.
+
+        Mark editing/selection/extend-by-character-007.html to skip
+        instead of missing. It is not supported by EFL port yet.
+
+        * platform/efl/TestExpectations:
+
+2015-04-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed EFL gardening on 27th April.
+
+        Unskip 2 tests which have been passed since r183368.
+
+        Mark editing/selection/extend-by-character-007.html to missing.
+        This needs to have new baseline for EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-04-26  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Support for align-self and align-items in grid layout
+        https://bugs.webkit.org/show_bug.cgi?id=133225
+
+        Reviewed by Darin Adler.
+
+        Implementation of align-self and align-items properties ifor grid.
+
+        Several layout tests were touched for adapting them to the new grid item's
+        column-axis position when using RTL direction.
+
+        * fast/css-grid-layout/grid-align-expected.txt: Added.
+        * fast/css-grid-layout/grid-align.html: Added.
+        * fast/css-grid-layout/grid-element-border-grid-item.html:
+        * fast/css-grid-layout/grid-element-border-padding-grid-item.html:
+        * fast/css-grid-layout/grid-element-padding-grid-item.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-horizontal-rtl-expected.html:
+        * fast/css-grid-layout/grid-item-margin-auto-columns-rows-vertical-rtl-expected.html:
+        * fast/css-grid-layout/grid-item-margin-resolution.html:
+
+2015-04-26  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType,
+        postTextStateChangeNotification and postTextReplacementNotification to give assistive
+        tech apps more reliable context for responding to changes in web content. Also implement
+        a mechanism to post value changes in password form fields in coalesced ticks to thwart
+        analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent,
+        and an overload of postTextReplacementNotification to give assistive tech apps more
+        reliable context for responding to changes in web content selection. Also block posting
+        selection changes on password fields.
+
+        * platform/mac/accessibility/input-replacevalue-userinfo-expected.txt: Added.
+        * platform/mac/accessibility/input-replacevalue-userinfo.html: Added.
+        * platform/mac/accessibility/selection-change-userinfo-expected.txt: Added.
+        * platform/mac/accessibility/selection-change-userinfo.html: Added.
+        * platform/mac/accessibility/value-change-userinfo-expected.txt: Added.
+        * platform/mac/accessibility/value-change-userinfo.html: Added.
+
+2015-04-26  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r176751): line-height ignored in <button> elements
+        https://bugs.webkit.org/show_bug.cgi?id=144234
+
+        Reviewed by Antti Koivisto.
+
+        * fast/forms/button-line-height-expected.html: Added.
+        * fast/forms/button-line-height.html: Added.
+
+2015-04-26  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r173801): Use after free in WebCore::NotificationCenter::~NotificationCenter
+        https://bugs.webkit.org/show_bug.cgi?id=137163
+
+        Reviewed by Andy Estes.
+
+        * fast/notifications/request-notification-permission-while-reloading-expected.txt: Added.
+        * fast/notifications/request-notification-permission-while-reloading.html: Added.
+
 2015-04-26  Benjamin Poulain  <benjamin@webkit.org>
 
         [JSC] Implement Math.clz32(), remove Number.clz()

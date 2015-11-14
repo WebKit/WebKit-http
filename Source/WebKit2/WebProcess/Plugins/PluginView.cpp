@@ -465,11 +465,6 @@ void PluginView::manualLoadDidFail(const ResourceError& error)
     m_plugin->manualStreamDidFail(error.isCancellation());
 }
 
-RenderBoxModelObject* PluginView::renderer() const
-{
-    return downcast<RenderBoxModelObject>(m_pluginElement->renderer());
-}
-
 void PluginView::pageScaleFactorDidChange()
 {
     viewGeometryDidChange();
@@ -1372,7 +1367,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin());
+    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);

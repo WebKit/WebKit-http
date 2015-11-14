@@ -1,3 +1,93 @@
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        No longer check ENABLE_LLINT_C_LOOP to determine the value of ENABLE_JIT.
+
+        * wtf/Platform.h:
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        No longer check ENABLE_LLINT_C_LOOP to determine the value of ENABLE_JIT.
+
+        * wtf/Platform.h:
+
+2015-04-28  Alex Christensen  <achristensen@webkit.org>
+
+        Properly reset deleted count when clearing HashTables.
+        https://bugs.webkit.org/show_bug.cgi?id=144343
+
+        Reviewed by Andreas Kling.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::clear):
+        Reset m_deletedCount, which appears to have been forgotten.
+
+2015-04-28  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Use less memory for CombinedURLFilters.
+        https://bugs.webkit.org/show_bug.cgi?id=144290
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Forward.h:
+        * wtf/Vector.h:
+        Added a minCapacity template parameter to allow changing the minimum size of an 
+        allocated buffer. The default minCapacity is kept at 16 unless otherwise specified 
+        to have no change on existing code, but this could be changed later. A smaller 
+        default minCapacity would use less memory with small Vectors but spend more time 
+        copying when expanding to large Vectors.
+
+2015-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Deactivate WebGL until Windows tests work properly
+        https://bugs.webkit.org/show_bug.cgi?id=144291
+        <rdar://problem/20707307>
+
+        Reviewed by Zalan Bujtas.
+
+        * wtf/FeatureDefines.h: Force WebGL off for Windows builds.
+
+2015-04-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Rename WTF_USE_3D_GRAPHICS to ENABLE_GRAPHICS_CONTEXT_3D
+        https://bugs.webkit.org/show_bug.cgi?id=144193
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2015-04-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Autogenerate cmakeconfig.h.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143997
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h: Move a GTK-specific setting from cmakeconfig.h to here.
+
 2015-04-25  Martin Robinson  <mrobinson@igalia.com>
 
         Rename ENABLE_3D_RENDERING to ENABLE_3D_TRANSFORMS

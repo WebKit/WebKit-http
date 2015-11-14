@@ -492,6 +492,7 @@ public:
     static Ref<RenderStyle> createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle);
 
     static ItemPosition resolveAlignment(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer);
+    static ItemPosition resolveJustification(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForLayoutObject);
 
     enum IsAtShadowBoundary {
         AtShadowBoundary,
@@ -1024,8 +1025,6 @@ public:
 
     TextOrientation textOrientation() const { return static_cast<TextOrientation>(rareInheritedData->m_textOrientation); }
 
-    FontSynthesis fontSynthesis() const { return static_cast<FontSynthesis>(rareInheritedData->fontSynthesis); }
-
     ObjectFit objectFit() const { return static_cast<ObjectFit>(rareNonInheritedData->m_objectFit); }
     
     // Return true if any transform related property (currently transform, transformStyle3D or perspective) 
@@ -1059,6 +1058,11 @@ public:
     EPointerEvents pointerEvents() const { return static_cast<EPointerEvents>(inherited_flags._pointerEvents); }
     const AnimationList* animations() const { return rareNonInheritedData->m_animations.get(); }
     const AnimationList* transitions() const { return rareNonInheritedData->m_transitions.get(); }
+
+    AnimationList* animations() { return rareNonInheritedData->m_animations.get(); }
+    AnimationList* transitions() { return rareNonInheritedData->m_transitions.get(); }
+    
+    bool hasAnimationsOrTransitions() const { return rareNonInheritedData->hasAnimationsOrTransitions(); }
 
     AnimationList& ensureAnimations();
     AnimationList& ensureTransitions();
@@ -1535,7 +1539,6 @@ public:
     void setMarginAfterCollapse(EMarginCollapse c) { SET_VAR(rareNonInheritedData, marginAfterCollapse, c); }
     void setWordBreak(EWordBreak b) { SET_VAR(rareInheritedData, wordBreak, b); }
     void setOverflowWrap(EOverflowWrap b) { SET_VAR(rareInheritedData, overflowWrap, b); }
-    void setFontSynthesis(FontSynthesis synthesis) { SET_VAR(rareInheritedData, fontSynthesis, synthesis); }
     void setNBSPMode(ENBSPMode b) { SET_VAR(rareInheritedData, nbspMode, b); }
     void setLineBreak(LineBreak b) { SET_VAR(rareInheritedData, lineBreak, b); }
     void setHyphens(Hyphens h) { SET_VAR(rareInheritedData, hyphens, h); }
@@ -2064,7 +2067,6 @@ public:
     static BlendMode initialBlendMode() { return BlendModeNormal; }
     static Isolation initialIsolation() { return IsolationAuto; }
 #endif
-    static FontSynthesis initialFontSynthesis() { return FontSynthesisStyle | FontSynthesisWeight; }
 
     static ptrdiff_t noninheritedFlagsMemoryOffset() { return OBJECT_OFFSETOF(RenderStyle, noninherited_flags); }
 

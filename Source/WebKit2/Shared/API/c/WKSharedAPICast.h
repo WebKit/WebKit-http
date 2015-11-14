@@ -145,6 +145,11 @@ public:
     {
     }
 
+    ProxyingRefPtr(Ref<ImplType>&& impl)
+        : m_impl(WTF::move(impl))
+    {
+    }
+
     operator APIType() { return toAPI(m_impl.get()); }
 
 private:
@@ -160,8 +165,7 @@ inline ProxyingRefPtr<API::String> toAPI(StringImpl* string)
 
 inline WKStringRef toCopiedAPI(const String& string)
 {
-    RefPtr<API::String> apiString = API::String::create(string);
-    return toAPI(apiString.release().leakRef());
+    return toAPI(&API::String::create(string).leakRef());
 }
 
 inline ProxyingRefPtr<API::URL> toURLRef(StringImpl* string)
@@ -174,9 +178,8 @@ inline ProxyingRefPtr<API::URL> toURLRef(StringImpl* string)
 inline WKURLRef toCopiedURLAPI(const String& string)
 {
     if (!string)
-        return 0;
-    RefPtr<API::URL> url = API::URL::create(string);
-    return toAPI(url.release().leakRef());
+        return nullptr;
+    return toAPI(&API::URL::create(string).leakRef());
 }
 
 inline String toWTFString(WKStringRef stringRef)
@@ -752,22 +755,22 @@ inline WKFrameNavigationType toAPI(WebCore::NavigationType type)
     WKFrameNavigationType wkType = kWKFrameNavigationTypeOther;
 
     switch (type) {
-    case WebCore::NavigationTypeLinkClicked:
+    case WebCore::NavigationType::LinkClicked:
         wkType = kWKFrameNavigationTypeLinkClicked;
         break;
-    case WebCore::NavigationTypeFormSubmitted:
+    case WebCore::NavigationType::FormSubmitted:
         wkType = kWKFrameNavigationTypeFormSubmitted;
         break;
-    case WebCore::NavigationTypeBackForward:
+    case WebCore::NavigationType::BackForward:
         wkType = kWKFrameNavigationTypeBackForward;
         break;
-    case WebCore::NavigationTypeReload:
+    case WebCore::NavigationType::Reload:
         wkType = kWKFrameNavigationTypeReload;
         break;
-    case WebCore::NavigationTypeFormResubmitted:
+    case WebCore::NavigationType::FormResubmitted:
         wkType = kWKFrameNavigationTypeFormResubmitted;
         break;
-    case WebCore::NavigationTypeOther:
+    case WebCore::NavigationType::Other:
         wkType = kWKFrameNavigationTypeOther;
         break;
     }

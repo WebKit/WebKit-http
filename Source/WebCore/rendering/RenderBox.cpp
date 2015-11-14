@@ -2712,7 +2712,11 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
         // grab our cached flexible height.
         // FIXME: Account for block-flow in flexible boxes.
         // https://bugs.webkit.org/show_bug.cgi?id=46418
-        if (hasOverrideLogicalContentHeight() && parent()->isFlexibleBoxIncludingDeprecated())
+        if (hasOverrideLogicalContentHeight() && (parent()->isFlexibleBoxIncludingDeprecated()
+#if ENABLE(CSS_GRID_LAYOUT)
+            || parent()->isRenderGrid()
+#endif
+        ))
             h = Length(overrideLogicalContentHeight(), Fixed);
         else if (treatAsReplaced)
             h = Length(computeReplacedLogicalHeight(), Fixed);
@@ -4542,8 +4546,6 @@ bool RenderBox::percentageLogicalHeightIsResolvableFromBlock(const RenderBlock* 
 bool RenderBox::hasDefiniteLogicalHeight() const
 {
     const Length& logicalHeight = style().logicalHeight();
-    if (logicalHeight.isIntrinsicOrAuto())
-        return false;
     if (logicalHeight.isFixed())
         return true;
     // The size of the containing block of an absolutely positioned element is always definite with respect to that
@@ -4554,6 +4556,8 @@ bool RenderBox::hasDefiniteLogicalHeight() const
     if (hasOverrideContainingBlockLogicalHeight())
         return overrideContainingBlockContentLogicalHeight() != -1;
 #endif
+    if (logicalHeight.isIntrinsicOrAuto())
+        return false;
 
     return percentageLogicalHeightIsResolvable(this);
 }

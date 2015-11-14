@@ -233,7 +233,7 @@ public:
 
     virtual float visibleContentScaleFactor() const override;
 
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     virtual void setFixedVisibleContentRect(const IntRect&) override;
 #endif
     WEBCORE_EXPORT virtual void setScrollPosition(const IntPoint&) override;
@@ -284,6 +284,8 @@ public:
     // on both the main thread and the scrolling thread.
     static float yPositionForInsetClipLayer(const FloatPoint& scrollPosition, float topContentInset);
     WEBCORE_EXPORT static float yPositionForRootContentLayer(const FloatPoint& scrollPosition, float topContentInset, float headerHeight);
+    WEBCORE_EXPORT float yPositionForRootContentLayer() const;
+
     static float yPositionForHeaderLayer(const FloatPoint& scrollPosition, float topContentInset);
     static float yPositionForFooterLayer(const FloatPoint& scrollPosition, float topContentInset, float totalContentsHeight, float footerHeight);
 

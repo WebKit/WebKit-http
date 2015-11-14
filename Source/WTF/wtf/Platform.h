@@ -497,6 +497,11 @@
 #define WTF_USE_WEBP 1
 #endif
 
+#if PLATFORM(GTK) && !defined(GTK_API_VERSION_2)
+#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6
+#endif
+
+
 #if PLATFORM(HAIKU)
 #define WTF_USE_WEBP 1
 #endif
@@ -797,12 +802,6 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
-/* Disable the JIT if we force the LLInt C Loop */
-#if defined(ENABLE_LLINT_C_LOOP) && ENABLE_LLINT_C_LOOP
-#undef ENABLE_JIT
-#define ENABLE_JIT 0
-#endif
-
 /* If the baseline jit is not available, then disable upper tiers as well: */
 #if !ENABLE(JIT)
 #undef ENABLE_DFG_JIT      /* Undef so that we can redefine it. */
@@ -933,10 +932,6 @@
 #endif
 #endif
 
-#if ENABLE(WEBGL) && !defined(WTF_USE_3D_GRAPHICS)
-#define WTF_USE_3D_GRAPHICS 1
-#endif
-
 #if ENABLE(WEBGL) && PLATFORM(WIN)
 #define WTF_USE_OPENGL 1
 #define WTF_USE_OPENGL_ES_2 1
@@ -957,7 +952,7 @@
 #define WTF_USE_TEXTURE_MAPPER 1
 #endif
 
-#if USE(TEXTURE_MAPPER) && USE(3D_GRAPHICS) && !defined(WTF_USE_TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER) && ENABLE(GRAPHICS_CONTEXT_3D) && !defined(WTF_USE_TEXTURE_MAPPER_GL)
 #define WTF_USE_TEXTURE_MAPPER_GL 1
 #endif
 

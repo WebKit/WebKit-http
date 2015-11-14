@@ -1,3 +1,369 @@
+2015-04-28  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [CoordinatedGraphics] Merge TILED_BACKING_STORE guard with COORDINATED_GRAPHICS
+        https://bugs.webkit.org/show_bug.cgi?id=143001
+
+        Reviewed by Gyuyoung Kim.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::shouldUseFixedLayout):
+
+2015-04-28  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Increase stablility of run-benchmark script
+        https://bugs.webkit.org/show_bug.cgi?id=144361
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/run-benchmark:
+        (main):
+        * Scripts/webkitpy/benchmark_runner/README.md: Update readme due to changes.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/generic_benchmark_builder.py:
+        (GenericBenchmarkBuilder.clean):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py: Improve error handling and remove an unnecessary loop.
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.prepareEnv): Remove saved sessions of Safari.
+        * Scripts/webkitpy/benchmark_runner/data/patches/JetStream.patch: Upload 'results' rather than 'time'.
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan: Update formate.
+        * Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan: Update formate.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py: 
+        (ServerControl.render_POST): Flush the buffer to make sure we can pass the result to stdout.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver.fetchResult):
+        (HTTPServerDriver):
+        (HTTPServerDriver.killServer): Add kill server interface.
+        (HTTPServerDriver.getReturnCode): Add get return code interface.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py: Adjust to support new interfaces.
+        (SimpleHTTPServerDriver.serve):
+        (SimpleHTTPServerDriver.fetchResult):
+        (SimpleHTTPServerDriver):
+        (SimpleHTTPServerDriver.killServer):
+        (SimpleHTTPServerDriver.getReturnCode):
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (forceRemove): Provide python version of 'rm -rf'.
+
+2015-04-28  Sam Weinig  <sam@webkit.org>
+
+        [Content Extensions] Process NFAs individually to avoid having all NFAs live at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=144363
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::createNFAs):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+        (TestWebKitAPI::countLiveNodes):
+        (TestWebKitAPI::createNFAs):
+        (TestWebKitAPI::buildDFAFromPatterns):
+        Update tests to use a hand rolled createNFAs function on top of CombinedURLFilters::processNFAs.
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/build-jsc: Use ENABLE_JIT instead of ENABLE_LLINT_C_LOOP on Mac. Always explicitly
+        set the value of ENABLE_JIT and ENABLE_FTL_JIT to avoid assumptions about the default value.
+        * Scripts/webkitperl/FeatureList.pm: Add --jit option to build-webkit.
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        * Scripts/build-jsc: Use ENABLE_JIT instead of ENABLE_LLINT_C_LOOP on Mac. Perform sanity-
+        checking to ensure --cloop and --ftl-jit cannot be combined. Always explicitly set the value
+        of ENABLE_JIT and ENABLE_FTL_JIT to avoid assumptions about the default value.
+        * Scripts/webkitperl/FeatureList.pm: Add --jit option to build-webkit.
+
+2015-04-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake] Remove unnecessary include paths in TestWebKitAPI cmake files
+        https://bugs.webkit.org/show_bug.cgi?id=144319
+
+        Reviewed by Csaba Osztrogonác.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix common typo "targetting" => "targeting"
+        https://bugs.webkit.org/show_bug.cgi?id=144349
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitdirs.pm:
+        (execMacWebKitAppForDebugging):
+
+2015-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][jhbuild] Mesa build failure with llvm 3.6
+        https://bugs.webkit.org/show_bug.cgi?id=144250
+
+        Reviewed by Žan Doberšek.
+
+        Bump the version of Mesa to 10.5.4
+
+        * gtk/jhbuild.modules:
+
+2015-04-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Disable App Nap in WebKitTestRunner UI process
+        https://bugs.webkit.org/show_bug.cgi?id=144308
+
+        Reviewed by Daniel Bates.
+
+        * WebKitTestRunner/mac/main.mm:
+        (disableAppNapInUIProcess):
+        (main):
+
+2015-04-28  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Update JHBuild Mesa download directory
+        https://bugs.webkit.org/show_bug.cgi?id=144318
+
+        Update the download directory of Mesa module since the previous one
+        doesn't exist any more.
+
+        Reviewed by Žan Doberšek.
+
+        * gtk/jhbuild.modules:
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183477.
+        https://bugs.webkit.org/show_bug.cgi?id=144334
+
+        Roll back the Mesa dependency bump in fear of uncaught
+        regressions while the testing bots are no-op. (Requested by
+        zdobersek on #webkit).
+
+        Reverted changeset:
+
+        "[GTK][jhbuild] Mesa build failure with llvm 3.6"
+        https://bugs.webkit.org/show_bug.cgi?id=144250
+        http://trac.webkit.org/changeset/183477
+
+2015-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][jhbuild] Mesa build failure with llvm 3.6
+        https://bugs.webkit.org/show_bug.cgi?id=144250
+
+        Reviewed by Žan Doberšek.
+
+        Bump the version of Mesa to 10.5.4
+
+        * gtk/jhbuild.modules:
+
+2015-04-27  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add '__init__.py' and fix known bug in benchmark runner.
+        https://bugs.webkit.org/show_bug.cgi?id=144296
+
+        Reviewed by Ryosuke Niwa
+
+        * Scripts/webkitpy/benchmark_runner/__init__.py: Make python to recognize this module.
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder/__init__.py: Make python to recognize this module.
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute): Fix logic bug that '--output-file' option doesn't work, and empty output file bug.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/__init__.py: Make python to recognize this module.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/__init__.py: Make python to recognize this module.
+
+2015-04-27  Alexey Proskuryakov  <ap@apple.com>
+
+        More build fix.
+
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        Use -objectForKey:, not array subscript.
+
+2015-04-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Catch unexpected exits in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=144288
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (atexitFunction):
+        (DumpRenderTreeMain):
+
+2015-04-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix
+
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        Use -objectForKey:, not array subscript.
+
+2015-04-27  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/frames/flattening/iframe-flattening-resize-event-count.html times out on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=144155
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp: (WTR::TestController::resetPreferencesToConsistentValues):
+        Disable App Nap. I don't have positive evidence that it's the culprit, but it could be,
+        and we clearly don't want App Nap while testing.
+
+2015-04-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [CMake] Autogenerate cmakeconfig.h.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=143997
+
+        Reviewed by Csaba Osztrogonác.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt: Add XP_UNIX to the command-line
+        definitions since TestNetscapePlugIn does not use cmakeconfig.h.
+
+2015-04-27  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r182879): Images and video can no longer be downloaded
+        https://bugs.webkit.org/show_bug.cgi?id=144267
+        <rdar://problem/20702844>
+
+        Reviewed by Simon Fraser.
+
+        Revise tests to check for proper download menu state.
+        1. Downloading a loal image should be disabled.
+        2. Downloading a local media file should be disabled.
+        3. Downloading non-downloadable media should be disabled.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/ActionMenus.mm:
+        (TestWebKitAPI::TEST):
+
+2015-04-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Merge run-launcher into run-minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=141928
+
+        Reviewed by Darin Adler.
+
+        * Scripts/run-iexploder-tests:
+        (runSafariWithIExploder):
+        * Scripts/run-launcher: Removed.
+        * Scripts/run-minibrowser:
+        * Scripts/webkitdirs.pm:
+        (launcherPath):
+        * Scripts/webkitpy/port/efl.py:
+        (EflPort.show_results_html_file):
+        * Scripts/webkitpy/port/efl_unittest.py:
+        (EflPortTest.test_show_results_html_file):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.print_leaks_summary):
+        (GtkPort.show_results_html_file):
+        (GtkPort): Deleted.
+        * Scripts/webkitpy/port/gtk_unittest.py:
+        (GtkPortTest.test_show_results_html_file):
+
+2015-04-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [buildbot] Fix the output of perf-test buildstep on timeout
+        https://bugs.webkit.org/show_bug.cgi?id=144097
+
+        Reviewed by Ryosuke Niwa.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunAndUploadPerfTests.getText2):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        (RunAndUploadPerfTestsTest.test_buildbot_timeout):
+        (RunAndUploadPerfTestsTest.test_build_bad_preparation): Deleted.
+
+2015-04-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] TestWebKitAPI's forwarding header generator should depend on WebKit2's generator
+        https://bugs.webkit.org/show_bug.cgi?id=143874
+
+        Reviewed by Gyuyoung Kim.
+
+        * TestWebKitAPI/PlatformEfl.cmake: Add the new dependency.
+
+2015-04-24  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Move to upstream OpenWebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=144145
+
+        Reviewed by Carlos Garcia Campos.
+
+        * efl/jhbuild.modules: Switch to upstream OpenWebRTC repository
+        and add a new simple patch to gst-plugins-base, required for
+        OpenWebRTC build.
+        * efl/patches/gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch: Added.
+        * gtk/jhbuild.modules: Ditto.
+        * gtk/patches/gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch: Added.
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement ES6 template literals
+        https://bugs.webkit.org/show_bug.cgi?id=142691
+
+        Reviewed by Darin Adler.
+
+        Add ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX compile time flag.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-04-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [CMake][EFL] Remove unnecessary include, library path in WebKitTestRunner/PlatformEfl.cmake 
+        https://bugs.webkit.org/show_bug.cgi?id=144217
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/PlatformEfl.cmake:
+
+2015-04-26  Doug Russell  <d_russell@apple.com>
+
+        AX: richer text change notifications (142719)
+        https://bugs.webkit.org/show_bug.cgi?id=142719
+
+        Reviewed by Darin Adler.
+
+        Richer accessibility value change notifications. Introduce AXTextEditType,
+        postTextStateChangeNotification and postTextReplacementNotification to give assistive
+        tech apps more reliable context for responding to changes in web content. Also implement
+        a mechanism to post value changes in password form fields in coalesced ticks to thwart
+        analyzing the cadence of changes.
+
+        Richer accessibility selection change notifications. Introduce AXTextStateChangeIntent,
+        and an overload of postTextReplacementNotification to give assistive tech apps more
+        reliable context for responding to changes in web content selection. Also block posting
+        selection changes on password fields.
+
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.h:
+        * DumpRenderTree/mac/AccessibilityNotificationHandler.mm:
+        (-[AccessibilityNotificationHandler stopObserving]):
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::removeNotificationListener):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityNotificationHandler.mm:
+        (-[AccessibilityNotificationHandler _notificationReceived:]):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::removeNotificationListener):
+
 2015-04-25  Sungmann Cho  <sungmann.cho@navercorp.com>
 
         Add myself to contributors.json

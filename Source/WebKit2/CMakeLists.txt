@@ -150,7 +150,7 @@ set(WebKit2_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/transforms"
 )
 
-if (WTF_USE_3D_GRAPHICS)
+if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${THIRDPARTY_DIR}/ANGLE"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
@@ -167,10 +167,14 @@ set(NetworkProcess_SOURCES
     NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/cache/NetworkCache.cpp
+    NetworkProcess/cache/NetworkCacheBlobStorage.cpp
     NetworkProcess/cache/NetworkCacheCoders.cpp
-    NetworkProcess/cache/NetworkCacheEncoder.cpp
     NetworkProcess/cache/NetworkCacheDecoder.cpp
+    NetworkProcess/cache/NetworkCacheEncoder.cpp
+    NetworkProcess/cache/NetworkCacheEntry.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp
+    NetworkProcess/cache/NetworkCacheStatistics.cpp
+    NetworkProcess/cache/NetworkCacheStorage.cpp
 )
 
 set(WebKit2_SOURCES

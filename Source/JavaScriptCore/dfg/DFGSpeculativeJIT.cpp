@@ -4040,6 +4040,15 @@ void SpeculativeJIT::compileStringZeroLength(Node* node)
     unblessedBooleanResult(eqGPR, node);
 }
 
+void SpeculativeJIT::emitStringBranch(Edge nodeUse, BasicBlock* taken, BasicBlock* notTaken)
+{
+    SpeculateCellOperand str(this, nodeUse);
+    speculateString(nodeUse, str.gpr());
+    branchTest32(JITCompiler::NonZero, MacroAssembler::Address(str.gpr(), JSString::offsetOfLength()), taken);
+    jump(notTaken);
+    noResult(m_currentNode);
+}
+
 void SpeculativeJIT::compileConstantStoragePointer(Node* node)
 {
     GPRTemporary storage(this);
@@ -5623,18 +5632,6 @@ void SpeculativeJIT::emitSwitchChar(Node* node, SwitchData* data)
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
-}
-
-bool SpeculativeJIT::StringSwitchCase::operator<(
-    const SpeculativeJIT::StringSwitchCase& other) const
-{
-    unsigned minLength = std::min(string->length(), other.string->length());
-    for (unsigned i = 0; i < minLength; ++i) {
-        if (string->at(i) == other.string->at(i))
-            continue;
-        return string->at(i) < other.string->at(i);
-    }
-    return string->length() < other.string->length();
 }
 
 namespace {

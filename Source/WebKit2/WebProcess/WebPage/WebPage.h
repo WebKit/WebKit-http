@@ -526,6 +526,7 @@ public:
     void resetAssistedNodeForFrame(WebFrame*);
     WebCore::IntRect rectForElementAtInteractionLocation();
     void updateSelectionAppearance();
+    void getLookupContextAtPoint(const WebCore::IntPoint, uint64_t callbackID);
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
@@ -549,7 +550,7 @@ public:
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
 
     void pageDidScroll();
-#if USE(TILED_BACKING_STORE)
+#if USE(COORDINATED_GRAPHICS)
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void setFixedVisibleContentRect(const WebCore::IntRect&);
     void sendViewportAttributesChanged();

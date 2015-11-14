@@ -1,3 +1,775 @@
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Deadlock on applications using JSContext on non-main thread
+        https://bugs.webkit.org/show_bug.cgi?id=144370
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::singleton):
+        Prevent a possible deadlock by assuming we can synchronously
+        run something on the main queue at this time.
+
+2015-04-28  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL should fully support Switch (it currently lacks the SwitchString variant)
+        https://bugs.webkit.org/show_bug.cgi?id=144348
+
+        Reviewed by Benjamin Poulain.
+        
+        This adds SwitchString support to the FTL. This is already tested by switch microbenchmarks
+        in LayoutTests/js/regress.
+
+        * dfg/DFGCommon.cpp:
+        (JSC::DFG::stringLessThan):
+        * dfg/DFGCommon.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::StringSwitchCase::operator<): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::StringSwitchCase::operator<):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLIntrinsicRepository.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileSwitch):
+        (JSC::FTL::LowerDFGToLLVM::switchString):
+        (JSC::FTL::LowerDFGToLLVM::StringSwitchCase::StringSwitchCase):
+        (JSC::FTL::LowerDFGToLLVM::StringSwitchCase::operator<):
+        (JSC::FTL::LowerDFGToLLVM::CharacterCase::CharacterCase):
+        (JSC::FTL::LowerDFGToLLVM::CharacterCase::operator<):
+        (JSC::FTL::LowerDFGToLLVM::switchStringRecurse):
+        (JSC::FTL::LowerDFGToLLVM::switchStringSlow):
+        (JSC::FTL::LowerDFGToLLVM::appendOSRExit):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::check):
+        * ftl/FTLOutput.h:
+        * ftl/FTLWeight.h:
+        (JSC::FTL::Weight::inverse):
+        * jit/JITOperations.h:
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_JIT, enabled by default, instead of
+        ENABLE_LLINT_C_LOOP, disabled by default.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL): Check ENABLE_JIT instead of ENABLE_LLINT_C_LOOP.
+
+2015-04-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183514.
+        https://bugs.webkit.org/show_bug.cgi?id=144359
+
+        It broke cloop test bots (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT"
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+        http://trac.webkit.org/changeset/183514
+
+2015-04-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully replace ENABLE_LLINT_C_LOOP with ENABLE_JIT
+        https://bugs.webkit.org/show_bug.cgi?id=144304
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Define ENABLE_JIT, enabled by default, instead of
+        ENABLE_LLINT_C_LOOP, disabled by default.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL): Check ENABLE_JIT instead of ENABLE_LLINT_C_LOOP.
+
+2015-04-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix common typo "targetting" => "targeting"
+        https://bugs.webkit.org/show_bug.cgi?id=144349
+
+        Reviewed by Daniel Bates.
+
+        * bytecode/ExecutionCounter.h:
+
+2015-04-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Update the features.json for WeakSet, WeakMap, Template literals, Tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=144328
+
+        Reviewed by Andreas Kling.
+
+        Update the status of ES6 features.
+
+        * features.json:
+
+2015-04-28  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should not use or preserve Phantoms during transformations
+        https://bugs.webkit.org/show_bug.cgi?id=143736
+
+        Reviewed by Geoffrey Garen.
+        
+        Since http://trac.webkit.org/changeset/183207 and http://trac.webkit.org/changeset/183406, it is
+        no longer necessary to preserve Phantoms during transformations. They are still useful just
+        before FixupPhase to support backwards propagation analyses. They are still inserted late in the
+        game in the DFG backend. But transformations don't need to worry about them. Inside a basic
+        block, we can be sure that so long as the IR pinpoints the place where the value becomes
+        available in a bytecode register (using MovHint) and so long as there is a SetLocal anytime some
+        other block would need the value (either for OSR or for DFG execution), then we don't need any
+        liveness markers.
+        
+        So, this removes any places where we inserted Phantoms just for liveness during transformation
+        and it replaces convertToPhantom() with remove(), which just converts the node to a Check. A
+        Check node only keeps its children so long as those children have checks.
+        
+        The fact that we no longer convertToPhantom() means that we have to be more careful when
+        constant-folding GetLocal. Previously we would convertToPhantom() and use the fact that
+        Phantom(Phi) was a valid construct. It's not valid anymore. So, when constant folding encounters
+        a GetLocal it needs to insert a PhantomLocal directly. This allows us to simplify
+        Graph::convertToConstant() a bit. Luckily, none of the other users of this method would see
+        GetLocals.
+        
+        The only Phantom-like cruft left over after this patch is:
+        
+        - Phantoms before FixupPhase. I kind of like these. It means that before FixupPhase, we can do
+          backwards analyses and rely on the fact that the users of a node in DFG IR are a superset of
+          the users of the original local's live range in bytecode. This is essential for supporting our
+          BackwardsPropagationPhase, which is an important optimization for things like asm.js.
+        
+        - PhantomLocals and GetLocals being NodeMustGenerate. See discussion in
+          https://bugs.webkit.org/show_bug.cgi?id=144086. It appears that this is not as evil as the
+          alternatives. The best long-term plan is to simply ditch the ThreadedCPS IR entirely and have
+          the DFG use SSA. For now, so long as any new DFG optimizations we add are block-local and
+          treat GetLocal/SetLocal conservatively, this should all be sound.
+        
+        This change should be perf-neutral although it does reduce the total work that the compiler
+        does.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGAdjacencyList.h:
+        (JSC::DFG::AdjacencyList::justChecks):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGBasicBlock.cpp:
+        (JSC::DFG::BasicBlock::replaceTerminal):
+        * dfg/DFGBasicBlock.h:
+        (JSC::DFG::BasicBlock::findTerminal):
+        * dfg/DFGCFGSimplificationPhase.cpp:
+        (JSC::DFG::CFGSimplificationPhase::keepOperandAlive):
+        (JSC::DFG::CFGSimplificationPhase::mergeBlocks):
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::CPSRethreadingPhase):
+        (JSC::DFG::CPSRethreadingPhase::clearVariables):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeFlushOrPhantomLocalFor):
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlock):
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGCleanUpPhase.cpp: Copied from Source/JavaScriptCore/dfg/DFGPhantomRemovalPhase.cpp.
+        (JSC::DFG::CleanUpPhase::CleanUpPhase):
+        (JSC::DFG::CleanUpPhase::run):
+        (JSC::DFG::performCleanUp):
+        (JSC::DFG::PhantomRemovalPhase::PhantomRemovalPhase): Deleted.
+        (JSC::DFG::PhantomRemovalPhase::run): Deleted.
+        (JSC::DFG::performPhantomRemoval): Deleted.
+        * dfg/DFGCleanUpPhase.h: Copied from Source/JavaScriptCore/dfg/DFGPhantomRemovalPhase.h.
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        (JSC::DFG::ConstantFoldingPhase::addBaseCheck):
+        (JSC::DFG::ConstantFoldingPhase::fixUpsilons):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        (JSC::DFG::DCEPhase::fixupBlock):
+        (JSC::DFG::DCEPhase::cleanVariables):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupBlock):
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::convertStringAddUse):
+        (JSC::DFG::FixupPhase::attemptToMakeFastStringAdd):
+        (JSC::DFG::FixupPhase::checkArray):
+        (JSC::DFG::FixupPhase::fixIntConvertingEdge):
+        (JSC::DFG::FixupPhase::fixIntOrBooleanEdge):
+        (JSC::DFG::FixupPhase::fixDoubleOrBooleanEdge):
+        (JSC::DFG::FixupPhase::injectTypeConversionsInBlock):
+        (JSC::DFG::FixupPhase::tryToRelaxRepresentation):
+        (JSC::DFG::FixupPhase::injectTypeConversionsForEdge):
+        (JSC::DFG::FixupPhase::addRequiredPhantom): Deleted.
+        (JSC::DFG::FixupPhase::addPhantomsIfNecessary): Deleted.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::convertToConstant):
+        (JSC::DFG::Graph::mergeRelevantToOSR): Deleted.
+        * dfg/DFGGraph.h:
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertCheck):
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::handleBlock):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::remove):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::replaceWith):
+        (JSC::DFG::Node::convertToPhantom): Deleted.
+        (JSC::DFG::Node::convertToCheck): Deleted.
+        (JSC::DFG::Node::willHaveCodeGenOrOSR): Deleted.
+        * dfg/DFGNodeFlags.h:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPhantomCanonicalizationPhase.cpp: Removed.
+        * dfg/DFGPhantomCanonicalizationPhase.h: Removed.
+        * dfg/DFGPhantomRemovalPhase.cpp: Removed.
+        * dfg/DFGPhantomRemovalPhase.h: Removed.
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGResurrectionForValidationPhase.cpp: Removed.
+        * dfg/DFGResurrectionForValidationPhase.h: Removed.
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateDouble):
+        * dfg/DFGStoreBarrierElisionPhase.cpp:
+        (JSC::DFG::StoreBarrierElisionPhase::elideBarrier):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        (JSC::DFG::StrengthReductionPhase::convertToIdentityOverChild):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validate):
+        (JSC::DFG::Validate::validateCPS):
+        (JSC::DFG::Validate::validateSSA):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileNoOp):
+        (JSC::FTL::LowerDFGToLLVM::compilePhantom): Deleted.
+
+2015-04-28  Andreas Kling  <akling@apple.com>
+
+        DFG+FTL should generate efficient code for branching on a string's boolean value.
+        <https://webkit.org/b/144317>
+
+        Reviewed by Geoff Garen & Filip Pizlo
+
+        Teach Branch nodes about StringUse and have them generate an efficient zero-length string check
+        instead of dropping out to C++ whenever we branch on a string.
+
+        The FTL JIT already handled Branch nodes with StringUse through its use of boolify(), so only
+        the DFG JIT gets some new codegen logic in this patch.
+
+        Test: js/regress/branch-on-string-as-boolean.js (~4.5x speedup)
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitStringBranch):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitBranch):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitBranch):
+
+2015-04-28  Filip Pizlo  <fpizlo@apple.com>
+
+        VarargsForwardingPhase should only consider MovHints that have the candidate as a child
+        https://bugs.webkit.org/show_bug.cgi?id=144340
+
+        Reviewed by Michael Saboff and Mark Lam.
+        
+        Since we were considering all MovHints, we'd assume that the CreateDirectArguments or
+        CreateClosedArguments node was live so long as any MovHinted bytecode variable was alive.
+        Basically, we'd keep it alive until the end of the block. This maximized the chances of
+        there being an interfering operation, which would prevent elimination.
+        
+        The fix is to only consider MovHints that have the arguments candidate as a child. We only
+        care to track the liveness of those bytecode locals that would need an arguments object
+        recovery on OSR exit.
+        
+        This is a speed-up on V8Spider/raytrace and Octane/raytrace because it undoes the regression
+        introduced in http://trac.webkit.org/changeset/183406.
+
+        * dfg/DFGVarargsForwardingPhase.cpp:
+
+2015-04-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove WinCE cruft from cmake build system
+        https://bugs.webkit.org/show_bug.cgi?id=144325
+
+        Reviewed by Gyuyoung Kim.
+
+        * CMakeLists.txt:
+        * create_jit_stubs: Removed.
+
+2015-04-27  Andreas Kling  <akling@apple.com>
+
+        RegExp matches arrays should use contiguous indexing.
+        <https://webkit.org/b/144286>
+
+        Reviewed by Geoffrey Garen.
+
+        We had a custom Structure being used for RegExp matches arrays that would
+        put the arrays into SlowPutArrayStorageShape mode. This was just left
+        from when matches arrays were custom, lazily initialized objects.
+
+        This change removes that Structure and switches the matches arrays to
+        using the default ContiguousShape Structure. This allows the FTL JIT
+        to compile the inner loop of the Octane/regexp benchmark.
+
+        Also made a version of initializeIndex() [inline] that takes the indexing
+        type in an argument, allowing createRegExpMatchesArray() to initialize
+        the entire array without branching on the indexing type for each entry.
+
+        ~3% progression on Octane/regexp.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::mapStructure):
+        (JSC::JSGlobalObject::regExpMatchesArrayStructure): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::initializeIndex):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createRegExpMatchesArray):
+
+2015-04-27  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL failed to initialize arguments.callee on the slow path as well as the fast path
+        https://bugs.webkit.org/show_bug.cgi?id=144293
+
+        Reviewed by Mark Lam.
+        
+        The slow path doesn't fully initialize DirectArguments - it leaves callee blank. So, we need
+        to initialize the callee on the common path after the fast and slow path.
+
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileCreateDirectArguments):
+        * tests/stress/arguments-callee-uninitialized.js: Added.
+        (foo):
+
+2015-04-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add support for typed arrays to the Array profiling
+        https://bugs.webkit.org/show_bug.cgi?id=143913
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds ArrayModes for every typed arrays. Having that information
+        let us generate better GetByVal and PutByVal when the type speculation
+        are not good enough.
+
+        A typical case where this is useful is any basic block for which the type
+        of the object is always more restrictive than the speculation (for example, 
+        a basic block gated by a branch only taken for on type).
+
+        * bytecode/ArrayProfile.cpp:
+        (JSC::dumpArrayModes):
+        * bytecode/ArrayProfile.h:
+        (JSC::arrayModeFromStructure):
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::fromObserved):
+        (JSC::DFG::ArrayMode::refine):
+        Maintain the refine() semantic. We do not support OutOfBounds access
+        for GetByVal on typed array.
+
+        * runtime/IndexingType.h:
+        * tests/stress/typed-array-get-by-val-profiling.js: Added.
+        (testArray.testCode):
+        (testArray):
+        * tests/stress/typed-array-put-by-val-profiling.js: Added.
+        (testArray.testCode):
+        (testArray):
+
+2015-04-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r183438 "RegExp matches arrays should use contiguous indexing". It
+        causes many debug test failures.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::regExpMatchesArrayStructure):
+        * runtime/JSObject.h:
+        (JSC::JSObject::initializeIndex):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createRegExpMatchesArray):
+
+2015-04-27  Andreas Kling  <akling@apple.com>
+
+        RegExp matches arrays should use contiguous indexing.
+        <https://webkit.org/b/144286>
+
+        Reviewed by Geoffrey Garen.
+
+        We had a custom Structure being used for RegExp matches arrays that would
+        put the arrays into SlowPutArrayStorageShape mode. This was just left
+        from when matches arrays were custom, lazily initialized objects.
+
+        This change removes that Structure and switches the matches arrays to
+        using the default ContiguousShape Structure. This allows the FTL JIT
+        to compile the inner loop of the Octane/regexp benchmark.
+
+        Also made a version of initializeIndex() [inline] that takes the indexing
+        type in an argument, allowing createRegExpMatchesArray() to initialize
+        the entire array without branching on the indexing type for each entry.
+
+        ~3% progression on Octane/regexp.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::mapStructure):
+        (JSC::JSGlobalObject::regExpMatchesArrayStructure): Deleted.
+        * runtime/JSObject.h:
+        (JSC::JSObject::initializeIndex):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createRegExpMatchesArray):
+
+2015-04-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r183373): ASSERT failed in wtf/SHA1.h
+        https://bugs.webkit.org/show_bug.cgi?id=144257
+
+        Temporarily disable skip these tests.
+
+        * tests/stress/template-literal-line-terminators.js:
+        * tests/stress/template-literal-syntax.js:
+        * tests/stress/template-literal.js:
+
+2015-04-27  Basile Clement  <basile_clement@apple.com>
+
+        Function allocations shouldn't sink through Put operations
+        https://bugs.webkit.org/show_bug.cgi?id=144176
+
+        Reviewed by Filip Pizlo.
+
+        By design, we don't support function allocation sinking through any
+        related operation ; however object allocation can sink through PutByOffset et
+        al.
+
+        Currently, the checks to prevent function allocation to sink through
+        these are misguided and do not prevent anything ; function allocation sinking
+        through these operations is prevented as a side effect of requiring an
+        AllocatePropertyStorage through which the function allocation is seen as
+        escaping.
+
+        This changes it so that ObjectAllocationSinkingPhase::handleNode()
+        checks properly that only object allocations sink through related write
+        operations.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+
+2015-04-25  Filip Pizlo  <fpizlo@apple.com>
+
+        VarargsForwardingPhase should use bytecode liveness in addition to other uses to determine the last point that a candidate is used
+        https://bugs.webkit.org/show_bug.cgi?id=143843
+
+        Reviewed by Geoffrey Garen.
+        
+        It will soon come to pass that Phantom isn't available at the time that
+        VarargsForwardingPhase runs. So, it needs to use some other mechanism for discovering when
+        a value dies for OSR.
+        
+        This is simplified by two things:
+        
+        1) The bytecode kill analysis is now reusable. This patch makes it even more reusable than
+           before by polishing the API.
+        
+        2) This phase already operates on one node at a time and allows itself to do a full search
+           of the enclosing basic block for that node. This is fine because CreateDirectArguments
+           and friends is a rarely occurring node. The fact that it operates on one node at a time
+           makes it even easier to reason about OSR liveness - we just track the list of locals in
+           which it is live.
+        
+        This change has no effect right now but it is a necessary prerequisite to implementing
+        https://bugs.webkit.org/show_bug.cgi?id=143736.
+
+        * dfg/DFGBasicBlock.h:
+        (JSC::DFG::BasicBlock::tryAt):
+        * dfg/DFGForAllKills.h:
+        (JSC::DFG::forAllKilledOperands):
+        * dfg/DFGPhantomInsertionPhase.cpp:
+        * dfg/DFGVarargsForwardingPhase.cpp:
+
+2015-04-27  Jordan Harband  <ljharb@gmail.com>
+
+        Map#entries and Map#keys error for non-Maps is swapped
+        https://bugs.webkit.org/show_bug.cgi?id=144253
+
+        Reviewed by Simon Fraser.
+
+        Correcting error messages on Set/Map methods when called on
+        incompatible objects.
+
+        * runtime/MapPrototype.cpp:
+        (JSC::mapProtoFuncEntries):
+        (JSC::mapProtoFuncKeys):
+        * runtime/SetPrototype.cpp:
+        (JSC::setProtoFuncEntries):
+
+2015-04-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize DFG DCE handling of nodes that perform checks that propagate through AI
+        https://bugs.webkit.org/show_bug.cgi?id=144186
+
+        Reviewed by Geoffrey Garen.
+        
+        If I do ArithAdd(Int32Use, Int32Use, CheckOverflow) then AI will prove that this returns
+        Int32. We may later perform code simplifications based on the proof that this is Int32, and
+        we may kill all DFG users of this ArithAdd. Then we may prove that there is no exit site at
+        which the ArithAdd is live. This seems like it is sufficient to then kill the ArithAdd,
+        except that we still need the overflow check!
+
+        Previously we mishandled this:
+
+        - In places where we want the overflow check we need to use MustGenerate(@ArithAdd) as a hack
+          to keep it alive. That's dirty and it's just indicative of a deeper issue.
+
+        - Our MovHint removal doesn't do Phantom canonicalization which essentially makes it
+          powerless. This was sort of hiding the bug.
+
+        - Nodes that have checks that AI leverages should always be NodeMustGenerate. You can't kill
+          something that you are relying on for subsequent simplifications.
+        
+        This fixes MovHint removal to also canonicalize Phantoms. This also adds ModeMustGenerate to
+        nodes that may perform checks that are used by AI to guarantee the result type. As a result,
+        we no longer need the weird MustGenerate node.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::tryToRelaxRepresentation):
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::handleBlock):
+        (JSC::DFG::IntegerCheckCombiningPhase::insertMustAdd): Deleted.
+        * dfg/DFGMayExit.cpp:
+        (JSC::DFG::mayExit):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::willHaveCodeGenOrOSR):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPhantomCanonicalizationPhase.cpp:
+        (JSC::DFG::PhantomCanonicalizationPhase::run):
+        * dfg/DFGPhantomRemovalPhase.cpp:
+        (JSC::DFG::PhantomRemovalPhase::run):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantArrayChecks):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        * tests/stress/fold-based-on-int32-proof-mul-branch.js: Added.
+        (foo):
+        * tests/stress/fold-based-on-int32-proof-mul.js: Added.
+        (foo):
+        * tests/stress/fold-based-on-int32-proof-or-zero.js: Added.
+        (foo):
+        * tests/stress/fold-based-on-int32-proof.js: Added.
+        (foo):
+
+2015-04-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Class body ending with a semicolon throws a SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=144244
+
+        Reviewed by Darin Adler.
+
+        The bug was caused by parseClass's inner loop for method definitions not moving onto the next iteration
+        it encounters a semicolon. As a result, we always expected a method to appear after a semicolon. Fixed
+        it by continue'ing when it encounters a semicolon.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+
+2015-04-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Getter or setter method named "prototype" or "constrcutor" should throw SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=144243
+
+        Reviewed by Darin Adler.
+
+        Fixed the bug by adding explicit checks in parseGetterSetter when we're parsing class methods.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseGetterSetter):
+
+2015-04-26  Jordan Harband  <ljharb@gmail.com>
+
+        Map#forEach does not pass "map" argument to callback.
+        https://bugs.webkit.org/show_bug.cgi?id=144187
+
+        Reviewed by Darin Adler.
+
+        Per https://people.mozilla.org/~jorendorff/es6-draft.html#sec-map.prototype.foreach
+        step 7.a.i., the callback should be called with three arguments.
+
+        * runtime/MapPrototype.cpp:
+        (JSC::mapProtoFuncForEach):
+
+2015-04-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement ES6 template literals
+        https://bugs.webkit.org/show_bug.cgi?id=142691
+
+        Reviewed by Darin Adler.
+
+        This patch implements TemplateLiteral.
+        Since TaggedTemplate requires some global states and
+        primitive operations like GetTemplateObject,
+        we separate the patch. It will be implemented in a subsequent patch.
+
+        Template Literal Syntax is guarded by ENABLE_ES6_TEMPLATE_LITERAL_SYNTAX compile time flag.
+        By disabling it, we can disable Template Literal support.
+
+        To implement template literals, in this patch,
+        we newly introduces bytecode op_to_string.
+        In template literals, we alternately evaluate the expression and
+        perform ToString onto the result of evaluation.
+        For example,
+
+        `${f1()} ${f2()}`
+
+        In this template literal, execution order is the following,
+        1. calling f1()
+        2. ToString(the result of f1())
+        3. calling f2()
+        4. ToString(the result of f2())
+
+        op_strcat also performs ToString. However, performing ToString
+        onto expressions are batched in op_strcat, it's not the same to the
+        template literal spec. In the above example,
+        ToString(f1()) should be called before calling f2().
+
+        * Configurations/FeatureDefines.xcconfig:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitToString):
+        (JSC::BytecodeGenerator::emitToNumber): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TemplateStringNode::emitBytecode):
+        (JSC::TemplateLiteralNode::emitBytecode):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_to_string):
+        (JSC::JIT::emitSlow_op_to_string):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_to_string):
+        (JSC::JIT::emitSlow_op_to_string):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createTemplateString):
+        (JSC::ASTBuilder::createTemplateStringList):
+        (JSC::ASTBuilder::createTemplateExpressionList):
+        (JSC::ASTBuilder::createTemplateLiteral):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::Lexer):
+        (JSC::Lexer<T>::parseIdentifierSlowCase):
+        (JSC::Lexer<T>::parseString):
+        (JSC::LineNumberAdder::LineNumberAdder):
+        (JSC::LineNumberAdder::clear):
+        (JSC::LineNumberAdder::add):
+        (JSC::Lexer<T>::parseTemplateLiteral):
+        (JSC::Lexer<T>::lex):
+        (JSC::Lexer<T>::scanRegExp):
+        (JSC::Lexer<T>::scanTrailingTemplateString):
+        (JSC::Lexer<T>::parseStringSlowCase): Deleted.
+        * parser/Lexer.h:
+        * parser/NodeConstructors.h:
+        (JSC::TemplateExpressionListNode::TemplateExpressionListNode):
+        (JSC::TemplateStringNode::TemplateStringNode):
+        (JSC::TemplateStringListNode::TemplateStringListNode):
+        (JSC::TemplateLiteralNode::TemplateLiteralNode):
+        * parser/Nodes.h:
+        (JSC::TemplateExpressionListNode::value):
+        (JSC::TemplateExpressionListNode::next):
+        (JSC::TemplateStringNode::cooked):
+        (JSC::TemplateStringNode::raw):
+        (JSC::TemplateStringListNode::value):
+        (JSC::TemplateStringListNode::next):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseTemplateString):
+        (JSC::Parser<LexerType>::parseTemplateLiteral):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        * parser/Parser.h:
+        * parser/ParserTokens.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createTemplateString):
+        (JSC::SyntaxChecker::createTemplateStringList):
+        (JSC::SyntaxChecker::createTemplateExpressionList):
+        (JSC::SyntaxChecker::createTemplateLiteral):
+        (JSC::SyntaxChecker::createSpreadExpression): Deleted.
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * tests/stress/template-literal-line-terminators.js: Added.
+        (test):
+        (testEval):
+        (testEvalLineNumber):
+        * tests/stress/template-literal-syntax.js: Added.
+        (testSyntax):
+        (testSyntaxError):
+        * tests/stress/template-literal.js: Added.
+        (test):
+        (testEval):
+        (testEmbedded):
+
+2015-04-26  Jordan Harband  <ljharb@gmail.com>
+
+        Set#forEach does not pass "key" or "set" arguments to callback.
+        https://bugs.webkit.org/show_bug.cgi?id=144188
+
+        Reviewed by Darin Adler.
+
+        Per https://people.mozilla.org/~jorendorff/es6-draft.html#sec-set.prototype.foreach
+        Set#forEach should pass 3 arguments to the callback.
+
+        * runtime/SetPrototype.cpp:
+        (JSC::setProtoFuncForEach):
+
 2015-04-26  Benjamin Poulain  <benjamin@webkit.org>
 
         [JSC] Implement Math.clz32(), remove Number.clz()

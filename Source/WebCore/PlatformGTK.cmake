@@ -159,6 +159,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CookieStorageSoup.cpp
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
+    platform/network/soup/GRefPtrSoup.cpp
     platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
     platform/network/soup/ResourceErrorSoup.cpp
@@ -326,7 +327,7 @@ if (ENABLE_VIDEO)
         ${GSTREAMER_VIDEO_LIBRARIES}
     )
 
-    if (USE_GSTREAMER_MPEGTS)
+    if (WTF_USE_GSTREAMER_MPEGTS)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${GSTREAMER_MPEGTS_INCLUDE_DIRS}
         )
@@ -336,7 +337,7 @@ if (ENABLE_VIDEO)
         )
     endif ()
 
-    if (USE_GSTREAMER_GL)
+    if (WTF_USE_GSTREAMER_GL)
         list(APPEND WebCore_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
         )
@@ -367,7 +368,7 @@ if (ENABLE_MEDIA_STREAM)
     )
 endif ()
 
-if (ENABLE_TEXTURE_MAPPER)
+if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap"
     )
@@ -397,13 +398,13 @@ if (ENABLE_THREADED_COMPOSITOR)
         page/scrolling/ScrollingThread.cpp
         page/scrolling/ScrollingTreeNode.cpp
         page/scrolling/ScrollingTreeScrollingNode.cpp
-        platform/graphics/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/AreaAllocator.cpp
         platform/graphics/texmap/coordinated/CompositingCoordinator.cpp
         platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
         platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
         platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
         platform/graphics/texmap/coordinated/CoordinatedTile.cpp
+        platform/graphics/texmap/coordinated/TiledBackingStore.cpp
         platform/graphics/texmap/coordinated/UpdateAtlas.cpp
     )
 endif ()

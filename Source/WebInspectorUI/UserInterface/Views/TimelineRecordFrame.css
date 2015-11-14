@@ -25,8 +25,9 @@
 
 .timeline-record-frame {
     position: absolute;
-    height: 36px;
+    height: 108px;
     min-width: 4px;
+    width: 4px;
 
     overflow: hidden;
 
@@ -38,24 +39,11 @@
     z-index: 1;
     bottom: 1px;
     min-width: 4px;
+    width: 100%;
+
+    padding-left: 1px;
 
     box-sizing: border-box;
-}
-
-.timeline-record-frame > .dropped {
-    position: absolute;
-    bottom: 1px;
-    right: 0;
-
-    min-width: 6px;
-    box-sizing: border-box;
-
-    background: repeating-linear-gradient(-45deg, white, white 2px, rgb(234, 234, 234) 2px, rgb(234, 234, 234) 4px);
-
-    border-top-style: solid;
-    border-right-style: solid;
-    border-width: 1px;
-    border-color: rgb(221, 221, 221);
 }
 
 .timeline-record-frame > .frame > .duration {
@@ -63,13 +51,7 @@
 
     background-color: rgb(221, 221, 221);
 
-    border-color: rgb(176, 176, 176);
-    border-style: none solid solid solid;
-    border-width: 1px;
-}
-
-.timeline-record-frame > .frame > .duration:first-child {
-    border-top-style: solid;
+    border-bottom: solid 1px rgb(245, 245, 245);
 }
 
 .timeline-record-frame > .frame > .duration:last-child {
@@ -77,16 +59,13 @@
 }
 
 .timeline-record-frame > .frame > .duration.timeline-record-type-network {
-    background-color: rgb(120, 176, 225);
-    border-color: rgb(61, 147, 200);
+    background-color: rgb(61, 147, 200);
 }
 
 .timeline-record-frame > .frame > .duration.timeline-record-type-layout {
-    background-color: rgb(234, 153, 153);
-    border-color: rgb(212, 108, 108);
+    background-color: rgb(212, 108, 108);
 }
 
 .timeline-record-frame > .frame > .duration.timeline-record-type-script {
-    background-color: rgb(190, 148, 233);
-    border-color: rgb(153, 113, 185);
+    background-color: rgb(153, 113, 185);
 }

@@ -551,7 +551,12 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
         if (client) {
             if (isHttpNotModified(httpCode)) {
                 const String& url = job->firstRequest().url().string();
-                CurlCacheManager::getInstance().getCachedResponse(url, d->m_response);
+                if (CurlCacheManager::getInstance().getCachedResponse(url, d->m_response)) {
+                    if (d->m_addedCacheValidationHeaders) {
+                        d->m_response.setHTTPStatusCode(200);
+                        d->m_response.setHTTPStatusText("OK");
+                    }
+                }
             }
             client->didReceiveResponse(job, d->m_response);
             CurlCacheManager::getInstance().didReceiveResponse(*job, d->m_response);
@@ -946,10 +951,11 @@ void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
 
 void ResourceHandleManager::startJob(ResourceHandle* job)
 {
-    URL kurl = job->firstRequest().url();
+    URL url = job->firstRequest().url();
 
-    if (kurl.protocolIsData()) {
+    if (url.protocolIsData()) {
         handleDataURL(job);
+        job->deref();
         return;
     }
 
@@ -1083,7 +1089,8 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     if (job->firstRequest().httpHeaderFields().size() > 0) {
         HTTPHeaderMap customHeaders = job->firstRequest().httpHeaderFields();
 
-        if (CurlCacheManager::getInstance().isCached(url)) {
+        bool hasCacheHeaders = customHeaders.contains(HTTPHeaderName::IfModifiedSince) || customHeaders.contains(HTTPHeaderName::IfNoneMatch);
+        if (!hasCacheHeaders && CurlCacheManager::getInstance().isCached(url)) {
             CurlCacheManager::getInstance().addCacheEntryClient(url, job);
             HTTPHeaderMap& requestHeaders = CurlCacheManager::getInstance().requestHeaders(url);
 
@@ -1094,10 +1101,7 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
                 customHeaders.set(it->key, it->value);
                 ++it;
             }
-        } else {
-            // Make sure we don't send any cache headers when url is not cached.
-            customHeaders.remove(HTTPHeaderName::IfModifiedSince);
-            customHeaders.remove(HTTPHeaderName::IfNoneMatch);
+            d->m_addedCacheValidationHeaders = true;
         }
 
         HTTPHeaderMap::const_iterator end = customHeaders.end();
