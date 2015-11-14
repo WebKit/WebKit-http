@@ -114,7 +114,7 @@ struct TouchEvent {
         int32_t y;
     };
 
-    std::array<Raw, 10> touchPoints;
+    const std::array<Raw, 10>& touchPoints;
     Type type;
     int32_t id;
     uint32_t time;
