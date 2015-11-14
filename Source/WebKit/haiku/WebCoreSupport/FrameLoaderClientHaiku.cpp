@@ -558,10 +558,10 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
     message.AddBool("primary", switchTab);
     dispatchMessage(message, true);
 
-    if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+    if (action.type() == NavigationType::FormSubmitted || action.type() == NavigationType::FormResubmitted)
         m_webFrame->Frame()->loader().resetMultipleFormSubmissionProtection();
 
-    if (action.type() == NavigationTypeLinkClicked) {
+    if (action.type() == NavigationType::LinkClicked) {
         ResourceRequest emptyRequest;
         m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
