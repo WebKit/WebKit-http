@@ -70,7 +70,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this.contentElement.appendChild(this._forcedPseudoClassContainer);
         }
 
-        this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel;
+        this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel(this);
         this._rulesStyleDetailsPanel = new WebInspector.RulesStyleDetailsPanel;
         this._metricsStyleDetailsPanel = new WebInspector.MetricsStyleDetailsPanel;
 
@@ -101,9 +101,9 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
         this.contentElement.scrollTop = this._initialScrollOffset;
 
-        for (var i = 0; i < this._panels.length; ++i) {
-            delete this._panels[i].element._savedScrollTop;
-            this._panels[i].markAsNeedsRefresh(domNode);
+        for (var panel of this._panels) {
+            panel.element._savedScrollTop = undefined;
+            panel.markAsNeedsRefresh(domNode);
         }
 
         this._updatePseudoClassCheckboxes();
@@ -111,7 +111,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     visibilityDidChange()
     {
-        WebInspector.SidebarPanel.prototype.visibilityDidChange.call(this);
+        super.visibilityDidChange();
 
         if (!this._selectedPanel)
             return;
@@ -135,6 +135,14 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
         if (this._selectedPanel)
             this._selectedPanel.widthDidChange();
+    }
+
+    computedStyleDetailsPanelShowProperty(property)
+    {
+        this._rulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
+        this._switchPanels(this._rulesStyleDetailsPanel);
+
+        this._navigationBar.selectedNavigationItem = this._lastSelectedSectionSetting.value;
     }
 
     // Protected
@@ -180,6 +188,11 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             break;
         }
 
+        this._switchPanels(selectedPanel);
+    }
+
+    _switchPanels(selectedPanel)
+    {
         console.assert(selectedPanel);
 
         if (this._selectedPanel) {
@@ -201,7 +214,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this._selectedPanel.shown();
         }
 
-        this._lastSelectedSectionSetting.value = selectedNavigationItem.identifier;
+        this._lastSelectedSectionSetting.value = selectedPanel.navigationItem.identifier;
     }
 
     _forcedPseudoClassCheckboxChanged(pseudoClass, event)

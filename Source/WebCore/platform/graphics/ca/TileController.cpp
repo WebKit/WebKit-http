@@ -313,7 +313,7 @@ IntRect TileController::boundsAtLastRevalidateWithoutMargin() const
     return boundsWithoutMargin;
 }
 
-FloatRect TileController::computeTileCoverageRect(const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& visibleRect) const
+FloatRect TileController::computeTileCoverageRect(const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& visibleRect, float contentsScale) const
 {
     // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
     if (!m_isInWindow)
@@ -326,12 +326,12 @@ FloatRect TileController::computeTileCoverageRect(const FloatSize& newSize, cons
     if (m_tileCoverage == CoverageForVisibleArea || MemoryPressureHandler::singleton().isUnderMemoryPressure())
         return visibleRect;
 
-    double horizontalMargin = defaultTileWidth / tileGrid().scale();
-    double verticalMargin = defaultTileHeight / tileGrid().scale();
+    double horizontalMargin = defaultTileWidth / contentsScale;
+    double verticalMargin = defaultTileHeight / contentsScale;
 
     double currentTime = monotonicallyIncreasingTime();
     double timeDelta = currentTime - m_velocity.lastUpdateTime;
-    
+
     FloatRect futureRect = visibleRect;
     futureRect.setLocation(FloatPoint(
         futureRect.location().x() + timeDelta * m_velocity.horizontalVelocity,
@@ -349,7 +349,9 @@ FloatRect TileController::computeTileCoverageRect(const FloatSize& newSize, cons
             futureRect.setY(futureRect.y() - verticalMargin);
     }
 
-    if (m_velocity.scaleChangeRate <= 0 && !m_velocity.horizontalVelocity && !m_velocity.verticalVelocity) {
+    if (!m_velocity.horizontalVelocity && !m_velocity.verticalVelocity) {
+        if (m_velocity.scaleChangeRate > 0)
+            return visibleRect;
         futureRect.setWidth(futureRect.width() + horizontalMargin);
         futureRect.setHeight(futureRect.height() + verticalMargin);
         futureRect.setX(futureRect.x() - horizontalMargin / 2);
@@ -370,6 +372,8 @@ FloatRect TileController::computeTileCoverageRect(const FloatSize& newSize, cons
 
     return futureRect;
 #else
+    UNUSED_PARAM(contentsScale);
+
     // FIXME: look at how far the document can scroll in each dimension.
     float coverageHorizontalSize = visibleRect.width();
     float coverageVerticalSize = visibleRect.height();

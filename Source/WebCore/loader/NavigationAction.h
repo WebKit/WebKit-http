@@ -37,31 +37,41 @@
 
 namespace WebCore {
 
-    class NavigationAction {
-    public:
-        WEBCORE_EXPORT NavigationAction();
-        WEBCORE_EXPORT explicit NavigationAction(const ResourceRequest&);
-        WEBCORE_EXPORT NavigationAction(const ResourceRequest&, NavigationType);
-        WEBCORE_EXPORT NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission);
-        NavigationAction(const ResourceRequest&, NavigationType, PassRefPtr<Event>);
-        NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, PassRefPtr<Event>);
+class NavigationAction {
+public:
+    WEBCORE_EXPORT NavigationAction();
+    WEBCORE_EXPORT explicit NavigationAction(const ResourceRequest&);
+    WEBCORE_EXPORT NavigationAction(const ResourceRequest&, NavigationType);
+    WEBCORE_EXPORT NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission);
 
-        bool isEmpty() const { return m_resourceRequest.url().isEmpty(); }
+    NavigationAction(const ResourceRequest&, ShouldOpenExternalURLsPolicy);
+    NavigationAction(const ResourceRequest&, NavigationType, Event*);
+    NavigationAction(const ResourceRequest&, NavigationType, Event*, ShouldOpenExternalURLsPolicy);
+    NavigationAction(const ResourceRequest&, NavigationType, ShouldOpenExternalURLsPolicy);
+    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*);
+    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*, ShouldOpenExternalURLsPolicy);
 
-        URL url() const { return m_resourceRequest.url(); }
-        const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
+    NavigationAction copyWithShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy) const;
 
-        NavigationType type() const { return m_type; }
-        const Event* event() const { return m_event.get(); }
+    bool isEmpty() const { return m_resourceRequest.url().isEmpty(); }
 
-        bool processingUserGesture() const { return m_processingUserGesture; }
+    URL url() const { return m_resourceRequest.url(); }
+    const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
 
-    private:
-        ResourceRequest m_resourceRequest;
-        NavigationType m_type;
-        RefPtr<Event> m_event;
-        bool m_processingUserGesture;
-    };
+    NavigationType type() const { return m_type; }
+    const Event* event() const { return m_event.get(); }
+
+    bool processingUserGesture() const { return m_processingUserGesture; }
+
+    ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+
+private:
+    ResourceRequest m_resourceRequest;
+    NavigationType m_type;
+    RefPtr<Event> m_event;
+    bool m_processingUserGesture;
+    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy;
+};
 
 }
 

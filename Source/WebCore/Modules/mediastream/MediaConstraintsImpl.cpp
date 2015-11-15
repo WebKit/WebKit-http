@@ -41,19 +41,19 @@
 
 namespace WebCore {
 
-PassRefPtr<MediaConstraintsImpl> MediaConstraintsImpl::create(const Dictionary& constraints, ExceptionCode& ec)
+RefPtr<MediaConstraintsImpl> MediaConstraintsImpl::create(const Dictionary& constraints, ExceptionCode& ec)
 {
-    RefPtr<MediaConstraintsImpl> object = adoptRef(new MediaConstraintsImpl());
+    RefPtr<MediaConstraintsImpl> object = adoptRef(*new MediaConstraintsImpl());
     if (!object->initialize(constraints)) {
         ec = TYPE_MISMATCH_ERR;
-        return 0;
+        return nullptr;
     }
-    return object.release();
+    return object;
 }
 
-PassRefPtr<MediaConstraintsImpl> MediaConstraintsImpl::create()
+Ref<MediaConstraintsImpl> MediaConstraintsImpl::create()
 {
-    return adoptRef(new MediaConstraintsImpl());
+    return adoptRef(*new MediaConstraintsImpl());
 }
 
 bool MediaConstraintsImpl::initialize(const Dictionary& constraints)
@@ -67,8 +67,8 @@ bool MediaConstraintsImpl::initialize(const Dictionary& constraints)
     String mandatory = ASCIILiteral("mandatory");
     String optional = ASCIILiteral("optional");
 
-    for (Vector<String>::iterator it = names.begin(); it != names.end(); ++it) {
-        if (*it != mandatory && *it != optional)
+    for (auto& name : names) {
+        if (name != mandatory && name != optional)
             return false;
     }
 
@@ -122,9 +122,8 @@ MediaConstraintsImpl::~MediaConstraintsImpl()
 void MediaConstraintsImpl::getMandatoryConstraints(Vector<MediaConstraint>& constraints) const
 {
     constraints.clear();
-    HashMap<String, String>::const_iterator i = m_mandatoryConstraints.begin();
-    for (; i != m_mandatoryConstraints.end(); ++i)
-        constraints.append(MediaConstraint(i->key, i->value));
+    for (auto& constraint : m_mandatoryConstraints)
+        constraints.append(MediaConstraint(constraint.key, constraint.value));
 }
 
 void MediaConstraintsImpl::getOptionalConstraints(Vector<MediaConstraint>& constraints) const
@@ -145,10 +144,9 @@ bool MediaConstraintsImpl::getMandatoryConstraintValue(const String& name, Strin
 
 bool MediaConstraintsImpl::getOptionalConstraintValue(const String& name, String& value) const
 {
-    Vector<MediaConstraint>::const_iterator i = m_optionalConstraints.begin();
-    for (; i != m_optionalConstraints.end(); ++i) {
-        if (i->m_name == name) {
-            value = i->m_value;
+    for (auto& constraint : m_optionalConstraints) {
+        if (constraint.m_name == name) {
+            value = constraint.m_value;
             return true;
         }
     }

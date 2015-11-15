@@ -68,12 +68,15 @@ WebInspector::WebInspector(WebPage* page)
 {
 }
 
+WebInspector::~WebInspector()
+{
+    if (m_frontendConnection)
+        m_frontendConnection->invalidate();
+}
+
 // Called from WebInspectorClient
 void WebInspector::createInspectorPage(bool underTest)
 {
-    if (!m_page)
-        return;
-
 #if OS(DARWIN)
     mach_port_t listeningPort;
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
@@ -135,7 +138,7 @@ void WebInspector::openInNewTab(const String& urlString)
         return;
 
     Frame& inspectedMainFrame = inspectedPage->mainFrame();
-    FrameLoadRequest request(inspectedMainFrame.document()->securityOrigin(), ResourceRequest(urlString), "_blank", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL);
+    FrameLoadRequest request(inspectedMainFrame.document()->securityOrigin(), ResourceRequest(urlString), "_blank", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 
     Page* newPage = inspectedPage->chrome().createWindow(&inspectedMainFrame, request, WindowFeatures(), NavigationAction(request.resourceRequest(), NavigationType::LinkClicked));
     if (!newPage)

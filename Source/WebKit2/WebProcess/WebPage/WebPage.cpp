@@ -328,6 +328,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_deviceOrientation(0)
     , m_inDynamicSizeUpdate(false)
+    , m_volatilityTimer(*this, &WebPage::volatilityTimerFired)
 #endif
     , m_inspectorClient(0)
     , m_backgroundColor(Color::white)
@@ -1011,10 +1012,10 @@ void WebPage::loadURLInFrame(const String& url, uint64_t frameID)
     if (!frame)
         return;
 
-    frame->coreFrame()->loader().load(FrameLoadRequest(frame->coreFrame(), ResourceRequest(URL(URL(), url))));
+    frame->coreFrame()->loader().load(FrameLoadRequest(frame->coreFrame(), ResourceRequest(URL(URL(), url)), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 }
 
-void WebPage::loadRequest(uint64_t navigationID, const ResourceRequest& request, const SandboxExtension::Handle& sandboxExtensionHandle, const UserData& userData)
+void WebPage::loadRequest(uint64_t navigationID, const ResourceRequest& request, const SandboxExtension::Handle& sandboxExtensionHandle, uint64_t shouldOpenExternalURLsPolicy, const UserData& userData)
 {
     SendStopResponsivenessTimer stopper(this);
 
@@ -1027,7 +1028,11 @@ void WebPage::loadRequest(uint64_t navigationID, const ResourceRequest& request,
     m_loaderClient.willLoadURLRequest(this, request, WebProcess::singleton().transformHandlesToObjects(userData.object()).get());
 
     // Initate the load in WebCore.
-    corePage()->userInputBridge().loadRequest(FrameLoadRequest(m_mainFrame->coreFrame(), request));
+    FrameLoadRequest frameLoadRequest(m_mainFrame->coreFrame(), request, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    ShouldOpenExternalURLsPolicy externalURLsPolicy = static_cast<ShouldOpenExternalURLsPolicy>(shouldOpenExternalURLsPolicy);
+    frameLoadRequest.setShouldOpenExternalURLsPolicy(externalURLsPolicy);
+
+    corePage()->userInputBridge().loadRequest(frameLoadRequest);
 
     ASSERT(!m_pendingNavigationID);
 }
@@ -1047,7 +1052,7 @@ void WebPage::loadDataImpl(uint64_t navigationID, PassRefPtr<SharedBuffer> share
     m_loaderClient.willLoadDataRequest(this, request, const_cast<SharedBuffer*>(substituteData.content()), substituteData.mimeType(), substituteData.textEncoding(), substituteData.failingURL(), WebProcess::singleton().transformHandlesToObjects(userData.object()).get());
 
     // Initate the load in WebCore.
-    m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(m_mainFrame->coreFrame(), request, substituteData));
+    m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(m_mainFrame->coreFrame(), request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }
 
 void WebPage::loadString(uint64_t navigationID, const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, const UserData& userData)
@@ -1104,7 +1109,8 @@ void WebPage::navigateToPDFLinkWithSimulatedClick(const String& url, IntPoint do
 
     const int singleClick = 1;
     RefPtr<MouseEvent> mouseEvent = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), nullptr, singleClick, screenPoint.x(), screenPoint.y(), documentPoint.x(), documentPoint.y(), false, false, false, false, 0, nullptr, 0, nullptr);
-    mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.release(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::MaybeSendReferrer);
+
+    mainFrame->loader().urlSelected(mainFrameDocument->completeURL(url), emptyString(), mouseEvent.get(), LockHistory::No, LockBackForwardList::No, ShouldSendReferrer::MaybeSendReferrer, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 }
 
 void WebPage::stopLoadingFrame(uint64_t frameID)
@@ -1853,6 +1859,24 @@ static const WebEvent* g_currentEvent = 0;
 const WebEvent* WebPage::currentEvent()
 {
     return g_currentEvent;
+}
+
+void WebPage::setLayerTreeStateIsFrozen(bool frozen)
+{
+    auto* drawingArea = this->drawingArea();
+    if (!drawingArea)
+        return;
+
+    drawingArea->setLayerTreeStateIsFrozen(frozen);
+}
+
+bool WebPage::markLayersVolatileImmediatelyIfPossible()
+{
+    auto* drawingArea = this->drawingArea();
+    if (!drawingArea)
+        return true;
+
+    return drawingArea->markLayersVolatileImmediatelyIfPossible();
 }
 
 class CurrentEvent {
@@ -4430,18 +4454,11 @@ void WebPage::didChangeSelection()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     FrameView* view = frame.view();
-#if PLATFORM(COCOA) && !defined(NDEBUG)
-    int layoutCount = view ? view->layoutCount() : 0;
-#endif
 
     // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
     // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
     // to send the full editor state after layout is done if we send a partial editor state here.
     auto editorState = this->editorState(view && view->needsLayout() ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
-#if PLATFORM(COCOA) && !defined(NDEBUG)
-    if (view)
-        ASSERT_WITH_MESSAGE(layoutCount == view->layoutCount(), "Calling editorState() should not cause a synchronous layout.");
-#endif
     m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
 #if PLATFORM(MAC) && USE(ASYNC_NSTEXTINPUTCLIENT)
@@ -4572,6 +4589,28 @@ void WebPage::didCancelCheckingText(uint64_t requestID)
         return;
 
     request->didCancel();
+}
+
+void WebPage::willReplaceMultipartContent(const WebFrame& frame)
+{
+#if PLATFORM(IOS)
+    if (!frame.isMainFrame())
+        return;
+
+    m_previousExposedContentRect = m_drawingArea->exposedContentRect();
+#endif
+}
+
+void WebPage::didReplaceMultipartContent(const WebFrame& frame)
+{
+#if PLATFORM(IOS)
+    if (!frame.isMainFrame())
+        return;
+
+    // Restore the previous exposed content rect so that it remains fixed when replacing content
+    // from multipart/x-mixed-replace streams.
+    m_drawingArea->setExposedContentRect(m_previousExposedContentRect);
+#endif
 }
 
 void WebPage::didCommitLoad(WebFrame* frame)

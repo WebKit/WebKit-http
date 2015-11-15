@@ -36,7 +36,7 @@ class Frame;
 
 struct FrameLoadRequest {
 public:
-    FrameLoadRequest(SecurityOrigin* requester, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy)
+    FrameLoadRequest(SecurityOrigin* requester, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
         : m_requester(requester)
         , m_shouldCheckNewWindowPolicy(false)
         , m_lockHistory(lockHistory)
@@ -45,10 +45,11 @@ public:
         , m_allowNavigationToInvalidURL(allowNavigationToInvalidURL)
         , m_newFrameOpenerPolicy(newFrameOpenerPolicy)
         , m_shouldReplaceDocumentIfJavaScriptURL(ReplaceDocumentIfJavaScriptURL)
+        , m_shouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy)
     {
     }
 
-    FrameLoadRequest(SecurityOrigin* requester, const ResourceRequest& resourceRequest, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy)
+    FrameLoadRequest(SecurityOrigin* requester, const ResourceRequest& resourceRequest, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
         : m_requester(requester)
         , m_resourceRequest(resourceRequest)
         , m_shouldCheckNewWindowPolicy(false)
@@ -58,10 +59,11 @@ public:
         , m_allowNavigationToInvalidURL(allowNavigationToInvalidURL)
         , m_newFrameOpenerPolicy(newFrameOpenerPolicy)
         , m_shouldReplaceDocumentIfJavaScriptURL(ReplaceDocumentIfJavaScriptURL)
+        , m_shouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy)
     {
     }
 
-    FrameLoadRequest(SecurityOrigin* requester, const ResourceRequest& resourceRequest, const String& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL)
+    FrameLoadRequest(SecurityOrigin* requester, const ResourceRequest& resourceRequest, const String& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, AllowNavigationToInvalidURL allowNavigationToInvalidURL, NewFrameOpenerPolicy newFrameOpenerPolicy, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
         : m_requester(requester)
         , m_resourceRequest(resourceRequest)
         , m_frameName(frameName)
@@ -72,10 +74,11 @@ public:
         , m_allowNavigationToInvalidURL(allowNavigationToInvalidURL)
         , m_newFrameOpenerPolicy(newFrameOpenerPolicy)
         , m_shouldReplaceDocumentIfJavaScriptURL(shouldReplaceDocumentIfJavaScriptURL)
+        , m_shouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy)
     {
     }
 
-    WEBCORE_EXPORT FrameLoadRequest(Frame*, const ResourceRequest&, const SubstituteData& = SubstituteData());
+    WEBCORE_EXPORT FrameLoadRequest(Frame*, const ResourceRequest&, ShouldOpenExternalURLsPolicy, const SubstituteData& = SubstituteData());
 
     bool isEmpty() const { return m_resourceRequest.isEmpty(); }
 
@@ -104,6 +107,9 @@ public:
     // corresponding parameter from ScriptController::executeIfJavaScriptURL() is addressed.
     ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL() const { return m_shouldReplaceDocumentIfJavaScriptURL; }
 
+    void setShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy policy) { m_shouldOpenExternalURLsPolicy = policy; }
+    ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+
 private:
     RefPtr<SecurityOrigin> m_requester;
     ResourceRequest m_resourceRequest;
@@ -117,6 +123,7 @@ private:
     AllowNavigationToInvalidURL m_allowNavigationToInvalidURL;
     NewFrameOpenerPolicy m_newFrameOpenerPolicy;
     ShouldReplaceDocumentIfJavaScriptURL m_shouldReplaceDocumentIfJavaScriptURL;
+    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
 };
 
 }

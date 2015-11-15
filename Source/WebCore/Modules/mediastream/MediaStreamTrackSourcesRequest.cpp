@@ -37,9 +37,9 @@
 
 namespace WebCore {
 
-PassRefPtr<MediaStreamTrackSourcesRequest> MediaStreamTrackSourcesRequest::create(ScriptExecutionContext* context, PassRefPtr<MediaStreamTrackSourcesCallback> callback)
+Ref<MediaStreamTrackSourcesRequest> MediaStreamTrackSourcesRequest::create(ScriptExecutionContext* context, PassRefPtr<MediaStreamTrackSourcesCallback> callback)
 {
-    return adoptRef(new MediaStreamTrackSourcesRequest(context, callback));
+    return adoptRef(*new MediaStreamTrackSourcesRequest(context, callback));
 }
 
 MediaStreamTrackSourcesRequest::MediaStreamTrackSourcesRequest(ScriptExecutionContext* context, PassRefPtr<MediaStreamTrackSourcesCallback> callback)
@@ -52,8 +52,8 @@ void MediaStreamTrackSourcesRequest::didCompleteRequest(const Vector<RefPtr<Trac
 {
     ASSERT(m_callback);
 
-    for (size_t i = 0; i < requestSourceInfos.size(); ++i)
-        m_sourceInfos.append(SourceInfo::create(requestSourceInfos[i]));
+    for (auto& info : requestSourceInfos)
+        m_sourceInfos.append(SourceInfo::create(info));
 
     RefPtr<MediaStreamTrackSourcesRequest> protectedThis(this);
     callOnMainThread([protectedThis] {

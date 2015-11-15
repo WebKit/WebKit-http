@@ -158,6 +158,7 @@ namespace WebCore {
 
         WEBCORE_EXPORT bool scheduleArchiveLoad(ResourceLoader*, const ResourceRequest&);
 #endif
+        void scheduleSubstituteResourceLoad(ResourceLoader&, SubstituteResource&);
 
         // Return the ArchiveResource for the URL only when loading an Archive
         ArchiveResource* archiveResourceForURL(const URL&) const;
@@ -178,7 +179,7 @@ namespace WebCore {
         const ResponseVector& responses() const { return m_responses; }
 
         const NavigationAction& triggeringAction() const { return m_triggeringAction; }
-        void setTriggeringAction(const NavigationAction& action) { m_triggeringAction = action; }
+        void setTriggeringAction(const NavigationAction&);
         void setOverrideEncoding(const String& encoding) { m_overrideEncoding = encoding; }
         void setLastCheckedRequest(const ResourceRequest& request) { m_lastCheckedRequest = request; }
         const ResourceRequest& lastCheckedRequest()  { return m_lastCheckedRequest; }
@@ -273,6 +274,9 @@ namespace WebCore {
         void addPendingContentExtensionSheet(const String& identifier, StyleSheetContents&);
         void addPendingContentExtensionDisplayNoneSelector(const String& identifier, const String& selector, uint32_t selectorID);
 #endif
+
+        void setShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy) { m_shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicy; }
+        ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicyToPropagate() const;
 
     protected:
         WEBCORE_EXPORT DocumentLoader(const ResourceRequest&, const SubstituteData&);
@@ -426,8 +430,8 @@ namespace WebCore {
         RefPtr<IconDataCallback> m_iconDataCallback;
 
         bool m_subresourceLoadersArePageCacheAcceptable;
+        ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
 
-        friend class ApplicationCacheHost;  // for substitute resource delivery
         std::unique_ptr<ApplicationCacheHost> m_applicationCacheHost;
 
 #if ENABLE(CONTENT_FILTERING)

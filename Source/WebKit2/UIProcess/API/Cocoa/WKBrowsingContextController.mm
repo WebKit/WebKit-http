@@ -191,7 +191,7 @@ static HashMap<WebPageProxy*, WKBrowsingContextController *>& browsingContextCon
     if (userData)
         wkUserData = ObjCObjectGraph::create(userData);
 
-    _page->loadRequest(request, wkUserData.get());
+    _page->loadRequest(request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, wkUserData.get());
 }
 
 - (void)loadFileURL:(NSURL *)URL restrictToFilesWithin:(NSURL *)allowedDirectory

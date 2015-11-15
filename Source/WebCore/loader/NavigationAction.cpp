@@ -48,49 +48,65 @@ static NavigationType navigationType(FrameLoadType frameLoadType, bool isFormSub
     return NavigationType::Other;
 }
 
-NavigationAction::NavigationAction()
-    : m_type(NavigationType::Other)
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
+    : m_resourceRequest(resourceRequest)
+    , m_type(type)
+    , m_event(event)
     , m_processingUserGesture(ScriptController::processingUserGesture())
+    , m_shouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy)
+{
+}
+
+NavigationAction::NavigationAction()
+    : NavigationAction(ResourceRequest(), NavigationType::Other, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
 {
 }
 
 NavigationAction::NavigationAction(const ResourceRequest& resourceRequest)
-    : m_resourceRequest(resourceRequest)
-    , m_type(NavigationType::Other)
-    , m_processingUserGesture(ScriptController::processingUserGesture())
+    : NavigationAction(resourceRequest, NavigationType::Other, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
+{
+}
+
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
+    : NavigationAction(resourceRequest, NavigationType::Other, nullptr, shouldOpenExternalURLsPolicy)
 {
 }
 
 NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type)
-    : m_resourceRequest(resourceRequest)
-    , m_type(type)
-    , m_processingUserGesture(ScriptController::processingUserGesture())
+    : NavigationAction(resourceRequest, type, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
 {
 }
 
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType,
-        bool isFormSubmission)
-    : m_resourceRequest(resourceRequest)
-    , m_type(navigationType(frameLoadType, isFormSubmission, 0))
-    , m_processingUserGesture(ScriptController::processingUserGesture())
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission)
+    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, 0), nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
 {
 }
 
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, PassRefPtr<Event> event)
-    : m_resourceRequest(resourceRequest)
-    , m_type(type)
-    , m_event(event)
-    , m_processingUserGesture(ScriptController::processingUserGesture())
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, Event* event)
+    : NavigationAction(resourceRequest, type, event, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
 {
 }
 
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType,
-        bool isFormSubmission, PassRefPtr<Event> event)
-    : m_resourceRequest(resourceRequest)
-    , m_type(navigationType(frameLoadType, isFormSubmission, event))
-    , m_event(event)
-    , m_processingUserGesture(ScriptController::processingUserGesture())
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
+    : NavigationAction(resourceRequest, type, nullptr, shouldOpenExternalURLsPolicy)
 {
+}
+
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission, Event* event)
+    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, event), event, ShouldOpenExternalURLsPolicy::ShouldNotAllow)
+{
+}
+
+NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
+    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, event), event, shouldOpenExternalURLsPolicy)
+{
+}
+
+NavigationAction NavigationAction::copyWithShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy) const
+{
+    NavigationAction result(*this);
+    result.m_shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicy;
+    return WTF::move(result);
 }
 
 }

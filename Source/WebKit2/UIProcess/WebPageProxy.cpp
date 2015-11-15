@@ -838,7 +838,7 @@ bool WebPageProxy::maybeInitializeSandboxExtensionHandle(const URL& url, Sandbox
     return true;
 }
 
-RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request, API::Object* userData)
+RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, API::Object* userData)
 {
     if (m_isClosed)
         return nullptr;
@@ -856,7 +856,7 @@ RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request
     bool createdExtension = maybeInitializeSandboxExtensionHandle(request.url(), sandboxExtensionHandle);
     if (createdExtension)
         m_process->willAcquireUniversalFileReadSandboxExtension();
-    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), request, sandboxExtensionHandle, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), request, sandboxExtensionHandle, (uint64_t)shouldOpenExternalURLsPolicy, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
     m_process->responsivenessTimer()->start();
 
     return WTF::move(navigation);
@@ -894,7 +894,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
     SandboxExtension::Handle sandboxExtensionHandle;
     SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::ReadOnly, sandboxExtensionHandle);
     m_process->assumeReadAccessToBaseURL(resourceDirectoryURL);
-    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), fileURL, sandboxExtensionHandle, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
+    m_process->send(Messages::WebPage::LoadRequest(navigation->navigationID(), fileURL, sandboxExtensionHandle, (uint64_t)ShouldOpenExternalURLsPolicy::ShouldNotAllow, UserData(process().transformObjectsToHandles(userData).get())), m_pageID);
     m_process->responsivenessTimer()->start();
 
     return WTF::move(navigation);
@@ -5127,10 +5127,8 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
 
 void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply> reply)
 {
-    RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
-    MESSAGE_CHECK(securityOrigin);
-
-    m_uiClient->reachedApplicationCacheOriginQuota(this, *securityOrigin.get(), currentQuota, totalBytesNeeded, [reply](unsigned long long newQuota) { reply->send(newQuota); });
+    Ref<SecurityOrigin> securityOrigin = SecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
+    m_uiClient->reachedApplicationCacheOriginQuota(this, securityOrigin.get(), currentQuota, totalBytesNeeded, [reply](unsigned long long newQuota) { reply->send(newQuota); });
 }
 
 void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)

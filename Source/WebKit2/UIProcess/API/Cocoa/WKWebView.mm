@@ -101,6 +101,7 @@
 #import "WebVideoFullscreenManagerProxy.h"
 #import <UIKit/UIApplication.h>
 #import <WebCore/CoreGraphicsSPI.h>
+#import <WebCore/FrameLoaderTypes.h>
 #import <WebCore/InspectorOverlay.h>
 #import <WebCore/QuartzCoreSPI.h>
 
@@ -140,6 +141,7 @@ enum class DynamicViewportUpdateMode {
 #import <WebCore/ColorMac.h>
 #endif
 
+NSString * const _WKShouldOpenExternalURLsKey = @"_WKShouldOpenExternalURLsKey";
 
 static HashMap<WebKit::WebPageProxy*, WKWebView *>& pageToViewMap()
 {
@@ -320,8 +322,10 @@ static bool shouldAllowAlternateFullscreen()
 #if PLATFORM(IOS)
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsInlineMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsInlineMediaPlayback]));
     webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAlternateFullscreenKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsAlternateFullscreen] && shouldAllowAlternateFullscreen()));
-    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackRequiresUserAction]));
-    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAirPlayForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration mediaPlaybackAllowsAirPlay]));
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::requiresUserGestureForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration requiresUserActionForMediaPlayback]));
+#endif
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    webPageConfiguration.preferenceValues.set(WebKit::WebPreferencesKey::allowsAirPlayForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsAirPlayForMediaPlayback]));
 #endif
 
 #if PLATFORM(IOS)
@@ -443,11 +447,7 @@ static bool shouldAllowAlternateFullscreen()
 
 - (WKNavigation *)loadRequest:(NSURLRequest *)request
 {
-    auto navigation = _page->loadRequest(request);
-    if (!navigation)
-        return nil;
-
-    return [wrapper(*navigation.release().leakRef()) autorelease];
+    return [self _loadRequest:request withOptions:nil];
 }
 
 - (WKNavigation *)loadFileURL:(NSURL *)URL allowingReadAccessToURL:(NSURL *)readAccessURL
@@ -1320,7 +1320,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)didMoveToWindow
 {
-    _page->viewStateDidChange(WebCore::ViewState::IsInWindow);
+    _page->viewStateDidChange(WebCore::ViewState::AllFlags);
 }
 
 - (void)setOpaque:(BOOL)opaque
@@ -1771,6 +1771,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 @end
 
 @implementation WKWebView (WKPrivate)
+
+- (WKNavigation *)_loadRequest:(NSURLRequest *)request withOptions:(NSDictionary *)loadOptions
+{
+    bool shouldOpenExternalURLs = [loadOptions[_WKShouldOpenExternalURLsKey] boolValue];
+    WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = shouldOpenExternalURLs ? WebCore::ShouldOpenExternalURLsPolicy::ShouldAllow : WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+
+    auto navigation = _page->loadRequest(request, shouldOpenExternalURLsPolicy);
+    if (!navigation)
+        return nil;
+
+    return [wrapper(*navigation.release().leakRef()) autorelease];
+}
 
 - (BOOL)_isEditable
 {

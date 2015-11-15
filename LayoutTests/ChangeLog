@@ -1,3 +1,672 @@
+2015-06-02  Dean Jackson  <dino@apple.com>
+
+        Skip webgl/useWhilePending.html on WebKit 1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-06-02  Dean Jackson  <dino@apple.com>
+
+        Crash in GraphicsContext3D::getInternalFramebufferSize
+        https://bugs.webkit.org/show_bug.cgi?id=145479
+        <rdar://problem/16461048>
+
+        Reviewed by Eric Carlson.
+
+        Attemps to use a WebGL context while it is in the pending state.
+
+        * fast/canvas/webgl/useWhilePending-expected.txt: Added.
+        * fast/canvas/webgl/useWhilePending.html: Added.
+
+2015-06-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix Windows layout test failure following <http://trac.webkit.org/changeset/185095>
+        (https://bugs.webkit.org/show_bug.cgi?id=145537)
+
+        Unreviewed.
+
+        * platform/win/fast/text/crash-complex-text-surrogate-expected.txt: Added.
+
+2015-06-02  Zalan Bujtas  <zalan@apple.com>
+
+        Backdrop filter is pulling in content from behind the window.
+        https://bugs.webkit.org/show_bug.cgi?id=145561
+        rdar://problem/20909309
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that the backdrop filter layer is positioned and sized properly.
+
+        The backdrop filter layer should take its size and position from its renderer and not
+        directly from the composited layer.
+        In certain cases the composited layer's size is expanded to cover items like box shadow or an absolute positioned descendant.
+        In such cases, we ended up applying the backdrop filter to those areas as well.
+
+        * css3/filters/backdrop/backdrop-filter-does-not-size-properly-absolute-expected.txt: Added.
+        * css3/filters/backdrop/backdrop-filter-does-not-size-properly-absolute.html: Added.
+        * css3/filters/backdrop/backdrop-filter-does-not-size-properly-border-and-padding-expected.txt: Added.
+        * css3/filters/backdrop/backdrop-filter-does-not-size-properly-border-and-padding.html: Added.
+
+2015-06-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix Mac Mavericks layout test failure following <http://trac.webkit.org/changeset/185096>
+        (https://bugs.webkit.org/show_bug.cgi?id=145478)
+
+        Move fast/text/font-weights-zh.html out of the platform directory. The
+        webkit test runner is not smart enough to ignore the expected results 
+        in the mac directory and get it from the Mavericks directory, if it exists,
+        when running on Mavericks.
+        
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/text/font-weights-zh.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/fast/text/font-weights-zh.html: Removed.
+        * platform/win/TestExpectations:
+        * platform/win-xp/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2015-06-02  Brady Eidson  <beidson@apple.com>
+
+        Add more tests for "should open external urls" flag.
+        https://bugs.webkit.org/show_bug.cgi?id=145558
+
+        Rubber-stamped by Geoff Garen.
+
+        * loader/navigation-policy/should-open-external-urls/api-false-followed-by-api-true-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/api-false-followed-by-api-true.html: Added.
+        * loader/navigation-policy/should-open-external-urls/api-true-followed-by-api-false-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/api-true-followed-by-api-false.html: Added.
+        * loader/navigation-policy/should-open-external-urls/dispatch-event-click-is-not-user-gesture-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/dispatch-event-click-is-not-user-gesture.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/do-nothing.html: Added.
+
+2015-06-02  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Implement ReadableStreamReader read method in closed and errored state
+        https://bugs.webkit.org/show_bug.cgi?id=144790
+
+        Reviewed by Darin Adler.
+
+        Added new test. Rebased reference tests (expectations and timeouting/untimeouting tests).
+        Removed temporarily some tests in streams/reference-implementation/readable-stream-templated.html.
+        These tests try to check handling promise returned in start method which is not yet supported.
+        If we did not comment these tests, they would be flaky.
+
+        * streams/readable-stream-reader-read-expected.txt: Added.
+        * streams/readable-stream-reader-read.html: Added.
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/bad-underlying-sources.html:
+        * streams/reference-implementation/count-queuing-strategy-expected.txt:
+        * streams/reference-implementation/count-queuing-strategy.html:
+        * streams/reference-implementation/readable-stream-cancel-expected.txt:
+        * streams/reference-implementation/readable-stream-expected.txt:
+        * streams/reference-implementation/readable-stream-reader-expected.txt:
+        * streams/reference-implementation/readable-stream-reader.html:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/readable-stream-templated.html:
+        * streams/reference-implementation/readable-stream.html:
+        
+2015-06-02  Brady Eidson  <beidson@apple.com>
+
+        WebKit policy delegate should suggest if a navigation should be allowed to open URLs externally.
+        rdar://problem/21025301 and https://bugs.webkit.org/show_bug.cgi?id=145280
+
+        Reviewed by Alex Christensen.
+
+        * loader/navigation-policy/should-open-external-urls/main-frame-click-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-click.html: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-navigated-programatically-by-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-navigated-programatically-by-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-with-flag-progamatic-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-with-flag-progamatic.html: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-without-flag-programatic-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/main-frame-without-flag-programatic.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/click-notify-done-in-main.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/iframe-click-notify-done-target-self.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/iframe-click-notify-done-target-top.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/main-frame-with-subframe-click-targets-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/main-frame-with-subframe-programatically-navigates-main.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/programatically-navigate-to-notify-done-target-top.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/programatically-navigate-to-notify-done.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/user-gesture-target-blank-to-notify-done-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/user-gesture-target-blank-to-notify-done.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/user-gesture-window-open-to-notify-done-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/user-gesture-window-open-to-notify-done.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/window-open-to-notify-done-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/resources/window-open-to-notify-done.html: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-self-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-self.html: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-top-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-top.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-with-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-with-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-with-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-with-flag.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-without-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-without-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-without-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-target-blank-without-flag.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-with-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-with-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-with-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-with-flag.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag.html: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-with-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-with-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-with-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-with-flag.html: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-without-flag-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-without-flag-from-subframe-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-without-flag-from-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/window-open-without-flag.html: Added.
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [SVG -> OTF Converter] Remove unnecessary hacks
+        https://bugs.webkit.org/show_bug.cgi?id=145088
+
+        Reviewed by Simon Fraser.
+
+        Test that the hacks are unnecessary.
+
+        * svg/text/offset-square-svg-font-expected.html: Added.
+        * svg/text/offset-square-svg-font.html: Added.
+        * svg/text/resources/offset-square-svg-font.svg: Added.
+        * svg/text/resources/offset-square-svg-font2.svg: Added.
+
+2015-06-01  Zalan Bujtas  <zalan@apple.com>
+
+        [Mac] Unreviewed gardening.
+
+        Calling setAcceleratedCompositingForFixedPositionEnabled(true) is too late in doTest().
+
+        * compositing/layer-creation/zoomed-clip-intersection.html:
+
+2015-06-01  Andreas Kling  <akling@apple.com>
+
+        CSS animations in filling-forwards state shouldn't force compositing.
+        <https://webkit.org/b/145389>
+        <rdar://problem/17923642>
+
+        Reviewed by Simon Fraser.
+
+        Remove tests that were only here to check that animations in fill-forwards
+        state would participate in overlap testing.
+
+        * compositing/animation/layer-for-filling-animation-expected.txt: Update expected result
+        here to reflect that we no longer expect filling-forwards animations to get composited.
+
+        * compositing/animation/filling-animation-overlap-at-end-expected.txt: Removed.
+        * compositing/animation/filling-animation-overlap-at-end.html: Removed.
+        * compositing/animation/filling-animation-overlap-expected.txt: Removed.
+        * compositing/animation/filling-animation-overlap.html: Removed.
+        * platform/ios-sim-deprecated/compositing/animation/filling-animation-overlap-at-end-expected.txt: Removed.
+        * platform/ios-sim-deprecated/compositing/animation/filling-animation-overlap-expected.txt: Removed.
+        * platform/ios-sim-deprecated/compositing/animation/layer-for-filling-animation-expected.txt: Removed.
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r185087.
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+
+        Unreviewed.
+
+        * platform/mac-mavericks/fast/text/font-weights-zh-expected.txt: Copied from LayoutTests/platform/mac/fast/text/font-weights-zh-expected.txt.
+        * platform/mac/fast/text/font-weights-zh-expected.txt:
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Out of bounds read in WebCore::ComplexTextController::adjustGlyphsAndAdvances
+        https://bugs.webkit.org/show_bug.cgi?id=145537
+        <rdar://problem/20959267>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/crash-complex-text-surrogate.html: Added.
+        * platform/mac/fast/text/crash-complex-text-surrogate-expected.txt: Added.
+
+2015-05-30  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (179771): zooming on facebook images covers image
+        https://bugs.webkit.org/show_bug.cgi?id=145485
+
+        Reviewed by Simon Fraser.
+
+        Scaling an infinite rect should always produce an infinite rect.
+        (Based on Simon Fraser's patch)
+
+        * compositing/layer-creation/zoomed-clip-intersection-expected.txt: Added.
+        * compositing/layer-creation/zoomed-clip-intersection.html: Added.
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test font selection for zh fonts
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+
+        Rubber-stamped by Zalan Bujtas.
+
+        * platform/mac/fast/text/font-weights-zh-expected.txt: Added.
+        * platform/mac/fast/text/font-weights-zh.html: Added.
+
+2015-06-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r185074 and r185085.
+        https://bugs.webkit.org/show_bug.cgi?id=145533
+
+        Moving to a separate test (Requested by litherum on #webkit).
+
+        Reverted changesets:
+
+        "Test font selection for zh fonts"
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+        http://trac.webkit.org/changeset/185074
+
+        "Test gardening after r185074"
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+        http://trac.webkit.org/changeset/185085
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r185074
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+
+        Unreviewed.
+
+        * platform/mac-mavericks/fast/text/font-weights-expected.txt: Copied from LayoutTests/platform/mac/fast/text/font-weights-expected.txt.
+        * platform/mac/fast/text/font-weights-expected.txt: Yosemite-specific test results.
+
+2015-06-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test font selection for zh fonts
+        https://bugs.webkit.org/show_bug.cgi?id=145478
+
+        Reviewed by Zalan Bujtas.
+
+        We want to make sure that font selection works correctly for more than just Helvetica and Avenir.
+
+        * platform/mac/fast/text/font-weights-expected.txt:
+        * platform/mac/fast/text/font-weights.html:
+
+2015-06-01  Brady Eidson  <beidson@apple.com>
+
+        Add WKTR support for "should open external URLs".
+        https://bugs.webkit.org/show_bug.cgi?id=145505
+
+        Reviewed by Darin Adler.
+
+        * loader/navigation-policy/resources/notify-done.html: Added.
+        * loader/navigation-policy/should-load-external-urls-set-by-api-basic-expected.txt: Added.
+        * loader/navigation-policy/should-load-external-urls-set-by-api-basic.html: Added.
+        * loader/navigation-policy/should-not-load-external-urls-set-by-api-basic-expected.txt: Added.
+        * loader/navigation-policy/should-not-load-external-urls-set-by-api-basic.html: Added.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-06-01  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(revalidatingResource.inCache()) in MemoryCache when reloading tumblr.com
+        https://bugs.webkit.org/show_bug.cgi?id=145518
+        <rdar://problem/21168573>
+
+        Reviewed by Darin Adler.
+
+        Add layout test to make sure we no longer crash if the memory cache is
+        pruned while a resource is being revalidated.
+
+        * http/tests/cache/memory-cache-pruning-during-revalidation-expected.txt: Added.
+        * http/tests/cache/memory-cache-pruning-during-revalidation.html: Added.
+
+2015-05-31  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Async XMLHttpRequest should get access to AppCache resources stored as flat files
+        https://bugs.webkit.org/show_bug.cgi?id=138506
+
+        Reviewed by Darin Adler.
+
+        * http/tests/appcache/resources/simple-video-async.manifest: Added.
+        * http/tests/appcache/simple-video-async-expected.txt: Added.
+        * http/tests/appcache/simple-video-async.html: Added.
+
+2015-05-31  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Implement ReadableStreamController constructor
+        https://bugs.webkit.org/show_bug.cgi?id=143752
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream.html: checking controller constructor.
+        * streams/reference-implementation/brand-checks-expected.txt:
+
+2015-05-31  Jordan Harband  <ljharb@gmail.com>
+
+        Array#reduce and reduceRight don't follow ToLength
+        https://bugs.webkit.org/show_bug.cgi?id=145364
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-reduce-expected.txt:
+        * js/array-reduceRight-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/dom/script-tests/array-prototype-properties.js:
+        * js/script-tests/array-reduce.js:
+        * js/script-tests/array-reduceRight.js:
+
+2015-05-30  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL codegen for MultiGetByOffset and MultiPutByOffset where the structure set is already proved should have an unreachable default case instead of an exit
+        https://bugs.webkit.org/show_bug.cgi?id=145469
+
+        Reviewed by Geoffrey Garen.
+
+        * js/regress/repeat-multi-get-by-offset-expected.txt: Added.
+        * js/regress/repeat-multi-get-by-offset.html: Added.
+        * js/regress/script-tests/repeat-multi-get-by-offset.js: Added.
+        (foo):
+
+2015-05-29  Keith Miller  <keith_miller@apple.com>
+
+        WeakMap reference w/ DOM element as key does not survive long enough.
+        https://bugs.webkit.org/show_bug.cgi?id=137651
+
+        Reviewed by Geoffrey Garen.
+
+        * js/dom/script-tests/weakmap-gc-unobservable-dom-nodes.js: Added.
+        (.set gc):
+        * js/dom/weakmap-gc-unobservable-dom-nodes.html: Added.
+
+2015-05-29  Zalan Bujtas  <zalan@apple.com>
+
+        Text disappears shortly after page load on Nexus 7 site.
+        https://bugs.webkit.org/show_bug.cgi?id=145467
+        rdar://problem/18327239
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that overlap testing for composited layers works properly when the sibling
+        layer gets composited through its child.
+
+        When a layer gets composited through its child content, the recursive overlap testing should build up the
+        overlapmap stack so that sibling content is intersected both against the child and its parent bounds.
+
+        * compositing/sibling-layer-does-not-get-composited-overflow-hidden-case-expected.html: Added.
+        * compositing/sibling-layer-does-not-get-composited-overflow-hidden-case.html: Added.
+        * compositing/sibling-layer-does-not-get-composited-transform-case-expected.html: Added.
+        * compositing/sibling-layer-does-not-get-composited-transform-case.html: Added.
+
+2015-05-29  Chris Dumez  <cdumez@apple.com>
+
+        Consider throttling DOM timers in iframes outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=145465
+        <rdar://problem/20768957>
+
+        Reviewed by Darin Adler.
+
+        Add a layout test to check that DOM timers in iframes outside the
+        viewport get throttled.
+
+        * fast/dom/resources/timer-frame-2.html: Added.
+        * fast/dom/resources/timer-frame.html: Added.
+        * fast/dom/timer-throttling-subframe-expected.txt: Added.
+        * fast/dom/timer-throttling-subframe.html: Added.
+
+2015-05-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Non-speculative Branch should be fast in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=145452
+
+        Reviewed by Andreas Kling.
+
+        * js/regress/logical-not-weird-types-expected.txt: Added.
+        * js/regress/logical-not-weird-types.html: Added.
+        * js/regress/script-tests/logical-not-weird-types.js: Added.
+        (foo):
+
+2015-05-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Land some .html/-expected.txt files for some tests that were added without them.
+
+        Rubber stamped by Andreas Kling.
+
+        * js/regress/cse-new-array-buffer-expected.txt: Added.
+        * js/regress/cse-new-array-buffer.html: Added.
+        * js/regress/cse-new-array-expected.txt: Added.
+        * js/regress/cse-new-array.html: Added.
+
+2015-05-29  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed Win and GTK gardening.
+
+        Skip Mac font specific test.
+
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-05-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        MediaDevices.getUserMedia should reject promise instead of throwing exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=145282
+
+        Reviewed by Darin Adler.
+
+        Updating test to expect rejection and not error throwing.
+
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt:
+        * fast/mediastream/MediaDevices-getUserMedia.html:
+
+2015-05-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unreviewed gardening on 29th May
+
+        Unskip passing tests for viewport-percentage, text, sub-pixel
+        and update new failing accessibility, fast/overflow and so on.
+
+        * platform/efl/TestExpectations:
+
+2015-05-28  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Pixel crack in text selection of simple text in <textarea>.
+        https://bugs.webkit.org/show_bug.cgi?id=145393
+        rdar://problem/19918941
+
+        Reviewed by Darin Adler.
+
+        Float to LayoutUnit conversion is lossy. To ensure that selection
+        painting always lines up (snaps) properly, the calculated width needs to
+        be adjusted by ceiling the float to the next LayoutUnit value.
+
+        * fast/text/hidpi-text-selection-gap-between-words-expected.html: Added.
+        * fast/text/hidpi-text-selection-gap-between-words.html: Added.
+        * platform/mac/platform/mac/editing/input/caret-primary-bidi-expected.txt:
+
+2015-05-28  Andreas Kling  <akling@apple.com>
+
+        GraphicsLayerCA should start out with m_intersectsCoverageRect=false
+        <https://webkit.org/b/145443>
+        <rdar://problem/19685798>
+
+        Reviewed by Simon Fraser.
+
+        Add a test (based on iframe-and-layers.html) that makes an iframe with compositing
+        layers inside it and places it far outside the visible viewport.
+
+        The layer dump should show that the "intersects coverage rect" flag is 0 for the
+        iframe and its sublayers.
+
+        * compositing/visible-rect/iframe-with-layers-outside-viewport-expected.txt: Added.
+        * compositing/visible-rect/iframe-with-layers-outside-viewport.html: Added.
+
+2015-05-28  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStreamReader should not be exposed
+        https://bugs.webkit.org/show_bug.cgi?id=143564
+
+        Reviewed by Darin Adler.
+
+        Rebasing tests as ReadableStreamReader is no longer defined globally.
+
+        * js/dom/global-constructors-attributes-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-expected.txt:
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        * platform/win/js/dom/global-constructors-attributes-expected.txt:
+
+2015-05-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Delete media/controls-layers.html. It's a bad test that fails and asserts, and there
+        are apparently no plans to fix any of that (see https://bugs.webkit.org/show_bug.cgi?id=145420).
+
+        * media/controls-layers.html: Removed.
+        * platform/mac-mavericks/media/controls-layers-expected.txt: Removed.
+        * platform/mac/media/controls-layers-expected.txt: Removed.
+
+2015-05-27  Jordan Harband  <ljharb@gmail.com>
+
+        Array.of should work with other constructors
+        https://bugs.webkit.org/show_bug.cgi?id=145365
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-of-expected.txt:
+        * js/script-tests/array-of.js:
+        (Foo):
+
+2015-05-27  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Add undefined->double conversion to DoubleRep
+        https://bugs.webkit.org/show_bug.cgi?id=145293
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/math-with-out-of-bounds-array-values-expected.txt: Added.
+        * js/regress/math-with-out-of-bounds-array-values.html: Added.
+        * js/regress/script-tests/math-with-out-of-bounds-array-values.js: Added.
+
+2015-05-27  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r183820): webkit.org/blog/ background painting issue on reload, when the page contains videos
+        https://bugs.webkit.org/show_bug.cgi?id=145420
+
+        Reviewed by Dean Jackson.
+        
+        Test that dumps compositing layers in a document with media controls.
+
+        * media/controls-layers.html: Added.
+        * platform/mac/media/controls-layers-expected.txt: Added.
+        * platform/mac-mavericks/media/controls-layers-expected.txt: Added.
+
+2015-05-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Update Mac WebKit1 TestExpectations for platform/mac/fast/ruby/ruby-expansion-cjk-2.html
+
+        * platform/mac-wk1/TestExpectations: It's an image failure, so counter-intuitively,
+        Failure expectation is not the right one.
+
+2015-05-27  Daniel Bates  <dabates@apple.com>
+
+        Update Mac WebKit1 TestExpectations for platform/mac/fast/ruby/ruby-expansion-cjk-2.html
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-05-27  Daniel Bates  <dabates@apple.com>
+
+        Fix Mac Yosemite layout test failure following <http://trac.webkit.org/changeset/184899>
+        (https://bugs.webkit.org/show_bug.cgi?id=145336)
+
+        Mark test platform/mac/fast/ruby/ruby-expansion-cjk-2.html as failing on Yosemite.
+
+        Also remove references to fast/ruby/ruby-expansion-cjk*.html from TestExpectations files
+        of other ports since we consider these tests specific to Mac.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2015-05-26  Dean Jackson  <dino@apple.com>
+
+        Backdrop filters don't animate
+        https://bugs.webkit.org/show_bug.cgi?id=145386
+        <rdar://problem/21110037>
+
+        Reviewed by Simon Fraser.
+
+        Add a test for animation of backdrop-filter, and do some
+        minor cleanups in related files.
+
+        * animations/resources/animation-test-helpers.js:
+        (parseFilterImage): Fix a typo.
+        (getPropertyValue): Support webkitBackdropFilter.
+        (comparePropertyValue): Ditto.
+        * css3/filters/backdrop/animation-expected.txt: Added.
+        * css3/filters/backdrop/animation.html: Added.
+
+2015-05-27  Matt Baker  <mattbaker@apple.com>
+
+        [iOS] Rebaseline expected results for tests in LayoutTests/compositing
+        https://bugs.webkit.org/show_bug.cgi?id=145401
+
+        Reviewed by Simon Fraser.
+
+        Rebaselined iOS tests failing due to expected differences in converage rect, scrollbar and contentsScale.
+
+        * platform/ios-simulator/compositing/layer-creation/scale-rotation-animation-overlap-expected.txt: Added.
+        * platform/ios-simulator/compositing/masks/compositing-clip-path-change-no-repaint-expected.txt: Added.
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/rotated-tiled-preserve3d-clamped-expected.txt:
+        * platform/ios-simulator/compositing/tiling/transform-origin-tiled-expected.txt: Copied from LayoutTests/platform/ios-simulator/compositing/tiling/rotated-tiled-clamped-expected.txt.
+        * platform/ios-simulator/compositing/visible-rect/backing-change-height-from-zero-expected.txt: Added.
+
+2015-05-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic ligatures are broken in Google Maps
+        https://bugs.webkit.org/show_bug.cgi?id=145336
+        <rdar://problem/20689607>
+
+        Reviewed by Darin Adler.
+
+        This patch adds a DRT test to make sure that text gets drawn with the correct font.
+
+        It also updates expected results for 4 tests, which I have verified are still correct. However,
+        because the behavior of Mavericks differs from Yosemite, I copied the old expected results to
+        platform/mac-mavericks before updating the results in platform/mac.
+
+        This patch also moves fast/ruby/ruby-expansion-cjk*.html to platform/mac because they rely on
+        platform-specific screen-space quantization. This patch also skips these tests on Mavericks
+        because I can't add platform-specific expected results for reftests.
+
+        * platform/ios-simulator/fast/text/arabic-with-no-supporting-webfont-expected.txt:
+        * platform/ios-simulator/fast/text/arabic-with-no-supporting-webfont.html:
+
+        * platform/mac-mavericks/fast/css/font-face-opentype-expected.txt: Copied from platform/mac.
+        * platform/mac-mavericks/svg/batik/text/xmlSpace-expected.txt: Ditto.
+        * platform/mac-mavericks/svg/custom/svg-fonts-fallback-expected.txt: Ditto.
+        * platform/mac-mavericks/svg/custom/svg-fonts-without-missing-glyph-expected.txt: Ditto.
+        * platform/mac-mavericks/TestExpectations: Skip fast/ruyb/ruby-expansion-cjk*.html
+        * platform/mac/fast/css/font-face-opentype-expected.txt: Updated.
+        * platform/mac/svg/batik/text/xmlSpace-expected.txt: Ditto.
+        * platform/mac/svg/custom/svg-fonts-fallback-expected.txt: Ditto.
+        * platform/mac/svg/custom/svg-fonts-without-missing-glyph-expected.txt: Ditto.
+        * LayoutTests/platform/mac/fast/ruby/resources/green.png: Moved from fast/ruby/resources/green.png
+        * LayoutTests/platform/mac/fast/ruby/resources/ruby-expansion.svg: Moved from fast/ruby/resources/ruby-expansion.svg
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2-expected.html: Moved from fast/ruby/ruby-expansion-cjk-2-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-2.html: Moved from fast/ruby/ruby-expansion-cjk-2.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3-expected.html: Moved from fast/ruby/ruby-expansion-cjk-3-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-3.html: Moved from fast/ruby/ruby-expansion-cjk-3.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4-expected.html: Moved from fast/ruby/ruby-expansion-cjk-4-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-4.html: Moved from fast/ruby/ruby-expansion-cjk-4.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5-expected.html: Moved from fast/ruby/ruby-expansion-cjk-5-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-5.html: Moved from fast/ruby/ruby-expansion-cjk-5.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk-expected.html: Moved from fast/ruby/ruby-expansion-cjk-expected.html
+        * LayoutTests/platform/mac/fast/ruby/ruby-expansion-cjk.html: Moved from fast/ruby/ruby-expansion-cjk.html
+
 2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         An SVG with no intrinsic size does not draw correct slices when used as a border-image for an HTML element.

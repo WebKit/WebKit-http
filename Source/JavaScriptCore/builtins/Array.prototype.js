@@ -24,6 +24,80 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+function reduce(callback /*, initialValue */)
+{
+    "use strict";
+    if (this === null)
+        throw new @TypeError("Array.prototype.reduce requires that |this| not be null");
+
+    if (this === undefined)
+        throw new @TypeError("Array.prototype.reduce requires that |this| not be undefined");
+
+    var array = @Object(this);
+    var length = @ToLength(array.length);
+
+    if (typeof callback !== "function")
+        throw new @TypeError("Array.prototype.reduce callback must be a function");
+
+    if (length === 0 && arguments.length < 2)
+        throw new @TypeError("reduce of empty array with no initial value");
+
+    var accumulator, k = 0;
+    if (arguments.length > 1)
+        accumulator = arguments[1];
+    else {
+        while (k < length && !(k in array))
+            k += 1;
+        if (k >= length)
+            throw new @TypeError("reduce of empty array with no initial value");
+        accumulator = array[k++];
+    }
+
+    while (k < length) {
+        if (k in array)
+            accumulator = callback.@call(undefined, accumulator, array[k], k, array);
+        k += 1;
+    }
+    return accumulator;
+}
+
+function reduceRight(callback /*, initialValue */)
+{
+    "use strict";
+    if (this === null)
+        throw new @TypeError("Array.prototype.reduceRight requires that |this| not be null");
+
+    if (this === undefined)
+        throw new @TypeError("Array.prototype.reduceRight requires that |this| not be undefined");
+
+    var array = @Object(this);
+    var length = @ToLength(array.length);
+
+    if (typeof callback !== "function")
+        throw new @TypeError("Array.prototype.reduceRight callback must be a function");
+
+    if (length === 0 && arguments.length < 2)
+        throw new @TypeError("reduceRight of empty array with no initial value");
+
+    var accumulator, k = length - 1;
+    if (arguments.length > 1)
+        accumulator = arguments[1];
+    else {
+        while (k >= 0 && !(k in array))
+            k -= 1;
+        if (k < 0)
+            throw new @TypeError("reduceRight of empty array with no initial value");
+        accumulator = array[k--];
+    }
+
+    while (k >= 0) {
+        if (k in array)
+            accumulator = callback.@call(undefined, accumulator, array[k], k, array);
+        k -= 1;
+    }
+    return accumulator;
+}
+
 function every(callback /*, thisArg */) {
     "use strict";
     if (this === null)
@@ -286,8 +360,8 @@ function sort(comparator)
 
     function stringComparator(a, b)
     {
-        var aString = @String(a);
-        var bString = @String(b);
+        var aString = a.string;
+        var bString = b.string;
 
         var aLength = aString.length;
         var bLength = bString.length;
@@ -300,19 +374,10 @@ function sort(comparator)
             if (aCharCode == bCharCode)
                 continue;
 
-            if (aCharCode < bCharCode)
-                return -1;
-
-            return 1;
+            return aCharCode - bCharCode;
         }
 
-        if (aLength == bLength)
-            return 0;
-
-        if (aLength < bLength)
-            return -1;
-
-        return 1;
+        return aLength - bLength;
     }
 
     // Move undefineds and holes to the end of a sparse array. Result is [values..., undefineds..., holes...].
@@ -355,8 +420,7 @@ function sort(comparator)
         return valueCount;
     }
 
-    // Move undefineds and holes to the end of an array. Result is [values..., undefineds..., holes...].
-    function compact(array, length)
+    function compactSlow(array, length)
     {
         var holeCount = 0;
 
@@ -371,6 +435,7 @@ function sort(comparator)
             var value = array[src];
             if (value === undefined)
                 continue;
+
             array[dst++] = value;
         }
 
@@ -384,6 +449,17 @@ function sort(comparator)
             delete array[i];
 
         return valueCount;
+    }
+
+    // Move undefineds and holes to the end of an array. Result is [values..., undefineds..., holes...].
+    function compact(array, length)
+    {
+        for (var i = 0; i < array.length; ++i) {
+            if (array[i] === undefined)
+                return compactSlow(array, length);
+        }
+
+        return length;
     }
 
     function merge(dst, src, srcIndex, srcEnd, width, comparator)
@@ -427,6 +503,39 @@ function sort(comparator)
         }
     }
 
+    function bucketSort(array, dst, bucket, depth)
+    {
+        if (bucket.length < 32 || depth > 32) {
+            mergeSort(bucket, bucket.length, stringComparator);
+            for (var i = 0; i < bucket.length; ++i)
+                array[dst++] = bucket[i].value;
+            return dst;
+        }
+
+        var buckets = [ ];
+        for (var i = 0; i < bucket.length; ++i) {
+            var entry = bucket[i];
+            var string = entry.string;
+            if (string.length == depth) {
+                array[dst++] = entry.value;
+                continue;
+            }
+
+            var c = string.@charCodeAt(depth);
+            if (!buckets[c])
+                buckets[c] = [ ];
+            buckets[c][buckets[c].length] = entry;
+        }
+
+        for (var i = 0; i < buckets.length; ++i) {
+            if (!buckets[i])
+                continue;
+            dst = bucketSort(array, dst, buckets[i], depth + 1);
+        }
+
+        return dst;
+    }
+
     function comparatorSort(array, comparator)
     {
         var length = array.length >>> 0;
@@ -440,6 +549,24 @@ function sort(comparator)
         mergeSort(array, valueCount, comparator);
     }
 
+    function stringSort(array)
+    {
+        var length = array.length >>> 0;
+
+        // For compatibility with Firefox and Chrome, do nothing observable
+        // to the target array if it has 0 or 1 sortable properties.
+        if (length < 2)
+            return;
+
+        var valueCount = compact(array, length);
+
+        var strings = new @Array(valueCount);
+        for (var i = 0; i < valueCount; ++i)
+            strings[i] = { string: @toString(array[i]), value: array[i] };
+
+        bucketSort(array, 0, strings, 0);
+    }
+
     if (this === null)
         throw new @TypeError("Array.prototype.sort requires that |this| not be null");
 
@@ -449,11 +576,13 @@ function sort(comparator)
     if (typeof this == "string")
         throw new @TypeError("Attempted to assign to readonly property.");
 
-    if (typeof comparator !== "function")
-        comparator = stringComparator;
-
     var array = @Object(this);
-    comparatorSort(array, comparator);
+
+    if (typeof comparator == "function")
+        comparatorSort(array, comparator);
+    else
+        stringSort(array);
+
     return array;
 }
 

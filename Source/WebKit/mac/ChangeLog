@@ -1,3 +1,155 @@
+2015-06-02  Brady Eidson  <beidson@apple.com>
+
+        WebKit policy delegate should suggest if a navigation should be allowed to open URLs externally.
+        rdar://problem/21025301 and https://bugs.webkit.org/show_bug.cgi?id=145280
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController webPlugInContainerLoadRequest:inFrame:]):
+        
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+        
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2015-06-01  Anders Carlsson  <andersca@apple.com>
+
+        WAKScrollView.h cannot be imported standalone
+        https://bugs.webkit.org/show_bug.cgi?id=145529
+
+        Reviewed by Dan Bernstein.
+
+        Don't migrate WAKScrollView.h, it's not used outside of WebKit.
+
+        * MigrateHeaders.make:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        Make the header replace rule more restrictive and get rid of a special case
+        https://bugs.webkit.org/show_bug.cgi?id=145486
+
+        Reviewed by Ryosuke Niwa.
+
+        We used to not run the header migration script on WAKScrollView.h since we had a rule that would transform
+        "<WebCore" to "<WebKitLegacy" to convert header #imports. However, WAKScrollView.h contains "WAKView <WebCoreFrameScrollView>" 
+        which would get transformed to "WAKView <WebKitLegacyFrameScrollView>".
+        
+        Instead, check for the trailing slash as well and stop special-casing WAKScrollView.h.
+
+        * MigrateHeaders.make:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WAKViewPrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=145482
+        rdar://problem/21162149
+
+        Reviewed by Dan Bernstein.
+
+        Remove WAKViewPrivate.h imports.
+
+        * DefaultDelegates/WebDefaultUIDelegate.m:
+        * MigrateHeaders.make:
+        * Misc/WebKitNSStringExtras.mm:
+        * Misc/WebNSViewExtras.m:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebFrameView.mm:
+        * WebView/WebHTMLView.mm:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        WebResourceLoadDelegatePrivate.h cannot be imported standalone (missing WebNSInteger type)
+        https://bugs.webkit.org/show_bug.cgi?id=145476
+        rdar://problem/21162400
+
+        Reviewed by Dan Bernstein.
+
+        Change WebNSInteger to NSInteger.
+
+        * WebView/WebResourceLoadDelegatePrivate.h:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        WebKit.framework installs or references Mac-only headers on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=145471
+        rdar://problem/21161459
+
+        Reviewed by Dan Bernstein.
+
+        * History/WebURLsWithTitles.h:
+        Add an #if !TARGET_OS_IPHONE guard around the entire header.
+
+        * MigrateHeaders.make:
+        Don't migrate the NPAPI headers on iOS.
+
+2015-05-28  Matt Rajca  <mrajca@apple.com>
+
+        Add ENABLE_MEDIA_SESSION feature flag (which is off by default).
+        https://bugs.webkit.org/show_bug.cgi?id=145415
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-28  Jon Lee  <jonlee@apple.com>
+
+        Build fix after r184946.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences allowsAirPlayForMediaPlayback]):
+        (-[WebPreferences setAllowsAirPlayForMediaPlayback:]):
+
+2015-05-19  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        [iOS] When viewing an MJPEG stream as the main resource, only the first
+        frame paints
+
+        <https://bugs.webkit.org/show_bug.cgi?id=145185>
+        <rdar://problem/20124694>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::didReplaceMultipartContent):
+        Call the FrameView's didReplaceMultipartContent().
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Fix macros for wireless playback
+        https://bugs.webkit.org/show_bug.cgi?id=145239
+        rdar://problem/21049541
+
+        Reviewed by Anders Carlsson.
+
+        Encompass the logic within ENABLE(WIRELESS_TARGET_PLAYBACK). Update property name.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Wrap in ENABLE.
+        (-[WebPreferences allowsAirPlayForMediaPlayback]): Ditto.
+        (-[WebPreferences setAllowsAirPlayForMediaPlayback:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Ditto.
+
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2015-05-26  Dan Bernstein  <mitz@apple.com>
 
         <rdar://problem/21104551> Update build settings

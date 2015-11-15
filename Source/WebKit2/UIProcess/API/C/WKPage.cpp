@@ -126,9 +126,15 @@ void WKPageLoadURL(WKPageRef pageRef, WKURLRef URLRef)
     toImpl(pageRef)->loadRequest(URL(URL(), toWTFString(URLRef)));
 }
 
+void WKPageLoadURLWithShouldOpenExternalURLsPolicy(WKPageRef pageRef, WKURLRef URLRef, bool shouldOpenExternalURLs)
+{
+    ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = shouldOpenExternalURLs ? ShouldOpenExternalURLsPolicy::ShouldAllow : ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+    toImpl(pageRef)->loadRequest(URL(URL(), toWTFString(URLRef)), shouldOpenExternalURLsPolicy);
+}
+
 void WKPageLoadURLWithUserData(WKPageRef pageRef, WKURLRef URLRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadRequest(URL(URL(), toWTFString(URLRef)), toImpl(userDataRef));
+    toImpl(pageRef)->loadRequest(URL(URL(), toWTFString(URLRef)), ShouldOpenExternalURLsPolicy::ShouldNotAllow, toImpl(userDataRef));
 }
 
 void WKPageLoadURLRequest(WKPageRef pageRef, WKURLRequestRef urlRequestRef)
@@ -138,7 +144,7 @@ void WKPageLoadURLRequest(WKPageRef pageRef, WKURLRequestRef urlRequestRef)
 
 void WKPageLoadURLRequestWithUserData(WKPageRef pageRef, WKURLRequestRef urlRequestRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadRequest(toImpl(urlRequestRef)->resourceRequest(), toImpl(userDataRef));
+    toImpl(pageRef)->loadRequest(toImpl(urlRequestRef)->resourceRequest(), ShouldOpenExternalURLsPolicy::ShouldNotAllow, toImpl(userDataRef));
 }
 
 void WKPageLoadFile(WKPageRef pageRef, WKURLRef fileURL, WKURLRef resourceDirectoryURL)

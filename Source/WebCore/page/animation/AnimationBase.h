@@ -163,7 +163,6 @@ public:
         Delaying = 1 << 0,
         Paused = 1 << 1,
         Running = 1 << 2,
-        FillingFowards = 1 << 3
     };
     typedef unsigned RunningState;
     bool isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly, RunningState runningState) const
@@ -183,15 +182,15 @@ public:
         if ((runningState & Running) && !inPausedState() && (m_animationState >= AnimationState::StartWaitStyleAvailable && m_animationState <= AnimationState::Done))
             return true;
 
-        if ((runningState & FillingFowards) && m_animationState == AnimationState::FillingForwards)
-            return true;
-
         return false;
     }
 
     // FIXME: rename this using the "lists match" terminology.
     bool isTransformFunctionListValid() const { return m_transformFunctionListValid; }
     bool filterFunctionListsMatch() const { return m_filterFunctionListsMatch; }
+#if ENABLE(FILTERS_LEVEL_2)
+    bool backdropFilterFunctionListsMatch() const { return m_backdropFilterFunctionListsMatch; }
+#endif
 
     // Freeze the animation; used by DumpRenderTree.
     void freezeAtTime(double t);
@@ -259,6 +258,9 @@ protected:
     bool m_isAccelerated { false };
     bool m_transformFunctionListValid { false };
     bool m_filterFunctionListsMatch { false };
+#if ENABLE(FILTERS_LEVEL_2)
+    bool m_backdropFilterFunctionListsMatch { false };
+#endif
 };
 
 } // namespace WebCore

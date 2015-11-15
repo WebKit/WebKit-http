@@ -101,22 +101,20 @@ CallLinkStatus CallLinkStatus::computeFor(
 }
 
 CallLinkStatus::ExitSiteData CallLinkStatus::computeExitSiteData(
-    const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex,
-    ExitingJITType exitingJITType)
+    const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex)
 {
     ExitSiteData exitSiteData;
     
 #if ENABLE(DFG_JIT)
     exitSiteData.m_takesSlowPath =
-        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadType, exitingJITType))
-        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadExecutable, exitingJITType));
+        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadType))
+        || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadExecutable));
     exitSiteData.m_badFunction =
-        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCell, exitingJITType));
+        profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCell));
 #else
     UNUSED_PARAM(locker);
     UNUSED_PARAM(profiledBlock);
     UNUSED_PARAM(bytecodeIndex);
-    UNUSED_PARAM(exitingJITType);
 #endif
     
     return exitSiteData;
@@ -149,6 +147,11 @@ CallLinkStatus CallLinkStatus::computeFromCallLinkInfo(
     // only be deleted at next GC, so if we load a non-null one, then it must contain data
     // that is still marginally valid (i.e. the pointers ain't stale). This kind of raciness
     // is probably OK for now.
+    
+    // FIXME: If the GC often clears this call, we should probably treat it like it always takes the
+    // slow path. We could be smart about this; for example if we cleared a specific callee but the
+    // despecified executable was alive then we could note that separately.
+    // https://bugs.webkit.org/show_bug.cgi?id=145502
     
     // PolymorphicCallStubRoutine is a GCAwareJITStubRoutine, so if non-null, it will stay alive
     // until next GC even if the CallLinkInfo is concurrently cleared. Also, the variants list is
@@ -209,17 +212,18 @@ CallLinkStatus CallLinkStatus::computeFromCallLinkInfo(
         return result;
     }
     
-    if (callLinkInfo.slowPathCount >= Options::couldTakeSlowCaseMinimumCount())
-        return takesSlowPath();
+    CallLinkStatus result;
     
-    JSFunction* target = callLinkInfo.lastSeenCallee.get();
-    if (!target)
-        return takesSlowPath();
+    if (JSFunction* target = callLinkInfo.lastSeenCallee.get()) {
+        CallVariant variant(target);
+        if (callLinkInfo.hasSeenClosure)
+            variant = variant.despecifiedClosure();
+        result.m_variants.append(variant);
+    }
     
-    if (callLinkInfo.hasSeenClosure)
-        return CallLinkStatus(target->executable());
+    result.m_couldTakeSlowPath = !!callLinkInfo.slowPathCount;
 
-    return CallLinkStatus(target);
+    return result;
 }
 
 CallLinkStatus CallLinkStatus::computeFor(
@@ -259,7 +263,7 @@ void CallLinkStatus::computeDFGStatuses(
         {
             ConcurrentJITLocker locker(currentBaseline->m_lock);
             exitSiteData = computeExitSiteData(
-                locker, currentBaseline, codeOrigin.bytecodeIndex, ExitFromFTL);
+                locker, currentBaseline, codeOrigin.bytecodeIndex);
         }
         
         {

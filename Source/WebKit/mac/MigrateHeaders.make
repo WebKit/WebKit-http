@@ -184,11 +184,17 @@ all : \
     $(PRIVATE_HEADERS_DIR)/DOMXPathResult.h \
     $(PRIVATE_HEADERS_DIR)/WebKitAvailability.h \
     $(PRIVATE_HEADERS_DIR)/WebScriptObject.h \
+#
+
+ifeq ($(PLATFORM_NAME), macosx)
+all : \
     $(PRIVATE_HEADERS_DIR)/npapi.h \
     $(PRIVATE_HEADERS_DIR)/npfunctions.h \
     $(PRIVATE_HEADERS_DIR)/npruntime.h \
     $(PRIVATE_HEADERS_DIR)/nptypes.h \
 #
+
+endif
 
 ifneq ($(PLATFORM_NAME), macosx)
 all : \
@@ -200,9 +206,7 @@ all : \
     $(PRIVATE_HEADERS_DIR)/SystemMemory.h \
     $(PRIVATE_HEADERS_DIR)/WAKAppKitStubs.h \
     $(PRIVATE_HEADERS_DIR)/WAKResponder.h \
-    $(PRIVATE_HEADERS_DIR)/WAKScrollView.h \
     $(PRIVATE_HEADERS_DIR)/WAKView.h \
-    $(PRIVATE_HEADERS_DIR)/WAKViewPrivate.h \
     $(PRIVATE_HEADERS_DIR)/WAKWindow.h \
     $(PRIVATE_HEADERS_DIR)/WKContentObservation.h \
     $(PRIVATE_HEADERS_DIR)/WKGraphics.h \
@@ -213,12 +217,8 @@ all : \
     $(PRIVATE_HEADERS_DIR)/WebCoreThread.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadMessage.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadRun.h \
-    $(PRIVATE_HEADERS_DIR)/WebEvent.h
-
-# Special case WAKScrollView.h, which contains the protocol named
-# <WebCoreFrameScrollView> and shouldn't be changed by the default rule.
-$(PRIVATE_HEADERS_DIR)/WAKScrollView.h : WAKScrollView.h MigrateHeaders.make
-	cat $< > $@
+    $(PRIVATE_HEADERS_DIR)/WebEvent.h \
+#
 
 endif
 
@@ -239,7 +239,7 @@ all : \
     $(PRIVATE_HEADERS_DIR)/DOMGestureEvent.h
 endif
 
-WEBCORE_HEADER_REPLACE_RULES = -e s/\<WebCore/\<WebKitLegacy/ -e s/DOMDOMImplementation/DOMImplementation/ -e "s/(^ *)WEBCORE_EXPORT /\1/"
+WEBCORE_HEADER_REPLACE_RULES = -e 's/\<WebCore\//\<WebKitLegacy\//' -e s/DOMDOMImplementation/DOMImplementation/ -e "s/(^ *)WEBCORE_EXPORT /\1/"
 WEBCORE_HEADER_MIGRATE_CMD = sed -E $(WEBCORE_HEADER_REPLACE_RULES) $< > $@
 
 $(PRIVATE_HEADERS_DIR)/DOM% : DOMDOM% MigrateHeaders.make

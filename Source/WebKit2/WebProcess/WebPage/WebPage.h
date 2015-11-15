@@ -253,6 +253,8 @@ public:
     void didStartPageTransition();
     void didCompletePageTransition();
     void didCommitLoad(WebFrame*);
+    void willReplaceMultipartContent(const WebFrame&);
+    void didReplaceMultipartContent(const WebFrame&);
     void didFinishLoad(WebFrame*);
     void show();
     String userAgent(const WebCore::URL&) const;
@@ -551,6 +553,9 @@ public:
     void disableInspectorNodeSearch();
 #endif
 
+    void setLayerTreeStateIsFrozen(bool);
+    bool markLayersVolatileImmediatelyIfPossible();
+
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
 
     void pageDidScroll();
@@ -787,6 +792,7 @@ public:
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
+    void applicationDidEnterBackground();
     void applicationWillEnterForeground();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
@@ -916,6 +922,7 @@ private:
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
     void resetTextAutosizingBeforeLayoutIfNeeded(const WebCore::FloatSize& oldSize, const WebCore::FloatSize& newSize);
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(WebCore::Frame&, const WebCore::IntPoint&);
+    void volatilityTimerFired();
 #endif
 #if !PLATFORM(COCOA)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -935,7 +942,7 @@ private:
 
     // Actions
     void tryClose();
-    void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, const UserData&);
+    void loadRequest(uint64_t navigationID, const WebCore::ResourceRequest&, const SandboxExtension::Handle&, uint64_t shouldOpenExternalURLsPolicy, const UserData&);
     void loadData(const IPC::DataReference&, const String& MIMEType, const String& encodingName, const String& baseURL, const UserData&);
     void loadHTMLString(uint64_t navigationID, const String& htmlString, const String& baseURL, const UserData&);
     void loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, const String& provisionalLoadErrorURL, const UserData&);
@@ -1337,6 +1344,8 @@ private:
     HashMap<std::pair<WebCore::IntSize, double>, WebCore::IntPoint> m_dynamicSizeUpdateHistory;
     RefPtr<WebCore::Node> m_pendingSyntheticClickNode;
     WebCore::FloatPoint m_pendingSyntheticClickLocation;
+    WebCore::FloatRect m_previousExposedContentRect;
+    WebCore::Timer m_volatilityTimer;
 #endif
 
     WebInspectorClient* m_inspectorClient;

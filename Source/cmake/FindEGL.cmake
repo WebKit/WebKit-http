@@ -2,8 +2,9 @@
 # Once done, this will define
 #
 #  EGL_FOUND - system has EGL installed.
-#  EGL_INCLUDE_DIR - directories which contain the EGL headers.
-#  EGL_LIBRARY - libraries required to link against EGL.
+#  EGL_INCLUDE_DIRS - directories which contain the EGL headers.
+#  EGL_LIBRARIES - libraries required to link against EGL.
+#  EGL_DEFINITIONS - Compiler switches required for using EGL.
 #
 # Copyright (C) 2012 Intel Corporation. All rights reserved.
 #
@@ -28,12 +29,25 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h)
+
+find_package(PkgConfig)
+
+pkg_check_modules(PC_EGL egl)
+
+if (PC_EGL_FOUND)
+    set(EGL_DEFINITIONS ${PC_EGL_CFLAGS_OTHER})
+endif ()
+
+find_path(EGL_INCLUDE_DIRS NAMES EGL/egl.h
+    HINTS ${PC_EGL_INCLUDEDIR} ${PC_EGL_INCLUDE_DIRS}
+)
 
 set(EGL_NAMES ${EGL_NAMES} egl EGL)
-find_library(EGL_LIBRARY NAMES ${EGL_NAMES})
+find_library(EGL_LIBRARIES NAMES ${EGL_NAMES}
+    HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
+)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(EGL DEFAULT_MSG EGL_INCLUDE_DIR EGL_LIBRARY)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(EGL DEFAULT_MSG EGL_INCLUDE_DIRS EGL_LIBRARIES)
 
-mark_as_advanced(EGL_INCLUDE_DIR EGL_LIBRARY)
+mark_as_advanced(EGL_INCLUDE_DIRS EGL_LIBRARIES)

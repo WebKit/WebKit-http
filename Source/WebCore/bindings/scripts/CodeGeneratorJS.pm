@@ -1301,7 +1301,7 @@ sub GenerateAttributesHashTable
 
     if (ConstructorShouldBeOnInstance($interface) == $isInstance) {
 
-        if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+        if (NeedsConstructorProperty($interface)) {
             die if !$numAttributes;
             push(@$hashKeys, "constructor");
             my $getter = "js" . $interfaceName . "Constructor";
@@ -1749,7 +1749,7 @@ sub GenerateImplementation
         push(@implContent, "\n");
     }
 
-    if ($numAttributes > 0 || !$interface->extendedAttributes->{"NoInterfaceObject"}) {
+    if ($numAttributes > 0 || NeedsConstructorProperty($interface)) {
         push(@implContent, "// Attributes\n\n");
         foreach my $attribute (@{$interface->attributes}) {
             next if $attribute->signature->extendedAttributes->{"ForwardDeclareInHeader"};
@@ -1765,7 +1765,7 @@ sub GenerateImplementation
             push(@implContent, "#endif\n") if $conditionalString;
         }
         
-        if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+        if (NeedsConstructorProperty($interface)) {
             my $getter = "js" . $interfaceName . "Constructor";
             push(@implContent, "JSC::EncodedJSValue ${getter}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);\n");
         }
@@ -1784,7 +1784,7 @@ sub GenerateImplementation
     }
 
     # Add constructor declaration
-    if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+    if (NeedsConstructorProperty($interface)) {
         $implIncludes{"JSDOMBinding.h"} = 1;
         if ($interface->extendedAttributes->{"NamedConstructor"}) {
             $implIncludes{"DOMConstructorWithDocument.h"} = 1;
@@ -1811,7 +1811,7 @@ sub GenerateImplementation
         \%conditionals, 0) if $numInstanceAttributes > 0;
 
     # - Add all constants
-    if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+    if (NeedsConstructorProperty($interface)) {
         my $hashSize = 0;
         my $hashName = $className . "ConstructorTable";
 
@@ -2189,7 +2189,7 @@ sub GenerateImplementation
         }
 
     }
-    $numAttributes = $numAttributes + 1 if !$interface->extendedAttributes->{"NoInterfaceObject"};
+    $numAttributes = $numAttributes + 1 if NeedsConstructorProperty($interface);
     if ($numAttributes > 0) {
         foreach my $attribute (@{$interface->attributes}) {
             my $name = $attribute->signature->name;
@@ -2415,7 +2415,7 @@ sub GenerateImplementation
             push(@implContent, "\n");
         }
 
-        if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+        if (NeedsConstructorProperty($interface)) {
             my $constructorFunctionName = "js" . $interfaceName . "Constructor";
 
             if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
@@ -2440,7 +2440,14 @@ sub GenerateImplementation
                 push(@implContent, "        return JSValue::encode(jsUndefined());\n");
             }
 
-            push(@implContent, "    return JSValue::encode(${className}::getConstructor(exec->vm(), domObject->globalObject()));\n");
+            if (!$interface->extendedAttributes->{"NoInterfaceObject"}) {
+                push(@implContent, "    return JSValue::encode(${className}::getConstructor(exec->vm(), domObject->globalObject()));\n");
+            } else {
+                push(@implContent, "    JSValue constructor = ${className}Constructor::create(exec->vm(), ${className}Constructor::createStructure(exec->vm(), domObject->globalObject(), domObject->globalObject()->objectPrototype()), jsCast<JSDOMGlobalObject*>(domObject->globalObject()));\n");
+                push(@implContent, "    // Shadowing constructor property to ensure reusing the same constructor object\n");
+                push(@implContent, "    domObject->putDirect(exec->vm(), exec->propertyNames().constructor, constructor, DontEnum | ReadOnly);\n");
+                push(@implContent, "    return JSValue::encode(constructor);\n");
+            }
             push(@implContent, "}\n\n");
         }
 
@@ -2920,18 +2927,6 @@ sub GenerateImplementation
     }
 
     if ((!$hasParent && !GetCustomIsReachable($interface)) || GetGenerateIsReachable($interface) || $codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
-        if (GetGenerateIsReachable($interface)) {
-            push(@implContent, "static inline bool isObservable(JS${interfaceName}* js${interfaceName})\n");
-            push(@implContent, "{\n");
-            push(@implContent, "    if (js${interfaceName}->hasCustomProperties())\n");
-            push(@implContent, "        return true;\n");
-            if ($eventTarget) {
-                push(@implContent, "    if (js${interfaceName}->impl().hasEventListeners())\n");
-                push(@implContent, "        return true;\n");
-            }
-            push(@implContent, "    return false;\n");
-            push(@implContent, "}\n\n");
-        }
 
         push(@implContent, "bool JS${interfaceName}Owner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)\n");
         push(@implContent, "{\n");
@@ -2941,7 +2936,7 @@ sub GenerateImplementation
         # their pending activities complete. To wallpaper over this bug, JavaScript
         # wrappers unconditionally keep ActiveDOMObjects with pending activity alive.
         # FIXME: Fix this lifetime issue in the DOM, and move this hasPendingActivity
-        # check below the isObservable check.
+        # check just above the (GetGenerateIsReachable($interface) eq "Impl") check below.
         my $emittedJSCast = 0;
         if ($codeGenerator->InheritsExtendedAttribute($interface, "ActiveDOMObject")) {
             push(@implContent, "    auto* js${interfaceName} = jsCast<JS${interfaceName}*>(handle.slot()->asCell());\n");
@@ -2970,8 +2965,6 @@ sub GenerateImplementation
                 push(@implContent, "    auto* js${interfaceName} = jsCast<JS${interfaceName}*>(handle.slot()->asCell());\n");
                 $emittedJSCast = 1;
             }
-            push(@implContent, "    if (!isObservable(js${interfaceName}))\n");
-            push(@implContent, "        return false;\n");
 
             my $rootString;
             if (GetGenerateIsReachable($interface) eq "Impl") {
@@ -3335,10 +3328,10 @@ sub GenerateParametersCheck
             }
 
             if ($parameter->extendedAttributes->{"RequiresExistingAtomicString"}) {
-                push(@$outputArray, "    AtomicStringImpl* existing_$name = exec->argument($argsIndex).isEmpty() ? nullptr : exec->argument($argsIndex).toString(exec)->toExistingAtomicString(exec);\n");
+                push(@$outputArray, "    RefPtr<AtomicStringImpl> existing_$name = exec->argument($argsIndex).isEmpty() ? nullptr : exec->argument($argsIndex).toString(exec)->toExistingAtomicString(exec);\n");
                 push(@$outputArray, "    if (!existing_$name)\n");
                 push(@$outputArray, "        return JSValue::encode(jsNull());\n");
-                push(@$outputArray, "    const AtomicString $name(existing_$name);\n");
+                push(@$outputArray, "    const AtomicString $name(*existing_$name);\n");
             } else {
                 push(@$outputArray, "    " . GetNativeTypeFromSignature($parameter) . " $name(" . JSValueToNative($parameter, $optional && $defaultAttribute && $defaultAttribute eq "NullString" ? "argumentOrNull(exec, $argsIndex)" : "exec->argument($argsIndex)", $function->signature->extendedAttributes->{"Conditional"}) . ");\n");
             }
@@ -4761,6 +4754,13 @@ sub HasCustomMethod
 {
     my $attrExt = shift;
     return $attrExt->{"Custom"};
+}
+
+sub NeedsConstructorProperty
+{
+    my $interface = shift;
+
+    return !$interface->extendedAttributes->{"NoInterfaceObject"} || $interface->extendedAttributes->{"CustomConstructor"};
 }
 
 sub IsConstructable

@@ -1,9 +1,8 @@
-include(CMakePushCheckState)
 include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 9)
-set(PROJECT_VERSION_MICRO 1)
+set(PROJECT_VERSION_MICRO 2)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
@@ -16,8 +15,8 @@ endif ()
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 44 0 7)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 20 0 2)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 45 0 8)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 20 1 2)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -49,10 +48,22 @@ find_package(WebP REQUIRED)
 find_package(ATSPI 2.5.3)
 find_package(EGL)
 find_package(OpenGL)
+find_package(OpenGLES2)
 
 WEBKIT_OPTION_BEGIN()
 
-WEBKIT_OPTION_DEFINE(ENABLE_GLES2 "Whether to enable OpenGL ES 2.0." PUBLIC OFF)
+# Set the default value for ENABLE_GLES2 automatically.
+# We are not enabling or disabling automatically a feature here, because
+# the feature is by default always on (ENABLE_OPENGL=ON).
+# What we select here automatically is if we use OPENGL (ENABLE_GLES2=OFF)
+# or OPENGLES2 (ENABLE_GLES2=ON) for building the feature.
+set(ENABLE_GLES2_DEFAULT OFF)
+
+if (NOT OPENGL_FOUND AND OPENGLES2_FOUND)
+    set(ENABLE_GLES2_DEFAULT ON)
+endif ()
+
+WEBKIT_OPTION_DEFINE(ENABLE_GLES2 "Whether to enable OpenGL ES 2.0." PUBLIC ${ENABLE_GLES2_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_GTKDOC "Whether or not to use generate gtkdoc." PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(ENABLE_INTROSPECTION "Whether to enable GObject introspection." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_OPENGL "Whether to use OpenGL." PUBLIC ON)
@@ -102,14 +113,6 @@ else ()
 endif ()
 
 if (OPENGL_FOUND)
-    # We don't use find_package for GLX because it is part of -lGL, unlike EGL. We need to
-    # have OPENGL_INCLUDE_DIR as part of the directories check_include_files() looks for in
-    # case OpenGL is installed into a non-standard location.
-    CMAKE_PUSH_CHECK_STATE()
-    set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${OPENGL_INCLUDE_DIR})
-    check_include_files("GL/glx.h" GLX_FOUND)
-    CMAKE_POP_CHECK_STATE()
-
     if (GLX_FOUND)
         list(APPEND CAIROGL_COMPONENTS cairo-glx)
     endif ()
@@ -175,6 +178,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_NAVIGATOR_CONTENT_UTILS PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_NAVIGATOR_HWCONCURRENCY PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_NETSCAPE_PLUGIN_API PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_NOTIFICATIONS PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_PICTURE_SIZES PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_QUOTA PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_RESOLUTION_MEDIA_QUERY PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_REQUEST_ANIMATION_FRAME PRIVATE ON)
@@ -322,7 +326,7 @@ if (ENABLE_OPENGL)
 
     SET_AND_EXPOSE_TO_BUILD(USE_EGL ${EGL_FOUND})
 
-    if (ENABLE_X11_TARGET AND GLX_FOUND)
+    if (ENABLE_X11_TARGET AND GLX_FOUND AND USE_OPENGL)
         SET_AND_EXPOSE_TO_BUILD(USE_GLX TRUE)
     endif ()
 

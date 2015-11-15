@@ -93,6 +93,11 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.Object
 
         sidebarPanel.willRemove();
 
+        if (sidebarPanel.visible) {
+            sidebarPanel.hidden();
+            sidebarPanel.visibilityDidChange();
+        }
+
         sidebarPanel._parentSidebar = null;
 
         if (this._selectedSidebarPanel === sidebarPanel) {
@@ -274,11 +279,6 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.Object
         var newWidth = positionDelta + this._widthBeforeResize;
         this.width = newWidth;
         this.collapsed = (newWidth < (this.minimumWidth / 2));
-    }
-
-    resizerDragEnded(resizer)
-    {
-        delete this._widthBeforeResize;
     }
 
     // Private

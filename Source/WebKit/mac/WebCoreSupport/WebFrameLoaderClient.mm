@@ -136,7 +136,6 @@
 #import <WebCore/HTMLPlugInImageElement.h>
 #import <WebCore/WAKClipView.h>
 #import <WebCore/WAKScrollView.h>
-#import <WebCore/WAKViewPrivate.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WebCoreThreadMessage.h>
 #import "WebKitVersionChecks.h"
@@ -996,6 +995,14 @@ void WebFrameLoaderClient::didChangeTitle(DocumentLoader* loader)
 #if !PLATFORM(IOS)
     // FIXME: Should do this only in main frame case, right?
     [getWebView(m_webFrame.get()) _didChangeValueForKey:_WebMainFrameTitleKey];
+#endif
+}
+
+void WebFrameLoaderClient::didReplaceMultipartContent()
+{
+#if PLATFORM(IOS)
+    if (FrameView *view = core(m_webFrame.get())->view())
+        view->didReplaceMultipartContent();
 #endif
 }
 

@@ -7030,7 +7030,7 @@
     <ClCompile Include="..\Modules\gamepad\GamepadEvent.cpp">
       <Filter>Modules\gamepad</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\HTMLMediaSession.cpp">
+    <ClCompile Include="..\html\MediaElementSession.cpp">
       <Filter>html</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\HTTPHeaderNames.cpp">
@@ -7051,7 +7051,7 @@
     <ClCompile Include="..\rendering\line\LineInfo.cpp">
       <Filter>rendering\line</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\audio\MediaSession.cpp">
+    <ClCompile Include="..\platform\audio\PlatformMediaSession.cpp">
       <Filter>platform\audio</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\audio\MediaSessionManager.cpp">
@@ -14498,7 +14498,7 @@
     <ClInclude Include="..\platform\audio\MediaSessionManager.h">
       <Filter>platform\audio</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\audio\MediaSession.h">
+    <ClInclude Include="..\platform\audio\PlatformMediaSession.h">
       <Filter>platform\audio</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\gamepad\NavigatorGamepad.h">

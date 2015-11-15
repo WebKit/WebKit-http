@@ -144,19 +144,14 @@ public:
         pushCompositingContainer();
     }
 
-    void add(const RenderLayer* layer, const LayoutRect& bounds)
+    void add(const LayoutRect& bounds)
     {
         // Layers do not contribute to overlap immediately--instead, they will
         // contribute to overlap as soon as their composited ancestor has been
         // recursively processed and popped off the stack.
         ASSERT(m_overlapStack.size() >= 2);
         m_overlapStack[m_overlapStack.size() - 2].add(bounds);
-        m_layers.add(layer);
-    }
-
-    bool contains(const RenderLayer* layer)
-    {
-        return m_layers.contains(layer);
+        m_isEmpty = false;
     }
 
     bool overlapsLayers(const LayoutRect& bounds) const
@@ -164,9 +159,9 @@ public:
         return m_overlapStack.last().overlapsLayers(bounds);
     }
 
-    bool isEmpty()
+    bool isEmpty() const
     {
-        return m_layers.isEmpty();
+        return m_isEmpty;
     }
 
     void pushCompositingContainer()
@@ -214,8 +209,8 @@ private:
     };
 
     Vector<OverlapMapContainer> m_overlapStack;
-    HashSet<const RenderLayer*> m_layers;
     RenderGeometryMap m_geometryMap;
+    bool m_isEmpty { true };
 };
 
 struct RenderLayerCompositor::CompositingState {
@@ -389,13 +384,13 @@ void RenderLayerCompositor::willRecalcStyle()
     m_layerNeedsCompositingUpdate = false;
 }
 
-void RenderLayerCompositor::didRecalcStyleWithNoPendingLayout()
+bool RenderLayerCompositor::didRecalcStyleWithNoPendingLayout()
 {
     if (!m_layerNeedsCompositingUpdate)
-        return;
+        return false;
     
     cacheAcceleratedCompositingFlags();
-    updateCompositingLayers(CompositingUpdateAfterStyleChange);
+    return updateCompositingLayers(CompositingUpdateAfterStyleChange);
 }
 
 void RenderLayerCompositor::customPositionForVisibleRectComputation(const GraphicsLayer* graphicsLayer, FloatPoint& position) const
@@ -668,7 +663,7 @@ void RenderLayerCompositor::cancelCompositingLayerUpdate()
     m_updateCompositingLayersTimer.stop();
 }
 
-void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
+bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType updateType, RenderLayer* updateRoot)
 {
     LOG(Compositing, "RenderLayerCompositor %p updateCompositingLayers %d %p", this, updateType, updateRoot);
 
@@ -678,17 +673,17 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     
     // Compositing layers will be updated in Document::setVisualUpdatesAllowed(bool) if suppressed here.
     if (!m_renderView.document().visualUpdatesAllowed())
-        return;
+        return false;
 
     // Avoid updating the layers with old values. Compositing layers will be updated after the layout is finished.
     if (m_renderView.needsLayout())
-        return;
+        return false;
 
     if ((m_forceCompositingMode || m_renderView.frame().mainFrame().pageOverlayController().overlayCount()) && !m_compositing)
         enableCompositingMode(true);
 
     if (!m_reevaluateCompositingAfterLayout && !m_compositing)
-        return;
+        return false;
 
     ++m_compositingUpdateCount;
 
@@ -716,7 +711,7 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     }
 
     if (!checkForHierarchyUpdate && !needGeometryUpdate)
-        return;
+        return false;
 
     bool needHierarchyUpdate = m_compositingLayersNeedRebuild;
     bool isFullUpdate = !updateRoot;
@@ -805,6 +800,8 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     // Inform the inspector that the layer tree has changed.
     InspectorInstrumentation::layerTreeDidChange(page());
+
+    return true;
 }
 
 void RenderLayerCompositor::appendDocumentOverlayLayers(Vector<GraphicsLayer*>& childList)
@@ -1201,12 +1198,12 @@ void RenderLayerCompositor::addToOverlapMap(OverlapMap& overlapMap, const Render
         clipRect.scale(pageScaleFactor());
 #endif
     clipRect.intersect(extent.bounds);
-    overlapMap.add(&layer, clipRect);
+    overlapMap.add(clipRect);
 }
 
 void RenderLayerCompositor::addToOverlapMapRecursive(OverlapMap& overlapMap, const RenderLayer& layer, const RenderLayer* ancestorLayer)
 {
-    if (!canBeComposited(layer) || overlapMap.contains(&layer))
+    if (!canBeComposited(layer))
         return;
 
     // A null ancestorLayer is an indication that 'layer' has already been pushed.
@@ -1419,7 +1416,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
 #if ENABLE(CSS_COMPOSITING)
     layer.setHasNotIsolatedCompositedBlendingDescendants(childState.hasNotIsolatedCompositedBlendingDescendants);
-    // ASSERT(!layer.hasNotIsolatedCompositedBlendingDescendants() || layer.hasNotIsolatedBlendingDescendants());
+    ASSERT(!layer.hasNotIsolatedCompositedBlendingDescendants() || layer.hasNotIsolatedBlendingDescendants());
 #endif
     // Now check for reasons to become composited that depend on the state of descendant layers.
     RenderLayer::IndirectCompositingReason indirectCompositingReason;
@@ -2569,11 +2566,14 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
     if (!(m_compositingTriggers & ChromeClient::AnimationTrigger))
         return false;
 
-    const AnimationBase::RunningState activeAnimationState = AnimationBase::Running | AnimationBase::Paused | AnimationBase::FillingFowards;
+    const AnimationBase::RunningState activeAnimationState = AnimationBase::Running | AnimationBase::Paused;
     AnimationController& animController = renderer.animation();
     return (animController.isRunningAnimationOnRenderer(renderer, CSSPropertyOpacity, activeAnimationState)
             && (inCompositingMode() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
             || animController.isRunningAnimationOnRenderer(renderer, CSSPropertyWebkitFilter, activeAnimationState)
+#if ENABLE(FILTERS_LEVEL_2)
+            || animController.isRunningAnimationOnRenderer(renderer, CSSPropertyWebkitBackdropFilter, activeAnimationState)
+#endif
             || animController.isRunningAnimationOnRenderer(renderer, CSSPropertyTransform, activeAnimationState);
 }
 

@@ -650,7 +650,7 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigati
         return 0;
 
     // Just call through to the chrome client.
-    FrameLoadRequest request(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow);
+    FrameLoadRequest request(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, navigationAction.shouldOpenExternalURLsPolicy());
     Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), request, WindowFeatures(), navigationAction);
     if (!newPage)
         return 0;
@@ -800,6 +800,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     navigationActionData.mouseButton = action->mouseButton();
     navigationActionData.isProcessingUserGesture = navigationAction.processingUserGesture();
     navigationActionData.canHandleRequest = webPage->canHandleRequest(request);
+    navigationActionData.shouldOpenExternalURLs = navigationAction.shouldOpenExternalURLsPolicy() == ShouldOpenExternalURLsPolicy::ShouldAllow;
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     WebDocumentLoader* documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().policyDocumentLoader());
@@ -910,6 +911,22 @@ void WebFrameLoaderClient::willChangeTitle(DocumentLoader*)
 void WebFrameLoaderClient::didChangeTitle(DocumentLoader*)
 {
     notImplemented();
+}
+
+void WebFrameLoaderClient::willReplaceMultipartContent()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+    webPage->willReplaceMultipartContent(*m_frame);
+}
+
+void WebFrameLoaderClient::didReplaceMultipartContent()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+    webPage->didReplaceMultipartContent(*m_frame);
 }
 
 void WebFrameLoaderClient::committedLoad(DocumentLoader* loader, const char* data, int length)

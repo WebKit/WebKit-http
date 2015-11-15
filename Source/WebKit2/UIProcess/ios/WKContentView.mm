@@ -281,14 +281,9 @@ private:
         if (_webView._allowsLinkPreview)
             [self _registerPreviewInWindow:newWindow];
 #endif
-    }
-}
 
-- (void)didMoveToWindow
-{
-    if (self.window)
-        [self _updateForScreen:self.window.screen];
-    _page->viewStateDidChange(ViewState::AllFlags);
+        [self _updateForScreen:newWindow.screen];
+    }
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -549,6 +544,7 @@ private:
 - (void)_applicationDidEnterBackground:(NSNotification*)notification
 {
     _isBackground = YES;
+    _page->applicationDidEnterBackground();
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 

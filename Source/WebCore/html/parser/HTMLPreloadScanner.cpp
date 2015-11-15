@@ -235,7 +235,9 @@ private:
     TagId m_tagId;
     String m_urlToLoad;
     String m_srcSetAttribute;
+#if ENABLE(PICTURE_SIZES)
     String m_sizesAttribute;
+#endif
     String m_charset;
     String m_crossOriginMode;
     bool m_linkIsStyleSheet;

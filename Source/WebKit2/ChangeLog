@@ -1,3 +1,922 @@
+2015-06-02  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [EFL] Implement load_started callback in EwkPageClient.
+        https://bugs.webkit.org/show_bug.cgi?id=145545
+
+        Reviewed by Gyuyoung Kim.
+
+        We need to provide load_started callback to web extension module.
+
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp:
+        * WebProcess/InjectedBundle/API/efl/ewk_page.cpp:
+        (EwkPage::EwkPage):
+        (EwkPage::remove):
+        (EwkPage::didStartProvisionalLoadForFrame):
+        (EwkPage::didFinishDocumentLoadForFrame):
+        * WebProcess/InjectedBundle/API/efl/ewk_page.h:
+        * WebProcess/InjectedBundle/API/efl/ewk_page_private.h:
+
+2015-06-02  Gavin Barraclough  <barraclough@apple.com>
+
+        PDFs always think they're visible on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=145493
+        <rdar://problem/19668879>
+
+        Reviewed by Andreas Kling & Sam Weinig.
+
+        The problem here is that WKContentView is currently responsible for notifying the WebPageProxy
+        that the visibility may have changed, but when a PDF isn't showing the WKContentView isn't in
+        the view hierarchy and doesn't receive the didMoveToWindow notifications – and the WKPDFView
+        (which is in the view hierarchy) does not listen for these events.
+
+        Visibility of the page should really just track the visibility of the WKWebView (and when
+        actually assessing the visibility it largely does - the page client checks the web view's
+        visibility, bar a FIXME, and the foreground/background check, which needs to change).
+        So notifications should really just come from the WKWebView.
+
+        The WKWebView already listens for the didMoveToWindow notification, it just was only updating
+        the IsInWindow flag. Instead just update all flags, and the call to viewStateDidChange from
+        WKContentView can just be removed.
+
+        There is one problem with this in that it would reverse the order of the calls to
+        viewStateDidChange & _updateForScreen:, which would mean the the view would become visible before
+        updating the screen pixel density. To fix this, moving the call to _updateForScreen:
+        to willMoveToWindow:, to ensure it occurs before the page becomes visible.
+
+        This will also change behavior on Mac for WKWebView clients, in coalescing all view state changes
+        within the didMoveToWindow call. This is the direction we intended to go in anyway (the plan is
+        to remove the mayHaveChanged argument from viewStateDidChange - we're currently adding unnecessary
+        IPC traffic).
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView didMoveToWindow]):
+            - should update all view state flags.
+        * UIProcess/API/ios/WKViewIOS.mm:
+        (-[WKView didMoveToWindow]):
+            - added to match WKWebView.mm, for WebKitTestRunner.
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView willMoveToWindow:]):
+            - should _updateForScreen:
+        (-[WKContentView didMoveToWindow]): Deleted.
+            - functionality moved to -[WKWebView didMoveToWindow], -[WKContentView didMoveToWindow].
+
+2015-06-02  Chris Dumez  <cdumez@apple.com>
+
+        [iOS][WK2] Always mark layers as volatile for background pages
+        https://bugs.webkit.org/show_bug.cgi?id=145547
+        <rdar://problem/20663184>
+
+        Reviewed by Simon Fraser.
+
+        We previously marked layers as volatile when the WebProcess was about
+        to be suspended. Most of the time the WebProcess gets suspended when a
+        page goes into the background. However, it is not always true (see
+        radar), in which case the layers won't be marked as volatile and use
+        memory even though they are not visible.
+
+        We now mark layers as volatile as soon as the page goes into the
+        background, instead of relying on the WebProcess suspension mechanism
+        to do so.
+
+        A new ApplicationDidEnterBackground IPC message from the UIProcess to
+        the WebProcess is added (in addition to the pre-existing
+        ApplicationWillEnterForeground one). When the WebProcess receives this
+        message, it will freeze the layer tree state and mark the layers as
+        volatile (with a timer to keep retrying if needed), similarly to what
+        is already done in WebProcess::actualPrepareToSuspend().
+        When the ApplicationWillEnterForeground is received, we unfreeze the
+        layer tree state. The layers' volatile state will be automatically
+        updated when they are displayed (see setBufferVolatility() call in
+        RemoteLayerBackingStore::display()).
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _applicationDidEnterBackground:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::applicationDidEnterBackground):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::setLayerTreeStateIsFrozen):
+        (WebKit::WebPage::markLayersVolatileImmediatelyIfPossible):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::volatilityTimerFired):
+        (WebKit::WebPage::applicationDidEnterBackground):
+        (WebKit::WebPage::applicationWillEnterForeground):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::markAllLayersVolatileIfPossible):
+        (WebKit::WebProcess::setAllLayerTreeStatesFrozen):
+
+2015-06-02  Brady Eidson  <beidson@apple.com>
+
+        WebKit policy delegate should suggest if a navigation should be allowed to open URLs externally.
+        rdar://problem/21025301 and https://bugs.webkit.org/show_bug.cgi?id=145280
+        
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::clickedLink):
+        
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::performFrameLoadURLRequest):
+        (WebKit::PluginView::loadURL):
+        
+        * WebProcess/WebCoreSupport/WebContextMenuClient.cpp:
+        (WebKit::WebContextMenuClient::searchWithGoogle):
+        
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchCreatePage):
+        
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openInNewTab):
+        
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadURLInFrame):
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::loadDataImpl):
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick):
+
+2015-06-02  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        REGRESSION(r185091): Crash happens on indexdb tests
+        https://bugs.webkit.org/show_bug.cgi?id=145549
+
+        Reviewed by Csaba Osztrogonác.
+
+        r185091 caused crash on some indexeddb tests. The crash happens because IDBDatabaseError::create() doesn't
+        dereference count by using ptr(). It makes a crash when dereferencing on ~Ref() destructor. To fix this issue,
+        this patch uses leakRef() instead of ptr().
+
+        * WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp:
+        (WebKit::WebIDBServerConnection::didCreateObjectStore):
+        (WebKit::WebIDBServerConnection::didCreateIndex):
+        (WebKit::WebIDBServerConnection::didDeleteIndex):
+        (WebKit::WebIDBServerConnection::didPutRecord):
+        (WebKit::WebIDBServerConnection::didGetRecord):
+        (WebKit::WebIDBServerConnection::didOpenCursor):
+        (WebKit::WebIDBServerConnection::didAdvanceCursor):
+        (WebKit::WebIDBServerConnection::didIterateCursor):
+        (WebKit::WebIDBServerConnection::didCount):
+        (WebKit::WebIDBServerConnection::didDeleteRange):
+        (WebKit::WebIDBServerConnection::didClearObjectStore):
+        (WebKit::WebIDBServerConnection::didDeleteObjectStore):
+        (WebKit::WebIDBServerConnection::didChangeDatabaseVersion):
+
+2015-06-01  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Hardware Keyboard: All combinations for arrow keys with Shift do not extend the selection.
+        https://bugs.webkit.org/show_bug.cgi?id=145538
+        rdar://problem/18504199
+
+        Reviewed by Darin Adler.
+
+        The extend parameter was ignored in all the functions below.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _moveUp:withHistory:]):
+        (-[WKContentView _moveDown:withHistory:]):
+        (-[WKContentView _moveLeft:withHistory:]):
+        (-[WKContentView _moveRight:withHistory:]):
+        (-[WKContentView _moveToStartOfWord:withHistory:]):
+        (-[WKContentView _moveToStartOfParagraph:withHistory:]):
+        (-[WKContentView _moveToStartOfLine:withHistory:]):
+        (-[WKContentView _moveToStartOfDocument:withHistory:]):
+        (-[WKContentView _moveToEndOfWord:withHistory:]):
+        (-[WKContentView _moveToEndOfParagraph:withHistory:]):
+        (-[WKContentView _moveToEndOfLine:withHistory:]):
+        (-[WKContentView _moveToEndOfDocument:withHistory:]):
+
+2015-06-01  Anders Carlsson  <andersca@apple.com>
+
+        Use xpc_connection_set_oneshot_instance where possible
+        https://bugs.webkit.org/show_bug.cgi?id=145535
+        rdar://problem/21109994
+
+        Reviewed by Sam Weinig.
+
+        Use xpc_connection_set_oneshot_instance where possible; this will make sure that the 
+        web process instances go away when the web process exits.
+
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::connectToService):
+        (WebKit::connectToReExecService):
+
+2015-06-01  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Hardware Keyboard: Command + left arrow does not work.
+        https://bugs.webkit.org/show_bug.cgi?id=145531
+        rdar://problem/18576402
+
+        Reviewed by Anders Carlsson.
+
+        We were calling a non existent command (moveToStartOfLine) instead of
+        moveToBeginningOfLine.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _moveToStartOfLine:withHistory:]):
+
+2015-06-01  Brady Eidson  <beidson@apple.com>
+
+        Add WKTR support for "should open external URLs".
+        https://bugs.webkit.org/show_bug.cgi?id=145505
+
+        Reviewed by Darin Adler.
+
+        Expose C-spi to allow WKTR to set this bit on new loads:
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageLoadURLWithShouldOpenExternalURLsPolicy):
+        * UIProcess/API/C/WKPagePrivate.h:
+        
+        Expose the bit on NavigationAction for the policy delegate:        
+        * WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.cpp:
+        (WKBundleNavigationActionGetShouldOpenExternalURLs):
+        * WebProcess/InjectedBundle/API/c/WKBundleNavigationActionPrivate.h: Copied from Tools/WebKitTestRunner/WorkQueueManager.h.
+
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp:
+        (WebKit::InjectedBundleNavigationAction::InjectedBundleNavigationAction):
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.h:
+        (WebKit::InjectedBundleNavigationAction::shouldOpenExternalURLs):
+    
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-06-01  Gavin Barraclough  <barraclough@apple.com>
+
+        PDFs always think they're visible on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=145493
+        <rdar://problem/19668879>
+
+        Unreviewed roll-out.
+
+        Temporarily reverting this change – will need a workaround for test harness craziness.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView didMoveToWindow]):
+        (-[WKWebView setOpaque:]):
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView willMoveToWindow:]):
+        (-[WKContentView didMoveToWindow]):
+        (-[WKContentView browsingContextController]):
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Remove unused const variable from EwkView.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=145512
+
+        Reviewed by Gyuyoung Kim.
+
+        * UIProcess/API/efl/EwkView.cpp:
+
+2015-06-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Suppress unused parameter warnings in WebKit2 and TestNetscapePlugIn
+        https://bugs.webkit.org/show_bug.cgi?id=145264
+
+        Reviewed by Carlos Garcia Campos.
+
+        * CMakeLists.txt: Use COMPILE_FLAGS instead of CMAKE_<C|CXX>_FLAGS to put -Wno-unused-parameter after -Wextra.
+
+2015-05-31  Gavin Barraclough  <barraclough@apple.com>
+
+        PDFs always think they're visible on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=145493
+        <rdar://problem/19668879>
+
+        Reviewed by Andreas Kling.
+
+        The problem here is that WKContentView is currently responsible for notifying the WebPageProxy
+        that the visibility may have changed, but when a PDF isn't showing the WKContentView isn't in
+        the view hierarchy and doesn't receive the didMoveToWindow notifications – and the WKPDFView
+        (which is in the view hierarchy) does not listen for these events.
+
+        Visibility of the page should really just track the visibility of the WKWebView (and when
+        actually assessing the visibility it largely does - the page client checks the web view's
+        visibility, bar a FIXME, and the foreground/background check, which needs to change).
+        So notifications should really just come from the WKWebView.
+
+        The WKWebView already listens for the didMoveToWindow notification, it just was only updating
+        the IsInWindow flag. Instead just update all flags, and the call to viewStateDidChange from
+        WKContentView can just be removed.
+
+        There is one problem with this in that it would reverse the order of the calls to
+        viewStateDidChange & _updateForScreen:, which would mean the the view would become visible before
+        updating the screen pixel density. To fix this, move the call to _updateForScreen: to
+        willMoveToWindow:, to ensure it occurs before the page becomes visible.
+
+        This will also change behavior on Mac for WKWebView clients, in coalescing all view state changes
+        within the didMoveToWindow call. This is the direction we intended to go in anyway (the plan is
+        to remove the mayHaveChanged argument from viewStateDidChange - we're currently adding unnecessary
+        IPC traffic).
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView didMoveToWindow]):
+            - should update all view state flags.
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView willMoveToWindow:]):
+            - should _updateForScreen:
+        (-[WKContentView didMoveToWindow]): Deleted.
+            - functionality moved to -[WKWebView didMoveToWindow], -[WKContentView didMoveToWindow].
+
+2015-05-30  Brady Eidson  <beidson@apple.com>
+
+        Make FrameLoader methods that take PassRefPtr<Event> take raw pointers instead.
+        https://bugs.webkit.org/show_bug.cgi?id=145495
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick):
+
+2015-05-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Crash closing a related tab with Web Inspector open while page is refreshing
+        https://bugs.webkit.org/show_bug.cgi?id=145488
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/WebPage/WebInspector.h:
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::~WebInspector):
+        Ensure, no matter how we close, that we have invalidated the
+        frontend connection of which we are the client.
+
+        (WebKit::WebInspector::createInspectorPage):
+        This member variable will never be null.
+
+2015-05-29  Andreas Kling  <akling@apple.com>
+
+        [iOS] When bouncing back from max pinch zoom scale, scaleChangeRate should be 0.
+        <https://webkit.org/b/145487>
+        <rdar://problem/20989389>
+
+        Reviewed by Benjamin Poulain.
+
+        Make sure we don't send WebCore some velocity data with non-zero scaleChangeRate
+        when we bounce back from being pinch-zoomed past the maximum scale.
+
+        This fixes an issue where the bounce-back animation would cause a burst of
+        unnecessary tile generation.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::adjustVelocityDataForBoundedScale):
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2015-05-29  Jon Lee  <jonlee@apple.com>
+
+        Fix preferences for wireless playback
+        https://bugs.webkit.org/show_bug.cgi?id=145477
+        rdar://problem/21166767
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/WKPreferences.cpp: Add missing preference calls in C API.
+        * UIProcess/API/C/WKPreferencesRef.h:
+
+2015-05-29  Enrica Casucci  <enrica@apple.com>
+
+        [iOS] Cursor hidden in text area once it scrolls.
+        https://bugs.webkit.org/show_bug.cgi?id=145451
+        rdar://problem/20356413
+
+        Reviewed by Simon Fraser.
+
+        This patch fixes both the touch scrolling inside the
+        overflow area as well as the programmatic scroll that
+        occurs when inserting a new line. The first issue is fixed by
+        implementing the chrome client methods didLayout,
+        didStartOverflowScroll and didEndOverflowScroll. The second
+        required changing the implementation of notifyRevealedSelectionByScrollingFrame.
+        We not only need to notify the client to redraw the selection,
+        but we also need to recompute the editorState, because scrolling
+        might have occurred.
+        I've removed the NotifyRevealedSelection message that was not needed
+        any longer, since EditorStateChanged will do exactly what we want.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+        (WebKit::WebPageProxy::notifyRevealedSelection): Deleted.
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        (WebKit::WebChromeClient::notifyRevealedSelectionByScrollingFrame):
+        (WebKit::WebChromeClient::didLayout):
+        (WebKit::WebChromeClient::didStartOverflowScroll):
+        (WebKit::WebChromeClient::didEndOverflowScroll):
+
+2015-05-29  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Update WebContent process sandbox profile for AWD logging
+        https://bugs.webkit.org/show_bug.cgi?id=145473
+        <rdar://problem/20543269>
+
+        Reviewed by Darin Adler.
+
+        Update WebContent process sandbox profile for AWD logging.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        WebKit.framework installs or references Mac-only headers on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=145471
+        rdar://problem/21161459
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/mac/WKInspectorPrivateMac.h:
+        Add an #if !TARGET_OS_IPHONE guard around the entire header.
+
+2015-05-29  Anders Carlsson  <andersca@apple.com>
+
+        WKScriptMessageInternal.h should be a project header, not a private header
+        https://bugs.webkit.org/show_bug.cgi?id=145464
+        rdar://problem/21161639
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-05-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up VisitedLinkProvider teardown
+        https://bugs.webkit.org/show_bug.cgi?id=145450
+        rdar://problem/20244726
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/VisitedLinkProvider.cpp:
+        (WebKit::VisitedLinkProvider::~VisitedLinkProvider):
+
+2015-05-28  Brady Eidson  <beidson@apple.com>
+
+        Change method of signaling "should open external urls" to WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=145454
+
+        Reviewed by Dan Bernstein.
+
+        Making this a property on the request was never a good idea.
+
+        Adding a new extensible load SPI seems much better.
+
+        * Shared/API/Cocoa/_WKNSURLRequestExtras.h: Removed.
+        * Shared/API/Cocoa/_WKNSURLRequestExtras.mm: Removed.
+
+        * UIProcess/API/Cocoa/WKBrowsingContextController.mm:
+        (-[WKBrowsingContextController loadRequest:userData:]): Since this API is deprecated,
+          it always gets the default restrictive behavior.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView loadRequest:]):
+        (-[WKWebView loadRequest:withOptions:]): Take an options dictionary that, for now, 
+          only supports one option.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-05-28  Anders Carlsson  <andersca@apple.com>
+
+        Make sure that we create the private WebKit.framework symlinks last
+        https://bugs.webkit.org/show_bug.cgi?id=145442
+        <rdar://problem/21142213>
+
+        Reviewed by Dan Bernstein.
+
+        Move the "Add Symlinks in /System/Library/PrivateFrameworks/WebKit.framework" build phase to
+        the "All" aggregate target. Also update the script now that INSTALL_PATH is different.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-05-28  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Code clean up for extracting information from the mix of WritingMode and TextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=143399
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebPopupItem.h:
+        * UIProcess/API/C/efl/WKAPICastEfl.h:
+        * UIProcess/WebPopupMenuProxy.h:
+        enum TextDirection is moved from TextFlags.h to WritingMode.h. So include
+        WritingMode.h instead of including TextFlags.h.
+
+2015-05-28  Antti Koivisto  <antti@apple.com>
+
+        Disable network cache for old clients
+        https://bugs.webkit.org/show_bug.cgi?id=145418
+
+        Reviewed by Andreas Kling.
+
+        Follow-up: Don't do linked-on-or-after checks for iOS Safari.
+
+        * UIProcess/Cocoa/VersionChecks.mm:
+        (WebKit::linkTimeVersion):
+        (WebKit::linkedOnOrAfter):
+
+2015-05-28  Matt Rajca  <mrajca@apple.com>
+
+        Add ENABLE_MEDIA_SESSION feature flag (which is off by default).
+        https://bugs.webkit.org/show_bug.cgi?id=145415
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, Fix build break since r184930.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::createTransientLocalStorageMap): Pass a pointer of SecurityOrigin
+        in isSameSchemeHostPort().
+
+2015-05-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Fixing the build after r184950.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::createSessionStorageMap): getOrCreateStorageArea()
+        now expects a Ref<WebCore::SecurityOrigin> object.
+
+2015-05-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WK2] Handle WebCore::SecurityOrigin objects through Ref<> where possible
+        https://bugs.webkit.org/show_bug.cgi?id=145373
+
+        Reviewed by Andreas Kling.
+
+        WebCore::SecurityOrigin creation functions in most cases return a
+        Ref<WebCore::SecurityOrigin> object. In the WebKit2 layer, those objects
+        were still largely converted to RefPtr<>s.
+
+        This patch switches to using Ref<> where possible. The remaining uses of
+        RefPtr<WebCore::SecurityOrigin> are present due to HashTables, to-be-copied
+        Vectors, WebCore::DatabaseManager::origins() API and code where non-null
+        WebCore::SecurityOrigin can't be guaranteed.
+
+        * DatabaseProcess/DatabaseProcess.cpp:
+        (WebKit::DatabaseProcess::deleteIndexedDatabaseEntriesForOrigin):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::cfURLCacheOrigins):
+        * UIProcess/Storage/LocalStorageDatabase.cpp:
+        (WebKit::LocalStorageDatabase::create):
+        (WebKit::LocalStorageDatabase::LocalStorageDatabase):
+        (WebKit::LocalStorageDatabase::openDatabase):
+        (WebKit::LocalStorageDatabase::close):
+        * UIProcess/Storage/LocalStorageDatabase.h:
+        * UIProcess/Storage/LocalStorageDatabaseTracker.cpp:
+        (WebKit::LocalStorageDatabaseTracker::origins):
+        * UIProcess/Storage/LocalStorageDatabaseTracker.h:
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::StorageArea::securityOrigin):
+        (WebKit::StorageManager::TransientLocalStorageNamespace::getOrCreateStorageArea):
+        (WebKit::StorageManager::TransientLocalStorageNamespace::origins):
+        (WebKit::StorageManager::TransientLocalStorageNamespace::clearStorageAreasMatchingOrigin):
+        (WebKit::StorageManager::StorageArea::create):
+        (WebKit::StorageManager::StorageArea::StorageArea):
+        (WebKit::StorageManager::StorageArea::openDatabaseAndImportItemsIfNeeded):
+        (WebKit::StorageManager::LocalStorageNamespace::getOrCreateStorageArea):
+        (WebKit::StorageManager::LocalStorageNamespace::didDestroyStorageArea):
+        (WebKit::StorageManager::SessionStorageNamespace::origins):
+        (WebKit::StorageManager::SessionStorageNamespace::clearStorageAreasMatchingOrigin):
+        (WebKit::StorageManager::SessionStorageNamespace::getOrCreateStorageArea):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reachedApplicationCacheOriginQuota):
+        * WebProcess/ApplicationCache/WebApplicationCacheManager.cpp:
+        (WebKit::WebApplicationCacheManager::getApplicationCacheOrigins):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setApplicationCacheOriginQuota):
+        (WebKit::InjectedBundle::resetApplicationCacheOriginQuota):
+        * WebProcess/ResourceCache/WebResourceCacheManager.cpp:
+        (WebKit::WebResourceCacheManager::returnCacheOrigins):
+        (WebKit::WebResourceCacheManager::clearCacheForOrigin):
+        * WebProcess/WebCoreSupport/WebDatabaseManager.cpp:
+        (WebKit::WebDatabaseManager::deleteDatabaseWithNameForOrigin):
+        (WebKit::WebDatabaseManager::deleteDatabasesForOrigin):
+        (WebKit::WebDatabaseManager::setQuotaForOrigin):
+
+2015-05-19  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        [iOS] When viewing an MJPEG stream as the main resource, only the first
+        frame paints
+
+        <https://bugs.webkit.org/show_bug.cgi?id=145185>
+        <rdar://problem/20124694>
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::willReplaceMultipartContent):
+        Tell the WebPage that we will replace multipart content.
+
+        (WebKit::WebFrameLoaderClient::didReplaceMultipartContent):
+        Tell the WebPage that we did replace multipart content.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/DrawingArea.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::willReplaceMultipartContent):
+        Save the exposed content rect.
+        (WebKit::WebPage::didReplaceMultipartContent):
+        Restore the exposed content rect that was saved before this load. This
+        fixes the issue for WK2.
+
+        * WebProcess/WebPage/WebPage.h:
+
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::exposedContentRect):
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Fix macros for wireless playback
+        https://bugs.webkit.org/show_bug.cgi?id=145239
+        rdar://problem/21049541
+
+        Reviewed by Anders Carlsson.
+
+        Encompass the logic within ENABLE(WIRELESS_TARGET_PLAYBACK). Update property name.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView initWithFrame:configuration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h: Update names. Add a WKDeprecated
+        category section.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Update name of variables to reflect new property names.
+        (-[WKWebViewConfiguration copyWithZone:]): Ditto.
+        (-[WKWebViewConfiguration mediaPlaybackAllowsAirPlay]): Get and set off of the new
+        variable.
+        (-[WKWebViewConfiguration setMediaPlaybackAllowsAirPlay:]): Ditto.
+        (-[WKWebViewConfiguration mediaPlaybackRequiresUserAction]): Ditto.
+        (-[WKWebViewConfiguration setMediaPlaybackRequiresUserAction:]): Ditto.
+
+2015-05-27  Brady Eidson  <beidson@apple.com>
+
+        Add a "should open urls externally" flag to DocumentLoader.
+        rdar://problem/21025301 and https://bugs.webkit.org/show_bug.cgi?id=145417
+
+        Reviewed by Geoff Garen.
+
+        Rename "user initiated" to "should open external URLs":
+        * Shared/API/Cocoa/_WKNSURLRequestExtras.h:
+        * Shared/API/Cocoa/_WKNSURLRequestExtras.mm:
+        (-[NSURLRequest _web_shouldOpenExternalURLs]):
+        (-[NSMutableURLRequest _web_setShouldOpenExternalURLs:]):
+        (-[NSURLRequest _web_isUserInitiated]): Deleted.
+        (-[NSMutableURLRequest _web_setIsUserInitiated:]): Deleted.
+        
+        Hold the new flag as a bool, and encode/decode it across IPC:
+        * Shared/NavigationActionData.cpp:
+        (WebKit::NavigationActionData::encode):
+        (WebKit::NavigationActionData::decode):
+        (WebKit::NavigationActionData::NavigationActionData): Deleted.
+        * Shared/NavigationActionData.h:
+
+        * UIProcess/API/APINavigationAction.h: Add accessor for the bool flag.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageLoadURLWithUserData): Use "ShouldNotAllow" in the legacy C API for now.
+        (WKPageLoadURLRequestWithUserData): Ditto.
+
+        * UIProcess/API/Cocoa/WKBrowsingContextController.mm:
+        (-[WKBrowsingContextController loadRequest:userData:]): Set the value of the flag
+          based on whether or not the initiating NSURLRequest was user initiated.
+
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction _shouldOpenExternalURLs]): Add accessor for the bool flag.
+        * UIProcess/API/Cocoa/WKNavigationActionPrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView loadRequest:]): Set the value of the flag based on whether or not the
+          initiating NSURLRequest was user initiated.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadRequest): Pass the value down to the WebProcess to load.
+        (WebKit::WebPageProxy::loadFile): Ditto, but always with "ShouldNotAllow".
+        * UIProcess/WebPageProxy.h:
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction): Translate 
+          the NavigationAction flag to a bool in the NavigationActionData object.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadRequest): Set the value of the flag in the FrameLoadRequest that
+          will be loaded.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2015-05-27  Anders Carlsson  <andersca@apple.com>
+
+        Can't load local files in WKWebView from containerized app
+        https://bugs.webkit.org/show_bug.cgi?id=145424
+        rdar://problem/20831176
+
+        Reviewed by Dan Bernstein.
+
+        Allow the network process to load local files from its bundle as long as it has
+        the sandbox extensions to do so.
+
+        This was originally added to only allow SSO to read the Info.plist inside its own application
+        bundle, but being able to read the application bundle from within the network process should be OK.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+
+2015-05-27  Andreas Kling  <akling@apple.com>
+
+        [WK2] Local storage areas should get torn down when they have no remaining references.
+        <https://webkit.org/b/143339>
+        <rdar://problem/20156436>
+
+        Reviewed by Darin Adler.
+
+        Let StorageNamespaceImpl own its StorageAreaMaps weakly instead of through RefPtr.
+        Ownership is flipped so that StorageAreaMap refs the StorageNamespaceImpl instead.
+        This allows the StorageAreaMaps to get destroyed once all of its clients are gone.
+
+        Practically speaking, this means that the garbage collector now decides when local
+        storage databases can be closed, instead of us keeping them open for the lifetime
+        of the web process.
+
+        For session storage, it works a bit differently. In the web process, they get torn
+        down when their last client disappears, but they stay alive in the UI process.
+        If/when the web process asks the UI process to open session storage for an origin,
+        the UI process checks if one already exists, and if so, just updates the ID of the
+        old storage with the new one provided by the web process.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::StorageArea::isSessionStorage):
+        (WebKit::StorageManager::createTransientLocalStorageMap):
+        (WebKit::StorageManager::createSessionStorageMap):
+        (WebKit::StorageManager::destroyStorageMap):
+        * WebProcess/Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::securityOrigin):
+        * WebProcess/Storage/StorageAreaImpl.h:
+        * WebProcess/Storage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::StorageAreaMap):
+        (WebKit::StorageAreaMap::~StorageAreaMap):
+        * WebProcess/Storage/StorageAreaMap.h:
+        (WebKit::StorageAreaMap::securityOrigin):
+        * WebProcess/Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::didDestroyStorageAreaMap):
+        (WebKit::StorageNamespaceImpl::storageArea):
+        * WebProcess/Storage/StorageNamespaceImpl.h:
+
+2015-05-27  Antti Koivisto  <antti@apple.com>
+
+        Disable network cache for old clients
+        https://bugs.webkit.org/show_bug.cgi?id=145418
+        rdar://problem/21126587
+
+        Reviewed by Andy Estes.
+
+        Old clients might use NSURLCache API to clear the cache. New cache requires use of new APIs.
+
+        * UIProcess/Cocoa/VersionChecks.h: Added.
+        * UIProcess/Cocoa/VersionChecks.mm: Added.
+
+            Add linked-on-or-after check mechanism similar to WebKit1.
+
+        (WebKit::linkTimeVersion):
+        (WebKit::linkedOnOrAfter):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess):
+
+            Use it when deciding whether to enable the cache.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-05-27  Dean Jackson  <dino@apple.com>
+
+        img.currentSrc problem in strict mode with old picturefill
+        https://bugs.webkit.org/show_bug.cgi?id=144095
+        <rdar://problem/21087013>
+
+        Reviewed by Simon Fraser.
+
+        Add a PICTURE_SIZES flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-27  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit in WebPage::didChangeSelection()
+        https://bugs.webkit.org/show_bug.cgi?id=145413
+        <rdar://problem/21001129>
+
+        Reviewed by Ryosuke Niwa.
+
+        We sometimes hit the "ASSERT(layoutCount == view->layoutCount())"
+        assertion in WebPage::didChangeSelection(). We manage to prevent
+        synchronous layouts in most cases when calling editorState(). However,
+        it seems it can still happen in some cases. Crashing in this case seems
+        overkill and can be annoying to other developers, especially
+        considering the implications are only on performance.
+
+        This patch drops the assertion.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didChangeSelection): Deleted.
+
+2015-05-27  Anders Carlsson  <andersca@apple.com>
+
+        Address a follow-up review comment from Darin.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::removeMediaKeys):
+
+2015-05-26  Anders Carlsson  <andersca@apple.com>
+
+        WKWebsiteDataStore should handle media keys
+        https://bugs.webkit.org/show_bug.cgi?id=145394
+        rdar://problem/20617794.
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebsiteData/WebsiteDataTypes.h:
+        Add WebsiteDataTypeMediaKeys enum.
+
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::defaultDataStoreConfiguration):
+        Set up mediaKeysStorageDirectory.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataRecord.mm:
+        (dataTypesToString):
+        * UIProcess/API/Cocoa/WKWebsiteDataRecordInternal.h:
+        (WebKit::toWebsiteDataTypes):
+        (WebKit::toWKWebsiteDataTypes):
+        * UIProcess/API/Cocoa/WKWebsiteDataRecordPrivate.h: Added.
+        Add _WKWebsiteDataTypeMediaKeys.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::legacyWebsiteDataStoreConfiguration):
+        Set up mediaKeysStorageDirectory.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        Set m_mediaKeysStorageDirectory.
+
+        (WebKit::WebsiteDataStore::fetchData):
+        Make CallbackAggregator ThreadSafeRefCounted.
+        Handle WebsiteDataTypeMediaKeys by calling mediaKeyOrigins on our background queue.
+
+        (WebKit::WebsiteDataStore::removeData):
+        Make CallbackAggregator ThreadSafeRefCounted.
+        Handle WebsiteDataTypeMediaKeys by calling removeMediaKeys on our background queue.
+
+        (WebKit::WebsiteDataStore::mediaKeyOrigins):
+        Compute the origins.
+
+        (WebKit::computeMediaKeyFile):
+        Add helper function that returns the media key given a containing directory.
+
+        (WebKit::WebsiteDataStore::removeMediaKeys):
+        Remove media key files.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        Add new members.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add new files.
+
+2015-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.2 release.
+
+        * gtk/NEWS: Add release notes for 2.9.2.
+
+2015-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Network Cache: Handle the case when we fail to create the IO stream
+        https://bugs.webkit.org/show_bug.cgi?id=145406
+
+        Reviewed by Sergio Villar Senin.
+
+        We were asserting in that case, but it can happen that we
+        fail to create the stream. It happened to me after r184690, that
+        changed the NetworkCache::Key hash. Since this was not expected to
+        happen, the async operation never finished and the completion
+        handler never called, leaving resources loading forever. We
+        should make sure we call the completion handler with an error
+        code, so that the load finishes and the entry is silently removed
+        from the cache.
+
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::IOChannel::readSync):
+        (WebKit::NetworkCache::IOChannel::write):
+
+2015-05-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Network Cache: Add cache capacity to the totals of JSON file
+        https://bugs.webkit.org/show_bug.cgi?id=145246
+
+        Reviewed by Antti Koivisto.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::dumpContentsToFile):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::capacity):
+
 2015-05-26  Anders Carlsson  <andersca@apple.com>
 
         Add a symlink for every file inside /S/L/F/WebKit.framework to the PrivateFrameworks mirror.

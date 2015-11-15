@@ -1545,21 +1545,92 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(GraphicsContext
     }
 }
 
-static HashSet<String> mimeTypeCache()
+static bool isUnsupportedMIMEType(const String& type)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
-    static bool typeListInitialized = false;
+    String lowerCaseType = type.convertToASCIILowercase();
 
-    if (typeListInitialized)
-        return cache;
-    typeListInitialized = true;
+    // AVFoundation will return non-video MIME types which it claims to support, but which we
+    // do not support in the <video> element. Reject all non video/, audio/, and application/ types.
+    if (!lowerCaseType.startsWith("video/") && !lowerCaseType.startsWith("audio/") && !lowerCaseType.startsWith("application/"))
+        return true;
 
-    NSArray *types = [AVURLAsset audiovisualMIMETypes];
-    for (NSString *mimeType in types)
-        cache.add([mimeType lowercaseString]);
+    // Reject types we know AVFoundation does not support that sites commonly ask about.
+    if (lowerCaseType == "video/webm" || lowerCaseType == "audio/webm" || lowerCaseType == "video/x-webm")
+        return true;
+
+    if (lowerCaseType == "video/x-flv")
+        return true;
+
+    if (lowerCaseType == "audio/ogg" || lowerCaseType == "video/ogg" || lowerCaseType == "application/ogg")
+        return true;
+
+    if (lowerCaseType == "video/h264")
+        return true;
+
+    return false;
+}
+
+static const HashSet<String>& staticMIMETypeList()
+{
+    static NeverDestroyed<HashSet<String>> cache = [] () {
+        HashSet<String> types;
+
+        static const char* typeNames[] = {
+            "application/vnd.apple.mpegurl",
+            "application/x-mpegurl",
+            "audio/3gpp",
+            "audio/aac",
+            "audio/aacp",
+            "audio/aiff",
+            "audio/basic",
+            "audio/mp3",
+            "audio/mp4",
+            "audio/mpeg",
+            "audio/mpeg3",
+            "audio/mpegurl",
+            "audio/mpg",
+            "audio/wav",
+            "audio/wave",
+            "audio/x-aac",
+            "audio/x-aiff",
+            "audio/x-m4a",
+            "audio/x-mpegurl",
+            "audio/x-wav",
+            "video/3gpp",
+            "video/3gpp2",
+            "video/mp4",
+            "video/mpeg",
+            "video/mpeg2",
+            "video/mpg",
+            "video/quicktime",
+            "video/x-m4v",
+            "video/x-mpeg",
+            "video/x-mpg",
+        };
+        for (size_t i = 0; i < WTF_ARRAY_LENGTH(typeNames); ++i)
+            types.add(typeNames[i]);
+
+        return types;
+    }();
 
     return cache;
-} 
+}
+
+static const HashSet<String>& avfMIMETypes()
+{
+    static NeverDestroyed<HashSet<String>> cache = [] () {
+        HashSet<String> types;
+
+        NSArray *nsTypes = [AVURLAsset audiovisualMIMETypes];
+        for (NSString *mimeType in nsTypes)
+            types.add([mimeType lowercaseString]);
+
+        return types;
+    }();
+
+    
+    return cache;
+}
 
 RetainPtr<CGImageRef> MediaPlayerPrivateAVFoundationObjC::createImageForTimeInRect(float time, const FloatRect& rect)
 {
@@ -1585,13 +1656,13 @@ RetainPtr<CGImageRef> MediaPlayerPrivateAVFoundationObjC::createImageForTimeInRe
 
 void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String>& supportedTypes)
 {
-    supportedTypes = mimeTypeCache();
+    supportedTypes = avfMIMETypes();
 } 
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 static bool keySystemIsSupported(const String& keySystem)
 {
-    if (equalIgnoringCase(keySystem, "com.apple.fps") || equalIgnoringCase(keySystem, "com.apple.fps.1_0") || equalIgnoringCase(keySystem, "org.w3c.clearkey"))
+    if (equalIgnoringASCIICase(keySystem, "com.apple.fps") || equalIgnoringASCIICase(keySystem, "com.apple.fps.1_0") || equalIgnoringASCIICase(keySystem, "org.w3c.clearkey"))
         return true;
     return false;
 }
@@ -1607,7 +1678,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
     //    If keySystem is null, continue to the next step.
     if (!parameters.keySystem.isNull() && !parameters.keySystem.isEmpty()) {
         // "Clear Key" is only supported with HLS:
-        if (equalIgnoringCase(parameters.keySystem, "org.w3c.clearkey") && !parameters.type.isEmpty() && !equalIgnoringCase(parameters.type, "application/x-mpegurl"))
+        if (equalIgnoringASCIICase(parameters.keySystem, "org.w3c.clearkey") && !parameters.type.isEmpty() && !equalIgnoringASCIICase(parameters.type, "application/x-mpegurl"))
             return MediaPlayer::IsNotSupported;
 
         // If keySystem contains an unrecognized or unsupported Key System, return the empty string
@@ -1626,7 +1697,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
         return MediaPlayer::IsNotSupported;
 #endif
 
-    if (!mimeTypeCache().contains(parameters.type))
+    if (isUnsupportedMIMEType(parameters.type))
+        return MediaPlayer::IsNotSupported;
+
+    if (!staticMIMETypeList().contains(parameters.type) && !avfMIMETypes().contains(parameters.type))
         return MediaPlayer::IsNotSupported;
 
     // The spec says:
@@ -1643,13 +1717,16 @@ bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySyst
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     if (!keySystem.isEmpty()) {
         // "Clear Key" is only supported with HLS:
-        if (equalIgnoringCase(keySystem, "org.w3c.clearkey") && !mimeType.isEmpty() && !equalIgnoringCase(mimeType, "application/x-mpegurl"))
+        if (equalIgnoringASCIICase(keySystem, "org.w3c.clearkey") && !mimeType.isEmpty() && !equalIgnoringASCIICase(mimeType, "application/x-mpegurl"))
             return MediaPlayer::IsNotSupported;
 
         if (!keySystemIsSupported(keySystem))
             return false;
 
-        if (!mimeType.isEmpty() && !mimeTypeCache().contains(mimeType))
+        if (!mimeType.isEmpty() && isUnsupportedMIMEType(mimeType))
+            return false;
+
+        if (!mimeType.isEmpty() && !staticMIMETypeList().contains(mimeType) && !avfMIMETypes().contains(mimeType))
             return false;
 
         return true;
