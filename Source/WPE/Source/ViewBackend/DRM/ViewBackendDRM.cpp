@@ -111,21 +111,24 @@ ViewBackendDRM::ViewBackendDRM()
     drm_magic_t magic;
     if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic)) {
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
-    m_drm.gbmDevice = gbm_create_device(m_drm.fd);
-    if (!m_drm.gbmDevice) {
+    m_gbm.device = gbm_create_device(m_drm.fd);
+    if (!m_gbm.device) {
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
     drmModeRes* resources = drmModeGetResources(m_drm.fd);
     if (!resources) {
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -139,8 +142,13 @@ ViewBackendDRM::ViewBackendDRM()
     }
 
     if (!connector) {
+        drmModeFreeResources(resources);
+
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -155,8 +163,14 @@ ViewBackendDRM::ViewBackendDRM()
     }
 
     if (!m_drm.mode) {
+        drmModeFreeConnector(connector);
+        drmModeFreeResources(resources);
+
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -207,13 +221,15 @@ ViewBackendDRM::~ViewBackendDRM()
 
     m_pageFlipData = { nullptr, false, 0 };
 
+    if (m_gbm.device)
+        gbm_device_destroy(m_gbm.device);
+    m_gbm = { };
+
     if (m_drm.mode)
         drmModeFreeModeInfo(m_drm.mode);
-    if (m_drm.gbmDevice)
-        gbm_device_destroy(m_drm.gbmDevice);
     if (m_drm.fd >= 0)
         close(m_drm.fd);
-    m_drm = { -1, nullptr, nullptr, 0, 0 };
+    m_drm = { };
 }
 
 void ViewBackendDRM::setClient(Client* client)
@@ -228,7 +244,7 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
     if (fd >= 0) {
         assert(m_fbMap.find(handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, width, height, stride, format };
-        struct gbm_bo* bo = gbm_bo_import(m_drm.gbmDevice, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+        struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
             24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);

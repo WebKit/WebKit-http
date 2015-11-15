@@ -62,12 +62,15 @@ public:
 
 private:
     struct {
-        int fd;
-        struct gbm_device* gbmDevice;
+        int fd { -1 };
         drmModeModeInfo* mode;
-        uint32_t crtcId;
-        uint32_t connectorId;
+        uint32_t crtcId { 0 };
+        uint32_t connectorId { 0 };
     } m_drm;
+
+    struct {
+        struct gbm_device* device;
+    } m_gbm;
 
     PageFlipHandlerData m_pageFlipData;
 
