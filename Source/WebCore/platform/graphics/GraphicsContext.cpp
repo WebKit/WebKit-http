@@ -481,7 +481,7 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer* buffer, const FloatRect& re
     buffer->clip(this, rect);
 }
 
-#if !USE(CG) && !USE(CAIRO) && !USE(HAIKU)
+#if !USE(CG) && !USE(CAIRO) && !PLATFORM(HAIKU)
 IntRect GraphicsContext::clipBounds() const
 {
     ASSERT_NOT_REACHED();

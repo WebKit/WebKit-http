@@ -98,7 +98,7 @@ class SharedBuffer;
 class Timer;
 
 class ResourceHandle : public RefCounted<ResourceHandle>
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || USE(HAIKU)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || PLATFORM(HAIKU)
     , public AuthenticationClient
 #endif
     {
@@ -112,7 +112,7 @@ public:
     void willSendRequest(ResourceRequest&, const ResourceResponse& redirectResponse);
 #endif
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || USE(HAIKU)
+#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || PLATFORM(HAIKU)
     bool shouldUseCredentialStorage();
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
     virtual void receivedCredential(const AuthenticationChallenge&, const Credential&) override;

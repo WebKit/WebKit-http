@@ -40,7 +40,7 @@
 #include <WebCore/RefPtrCairo.h>
 #endif
 
-#if USE(HAIKU)
+#if PLATFORM(HAIKU)
 #include "graphics/haiku/StillImageHaiku.h"
 #endif
 
@@ -123,7 +123,7 @@ public:
     // This creates a BitmapImage that directly references the shared bitmap data.
     // This is only safe to use when we know that the contents of the shareable bitmap won't change.
     PassRefPtr<cairo_surface_t> createCairoSurface();
-#elif USE(HAIKU)
+#elif PLATFORM(HAIKU)
     // This creates a BitmapImage that directly references the shared bitmap data.
     // This is only safe to use when we know that the contents of the shareable bitmap won't change.
     PassRefPtr<WebCore::StillImage> createBitmapSurface();

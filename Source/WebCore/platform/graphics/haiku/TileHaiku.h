@@ -26,7 +26,7 @@
 #ifndef TileHaiku_h
 #define TileHaiku_h
 
-#if USE(TILED_BACKING_STORE) && USE(HAIKU)
+#if USE(TILED_BACKING_STORE) && PLATFORM(HAIKU)
 
 #include "IntPoint.h"
 #include "IntRect.h"

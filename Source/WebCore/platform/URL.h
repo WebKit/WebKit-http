@@ -190,7 +190,7 @@ public:
     operator NSString*() const { return string(); }
 #endif
 
-#if USE(HAIKU)
+#if PLATFORM(HAIKU)
 	explicit URL(const BUrl&);
 	operator BUrl() const;
 #endif

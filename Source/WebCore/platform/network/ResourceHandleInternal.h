@@ -48,7 +48,7 @@
 #include "MultipartHandle.h"
 #endif
 
-#if USE(HAIKU)
+#if PLATFORM(HAIKU)
 #include <String.h>
 class BUrlProtocolHandler;
 #endif
@@ -94,7 +94,7 @@ namespace WebCore {
 #if USE(CURL)
             , m_formDataStream(loader)
 #endif
-#if USE(HAIKU)
+#if PLATFORM(HAIKU)
 			, m_urlrequest(0)
 #endif
 #if USE(SOUP)
@@ -167,7 +167,7 @@ namespace WebCore {
         std::unique_ptr<MultipartHandle> m_multipartHandle;
         bool m_addedCacheValidationHeaders { false };
 #endif
-#if USE(HAIKU)
+#if PLATFORM(HAIKU)
 		BUrlProtocolHandler* m_urlrequest;
 		BString	m_url;
 #endif
