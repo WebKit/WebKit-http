@@ -672,6 +672,9 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
                 compositeOperatorName(op, blend).utf8().data());
     }
     m_data->view()->SetDrawingMode(mode);
+
+    if (mode == B_OP_ALPHA)
+        m_data->view()->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
 }
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
