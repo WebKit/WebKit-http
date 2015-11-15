@@ -49,15 +49,14 @@ public:
     ViewBackendDRM();
     virtual ~ViewBackendDRM();
 
-
     void setClient(Client*) override;
     void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
     void destroyPrimeBuffer(uint32_t handle) override;
 
     struct PageFlipHandlerData {
         Client* client;
-        bool bufferLocked;
-        uint32_t lockedBufferHandle;
+        std::pair<bool, uint32_t> nextFB;
+        std::pair<bool, uint32_t> lockedFB;
     };
 
 private:

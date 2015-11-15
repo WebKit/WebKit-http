@@ -92,15 +92,17 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     if (handlerData.client) {
         handlerData.client->frameComplete();
 
-        if (handlerData.bufferLocked) {
-            handlerData.bufferLocked = false;
-            handlerData.client->releaseBuffer(handlerData.lockedBufferHandle);
-        }
+        auto bufferToRelease = handlerData.lockedFB;
+        handlerData.lockedFB = handlerData.nextFB;
+        handlerData.nextFB = { false, 0 };
+
+        if (bufferToRelease.first)
+            handlerData.client->releaseBuffer(bufferToRelease.second);
     }
 }
 
 ViewBackendDRM::ViewBackendDRM()
-    : m_pageFlipData{ nullptr, false, 0 }
+    : m_pageFlipData{ nullptr, { }, { } }
 {
     m_drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (m_drm.fd < 0) {
@@ -219,7 +221,7 @@ ViewBackendDRM::~ViewBackendDRM()
         g_source_unref(m_eventSource);
     m_eventSource = nullptr;
 
-    m_pageFlipData = { nullptr, false, 0 };
+    m_pageFlipData = { nullptr, { }, { } };
 
     if (m_gbm.device)
         gbm_device_destroy(m_gbm.device);
@@ -244,7 +246,7 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
     if (fd >= 0) {
         assert(m_fbMap.find(handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, width, height, stride, format };
-        struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+        struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
             24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);
@@ -252,17 +254,15 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
             fprintf(stderr, "ViewBackendDRM: failed to add FB: %s, fbID %d\n", strerror(errno), fbID);
             return;
         }
-        m_fbMap.insert({ handle, { bo, fbID } });
 
-        m_pageFlipData.bufferLocked = true;
-        m_pageFlipData.lockedBufferHandle = handle;
+        m_fbMap.insert({ handle, { bo, fbID } });
+        m_pageFlipData.nextFB = { true, handle };
     } else {
         auto it = m_fbMap.find(handle);
         assert(it != m_fbMap.end());
-        fbID = it->second.second;
 
-        m_pageFlipData.bufferLocked = true;
-        m_pageFlipData.lockedBufferHandle = handle;
+        fbID = it->second.second;
+        m_pageFlipData.nextFB = { true, handle };
     }
 
     int ret = drmModePageFlip(m_drm.fd, m_drm.crtcId, fbID, DRM_MODE_PAGE_FLIP_EVENT, &m_pageFlipData);
