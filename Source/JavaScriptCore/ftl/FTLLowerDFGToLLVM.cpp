@@ -52,6 +52,7 @@
 #include <atomic>
 #include <dlfcn.h>
 #include <llvm/InitializeLLVM.h>
+#include <unordered_set>
 #include <wtf/ProcessID.h>
 
 #if ENABLE(FTL_NATIVE_CALL_INLINING)
@@ -847,6 +848,9 @@ private:
         case MaterializeNewObject:
             compileMaterializeNewObject();
             break;
+        case MaterializeCreateActivation:
+            compileMaterializeCreateActivation();
+            break;
 
         case PhantomLocal:
         case LoopHint:
@@ -854,6 +858,7 @@ private:
         case ZombieHint:
         case PhantomNewObject:
         case PhantomNewFunction:
+        case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
         case PutHint:
@@ -3610,6 +3615,14 @@ private:
             JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
                 
             if (globalObject->stringPrototypeChainIsSane()) {
+                // FIXME: This could be captured using a Speculation mode that means
+                // "out-of-bounds loads return a trivial value", something like
+                // SaneChainOutOfBounds.
+                // https://bugs.webkit.org/show_bug.cgi?id=144668
+                
+                m_graph.watchpoints().addLazily(globalObject->stringPrototype()->structure()->transitionWatchpointSet());
+                m_graph.watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
+                
                 LBasicBlock negativeIndex = FTL_NEW_BLOCK(m_out, ("GetByVal String negative index"));
                     
                 results.append(m_out.anchor(m_out.constInt64(JSValue::encode(jsUndefined()))));
@@ -5209,6 +5222,55 @@ private:
         setJSValue(m_out.phi(m_out.intPtr, results));
     }
 
+    void compileMaterializeCreateActivation()
+    {
+        ObjectMaterializationData& data = m_node->objectMaterializationData();
+
+        Vector<LValue, 8> values;
+        for (unsigned i = 0; i < data.m_properties.size(); ++i)
+            values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
+
+        LValue scope = lowCell(m_graph.varArgChild(m_node, 0));
+        SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
+        Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
+
+        LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation slow path"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation continuation"));
+
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
+
+        LValue fastObject = allocateObject<JSLexicalEnvironment>(
+            JSLexicalEnvironment::allocationSize(table), structure, m_out.intPtrZero, slowPath);
+
+        m_out.storePtr(scope, fastObject, m_heaps.JSScope_next);
+        m_out.storePtr(weakPointer(table), fastObject, m_heaps.JSSymbolTableObject_symbolTable);
+
+        for (unsigned i = 0; i < table->scopeSize(); ++i) {
+            m_out.store64(
+                m_out.constInt64(JSValue::encode(jsUndefined())),
+                fastObject, m_heaps.JSEnvironmentRecord_variables[i]);
+        }
+
+        ValueFromBlock fastResult = m_out.anchor(fastObject);
+        m_out.jump(continuation);
+
+        m_out.appendTo(slowPath, continuation);
+        LValue callResult = vmCall(
+            m_out.operation(operationCreateActivationDirect), m_callFrame, weakPointer(structure),
+            scope, weakPointer(table));
+        ValueFromBlock slowResult =  m_out.anchor(callResult);
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        LValue activation = m_out.phi(m_out.intPtr, fastResult, slowResult);
+        for (unsigned i = 0; i < data.m_properties.size(); ++i) {
+            m_out.store64(values[i],
+                activation,
+                m_heaps.JSEnvironmentRecord_variables[data.m_properties[i].m_identifierNumber]);
+        }
+        setJSValue(activation);
+    }
+
 #if ENABLE(FTL_NATIVE_CALL_INLINING)
     LValue getFunctionBySymbol(const CString symbol)
     {
@@ -6423,6 +6485,8 @@ private:
         
         Vector<SwitchCase> switchCases;
         for (unsigned i = 0; i < characterCases.size(); ++i) {
+            if (i)
+                DFG_ASSERT(m_graph, m_node, characterCases[i - 1].character < characterCases[i].character);
             switchCases.append(SwitchCase(
                 m_out.constInt8(characterCases[i].character), characterBlocks[i], Weight()));
         }
@@ -6453,12 +6517,47 @@ private:
         StringJumpTable& table = codeBlock()->stringSwitchJumpTable(data->switchTableIndex);
         
         Vector<SwitchCase> cases;
+        std::unordered_set<int32_t> alreadyHandled; // These may be negative, or zero, or probably other stuff, too. We don't want to mess with HashSet's corner cases and we don't really care about throughput here.
         for (unsigned i = 0; i < data->cases.size(); ++i) {
+            // FIXME: The fact that we're using the bytecode's switch table means that the
+            // following DFG IR transformation would be invalid.
+            //
+            // Original code:
+            //     switch (v) {
+            //     case "foo":
+            //     case "bar":
+            //         things();
+            //         break;
+            //     default:
+            //         break;
+            //     }
+            //
+            // New code:
+            //     switch (v) {
+            //     case "foo":
+            //         instrumentFoo();
+            //         goto _things;
+            //     case "bar":
+            //         instrumentBar();
+            //     _things:
+            //         things();
+            //         break;
+            //     default:
+            //         break;
+            //     }
+            //
+            // Luckily, we don't currently do any such transformation. But it's kind of silly that
+            // this is an issue.
+            // https://bugs.webkit.org/show_bug.cgi?id=144635
+            
             DFG::SwitchCase myCase = data->cases[i];
             StringJumpTable::StringOffsetTable::iterator iter =
                 table.offsetTable.find(myCase.value.stringImpl());
             DFG_ASSERT(m_graph, m_node, iter != table.offsetTable.end());
             
+            if (!alreadyHandled.insert(iter->value.branchOffset).second)
+                continue;
+
             cases.append(SwitchCase(
                 m_out.constInt32(iter->value.branchOffset),
                 lowBlock(myCase.target.block), Weight(myCase.target.count)));

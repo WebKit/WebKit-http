@@ -1,3 +1,229 @@
+2015-05-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ToT WebKit crashes while loading ES6 compatibility table
+        https://bugs.webkit.org/show_bug.cgi?id=144726
+
+        Reviewed by Filip Pizlo.
+
+        The bug was caused by parseClass superfluously avoiding to build up the string after seeing {.
+
+        Always build the identifier here as it could be a method name.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Sane chain and string watchpoints should be set in FixupPhase or the backend rather than WatchpointCollectionPhase
+        https://bugs.webkit.org/show_bug.cgi?id=144665
+
+        Reviewed by Michael Saboff.
+        
+        This is a step towards getting rid of WatchpointCollectionPhase. It's also a step towards
+        extending SaneChain to all indexing shapes.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+        (JSC::DFG::FixupPhase::checkArray): Clarify the need for checking the structure. We often forget why we do this instead of always using CheckArray.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnString): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+        * dfg/DFGWatchpointCollectionPhase.cpp:
+        (JSC::DFG::WatchpointCollectionPhase::handle): Remove some code.
+        (JSC::DFG::WatchpointCollectionPhase::handleStringGetByVal): Deleted.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileStringCharAt): Set the watchpoints here so that we don't need a case in WatchpointCollectionPhase.
+
+2015-04-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Introducing the Platform Abstraction Layer (PAL)
+        https://bugs.webkit.org/show_bug.cgi?id=143358
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig: Updated
+
+2015-05-06  Andreas Kling  <akling@apple.com>
+
+        Don't allocate a StringImpl for every Number JSValue in JSON.stringify().
+        <https://webkit.org/b/144676>
+
+        Reviewed by Darin Adler.
+
+        We were creating a new String for every number JSValue passing through the JSON stringifier.
+        These StringImpl allocations were dominating one of the Kraken JSON benchmarks.
+        Optimize this by using StringBuilder::appendECMAScriptNumber() which uses a stack buffer
+        for the conversion instead.
+
+        13% progression on Kraken/json-stringify-tinderbox.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::appendStringifiedValue):
+
+2015-05-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183847.
+        https://bugs.webkit.org/show_bug.cgi?id=144691
+
+        Caused many assertion failures (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "GC has trouble with pathologically large array allocations"
+        https://bugs.webkit.org/show_bug.cgi?id=144609
+        http://trac.webkit.org/changeset/183847
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        PutGlobalVar shouldn't have an unconditional store barrier
+        https://bugs.webkit.org/show_bug.cgi?id=133104
+
+        Reviewed by Benjamin Poulain.
+        
+        We don't need a store barrier on PutGlobalVar if the value being stored can be
+        speculated to not be a cell.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        CopiedBlock::reportLiveBytes() should be totally cool with oversize blocks
+        https://bugs.webkit.org/show_bug.cgi?id=144667
+
+        Reviewed by Andreas Kling.
+        
+        We are now calling this method for oversize blocks. It had an assertion that indirectly
+        implied that the block is not oversize, because it was claiming that the number of live
+        bytes should be smaller than the non-oversize-block size.
+
+        * heap/CopiedBlockInlines.h:
+        (JSC::CopiedBlock::reportLiveBytes):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        GC has trouble with pathologically large array allocations
+        https://bugs.webkit.org/show_bug.cgi?id=144609
+
+        Reviewed by Mark Lam.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::updateObjectCounts): Make this code less confusing.
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::copyLater): The early return for isOversize() was the bug. We still need to report these bytes as live. Otherwise the GC doesn't know that it owns this memory.
+        * jsc.cpp: Add size measuring hooks to write the largeish test.
+        (GlobalObject::finishCreation):
+        (functionGCAndSweep):
+        (functionFullGC):
+        (functionEdenGC):
+        (functionHeapSize):
+        * tests/stress/new-array-storage-array-with-size.js: Fix this so that it actually allocates ArrayStorage arrays and tests the thing it was supposed to test.
+        * tests/stress/new-largeish-contiguous-array-with-size.js: Added. This tests what the other test accidentally started testing, but does so without running your system out of memory.
+        (foo):
+        (test):
+
+2015-05-05  Filip Pizlo  <fpizlo@apple.com>
+
+        FTL SwitchString slow case creates duplicate switch cases
+        https://bugs.webkit.org/show_bug.cgi?id=144634
+
+        Reviewed by Geoffrey Garen.
+        
+        The problem of duplicate switches is sufficiently annoying that I fixed the issue and also
+        added mostly-debug-only asserts to catch such issues earlier.
+
+        * bytecode/CallVariant.cpp:
+        (JSC::variantListWithVariant): Assertion to prevent similar bugs.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::switchStringRecurse): Assertion to prevent similar bugs.
+        (JSC::FTL::LowerDFGToLLVM::switchStringSlow): This is the bug.
+        * jit/BinarySwitch.cpp:
+        (JSC::BinarySwitch::BinarySwitch): Assertion to prevent similar bugs.
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall): Assertion to prevent similar bugs.
+        * tests/stress/ftl-switch-string-slow-duplicate-cases.js: Added. This tests the FTL SwitchString bug. It was previously crashing every time.
+        (foo):
+        (cat):
+
+2015-05-05  Basile Clement  <basile_clement@apple.com>
+
+        Fix debug builds after r183812
+        https://bugs.webkit.org/show_bug.cgi?id=144300
+
+        Rubber stamped by Andreas Kling and Filip Pizlo.
+
+        hasObjectMaterializationData() didn't treat MaterializeCreateActivation
+        as having materialization data, which was causing an assertion failure when
+        sinking CreateActivations on debug builds.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasObjectMaterializationData):
+
+2015-05-04  Basile Clement  <basile_clement@apple.com>
+
+        Allow CreateActivation sinking
+        https://bugs.webkit.org/show_bug.cgi?id=144300
+
+        Reviewed by Filip Pizlo.
+
+        This pursues the work started in
+        https://bugs.webkit.org/show_bug.cgi?id=144016 to expand the set of
+        allocations we are able to sink by allowing sinking of CreateActivation
+        node.
+
+        This is achieved by following closely the way NewObject is currently
+        sunk: we add a new PhantomCreateActivation node to record the initial
+        position of the CreateActivation node, new ClosureVarPLoc promoted heap
+        locations to keep track of the variables put in the activation, and a
+        new MaterializeCreateActivation node to allocate and populate the sunk
+        activation.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToPutClosureVarHint):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToPhantomCreateActivation):
+        (JSC::DFG::Node::isActivationAllocation):
+        (JSC::DFG::Node::isPhantomActivationAllocation):
+        (JSC::DFG::Node::isPhantomAllocation):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::lowerNonReadingOperationsOnPhantomAllocations):
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        (JSC::DFG::ObjectAllocationSinkingPhase::createMaterialize):
+        (JSC::DFG::ObjectAllocationSinkingPhase::populateMaterialize):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGPromotedHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGPromotedHeapLocation.h:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        (JSC::DFG::Validate::validateCPS):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::LowerDFGToLLVM::compileNode):
+        (JSC::FTL::LowerDFGToLLVM::compileMaterializeCreateActivation):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * tests/stress/activation-sink-osrexit.js: Added.
+        (bar):
+        (foo.set result):
+        * tests/stress/activation-sink.js: Added.
+        (bar):
+
 2015-05-04  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, fix stale comment.

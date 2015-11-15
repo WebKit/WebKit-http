@@ -493,9 +493,12 @@ public:
     void setAssistedNodeValue(const String&);
     void setAssistedNodeValueAsNumber(double);
     void setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection = false);
+
     void applicationWillEnterForeground();
+    void applicationDidEnterBackground();
     void applicationWillResignActive();
     void applicationDidBecomeActive();
+
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
     void commitPotentialTapFailed();
     void didNotHandleTapAsClick(const WebCore::IntPoint&);
@@ -645,6 +648,9 @@ public:
     double pageScaleFactor() const;
     double viewScaleFactor() const { return m_viewScaleFactor; }
     void scaleView(double scale);
+#if PLATFORM(COCOA)
+    void scaleViewAndUpdateGeometryFenced(double scale, WebCore::IntSize viewSize, const WebCore::MachSendRight& fencePort);
+#endif
 
     float deviceScaleFactor() const;
     void setIntrinsicDeviceScaleFactor(float);

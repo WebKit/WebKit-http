@@ -23,6 +23,7 @@
 #ifndef RenderBox_h
 #define RenderBox_h
 
+#include "FrameView.h"
 #include "RenderBoxModelObject.h"
 #include "RenderOverflow.h"
 #include "ScrollTypes.h"
@@ -462,7 +463,7 @@ public:
     int scrollbarLogicalHeight() const { return style().isHorizontalWritingMode() ? horizontalScrollbarHeight() : verticalScrollbarWidth(); }
     virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint());
     virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr);
-    bool canBeScrolledAndHasScrollableArea() const;
+    WEBCORE_EXPORT bool canBeScrolledAndHasScrollableArea() const;
     virtual bool canBeProgramaticallyScrolled() const;
     virtual void autoscroll(const IntPoint&);
     bool canAutoscroll() const;
@@ -553,6 +554,14 @@ public:
     // In layout related methods you almost always want the logical location (e.g. x() and y()).
     LayoutPoint topLeftLocation() const;
     LayoutSize topLeftLocationOffset() const;
+    void applyTopLeftLocationOffset(LayoutPoint& point) const
+    {
+        // This is inlined for speed, since it is used by updateLayerPosition() during scrolling.
+        if (!document().view()->hasFlippedBlockRenderers())
+            point.move(m_frameRect.x(), m_frameRect.y());
+        else
+            applyTopLeftLocationOffsetWithFlipping(point);
+    }
 
     LayoutRect logicalVisualOverflowRectForPropagation(RenderStyle*) const;
     LayoutRect visualOverflowRectForPropagation(RenderStyle*) const;
@@ -709,6 +718,8 @@ private:
     virtual void computePreferredLogicalWidths() { setPreferredLogicalWidthsDirty(false); }
 
     virtual LayoutRect frameRectForStickyPositioning() const override final { return frameRect(); }
+    
+    void applyTopLeftLocationOffsetWithFlipping(LayoutPoint&) const;
 
 private:
     // The width/height of the contents + borders + padding.  The x/y location is relative to our container (which is not always our parent).
