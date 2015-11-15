@@ -681,23 +681,23 @@ private:
         }
     }
 
-    void dumpString(String str)
+    void dumpString(const String& string)
     {
-        if (str.isEmpty())
+        if (string.isEmpty())
             write(EmptyStringTag);
         else {
             write(StringTag);
-            write(str);
+            write(string);
         }
     }
 
-    void dumpStringObject(String str)
+    void dumpStringObject(const String& string)
     {
-        if (str.isEmpty())
+        if (string.isEmpty())
             write(EmptyStringObjectTag);
         else {
             write(StringObjectTag);
-            write(str);
+            write(string);
         }
     }
 
@@ -983,7 +983,7 @@ private:
     void write(const Identifier& ident)
     {
         const String& str = ident.string();
-        StringConstantPool::AddResult addResult = m_constantPool.add(str.impl(), m_constantPool.size());
+        StringConstantPool::AddResult addResult = m_constantPool.add(ident.impl(), m_constantPool.size());
         if (!addResult.isNewEntry) {
             write(StringPoolTag);
             writeStringIndex(addResult.iterator->value);
@@ -1211,7 +1211,7 @@ private:
     ObjectPool m_objectPool;
     ObjectPool m_transferredMessagePorts;
     ObjectPool m_transferredArrayBuffers;
-    typedef HashMap<RefPtr<StringImpl>, uint32_t, IdentifierRepHash> StringConstantPool;
+    typedef HashMap<RefPtr<UniquedStringImpl>, uint32_t, IdentifierRepHash> StringConstantPool;
     StringConstantPool m_constantPool;
     Identifier m_emptyIdentifier;
 };
@@ -2650,9 +2650,7 @@ std::unique_ptr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScrip
     return contents;
 }
 
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(ExecState* exec, JSValue value,
-                                                                MessagePortArray* messagePorts, ArrayBufferArray* arrayBuffers,
-                                                                SerializationErrorMode throwExceptions)
+RefPtr<SerializedScriptValue> SerializedScriptValue::create(ExecState* exec, JSValue value, MessagePortArray* messagePorts, ArrayBufferArray* arrayBuffers, SerializationErrorMode throwExceptions)
 {
     Vector<uint8_t> buffer;
     Vector<String> blobURLs;
@@ -2667,32 +2665,32 @@ PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(ExecState* exec,
         maybeThrowExceptionIfSerializationFailed(exec, code);
 
     if (!serializationDidCompleteSuccessfully(code))
-        return 0;
+        return nullptr;
 
-    return adoptRef(new SerializedScriptValue(buffer, blobURLs, WTF::move(arrayBufferContentsArray)));
+    return adoptRef(*new SerializedScriptValue(buffer, blobURLs, WTF::move(arrayBufferContentsArray)));
 }
 
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::create(const String& string)
+RefPtr<SerializedScriptValue> SerializedScriptValue::create(const String& string)
 {
     Vector<uint8_t> buffer;
     if (!CloneSerializer::serialize(string, buffer))
-        return 0;
-    return adoptRef(new SerializedScriptValue(buffer));
+        return nullptr;
+    return adoptRef(*new SerializedScriptValue(buffer));
 }
 
 #if ENABLE(INDEXED_DATABASE)
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::numberValue(double value)
+Ref<SerializedScriptValue> SerializedScriptValue::numberValue(double value)
 {
     Vector<uint8_t> buffer;
     CloneSerializer::serializeNumber(value, buffer);
-    return adoptRef(new SerializedScriptValue(buffer));
+    return adoptRef(*new SerializedScriptValue(buffer));
 }
 
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::undefinedValue()
+Ref<SerializedScriptValue> SerializedScriptValue::undefinedValue()
 {
     Vector<uint8_t> buffer;
     CloneSerializer::serializeUndefined(buffer);
-    return adoptRef(new SerializedScriptValue(buffer));
+    return adoptRef(*new SerializedScriptValue(buffer));
 }
 #endif
 
@@ -2742,10 +2740,10 @@ JSValueRef SerializedScriptValue::deserialize(JSContextRef destinationContext, J
     return toRef(exec, value);
 }
 
-PassRefPtr<SerializedScriptValue> SerializedScriptValue::nullValue()
+Ref<SerializedScriptValue> SerializedScriptValue::nullValue()
 {
     Vector<uint8_t> buffer;
-    return adoptRef(new SerializedScriptValue(buffer));
+    return adoptRef(*new SerializedScriptValue(buffer));
 }
 
 void SerializedScriptValue::maybeThrowExceptionIfSerializationFailed(ExecState* exec, SerializationReturnCode code)

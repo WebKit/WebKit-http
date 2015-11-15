@@ -107,15 +107,30 @@ WebInspector.TabContentView.prototype = {
         return false;
     },
 
-    restoreStateFromCookie: function(causedByReload)
+    shown: function()
+    {
+        if (this._shouldRestoreStateWhenShown)
+            this.restoreStateFromCookie(WebInspector.StateRestorationType.Delayed);
+    },
+
+    restoreStateFromCookie: function(restorationType)
     {
         if (!this.navigationSidebarPanel)
             return;
 
-        var matchTypeOnlyDelayForReload = 2000;
-        var matchTypeOnlyDelayForReopen = 1000;
+        if (!this.visible) {
+            this._shouldRestoreStateWhenShown = true;
+            return;
+        }
 
-        var relaxMatchDelay = causedByReload ? matchTypeOnlyDelayForReload : matchTypeOnlyDelayForReopen;
+        this._shouldRestoreStateWhenShown = false;
+
+        var relaxMatchDelay = 0;
+        if (restorationType === WebInspector.StateRestorationType.Load)
+            relaxMatchDelay = 1000;
+        else if (restorationType === WebInspector.StateRestorationType.Navigation)
+            relaxMatchDelay = 2000;
+
         this.navigationSidebarPanel.restoreStateFromCookie(this._cookieSetting.value || {}, relaxMatchDelay);
     },
 
@@ -124,7 +139,10 @@ WebInspector.TabContentView.prototype = {
         if (!this.navigationSidebarPanel)
             return;
 
-        var cookie = this._cookieSetting.value || {};
+        if (this._shouldRestoreStateWhenShown)
+            return;
+
+        var cookie = {};
         this.navigationSidebarPanel.saveStateToCookie(cookie);
         this._cookieSetting.value = cookie;
     },

@@ -31,7 +31,9 @@ enum DeviceType {
 
 enum MediaUIPartID {
     "optimized-fullscreen-button",
-    "optimized-fullscreen-placeholder"
+    "optimized-fullscreen-return-button",
+    "optimized-fullscreen-placeholder",
+    "optimized-fullscreen-placeholder-text"
 };
 
 [
@@ -48,7 +50,7 @@ enum MediaUIPartID {
     readonly attribute DOMString captionDisplayMode;
     void setSelectedTextTrack(TextTrack track);
     readonly attribute HTMLElement textTrackContainer;
-    readonly attribute boolean mediaPlaybackAllowsInline;
+    readonly attribute boolean allowsInlineMediaPlayback;
     readonly attribute boolean supportsFullscreen;
     readonly attribute boolean userGestureRequired;
 

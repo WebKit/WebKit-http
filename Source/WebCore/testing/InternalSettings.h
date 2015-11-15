@@ -96,7 +96,7 @@ public:
         bool m_touchEventEmulationEnabled;
 #endif
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-        bool m_mediaPlaybackAllowsAirPlay;
+        bool m_allowsAirPlayForMediaPlayback;
 #endif
     };
 
@@ -125,6 +125,7 @@ public:
     void setMediaTypeOverride(const String& mediaType, ExceptionCode&);
     void setCSSShapesEnabled(bool, ExceptionCode&);
     void setCanStartMedia(bool, ExceptionCode&);
+    void setWirelessPlaybackDisabled(bool);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);

@@ -257,6 +257,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
             break;
         }
+        
+        if (node->op() == BitAnd
+            && (isBoolInt32Speculation(forNode(node->child1()).m_type) ||
+                isBoolInt32Speculation(forNode(node->child2()).m_type))) {
+            forNode(node).setType(SpecBoolInt32);
+            break;
+        }
+        
         forNode(node).setType(SpecInt32);
         break;
     }
@@ -297,7 +305,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (node->child1().useKind() == UntypedUse && !(value.m_type & ~SpecBoolean))
             m_state.setFoundConstants(true);
         if (value.m_type & SpecBoolean) {
-            value.merge(SpecInt32);
+            value.merge(SpecBoolInt32);
             value.filter(~SpecBoolean);
         }
         break;
@@ -337,6 +345,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         
+        if (isBooleanSpeculation(forNode(node->child1()).m_type)) {
+            forNode(node).setType(SpecBoolInt32);
+            break;
+        }
+        
         forNode(node).setType(SpecInt32);
         break;
     }
@@ -348,7 +361,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         forNode(node).setType(m_graph, forNode(node->child1()).m_type);
-        forNode(node).fixTypeForRepresentation(node);
+        forNode(node).fixTypeForRepresentation(m_graph, node);
         break;
     }
         
@@ -371,7 +384,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         
         forNode(node).setType(m_graph, forNode(node->child1()).m_type & ~SpecDoubleImpureNaN);
-        forNode(node).fixTypeForRepresentation(node);
+        forNode(node).fixTypeForRepresentation(m_graph, node);
         break;
     }
         
@@ -761,6 +774,36 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(typeOfDoublePow(forNode(node->child1()).m_type, forNode(node->child2()).m_type));
         break;
     }
+
+    case ArithRound: {
+        JSValue operand = forNode(node->child1()).value();
+        if (operand && operand.isNumber()) {
+            double roundedValue = jsRound(operand.asNumber());
+
+            if (producesInteger(node->arithRoundingMode())) {
+                int32_t roundedValueAsInt32 = static_cast<int32_t>(roundedValue);
+                if (roundedValueAsInt32 == roundedValue) {
+                    if (shouldCheckNegativeZero(node->arithRoundingMode())) {
+                        if (roundedValueAsInt32 || !std::signbit(roundedValue)) {
+                            setConstant(node, jsNumber(roundedValueAsInt32));
+                            break;
+                        }
+                    } else {
+                        setConstant(node, jsNumber(roundedValueAsInt32));
+                        break;
+                    }
+                }
+            } else {
+                setConstant(node, jsDoubleNumber(roundedValue));
+                break;
+            }
+        }
+        if (producesInteger(node->arithRoundingMode()))
+            forNode(node).setType(SpecInt32);
+        else
+            forNode(node).setType(typeOfDoubleRounding(forNode(node->child1()).m_type));
+        break;
+    }
             
     case ArithSqrt: {
         JSValue child = forNode(node->child1()).value();
@@ -778,13 +821,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(static_cast<float>(child.asNumber())));
             break;
         }
-        forNode(node).setType(typeOfDoubleFRound(forNode(node->child1()).m_type));
+        forNode(node).setType(typeOfDoubleRounding(forNode(node->child1()).m_type));
         break;
     }
         
     case ArithSin: {
         JSValue child = forNode(node->child1()).value();
-        if (false && child && child.isNumber()) {
+        if (child && child.isNumber()) {
             setConstant(node, jsDoubleNumber(sin(child.asNumber())));
             break;
         }
@@ -794,7 +837,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     
     case ArithCos: {
         JSValue child = forNode(node->child1()).value();
-        if (false && child && child.isNumber()) {
+        if (child && child.isNumber()) {
             setConstant(node, jsDoubleNumber(cos(child.asNumber())));
             break;
         }
@@ -1037,6 +1080,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         if (isBooleanSpeculation(abstractChild.m_type)) {
             setConstant(node, *m_graph.freeze(vm->smallStrings.booleanString()));
+            break;
+        }
+
+        if (isSymbolSpeculation(abstractChild.m_type)) {
+            setConstant(node, *m_graph.freeze(vm->smallStrings.symbolString()));
             break;
         }
 
@@ -1390,7 +1438,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
         
-        if (!(forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecCellOther))) {
+        if (!(forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol))) {
             m_state.setFoundConstants(true);
             forNode(node) = forNode(node->child1());
             break;
@@ -1398,7 +1446,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         clobberWorld(node->origin.semantic, clobberLimit);
         
-        forNode(node).setType(m_graph, (SpecHeapTop & ~SpecCell) | SpecString | SpecCellOther);
+        forNode(node).setType(m_graph, (SpecHeapTop & ~SpecCell) | SpecString | SpecSymbol);
         break;
     }
         
@@ -2235,11 +2283,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case StoreBarrierWithNullCheck: {
-        break;
-    }
-
     case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case ZombieHint:
         break;

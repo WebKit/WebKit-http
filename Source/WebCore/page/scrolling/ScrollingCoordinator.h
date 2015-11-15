@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -106,7 +106,7 @@ struct ScrollableAreaParameters {
 
 class ScrollingCoordinator : public ThreadSafeRefCounted<ScrollingCoordinator> {
 public:
-    static PassRefPtr<ScrollingCoordinator> create(Page*);
+    static Ref<ScrollingCoordinator> create(Page*);
     virtual ~ScrollingCoordinator();
 
     WEBCORE_EXPORT virtual void pageDestroyed();
@@ -176,6 +176,7 @@ public:
     virtual void syncChildPositions(const LayoutRect&) { }
     virtual String scrollingStateTreeAsText() const;
     virtual bool isRubberBandInProgress() const { return false; }
+    virtual bool isScrollSnapInProgress() const { return false; }
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) { }
 
     // Generated a unique id for scroll layers.

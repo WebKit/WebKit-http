@@ -1,3 +1,214 @@
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Export DatabaseProcessMainUnix symbol.
+
+        Add DatabaseProcessMainUnix symbol to gtksymbols.filter so that it
+        is exported in production builds.
+
+        * Source/cmake/gtksymbols.filter:
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake: Enable DATABASE_PROCESS and INDEXED_DATABASE.
+        * Source/cmake/WebKitFeatures.cmake: Add ENABLE_DATABASE_PROCESS.
+
+2015-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GCC requirements to 4.9.0
+        https://bugs.webkit.org/show_bug.cgi?id=145211
+
+        Reviewed by Žan Doberšek.
+
+        It's required to build with IndexedDB support when using GCC,
+        clang works just fine. See https://bugs.webkit.org/show_bug.cgi?id=98932.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-05-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Ignore warnings in system headers
+        https://bugs.webkit.org/show_bug.cgi?id=144747
+
+        Reviewed by Darin Adler.
+
+        Require CMake 2.8.12 when compiling the GTK+ port. This is because we use the
+        target_include_directories command (added in 2.8.11) in GTK-specific cmake files, and also
+        use the SYSTEM argument to the command (added in 2.8.12). 
+
+        * CMakeLists.txt:
+
+2015-05-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Error out when ruby is too old
+        https://bugs.webkit.org/show_bug.cgi?id=145014
+
+        Reviewed by Martin Robinson.
+
+        Error out immediately after checking for Ruby if the ruby executable is not found, or if it
+        is too old.
+
+        * CMakeLists.txt:
+
+2015-05-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Enable plugin-related CMake options and variables for the X11 target only
+        https://bugs.webkit.org/show_bug.cgi?id=144995
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Plugins are only supported for
+        the X11 windowing target at the moment, so the following options
+        and variables should be enabled or disabled accordingly:
+        - ENABLE_PLUGIN_PROCESS_GTK2
+        - ENABLE_NETSCAPE_PLUGIN_API
+        - ENABLE_PLUGIN_PROCESS
+
+2015-05-12  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        Linker fails without -DDEVELOPER_MODE=ON
+        https://bugs.webkit.org/show_bug.cgi?id=144117
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Remove fvisibility flags. linker script will cover the functionality for ewebkit2.so in release mode,
+        * Source/cmake/eflsymbols.filter: Updated symbol patterns which should be exposed for ewebkit2.
+
+2015-05-10  Philip Chimento  <philip.chimento@gmail.com>
+
+        CMake defines CAIROGL_FOUND, not CAIRO_GL_FOUND
+        https://bugs.webkit.org/show_bug.cgi?id=144846
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindCairoGL.cmake: Use CAIROGL_* instead of
+        CAIRO_GL_* throughout, because find_package will define
+        CAIROGL_FOUND.
+        * Source/cmake/OptionsGTK.cmake: Ditto.
+
+2015-05-10  Philip Chimento  <philip.chimento@gmail.com>
+
+        [CMake] Some macros need to be defined/undefined, rather than ON/OFF
+        https://bugs.webkit.org/show_bug.cgi?id=144845
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/OptionsGTK.cmake: Only define MOZ_X11 and XP_UNIX
+        if their corresponding WTF options are ON. The code in npapi.h
+        relies on these being undefined if they are to be switched off.
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWindows.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2015-05-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] [CMake] Check for required X libraries
+        https://bugs.webkit.org/show_bug.cgi?id=144823
+
+        Reviewed by Martin Robinson.
+
+        Error out if missing libXcomposite, libXdamage, libXrender, or libXt.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+015-05-08  Michael Catanzaro  <mcatanzaro@igalia.com>, Martin Robinson <mrobinson@igalia.com>
+
+        [GTK] Checks for DEVELOPMENT_BUILD are all wrong
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't set DEVELOPMENT_BUILD. We check whether it is defined for conditional compilation, not
+        what it is defined to, so defining it to 0 effectively turned it on always. Instead set
+        ENABLE_DEVELOPER_MODE so that we can use the ENABLE macro inside WebKit source code.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-05-08  Daniel Bates  <dabates@apple.com>
+
+        [iOS] WebSQL operations are not performed after device is locked
+        https://bugs.webkit.org/show_bug.cgi?id=137503
+        <rdar://problem/20844952>
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        Add a manual test to help verify that we do not regress this issue.
+
+        * ManualTests/ios/execute-sql-transaction-callback-after-locking-unlocking-device-in-earlier-transaction.html: Added.
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183945.
+        https://bugs.webkit.org/show_bug.cgi?id=144789
+
+        "It broke all the GTK+ tests" (Requested by KaL on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Checks for DEVELOPMENT_BUILD are all wrong"
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+        http://trac.webkit.org/changeset/183945
+
+2015-05-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Cleanup after r183940
+        https://bugs.webkit.org/show_bug.cgi?id=144768
+
+        Unreviewed.
+
+        Looks like the empty directories were not deleted.
+
+        * Source/PAL: Removed.
+        * Source/PAL/Configurations: Removed.
+        * Source/PAL/PAL.xcodeproj: Removed.
+        * Source/PAL/graphics: Removed.
+
+2015-05-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Checks for DEVELOPMENT_BUILD are all wrong
+        https://bugs.webkit.org/show_bug.cgi?id=144746
+
+        Reviewed by Martin Robinson.
+
+        Don't set DEVELOPMENT_BUILD. We check whether it is defined for conditional compilation, not
+        what it is defined to, so defining it to 0 effectively turned it on always.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Revert "Introducing the Platform Abstraction Layer (PAL)"
+        https://bugs.webkit.org/show_bug.cgi?id=144751
+
+        Unreviewed.
+
+        PAL should be a new target inside WebCore, rather than a top-level folder.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata: Add it to the workspace.
+
+2015-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
 2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Introducing the Platform Abstraction Layer (PAL)

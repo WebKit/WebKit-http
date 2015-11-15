@@ -356,7 +356,7 @@ bool InspectorStyle::populateAllProperties(Vector<InspectorStyleProperty>* resul
     Vector<CSSPropertySourceData>* sourcePropertyData = sourceData ? &(sourceData->styleSourceData->propertyData) : nullptr;
     if (sourcePropertyData) {
         String styleDeclaration;
-        bool isStyleTextKnown = styleText(&styleDeclaration);
+        bool isStyleTextKnown = getText(&styleDeclaration);
         ASSERT_UNUSED(isStyleTextKnown, isStyleTextKnown);
         for (Vector<CSSPropertySourceData>::const_iterator it = sourcePropertyData->begin(); it != sourcePropertyData->end(); ++it) {
             InspectorStyleProperty p(*it, true, false);
@@ -1077,7 +1077,8 @@ bool InspectorStyleSheet::styleSheetMutated() const
 
 bool InspectorStyleSheet::ensureParsedDataReady()
 {
-    return !styleSheetMutated() && ensureText() && ensureSourceData();
+    bool allowParsedData = m_origin == Inspector::Protocol::CSS::StyleSheetOrigin::Inspector || !styleSheetMutated();
+    return allowParsedData && ensureText() && ensureSourceData();
 }
 
 bool InspectorStyleSheet::ensureText() const

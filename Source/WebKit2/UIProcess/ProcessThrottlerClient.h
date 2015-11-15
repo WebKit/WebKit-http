@@ -26,15 +26,20 @@
 #ifndef ProcessThrottlerClient_h
 #define ProcessThrottlerClient_h
 
+#include "ProcessAssertion.h"
+
 namespace WebKit {
 
 class ProcessThrottlerClient {
 public:
     virtual ~ProcessThrottlerClient() { }
 
-    virtual void sendProcessWillSuspend() = 0;
-    virtual void sendCancelProcessWillSuspend() = 0;
+    virtual void sendProcessWillSuspendImminently() = 0;
+    virtual void sendPrepareToSuspend() = 0;
+    virtual void sendCancelPrepareToSuspend() = 0;
     virtual void sendProcessDidResume() = 0;
+
+    virtual void didSetAssertionState(AssertionState) = 0;
 };
 
 } // namespace WebKit

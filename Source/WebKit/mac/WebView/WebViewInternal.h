@@ -37,7 +37,7 @@
 #import <WebCore/AlternativeTextClient.h>
 #import <WebCore/FindOptions.h>
 #import <WebCore/FloatRect.h>
-#import <WebCore/HTMLMediaElement.h>
+#import <WebCore/HTMLMediaElementEnums.h>
 #import <WebCore/LayoutMilestones.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextIndicatorWindow.h>
@@ -63,9 +63,13 @@ struct DictationAlternative;
 struct DictionaryPopupInfo;
 class WebMediaPlaybackTargetPicker;
 class WebSelectionServiceController;
+
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#import <WebCore/MediaProducer.h>
 #endif
 
-@class WebActionMenuController;
+#endif
+
 @class WebBasePluginPackage;
 @class WebDownload;
 @class WebImmediateActionController;
@@ -242,7 +246,7 @@ OBJC_CLASS NSTextAlternatives;
 - (void)_preferencesChanged:(WebPreferences *)preferences;
 
 #if ENABLE(VIDEO) && defined(__cplusplus)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElement::VideoFullscreenMode)mode;
+- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode;
 - (void)_exitVideoFullscreen;
 #endif
 
@@ -266,9 +270,10 @@ OBJC_CLASS NSTextAlternatives;
 - (void)_showDictionaryLookupPopup:(const DictionaryPopupInfo&)dictionaryPopupInfo;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (id)_animationControllerForDictionaryLookupPopupInfo:(const DictionaryPopupInfo&)dictionaryPopupInfo;
-- (WebActionMenuController *)_actionMenuController;
 - (WebImmediateActionController *)_immediateActionController;
 #endif
+- (NSEvent *)_pressureEvent;
+- (void)_setPressureEvent:(NSEvent *)event;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS) && defined(__cplusplus)

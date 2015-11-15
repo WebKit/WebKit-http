@@ -645,9 +645,16 @@
 #endif
 #endif
 
+#if OS(DARWIN) || OS(FREEBSD) || OS(NETBSD)
+#define HAVE_STAT_BIRTHTIME 1
+#endif
+
 #if !OS(WINDOWS) && !OS(SOLARIS) && !OS(HAIKU)
 #define HAVE_TM_GMTOFF 1
 #define HAVE_TM_ZONE 1
+#endif
+
+#if !OS(WINDOWS) && !OS(SOLARIS)
 #define HAVE_TIMEGM 1
 #endif
 
@@ -1092,7 +1099,7 @@
 
 #define USE_GRAMMAR_CHECKING 1
 
-#if PLATFORM(COCOA) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
 #define USE_UNIFIED_TEXT_CHECKING 1
 #endif
 #if PLATFORM(MAC)

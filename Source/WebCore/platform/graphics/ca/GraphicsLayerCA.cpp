@@ -353,6 +353,7 @@ GraphicsLayerCA::GraphicsLayerCA(Type layerType, GraphicsLayerClient& client)
     : GraphicsLayer(layerType, client)
     , m_needsFullRepaint(false)
     , m_usingBackdropLayerType(false)
+    , m_allowsBackingStoreDetachment(true)
     , m_intersectsCoverageRect(true)
 {
 }
@@ -1252,17 +1253,24 @@ bool GraphicsLayerCA::adjustCoverageRect(VisibleAndCoverageRects& rects, const F
     return true;
 }
 
-void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects)
+void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool allowBackingStoreDetachment)
 {
     bool visibleRectChanged = rects.visibleRect != m_visibleRect;
     bool coverageRectChanged = rects.coverageRect != m_coverageRect;
     if (!visibleRectChanged && !coverageRectChanged)
         return;
 
+    // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
+    bool intersectsCoverageRect = !allowBackingStoreDetachment || rects.coverageRect.intersects(FloatRect(m_boundsOrigin, size()));
+    if (intersectsCoverageRect != m_intersectsCoverageRect) {
+        m_uncommittedChanges |= CoverageRectChanged;
+        m_intersectsCoverageRect = intersectsCoverageRect;
+    }
+
     if (visibleRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_visibleRect = rects.visibleRect;
-        
+
         if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
             // FIXME: this assumes that the mask layer has the same geometry as this layer (which is currently always true).
             maskLayer->m_uncommittedChanges |= CoverageRectChanged;
@@ -1273,9 +1281,6 @@ void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& 
     if (coverageRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_coverageRect = rects.coverageRect;
-
-        // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
-        m_intersectsCoverageRect = m_coverageRect.intersects(FloatRect(m_boundsOrigin, size()));
 
         if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
             maskLayer->m_uncommittedChanges |= CoverageRectChanged;
@@ -1300,7 +1305,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
             localState.setLastPlanarSecondaryQuad(&secondaryQuad);
         }
     }
-    setVisibleAndCoverageRects(rects);
+    setVisibleAndCoverageRects(rects, m_allowsBackingStoreDetachment && commitState.ancestorsAllowBackingStoreDetachment);
 
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
@@ -1343,6 +1348,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         childCommitState.ancestorHasTransformAnimation = true;
         affectedByTransformAnimation = true;
     }
+    
+    childCommitState.ancestorsAllowBackingStoreDetachment &= m_allowsBackingStoreDetachment;
 
     if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer))
         maskLayer->commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition);
@@ -1438,10 +1445,10 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     bool needBackdropLayerType = (customAppearance() == LightBackdropAppearance || customAppearance() == DarkBackdropAppearance);
     PlatformCALayer::LayerType neededLayerType = m_layer->layerType();
 
-    if (needTiledLayer)
-        neededLayerType = PlatformCALayer::LayerTypeTiledBackingLayer;
-    else if (needBackdropLayerType)
+    if (needBackdropLayerType)
         neededLayerType = layerTypeForCustomBackdropAppearance(customAppearance());
+    else if (needTiledLayer)
+        neededLayerType = PlatformCALayer::LayerTypeTiledBackingLayer;
     else if (isCustomBackdropLayerType(m_layer->layerType()) || m_usingTiledBacking)
         neededLayerType = PlatformCALayer::LayerTypeWebLayer;
 
@@ -2025,13 +2032,13 @@ static void setLayerDebugBorder(PlatformCALayer& layer, Color borderColor, float
     layer.setBorderWidth(borderColor.isValid() ? borderWidth : 0);
 }
 
-static float contentsLayerBorderWidth = 4;
+static const float contentsLayerBorderWidth = 4;
 static Color contentsLayerDebugBorderColor(bool showingBorders)
 {
     return showingBorders ? Color(0, 0, 128, 180) : Color();
 }
 
-static float cloneLayerBorderWidth = 2;
+static const float cloneLayerBorderWidth = 2;
 static Color cloneLayerDebugBorderColor(bool showingBorders)
 {
     return showingBorders ? Color(255, 122, 251) : Color();
@@ -3623,6 +3630,15 @@ void GraphicsLayerCA::updateOpacityOnLayer()
             clone.value->setOpacity(m_opacity);
         }
     }
+}
+
+void GraphicsLayerCA::setAllowsBackingStoreDetachment(bool allowDetachment)
+{
+    if (allowDetachment == m_allowsBackingStoreDetachment)
+        return;
+
+    m_allowsBackingStoreDetachment = allowDetachment;
+    noteLayerPropertyChanged(CoverageRectChanged);
 }
 
 void GraphicsLayerCA::deviceOrPageScaleFactorChanged()

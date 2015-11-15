@@ -28,6 +28,7 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
+#import "Logging.h"
 #import <WebCore/AVFoundationSPI.h>
 #import <WebCore/AVKitSPI.h>
 #import <WebCore/FloatRect.h>
@@ -66,6 +67,8 @@ static NSString *externalOutputDevicePickedKeyName = @"externalOutputDevicePicke
 
 namespace WebCore {
 
+static const double pendingActionInterval = 1.0 / 10.0;
+
 std::unique_ptr<MediaPlaybackTargetPickerMac> MediaPlaybackTargetPickerMac::create(MediaPlaybackTargetPicker::Client& client)
 {
     return std::unique_ptr<MediaPlaybackTargetPickerMac>(new MediaPlaybackTargetPickerMac(client));
@@ -82,11 +85,18 @@ MediaPlaybackTargetPickerMac::~MediaPlaybackTargetPickerMac()
 {
     m_pendingActionTimer.stop();
     [m_outputDeviceMenuControllerDelegate clearCallback];
-    stopMonitoringPlaybackTargets();
+
+    if (m_outputDeviceMenuController) {
+        [m_outputDeviceMenuController removeObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDeviceAvailableKeyName];
+        [m_outputDeviceMenuController removeObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDevicePickedKeyName];
+        m_outputDeviceMenuController = nullptr;
+    }
 }
 
 void MediaPlaybackTargetPickerMac::pendingActionTimerFired()
 {
+    LOG(Media, "MediaPlaybackTargetPickerMac::pendingActionTimerFired - flags = 0x%x", m_pendingActionFlags);
+
     if (!m_outputDeviceMenuController || !m_client)
         return;
 
@@ -105,6 +115,8 @@ void MediaPlaybackTargetPickerMac::pendingActionTimerFired()
 
 void MediaPlaybackTargetPickerMac::availableDevicesDidChange()
 {
+    LOG(Media, "MediaPlaybackTargetPickerMac::availableDevicesDidChange - available = %i", (int)devicePicker().externalOutputDeviceAvailable);
+
     if (!m_client)
         return;
 
@@ -123,6 +135,8 @@ AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
         [m_outputDeviceMenuController.get() addObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDeviceAvailableKeyName options:NSKeyValueObservingOptionNew context:nullptr];
         [m_outputDeviceMenuController.get() addObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDevicePickedKeyName options:NSKeyValueObservingOptionNew context:nullptr];
 
+        LOG(Media, "MediaPlaybackTargetPickerMac::devicePicker - allocated menu controller %p", m_outputDeviceMenuController.get());
+
         if (m_outputDeviceMenuController.get().externalOutputDeviceAvailable)
             availableDevicesDidChange();
     }
@@ -130,32 +144,35 @@ AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
     return m_outputDeviceMenuController.get();
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& location, bool checkActiveRoute)
 {
     if (!m_client || m_showingMenu)
         return;
 
-    m_showingMenu = true;
+    LOG(Media, "MediaPlaybackTargetPickerMac::showPlaybackTargetPicker - checkActiveRoute = %i", (int)checkActiveRoute);
+
     AVOutputDeviceMenuControllerType *picker = devicePicker();
-    if ([picker respondsToSelector:@selector(showMenuForRect:appearanceName:allowReselectionOfSelectedOutputDevice:)]) {
-        if ([picker showMenuForRect:location appearanceName:NSAppearanceNameVibrantLight allowReselectionOfSelectedOutputDevice:!checkActiveRoute])
+    if (![picker respondsToSelector:@selector(showMenuForRect:appearanceName:allowReselectionOfSelectedOutputDevice:)])
+        return;
+
+    m_showingMenu = true;
+    if ([picker showMenuForRect:location appearanceName:NSAppearanceNameVibrantLight allowReselectionOfSelectedOutputDevice:!checkActiveRoute]) {
+        if (!checkActiveRoute)
             currentDeviceDidChange();
-    } else
-        [picker showMenuForRect:location appearanceName:NSAppearanceNameVibrantLight];
+    }
     m_showingMenu = false;
 }
-#pragma clang diagnostic pop
 
 void MediaPlaybackTargetPickerMac::addPendingAction(PendingActionFlags action)
 {
     m_pendingActionFlags |= action;
-    m_pendingActionTimer.startOneShot(0);
+    m_pendingActionTimer.startOneShot(pendingActionInterval);
 }
 
 void MediaPlaybackTargetPickerMac::currentDeviceDidChange()
 {
+    LOG(Media, "MediaPlaybackTargetPickerMac::currentDeviceDidChange");
+
     if (!m_client)
         return;
 
@@ -164,16 +181,16 @@ void MediaPlaybackTargetPickerMac::currentDeviceDidChange()
 
 void MediaPlaybackTargetPickerMac::startingMonitoringPlaybackTargets()
 {
+    LOG(Media, "MediaPlaybackTargetPickerMac::startingMonitoringPlaybackTargets");
+
     devicePicker();
 }
 
 void MediaPlaybackTargetPickerMac::stopMonitoringPlaybackTargets()
 {
-    if (m_outputDeviceMenuController) {
-        [m_outputDeviceMenuController removeObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDeviceAvailableKeyName];
-        [m_outputDeviceMenuController removeObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDevicePickedKeyName];
-        m_outputDeviceMenuController = nullptr;
-    }
+    LOG(Media, "MediaPlaybackTargetPickerMac::stopMonitoringPlaybackTargets");
+
+    // FIXME: update once rdar://21062536 has been fixed.
 }
 
 } // namespace WebCore
@@ -202,6 +219,8 @@ void MediaPlaybackTargetPickerMac::stopMonitoringPlaybackTargets()
 
     if (!m_callback)
         return;
+
+    LOG(Media, "MediaPlaybackTargetPickerMac::observeValueForKeyPath - key = %s", [keyPath UTF8String]);
 
     if (![keyPath isEqualToString:externalOutputDeviceAvailableKeyName] && ![keyPath isEqualToString:externalOutputDevicePickedKeyName])
         return;

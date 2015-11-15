@@ -333,10 +333,17 @@ void CachedResource::finish()
         m_status = Cached;
 }
 
-bool CachedResource::passesAccessControlCheck(SecurityOrigin* securityOrigin)
+bool CachedResource::passesAccessControlCheck(SecurityOrigin& securityOrigin)
 {
     String errorDescription;
-    return WebCore::passesAccessControlCheck(m_response, resourceRequest().allowCookies() ? AllowStoredCredentials : DoNotAllowStoredCredentials, securityOrigin, errorDescription);
+    return WebCore::passesAccessControlCheck(response(), resourceRequest().allowCookies() ? AllowStoredCredentials : DoNotAllowStoredCredentials, &securityOrigin, errorDescription);
+}
+
+bool CachedResource::passesSameOriginPolicyCheck(SecurityOrigin& securityOrigin)
+{
+    if (securityOrigin.canRequest(responseForSameOriginPolicyChecks().url()))
+        return true;
+    return passesAccessControlCheck(securityOrigin);
 }
 
 bool CachedResource::isExpired() const
@@ -362,12 +369,22 @@ std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceRespon
     return computeFreshnessLifetimeForHTTPFamily(response, m_responseTimestamp);
 }
 
-void CachedResource::redirectReceived(ResourceRequest&, const ResourceResponse& response)
+void CachedResource::redirectReceived(ResourceRequest& request, const ResourceResponse& response)
 {
     m_requestedFromNetworkingLayer = true;
     if (response.isNull())
         return;
+
+    // Redirect to data: URL uses the last HTTP response for SOP.
+    if (response.isHTTP() && request.url().protocolIsData())
+        m_redirectResponseForSameOriginPolicyChecks = response;
+
     updateRedirectChainStatus(m_redirectChainCacheStatus, response);
+}
+
+const ResourceResponse& CachedResource::responseForSameOriginPolicyChecks() const
+{
+    return m_redirectResponseForSameOriginPolicyChecks.isNull() ? m_response : m_redirectResponseForSameOriginPolicyChecks;
 }
 
 void CachedResource::responseReceived(const ResourceResponse& response)
@@ -680,39 +697,30 @@ bool CachedResource::canUseCacheValidator() const
     return m_response.hasCacheValidatorFields();
 }
 
-static inline void logResourceRevalidationReason(Frame* frame, const String& reason)
-{
-    if (frame)
-        frame->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), DiagnosticLoggingKeys::reasonKey(), reason, ShouldSample::Yes);
-}
-
-bool CachedResource::mustRevalidateDueToCacheHeaders(const CachedResourceLoader& cachedResourceLoader, CachePolicy cachePolicy) const
+CachedResource::RevalidationDecision CachedResource::makeRevalidationDecision(CachePolicy cachePolicy) const
 {    
-    ASSERT(cachePolicy == CachePolicyRevalidate || cachePolicy == CachePolicyVerify);
+    switch (cachePolicy) {
+    case CachePolicyHistoryBuffer:
+        return RevalidationDecision::No;
 
-    if (cachePolicy == CachePolicyRevalidate) {
-        logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::reloadKey());
-        return true;
-    }
+    case CachePolicyReload:
+    case CachePolicyRevalidate:
+        return RevalidationDecision::YesDueToCachePolicy;
 
-    if (m_response.cacheControlContainsNoCache() || m_response.cacheControlContainsNoStore()) {
-        LOG(ResourceLoading, "CachedResource %p mustRevalidate because of m_response.cacheControlContainsNoCache() || m_response.cacheControlContainsNoStore()\n", this);
+    case CachePolicyVerify:
+        if (m_response.cacheControlContainsNoCache())
+            return RevalidationDecision::YesDueToNoCache;
+        // FIXME: Cache-Control:no-store should prevent storing, not reuse.
         if (m_response.cacheControlContainsNoStore())
-            logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::noStoreKey());
-        else
-            logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::noCacheKey());
+            return RevalidationDecision::YesDueToNoStore;
 
-        return true;
-    }
+        if (isExpired())
+            return RevalidationDecision::YesDueToExpired;
 
-    // CachePolicyVerify
-    if (isExpired()) {
-        LOG(ResourceLoading, "CachedResource %p mustRevalidate because of isExpired()\n", this);
-        logResourceRevalidationReason(cachedResourceLoader.frame(), DiagnosticLoggingKeys::isExpiredKey());
-        return true;
-    }
-
-    return false;
+        return RevalidationDecision::No;
+    };
+    ASSERT_NOT_REACHED();
+    return RevalidationDecision::No;
 }
 
 bool CachedResource::redirectChainAllowsReuse(ReuseExpiredRedirectionOrNot reuseExpiredRedirection) const
@@ -765,7 +773,7 @@ void CachedResource::Callback::timerFired()
     m_resource.didAddClient(&m_client);
 }
 
-#if USE(FOUNDATION)
+#if USE(FOUNDATION) || USE(SOUP)
 
 void CachedResource::tryReplaceEncodedData(SharedBuffer& newBuffer)
 {

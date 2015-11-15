@@ -50,9 +50,9 @@ typedef bool (*WKBundlePageOverlayMouseMovedCallback)(WKBundlePageOverlayRef pag
 typedef bool (*WKBundlePageOverlayMouseDraggedCallback)(WKBundlePageOverlayRef pageOverlay, WKPoint position, WKEventMouseButton mouseButton, const void* clientInfo);
 
 typedef void* (*WKBundlePageOverlayActionContextForResultAtPointCallback)(WKBundlePageOverlayRef pageOverlay, WKPoint position, WKBundleRangeHandleRef* rangeHandle, const void* clientInfo);
-typedef void (*WKBundlePageOverlayDatadetectorsDidPresentUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
-typedef void (*WKBundlePageOverlayDatadetectorsDidChangeUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
-typedef void (*WKBundlePageOverlayDatadetectorsDidHideUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
+typedef void (*WKBundlePageOverlayDataDetectorsDidPresentUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
+typedef void (*WKBundlePageOverlayDataDetectorsDidChangeUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
+typedef void (*WKBundlePageOverlayDataDetectorsDidHideUI)(WKBundlePageOverlayRef pageOverlay, const void* clientInfo);
 
 typedef struct WKBundlePageOverlayClientBase {
     int                                                                 version;
@@ -83,9 +83,9 @@ typedef struct WKBundlePageOverlayClientV1 {
     WKBundlePageOverlayMouseDraggedCallback                             mouseDragged;
 
     WKBundlePageOverlayActionContextForResultAtPointCallback            actionContextForResultAtPoint;
-    WKBundlePageOverlayDatadetectorsDidPresentUI                         dataDetectorsDidPresentUI;
-    WKBundlePageOverlayDatadetectorsDidChangeUI                           dataDetectorsDidChangeUI;
-    WKBundlePageOverlayDatadetectorsDidHideUI                               dataDetectorsDidHideUI;
+    WKBundlePageOverlayDataDetectorsDidPresentUI                        dataDetectorsDidPresentUI;
+    WKBundlePageOverlayDataDetectorsDidChangeUI                         dataDetectorsDidChangeUI;
+    WKBundlePageOverlayDataDetectorsDidHideUI                           dataDetectorsDidHideUI;
 } WKBundlePageOverlayClientV1;
 
 enum { kWKBundlePageOverlayClientCurrentVersion WK_ENUM_DEPRECATED("Use an explicit version number instead") = 0 };

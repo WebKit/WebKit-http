@@ -57,6 +57,8 @@ public:
 
     virtual PassRefPtr<DatabaseBackendBase> openDatabase(RefPtr<DatabaseContext>&, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, bool setVersionInNewDatabase, DatabaseError&, String& errorMessage, OpenAttempt = FirstTryToOpenDatabase) = 0;
 
+    virtual void closeAllDatabases() = 0;
+
     virtual bool hasEntryForOrigin(SecurityOrigin*) = 0;
     virtual void origins(Vector<RefPtr<SecurityOrigin>>& result) = 0;
     virtual bool databaseNamesForOrigin(SecurityOrigin*, Vector<String>& result) = 0;
@@ -70,8 +72,6 @@ public:
     virtual void deleteAllDatabases() = 0;
     virtual bool deleteOrigin(SecurityOrigin*) = 0;
     virtual bool deleteDatabase(SecurityOrigin*, const String& name) = 0;
-
-    virtual void setPauseAllDatabases(bool) = 0;
 
     virtual void interruptAllDatabasesForContext(const DatabaseContext*) = 0;
 

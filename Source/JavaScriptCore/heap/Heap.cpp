@@ -314,7 +314,7 @@ inline std::unique_ptr<TypeCountSet> RecordType::returnValue()
 
 Heap::Heap(VM* vm, HeapType heapType)
     : m_heapType(heapType)
-    , m_ramSize(ramSize())
+    , m_ramSize(Options::forceRAMSize() ? Options::forceRAMSize() : ramSize())
     , m_minBytesPerCycle(minHeapSize(m_heapType, m_ramSize))
     , m_sizeAfterLastCollect(0)
     , m_sizeAfterLastFullCollect(0)
@@ -369,6 +369,8 @@ Heap::Heap(VM* vm, HeapType heapType)
 
 Heap::~Heap()
 {
+    for (WeakBlock* block : m_logicallyEmptyWeakBlocks)
+        WeakBlock::destroy(block);
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -796,10 +798,8 @@ void Heap::clearRememberedSet(Vector<const JSCell*>& rememberedSet)
 {
 #if ENABLE(GGC)
     GCPHASE(ClearRememberedSet);
-    for (auto* cell : rememberedSet) {
-        MarkedBlock::blockFor(cell)->clearRemembered(cell);
+    for (auto* cell : rememberedSet)
         const_cast<JSCell*>(cell)->setRemembered(false);
-    }
 #else
     UNUSED_PARAM(rememberedSet);
 #endif
@@ -816,15 +816,18 @@ void Heap::updateObjectCounts(double gcStartTime)
 #endif
         dataLogF("\nNumber of live Objects after GC %lu, took %.6f secs\n", static_cast<unsigned long>(visitCount), WTF::monotonicallyIncreasingTime() - gcStartTime);
     }
-
-    if (m_operationInProgress == EdenCollection) {
-        m_totalBytesVisited += m_slotVisitor.bytesVisited();
-        m_totalBytesCopied += m_slotVisitor.bytesCopied();
-    } else {
-        ASSERT(m_operationInProgress == FullCollection);
-        m_totalBytesVisited = m_slotVisitor.bytesVisited();
-        m_totalBytesCopied = m_slotVisitor.bytesCopied();
-    }
+    
+    size_t bytesRemovedFromOldSpaceDueToReallocation =
+        m_storageSpace.takeBytesRemovedFromOldSpaceDueToReallocation();
+    
+    if (m_operationInProgress == FullCollection) {
+        m_totalBytesVisited = 0;
+        m_totalBytesCopied = 0;
+    } else
+        m_totalBytesCopied -= bytesRemovedFromOldSpaceDueToReallocation;
+    
+    m_totalBytesVisited += m_slotVisitor.bytesVisited();
+    m_totalBytesCopied += m_slotVisitor.bytesCopied();
 #if ENABLE(PARALLEL_GC)
     m_totalBytesVisited += m_sharedData.childBytesVisited();
     m_totalBytesCopied += m_sharedData.childBytesCopied();
@@ -970,7 +973,6 @@ void Heap::addToRememberedSet(const JSCell* cell)
     ASSERT(!Options::enableConcurrentJIT() || !isCompilationThread());
     if (isRemembered(cell))
         return;
-    MarkedBlock::blockFor(cell)->setRemembered(cell);
     const_cast<JSCell*>(cell)->setRemembered(true);
     m_slotVisitor.unconditionallyAppend(const_cast<JSCell*>(cell));
 }
@@ -1207,9 +1209,12 @@ void Heap::snapshotMarkedSpace()
 {
     GCPHASE(SnapshotMarkedSpace);
 
-    if (m_operationInProgress == EdenCollection)
-        m_blockSnapshot = m_objectSpace.blocksWithNewObjects();
-    else {
+    if (m_operationInProgress == EdenCollection) {
+        m_blockSnapshot.appendVector(m_objectSpace.blocksWithNewObjects());
+        // Sort and deduplicate the block snapshot since we might be appending to an unfinished work list.
+        std::sort(m_blockSnapshot.begin(), m_blockSnapshot.end());
+        m_blockSnapshot.shrink(std::unique(m_blockSnapshot.begin(), m_blockSnapshot.end()) - m_blockSnapshot.begin());
+    } else {
         m_blockSnapshot.resizeToFit(m_objectSpace.blocks().set().size());
         MarkedBlockSnapshotFunctor functor(m_blockSnapshot);
         m_objectSpace.forEachBlock(functor);
@@ -1225,13 +1230,13 @@ void Heap::deleteSourceProviderCaches()
 void Heap::notifyIncrementalSweeper()
 {
     GCPHASE(NotifyIncrementalSweeper);
-    if (m_operationInProgress == EdenCollection)
-        m_sweeper->addBlocksAndContinueSweeping(WTF::move(m_blockSnapshot));
-    else {
+
+    if (m_operationInProgress == FullCollection) {
         if (!m_logicallyEmptyWeakBlocks.isEmpty())
             m_indexOfNextLogicallyEmptyWeakBlockToSweep = 0;
-        m_sweeper->startSweeping(WTF::move(m_blockSnapshot));
     }
+
+    m_sweeper->startSweeping();
 }
 
 void Heap::rememberCurrentlyExecutingCodeBlocks()

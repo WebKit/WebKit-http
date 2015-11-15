@@ -164,7 +164,9 @@ public:
     bool supportsFixedRootBackgroundCompositing() const;
     bool needsFixedRootBackgroundLayer(const RenderLayer&) const;
     GraphicsLayer* fixedRootBackgroundLayer() const;
-    
+
+    void rootOrBodyStyleChanged(RenderElement&, const RenderStyle* oldStyle);
+
     // Called after the view transparency, or the document or base background color change.
     void rootBackgroundTransparencyChanged();
     
@@ -227,11 +229,6 @@ public:
     // to know if there is non-affine content, e.g. for drawing into an image.
     bool has3DContent() const;
     
-    // Most platforms connect compositing layer trees between iframes and their parent document.
-    // Some (currently just Mac) allow iframes to do their own compositing.
-    static bool allowsIndependentlyCompositedFrames(const FrameView*);
-    bool shouldPropagateCompositingToEnclosingFrame() const;
-
     static RenderLayerCompositor* frameContentsCompositor(RenderWidget*);
     // Return true if the layers changed.
     static bool parentFrameContentLayers(RenderWidget*);
@@ -476,7 +473,8 @@ private:
     void logLayerInfo(const RenderLayer&, int depth);
 #endif
 
-    bool mainFrameBackingIsTiled() const;
+    bool documentUsesTiledBacking() const;
+    bool isMainFrameCompositor() const;
 
 private:
     RenderView& m_renderView;

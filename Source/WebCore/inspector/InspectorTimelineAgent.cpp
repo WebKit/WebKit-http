@@ -198,6 +198,13 @@ void InspectorTimelineAgent::internalStop()
 #if PLATFORM(COCOA)
     m_frameStartObserver = nullptr;
     m_frameStopObserver = nullptr;
+    if (m_didStartRecordingRunLoop) {
+        m_didStartRecordingRunLoop = false;
+
+        // Complete all pending records to prevent discarding events that are currently in progress.
+        while (!m_recordStack.isEmpty())
+            didCompleteCurrentRecord(m_recordStack.last().type);
+    }
 #endif
 
     clearRecordStack();
@@ -257,11 +264,7 @@ void InspectorTimelineAgent::startFromConsole(JSC::ExecState* exec, const String
     if (!m_enabled && m_pendingConsoleProfileRecords.isEmpty())
         internalStart();
 
-    // Use an independent stopwatch for console-initiated profiling, since the user will expect it
-    // to be relative to when their command was issued.
-    Ref<Stopwatch> profilerStopwatch = Stopwatch::create();
-    profilerStopwatch->start();
-    startProfiling(exec, title, WTF::move(profilerStopwatch));
+    startProfiling(exec, title, m_instrumentingAgents->inspectorEnvironment().executionStopwatch());
 
     m_pendingConsoleProfileRecords.append(createRecordEntry(TimelineRecordFactory::createConsoleProfileData(title), TimelineRecordType::ConsoleProfile, true, frameFromExecState(exec)));
 }

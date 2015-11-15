@@ -39,7 +39,7 @@ namespace WebCore {
 
 class ScrollingTreeFrameScrollingNodeMac : public ScrollingTreeFrameScrollingNode, private ScrollControllerClient {
 public:
-    WEBCORE_EXPORT static PassRefPtr<ScrollingTreeFrameScrollingNode> create(ScrollingTree&, ScrollingNodeID);
+    WEBCORE_EXPORT static Ref<ScrollingTreeFrameScrollingNode> create(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeFrameScrollingNodeMac();
 
 private:
@@ -86,6 +86,8 @@ private:
     LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const override;
     void immediateScrollOnAxis(ScrollEventAxis, float delta) override;
     float pageScaleFactor() const override;
+    void startScrollSnapTimer(ScrollEventAxis) override;
+    void stopScrollSnapTimer(ScrollEventAxis) override;
 #endif
 
     void logExposedUnfilledArea();

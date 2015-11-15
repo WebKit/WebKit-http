@@ -314,6 +314,12 @@ public:
             && !hasExitSite(negate, Int52Overflow)
             && negate->canSpeculateInt52(pass);
     }
+
+    bool roundShouldSpeculateInt32(Node* arithRound, PredictionPass pass)
+    {
+        ASSERT(arithRound->op() == ArithRound);
+        return arithRound->canSpeculateInt32(pass) && !hasExitSite(arithRound->origin.semantic, Overflow) && !hasExitSite(arithRound->origin.semantic, NegativeZero);
+    }
     
     static const char *opName(NodeType);
     
@@ -800,6 +806,8 @@ public:
 
     HashMap<EncodedJSValue, FrozenValue*, EncodedJSValueHash, EncodedJSValueHashTraits> m_frozenValueMap;
     Bag<FrozenValue> m_frozenValues;
+
+    Vector<uint32_t> m_uint32ValuesInUse;
     
     Bag<StorageAccessData> m_storageAccessData;
     

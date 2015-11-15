@@ -59,8 +59,12 @@ void* Allocator::tryAllocate(size_t size)
     if (size <= largeMax)
         return allocate(size);
 
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    return PerProcess<Heap>::get()->tryAllocateXLarge(lock, superChunkSize, roundUpToMultipleOf<xLargeAlignment>(size));
+    if (size <= xLargeMax) {
+        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+        return PerProcess<Heap>::getFastCase()->tryAllocateXLarge(lock, superChunkSize, roundUpToMultipleOf<xLargeAlignment>(size));
+    }
+
+    return nullptr;
 }
 
 void* Allocator::allocate(size_t alignment, size_t size)
@@ -93,28 +97,31 @@ void* Allocator::allocate(size_t alignment, size_t size)
         }
     }
 
-    size = std::max(largeMin, roundUpToMultipleOf<largeAlignment>(size));
-    alignment = roundUpToMultipleOf<largeAlignment>(alignment);
-    size_t unalignedSize = largeMin + alignment + size;
-    if (unalignedSize <= largeMax && alignment <= largeChunkSize / 2) {
-        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-        return PerProcess<Heap>::getFastCase()->allocateLarge(lock, alignment, size, unalignedSize);
+    if (size <= largeMax && alignment <= largeMax) {
+        size = std::max(largeMin, roundUpToMultipleOf<largeAlignment>(size));
+        alignment = roundUpToMultipleOf<largeAlignment>(alignment);
+        size_t unalignedSize = largeMin + alignment + size;
+        if (unalignedSize <= largeMax && alignment <= largeChunkSize / 2) {
+            std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+            return PerProcess<Heap>::getFastCase()->allocateLarge(lock, alignment, size, unalignedSize);
+        }
     }
 
-    size = roundUpToMultipleOf<xLargeAlignment>(size);
-    alignment = std::max(superChunkSize, alignment);
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    return PerProcess<Heap>::getFastCase()->allocateXLarge(lock, alignment, size);
+    if (size <= xLargeMax && alignment <= xLargeMax) {
+        size = roundUpToMultipleOf<xLargeAlignment>(size);
+        alignment = std::max(superChunkSize, alignment);
+        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+        return PerProcess<Heap>::getFastCase()->allocateXLarge(lock, alignment, size);
+    }
+
+    BCRASH();
+    return nullptr;
 }
 
 void* Allocator::reallocate(void* object, size_t newSize)
 {
     if (!m_isBmallocEnabled)
         return realloc(object, newSize);
-
-    void* result = allocate(newSize);
-    if (!object)
-        return result;
 
     size_t oldSize = 0;
     switch (objectType(object)) {
@@ -129,20 +136,48 @@ void* Allocator::reallocate(void* object, size_t newSize)
         break;
     }
     case Large: {
-        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+        std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
         LargeObject largeObject(object);
         oldSize = largeObject.size();
+
+        if (newSize < oldSize && newSize > mediumMax) {
+            newSize = roundUpToMultipleOf<largeAlignment>(newSize);
+            if (oldSize - newSize >= largeMin) {
+                std::pair<LargeObject, LargeObject> split = largeObject.split(newSize);
+                
+                lock.unlock();
+                m_deallocator.deallocate(split.second.begin());
+                lock.lock();
+            }
+            return object;
+        }
         break;
     }
     case XLarge: {
-        std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-        Range range = PerProcess<Heap>::getFastCase()->findXLarge(lock, object);
-        RELEASE_BASSERT(range);
+        BASSERT(objectType(nullptr) == XLarge);
+        if (!object)
+            break;
+
+        std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
+        Range& range = PerProcess<Heap>::getFastCase()->findXLarge(lock, object);
         oldSize = range.size();
+
+        if (newSize < oldSize && newSize > largeMax) {
+            newSize = roundUpToMultipleOf<xLargeAlignment>(newSize);
+            if (oldSize - newSize >= xLargeAlignment) {
+                lock.unlock();
+                vmDeallocate(static_cast<char*>(object) + oldSize, oldSize - newSize);
+                lock.lock();
+
+                range = Range(object, newSize);
+            }
+            return object;
+        }
         break;
     }
     }
 
+    void* result = allocate(newSize);
     size_t copySize = std::min(oldSize, newSize);
     memcpy(result, object, copySize);
     m_deallocator.deallocate(object);
@@ -218,7 +253,11 @@ void* Allocator::allocateSlowCase(size_t size)
     if (size <= largeMax)
         return allocateLarge(size);
 
-    return allocateXLarge(size);
+    if (size <= xLargeMax)
+        return allocateXLarge(size);
+
+    BCRASH();
+    return nullptr;
 }
 
 } // namespace bmalloc

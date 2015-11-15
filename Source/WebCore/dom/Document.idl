@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2011, 2015 Apple Inc. All rights reserved.
  * Copyright (C) 2006, 2007 Samuel Weinig <sam@webkit.org>
  *
  * This library is free software; you can redistribute it and/or
@@ -52,7 +52,6 @@
                                                                           [TreatNullAs=NullString,Default=Undefined] optional DOMString qualifiedName);
     [ObjCLegacyUnnamedParameters] NodeList getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI,
                                                    [Default=Undefined] optional DOMString localName);
-    Element getElementById([Default=Undefined,ObjCExplicitAtomicString,RequiresExistingAtomicString] optional DOMString elementId);
 
     // DOM Level 3 Core
 
@@ -218,10 +217,6 @@
 
     readonly attribute DOMString compatMode;
 
-    // NodeSelector - Selector API
-    [RaisesException] Element querySelector(DOMString selectors);
-    [RaisesException] NodeList querySelectorAll(DOMString selectors);
-
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
     readonly attribute boolean webkitIsFullScreen;
@@ -243,74 +238,6 @@
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     [Conditional=FONT_LOAD_EVENTS] readonly attribute FontLoader fonts;
 #endif
-
-    [NotEnumerable] attribute EventHandler onabort;
-    [NotEnumerable] attribute EventHandler onbeforecopy;
-    [NotEnumerable] attribute EventHandler onbeforecut;
-    [NotEnumerable] attribute EventHandler onbeforepaste;
-    [NotEnumerable] attribute EventHandler onblur;
-    [NotEnumerable] attribute EventHandler onchange;
-    [NotEnumerable] attribute EventHandler onclick;
-    [NotEnumerable] attribute EventHandler oncontextmenu;
-    [NotEnumerable] attribute EventHandler oncopy;
-    [NotEnumerable] attribute EventHandler oncut;
-    [NotEnumerable] attribute EventHandler ondblclick;
-    [NotEnumerable] attribute EventHandler ondrag;
-    [NotEnumerable] attribute EventHandler ondragend;
-    [NotEnumerable] attribute EventHandler ondragenter;
-    [NotEnumerable] attribute EventHandler ondragleave;
-    [NotEnumerable] attribute EventHandler ondragover;
-    [NotEnumerable] attribute EventHandler ondragstart;
-    [NotEnumerable] attribute EventHandler ondrop;
-    [NotEnumerable] attribute EventHandler onerror;
-    [NotEnumerable] attribute EventHandler onfocus;
-    [NotEnumerable] attribute EventHandler oninput;
-    [NotEnumerable] attribute EventHandler oninvalid;
-    [NotEnumerable] attribute EventHandler onkeydown;
-    [NotEnumerable] attribute EventHandler onkeypress;
-    [NotEnumerable] attribute EventHandler onkeyup;
-    [NotEnumerable] attribute EventHandler onload;
-    [NotEnumerable] attribute EventHandler onmousedown;
-    [NotEnumerable] attribute EventHandler onmouseenter;
-    [NotEnumerable] attribute EventHandler onmouseleave;
-    [NotEnumerable] attribute EventHandler onmousemove;
-    [NotEnumerable] attribute EventHandler onmouseout;
-    [NotEnumerable] attribute EventHandler onmouseover;
-    [NotEnumerable] attribute EventHandler onmouseup;
-    [NotEnumerable] attribute EventHandler onmousewheel;
-    [NotEnumerable] attribute EventHandler onpaste;
-    [NotEnumerable] attribute EventHandler onreadystatechange;
-    [NotEnumerable] attribute EventHandler onreset;
-    [NotEnumerable] attribute EventHandler onscroll;
-    [NotEnumerable] attribute EventHandler onsearch;
-    [NotEnumerable] attribute EventHandler onselect;
-    [NotEnumerable] attribute EventHandler onselectionchange;
-    [NotEnumerable] attribute EventHandler onselectstart;
-    [NotEnumerable] attribute EventHandler onsubmit;
-    [NotEnumerable] attribute EventHandler onwheel;
-
-    [NotEnumerable, Conditional=CSP_NEXT] attribute EventHandler onsecuritypolicyviolation;
-
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchcancel;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchend;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchmove;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchstart;
-
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealbottom;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealleft;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealright;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealtop;
-
-    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcechanged;
-    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcedown;
-    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforceup;
-    [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcewillbegin;
-
-    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenchange;
-    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenerror;
-
-    [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockchange;
-    [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockerror;
 
 #if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
 #include <WebKitAdditions/DocumentIOS.idl>
@@ -341,5 +268,35 @@
 
     // http://www.w3.org/TR/2014/WD-dom-20140204/#dom-document-origin
     readonly attribute DOMString origin;
+
+    // http://dev.w3.org/csswg/cssom-view/#dom-document-scrollingelement
+    readonly attribute Element scrollingElement;
+
+
+    // Event Handlers
+
+    // Unique to Element and Document
+    // FIXME: Should these be exposed on Window as well (and therefore moved to GlobalEventHandlers.idl)?
+    [NotEnumerable] attribute EventHandler onbeforecopy;
+    [NotEnumerable] attribute EventHandler onbeforecut;
+    [NotEnumerable] attribute EventHandler onbeforepaste;
+    [NotEnumerable] attribute EventHandler oncopy;
+    [NotEnumerable] attribute EventHandler oncut;
+    [NotEnumerable] attribute EventHandler onpaste;
+    [NotEnumerable] attribute EventHandler onselectstart;
+    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenchange;
+    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenerror;
+
+    // Unique to Document and HTMLBodyElement
+    [NotEnumerable] attribute EventHandler onselectionchange;
+
+    // Unique to Document
+    [NotEnumerable] attribute EventHandler onreadystatechange;
+    [NotEnumerable, Conditional=CSP_NEXT] attribute EventHandler onsecuritypolicyviolation;
+    [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockchange;
+    [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockerror;
 };
 
+Document implements ParentNode;
+Document implements NonElementParentNode;
+Document implements GlobalEventHandlers;

@@ -44,11 +44,17 @@ class UserContentExtensionStore final : public ObjectImpl<Object::Type::UserCont
 public:
     enum class Error {
         LookupFailed = 1,
+        VersionMismatch,
         CompileFailed,
         RemoveFailed
     };
+    
+    // This should be incremented every time a functional change is made to the bytecode, file format, etc.
+    // to prevent crashing while loading old data.
+    const static uint32_t CurrentContentExtensionFileVersion = 3;
 
     static UserContentExtensionStore& defaultStore();
+    static Ref<UserContentExtensionStore> storeWithPath(const WTF::String& storePath);
 
     explicit UserContentExtensionStore();
     explicit UserContentExtensionStore(const WTF::String& storePath);

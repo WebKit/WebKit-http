@@ -52,15 +52,15 @@ SOFT_LINK(libxslt, xsltLoadStylesheetPI, xsltStylesheetPtr, (xmlDocPtr doc), (do
 namespace WebCore {
 
 XSLStyleSheet::XSLStyleSheet(XSLImportRule* parentRule, const String& originalURL, const URL& finalURL)
-    : m_ownerNode(0)
+    : m_ownerNode(nullptr)
     , m_originalURL(originalURL)
     , m_finalURL(finalURL)
     , m_isDisabled(false)
     , m_embedded(false)
     , m_processed(false) // Child sheets get marked as processed when the libxslt engine has finally seen them.
-    , m_stylesheetDoc(0)
+    , m_stylesheetDoc(nullptr)
     , m_stylesheetDocTaken(false)
-    , m_parentStyleSheet(parentRule ? parentRule->parentStyleSheet() : 0)
+    , m_parentStyleSheet(parentRule ? parentRule->parentStyleSheet() : nullptr)
 {
 }
 
@@ -71,9 +71,9 @@ XSLStyleSheet::XSLStyleSheet(Node* parentNode, const String& originalURL, const 
     , m_isDisabled(false)
     , m_embedded(embedded)
     , m_processed(true) // The root sheet starts off processed.
-    , m_stylesheetDoc(0)
+    , m_stylesheetDoc(nullptr)
     , m_stylesheetDocTaken(false)
-    , m_parentStyleSheet(0)
+    , m_parentStyleSheet(nullptr)
 {
 }
 
@@ -82,16 +82,16 @@ XSLStyleSheet::~XSLStyleSheet()
     if (!m_stylesheetDocTaken)
         xmlFreeDoc(m_stylesheetDoc);
 
-    for (unsigned i = 0; i < m_children.size(); ++i) {
-        ASSERT(m_children.at(i)->parentStyleSheet() == this);
-        m_children.at(i)->setParentStyleSheet(0);
+    for (auto& child : m_children) {
+        ASSERT(child->parentStyleSheet() == this);
+        child->setParentStyleSheet(nullptr);
     }
 }
 
 bool XSLStyleSheet::isLoading() const
 {
-    for (unsigned i = 0; i < m_children.size(); ++i) {
-        if (m_children.at(i)->isLoading())
+    for (auto& child : m_children) {
+        if (child->isLoading())
             return true;
     }
     return false;
@@ -116,9 +116,8 @@ xmlDocPtr XSLStyleSheet::document()
 
 void XSLStyleSheet::clearDocuments()
 {
-    m_stylesheetDoc = 0;
-    for (unsigned i = 0; i < m_children.size(); ++i) {
-        XSLImportRule* import = m_children.at(i).get();
+    m_stylesheetDoc = nullptr;
+    for (auto& import : m_children) {
         if (import->styleSheet())
             import->styleSheet()->clearDocuments();
     }
@@ -273,8 +272,7 @@ Document* XSLStyleSheet::ownerDocument()
 xmlDocPtr XSLStyleSheet::locateStylesheetSubResource(xmlDocPtr parentDoc, const xmlChar* uri)
 {
     bool matchedParent = (parentDoc == document());
-    for (unsigned i = 0; i < m_children.size(); ++i) {
-        XSLImportRule* import = m_children.at(i).get();
+    for (auto& import : m_children) {
         XSLStyleSheet* child = import->styleSheet();
         if (!child)
             continue;

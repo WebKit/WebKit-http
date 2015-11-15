@@ -1351,7 +1351,12 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
         // Otherwise fall through; use presence of help text, title, or description to decide.
     }
 
-    if (isWebArea() || m_renderer->isListMarker())
+    if (m_renderer->isListMarker()) {
+        AccessibilityObject* parent = parentObjectUnignored();
+        return parent && !parent->isListItem();
+    }
+
+    if (isWebArea())
         return false;
     
     // Using the presence of an accessible name to decide an element's visibility is not
@@ -2629,6 +2634,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(captionTag))
         return CaptionRole;
+
+    if (node && node->hasTagName(preTag))
+        return PreRole;
 
 #if ENABLE(VIDEO)
     if (is<HTMLVideoElement>(node))

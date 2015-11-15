@@ -406,9 +406,10 @@ RunsData.unitFromMetricName = function (metricName)
         'FrameRate': 'fps',
         'Runs': '/s',
         'Time': 'ms',
-        'Malloc': 'bytes',
-        'Heap': 'bytes',
-        'Allocations': 'bytes',
+        'Duration': 'ms',
+        'Malloc': 'B',
+        'Heap': 'B',
+        'Allocations': 'B',
         'Score': 'pt',
     }[suffix];
     return unit;

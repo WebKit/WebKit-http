@@ -1197,6 +1197,24 @@ bool JSObject::allowsAccessFrom(ExecState* exec)
     return globalObject->globalObjectMethodTable()->allowsAccessFrom(globalObject, exec);
 }
 
+void JSObject::putGetter(ExecState* exec, PropertyName propertyName, JSValue getter)
+{
+    PropertyDescriptor descriptor;
+    descriptor.setGetter(getter);
+    descriptor.setEnumerable(true);
+    descriptor.setConfigurable(true);
+    defineOwnProperty(this, exec, propertyName, descriptor, false);
+}
+
+void JSObject::putSetter(ExecState* exec, PropertyName propertyName, JSValue setter)
+{
+    PropertyDescriptor descriptor;
+    descriptor.setSetter(setter);
+    descriptor.setEnumerable(true);
+    descriptor.setConfigurable(true);
+    defineOwnProperty(this, exec, propertyName, descriptor, false);
+}
+
 void JSObject::putDirectAccessor(ExecState* exec, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     ASSERT(value.isGetterSetter() && (attributes & Accessor));
@@ -1228,12 +1246,6 @@ void JSObject::putDirectNonIndexAccessor(VM& vm, PropertyName propertyName, JSVa
 {
     PutPropertySlot slot(this);
     putDirectInternal<PutModeDefineOwnProperty>(vm, propertyName, value, attributes, slot);
-
-    // putDirect will change our Structure if we add a new property. For
-    // getters and setters, though, we also need to change our Structure
-    // if we override an existing non-getter or non-setter.
-    if (slot.type() != PutPropertySlot::NewProperty)
-        setStructure(vm, Structure::attributeChangeTransition(vm, structure(vm), propertyName, attributes));
 
     Structure* structure = this->structure(vm);
     if (attributes & ReadOnly)
@@ -1456,7 +1468,6 @@ bool JSObject::defaultHasInstance(ExecState* exec, JSValue value, JSValue proto)
 
 void JSObject::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
-    propertyNames.setBaseObject(object);
     object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, propertyNames, mode);
 
     if (object->prototype().isNull())
@@ -2444,6 +2455,21 @@ void JSObject::ensureLengthSlow(VM& vm, unsigned length)
         for (unsigned i = oldVectorLength; i < newVectorLength; ++i)
             m_butterfly->contiguousDouble().data()[i] = PNaN;
     }
+}
+
+void JSObject::reallocateAndShrinkButterfly(VM& vm, unsigned length)
+{
+    ASSERT(length < MAX_ARRAY_INDEX);
+    ASSERT(length < MAX_STORAGE_VECTOR_LENGTH);
+    ASSERT(hasContiguous(indexingType()) || hasInt32(indexingType()) || hasDouble(indexingType()) || hasUndecided(indexingType()));
+    ASSERT(m_butterfly->vectorLength() > length);
+    ASSERT(!m_butterfly->indexingHeader()->preCapacity(structure()));
+
+    DeferGC deferGC(vm.heap);
+    Butterfly* newButterfly = m_butterfly->resizeArray(vm, this, structure(), 0, ArrayStorage::sizeFor(length));
+    m_butterfly.set(vm, this, newButterfly);
+    m_butterfly->setVectorLength(length);
+    m_butterfly->setPublicLength(length);
 }
 
 Butterfly* JSObject::growOutOfLineStorage(VM& vm, size_t oldSize, size_t newSize)

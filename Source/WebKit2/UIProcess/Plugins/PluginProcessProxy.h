@@ -43,11 +43,6 @@ OBJC_CLASS NSObject;
 OBJC_CLASS WKPlaceholderModalWindow;
 #endif
 
-// FIXME: This is platform specific.
-namespace IPC {
-    class MachPort;
-}
-
 namespace WebKit {
 
 class PluginProcessManager;
@@ -111,6 +106,7 @@ private:
 
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&, const PluginProcessAttributes&);
+    virtual void processWillShutDown(IPC::Connection&) override;
 
     void pluginProcessCrashedOrFailedToLaunch();
 

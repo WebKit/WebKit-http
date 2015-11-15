@@ -212,7 +212,6 @@
 #import <wtf/StdLibExtras.h>
 
 #if !PLATFORM(IOS)
-#import "WebActionMenuController.h"
 #import "WebContextMenuClient.h"
 #import "WebFullScreenController.h"
 #import "WebImmediateActionController.h"
@@ -223,7 +222,6 @@
 #import "WebPDFView.h"
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
-#import <WebCore/NSViewSPI.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
@@ -855,6 +853,16 @@ static bool shouldAllowDisplayAndRunningOfInsecureContent()
     return shouldAllowDisplayAndRunningOfInsecureContent;
 }
 
+static bool shouldAllowAlternateFullscreen()
+{
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+    static bool shouldAllowAlternateFullscreen = iosExecutableWasLinkedOnOrAfterVersion(wkIOSSystemVersion_9_0);
+    return shouldAllowAlternateFullscreen;
+#else
+    return false;
+#endif
+}
+
 #if ENABLE(GAMEPAD)
 static void WebKitInitializeGamepadProviderIfNecessary()
 {
@@ -899,17 +907,11 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     [frameView release];
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    if ([self respondsToSelector:@selector(_setActionMenu:)]) {
-        RetainPtr<NSMenu> actionMenu = adoptNS([[NSMenu alloc] init]);
-        self._actionMenu = actionMenu.get();
-        _private->actionMenuController = [[WebActionMenuController alloc] initWithWebView:self];
-        self._actionMenu.autoenablesItems = NO;
-    }
-
     if (Class gestureClass = NSClassFromString(@"NSImmediateActionGestureRecognizer")) {
-        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] initWithTarget:nil action:NULL]);
+        RetainPtr<NSImmediateActionGestureRecognizer> recognizer = adoptNS([(NSImmediateActionGestureRecognizer *)[gestureClass alloc] init]);
         _private->immediateActionController = [[WebImmediateActionController alloc] initWithWebView:self recognizer:recognizer.get()];
         [recognizer setDelegate:_private->immediateActionController];
+        [recognizer setDelaysPrimaryMouseButtonEvents:NO];
     }
 #endif
 
@@ -1751,7 +1753,6 @@ static bool fastDocumentTeardownEnabled()
     [_private->inspector webViewClosed];
 #endif
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [_private->actionMenuController webViewClosed];
     [_private->immediateActionController webViewClosed];
 #endif
 
@@ -2007,29 +2008,29 @@ static bool fastDocumentTeardownEnabled()
     // type.  (See behavior matrix at the top of WebFramePrivate.)  So we copy all the items
     // in the back forward list, and go to the current one.
 
-    BackForwardClient* backForwardClient = _private->page->backForward().client();
-    ASSERT(!backForwardClient->currentItem()); // destination list should be empty
+    BackForwardController& backForward = _private->page->backForward();
+    ASSERT(!backForward.currentItem()); // destination list should be empty
 
-    BackForwardClient* otherBackForwardClient = otherView->_private->page->backForward().client();
-    if (!otherBackForwardClient->currentItem())
+    BackForwardController& otherBackForward = otherView->_private->page->backForward();
+    if (!otherBackForward.currentItem())
         return; // empty back forward list, bail
     
     HistoryItem* newItemToGoTo = nullptr;
 
-    int lastItemIndex = otherBackForwardClient->forwardListCount();
-    for (int i = -otherBackForwardClient->backListCount(); i <= lastItemIndex; ++i) {
+    int lastItemIndex = otherBackForward.forwardCount();
+    for (int i = -otherBackForward.backCount(); i <= lastItemIndex; ++i) {
         if (i == 0) {
             // If this item is showing , save away its current scroll and form state,
             // since that might have changed since loading and it is normally not saved
             // until we leave that page.
             otherView->_private->page->mainFrame().loader().history().saveDocumentAndScrollState();
         }
-        Ref<HistoryItem> newItem = otherBackForwardClient->itemAtIndex(i)->copy();
+        Ref<HistoryItem> newItem = otherBackForward.itemAtIndex(i)->copy();
         if (i == 0) 
             newItemToGoTo = newItem.ptr();
-        backForwardClient->addItem(WTF::move(newItem));
+        backForward.client()->addItem(WTF::move(newItem));
     }
-    
+
     ASSERT(newItemToGoTo);
     _private->page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward);
 }
@@ -2295,9 +2296,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
     settings.setValidationMessageTimerMagnification([self validationMessageTimerMagnification]);
 
-    settings.setMediaPlaybackRequiresUserGesture([preferences mediaPlaybackRequiresUserGesture]);
-    settings.setMediaPlaybackAllowsInline([preferences mediaPlaybackAllowsInline]);
-    settings.setAllowsAlternateFullscreen([preferences allowsAlternateFullscreen]);
+    settings.setRequiresUserGestureForMediaPlayback([preferences mediaPlaybackRequiresUserGesture]);
+    settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
+    settings.setAllowsAlternateFullscreen([preferences allowsAlternateFullscreen] && shouldAllowAlternateFullscreen());
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
     settings.setBackspaceKeyNavigationEnabled([preferences backspaceKeyNavigationEnabled]);
     settings.setWantsBalancedSetDefersLoadingBehavior([preferences wantsBalancedSetDefersLoadingBehavior]);
@@ -2349,7 +2350,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setLayoutInterval(std::chrono::milliseconds([preferences _layoutInterval]));
     settings.setMaxParseDuration([preferences _maxParseDuration]);
     settings.setAlwaysUseAcceleratedOverflowScroll([preferences _alwaysUseAcceleratedOverflowScroll]);
-    settings.setMediaPlaybackAllowsAirPlay([preferences mediaPlaybackAllowsAirPlay]);
+    settings.setAllowsAirPlayForMediaPlayback([preferences mediaPlaybackAllowsAirPlay]);
     settings.setAudioSessionCategoryOverride([preferences audioSessionCategoryOverride]);
     settings.setNetworkDataUsageTrackingEnabled([preferences networkDataUsageTrackingEnabled]);
     settings.setNetworkInterfaceName([preferences networkInterfaceName]);
@@ -8408,7 +8409,7 @@ bool LayerFlushController::flushLayers()
 #endif
 
 #if ENABLE(VIDEO)
-- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElement::VideoFullscreenMode)mode
+- (void)_enterVideoFullscreenForVideoElement:(WebCore::HTMLVideoElement*)videoElement mode:(WebCore::HTMLMediaElementEnums::VideoFullscreenMode)mode
 {
     if (_private->fullscreenController) {
         if ([_private->fullscreenController videoElement] == videoElement) {
@@ -8539,35 +8540,6 @@ bool LayerFlushController::flushLayers()
 
 #if PLATFORM(MAC)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)prepareForMenu:(NSMenu *)menu withEvent:(NSEvent *)event
-{
-    if (menu != self._actionMenu)
-        return;
-
-    [_private->actionMenuController prepareForMenu:menu withEvent:event];
-}
-
-- (void)willOpenMenu:(NSMenu *)menu withEvent:(NSEvent *)event
-{
-    if (menu != self._actionMenu)
-        return;
-
-    [_private->actionMenuController willOpenMenu:menu withEvent:event];
-}
-
-- (void)didCloseMenu:(NSMenu *)menu withEvent:(NSEvent *)event
-{
-    if (menu != self._actionMenu)
-        return;
-
-    [_private->actionMenuController didCloseMenu:menu withEvent:event];
-}
-
-- (WebActionMenuController *)_actionMenuController
-{
-    return _private->actionMenuController;
-}
-
 - (WebImmediateActionController *)_immediateActionController
 {
     return _private->immediateActionController;
@@ -8600,6 +8572,16 @@ bool LayerFlushController::flushLayers()
     return [getLULookupDefinitionModuleClass() lookupAnimationControllerForTerm:dictionaryPopupInfo.attributedString.get() atLocation:textBaselineOrigin options:dictionaryPopupInfo.options.get()];
 }
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+- (NSEvent *)_pressureEvent
+{
+    return _private->pressureEvent.get();
+}
+
+- (void)_setPressureEvent:(NSEvent *)event
+{
+    _private->pressureEvent = event;
+}
 
 - (void)_setTextIndicator:(TextIndicator&)textIndicator
 {

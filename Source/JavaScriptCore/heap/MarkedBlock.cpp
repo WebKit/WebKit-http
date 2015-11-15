@@ -47,7 +47,7 @@ void MarkedBlock::destroy(MarkedBlock* block)
 MarkedBlock::MarkedBlock(MarkedAllocator* allocator, size_t capacity, size_t cellSize, bool needsDestruction)
     : DoublyLinkedListNode<MarkedBlock>()
     , m_atomsPerCell((cellSize + atomSize - 1) / atomSize)
-    , m_endAtom((allocator->cellSize() ? atomsPerBlock : capacity / atomSize) - m_atomsPerCell + 1)
+    , m_endAtom((allocator->cellSize() ? atomsPerBlock - m_atomsPerCell : firstAtom()) + 1)
     , m_capacity(capacity)
     , m_needsDestruction(needsDestruction)
     , m_allocator(allocator)
@@ -218,11 +218,6 @@ void MarkedBlock::clearMarks()
 #endif
 }
 
-void MarkedBlock::clearRememberedSet()
-{
-    m_rememberedSet.clearAll();
-}
-
 template <HeapOperation collectionType>
 void MarkedBlock::clearMarksWithCollectionType()
 {
@@ -232,9 +227,6 @@ void MarkedBlock::clearMarksWithCollectionType()
     ASSERT(m_state != New && m_state != FreeListed);
     if (collectionType == FullCollection) {
         m_marks.clearAll();
-#if ENABLE(GGC)
-        m_rememberedSet.clearAll();
-#endif
         // This will become true at the end of the mark phase. We set it now to
         // avoid an extra pass to do so later.
         m_state = Marked;

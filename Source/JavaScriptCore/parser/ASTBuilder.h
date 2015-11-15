@@ -288,6 +288,13 @@ public:
     {
         return new (m_parserArena) TemplateLiteralNode(location, templateStringList, templateExpressionList);
     }
+
+    ExpressionNode* createTaggedTemplate(const JSTokenLocation& location, ExpressionNode* base, TemplateLiteralNode* templateLiteral, const JSTextPosition& start, const JSTextPosition& divot, const JSTextPosition& end)
+    {
+        auto node = new (m_parserArena) TaggedTemplateNode(location, base, templateLiteral);
+        setExceptionLocation(node, start, divot, end);
+        return node;
+    }
 #endif
 
     ExpressionNode* createRegExp(const JSTokenLocation& location, const Identifier& pattern, const Identifier& flags, const JSTextPosition& start)
@@ -712,9 +719,9 @@ public:
         assignmentStackDepth--;
         return result;
     }
-    
-    const Identifier* getName(Property property) const { return property->name(); }
-    PropertyNode::Type getType(Property property) const { return property->type(); }
+
+    const Identifier* getName(const Property& property) const { return property->name(); }
+    PropertyNode::Type getType(const Property& property) const { return property->type(); }
 
     bool isResolve(ExpressionNode* expr) const { return expr->isResolveNode(); }
 
@@ -1028,7 +1035,7 @@ ExpressionNode* ASTBuilder::makeFunctionCallNode(const JSTokenLocation& location
     }
     if (func->isBracketAccessorNode()) {
         BracketAccessorNode* bracket = static_cast<BracketAccessorNode*>(func);
-        FunctionCallBracketNode* node = new (m_parserArena) FunctionCallBracketNode(location, bracket->base(), bracket->subscript(), args, divot, divotStart, divotEnd);
+        FunctionCallBracketNode* node = new (m_parserArena) FunctionCallBracketNode(location, bracket->base(), bracket->subscript(), bracket->subscriptHasAssignments(), args, divot, divotStart, divotEnd);
         node->setSubexpressionInfo(bracket->divot(), bracket->divotEnd().offset);
         return node;
     }

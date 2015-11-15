@@ -27,6 +27,7 @@
 #include "JSInjectedScriptHost.h"
 
 #include "DateInstance.h"
+#include "DirectArguments.h"
 #include "Error.h"
 #include "InjectedScriptHost.h"
 #include "IteratorOperations.h"
@@ -46,6 +47,7 @@
 #include "JSWeakSet.h"
 #include "ObjectConstructor.h"
 #include "RegExpObject.h"
+#include "ScopedArguments.h"
 #include "SourceCode.h"
 #include "TypedArrayInlines.h"
 #include "WeakMapData.h"
@@ -85,10 +87,8 @@ void JSInjectedScriptHost::destroy(JSC::JSCell* cell)
 
 void JSInjectedScriptHost::releaseImpl()
 {
-    if (m_impl) {
-        m_impl->deref();
-        m_impl = nullptr;
-    }
+    if (auto impl = std::exchange(m_impl, nullptr))
+        impl->deref();
 }
 
 JSInjectedScriptHost::~JSInjectedScriptHost()
@@ -148,6 +148,9 @@ JSValue JSInjectedScriptHost::subtype(ExecState* exec)
 
     if (value.inherits(JSArray::info()))
         return jsNontrivialString(exec, ASCIILiteral("array"));
+    if (value.inherits(DirectArguments::info()) || value.inherits(ScopedArguments::info()))
+        return jsNontrivialString(exec, ASCIILiteral("array"));
+
     if (value.inherits(DateInstance::info()))
         return jsNontrivialString(exec, ASCIILiteral("date"));
     if (value.inherits(RegExpObject::info()))

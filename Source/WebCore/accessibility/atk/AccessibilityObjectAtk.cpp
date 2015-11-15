@@ -84,6 +84,10 @@ AccessibilityObjectInclusion AccessibilityObject::accessibilityPlatformIncludesO
     if (!renderObject)
         return DefaultBehavior;
 
+    // The text displayed by an ARIA menu item is exposed through the accessible name.
+    if (renderObject->isAnonymousBlock() && parent->isMenuItem())
+        return IgnoreObject;
+
     // We don't want <span> elements to show up in the accessibility hierarchy unless
     // we have good reasons for that (e.g. focusable or visible because of containing
     // a meaningful accessible name, maybe set through ARIA), so we can use
@@ -157,7 +161,7 @@ bool AccessibilityObject::allowsTextRanges() const
 
     // Check roles as the last fallback mechanism.
     AccessibilityRole role = roleValue();
-    return role == ParagraphRole || role == LabelRole || role == DivRole || role == FormRole;
+    return role == ParagraphRole || role == LabelRole || role == DivRole || role == FormRole || role == PreRole;
 }
 
 unsigned AccessibilityObject::getLengthForTextRange() const

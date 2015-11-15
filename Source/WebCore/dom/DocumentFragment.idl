@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2015 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,12 +17,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
- [
+[
     Constructor,
     ConstructorCallWith=Document
- ] interface DocumentFragment : Node {
-    // NodeSelector - Selector API
-    [RaisesException] Element querySelector(DOMString selectors);
-    [RaisesException] NodeList querySelectorAll(DOMString selectors);
+] interface DocumentFragment : Node {
 };
 
+DocumentFragment implements ParentNode;
+DocumentFragment implements NonElementParentNode;

@@ -127,6 +127,7 @@
     <ClCompile Include="..\wtf\StackBounds.cpp" />
     <ClCompile Include="..\wtf\StringPrintStream.cpp" />
     <ClCompile Include="..\wtf\text\AtomicString.cpp" />
+    <ClCompile Include="..\wtf\text\AtomicStringImpl.cpp" />
     <ClCompile Include="..\wtf\text\AtomicStringTable.cpp" />
     <ClCompile Include="..\wtf\text\Base64.cpp" />
     <ClCompile Include="..\wtf\text\CString.cpp" />
@@ -136,7 +137,7 @@
     <ClCompile Include="..\wtf\text\StringView.cpp" />
     <ClCompile Include="..\wtf\text\SymbolRegistry.cpp" />
     <ClCompile Include="..\wtf\text\WTFString.cpp" />
-    <ClCompile Include="..\wtf\text\cf\AtomicStringCF.cpp" />
+    <ClCompile Include="..\wtf\text\cf\AtomicStringImplCF.cpp" />
     <ClCompile Include="..\wtf\text\cf\StringCF.cpp" />
     <ClCompile Include="..\wtf\text\cf\StringImplCF.cpp" />
     <ClCompile Include="..\wtf\text\cf\StringViewCF.cpp" />
@@ -290,7 +291,9 @@
     <ClInclude Include="..\wtf\text\StringImpl.h" />
     <ClInclude Include="..\wtf\text\StringOperators.h" />
     <ClInclude Include="..\wtf\text\StringView.h" />
+    <ClInclude Include="..\wtf\text\SymbolImpl.h" />
     <ClInclude Include="..\wtf\text\SymbolRegistry.h" />
+    <ClInclude Include="..\wtf\text\UniquedStringImpl.h" />
     <ClInclude Include="..\wtf\text\WTFString.h" />
     <ClInclude Include="..\wtf\Threading.h" />
     <ClInclude Include="..\wtf\ThreadingPrimitives.h" />
@@ -328,7 +331,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -352,7 +355,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -364,7 +367,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -388,7 +391,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>

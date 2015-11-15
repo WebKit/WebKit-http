@@ -137,16 +137,17 @@ private:
 #if PLATFORM(MAC)
     virtual DDActionContext *actionContextForResultAtPoint(WebPageOverlay& pageOverlay, WebCore::FloatPoint location, RefPtr<WebCore::Range>& rangeHandle) override
     {
-        if (!m_client.actionContextForResultAtPoint)
-            return nil;
+        if (m_client.actionContextForResultAtPoint) {
+            WKBundleRangeHandleRef apiRange = nullptr;
+            DDActionContext *actionContext = (DDActionContext *)m_client.actionContextForResultAtPoint(toAPI(&pageOverlay), WKPointMake(location.x(), location.y()), &apiRange, m_client.base.clientInfo);
 
-        WKBundleRangeHandleRef apiRange = nullptr;
-        DDActionContext *actionContext = (DDActionContext *)m_client.actionContextForResultAtPoint(toAPI(&pageOverlay), WKPointMake(location.x(), location.y()), &apiRange, m_client.base.clientInfo);
+            if (apiRange)
+                rangeHandle = toImpl(apiRange)->coreRange();
 
-        if (apiRange)
-            rangeHandle = toImpl(apiRange)->coreRange();
+            return actionContext;
+        }
 
-        return actionContext;
+        return nil;
     }
 
     virtual void dataDetectorsDidPresentUI(WebPageOverlay& pageOverlay) override

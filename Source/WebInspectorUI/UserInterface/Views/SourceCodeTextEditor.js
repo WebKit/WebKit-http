@@ -128,15 +128,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
     close()
     {
         if (this._supportsDebugging) {
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.DisabledStateDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.AutoContinueDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.ResolvedStateDidChange, this._breakpointStatusDidChange, this);
-            WebInspector.Breakpoint.removeEventListener(WebInspector.Breakpoint.Event.LocationDidChange, this._updateBreakpointLocation, this);
-
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointsEnabledDidChange, this._breakpointsEnabledDidChange, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointAdded, this._breakpointAdded, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.BreakpointRemoved, this._breakpointRemoved, this);
-            WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.ActiveCallFrameDidChange, this._activeCallFrameDidChange, this);
+            WebInspector.Breakpoint.removeEventListener(null, null, this);
+            WebInspector.debuggerManager.removeEventListener(null, null, this);
 
             if (this._activeCallFrameSourceCodeLocation) {
                 this._activeCallFrameSourceCodeLocation.removeEventListener(WebInspector.SourceCodeLocation.Event.LocationChanged, this._activeCallFrameSourceCodeLocationChanged, this);
@@ -276,7 +269,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         return newActivatedState;
     }
 
-    showPopoverForTypes(types, bounds, title)
+    showPopoverForTypes(typeDescription, bounds, title)
     {
         var content = document.createElement("div");
         content.className = "object expandable";
@@ -286,10 +279,11 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         titleElement.textContent = title;
         content.appendChild(titleElement);
 
-        var section = new WebInspector.TypePropertiesSection(types);
-        section.expanded = true;
-        section.element.classList.add("body");
-        content.appendChild(section.element);
+        var bodyElement = content.appendChild(document.createElement("div"));
+        bodyElement.className = "body";
+
+        var typeTreeView = new WebInspector.TypeTreeView(typeDescription);
+        bodyElement.appendChild(typeTreeView.element);
 
         this._showPopover(content, bounds);
     }
@@ -1424,10 +1418,11 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             console.assert(allTypes.length === 1);
             if (!allTypes.length)
                 return;
-            var types = allTypes[0];
-            if (types.isValid) {
+
+            var typeDescription = WebInspector.TypeDescription.fromPayload(allTypes[0]);
+            if (typeDescription.valid) {
                 var popoverTitle = WebInspector.TypeTokenView.titleForPopover(WebInspector.TypeTokenView.TitleType.Variable, candidate.expression);
-                this.showPopoverForTypes(types, null, popoverTitle);
+                this.showPopoverForTypes(typeDescription, null, popoverTitle);
             }
         }
 
@@ -1516,7 +1511,13 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         bodyElement.className = "body";
         bodyElement.appendChild(objectTree.element);
 
-        this._showPopover(content);
+        // Show the popover once we have the first set of properties for the object.
+        var candidate = this.tokenTrackingController.candidate;
+        objectTree.addEventListener(WebInspector.ObjectTreeView.Event.Updated, function() {
+            if (candidate === this.tokenTrackingController.candidate)
+                this._showPopover(content);
+            objectTree.removeEventListener(null, null, this);
+        }, this);
     }
 
     _showPopoverWithFormattedValue(remoteObject)
@@ -1655,6 +1656,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             return;
 
         if (shouldActivate) {
+            console.assert(this.visible, "Annotators should not be enabled if the TextEditor is not visible");
+
             RuntimeAgent.enableTypeProfiler();
 
             this._typeTokenAnnotator.reset();

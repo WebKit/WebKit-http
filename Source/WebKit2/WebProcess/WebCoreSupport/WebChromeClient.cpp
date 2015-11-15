@@ -915,9 +915,9 @@ bool WebChromeClient::supportsVideoFullscreen()
     return m_page->videoFullscreenManager()->supportsVideoFullscreen();
 }
 
-void WebChromeClient::enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElement::VideoFullscreenMode mode)
+void WebChromeClient::enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement& videoElement, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
-    ASSERT(mode != HTMLMediaElement::VideoFullscreenModeNone);
+    ASSERT(mode != HTMLMediaElementEnums::VideoFullscreenModeNone);
     m_page->videoFullscreenManager()->enterVideoFullscreenForVideoElement(videoElement, mode);
 }
 
@@ -978,6 +978,11 @@ void WebChromeClient::notifyScrollerThumbIsVisibleInRect(const IntRect& scroller
 void WebChromeClient::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle)
 {
     m_page->send(Messages::WebPageProxy::RecommendedScrollbarStyleDidChange(static_cast<int32_t>(newStyle)));
+}
+
+WTF::Optional<ScrollbarOverlayStyle> WebChromeClient::preferredScrollbarOverlayStyle()
+{
+    return m_page->scrollbarOverlayStyle(); 
 }
 
 Color WebChromeClient::underlayColor() const

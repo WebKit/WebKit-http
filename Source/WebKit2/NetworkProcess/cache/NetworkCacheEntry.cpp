@@ -30,7 +30,6 @@
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheDecoder.h"
 #include "NetworkCacheEncoder.h"
-#include <JavaScriptCore/JSONObject.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -105,12 +104,13 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
 #if ENABLE(SHAREABLE_RESOURCE)
 void Entry::initializeShareableResourceHandleFromStorageRecord() const
 {
-    auto* data = m_sourceStorageRecord.body.data();
-    size_t size = m_sourceStorageRecord.body.size();
-    RefPtr<SharedMemory> sharedMemory = m_sourceStorageRecord.body.isMap() ? SharedMemory::create(const_cast<uint8_t*>(data), size, SharedMemory::Protection::ReadOnly) : nullptr;
-    RefPtr<ShareableResource> shareableResource = sharedMemory ? ShareableResource::create(sharedMemory.release(), 0, size) : nullptr;
-    if (shareableResource)
-        shareableResource->createHandle(m_shareableResourceHandle);
+    RefPtr<SharedMemory> sharedMemory = m_sourceStorageRecord.body.tryCreateSharedMemory();
+    if (!sharedMemory)
+        return;
+
+    RefPtr<ShareableResource> shareableResource = ShareableResource::create(sharedMemory.release(), 0, m_sourceStorageRecord.body.size());
+    ASSERT(shareableResource);
+    shareableResource->createHandle(m_shareableResourceHandle);
 }
 #endif
 
@@ -159,7 +159,7 @@ void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
 {
     json.appendLiteral("{\n");
     json.appendLiteral("\"hash\": ");
-    JSC::appendQuotedJSONStringToBuilder(json, m_key.hashAsString());
+    json.appendQuotedJSONString(m_key.hashAsString());
     json.appendLiteral(",\n");
     json.appendLiteral("\"bodySize\": ");
     json.appendNumber(info.bodySize);
@@ -168,16 +168,16 @@ void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
     json.appendNumber(info.worth);
     json.appendLiteral(",\n");
     json.appendLiteral("\"partition\": ");
-    JSC::appendQuotedJSONStringToBuilder(json, m_key.partition());
+    json.appendQuotedJSONString(m_key.partition());
     json.appendLiteral(",\n");
     json.appendLiteral("\"timestamp\": ");
     json.appendNumber(std::chrono::duration_cast<std::chrono::milliseconds>(m_timeStamp.time_since_epoch()).count());
     json.appendLiteral(",\n");
     json.appendLiteral("\"URL\": ");
-    JSC::appendQuotedJSONStringToBuilder(json, m_response.url().string());
+    json.appendQuotedJSONString(m_response.url().string());
     json.appendLiteral(",\n");
     json.appendLiteral("\"bodyHash\": ");
-    JSC::appendQuotedJSONStringToBuilder(json, info.bodyHash);
+    json.appendQuotedJSONString(info.bodyHash);
     json.appendLiteral(",\n");
     json.appendLiteral("\"bodyShareCount\": ");
     json.appendNumber(info.bodyShareCount);
@@ -189,9 +189,9 @@ void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
             json.appendLiteral(",\n");
         firstHeader = false;
         json.appendLiteral("    ");
-        JSC::appendQuotedJSONStringToBuilder(json, header.key);
+        json.appendQuotedJSONString(header.key);
         json.appendLiteral(": ");
-        JSC::appendQuotedJSONStringToBuilder(json, header.value);
+        json.appendQuotedJSONString(header.value);
     }
     json.appendLiteral("\n}\n");
     json.appendLiteral("}");

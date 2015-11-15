@@ -373,7 +373,7 @@ void RenderBlockFlow::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth,
             maxLogicalWidth = std::max(minLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(tableCellWidth.value()));
     }
 
-    int scrollbarWidth = instrinsicScrollbarLogicalWidth();
+    int scrollbarWidth = intrinsicScrollbarLogicalWidth();
     maxLogicalWidth += scrollbarWidth;
     minLogicalWidth += scrollbarWidth;
 }
@@ -2760,7 +2760,7 @@ void RenderBlockFlow::markSiblingsWithFloatsForLayout(RenderBox* floatToRemove)
     auto end = floatingObjectSet.end();
 
     for (RenderObject* next = nextSibling(); next; next = next->nextSibling()) {
-        if (!is<RenderBlockFlow>(*next) || next->isFloatingOrOutOfFlowPositioned() || downcast<RenderBlockFlow>(*next).avoidsFloats())
+        if (!is<RenderBlockFlow>(*next) || next->isFloatingOrOutOfFlowPositioned())
             continue;
 
         RenderBlockFlow& nextBlock = downcast<RenderBlockFlow>(*next);

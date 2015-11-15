@@ -38,8 +38,8 @@ CompiledContentExtension::~CompiledContentExtension()
 
 Vector<String> CompiledContentExtension::globalDisplayNoneSelectors(Vector<bool>& pagesUsed)
 {
-    DFABytecodeInterpreter interpreter(bytecode(), bytecodeLength(), pagesUsed);
-    DFABytecodeInterpreter::Actions actionLocations = interpreter.actionsFromDFARoot();
+    DFABytecodeInterpreter interpreter(filtersWithoutDomainsBytecode(), filtersWithoutDomainsBytecodeLength(), pagesUsed);
+    DFABytecodeInterpreter::Actions actionLocations = interpreter.actionsForDefaultStylesheetFromDFARoot();
     
     Vector<Action> globalActions;
     for (uint64_t actionLocation : actionLocations)

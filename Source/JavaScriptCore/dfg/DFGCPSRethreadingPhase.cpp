@@ -189,12 +189,12 @@ private:
             
             if (otherNode->op() == GetLocal) {
                 // Replace all references to this GetLocal with otherNode.
-                node->setReplacement(otherNode);
+                node->replaceWith(otherNode);
                 return;
             }
             
             ASSERT(otherNode->op() == SetLocal);
-            node->setReplacement(otherNode->child1().node());
+            node->replaceWith(otherNode->child1().node());
             return;
         }
         
@@ -483,8 +483,21 @@ private:
         }
         while (!m_flushedLocalOpWorklist.isEmpty()) {
             Node* node = m_flushedLocalOpWorklist.takeLast();
-            ASSERT(node->flags() & NodeIsFlushed);
-            DFG_NODE_DO_TO_CHILDREN(m_graph, node, addFlushedLocalEdge);
+            switch (node->op()) {
+            case SetLocal:
+            case SetArgument:
+                break;
+                
+            case Flush:
+            case Phi:
+                ASSERT(node->flags() & NodeIsFlushed);
+                DFG_NODE_DO_TO_CHILDREN(m_graph, node, addFlushedLocalEdge);
+                break;
+
+            default:
+                DFG_CRASH(m_graph, node, "Invalid node in flush graph");
+                break;
+            }
         }
     }
     

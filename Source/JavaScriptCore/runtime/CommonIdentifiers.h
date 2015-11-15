@@ -150,6 +150,7 @@
     macro(profiledBytecodes) \
     macro(propertyIsEnumerable) \
     macro(prototype) \
+    macro(raw) \
     macro(reload) \
     macro(replace) \
     macro(resolve) \
@@ -242,7 +243,8 @@
     macro(unscopables)
 
 #define JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
-    macro(putByValDirect)
+    macro(putByValDirect) \
+    macro(toString)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSICS_EACH_NAME(macro) \
@@ -280,7 +282,8 @@
     macro(TypeError) \
     macro(undefined) \
     macro(BuiltinLog) \
-    macro(homeObject)
+    macro(homeObject) \
+    macro(getTemplateObject)
 
 namespace JSC {
     
@@ -321,7 +324,8 @@ namespace JSC {
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL)
 #undef JSC_IDENTIFIER_DECLARE_PRIVATE_WELL_KNOWN_SYMBOL_GLOBAL
 
-        bool isPrivateName(StringImpl* uid) const;
+        bool isPrivateName(SymbolImpl& uid) const;
+        bool isPrivateName(UniquedStringImpl& uid) const;
         bool isPrivateName(const Identifier&) const;
 
         const Identifier* getPrivateName(const Identifier&) const;

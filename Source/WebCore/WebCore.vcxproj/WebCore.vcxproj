@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -59,7 +59,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -79,7 +79,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -89,7 +89,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -109,7 +109,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -7913,16 +7913,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\platform\network\soup\ProxyResolverSoup.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\platform\network\soup\ProxyServerSoup.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -8006,7 +7996,6 @@
     <ClCompile Include="..\platform\URL.cpp" />
     <ClCompile Include="..\platform\Language.cpp" />
     <ClCompile Include="..\platform\Length.cpp" />
-    <ClCompile Include="..\platform\LengthBox.cpp" />
     <ClCompile Include="..\platform\LinkHash.cpp" />
     <ClCompile Include="..\platform\LocalizedStrings.cpp" />
     <ClCompile Include="..\platform\Logging.cpp" />
@@ -8225,7 +8214,6 @@
     <ClCompile Include="..\platform\graphics\IntPoint.cpp" />
     <ClCompile Include="..\platform\graphics\IntRect.cpp" />
     <ClCompile Include="..\platform\graphics\IntSize.cpp" />
-    <ClCompile Include="..\platform\graphics\LayoutBoxExtent.cpp" />
     <ClCompile Include="..\platform\graphics\LayoutRect.cpp" />
     <ClCompile Include="..\platform\graphics\MediaPlayer.cpp" />
     <ClCompile Include="..\platform\graphics\Path.cpp" />
@@ -19881,7 +19869,6 @@
     <ClInclude Include="..\platform\network\soup\CertificateInfo.h" />
     <ClInclude Include="..\platform\network\soup\CookieJarSoup.h" />
     <ClInclude Include="..\platform\network\soup\GUniquePtrSoup.h" />
-    <ClInclude Include="..\platform\network\soup\ProxyResolverSoup.h" />
     <ClInclude Include="..\platform\network\soup\ResourceError.h" />
     <ClInclude Include="..\platform\network\soup\ResourceRequest.h" />
     <ClInclude Include="..\platform\network\soup\ResourceResponse.h" />
@@ -20022,7 +20009,6 @@
     <ClInclude Include="..\platform\graphics\IntSize.h" />
     <ClInclude Include="..\platform\graphics\IntSizeHash.h" />
     <ClInclude Include="..\platform\graphics\ISOVTTCue.h" />
-    <ClInclude Include="..\platform\graphics\LayoutBoxExtent.h" />
     <ClInclude Include="..\platform\graphics\LayoutPoint.h" />
     <ClInclude Include="..\platform\graphics\LayoutRect.h" />
     <ClInclude Include="..\platform\graphics\LayoutSize.h" />

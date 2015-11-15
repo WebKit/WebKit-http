@@ -49,34 +49,17 @@ JSValue JSReadableStreamReader::read(ExecState* exec)
     return exec->vm().throwException(exec, error);
 }
 
-static JSPromiseDeferred* getOrCreatePromiseDeferredFromObject(ExecState* exec, JSValue thisObject, JSGlobalObject* globalObject, PrivateName &name)
-{
-    JSValue slot = getInternalSlotFromObject(exec, thisObject, name);
-    JSPromiseDeferred* promiseDeferred = slot ? jsDynamicCast<JSPromiseDeferred*>(slot) : nullptr;
-
-    if (!promiseDeferred) {
-        promiseDeferred = JSPromiseDeferred::create(exec, globalObject);
-        setInternalSlotToObject(exec, thisObject, name, promiseDeferred);
-    }
-    return promiseDeferred;
-}
-
-static JSC::PrivateName& closedPromiseSlotName()
-{
-    static NeverDestroyed<JSC::PrivateName> closedPromiseSlotName("closedPromise");
-    return closedPromiseSlotName;
-}
-
 JSValue JSReadableStreamReader::closed(ExecState* exec) const
 {
-    JSPromiseDeferred* promiseDeferred = getOrCreatePromiseDeferredFromObject(exec, this, globalObject(), closedPromiseSlotName());
-    DeferredWrapper wrapper(exec, globalObject(), promiseDeferred);
+    if (!m_closedPromiseDeferred)
+        const_cast<JSReadableStreamReader*>(this)->m_closedPromiseDeferred.set(exec->vm(), JSPromiseDeferred::create(exec, globalObject()));
+    DeferredWrapper wrapper(exec, globalObject(), m_closedPromiseDeferred.get());
+
     auto successCallback = [wrapper]() mutable {
         wrapper.resolve(jsUndefined());
     };
-    auto failureCallback = [this, wrapper]() mutable {
-        // FIXME: return stored error.
-        wrapper.reject(&impl());
+    auto failureCallback = [wrapper](JSValue value) mutable {
+        wrapper.reject(value);
     };
 
     impl().closed(WTF::move(successCallback), WTF::move(failureCallback));
@@ -108,7 +91,7 @@ EncodedJSValue JSC_HOST_CALL constructJSReadableStreamReader(ExecState* exec)
     if (stream->impl().isLocked())
         return throwVMError(exec, createTypeError(exec, ASCIILiteral("ReadableStreamReader constructor parameter is a locked ReadableStream")));
 
-    return JSValue::encode(toJS(exec, stream->globalObject(), stream->impl().createReader()));
+    return JSValue::encode(toJS(exec, stream->globalObject(), stream->impl().getReader()));
 }
 
 } // namespace WebCore

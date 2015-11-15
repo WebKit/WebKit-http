@@ -190,7 +190,7 @@ struct CallVarargsData {
 };
 
 struct LoadVarargsData {
-    VirtualRegister start; // Local for the first element.
+    VirtualRegister start; // Local for the first element. This is the first actual argument, not this.
     VirtualRegister count; // Local for the count.
     VirtualRegister machineStart;
     VirtualRegister machineCount;
@@ -830,13 +830,7 @@ struct Node {
 
     bool isStoreBarrier()
     {
-        switch (op()) {
-        case StoreBarrier:
-        case StoreBarrierWithNullCheck:
-            return true;
-        default:
-            return false;
-        }
+        return op() == StoreBarrier;
     }
 
     bool hasIdentifier()
@@ -872,7 +866,7 @@ struct Node {
     NodeFlags arithNodeFlags()
     {
         NodeFlags result = m_flags & NodeArithFlagsMask;
-        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == DoubleAsInt32)
+        if (op() == ArithMul || op() == ArithDiv || op() == ArithMod || op() == ArithNegate || op() == ArithPow || op() == ArithRound || op() == DoubleAsInt32)
             return result;
         return result & ~NodeBytecodeNeedsNegZero;
     }
@@ -1242,6 +1236,7 @@ struct Node {
     bool hasHeapPrediction()
     {
         switch (op()) {
+        case ArithRound:
         case GetDirectPname:
         case GetById:
         case GetByIdFlush:
@@ -1287,6 +1282,8 @@ struct Node {
         case NativeConstruct:
         case NativeCall:
         case NewFunction:
+        case CreateActivation:
+        case MaterializeCreateActivation:
             return true;
         default:
             return false;
@@ -1296,7 +1293,13 @@ struct Node {
     FrozenValue* cellOperand()
     {
         ASSERT(hasCellOperand());
-        return reinterpret_cast<FrozenValue*>(m_opInfo);
+        switch (op()) {
+        case MaterializeCreateActivation:
+            return reinterpret_cast<FrozenValue*>(m_opInfo2);
+        default:
+            return reinterpret_cast<FrozenValue*>(m_opInfo);
+        }
+        RELEASE_ASSERT_NOT_REACHED();
     }
     
     template<typename T>
@@ -1562,6 +1565,23 @@ struct Node {
     void setArithMode(Arith::Mode mode)
     {
         m_opInfo = mode;
+    }
+
+    bool hasArithRoundingMode()
+    {
+        return op() == ArithRound;
+    }
+
+    Arith::RoundingMode arithRoundingMode()
+    {
+        ASSERT(hasArithRoundingMode());
+        return static_cast<Arith::RoundingMode>(m_opInfo);
+    }
+
+    void setArithRoundingMode(Arith::RoundingMode mode)
+    {
+        ASSERT(hasArithRoundingMode());
+        m_opInfo = static_cast<uintptr_t>(mode);
     }
     
     bool hasVirtualRegister()

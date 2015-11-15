@@ -119,6 +119,9 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${CMAKE_BINARY_DIR}"
+)
+
+set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
 )
 
@@ -401,6 +404,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/EventException.idl
     dom/EventTarget.idl
     dom/FocusEvent.idl
+    dom/GlobalEventHandlers.idl
     dom/HashChangeEvent.idl
     dom/KeyboardEvent.idl
     dom/MessageChannel.idl
@@ -415,8 +419,11 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/NodeFilter.idl
     dom/NodeIterator.idl
     dom/NodeList.idl
+    dom/NonElementParentNode.idl
+    dom/NonDocumentTypeChildNode.idl
     dom/OverflowEvent.idl
     dom/PageTransitionEvent.idl
+    dom/ParentNode.idl
     dom/PopStateEvent.idl
     dom/ProcessingInstruction.idl
     dom/ProgressEvent.idl
@@ -628,6 +635,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/UserMessageHandlersNamespace.idl
     page/UserMessageHandler.idl
     page/WindowBase64.idl
+    page/WindowEventHandlers.idl
     page/WindowTimers.idl
     page/WorkerNavigator.idl
 
@@ -2040,7 +2048,6 @@ set(WebCore_SOURCES
     platform/KillRingNone.cpp
     platform/Language.cpp
     platform/Length.cpp
-    platform/LengthBox.cpp
     platform/LinkHash.cpp
     platform/Logging.cpp
     platform/MIMETypeRegistry.cpp
@@ -2147,7 +2154,6 @@ set(WebCore_SOURCES
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp
     platform/graphics/ISOVTTCue.cpp
-    platform/graphics/LayoutBoxExtent.cpp
     platform/graphics/LayoutRect.cpp
     platform/graphics/MaskImageOperation.cpp
     platform/graphics/MediaPlayer.cpp
@@ -3002,14 +3008,14 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     # For platforms that want to use system-provided OpenGL (ES) headers,
     # these include directories need to be added before the ANGLE directories.
     if (OPENGL_FOUND)
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIR}
         )
         list(APPEND WebCore_LIBRARIES
             ${OPENGL_gl_LIBRARY}
         )
     elseif (OPENGLES2_FOUND)
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${OPENGLES2_INCLUDE_DIR}
         )
         list(APPEND WebCore_LIBRARIES
@@ -3533,6 +3539,8 @@ ELSE (HAIKU)
     INCLUDE_DIRECTORIES(${WebCore_LOCAL_INCLUDE_DIRECTORIES} ${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_DIRECTORIES})
 ENDIF (HAIKU)
 
+include_directories(SYSTEM ${WebCore_SYSTEM_INCLUDE_DIRECTORIES})
+
 if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
 endif ()
@@ -3560,12 +3568,9 @@ endif ()
 if (ENABLE_GRAPHICS_CONTEXT_3D)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
     set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
-    set_property(
-        TARGET ANGLESupport
-        APPEND
-        PROPERTY INCLUDE_DIRECTORIES
-            "${THIRDPARTY_DIR}/ANGLE/include"
-            "${THIRDPARTY_DIR}/ANGLE/src"
+    target_include_directories(ANGLESupport PRIVATE
+        "${THIRDPARTY_DIR}/ANGLE/include"
+        "${THIRDPARTY_DIR}/ANGLE/src"
     )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)
@@ -3580,4 +3585,10 @@ endif ()
 if (SHARED_CORE)
     set_target_properties(WebCore PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
     install(TARGETS WebCore DESTINATION "${LIB_INSTALL_DIR}")
+endif ()
+
+# [ARM] Build SVGPathElement.cpp with -O2 due to a GCC bug
+# https://bugs.webkit.org/show_bug.cgi?id=145377
+if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND WTF_CPU_ARM AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9") AND (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.3"))
+    set_source_files_properties(svg/SVGPathElement.cpp PROPERTIES COMPILE_FLAGS "-O2")
 endif ()

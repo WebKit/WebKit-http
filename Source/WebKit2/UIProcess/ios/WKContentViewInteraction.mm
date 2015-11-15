@@ -61,6 +61,7 @@
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
+#import <WebKitSystemInterfaceIOS.h>
 #import <wtf/RetainPtr.h>
 
 using namespace WebCore;
@@ -373,9 +374,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
     [_twoFingerDoubleTapGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
-
-    [_previewGestureRecognizer setDelegate:nil];
-    [self removeGestureRecognizer:_previewGestureRecognizer.get()];
 
     _inspectorNodeSearchEnabled = NO;
     if (_inspectorNodeSearchGestureRecognizer) {
@@ -955,7 +953,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if (gestureRecognizer == _previewGestureRecognizer) {
         [self ensurePositionInformationIsUpToDate:point];
-        if (_positionInformation.clickableElementName != "A")
+        if (_positionInformation.clickableElementName != "A" && _positionInformation.clickableElementName != "IMG")
             return NO;
 
         String absoluteLinkURL = _positionInformation.url;
@@ -3097,15 +3095,29 @@ static bool isAssistableInputType(InputType type)
 
 @end
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+#if HAVE(LINK_PREVIEW)
 
 @implementation WKContentView (WKInteractionPreview)
+
+- (void)_registerPreviewInWindow:(UIWindow *)window
+{
+    [window.rootViewController registerPreviewSourceView:self previewingDelegate:self];
+    _previewGestureRecognizer = self.gestureRecognizers.lastObject;
+    [_previewGestureRecognizer setDelegate:self];
+}
+
+- (void)_unregisterPreviewInWindow:(UIWindow *)window
+{
+    [window.rootViewController unregisterPreviewSourceView:self];
+    [_previewGestureRecognizer setDelegate:nil];
+    _previewGestureRecognizer = nil;
+}
 
 - (UIViewController *)previewViewControllerForPosition:(CGPoint)position inSourceView:(UIView *)sourceView
 {
     ASSERT(self == sourceView);
 
-    if (_positionInformation.clickableElementName != "A")
+    if (_positionInformation.clickableElementName != "A" && _positionInformation.clickableElementName != "IMG")
         return nil;
 
     String absoluteLinkURL = _positionInformation.url;
@@ -3119,14 +3131,23 @@ static bool isAssistableInputType(InputType type)
     if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)])
         return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL];
 
-    return nil;
+    return WKGetPreviewViewController(targetURL);
 }
 
 - (void)commitPreviewViewController:(UIViewController *)viewController
 {
     id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
-    if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewedViewController:)])
+    if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewedViewController:)]) {
         [uiDelegate _webView:_webView commitPreviewedViewController:viewController];
+        return;
+    }
+
+    UIViewController *presentingViewController = viewController.presentingViewController ?: self.window.rootViewController;
+    WKWillCommitPreviewViewController(viewController);
+
+    viewController.transitioningDelegate = nil;
+    viewController.modalPresentationStyle = UIModalPresentationFullScreen;
+    [presentingViewController presentViewController:viewController animated:NO completion:nil];
 }
 
 - (void)willPresentPreviewViewController:(UIViewController *)viewController forPosition:(CGPoint)position inSourceView:(UIView *)sourceView

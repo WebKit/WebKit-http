@@ -60,11 +60,11 @@ public:
     typedef HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> Actions;
     
     Actions interpret(const CString&, uint16_t flags);
-    Actions actionsFromDFARoot();
+    Actions actionsForDefaultStylesheetFromDFARoot();
 
 private:
-    void interpretAppendAction(unsigned& programCounter, Actions&);
-    void interpretTestFlagsAndAppendAction(unsigned& programCounter, uint16_t flags, Actions&);
+    void interpretAppendAction(unsigned& programCounter, Actions&, bool ifDomain);
+    void interpretTestFlagsAndAppendAction(unsigned& programCounter, uint16_t flags, Actions&, bool ifDomain);
     const DFABytecode* m_bytecode;
     const unsigned m_bytecodeLength;
     Vector<bool>& m_pagesUsed;

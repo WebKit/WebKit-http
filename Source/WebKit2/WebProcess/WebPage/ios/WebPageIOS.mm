@@ -42,7 +42,6 @@
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import "WebChromeClient.h"
 #import "WebCoreArgumentCoders.h"
-#import "WebDatabaseManager.h"
 #import "WebFrame.h"
 #import "WebImage.h"
 #import "WebKitSystemInterface.h"
@@ -2710,7 +2709,7 @@ void WebPage::updateViewportSizeForCSSViewportUnits()
         largestUnobscuredRect = m_viewportConfiguration.minimumLayoutSize();
 
     FrameView& frameView = *mainFrameView();
-    largestUnobscuredRect.scale(1 / m_viewportConfiguration.initialScale());
+    largestUnobscuredRect.scale(1 / m_viewportConfiguration.initialScaleIgnoringContentSize());
     frameView.setViewportSizeForCSSViewportUnits(roundedIntSize(largestUnobscuredRect));
 }
 
@@ -2721,14 +2720,7 @@ void WebPage::applicationWillResignActive()
 
 void WebPage::applicationWillEnterForeground()
 {
-    WebProcess::singleton().supplement<WebDatabaseManager>()->setPauseAllDatabases(false);
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil];
-}
-
-void WebPage::applicationDidEnterBackground(uint64_t callbackID)
-{
-    WebProcess::singleton().supplement<WebDatabaseManager>()->setPauseAllDatabases(true);
-    send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
 void WebPage::applicationDidBecomeActive()

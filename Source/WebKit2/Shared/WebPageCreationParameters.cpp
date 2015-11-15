@@ -66,6 +66,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << minimumLayoutSize;
     encoder << autoSizingShouldExpandToViewHeight;
     encoder.encodeEnum(scrollPinningBehavior);
+    encoder << scrollbarOverlayStyle;
     encoder << backgroundExtendsBeyondPage;
     encoder.encodeEnum(layerHostingMode);
     encoder << mimeTypesWithCustomContentProviders;
@@ -82,6 +83,7 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << textAutosizingWidth;
 #endif
     encoder << appleMailPaginationQuirkEnabled;
+    encoder << shouldScaleViewToFitDocument;
 }
 
 bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCreationParameters& parameters)
@@ -152,6 +154,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
         return false;
     if (!decoder.decodeEnum(parameters.scrollPinningBehavior))
         return false;
+    if (!decoder.decode(parameters.scrollbarOverlayStyle))
+        return false;
     if (!decoder.decode(parameters.backgroundExtendsBeyondPage))
         return false;
     if (!decoder.decodeEnum(parameters.layerHostingMode))
@@ -179,6 +183,9 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
 #endif
 
     if (!decoder.decode(parameters.appleMailPaginationQuirkEnabled))
+        return false;
+
+    if (!decoder.decode(parameters.shouldScaleViewToFitDocument))
         return false;
 
     return true;

@@ -165,7 +165,7 @@ public:
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
 
-    API::WebsiteDataStore& websiteDataStore() const { return *m_websiteDataStore; }
+    API::WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
 
     PassRefPtr<WebPageProxy> createWebPage(PageClient&, WebPageConfiguration);
 
@@ -364,6 +364,7 @@ public:
     static String legacyPlatformDefaultIndexedDBDatabaseDirectory();
     static String legacyPlatformDefaultWebSQLDatabaseDirectory();
     static String legacyPlatformDefaultMediaKeysStorageDirectory();
+    static String legacyPlatformDefaultApplicationCacheDirectory();
 
 private:
     void platformInitialize();
@@ -394,15 +395,15 @@ private:
     void languageChanged();
 
     String applicationCacheDirectory() const;
-    String platformDefaultApplicationCacheDirectory() const;
 
     String platformDefaultIconDatabasePath() const;
 
     String diskCacheDirectory() const;
     String platformDefaultDiskCacheDirectory() const;
 
+#if PLATFORM(IOS) || ENABLE(SECCOMP_FILTERS)
     String cookieStorageDirectory() const;
-    String platformDefaultCookieStorageDirectory() const;
+#endif
 
 #if PLATFORM(IOS)
     String parentBundleDirectory() const;
@@ -489,7 +490,7 @@ private:
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
-    RefPtr<API::WebsiteDataStore> m_websiteDataStore;
+    const RefPtr<API::WebsiteDataStore> m_websiteDataStore;
 
     typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;

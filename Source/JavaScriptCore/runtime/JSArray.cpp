@@ -404,7 +404,7 @@ bool JSArray::setLength(ExecState* exec, unsigned newLength, bool throwException
     case ArrayWithUndecided:
     case ArrayWithInt32:
     case ArrayWithDouble:
-    case ArrayWithContiguous:
+    case ArrayWithContiguous: {
         if (newLength == m_butterfly->publicLength())
             return true;
         if (newLength >= MAX_ARRAY_INDEX // This case ensures that we can do fast push.
@@ -418,6 +418,14 @@ bool JSArray::setLength(ExecState* exec, unsigned newLength, bool throwException
             ensureLength(exec->vm(), newLength);
             return true;
         }
+
+        unsigned lengthToClear = m_butterfly->publicLength() - newLength;
+        unsigned costToAllocateNewButterfly = 64; // a heuristic.
+        if (lengthToClear > newLength && lengthToClear > costToAllocateNewButterfly) {
+            reallocateAndShrinkButterfly(exec->vm(), newLength);
+            return true;
+        }
+
         if (indexingType() == ArrayWithDouble) {
             for (unsigned i = m_butterfly->publicLength(); i-- > newLength;)
                 m_butterfly->contiguousDouble()[i] = PNaN;
@@ -427,6 +435,7 @@ bool JSArray::setLength(ExecState* exec, unsigned newLength, bool throwException
         }
         m_butterfly->setPublicLength(newLength);
         return true;
+    }
         
     case ArrayWithArrayStorage:
     case ArrayWithSlowPutArrayStorage:
@@ -663,6 +672,36 @@ void JSArray::push(ExecState* exec, JSValue value)
         
     default:
         RELEASE_ASSERT_NOT_REACHED();
+    }
+}
+
+JSArray* JSArray::fastSlice(ExecState& exec, unsigned startIndex, unsigned count)
+{
+    auto arrayType = indexingType();
+    switch (arrayType) {
+    case ArrayWithDouble:
+    case ArrayWithInt32:
+    case ArrayWithContiguous: {
+        VM& vm = exec.vm();
+        if (count >= MIN_SPARSE_ARRAY_INDEX || structure(vm)->holesMustForwardToPrototype(vm))
+            return nullptr;
+
+        Structure* resultStructure = exec.lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(arrayType);
+        JSArray* resultArray = JSArray::tryCreateUninitialized(vm, resultStructure, count);
+        if (!resultArray)
+            return nullptr;
+
+        auto& resultButterfly = *resultArray->butterfly();
+        if (arrayType == ArrayWithDouble)
+            memcpy(resultButterfly.contiguousDouble().data(), m_butterfly->contiguousDouble().data() + startIndex, sizeof(JSValue) * count);
+        else
+            memcpy(resultButterfly.contiguous().data(), m_butterfly->contiguous().data() + startIndex, sizeof(JSValue) * count);
+        resultButterfly.setPublicLength(count);
+
+        return resultArray;
+    }
+    default:
+        return nullptr;
     }
 }
 

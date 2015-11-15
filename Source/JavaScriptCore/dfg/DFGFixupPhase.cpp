@@ -322,6 +322,28 @@ private:
             fixDoubleOrBooleanEdge(node->child2());
             break;
         }
+
+        case ArithRound: {
+            if (node->child1()->shouldSpeculateInt32OrBooleanForArithmetic() && node->canSpeculateInt32(FixupPass)) {
+                fixIntOrBooleanEdge(node->child1());
+                insertCheck<Int32Use>(m_indexInBlock, node->child1().node());
+                node->convertToIdentity();
+                break;
+            }
+            fixDoubleOrBooleanEdge(node->child1());
+
+            if (isInt32OrBooleanSpeculation(node->getHeapPrediction()) && m_graph.roundShouldSpeculateInt32(node, FixupPass)) {
+                node->setResult(NodeResultInt32);
+                if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
+                    node->setArithRoundingMode(Arith::RoundingMode::Int32);
+                else
+                    node->setArithRoundingMode(Arith::RoundingMode::Int32WithNegativeZeroCheck);
+            } else {
+                node->setResult(NodeResultDouble);
+                node->setArithRoundingMode(Arith::RoundingMode::Double);
+            }
+            break;
+        }
             
         case ArithSqrt:
         case ArithFRound:
@@ -516,17 +538,61 @@ private:
             
             ArrayMode arrayMode = node->arrayMode();
             switch (arrayMode.type()) {
+            case Array::Contiguous:
             case Array::Double:
                 if (arrayMode.arrayClass() == Array::OriginalArray
                     && arrayMode.speculation() == Array::InBounds) {
                     JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
-                    if (globalObject->arrayPrototypeChainIsSane()
-                        && !(node->flags() & NodeBytecodeUsesAsOther)) {
-                        m_graph.watchpoints().addLazily(
-                            globalObject->arrayPrototype()->structure()->transitionWatchpointSet());
-                        m_graph.watchpoints().addLazily(
-                            globalObject->objectPrototype()->structure()->transitionWatchpointSet());
-                        node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+                    if (globalObject->arrayPrototypeChainIsSane()) {
+                        // Check if SaneChain will work on a per-type basis. Note that:
+                        //
+                        // 1) We don't want double arrays to sometimes return undefined, since
+                        // that would require a change to the return type and it would pessimise
+                        // things a lot. So, we'd only want to do that if we actually had
+                        // evidence that we could read from a hole. That's pretty annoying.
+                        // Likely the best way to handle that case is with an equivalent of
+                        // SaneChain for OutOfBounds. For now we just detect when Undefined and
+                        // NaN are indistinguishable according to backwards propagation, and just
+                        // use SaneChain in that case. This happens to catch a lot of cases.
+                        //
+                        // 2) We don't want int32 array loads to have to do a hole check just to
+                        // coerce to Undefined, since that would mean twice the checks.
+                        //
+                        // This has two implications. First, we have to do more checks than we'd
+                        // like. It's unfortunate that we have to do the hole check. Second,
+                        // some accesses that hit a hole will now need to take the full-blown
+                        // out-of-bounds slow path. We can fix that with:
+                        // https://bugs.webkit.org/show_bug.cgi?id=144668
+                        
+                        bool canDoSaneChain = false;
+                        switch (arrayMode.type()) {
+                        case Array::Contiguous:
+                            // This is happens to be entirely natural. We already would have
+                            // returned any JSValue, and now we'll return Undefined. We still do
+                            // the check but it doesn't require taking any kind of slow path.
+                            canDoSaneChain = true;
+                            break;
+                            
+                        case Array::Double:
+                            if (!(node->flags() & NodeBytecodeUsesAsOther)) {
+                                // Holes look like NaN already, so if the user doesn't care
+                                // about the difference between Undefined and NaN then we can
+                                // do this.
+                                canDoSaneChain = true;
+                            }
+                            break;
+                            
+                        default:
+                            break;
+                        }
+                        
+                        if (canDoSaneChain) {
+                            m_graph.watchpoints().addLazily(
+                                globalObject->arrayPrototype()->structure()->transitionWatchpointSet());
+                            m_graph.watchpoints().addLazily(
+                                globalObject->objectPrototype()->structure()->transitionWatchpointSet());
+                            node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
+                        }
                     }
                 }
                 break;
@@ -656,7 +722,7 @@ private:
             case Array::SlowPutArrayStorage:
                 fixEdge<KnownCellUse>(child1);
                 fixEdge<Int32Use>(child2);
-                insertStoreBarrier(m_indexInBlock, child1, child3);
+                speculateForBarrier(child3);
                 break;
             default:
                 fixEdge<KnownCellUse>(child1);
@@ -694,7 +760,7 @@ private:
                 break;
             case Array::Contiguous:
             case Array::ArrayStorage:
-                insertStoreBarrier(m_indexInBlock, node->child1(), node->child2());
+                speculateForBarrier(node->child2());
                 break;
             default:
                 break;
@@ -720,11 +786,8 @@ private:
                 fixEdge<BooleanUse>(node->child1());
             else if (node->child1()->shouldSpeculateObjectOrOther())
                 fixEdge<ObjectOrOtherUse>(node->child1());
-            // FIXME: We should just be able to do shouldSpeculateInt32OrBoolean() and
-            // shouldSpeculateNumberOrBoolean() here now that
-            // https://bugs.webkit.org/show_bug.cgi?id=126778 is fixed.
-            else if (node->child1()->shouldSpeculateInt32())
-                fixEdge<Int32Use>(node->child1());
+            else if (node->child1()->shouldSpeculateInt32OrBoolean())
+                fixIntOrBooleanEdge(node->child1());
             else if (node->child1()->shouldSpeculateNumber())
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
@@ -856,7 +919,6 @@ private:
             
         case PutStructure: {
             fixEdge<KnownCellUse>(node->child1());
-            insertStoreBarrier(m_indexInBlock, node->child1());
             break;
         }
             
@@ -869,7 +931,7 @@ private:
         case PutClosureVar:
         case PutToArguments: {
             fixEdge<KnownCellUse>(node->child1());
-            insertStoreBarrier(m_indexInBlock, node->child1(), node->child2());
+            speculateForBarrier(node->child2());
             break;
         }
             
@@ -884,7 +946,6 @@ private:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage: {
             fixEdge<KnownCellUse>(node->child1());
-            insertStoreBarrier(m_indexInBlock + 1, node->child1());
             break;
         }
 
@@ -898,16 +959,16 @@ private:
             if (!m_graph.hasExitSite(node->origin.semantic, BadCache)
                 && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
                 && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
-                StringImpl* impl = m_graph.identifiers()[node->identifierNumber()];
-                if (impl == vm().propertyNames->length.impl()) {
+                auto uid = m_graph.identifiers()[node->identifierNumber()];
+                if (uid == vm().propertyNames->length.impl()) {
                     attemptToMakeGetArrayLength(node);
                     break;
                 }
-                if (impl == vm().propertyNames->byteLength.impl()) {
+                if (uid == vm().propertyNames->byteLength.impl()) {
                     attemptToMakeGetTypedArrayByteLength(node);
                     break;
                 }
-                if (impl == vm().propertyNames->byteOffset.impl()) {
+                if (uid == vm().propertyNames->byteOffset.impl()) {
                     attemptToMakeGetTypedArrayByteOffset(node);
                     break;
                 }
@@ -920,7 +981,7 @@ private:
         case PutByIdFlush:
         case PutByIdDirect: {
             fixEdge<CellUse>(node->child1());
-            insertStoreBarrier(m_indexInBlock, node->child1(), node->child2());
+            speculateForBarrier(node->child2());
             break;
         }
 
@@ -963,13 +1024,13 @@ private:
             if (!node->child1()->hasStorageResult())
                 fixEdge<KnownCellUse>(node->child1());
             fixEdge<KnownCellUse>(node->child2());
-            insertStoreBarrier(m_indexInBlock, node->child2(), node->child3());
+            speculateForBarrier(node->child3());
             break;
         }
             
         case MultiPutByOffset: {
             fixEdge<CellUse>(node->child1());
-            insertStoreBarrier(m_indexInBlock, node->child1(), node->child2());
+            speculateForBarrier(node->child2());
             break;
         }
             
@@ -989,15 +1050,19 @@ private:
         }
 
         case Check: {
-            switch (node->child1().useKind()) {
-            case NumberUse:
-                if (node->child1()->shouldSpeculateInt32ForArithmetic())
-                    node->child1().setUseKind(Int32Use);
-                break;
-            default:
-                break;
-            }
-            observeUseKindOnEdge(node->child1());
+            m_graph.doToChildren(
+                node,
+                [&] (Edge& edge) {
+                    switch (edge.useKind()) {
+                    case NumberUse:
+                        if (edge->shouldSpeculateInt32ForArithmetic())
+                            edge.setUseKind(Int32Use);
+                        break;
+                    default:
+                        break;
+                    }
+                    observeUseKindOnEdge(edge);
+                });
             break;
         }
 
@@ -1023,6 +1088,7 @@ private:
         case CheckTierUpInLoop:
         case CheckTierUpAtReturn:
         case CheckTierUpAndOSREnter:
+        case CheckTierUpWithNestedTriggerAndOSREnter:
         case InvalidationPoint:
         case CheckArray:
         case CheckInBounds:
@@ -1049,18 +1115,16 @@ private:
         case PutStack:
         case KillStack:
         case GetStack:
+        case StoreBarrier:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
-            RELEASE_ASSERT_NOT_REACHED();
+            DFG_CRASH(m_graph, node, "Unexpected node during fixup");
             break;
         
         case PutGlobalVar: {
-            Node* globalObjectNode = m_insertionSet.insertNode(
-                m_indexInBlock, SpecNone, JSConstant, node->origin, 
-                OpInfo(m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic))));
-            insertStoreBarrier(
-                m_indexInBlock, Edge(globalObjectNode, KnownCellUse), node->child1());
+            fixEdge<CellUse>(node->child1());
+            speculateForBarrier(node->child2());
             break;
         }
 
@@ -1234,8 +1298,6 @@ private:
         case Unreachable:
         case ExtractOSREntryLocal:
         case LoopHint:
-        case StoreBarrier:
-        case StoreBarrierWithNullCheck:
         case MovHint:
         case ZombieHint:
         case BottomValue:
@@ -1430,7 +1492,7 @@ private:
     }
     
     bool isStringPrototypeMethodSane(
-        JSObject* stringPrototype, Structure* stringPrototypeStructure, AtomicStringImpl* uid)
+        JSObject* stringPrototype, Structure* stringPrototypeStructure, UniquedStringImpl* uid)
     {
         unsigned attributesUnused;
         PropertyOffset offset =
@@ -1699,37 +1761,36 @@ private:
         edge.setUseKind(useKind);
     }
     
-    void insertStoreBarrier(unsigned indexInBlock, Edge base, Edge value = Edge())
+    void speculateForBarrier(Edge value)
     {
-        if (!!value) {
-            if (value->shouldSpeculateInt32()) {
-                insertCheck<Int32Use>(indexInBlock, value.node());
-                return;
-            }
-            
-            if (value->shouldSpeculateBoolean()) {
-                insertCheck<BooleanUse>(indexInBlock, value.node());
-                return;
-            }
-            
-            if (value->shouldSpeculateOther()) {
-                insertCheck<OtherUse>(indexInBlock, value.node());
-                return;
-            }
-            
-            if (value->shouldSpeculateNumber()) {
-                insertCheck<NumberUse>(indexInBlock, value.node());
-                return;
-            }
-            
-            if (value->shouldSpeculateNotCell()) {
-                insertCheck<NotCellUse>(indexInBlock, value.node());
-                return;
-            }
+        // Currently, the DFG won't take advantage of this speculation. But, we want to do it in
+        // the DFG anyway because if such a speculation would be wrong, we want to know before
+        // we do an expensive compile.
+        
+        if (value->shouldSpeculateInt32()) {
+            insertCheck<Int32Use>(m_indexInBlock, value.node());
+            return;
         }
-
-        m_insertionSet.insertNode(
-            indexInBlock, SpecNone, StoreBarrier, m_currentNode->origin, base);
+            
+        if (value->shouldSpeculateBoolean()) {
+            insertCheck<BooleanUse>(m_indexInBlock, value.node());
+            return;
+        }
+            
+        if (value->shouldSpeculateOther()) {
+            insertCheck<OtherUse>(m_indexInBlock, value.node());
+            return;
+        }
+            
+        if (value->shouldSpeculateNumber()) {
+            insertCheck<NumberUse>(m_indexInBlock, value.node());
+            return;
+        }
+            
+        if (value->shouldSpeculateNotCell()) {
+            insertCheck<NotCellUse>(m_indexInBlock, value.node());
+            return;
+        }
     }
     
     template<UseKind useKind>

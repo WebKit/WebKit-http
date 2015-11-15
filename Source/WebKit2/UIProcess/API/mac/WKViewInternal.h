@@ -140,8 +140,10 @@ struct WebPageConfiguration;
 @property (readonly) WKFullScreenWindowController *_fullScreenWindowController;
 - (void)_closeFullScreenWindowController;
 
+- (void)_prepareForDictionaryLookup;
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-- (void)_didPerformActionMenuHitTest:(const WebKit::WebHitTestResult::Data&)hitTestResult forImmediateAction:(BOOL)forImmediateAction contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
+- (void)_didPerformImmediateActionHitTest:(const WebKit::WebHitTestResult::Data&)hitTestResult contentPreventsDefault:(BOOL)contentPreventsDefault userData:(API::Object*)userData;
 #endif
 
 @property (nonatomic, retain, setter=_setPrimaryTrackingArea:) NSTrackingArea *_primaryTrackingArea;

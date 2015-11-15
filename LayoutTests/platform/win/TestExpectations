@@ -501,9 +501,6 @@ http/tests/pointer-lock/ [ Skip ]
 # TODO Vibration API is not implemented.
 vibration/ [ Skip ]
 
-# Touch adjustment not enabled on Windows (or mac)
-webkit.org/b/78801 touchadjustment/ [ Skip ]
-
 # Needs BatteryClient implementation.
 webkit.org/b/62698 batterystatus/ [ Skip ]
 
@@ -1325,14 +1322,18 @@ webkit.org/b/140798 [ Release ] accessibility/html-html-element-is-ignored.html 
 webkit.org/b/140798 [ Debug ] accessibility/html-html-element-is-ignored.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/inline-block-assertion.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/inline-block-assertion.html [ Skip ] # Debug assertion
+webkit.org/b/140798 [ Release ] accessibility/input-auto-fill-button.html [ Failure ]
+webkit.org/b/140798 [ Debug ] accessibility/input-auto-fill-button.html [ Failure ]
 webkit.org/b/140798 [ Release ] accessibility/input-type-hidden-in-aria-hidden-false.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/input-type-hidden-in-aria-hidden-false.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/legend-children-are-visible.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/legend-children-are-visible.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/link-inside-button-accessible-text.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/link-inside-button-accessible-text.html [ Skip ] # Debug assertion
-webkit.org/b/140798 [ Release ] accessibility/list-detection.html [ Failure ]
-webkit.org/b/140798 [ Debug ] accessibility/list-detection.html [ Skip ] # Debug assertion
+webkit.org/b/145271 [ Release ] accessibility/list-detection.html [ Failure ]
+webkit.org/b/145271 [ Debug ] accessibility/list-detection.html [ Skip ] # Debug assertion
+webkit.org/b/145271 [ Release ] accessibility/list-detection2.html [ Failure ]
+webkit.org/b/145271 [ Debug ] accessibility/list-detection2.html [ Failure ]
 webkit.org/b/140798 [ Release ] accessibility/listitem-title.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/listitem-title.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/math-multiscript-attributes.html [ Failure ]
@@ -2499,6 +2500,10 @@ webkit.org/b/140250 fast/loader/stateobjects/replacestate-in-iframe.html [ Failu
 webkit.org/b/138676 imported/w3c/canvas/2d.line.join.parallel.html [ Failure ]
 webkit.org/b/138676 imported/w3c/canvas/2d.strokeRect.zero.5.html [ Failure ]
 
+# requestAnimationFrame throttling does not work on Windows because USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) is disabled.
+webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe-display-none.html [ Skip ]
+webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe.html [ Skip ]
+
 ################################################################################
 ######################### Start list of UNREVIEWED failures ########################
 ################################################################################
@@ -2683,7 +2688,6 @@ fast/filter-image/filter-image.html [ ImageOnlyFailure ]
 
 fast/flexbox/001.html [ Pass Failure ]
 
-webkit.org/b/140517 [ Debug ] fast/forms/button-first-line-first-letter.html [ Skip ]  # Crashing
 webkit.org/b/140506 fast/forms/textfield-lastchange-was-useredit.html [ Skip ]  # Crashing
 webkit.org/b/140519 [ Debug ] fast/flexbox/flexing-overflow-scroll-item.html [ Skip ]  # Crashing
 
@@ -3100,3 +3104,6 @@ webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-4.html [ ImageOnlyFailure ]
 webkit.org/b/143354 fast/ruby/ruby-expansion-cjk-5.html [ ImageOnlyFailure ]
 
 webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
+
+# Seems to be font metrics dependent.
+fast/text/simple-line-layout-text-stroke-width.html [ Failure ]

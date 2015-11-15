@@ -73,6 +73,8 @@ public:
     JS_EXPORT_PRIVATE void push(ExecState*, JSValue);
     JS_EXPORT_PRIVATE JSValue pop(ExecState*);
 
+    JSArray* fastSlice(ExecState&, unsigned startIndex, unsigned count);
+
     enum ShiftCountMode {
         // This form of shift hints that we're doing queueing. With this assumption in hand,
         // we convert to ArrayStorage, which has queue optimizations.

@@ -269,19 +269,17 @@ private:
 
     if (window) {
         [defaultCenter removeObserver:self name:UIWindowDidMoveToScreenNotification object:window];
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-        [window.rootViewController unregisterPreviewSourceView:self];
-        [_previewGestureRecognizer setDelegate:nil];
-        _previewGestureRecognizer.clear();
+#if HAVE(LINK_PREVIEW)
+        if (_webView._allowsLinkPreview)
+            [self _unregisterPreviewInWindow:window];
 #endif
     }
 
     if (newWindow) {
         [defaultCenter addObserver:self selector:@selector(_windowDidMoveToScreenNotification:) name:UIWindowDidMoveToScreenNotification object:newWindow];
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-        [newWindow.rootViewController registerPreviewSourceView:self previewingDelegate:self];
-        _previewGestureRecognizer = self.gestureRecognizers.lastObject;
-        [_previewGestureRecognizer setDelegate:self];
+#if HAVE(LINK_PREVIEW)
+        if (_webView._allowsLinkPreview)
+            [self _registerPreviewInWindow:newWindow];
 #endif
     }
 }
@@ -551,7 +549,6 @@ private:
 - (void)_applicationDidEnterBackground:(NSNotification*)notification
 {
     _isBackground = YES;
-    _page->applicationDidEnterBackground();
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 

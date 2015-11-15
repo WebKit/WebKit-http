@@ -1,3 +1,518 @@
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21104551> Update build settings
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2015-05-25  Dan Bernstein  <mitz@apple.com>
+
+        ASSERT_MAIN_THREAD and DOM_ASSERT_MAIN_THREAD are unnecessary no-ops
+        https://bugs.webkit.org/show_bug.cgi?id=145372
+
+        Reviewed by Sam Weinig.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter finalize]): Removed use of ASSERT_MAIN_THREAD.
+
+        * Configurations/Base.xcconfig: Removed DISABLE_THREAD_CHECK from DEBUG_DEFINES.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem URLString]): Removed use of ASSERT_MAIN_THREAD.
+        (-[WebHistoryItem originalURLString]): Ditto.
+        (-[WebHistoryItem title]): Ditto.
+        (-[WebHistoryItem lastVisitedTimeInterval]): Ditto.
+        (-[WebHistoryItem isEqual:]): Ditto.
+        (-[WebHistoryItem description]): Ditto.
+        (-[WebHistoryItem initFromDictionaryRepresentation:]): Ditto.
+        (-[WebHistoryItem scrollPoint]): Ditto.
+
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary finalize]): Ditto.
+
+        * Misc/WebIconDatabase.mm:
+        (-[WebIconDatabase iconForURL:withSize:cache:]): Ditto.
+        (-[WebIconDatabase iconURLForURL:]): Ditto.
+        (-[WebIconDatabase defaultIconWithSize:]): Ditto.
+        (-[WebIconDatabase retainIconForURL:]): Ditto.
+        (-[WebIconDatabase releaseIconForURL:]): Ditto.
+        (+[WebIconDatabase delayDatabaseCleanup]): Ditto.
+        (+[WebIconDatabase allowDatabaseCleanup]): Ditto.
+        (-[WebIconDatabase removeAllIcons]): Ditto.
+        (-[WebIconDatabase _iconForFileURL:withSize:]): Ditto.
+        (webGetNSImage): Ditto.
+
+        * Misc/WebKitLogging.h: Removed definition of ASSERT_MAIN_THREAD.
+
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView finalize]): Removed use of ASSERT_MAIN_THREAD.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage finalize]): Ditto.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView finalize]): Ditto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (-[WebUndoStep finalize]): Ditto.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource finalize]): Ditto.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLViewPrivate finalize]): Ditto.
+        (-[WebHTMLView finalize]): Ditto.
+        (-[WebHTMLView drawRect:]): Ditto.
+
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate finalize]): Ditto.
+
+2015-05-23  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused definitions of WEBKIT_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=145345
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/WebKitLegacy.xcconfig: Also changed to use $(inherited).
+
+2015-05-24  Jeremy Jones  <jeremyj@apple.com>
+
+        Register media MIME types as supported by HTML view in WebKit1.
+        https://bugs.webkit.org/show_bug.cgi?id=145356
+
+        Reviewed by Eric Carlson.
+
+        WebDataSource and WebFrame view knew about suppotedImageMIMETypes and supportedNonImageMIMETypes,
+        but not a third category supportedMediaMIMETypes. These are now included along-side 
+        supportedNonImageMIMETypes.
+
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource _repTypesAllowImageTypeOmission:]): use supportedMediaMIMETypes.
+        * WebView/WebFrameView.mm:
+        (+[WebFrameView _viewTypesAllowImageTypeOmission:]): use supportedMediaMIMETypes.
+        * WebView/WebHTMLRepresentation.h: declare -supportedMediaMIMETypes
+        * WebView/WebHTMLRepresentation.mm:
+        (+[WebHTMLRepresentation supportedMIMETypes]): include supportedMediaMIMETypes
+        (+[WebHTMLRepresentation supportedMediaMIMETypes]): added
+        * WebView/WebHTMLView.mm:
+        (+[WebHTMLView supportedMediaMIMETypes]): added
+        * WebView/WebHTMLViewPrivate.h: declare -supportedMediaMIMETypes
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackAllowsInline
+        https://bugs.webkit.org/show_bug.cgi?id=145315
+
+        Reviewed by Eric Carlson.
+
+        Our API uses allowsInlineMediaPlayback. Our symbols should reflect the same.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name of the key, but not its
+        value, for backwards compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update the symbol.
+        (-[WebPreferences mediaPlaybackAllowsInline]): Ditto. This setting will not
+        be renamed in a future patch.
+        (-[WebPreferences setMediaPlaybackAllowsInline:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackAllowsAirPlay
+        https://bugs.webkit.org/show_bug.cgi?id=145316
+
+        Reviewed by Eric Carlson.
+
+        In preparation for an API rename, update internal symbols from mediaPlaybackAllowsAirPlay
+        to allowsAirPlayForMediaPlayback.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name but keep its value, for backwards
+        compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update to reference the new key name.
+        (-[WebPreferences mediaPlaybackAllowsAirPlay]): Ditto. This API will not change in a future
+        patch.
+        (-[WebPreferences setMediaPlaybackAllowsAirPlay:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Jon Lee  <jonlee@apple.com>
+
+        Rename MediaPlaybackRequiresUserGesture
+        https://bugs.webkit.org/show_bug.cgi?id=145314
+
+        Reviewed by Anders Carlsson.
+
+        In preparation for an API rename, update internal symbols from mediaPlaybackRequiresUserGesture
+        to requiresUserGestureForMediaPlayback.
+
+        No changes are being made to the API in this patch.
+
+        * WebView/WebPreferenceKeysPrivate.h: Update the name of the key, but not its value, for backwards
+        compatibility.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Update the symbol.
+        (-[WebPreferences mediaPlaybackRequiresUserGesture]): Ditto. This setting will not be renamed
+        in a future patch.
+        (-[WebPreferences setMediaPlaybackRequiresUserGesture:]): Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Update the call to settings.
+
+2015-05-22  Tim Horton  <timothy_horton@apple.com>
+
+        Remove action menu support
+        https://bugs.webkit.org/show_bug.cgi?id=145305
+        <rdar://problem/21070771>
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * WebView/WebActionMenuController.h: Removed.
+        * WebView/WebActionMenuController.mm: Removed.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView otherMouseDown:]):
+        (-[WebHTMLView scrollWheel:scrollWheel:]): Deleted.
+        (-[WebHTMLView mouseDown:mouseDown:]): Deleted.
+        * WebView/WebUIDelegatePrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Deleted.
+        (-[WebView _close]): Deleted.
+        (-[WebView prepareForMenu:withEvent:]): Deleted.
+        (-[WebView willOpenMenu:withEvent:]): Deleted.
+        (-[WebView didCloseMenu:withEvent:]): Deleted.
+        (-[WebView _actionMenuController]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]): Deleted.
+        * WebView/WebViewInternal.h:
+        Remove everything, except some enums that clients still refer to.
+
+2015-05-22  Brady Eidson  <beidson@apple.com>
+
+        Rework how the ResourceRequest user initiated property key is used.
+        Followup to https://bugs.webkit.org/show_bug.cgi?id=145281
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (WKResourceRequestIsUserInitiatedKey): Deleted.
+        (InitWebCoreSystemInterface): Deleted.
+
+2015-05-21  Brady Eidson  <beidson@apple.com>
+
+        Add an "initiated by user gesture" flag to ResourceRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=145281
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (WKResourceRequestIsUserInitiatedKey):
+        (InitWebCoreSystemInterface):
+
+2015-05-20  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * WebView/WebViewInternal.h:
+
+2015-05-20  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix; LocalizedStrings.h is in WebCore.
+
+        * WebView/WebActionMenuController.mm:
+
+2015-05-20  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix; WebActionMenuController.mm should directly include LocalizedStrings.h
+
+        * WebView/WebActionMenuController.mm:
+
+2015-05-19  Jer Noble  <jer.noble@apple.com>
+
+        Touching HTMLMediaElement.h or MediaPlayer.h causes a world rebuild.
+        https://bugs.webkit.org/show_bug.cgi?id=145193
+
+        Reviewed by Eric Carlson.
+
+        Use HTMLMediaElementEnums instead of HTMLMediaElement.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::enterVideoFullscreenForVideoElement): HTMLMediaElement -> HTMLMediaElementEnums.
+        * WebView/WebView.mm:
+        (-[WebView _enterVideoFullscreenForVideoElement:mode:]): Ditto.
+        * WebView/WebViewInternal.h:
+
+2015-05-19  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(183787): JIT is enabled for all builds
+        https://bugs.webkit.org/show_bug.cgi?id=145179
+
+        Reviewed by Geoffrey Garen.
+
+        Eliminated the setting of ENABLE_JIT, as wtf/Platform.h has appropriate logic to
+        set it depending on OS and CPU type.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-19  Brady Eidson  <beidson@apple.com>
+
+        X-Frame-Options headers not respected when loading from application cache.
+        <rdar://problem/14877623> and https://bugs.webkit.org/show_bug.cgi?id=131800
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2015-05-18  Skachkov Alexandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Feature flag for arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=145108
+
+        Reviewed by Ryosuke Niwa.
+
+        Added feature flag ENABLE_ES6_ARROWFUNCTION_SYNTAX for arrow function
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-15  Jeremy Jones  <jeremyj@apple.com>
+
+        Limit alternate fullscreen with linked on or after.
+        https://bugs.webkit.org/show_bug.cgi?id=144894
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebView.mm:
+        (shouldAllowAlternateFullscreen): Added.
+        (-[WebView _preferencesChanged:]):
+
+2015-05-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Turn antialiased font dilation off by default
+        https://bugs.webkit.org/show_bug.cgi?id=144940
+        rdar://problem/20923031
+
+        Reviewed by Sam Weinig.
+        
+        Turn antialised font dilation off by default.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2015-05-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Close all open databases in expiration handler of process assertion
+        https://bugs.webkit.org/show_bug.cgi?id=144661
+        <rdar://problem/20845052>
+
+        Reviewed by Darin Adler.
+
+        For Legacy WebKit, close all open databases when the process assertion expiration
+        handler is called.
+
+        * Storage/WebDatabaseManager.mm:
+        (+[WebDatabaseManager startBackgroundTask]): Call DatabaseTracker::tracker().closeAllDatabases()
+        in the expiration handler to close all open databases. As a side effect of closing
+        a database all in-progress database transactions are interrupted.
+
+2015-05-10  Sungmann Cho  <sungmann.cho@navercorp.com>
+
+        Get rid of the public item accessors in BackForwardClient
+        https://bugs.webkit.org/show_bug.cgi?id=144827
+
+        Reviewed by Darin Adler.
+
+        Remove backItem(), currentItem(), and forwardItem() from BackForwardClient.
+        We can still use these functionalities through BackForwardController.
+
+        No new tests, no behavior change.
+
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        These convenience constructors are unnecessary. Moving the code that makes the StringView
+        back to the call site will also help us make things more elegant in future refactoring.
+
+        Reviewed by Darin Adler.
+
+        No new tests because there is no behavior change.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]):
+        (-[NSString _web_widthWithFont:]):
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183996.
+        https://bugs.webkit.org/show_bug.cgi?id=144806
+
+        ASan detected use-after free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove convenience constructors for TextRun"
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+        http://trac.webkit.org/changeset/183996
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        These convenience constructors are unnecessary. Moving the code that makes the StringView
+        back to the call site will also help us make things more elegant in future refactoring.
+
+        Reviewed by Darin Adler.
+
+        No new tests because there is no behavior change.
+
+        * Misc/WebKitNSStringExtras.mm:
+        (-[NSString _web_drawAtPoint:font:textColor:allowingFontSmoothing:]):
+        (-[NSString _web_widthWithFont:]):
+
+2015-05-07  Anders Carlsson  <andersca@apple.com>
+
+        Build fixes.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (-[NSPasteboard _web_writeFileWrapperAsRTFDAttachment:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _writeSelectionWithPasteboardTypes:toPasteboard:cachedAttributedString:]):
+        (-[WebHTMLView _selectionStartFontAttributesAsRTF]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView writeSelectionWithPasteboardTypes:toPasteboard:]):
+        Pass empty arrays and dictionaries instead of nil.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        Use the regular init method.
+
+2015-05-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Fix iPhone 6 iOS simulator Build.
+        following http://trac.webkit.org/changeset/183954.
+
+        Reviewed by Daniel Bates.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView pressureChangeWithEvent:]):
+
+2015-05-07  Timothy Horton  <timothy_horton@apple.com>
+
+        Occasional null deref in WebImmediateActionController
+        https://bugs.webkit.org/show_bug.cgi?id=144772
+        <rdar://problem/20811128>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]):
+        (-[WebImmediateActionController _animationControllerForDataDetectedLink]):
+        Null-check TextIndicators before dereferencing.
+
+2015-05-07  Beth Dakin  <bdakin@apple.com>
+
+        New force-related DOM events should fire in WK1 views
+        https://bugs.webkit.org/show_bug.cgi?id=144663
+        -and corresponding-
+        rdar://problem/20281886
+
+        Reviewed by Sam Weinig.
+
+        Pass the lastPressureEvent to WebCore.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateMouseoverWithEvent:]):
+        (-[WebHTMLView rightMouseUp:]):
+        (-[WebHTMLView menuForEvent:]):
+        (-[WebHTMLView acceptsFirstMouse:]):
+        (-[WebHTMLView shouldDelayWindowOrderingForEvent:]):
+        (-[WebHTMLView mouseDown:mouseDown:]):
+        (-[WebHTMLView mouseDragged:]):
+        (-[WebHTMLView mouseUp:mouseUp:]):
+
+        New NSRespnder method for pressure changes.
+        (-[WebHTMLView pressureChangeWithEvent:]):
+
+        New BOOL _contentPreventsDefault tracks whether the HitTestResult prevented the 
+        default action. Get rid of willHandleMouseDown; now that the gesture recognizer 
+        sets delaysPrimaryMouseButtonEvents to NO, we don’t need this.
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _clearImmediateActionState]):
+
+        Set all of the immediateActionStages on EventHandler. This is critical to keep 
+        link navigation happening at the right time now that 
+        delaysPrimaryMouseButtonEvents is set to NO.
+        (-[WebImmediateActionController performHitTestAtPoint:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidUpdateAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCancelAnimation:]):
+        (-[WebImmediateActionController immediateActionRecognizerDidCompleteAnimation:]):
+
+        Use a dummy animation controller if the content prevents default.
+        (-[WebImmediateActionController _defaultAnimationController]):
+        (-[WebImmediateActionController _updateImmediateActionItem]):
+        (-[WebImmediateActionController webView:willHandleMouseDown:]): Deleted.
+
+        Set delaysPrimaryMouseButtonEvents to NO so that we get existing mouse events when 
+        we expect to.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+        Cache the most recent pressure event so that we can send it to WebCore for all of 
+        the mouse events.
+        (-[WebView _pressureEvent]):
+        (-[WebView _setPressureEvent:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewInternal.h:
+
+2015-05-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Revert "Introducing the Platform Abstraction Layer (PAL)"
+        https://bugs.webkit.org/show_bug.cgi?id=144751
+
+        Unreviewed.
+
+        PAL should be a new target inside WebCore, rather than a top-level folder.
+
+        * Configurations/FeatureDefines.xcconfig: Updated
+
+2015-05-07  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19317140> [Xcode] Remove usage of AspenFamily.xcconfig in Source/
+        https://bugs.webkit.org/show_bug.cgi?id=144727
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Don’t include AspenFamily.xcconfig.
+        * Configurations/WebKitLegacy.xcconfig: Define INSTALL_PATH in terms of
+        INSTALL_PATH_PREFIX and INSTALL_PATH_ACTUAL, and define INSTALL_PATH_PREFIX for the iOS 8.x
+        Simulator.
+
 2015-04-02  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Introducing the Platform Abstraction Layer (PAL)

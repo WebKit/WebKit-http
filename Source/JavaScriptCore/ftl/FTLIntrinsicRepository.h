@@ -35,6 +35,7 @@
 namespace JSC { namespace FTL {
 
 #define FOR_EACH_FTL_INTRINSIC(macro) \
+    macro(ceil64, "llvm.ceil.f64", functionType(doubleType, doubleType)) \
     macro(ctlz32, "llvm.ctlz.i32", functionType(int32, int32, boolean)) \
     macro(addWithOverflow32, "llvm.sadd.with.overflow.i32", functionType(structType(m_context, int32, boolean), int32, int32)) \
     macro(addWithOverflow64, "llvm.sadd.with.overflow.i64", functionType(structType(m_context, int64, boolean), int64, int64)) \
@@ -72,7 +73,7 @@ namespace JSC { namespace FTL {
     macro(C_JITOperation_EStZZ, functionType(intPtr, intPtr, intPtr, int32, int32)) \
     macro(C_JITOperation_EZ, functionType(intPtr, intPtr, int32)) \
     macro(D_JITOperation_D, functionType(doubleType, doubleType)) \
-    macro(I_JITOperation_EJss, functionType(intPtr, intPtr, intPtr)) \
+    macro(T_JITOperation_EJss, functionType(intPtr, intPtr, intPtr)) \
     macro(J_JITOperation_E, functionType(int64, intPtr)) \
     macro(J_JITOperation_EA, functionType(int64, intPtr, intPtr)) \
     macro(J_JITOperation_EAZ, functionType(int64, intPtr, intPtr, int32)) \

@@ -290,6 +290,18 @@ static void recomputeDependentOptions()
 
     if (Option(Options::jitPolicyScaleID).isOverridden())
         scaleJITPolicy();
+    
+    if (Options::forceEagerCompilation()) {
+        Options::thresholdForJITAfterWarmUp() = 10;
+        Options::thresholdForJITSoon() = 10;
+        Options::thresholdForOptimizeAfterWarmUp() = 20;
+        Options::thresholdForOptimizeAfterLongWarmUp() = 20;
+        Options::thresholdForOptimizeSoon() = 20;
+        Options::thresholdForFTLOptimizeAfterWarmUp() = 20;
+        Options::thresholdForFTLOptimizeSoon() = 20;
+        Options::maximumEvalCacheableSourceLength() = 150000;
+        Options::enableConcurrentJIT() = false;
+    }
 
     // Compute the maximum value of the reoptimization retry counter. This is simply
     // the largest value at which we don't overflow the execute counter, when using it
@@ -358,6 +370,8 @@ void Options::initialize()
         }
         dumpAllOptions(level, title);
     }
+
+    ensureOptionsAreCoherent();
 }
 
 // Parses a single command line option in the format "<optionName>=<value>"
@@ -426,6 +440,17 @@ void Options::dumpOption(DumpLevel level, OptionID id, FILE* stream, const char*
         fprintf(stream, "   ... %s", option.description());
 
     fprintf(stream, "%s", footer);
+}
+
+void Options::ensureOptionsAreCoherent()
+{
+    bool coherent = true;
+    if (!(useLLInt() || useJIT())) {
+        coherent = false;
+        dataLog("INCOHERENT OPTIONS: at least one of useLLInt or useJIT must be true\n");
+    }
+    if (!coherent)
+        CRASH();
 }
 
 void Option::dump(FILE* stream) const

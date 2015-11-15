@@ -443,6 +443,9 @@ private:
         case DoubleRep:
             compileDoubleRep();
             break;
+        case DoubleAsInt32:
+            compileDoubleAsInt32();
+            break;
         case ValueRep:
             compileValueRep();
             break;
@@ -504,6 +507,9 @@ private:
             break;
         case ArithPow:
             compileArithPow();
+            break;
+        case ArithRound:
+            compileArithRound();
             break;
         case ArithSqrt:
             compileArithSqrt();
@@ -812,9 +818,6 @@ private:
         case StoreBarrier:
             compileStoreBarrier();
             break;
-        case StoreBarrierWithNullCheck:
-            compileStoreBarrierWithNullCheck();
-            break;
         case HasIndexedProperty:
             compileHasIndexedProperty();
             break;
@@ -970,7 +973,13 @@ private:
             DFG_CRASH(m_graph, m_node, "Bad use kind");
         }
     }
-    
+
+    void compileDoubleAsInt32()
+    {
+        LValue integerValue = convertDoubleToInt32(lowDouble(m_node->child1()), shouldCheckNegativeZero(m_node->arithMode()));
+        setInt32(integerValue);
+    }
+
     void compileValueRep()
     {
         switch (m_node->child1().useKind()) {
@@ -1070,6 +1079,11 @@ private:
             
         case UntypedUse: {
             LValue value = lowJSValue(m_node->child1());
+            
+            if (!m_interpreter.needsTypeCheck(m_node->child1(), SpecBoolInt32 | SpecBoolean)) {
+                setInt32(m_out.bitAnd(m_out.castToInt32(value), m_out.int32One));
+                return;
+            }
             
             LBasicBlock booleanCase = FTL_NEW_BLOCK(m_out, ("BooleanToNumber boolean case"));
             LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("BooleanToNumber continuation"));
@@ -1761,6 +1775,34 @@ private:
         }
     }
 
+    void compileArithRound()
+    {
+        LBasicBlock realPartIsMoreThanHalf = FTL_NEW_BLOCK(m_out, ("ArithRound should round down"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ArithRound continuation"));
+
+        LValue value = lowDouble(m_node->child1());
+        LValue integerValue = m_out.ceil64(value);
+        ValueFromBlock integerValueResult = m_out.anchor(integerValue);
+
+        LValue realPart = m_out.doubleSub(integerValue, value);
+
+        m_out.branch(m_out.doubleGreaterThanOrUnordered(realPart, m_out.constDouble(0.5)), unsure(realPartIsMoreThanHalf), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(realPartIsMoreThanHalf, continuation);
+        LValue integerValueRoundedDown = m_out.doubleSub(integerValue, m_out.constDouble(1));
+        ValueFromBlock integerValueRoundedDownResult = m_out.anchor(integerValueRoundedDown);
+        m_out.jump(continuation);
+        m_out.appendTo(continuation, lastNext);
+
+        LValue result = m_out.phi(m_out.doubleType, integerValueResult, integerValueRoundedDownResult);
+
+        if (producesInteger(m_node->arithRoundingMode())) {
+            LValue integerValue = convertDoubleToInt32(result, shouldCheckNegativeZero(m_node->arithRoundingMode()));
+            setInt32(integerValue);
+        } else
+            setDouble(result);
+    }
+
     void compileArithSqrt() { setDouble(m_out.doubleSqrt(lowDouble(m_node->child1()))); }
 
     void compileArithLog() { setDouble(m_out.doubleLog(lowDouble(m_node->child1()))); }
@@ -2047,7 +2089,7 @@ private:
         
         LValue base = lowCell(m_node->child1());
         LValue value = lowJSValue(m_node->child2());
-        StringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
 
         // Arguments: id, bytes, target, numArgs, args...
         unsigned stackmapID = m_stackmapIDs++;
@@ -2223,7 +2265,14 @@ private:
             
             if (m_node->arrayMode().isInBounds()) {
                 LValue result = m_out.load64(baseIndex(heap, storage, index, m_node->child2()));
-                speculate(LoadFromHole, noValue(), 0, m_out.isZero64(result));
+                LValue isHole = m_out.isZero64(result);
+                if (m_node->arrayMode().isSaneChain()) {
+                    DFG_ASSERT(
+                        m_graph, m_node, m_node->arrayMode().type() == Array::Contiguous);
+                    result = m_out.select(
+                        isHole, m_out.constInt64(JSValue::encode(jsUndefined())), result);
+                } else
+                    speculate(LoadFromHole, noValue(), 0, isHole);
                 setJSValue(result);
                 return;
             }
@@ -2898,7 +2947,7 @@ private:
     void compileCreateActivation()
     {
         LValue scope = lowCell(m_node->child1());
-        SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
+        SymbolTable* table = m_node->castOperand<SymbolTable*>();
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
         
         if (table->singletonScope()->isStillValid()) {
@@ -3855,7 +3904,7 @@ private:
     void compilePutGlobalVar()
     {
         m_out.store64(
-            lowJSValue(m_node->child1()), m_out.absolute(m_node->variablePointer()));
+            lowJSValue(m_node->child2()), m_out.absolute(m_node->variablePointer()));
     }
     
     void compileNotifyWrite()
@@ -4764,7 +4813,7 @@ private:
         if (JSString* string = m_node->child1()->dynamicCastConstant<JSString*>()) {
             if (string->tryGetValueImpl() && string->tryGetValueImpl()->isAtomic()) {
 
-                const StringImpl* str = string->tryGetValueImpl();
+                const auto str = static_cast<const AtomicStringImpl*>(string->tryGetValueImpl());
                 unsigned stackmapID = m_stackmapIDs++;
             
                 LValue call = m_out.call(
@@ -4854,22 +4903,6 @@ private:
         emitStoreBarrier(lowCell(m_node->child1()));
     }
 
-    void compileStoreBarrierWithNullCheck()
-    {
-#if ENABLE(GGC)
-        LBasicBlock isNotNull = FTL_NEW_BLOCK(m_out, ("Store barrier with null check value not null"));
-        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("Store barrier continuation"));
-
-        LValue base = lowJSValue(m_node->child1());
-        m_out.branch(m_out.isZero64(base), unsure(continuation), unsure(isNotNull));
-        LBasicBlock lastNext = m_out.appendTo(isNotNull, continuation);
-        emitStoreBarrier(base);
-        m_out.appendTo(continuation, lastNext);
-#else
-        speculate(m_node->child1());
-#endif
-    }
-    
     void compileHasIndexedProperty()
     {
         switch (m_node->arrayMode().type()) {
@@ -5231,7 +5264,7 @@ private:
             values.append(lowJSValue(m_graph.varArgChild(m_node, 1 + i)));
 
         LValue scope = lowCell(m_graph.varArgChild(m_node, 0));
-        SymbolTable* table = m_graph.symbolTableFor(m_node->origin.semantic);
+        SymbolTable* table = m_node->castOperand<SymbolTable*>();
         Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->activationStructure();
 
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("MaterializeCreateActivation slow path"));
@@ -5245,11 +5278,6 @@ private:
         m_out.storePtr(scope, fastObject, m_heaps.JSScope_next);
         m_out.storePtr(weakPointer(table), fastObject, m_heaps.JSSymbolTableObject_symbolTable);
 
-        for (unsigned i = 0; i < table->scopeSize(); ++i) {
-            m_out.store64(
-                m_out.constInt64(JSValue::encode(jsUndefined())),
-                fastObject, m_heaps.JSEnvironmentRecord_variables[i]);
-        }
 
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
@@ -5263,11 +5291,28 @@ private:
 
         m_out.appendTo(continuation, lastNext);
         LValue activation = m_out.phi(m_out.intPtr, fastResult, slowResult);
+        RELEASE_ASSERT(data.m_properties.size() == table->scopeSize());
         for (unsigned i = 0; i < data.m_properties.size(); ++i) {
             m_out.store64(values[i],
                 activation,
                 m_heaps.JSEnvironmentRecord_variables[data.m_properties[i].m_identifierNumber]);
         }
+
+        if (validationEnabled()) {
+            // Validate to make sure every slot in the scope has one value.
+            ConcurrentJITLocker locker(table->m_lock);
+            for (auto iter = table->begin(locker), end = table->end(locker); iter != end; ++iter) {
+                bool found = false;
+                for (unsigned i = 0; i < data.m_properties.size(); ++i) {
+                    if (iter->value.scopeOffset().offset() == data.m_properties[i].m_identifierNumber) {
+                        found = true;
+                        break;
+                    }
+                }
+                ASSERT_UNUSED(found, found);
+            }
+        }
+
         setJSValue(activation);
     }
 
@@ -5703,7 +5748,7 @@ private:
     
     LValue getById(LValue base)
     {
-        StringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
 
         // Arguments: id, bytes, target, numArgs, args...
         unsigned stackmapID = m_stackmapIDs++;
@@ -7235,7 +7280,31 @@ private:
         
         return possibleResult;
     }
-    
+
+    LValue convertDoubleToInt32(LValue value, bool shouldCheckNegativeZero)
+    {
+        LValue integerValue = m_out.fpToInt32(value);
+        LValue integerValueConvertedToDouble = m_out.intToDouble(integerValue);
+        LValue valueNotConvertibleToInteger = m_out.doubleNotEqualOrUnordered(value, integerValueConvertedToDouble);
+        speculate(Overflow, FormattedValue(ValueFormatDouble, value), m_node, valueNotConvertibleToInteger);
+
+        if (shouldCheckNegativeZero) {
+            LBasicBlock valueIsZero = FTL_NEW_BLOCK(m_out, ("ConvertDoubleToInt32 on zero"));
+            LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("ConvertDoubleToInt32 continuation"));
+            m_out.branch(m_out.isZero32(integerValue), unsure(valueIsZero), unsure(continuation));
+
+            LBasicBlock lastNext = m_out.appendTo(valueIsZero, continuation);
+
+            LValue doubleBitcastToInt64 = m_out.bitCast(value, m_out.int64);
+            LValue signBitSet = m_out.lessThan(doubleBitcastToInt64, m_out.constInt64(0));
+
+            speculate(NegativeZero, FormattedValue(ValueFormatDouble, value), m_node, signBitSet);
+            m_out.jump(continuation);
+            m_out.appendTo(continuation, lastNext);
+        }
+        return integerValue;
+    }
+
     LValue isNumber(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
         if (LValue proven = isProvenValue(type, SpecFullNumber))
@@ -7935,16 +8004,7 @@ private:
             arguments.append(lowValue.value());
         
         AvailabilityMap availabilityMap = this->availabilityMap();
-        availabilityMap.m_locals.fill(Availability());
-        
-        m_graph.forAllLiveInBytecode(
-            codeOrigin,
-            [&] (VirtualRegister reg) {
-                availabilityMap.m_locals.operand(reg) =
-                    this->availabilityMap().m_locals.operand(reg);
-            });
-        
-        availabilityMap.prune();
+        availabilityMap.pruneByLiveness(m_graph, codeOrigin);
         
         HashMap<Node*, ExitTimeObjectMaterialization*> map;
         availabilityMap.forEachAvailability(
@@ -7985,8 +8045,14 @@ private:
                 exitValueForAvailability(arguments, map, heapPair.value));
         }
         
-        if (verboseCompilationEnabled())
+        if (verboseCompilationEnabled()) {
             dataLog("        Exit values: ", exit.m_values, "\n");
+            if (!exit.m_materializations.isEmpty()) {
+                dataLog("        Materializations: \n");
+                for (ExitTimeObjectMaterialization* materialization : exit.m_materializations)
+                    dataLog("            ", pointerDump(materialization), "\n");
+            }
+        }
     }
     
     void callStackmap(OSRExit& exit, ExitArgumentList& arguments)

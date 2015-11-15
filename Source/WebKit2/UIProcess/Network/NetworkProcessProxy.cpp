@@ -68,7 +68,7 @@ NetworkProcessProxy::NetworkProcessProxy(WebProcessPool& processPool)
     : m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
     , m_customProtocolManagerProxy(this, processPool)
-    , m_throttler(std::make_unique<ProcessThrottler>(this))
+    , m_throttler(*this)
 {
     connect();
 }
@@ -93,6 +93,11 @@ void NetworkProcessProxy::connectionWillOpen(IPC::Connection& connection)
 #else
     UNUSED_PARAM(connection);
 #endif
+}
+
+void NetworkProcessProxy::processWillShutDown(IPC::Connection& connection)
+{
+    ASSERT_UNUSED(connection, this->connection() == &connection);
 }
 
 void NetworkProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
@@ -276,7 +281,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
     
 #if PLATFORM(IOS)
     if (xpc_connection_t connection = this->connection()->xpcConnection())
-        m_throttler->didConnectToProcess(xpc_connection_get_pid(connection));
+        m_throttler.didConnectToProcess(xpc_connection_get_pid(connection));
 #endif
 }
 
@@ -313,21 +318,31 @@ void NetworkProcessProxy::logDiagnosticMessageWithValue(uint64_t pageID, const S
     page->logDiagnosticMessageWithValue(message, description, value, shouldSample);
 }
 
-void NetworkProcessProxy::sendProcessWillSuspend()
+void NetworkProcessProxy::sendProcessWillSuspendImminently()
+{
+    if (!canSendMessage())
+        return;
+
+    bool handled = false;
+    sendSync(Messages::NetworkProcess::ProcessWillSuspendImminently(), Messages::NetworkProcess::ProcessWillSuspendImminently::Reply(handled),
+        0, std::chrono::seconds(1), IPC::InterruptWaitingIfSyncMessageArrives);
+}
+    
+void NetworkProcessProxy::sendPrepareToSuspend()
 {
     if (canSendMessage())
-        send(Messages::NetworkProcess::ProcessWillSuspend(), 0);
+        send(Messages::NetworkProcess::PrepareToSuspend(), 0);
 }
 
-void NetworkProcessProxy::sendCancelProcessWillSuspend()
+void NetworkProcessProxy::sendCancelPrepareToSuspend()
 {
     if (canSendMessage())
-        send(Messages::NetworkProcess::CancelProcessWillSuspend(), 0);
+        send(Messages::NetworkProcess::CancelPrepareToSuspend(), 0);
 }
 
 void NetworkProcessProxy::didCancelProcessSuspension()
 {
-    m_throttler->didCancelProcessSuspension();
+    m_throttler.didCancelProcessSuspension();
 }
 
 void NetworkProcessProxy::sendProcessDidResume()
@@ -338,9 +353,13 @@ void NetworkProcessProxy::sendProcessDidResume()
 
 void NetworkProcessProxy::processReadyToSuspend()
 {
-    m_throttler->processReadyToSuspend();
+    m_throttler.processReadyToSuspend();
 }
 
+void NetworkProcessProxy::didSetAssertionState(AssertionState)
+{
+}
+    
 void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
 {
     if (!isHoldingLockedFiles) {
@@ -348,7 +367,7 @@ void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
         return;
     }
     if (!m_tokenForHoldingLockedFiles)
-        m_tokenForHoldingLockedFiles = m_throttler->backgroundActivityToken();
+        m_tokenForHoldingLockedFiles = m_throttler.backgroundActivityToken();
 }
 
 } // namespace WebKit

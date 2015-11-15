@@ -32,7 +32,7 @@ namespace WebKit {
     
 static const unsigned processSuspensionTimeout = 30;
     
-ProcessThrottler::ProcessThrottler(ProcessThrottlerClient* process)
+ProcessThrottler::ProcessThrottler(ProcessThrottlerClient& process)
     : m_process(process)
     , m_suspendTimer(RunLoop::main(), this, &ProcessThrottler::suspendTimerFired)
     , m_foregroundCounter([this](bool) { updateAssertion(); })
@@ -55,8 +55,10 @@ AssertionState ProcessThrottler::assertionState()
 void ProcessThrottler::updateAssertionNow()
 {
     m_suspendTimer.stop();
-    if (m_assertion)
+    if (m_assertion) {
         m_assertion->setState(assertionState());
+        m_process.didSetAssertionState(assertionState());
+    }
 }
     
 void ProcessThrottler::updateAssertion()
@@ -66,9 +68,10 @@ void ProcessThrottler::updateAssertion()
     // in the background for too long.
     if (m_assertion && m_assertion->state() != AssertionState::Suspended && !m_foregroundCounter.value() && !m_backgroundCounter.value()) {
         ++m_suspendMessageCount;
-        m_process->sendProcessWillSuspend();
+        m_process.sendPrepareToSuspend();
         m_suspendTimer.startOneShot(processSuspensionTimeout);
         m_assertion->setState(AssertionState::Background);
+        m_process.didSetAssertionState(AssertionState::Background);
         return;
     }
     
@@ -76,10 +79,10 @@ void ProcessThrottler::updateAssertion()
 
     // If we're currently waiting for the Web process to do suspension cleanup, but no longer need to be suspended, tell the Web process to cancel the cleanup.
     if (m_suspendTimer.isActive() && shouldBeRunnable)
-        m_process->sendCancelProcessWillSuspend();
+        m_process.sendCancelPrepareToSuspend();
     
     if (m_assertion && m_assertion->state() == AssertionState::Suspended && shouldBeRunnable)
-        m_process->sendProcessDidResume();
+        m_process.sendProcessDidResume();
 
     updateAssertionNow();
 }
@@ -88,6 +91,8 @@ void ProcessThrottler::didConnectToProcess(pid_t pid)
 {
     m_suspendTimer.stop();
     m_assertion = std::make_unique<ProcessAndUIAssertion>(pid, assertionState());
+    m_process.didSetAssertionState(assertionState());
+    m_assertion->setClient(*this);
 }
     
 void ProcessThrottler::suspendTimerFired()
@@ -107,6 +112,11 @@ void ProcessThrottler::didCancelProcessSuspension()
     if (!--m_suspendMessageCount)
         updateAssertionNow();
     ASSERT(m_suspendMessageCount >= 0);
+}
+
+void ProcessThrottler::assertionWillExpireImminently()
+{
+    m_process.sendProcessWillSuspendImminently();
 }
 
 }

@@ -126,6 +126,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opentype/OpenTypeVerticalData.cpp
 
     platform/graphics/x11/PlatformDisplayX11.cpp
+    platform/graphics/x11/XUniqueResource.cpp
 
     platform/gtk/ErrorsGtk.cpp
     platform/gtk/EventLoopGtk.cpp
@@ -286,7 +287,7 @@ list(APPEND WebCore_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
+list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
@@ -308,6 +309,9 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${WEBCORE_DIR}/platform/graphics/gstreamer
+    )
+
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${GSTREAMER_INCLUDE_DIRS}
         ${GSTREAMER_BASE_INCLUDE_DIRS}
         ${GSTREAMER_APP_INCLUDE_DIRS}
@@ -326,7 +330,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
 endif ()
 
 if (ENABLE_VIDEO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${GSTREAMER_TAG_INCLUDE_DIRS}
         ${GSTREAMER_VIDEO_INCLUDE_DIRS}
     )
@@ -336,7 +340,7 @@ if (ENABLE_VIDEO)
     )
 
     if (USE_GSTREAMER_MPEGTS)
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${GSTREAMER_MPEGTS_INCLUDE_DIRS}
         )
 
@@ -346,7 +350,7 @@ if (ENABLE_VIDEO)
     endif ()
 
     if (USE_GSTREAMER_GL)
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
         )
 
@@ -357,7 +361,7 @@ if (ENABLE_VIDEO)
 endif ()
 
 if (ENABLE_WEB_AUDIO)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${WEBCORE_DIR}/platform/audio/gstreamer
         ${GSTREAMER_AUDIO_INCLUDE_DIRS}
         ${GSTREAMER_FFT_INCLUDE_DIRS}
@@ -368,7 +372,7 @@ if (ENABLE_WEB_AUDIO)
 endif ()
 
 if (ENABLE_MEDIA_STREAM)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${OPENWEBRTC_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
@@ -450,13 +454,13 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
         APPEND
         PROPERTY COMPILE_DEFINITIONS GTK_API_VERSION_2=1
     )
-    set_property(
-        TARGET WebCorePlatformGTK2
-        APPEND
-        PROPERTY INCLUDE_DIRECTORIES
-            ${WebCore_INCLUDE_DIRECTORIES}
-            ${GTK2_INCLUDE_DIRS}
-            ${GDK2_INCLUDE_DIRS}
+    target_include_directories(WebCorePlatformGTK2 PRIVATE
+        ${WebCore_INCLUDE_DIRECTORIES}
+        ${GTK2_INCLUDE_DIRS}
+        ${GDK2_INCLUDE_DIRS}
+    )
+    target_include_directories(WebCorePlatformGTK2 SYSTEM PRIVATE
+        ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(WebCorePlatformGTK2
          ${WebCore_LIBRARIES}
@@ -483,7 +487,7 @@ if (ENABLE_WAYLAND_TARGET)
         ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitGtkWaylandClientProtocol.c
     )
 
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${WAYLAND_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES
@@ -494,13 +498,13 @@ endif ()
 add_library(WebCorePlatformGTK ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
 add_dependencies(WebCorePlatformGTK WebCore)
 WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK)
-set_property(
-    TARGET WebCorePlatformGTK
-    APPEND
-    PROPERTY INCLUDE_DIRECTORIES
-        ${WebCore_INCLUDE_DIRECTORIES}
-        ${GTK_INCLUDE_DIRS}
-        ${GDK_INCLUDE_DIRS}
+target_include_directories(WebCorePlatformGTK PRIVATE
+    ${WebCore_INCLUDE_DIRECTORIES}
+)
+target_include_directories(WebCorePlatformGTK SYSTEM PRIVATE
+    ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
+    ${GTK_INCLUDE_DIRS}
+    ${GDK_INCLUDE_DIRS}
 )
 target_link_libraries(WebCorePlatformGTK
     ${WebCore_LIBRARIES}
@@ -513,6 +517,10 @@ include_directories(
     "${WEBCORE_DIR}/bindings/gobject/"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_GOBJECT_DOM_BINDINGS_DIR}"
+)
+
+include_directories(SYSTEM
+    ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
 )
 
 list(APPEND GObjectDOMBindings_SOURCES
@@ -918,7 +926,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/keys/CryptoKeySerializationRaw.cpp
     )
 
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${GNUTLS_INCLUDE_DIRS}
     )
     list(APPEND WebCore_LIBRARIES

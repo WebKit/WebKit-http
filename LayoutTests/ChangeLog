@@ -1,3 +1,2294 @@
+2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        An SVG with no intrinsic size does not draw correct slices when used as a border-image for an HTML element.
+        https://bugs.webkit.org/show_bug.cgi?id=139405
+
+        Reviewed by Darin Adler.
+
+        * fast/borders/border-image-fill-no-intrinsic-size-expected.html: Added.
+        * fast/borders/border-image-fill-no-intrinsic-size.html: Added.
+        * fast/borders/resources/svg-border-100x100-intrinsic.svg: Added.
+        * fast/borders/resources/svg-border-140x140-intrinsic.svg: Added.
+        * fast/borders/resources/svg-border-no-intrinsic.svg: Added.
+        Make sure the slices of the border-image are drawn correctly. When using an
+        image with no intrinsic size, all the slices has to be gotten from (0, 0)
+        of the source image.
+        
+        * TestExpectations: Removed previously-failing test.
+
+2015-05-26  Andreas Kling  <akling@apple.com>
+
+        <font face> doesn't support plus character in font family names.
+        <https://webkit.org/b/145400>
+        <rdar://problem/21097484>
+
+        Reviewed by Darin Adler.
+
+        Add a little test for <font face> attributes to cover this problem
+        and some other interesting cases with spaces and commas.
+
+        * fast/dom/HTMLFontElement/face-attribute-expected.txt: Added.
+        * fast/dom/HTMLFontElement/face-attribute.html: Added.
+
+2015-05-26  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: display:none content exposed to accessibility when aria-hidden is toggled on ancestor element
+        https://bugs.webkit.org/show_bug.cgi?id=139142
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/accessibility/aria-hidden-false-works-in-subtrees-expected.txt:
+
+2015-05-26  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: display:none content exposed to accessibility when aria-hidden is toggled on ancestor element
+        https://bugs.webkit.org/show_bug.cgi?id=139142
+
+        Reviewed by Darin Adler.
+
+        * accessibility/aria-hidden-false-works-in-subtrees.html:
+
+2015-05-26  Zalan Bujtas  <zalan@apple.com>
+
+        Overhanging float sets are not cleaned up properly when floating renderer is destroyed.
+        https://bugs.webkit.org/show_bug.cgi?id=145323
+        rdar://problem/20980628
+
+        Reviewed by Dave Hyatt.
+
+        This patch ensures when an overhanging float renderer is destroyed,
+        all the sibling containers' floating object set(m_floatingObjects) gets properly cleaned up.
+
+        When an overhanging float is present, we cache the renderer on the parent and on the affected
+        sibling containers too. (RenderBlockFlow::m_floatingObjects) These caches(sets) get cleared and repopulated
+        during ::layout(). In order to have a float renderer removed from a set, a layout needs to be initiated on the container.
+        This is normally done through RenderBlockFlow::markSiblingsWithFloatsForLayout() and RenderBlockFlow::markAllDescendantsWithFloatsForLayout().
+        However, when the float container's parent's writing direction changes (and we promote the children containers to new formatting contexts),
+        the layout propagation through siblings does not work anymore.
+
+        The avoidsFloats() check in RenderBlockFlow::markSiblingsWithFloatsForLayout() has very little performance gain, but it prevents us
+        from propagating layout to siblings when certain properties of the parent container changes.
+
+        * fast/block/float/crash-when-floating-object-is-removed-expected.txt: Added.
+        * fast/block/float/crash-when-floating-object-is-removed.xhtml: Added.
+
+2015-05-26  Beth Dakin  <bdakin@apple.com>
+
+        storage/indexeddb/deleteIndex-bug110792.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145390
+
+        Marking as flaky.
+        * TestExpectations:
+
+2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG fragment identifier rendering issue
+        https://bugs.webkit.org/show_bug.cgi?id=137328
+
+        Reviewed by Darin Adler.
+
+        * svg/css/svg-resource-fragment-identifier-order-expected.html: Added.
+        * svg/css/svg-resource-fragment-identifier-order.html: Added.
+        Ensure the SVG fragment is drawn correctly when the same SVG image is
+        referenced multiple times.
+
+2015-05-26  Daniel Bates  <dabates@apple.com>
+
+        Update Autofill button icon
+        https://bugs.webkit.org/show_bug.cgi?id=145191
+        <rdar://problem/20178942>
+
+        Update expected results for Windows.
+
+        * platform/win/fast/forms/input-auto-fill-button-expected.txt:
+
+2015-05-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CSS properties (font-synthesis, column-fill) are missing in getComputedStyles
+        https://bugs.webkit.org/show_bug.cgi?id=145343
+
+        Reviewed by Timothy Hatcher.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css/getComputedStyle/resources/property-names.js:
+
+2015-05-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Array.prototype.copyWithin
+        https://bugs.webkit.org/show_bug.cgi?id=145107
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-05-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=98932
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/TestExpectations: Update IndexedDB test expectations.
+
+2015-05-24  Jordan Harband  <ljharb@gmail.com>
+
+        Array#findIndex/find should not skip holes
+        https://bugs.webkit.org/show_bug.cgi?id=145361
+
+        Reviewed by Yusuke Suzuki.
+
+        * js/array-find-expected.txt:
+        * js/array-findIndex-expected.txt:
+        * js/script-tests/array-find.js:
+        * js/script-tests/array-findIndex.js:
+
+2015-05-23  Antti Koivisto  <antti@apple.com>
+
+        Permanent redirects should have long implicit cache lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=145348
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/cache/cache-redirections.html:
+        * http/tests/cache/resources/cache-control-redirect.php:
+
+            Use less confusing name (max_age->expiration vs. max-age) and fix logic.
+
+2015-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Rebaseline after r184825. Remove artificial extra space between 2 text renderers. 
+
+        Reviewed by Antti Koivisto.
+
+        * animations/lineheight-animation-expected.txt:
+        * animations/simultaneous-start-transform-expected.txt:
+        * animations/width-using-ems-expected.txt:
+        * fast/events/window-events-bubble-expected.txt:
+        * fast/events/window-events-bubble2-expected.txt:
+
+2015-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Ignore -webkit-flow-*content while collecting text content for innerText.
+        https://bugs.webkit.org/show_bug.cgi?id=145344
+        rdar://problem/20959522
+
+        Reviewed by Antti Koivisto.
+
+        This patch ensures that when a -webkit-flow-into content is present in a simple line layout container,
+        we skip it while collecting the text content for innerText.
+        It's not always guaranteed that a simple line layout container only contains simple text nodes. In such cases,
+        we need to ensure that text offset computing only takes the simple text nodes into account.
+
+        * fast/text/simple-line-layout-inner-text-with-flow-content-expected.txt: Added.
+        * fast/text/simple-line-layout-inner-text-with-flow-content.html: Added.
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Update tests broken by MediaPlaybackRequiresUserGesture renaming.
+
+        * media/no-autoplay-with-user-gesture-requirement.html:
+        * media/video-load-require-user-gesture.html:
+        * media/video-play-require-user-gesture.html:
+
+2015-05-22  Alexey Proskuryakov  <ap@apple.com>
+
+        New test media/accessiblity-describes-video.html is flaky.
+
+        * platform/mac/TestExpectations: Marking as such, as suggested by Jer.
+
+2015-05-22  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Audio tracks tagged as 'describes-video' are not automatically selected when that system accessibility option is set.
+        https://bugs.webkit.org/show_bug.cgi?id=145228
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/hls/hls-accessiblity-describes-video-expected.txt: Added.
+        * http/tests/media/hls/hls-accessiblity-describes-video.html: Added.
+        * http/tests/media/resources/hls/audio-describes-video.m3u8: Added.
+        * http/tests/media/resources/hls/english/description.aac: Added.
+        * http/tests/media/resources/hls/english/description.m3u8: Added.
+        * media/accessiblity-describes-video-expected.txt: Added.
+        * media/accessiblity-describes-video.html: Added.
+        * media/content/audio-describes-video.mp4: Added.
+        * platform/mac-mavericks/TestExpectations:
+
+2015-05-22  Basile Clement  <basile_clement@apple.com>
+
+        Allow DFGClobberize to return non-node constants that must be later created
+        https://bugs.webkit.org/show_bug.cgi?id=145272
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/script-tests/cse-new-array-buffer.js: Added.
+        (foo):
+        * js/regress/script-tests/cse-new-array.js: Added.
+        (foo):
+
+2015-05-22  Marcos Chavarría Teijeiro  <mchavarria@igalia.com>
+
+        [GTK] Gardening 21st May.
+        https://bugs.webkit.org/show_bug.cgi?id=145250
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-22  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Figure out why list-detection2.html test fails on GTK
+        https://bugs.webkit.org/show_bug.cgi?id=145273
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed list-detection2.html from the list of expected failures.
+
+2015-05-21  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Implement computedRoleString in AccessibilityUIElement
+        https://bugs.webkit.org/show_bug.cgi?id=128420
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed roles-computedRoleString from the failing test.
+        * platform/gtk/accessibility/image-link-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/lists-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt: Added.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated to reflect the new object attribute.
+        * platform/gtk/accessibility/xml-roles-exposed-expected.txt: Added.
+        * platform/gtk/accessibility/xml-roles-exposed.html: Added.
+
+2015-05-21  Antti Koivisto  <antti@apple.com>
+
+        MaskImageOperation code does not manage CachedImageClients correctly
+        https://bugs.webkit.org/show_bug.cgi?id=145276
+
+        Reviewed by Andreas Kling.
+
+        * css3/masking/mask-image-client-crash-expected.txt: Added.
+        * css3/masking/mask-image-client-crash.html: Added.
+
+2015-05-21  Daniel Bates  <dabates@apple.com>
+
+        Update Autofill button icon
+        https://bugs.webkit.org/show_bug.cgi?id=145191
+        <rdar://problem/20178942>
+
+        Reviewed by Jessie Berlin.
+
+        Update expected results.
+
+        * fast/forms/input-auto-fill-button-expected.txt:
+        * platform/mac-mavericks/fast/forms/input-auto-fill-button-expected.txt:
+
+2015-05-21  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: improve list heuristics (presentational use versus actual lists)
+        https://bugs.webkit.org/show_bug.cgi?id=134187
+
+        Unreviewed layout test fixage.
+
+        Skip the list-detection2.html test on GTK until it can be investigated.
+            https://bugs.webkit.org/show_bug.cgi?id=145273
+        Fix a failing test on GTK that needed an update after the last set of changes.
+        Skip the test on windows until a time someone can decide if we even expose or need lists in Windows AX API.
+            https://bugs.webkit.org/show_bug.cgi?id=145271
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/list-detection-expected.txt:
+        * platform/win/TestExpectations:
+
+2015-05-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVG as image uses very tiny default font-size
+        https://bugs.webkit.org/show_bug.cgi?id=68090
+
+        Reviewed by Darin Adler.
+
+        * svg/text/text-default-font-size-expected.html: Added.
+        * svg/text/text-default-font-size.html: Added.
+        Ensure the default font size for non-interactive SVG images is not zero.
+
+2015-05-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        streams/reference-implementation/readable-stream.html should now pass
+        https://bugs.webkit.org/show_bug.cgi?id=145266
+
+        Unreviewed.
+
+        * TestExpectations: removing falky expectation of streams/reference-implementation/readable-stream.html.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: array previews should have a much smaller cap on values
+        https://bugs.webkit.org/show_bug.cgi?id=145195
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        Update expected results now that array previews include
+        a smaller number of items.
+
+2015-05-20  Marcos Chavarría Teijeiro  <mchavarria@igalia.com>
+
+        Enable disk cache for range requests
+        https://bugs.webkit.org/show_bug.cgi?id=144682
+
+        Reviewed by Antti Koivisto.
+
+        * http/tests/cache/disk-cache/disk-cache-range-expected.txt: Added. Add Test.
+        * http/tests/cache/disk-cache/disk-cache-range.html: Added.
+        * http/tests/cache/disk-cache/resources/generate-response.cgi: Modify script to return 206 and 416 response codes if Range header is present.
+        * platform/gtk/TestExpectations: Remove failing test.
+
+2015-05-20  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: improve list heuristics (presentational use versus actual lists)
+        https://bugs.webkit.org/show_bug.cgi?id=134187
+
+        Reviewed by Darin Adler.
+
+        * accessibility/list-detection-expected.txt:
+        * accessibility/list-detection.html:
+        * accessibility/list-detection2-expected.txt: Added.
+        * accessibility/list-detection2.html: Added.
+
+2015-05-20  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r172591): Can no longer style <optgroup> with colors (LayoutTests/fast/forms/select/optgroup-rendering.html)
+        https://bugs.webkit.org/show_bug.cgi?id=145227
+
+        Reviewed by Darin Adler.
+
+        Add ref test for select painting.
+
+        * fast/forms/select/select-painting-expected.html: Added.
+        * fast/forms/select/select-painting.html: Added.
+
+2015-05-20  Daniel Bates  <dabates@apple.com>
+
+        AX: AutoFill button is not accessible with VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=145200
+        <rdar://problem/20507480>
+
+        Reviewed by Chris Fleizach.
+
+        Test that there is an accessibility element for the AutoFill button.
+
+        * accessibility/input-auto-fill-button-expected.txt: Added.
+        * accessibility/input-auto-fill-button.html: Added.
+        * platform/win/TestExpectations: For now, mark tests as failing. I suspect the cause
+        is <https://bugs.webkit.org/show_bug.cgi?id=140798>.
+
+2015-05-20  Antti Koivisto  <antti@apple.com>
+
+        Assertion failure in WebCore::BidiRun::BidiRun()
+        https://bugs.webkit.org/show_bug.cgi?id=145203
+        rdar://problem/20958973
+
+        Reviewed by Andreas Kling.
+
+        * fast/text/text-combine-crash-expected.txt: Added.
+        * fast/text/text-combine-crash.html: Added.
+
+2015-05-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        AudioContext resume/close/suspend should reject promises with a DOM exception in lieu of throwing exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=145064
+
+        Reviewed by Darin Adler.
+
+        Adding test to cover resume/close/suspend rejecting with InvalidStateError.
+        Updating existing test to cover resume and suspend rejection with no error.
+
+        * webaudio/audiocontext-promise-throwing-expected.txt: Added.
+        * webaudio/audiocontext-promise-throwing.html: Added.
+        * webaudio/audiocontext-state-expected.txt:
+        * webaudio/audiocontext-state.html:
+
+2015-05-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184645.
+        https://bugs.webkit.org/show_bug.cgi?id=145220
+
+        Broken build (Requested by jacob_nielsen on #webkit).
+
+        Reverted changeset:
+
+        "AX: AutoFill button is not accessible with VoiceOver"
+        https://bugs.webkit.org/show_bug.cgi?id=145200
+        http://trac.webkit.org/changeset/184645
+
+2015-05-20  Daniel Bates  <dabates@apple.com>
+
+        AX: AutoFill button is not accessible with VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=145200
+        <rdar://problem/20507480>
+
+        Reviewed by Chris Fleizach.
+
+        Test that there is an accessibility element for the AutoFill button.
+
+        * accessibility/input-auto-fill-button-expected.txt: Added.
+        * accessibility/input-auto-fill-button.html: Added.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Implement Object.setPrototypeOf
+        https://bugs.webkit.org/show_bug.cgi?id=145202
+
+        Reviewed by Darin Adler.
+
+        * http/tests/security/cross-frame-access-object-setPrototypeOf-expected.txt: Added.
+        * http/tests/security/cross-frame-access-object-setPrototypeOf.html: Added.
+        * http/tests/security/resources/cross-frame-iframe-for-object-setPrototypeOf-test.html: Added.
+        Test covering cross origin restriction behavior.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        Updated for the new exposed property.
+
+        * js/cyclic-prototypes-expected.txt:
+        * js/script-tests/cyclic-prototypes.js:
+        Extend this test to include setPrototypeOf cyclic checks.
+        Note that setPrototypeOf can still change the prototype
+        where __proto__ cannot.
+
+        * js/prototypes-expected.txt:
+        * js/script-tests/prototypes.js:
+        Extend this test to cover more types previously overlooked.
+
+        * js/script-tests/setPrototypeOf.js: Added.
+        (debugEval):
+        (getObjectDescriptions.myFunction):
+        (getObjectDescriptions):
+        * js/setPrototypeOf-expected.txt: Added.
+        * js/setPrototypeOf.html: Added.
+        Test coverage for all the different object / prototype combinations.
+        This is modeled after the other browser tests with coverage of a
+        few more basic functionality tests and object types.
+
+2015-05-20  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        AudioContext suspend/resume/close should resolve promises immediately when state is already suspended/active/closed
+        https://bugs.webkit.org/show_bug.cgi?id=145164
+
+        Reviewed by Jer Noble.
+
+        * webaudio/audiocontext-promise-expected.txt: Added.
+        * webaudio/audiocontext-promise.html: Added.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Should not allow duplicate basic __proto__ properties in Object Literals
+        https://bugs.webkit.org/show_bug.cgi?id=145138
+
+        Reviewed by Darin Adler.
+
+        * js/dom/JSON-parse-expected.txt:
+        * js/resources/JSON-parse.js:
+        Update expected results for JSON parsing using eval() versus JSON.parse.
+        In eval, an object literal with a "__proto__" property modifies the prototype.
+        In JSON.parse, all properties are direct/own properties, no matter their name,
+        so "__proto__" does not get special treatment.
+
+        * js/eval-json-proto-expected.txt: Added.
+        * js/eval-json-proto.html: Added.
+        * js/script-tests/eval-json-proto.js: Added.
+        Direct test for LiteralParser behavior, in both eval and JSON.parse.
+
+        * js/object-literal-duplicate-properties-expected.txt:
+        * js/script-tests/object-literal-duplicate-properties.js:
+        (runProtoTestShouldThrow):
+        (runProtoTestShouldNotThrow):
+        Test for all cases of acceptable and unacceptable __proto__ duplicate
+        properties in literals.
+
+2015-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Slightly better node previews in arrays
+        https://bugs.webkit.org/show_bug.cgi?id=145188
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+
+2015-05-17  Sam Weinig  <sam@webkit.org>
+
+        Organize event handlers a bit
+        https://bugs.webkit.org/show_bug.cgi?id=145106
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/event-handler-attributes-expected.txt:
+        * fast/dom/event-handler-attributes.html:
+        Update for putting media related event handlers on Document in addition to
+        Element and DOMWindow.
+
+2015-05-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Preview for NodeList / array like collections
+        https://bugs.webkit.org/show_bug.cgi?id=145177
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/model/remote-object-expected.txt:
+
+2015-05-19  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Font lookups are flakey due to caching
+        https://bugs.webkit.org/show_bug.cgi?id=145180
+        <rdar://problem/21012406>
+
+        Reviewed by Darin Adler.
+
+        * platform/mac/TestExpectations:
+        Unskip platform/mac/fast/text/font-weights.html as it is no longer
+        flakey after this change.
+
+        * platform/mac/fast/text/font-weights-expected.txt:
+        Rebaseline the test as the expected results were those based on the
+        bad caching behavior.
+
+2015-05-19  Brady Eidson  <beidson@apple.com>
+
+        X-Frame-Options headers not respected when loading from application cache.
+        <rdar://problem/14877623> and https://bugs.webkit.org/show_bug.cgi?id=131800
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/appcache/resources/x-frame-options-prevents-framing-test.html: Added.
+        * http/tests/appcache/resources/x-frame-options-prevents-framing.manifest: Added.
+        * http/tests/appcache/x-frame-options-prevents-framing-expected.txt: Added.
+        * http/tests/appcache/x-frame-options-prevents-framing.php: Added.
+
+2015-05-19  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        AudioContext should resolve promises with jsUndefined() and not jsNull()
+        https://bugs.webkit.org/show_bug.cgi?id=145063
+
+        Reviewed by Sam Weinig.
+
+        * webaudio/audiocontext-state.html: Added check of promise resolve value.
+
+2015-05-19  Eric Carlson  <eric.carlson@apple.com>
+
+        iOS gardening. Update "fast" image and text results, delete wk2-only results.
+
+        Rubber-stamped by Brent Fulgham.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator-wk2/fast/events/touch/gesture/long-press-on-draggable-element-triggers-drag-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/forms/search-vertical-alignment-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/forms/searchfield-heights-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/gradients/list-item-gradient-expected.txt: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-expected.txt: Added.
+        * platform/ios-simulator/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Added.
+        * platform/ios-simulator/fast/backgrounds/selection-background-color-of-image-list-style-expected.txt: Added.
+        * platform/ios-simulator/fast/backgrounds/selection-background-color-of-list-style-expected.txt: Added.
+        * platform/ios-simulator/fast/block/basic/001-expected.png: Added.
+        * platform/ios-simulator/fast/block/margin-collapse/001-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/001-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/002-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/003-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/004-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/005-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/006-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/007-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/008-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/009-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/010-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/011-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/012-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/013-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/014-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/015-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/016-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/017-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/018-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/019-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/020-expected.png: Added.
+        * platform/ios-simulator/fast/block/positioning/021-expected.png: Added.
+        * platform/ios-simulator/fast/css/font-weight-1-expected.png: Added.
+        * platform/ios-simulator/fast/css/font-weight-1-expected.txt:
+        * platform/ios-simulator/fast/css/text-overflow-ellipsis-bidi-expected.png: Added.
+        * platform/ios-simulator/fast/css/text-overflow-ellipsis-bidi-expected.txt:
+        * platform/ios-simulator/fast/events/touch/gesture/long-press-on-draggable-element-triggers-drag-expected.txt:
+        * platform/ios-simulator/fast/forms/box-shadow-override-expected.png: Added.
+        * platform/ios-simulator/fast/forms/button-align-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-auto-fill-button-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-auto-fill-button-expected.txt: Added.
+        * platform/ios-simulator/fast/forms/input-spaces-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-table-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-text-click-inside-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-text-click-outside-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-text-double-click-expected.png: Added.
+        * platform/ios-simulator/fast/forms/input-text-drag-down-expected.png: Added.
+        * platform/ios-simulator/fast/forms/listbox-hit-test-zoomed-expected.png: Added.
+        * platform/ios-simulator/fast/forms/listbox-hit-test-zoomed-expected.txt:
+        * platform/ios-simulator/fast/forms/option-index-expected.png: Added.
+        * platform/ios-simulator/fast/forms/search-vertical-alignment-expected.png: Added.
+        * platform/ios-simulator/fast/forms/search-vertical-alignment-expected.txt:
+        * platform/ios-simulator/fast/forms/searchfield-heights-expected.png: Added.
+        * platform/ios-simulator/fast/forms/searchfield-heights-expected.txt:
+        * platform/ios-simulator/fast/forms/textarea-placeholder-pseudo-style-expected.png: Added.
+        * platform/ios-simulator/fast/frames/calculate-fixed-expected.png: Added.
+        * platform/ios-simulator/fast/frames/calculate-order-expected.png: Added.
+        * platform/ios-simulator/fast/frames/calculate-percentage-expected.png: Added.
+        * platform/ios-simulator/fast/frames/calculate-relative-expected.png: Added.
+        * platform/ios-simulator/fast/frames/calculate-round-expected.png: Added.
+        * platform/ios-simulator/fast/frames/content-opacity-1-expected.png: Added.
+        * platform/ios-simulator/fast/frames/content-opacity-2-expected.png: Added.
+        * platform/ios-simulator/fast/gradients/list-item-gradient-expected.png: Added.
+        * platform/ios-simulator/fast/gradients/list-item-gradient-expected.txt:
+        * platform/ios-simulator/fast/hidpi/broken-image-icon-very-hidpi-expected.txt: Added.
+        * platform/ios-simulator/fast/images/animated-gif-with-offsets-expected.png: Added.
+
+2015-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Array.prototype methods must use ToLength
+        https://bugs.webkit.org/show_bug.cgi?id=144128
+
+        Reviewed by Oliver Hunt.
+
+        Patch by Jordan Harband  <ljharb@gmail.com> and Yusuke Suzuki <utatane.tea@gmail.com>
+
+        * fast/profiler/built-in-function-calls-anonymous-expected.txt:
+        * fast/profiler/built-in-function-calls-user-defined-function-expected.txt:
+        * js/array-every-expected.txt:
+        * js/array-fill-expected.txt:
+        * js/array-filter-expected.txt:
+        * js/array-find-expected.txt:
+        * js/array-findIndex-expected.txt:
+        * js/array-functions-non-arrays-expected.txt:
+        * js/array-includes-expected.txt:
+        * js/script-tests/array-every.js:
+        (throwError):
+        * js/script-tests/array-fill.js:
+        (throwError):
+        * js/script-tests/array-filter.js:
+        (throwError):
+        * js/script-tests/array-find.js:
+        (throwError):
+        * js/script-tests/array-findIndex.js:
+        (toObject):
+        (throwError):
+        * js/script-tests/array-functions-non-arrays.js:
+        (throwError):
+        * js/script-tests/array-includes.js:
+
+2015-05-19  Zalan Bujtas  <zalan@apple.com>
+
+        Merged anonymous blocks should invalidate simple line layout path.
+        https://bugs.webkit.org/show_bug.cgi?id=145104
+        rdar://problem/20980930
+
+        Reviewed by Antti Koivisto.
+
+        When anonymous blocks are merged together, it's not guaranteed that the final block can use simple line layout.
+        This patch ensures that the flow block, where the other block's content gets moved to, is no longer on simple line layout path.
+        Whether the final flow block ends up using inline boxes or simple line layout will be determined during the next layout.
+
+        * fast/block/crash-when-anonymous-blocks-are-merged-with-simple-line-layout-expected.txt: Added.
+        * fast/block/crash-when-anonymous-blocks-are-merged-with-simple-line-layout.html: Added.
+
+2015-05-14  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Select text mechanism returns results outside of text control regions
+        https://bugs.webkit.org/show_bug.cgi?id=145041
+
+        Reviewed by Mario Sanchez Prada.
+
+        * platform/mac/accessibility/select-text-stays-inside-text-controls-expected.txt: Added.
+        * platform/mac/accessibility/select-text-stays-inside-text-controls.html: Added.
+
+2015-05-19  Marcos Chavarría Teijeiro  <mchavarria@igalia.com>
+
+        [GTK] Gardening 19th May
+        https://bugs.webkit.org/show_bug.cgi?id=145166
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-18  Eric Carlson  <eric.carlson@apple.com>
+
+        iOS gardening. Update "editing" image and text results, delete wk2-only results.
+
+        Rubber-stamped by Brent Fulgham.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator-wk2/editing/deleting/delete-3775172-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-3857753-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-3865854-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-3928305-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-4083333-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-and-undo-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-at-paragraph-boundaries-011-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-contents-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-011-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-012-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-013-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-014-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-015-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-016-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-017-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-018-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-019-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-020-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-021-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-022-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-023-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-block-merge-contents-024-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-br-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-br-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-br-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-br-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-br-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-character-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-contiguous-ws-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-first-list-item-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-hr-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-image-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-image-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-image-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-007-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-008-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-009-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-010-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-012-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-013-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-014-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-015-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-016-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-line-017-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-listitem-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-listitem-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-selection-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-tab-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-tab-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-to-select-table-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-trailing-ws-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-trailing-ws-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-ws-fixup-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-ws-fixup-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-ws-fixup-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/delete-ws-fixup-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/forward-delete-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/list-item-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/merge-different-styles-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/merge-endOfParagraph-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/merge-no-br-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/merge-unrendered-space-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/non-smart-delete-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/pruning-after-merge-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/smart-delete-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/deleting/table-cells-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/4641880-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/4641880-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/create-list-with-hr-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/indent-empty-root-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/indent-list-item-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/indent-selection-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/insert-list-and-stitch-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/insertHorizontalRule-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/insertImage-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/nsresponder-indent-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/nsresponder-outdent-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/print-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/execCommand/remove-list-from-range-selection-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/pasteboard/4989774-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/3690703-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/3690703-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/3690719-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4397952-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4889598-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4932260-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4932260-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4932260-3-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/4947387-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/5195166-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/7152-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/7152-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/after-line-wrap-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/focus_editable_html-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/iframe-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/image-before-linebreak-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/inline-table-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/leave-requested-block-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-10-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-3-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-4-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-5-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-8-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/mixed-editability-9-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-3875618-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-3875641-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-backwords-by-word-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-between-blocks-no-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-between-blocks-yes-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-002-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-003-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-004-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-character-6-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-by-sentence-001-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/move-past-trailing-space-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/previous-line-position-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/replaced-boundaries-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/replaced-boundaries-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/replaced-boundaries-3-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/select-all-005-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/select-all-006-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/select-box-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/select-element-paragraph-boundary-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/selection-3748164-fix-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/table-caret-1-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/table-caret-2-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/table-caret-3-expected.txt: Removed.
+        * platform/ios-simulator-wk2/editing/selection/unrendered-space-expected.txt: Removed.
+        * platform/ios-simulator/editing/deleting/delete-3608462-fix-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-3608462-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-3775172-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-3857753-fix-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-3857753-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-3865854-fix-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-3865854-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-3928305-fix-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-3928305-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-4083333-fix-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-4083333-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-and-undo-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-and-undo-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-004-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-004-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-005-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-005-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-006-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-006-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-007-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-007-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-008-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-008-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-009-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-009-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-010-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-010-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-011-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-at-paragraph-boundaries-011-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-contents-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-contents-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-004-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-004-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-005-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-005-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-006-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-006-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-007-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-007-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-008-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-008-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-009-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-009-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-010-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-010-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-011-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-011-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-012-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-012-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-013-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-013-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-014-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-014-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-015-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-015-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-016-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-016-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-017-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-017-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-018-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-018-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-019-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-019-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-020-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-020-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-021-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-021-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-022-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-022-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-023-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-023-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-024-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-block-merge-contents-024-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-007-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-007-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-008-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-008-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-010-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-br-010-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-character-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-character-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-contiguous-ws-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-contiguous-ws-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-first-list-item-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-first-list-item-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-hr-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-hr-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-image-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-004-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-004-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-005-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-005-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-006-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-006-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-007-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-007-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-008-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-008-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-009-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-009-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-010-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-010-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-012-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-012-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-013-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-013-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-014-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-014-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-015-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-015-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-016-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-016-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-017-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-line-017-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-listitem-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-listitem-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-listitem-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-listitem-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-selection-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-selection-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-tab-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-tab-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-tab-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-tab-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-to-select-table-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-to-select-table-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-trailing-ws-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-trailing-ws-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-trailing-ws-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-trailing-ws-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-002-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-002-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-003-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-003-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-004-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/delete-ws-fixup-004-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/forward-delete-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/forward-delete-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/list-item-1-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/list-item-1-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/merge-different-styles-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/merge-different-styles-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/merge-endOfParagraph-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/merge-endOfParagraph-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/merge-no-br-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/merge-no-br-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/merge-unrendered-space-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/merge-unrendered-space-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/non-smart-delete-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/non-smart-delete-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/pruning-after-merge-2-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/pruning-after-merge-2-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/smart-delete-001-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/smart-delete-001-expected.txt: Added.
+        * platform/ios-simulator/editing/deleting/table-cells-expected.png: Added.
+        * platform/ios-simulator/editing/deleting/table-cells-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/4641880-1-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/4641880-1-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/4641880-2-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/4641880-2-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/5142012-1-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/5142012-1-expected.txt:
+        * platform/ios-simulator/editing/execCommand/create-list-with-hr-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/create-list-with-hr-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/indent-empty-root-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/indent-empty-root-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/indent-list-item-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/indent-list-item-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/indent-selection-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/indent-selection-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/insert-list-and-stitch-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/insert-list-and-stitch-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/insertHorizontalRule-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/insertHorizontalRule-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/insertImage-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/insertImage-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/nsresponder-indent-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/nsresponder-indent-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/nsresponder-outdent-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/nsresponder-outdent-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/print-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/print-expected.txt: Added.
+        * platform/ios-simulator/editing/execCommand/remove-list-from-range-selection-expected.png: Added.
+        * platform/ios-simulator/editing/execCommand/remove-list-from-range-selection-expected.txt: Added.
+        * platform/ios-simulator/editing/pasteboard/4989774-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4989774-expected.txt: Added.
+        * platform/ios-simulator/editing/pasteboard/drag-drop-dead-frame-expected.png: Added.
+        * platform/ios-simulator/editing/selection/3690703-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/3690703-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/3690703-expected.png: Added.
+        * platform/ios-simulator/editing/selection/3690703-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/3690719-expected.png: Added.
+        * platform/ios-simulator/editing/selection/3690719-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4397952-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4397952-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4889598-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4889598-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4932260-1-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4932260-1-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4932260-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4932260-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4932260-3-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4932260-3-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/4947387-expected.png: Added.
+        * platform/ios-simulator/editing/selection/4947387-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/5195166-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/5195166-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/7152-1-expected.png: Added.
+        * platform/ios-simulator/editing/selection/7152-1-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/7152-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/7152-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/after-line-wrap-expected.png: Added.
+        * platform/ios-simulator/editing/selection/after-line-wrap-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/extend-by-character-007-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/focus_editable_html-expected.png: Added.
+        * platform/ios-simulator/editing/selection/focus_editable_html-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/iframe-expected.png: Added.
+        * platform/ios-simulator/editing/selection/iframe-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/image-before-linebreak-expected.png: Added.
+        * platform/ios-simulator/editing/selection/image-before-linebreak-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/inline-table-expected.png: Added.
+        * platform/ios-simulator/editing/selection/inline-table-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/leave-requested-block-expected.png: Added.
+        * platform/ios-simulator/editing/selection/leave-requested-block-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-10-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-3-expected.png: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-3-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-4-expected.png: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-4-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-5-expected.png: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-5-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-8-expected.png: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-8-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-9-expected.png: Added.
+        * platform/ios-simulator/editing/selection/mixed-editability-9-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-3875618-fix-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-3875618-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-3875641-fix-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-3875641-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-backwords-by-word-001-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-backwords-by-word-001-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-between-blocks-no-001-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-between-blocks-no-001-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-between-blocks-yes-001-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-between-blocks-yes-001-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-001-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-001-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-002-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-002-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-003-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-003-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-004-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-004-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-005-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-005-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-6-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-character-6-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-by-sentence-001-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-by-sentence-001-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/move-past-trailing-space-expected.png: Added.
+        * platform/ios-simulator/editing/selection/move-past-trailing-space-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/previous-line-position-expected.png: Added.
+        * platform/ios-simulator/editing/selection/previous-line-position-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/range-between-block-and-inline-expected.png: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-1-expected.png: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-1-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-3-expected.png: Added.
+        * platform/ios-simulator/editing/selection/replaced-boundaries-3-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/select-all-005-expected.png: Added.
+        * platform/ios-simulator/editing/selection/select-all-005-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/select-all-006-expected.png: Added.
+        * platform/ios-simulator/editing/selection/select-all-006-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/select-box-expected.png: Added.
+        * platform/ios-simulator/editing/selection/select-box-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/select-element-paragraph-boundary-expected.png: Added.
+        * platform/ios-simulator/editing/selection/select-element-paragraph-boundary-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/selection-3748164-fix-expected.png: Added.
+        * platform/ios-simulator/editing/selection/selection-3748164-fix-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/table-caret-1-expected.png: Added.
+        * platform/ios-simulator/editing/selection/table-caret-1-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/table-caret-2-expected.png: Added.
+        * platform/ios-simulator/editing/selection/table-caret-2-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/table-caret-3-expected.png: Added.
+        * platform/ios-simulator/editing/selection/table-caret-3-expected.txt: Added.
+        * platform/ios-simulator/editing/selection/unrendered-space-expected.png: Added.
+        * platform/ios-simulator/editing/selection/unrendered-space-expected.txt: Added.
+        * platform/ios-simulator/editing/unsupported-content: Added.
+        * platform/ios-simulator/editing/unsupported-content/list-type-after-expected.png: Added.
+
+2015-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Improve coverage of platform/mac/fast/text/font-weights.html
+        https://bugs.webkit.org/show_bug.cgi?id=145152
+
+        Reviewed by Anders Carlsson.
+
+        Add coverage of italics.
+
+        * platform/mac/fast/text/font-weights-expected.txt:
+        * platform/mac/fast/text/font-weights.html:
+
+2015-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        platform/mac/fast/text/font-weights.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=145149
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations:
+
+2015-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Add a Int-or-Boolean speculation to Branch
+        https://bugs.webkit.org/show_bug.cgi?id=145134
+
+        Reviewed by Benjamin Poulain.
+        
+        Added the reduced asm.js test case from https://bugs.webkit.org/show_bug.cgi?id=144136. We don't yet
+        run it as fast as we should but this is a big step.
+
+        * js/regress/script-tests/slow-ternaries.js: Added.
+        (.f):
+        (asmMod):
+        * js/regress/slow-ternaries-expected.txt: Added.
+        * js/regress/slow-ternaries.html: Added.
+
+2015-05-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Make StringRecursionChecker faster in the simple cases without any recursion
+        https://bugs.webkit.org/show_bug.cgi?id=145102
+
+        Reviewed by Darin Adler.
+
+        Improve the coverage a tiny bit.
+
+        * js/array-string-recursion-expected.txt: Added.
+        * js/array-string-recursion.html: Added.
+        * js/script-tests/array-string-recursion.js: Added.
+
+2015-05-17  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [CSS Grid Layout] Add scrollbar width in intrinsic logical widths computation
+        https://bugs.webkit.org/show_bug.cgi?id=145021
+
+        Reviewed by Sergio Villar Senin.
+
+        * fast/css-grid-layout/compute-intrinsic-widths-scrollbar-expected.txt: Added.
+        * fast/css-grid-layout/compute-intrinsic-widths-scrollbar.html: Added.
+
+2015-05-16  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (Subpixel): Dashed underline is missing when box is positioned at subpixels.
+        https://bugs.webkit.org/show_bug.cgi?id=145097
+        rdar://problem/18588415
+
+        Reviewed by Simon Fraser.
+
+        Dashed and dotted border painting needs clipping in order to properly display corners.
+        Similarly to solid border's quad calculation, we pixelsnap the border positions before computing the clipping quad values.
+
+        * fast/borders/dashed-border-on-subpixel-position-expected.html: Added.
+        * fast/borders/dashed-border-on-subpixel-position.html: Added.
+        * fast/borders/dotted-border-on-subpixel-position-expected.html: Added.
+        * fast/borders/dotted-border-on-subpixel-position.html: Added.
+
+2015-05-15  Sam Weinig  <sam@webkit.org>
+
+        Add getElementById to DocumentFragment
+        https://bugs.webkit.org/show_bug.cgi?id=145094
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/dom/DocumentFragment/getElementById-expected.txt: Added.
+        * fast/dom/DocumentFragment/getElementById.html: Added.
+
+2015-05-15  Antti Koivisto  <antti@apple.com>
+
+        When redirecting to data URL use HTTP response for same origin policy checks
+        https://bugs.webkit.org/show_bug.cgi?id=145054
+        rdar://problem/20299050
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/security/canvas-remote-read-data-url-image-redirect-expected.txt: Added.
+        * http/tests/security/canvas-remote-read-data-url-image-redirect.html: Added.
+
+2015-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r183300): Background missing on top links on apple.com
+        https://bugs.webkit.org/show_bug.cgi?id=145079
+        rdar://problem/20914252
+
+        Reviewed by Tim Horton.
+        
+        Re-land.
+
+        * compositing/visible-rect/backing-change-height-from-zero-expected.txt: Added.
+        * compositing/visible-rect/backing-change-height-from-zero.html: Added.
+
+2015-05-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test the interaction between font-family and font-weight
+        https://bugs.webkit.org/show_bug.cgi?id=145078
+
+        Reviewed by Dean Jackson.
+
+        This test is designed to test the interaction between font-family and font-weight. In particular,
+        our implementation of font-family accepts PostScript names, which may name a font with a particular
+        weight. However, there is another CSS property, font-weight, in which the author may also name a
+        particular weight. Our font selection algorithm takes both of these signals into account when
+        choosing fonts.
+
+        There is currently no good way in JavaScript to find the actual font chosen for some text.
+        Therefore, the best way to test this aspect of the font selection algorithm is to dump the render
+        tree, therefore testing glyph advances (which are a property of font weight).
+
+        * platform/mac/fast/text/font-weights-expected.txt: Added.
+        * platform/mac/fast/text/font-weights.html: Added.
+
+2015-05-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r184421.
+        https://bugs.webkit.org/show_bug.cgi?id=145087
+
+        Introduced 42 layout test failures (Requested by rniwa on
+        #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION (r183300): Background missing on top links on
+        apple.com"
+        https://bugs.webkit.org/show_bug.cgi?id=145079
+        http://trac.webkit.org/changeset/184421
+
+2015-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r183300): Background missing on top links on apple.com
+        https://bugs.webkit.org/show_bug.cgi?id=145079
+        rdar://problem/20914252
+
+        Reviewed by Tim Horton.
+
+        Composited box that toggles to a non-zero height and dumps layers.
+
+        * compositing/visible-rect/backing-change-height-from-zero-expected.txt: Added.
+        * compositing/visible-rect/backing-change-height-from-zero.html: Added.
+
+2015-05-15  Sam Weinig  <sam@webkit.org>
+
+        Move HTMLElement's children property to ParentNode
+        https://bugs.webkit.org/show_bug.cgi?id=145072
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/ParentNode-children-expected.txt: Added.
+        * fast/dom/ParentNode-children.html: Added.
+        Test children on Element, Document and DocumentFragment.
+
+        * fast/dom/xmlserializer-serialize-to-string-exception-expected.txt:
+        Update results since document.children is no longer undefined.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        Update results.
+
+2015-05-15  Zalan Bujtas  <zalan@apple.com>
+
+        White edge on animating panel on http://rokkosunnyvale.com
+        https://bugs.webkit.org/show_bug.cgi?id=144986
+        rdar://problem/20907683
+
+        Reviewed by Simon Fraser.
+
+        Background image geometry calculation needs to be based on the final painting size of the container
+        in order to accurately compute tile sizes, repeating positions etc.
+        The container's size is pixelsnapped at painting using absolute coordinates. This patch
+        ensures that we snap to the same size while computing background geometry.
+
+        * fast/backgrounds/hidpi-bitmap-background-repeat-on-subpixel-position-expected.html: progression.
+        * fast/images/background-image-size-changes-fractional-position-expected.html: Added.
+        * fast/images/background-image-size-changes-fractional-position.html: Added.
+
+2015-05-15  Marcos Chavarría Teijeiro  <mchavarria@igalia.com>
+
+        [GTK] Gardening 15th May.
+        https://bugs.webkit.org/show_bug.cgi?id=145047
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/events/ghostly-mousemoves-in-subframe-expected.txt: Added.
+
+2015-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Removed failing test expectations from passing tests.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+
+2015-05-14  Zalan Bujtas  <zalan@apple.com>
+
+        Images on www.fitstylelife.com jiggle on hover.
+        https://bugs.webkit.org/show_bug.cgi?id=145020
+        rdar://problem/20885337
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that the clipping layer of a composited content is pixel snapped properly.
+
+        * compositing/composited-parent-clipping-layer-on-subpixel-position-expected.html: Added.
+        * compositing/composited-parent-clipping-layer-on-subpixel-position.html: Added.
+        * compositing/parent-clipping-layer-on-subpixel-position-expected.html: Added.
+        * compositing/parent-clipping-layer-on-subpixel-position.html: Added.
+
+2015-05-14  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r183794): Garbage tiles when body background switches to fixed
+        https://bugs.webkit.org/show_bug.cgi?id=145032
+        rdar://problem/20963679
+
+        Reviewed by Dean Jackson.
+        
+        Test that toggles the attachment of the body background to fixed, then dumps layers.
+
+        * platform/mac-wk2/tiled-drawing/toggle-to-fixed-background-expected.txt: Added.
+        * platform/mac-wk2/tiled-drawing/toggle-to-fixed-background.html: Added.
+
+2015-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash in ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline
+        https://bugs.webkit.org/show_bug.cgi?id=119068
+
+        Reviewed by Enrica Casucci.
+
+        Added a test based on https://chromium.googlesource.com/chromium/blink/+/3500267482e60550ce84fadd6c0db883937ce744
+
+        * editing/inserting/insert-table-in-paragraph-crash-expected.txt: Added.
+        * editing/inserting/insert-table-in-paragraph-crash.html: Added.
+
+2015-05-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Mac] Expose more font weights for -apple-system
+        https://bugs.webkit.org/show_bug.cgi?id=144707
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac/fast/text/systemFont-expected.txt: Update expectations.
+        * platform/mac/fast/text/systemFont.html: Update test to include font weights for -apple-system.
+        * platform/mac/fast/css/css2-system-fonts-expected.txt: Updated to not hardcode the system font family name.
+        * platform/mac-mavericks/fast/css/css2-system-fonts-expected.txt: Ditto.
+        * platform/mac/fast/forms/select/optgroup-rendering-expected.txt: Updated to not use synthetic bold.
+        * platform/mac/fast/forms/validation-message-appearance-expected.txt: Ditto.
+
+2015-05-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skip js/regress-141098.html. The fix will be tracked in https://bugs.webkit.org/show_bug.cgi?id=145007
+
+        * TestExpectations:
+
+2015-05-14  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Unskip passing AX tests since r184198
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Two AX tests have been passed since r184198.
+
+2015-05-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6: Allow duplicate property names
+        https://bugs.webkit.org/show_bug.cgi?id=142895
+
+        Reviewed by Geoffrey Garen.
+
+        * js/object-literal-duplicate-properties-expected.txt: Added.
+        * js/object-literal-duplicate-properties.html: Added.
+        * js/script-tests/object-literal-duplicate-properties.js: Added.
+        Include a new test all about testing duplicate property names
+        and their expected cascading results.
+
+        * ietestcenter/Javascript/11.1.5_4-4-b-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-b-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-c-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-c-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-1-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-2-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-3-expected.txt:
+        * ietestcenter/Javascript/11.1.5_4-4-d-4-expected.txt:
+        ES5 behavior for duplciate properties has changed.
+
+        * js/mozilla/strict/11.1.5-expected.txt:
+        * js/object-literal-syntax-expected.txt:
+        * js/script-tests/object-literal-syntax.js:
+        Update other tests and values now that duplicate properties
+        are allowed, and their cascade order behaves correctly.
+
+2015-05-13  Antti Koivisto  <antti@apple.com>
+
+        Cached CSS image resources don't show up after reloading <http://nightly.webkit.org/start/>
+        https://bugs.webkit.org/show_bug.cgi?id=144952
+
+        Reviewed by Oliver Hunt.
+
+        * http/tests/cache/resources/non-shareable.css: Added.
+        (#foo):
+        (#bar):
+        (#test1):
+        (#test2):
+        * http/tests/cache/resources/shareable.css: Added.
+        (#foo):
+        (#bar):
+        (#test1):
+        (#test2):
+        * http/tests/cache/resources/stylesheet-html.php: Added.
+        * http/tests/cache/stylesheet-sharing-expected.txt: Added.
+        * http/tests/cache/stylesheet-sharing.html: Added.
+
+2015-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r183770): Crash inside WebEditorClient::shouldApplyStyle when applying underline
+        https://bugs.webkit.org/show_bug.cgi?id=144949
+
+        Reviewed by Darin Adler.
+
+        Added a test that emulates underlining of text by the user. Unlike document.execCommand,
+        testRunner.execCommand simulates a user initiated editing command and therefore invokes
+        shouldApplyStyle.
+
+        * editing/style/underline-by-user-expected.txt: Added.
+        * editing/style/underline-by-user.html: Added.
+
+2015-05-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement String.raw
+        https://bugs.webkit.org/show_bug.cgi?id=144330
+
+        Reviewed by Filip Pizlo.
+
+        Add String.raw.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/text/simple-line-layout-text-stroke-width.html fails on Windows
+
+        * platform/win/TestExpectations: Mark it as such. The tets likely needs to be
+        improved to work cross-platform.
+
+2015-05-12  Filip Pizlo  <fpizlo@apple.com>
+
+        js/dom/stack-trace.html fails with eager compilation
+        https://bugs.webkit.org/show_bug.cgi?id=144853
+
+        Reviewed by Benjamin Poulain.
+        
+        Make a copy of the stack-trace test that only runs in run-jsc-stress-tests. Sadly, we don't
+        have a good way of having different expectation files for when a test runs in RJST versus
+        RWT. So, the approach I take is that I make a copy of the test just for RJST and I exclude
+        the .html file, which makes RWT overlook it. The test has different expectations in the
+        two harnesses because it does some small DOM things.
+
+        * js/script-tests/stack-trace.js: Added.
+        * js/stack-trace-expected.txt: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [Win] REGRESSION(r184213) breaks aria-menubar-menuitems.html
+        https://bugs.webkit.org/show_bug.cgi?id=144936
+
+        Unreviewed gardening.
+
+        Adding the platform-specific expectations for Windows now that the
+        accessibility tree is being correctly generated for this test.
+
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [Win] REGRESSION(r184213) breaks aria-menubar-menuitems.html
+        https://bugs.webkit.org/show_bug.cgi?id=144936
+
+        Reviewed by Chris Fleizach.
+
+        Use focusedElement + childAtIndex rather than accessibleElementById
+        as the latter seems to be failing, and the former worked on Windows
+        to get the menubar in the original version of this test.
+
+        * accessibility/aria-menubar-menuitems.html: Modified.
+
+2015-05-12  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r175617): Some text doesn't render on internationalculinarycenter.com
+        https://bugs.webkit.org/show_bug.cgi?id=144917
+        rdar://problem/20545878
+
+        Reviewed by Andreas Kling.
+
+        This patch ensures that text stroke width value is taken into account while
+        calculating visual overflow for simple line layout.
+        Ceiling the text stroke width value matches the normal text layout behaviour.
+
+        * fast/text/simple-line-layout-text-stroke-width-expected.txt: Added.
+        * fast/text/simple-line-layout-text-stroke-width.html: Added.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] ARIA menu items should not have anonymous block children
+        https://bugs.webkit.org/show_bug.cgi?id=144653
+
+        Reviewed by Chris Fleizach.
+
+        The existing test was not cross-platform friendly and was rewritten as
+        part of the fix for this bug. New expectations were generated for Mac,
+        Efl, and Gtk. The shared expectations and the Windows expectations were
+        removed so as not to break the Win port. The search-predicate test also
+        was updated because it included an ARIA treeitem which had a listmarker
+        child it should not have, and no longer has as a result of the bug fix.
+
+        * accessibility/aria-menubar-menuitems-expected.txt: Removed. Platform hierarchies vary vastly.
+        * accessibility/aria-menubar-menuitems.html: Rewritten to work better as a shared test.
+        * platform/efl/accessibility/aria-menubar-menuitems-expected.txt: Added.
+        * platform/gtk/accessibility/aria-menubar-menuitems-expected.txt: Added.
+        * platform/mac/accessibility/aria-menubar-menuitems-expected.txt: Modified as result of rewrite.
+        * platform/mac/accessibility/search-predicate.html: Modified to reflect correct treeitem children.
+        * platform/mac/accessibility/search-predicate-expected.txt: Modified to reflect correct treeitem children.
+        * platform/win/accessibility/aria-menubar-menuitems-expected.txt: Removed. New file should be generated.
+        * resources/accessibility-helper.js: Added an argument so dumpAccessibilityTree can print title rather than value.
+        (dumpAccessibilityTree):
+
+2015-05-12  Alexey Proskuryakov  <ap@apple.com>
+
+        fast/frames/flattening/iframe-flattening-resize-event-count.html times out on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=144155
+
+        * platform/mac-wk2/TestExpectations: Marking as flaky for now.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Defer to WebCore Accessibility for table exposure
+        https://bugs.webkit.org/show_bug.cgi?id=144896
+
+        Reviewed by Chris Fleizach.
+
+        Several platform tests are testing accessibility of tables. In order to ensure
+        that those tables continue to be exposed as tables, a border was added so that
+        they are not judged to be layout tables. For the remainder of the tests, the
+        expectations were updated to reflect the fact that layout tables are no longer
+        exposed as AccessibilityTables in WebKitGtk.
+
+        * platform/gtk/accessibility/caret-offsets.html: Added border to table.
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-hierarchy-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-one-cell-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/table-with-rules-expected.txt: Updated to reflect new behavior.
+        * platform/gtk/accessibility/text-for-range-table-cells.html: Added border to table.
+        * platform/gtk/accessibility/text-for-table.html: Added border to table.
+
+2015-05-12  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK][WK2] rowAtIndex is not implemented in DRT/WKTR
+        https://bugs.webkit.org/show_bug.cgi?id=116971
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Removed previously-failing test.
+
+2015-05-12  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Rebaseline some editing tests
+
+        Also add some missing baselines.
+
+        * platform/efl/editing/execCommand/5142012-1-expected.png:
+        * platform/efl/editing/execCommand/5142012-1-expected.txt:
+        * platform/efl/editing/inserting/insert-at-end-02-expected.png:
+        * platform/efl/editing/inserting/insert-at-end-02-expected.txt:
+
+2015-05-12  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream reader should not be disposable when having pending promises
+        https://bugs.webkit.org/show_bug.cgi?id=144869
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-gc.html:
+        * streams/readable-stream-gc-expected.txt:
+
+2015-05-11  Zalan Bujtas  <zalan@apple.com>
+
+        Text is misplaced when custom font does not have space glyph.
+        https://bugs.webkit.org/show_bug.cgi?id=144879
+
+        Reviewed by Myles C. Maxfield
+
+        This patch ensures that we use fallback font for the missing space glyph only when the rendered text has space in it.
+
+        If a font does not provide all the glyphs required to render the associated text, we initiate fallback fonts. It is done while
+        measuring the text at layout time. However due to the fact that we always pre-measure space, a font with no space glyph in it is never sufficient.
+        (even when the text does not require space at all)
+        Fallback fonts impact line positions through ascent/descent calculation.
+
+        * fast/ruby/ruby-expansion-cjk-2-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-3-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-4-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-5-expected.html: progression
+        * fast/ruby/ruby-expansion-cjk-expected.html: progression
+        * fast/text/font-with-no-space-glyph-expected.html: Added.
+        * fast/text/font-with-no-space-glyph.html: Added.
+        * platform/mac/svg/fonts/svg-font-general-expected.html: progression
+
+2015-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Always include rows in the tree of accessible tables
+        https://bugs.webkit.org/show_bug.cgi?id=144885
+
+        Reviewed by Chris Fleizach.
+
+        Update the expectations to reflect the rows which are now included in the tree.
+
+        * platform/efl/accessibility/table-attributes-expected.txt: Updated.
+        * platform/efl/accessibility/table-cell-spans-expected.txt: Updated.
+        * platform/efl/accessibility/table-cells-expected.txt: Updated.
+        * platform/efl/accessibility/table-sections-expected.txt: Updated.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated.
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated.
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated.
+
+2015-05-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Need expectation files for menu-list-crash2.html for Gtk and Efl
+        https://bugs.webkit.org/show_bug.cgi?id=144881
+
+        Unreviewed GTK+ and EFL gardening.
+
+        * platform/efl/accessibility/menu-list-crash2-expected.txt: Added.
+        * platform/gtk/accessibility/menu-list-crash2-expected.txt: Added.
+
+2015-05-11  Andreas Kling  <akling@apple.com>
+
+        Add a Windows-specific result for the new accessibility/menu-list-crash2.html test.
+
+        * platform/win/accessibility/menu-list-crash2-expected.txt: Added.
+
+2015-05-11  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Support domain-specific rules and exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=144833
+
+        Reviewed by Darin Adler.
+
+        * http/tests/contentextensions/domain-rules-expected.txt: Added.
+        * http/tests/contentextensions/domain-rules.html: Added.
+        * http/tests/contentextensions/domain-rules.html.json: Added.
+
+2015-05-10  Filip Pizlo  <fpizlo@apple.com>
+
+        We shouldn't promote LoadVarargs to a sequence of GetStacks and PutStacks if doing so would exceed the LoadVarargs' limit
+        https://bugs.webkit.org/show_bug.cgi?id=144851
+
+        Reviewed by Michael Saboff.
+
+        * js/regress/load-varargs-elimination-expected.txt: Added.
+        * js/regress/load-varargs-elimination.html: Added.
+        * js/regress/script-tests/load-varargs-elimination.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * js/regress/sink-huge-activation-expected.txt: Added.
+        * js/regress/sink-huge-activation.html: Added.
+
+2015-05-11  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Gardening 11th May.
+        https://bugs.webkit.org/show_bug.cgi?id=144863 
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-11  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash at WebCore::AccessibilityMenuList::addChildren()
+        https://bugs.webkit.org/show_bug.cgi?id=144860
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/menu-list-crash2-expected.txt: Added.
+        * accessibility/menu-list-crash2.html: Added.
+
+2015-05-11  Marcos Chavarría Teijeiro  <chavarria1991@gmail.com>
+
+        [GTK] Gardening 7th May.
+        https://bugs.webkit.org/show_bug.cgi?id=144735
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/media/video-controls-no-scripting-expected.txt: Added.
+
+2015-05-10  Simon Fraser  <simon.fraser@apple.com>
+
+        background-position sometimes doesn't work properly with background-attachment: fixed
+        https://bugs.webkit.org/show_bug.cgi?id=103757
+        rdar://problem/18749925
+
+        Reviewed by Darin Adler.
+        
+        Tests various configurations for painting the fixed backgrounds. The existing test was
+        actually wrong, so fixed to use a gradient (so you can see where the edges of the image are),
+        and be valid. Testing is complicated by the fact that setting top content inset actually
+        causes the snapshot to be inset at the top.
+
+        * platform/mac-wk2/tiled-drawing/resources/bordered-image.png: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-local-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover-local.html: Copied from LayoutTests/platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment.html.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-cover.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-expected.html:
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-local-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-local.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-positioned-expected.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment-positioned.html: Added.
+        * platform/mac-wk2/tiled-drawing/top-content-inset-fixed-attachment.html:
+
+2015-05-10  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] fast/events/page-visibility-transition-test.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=114789
+
+        Reviewed by Darin Adler.
+
+        * platform/gtk/TestExpectations: Unskip failing tests.
+
+2015-05-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Don't expose elements as data tables just because they use display: table
+        https://bugs.webkit.org/show_bug.cgi?id=144804
+
+        Reviewed by Mario Sanchez Prada.
+
+        * accessibility/css-table-ignored-expected.txt: Added.
+        * accessibility/css-table-ignored.html: Added.
+
+2015-05-09  Chris Dumez  <cdumez@apple.com>
+
+        Introduce ParentNode.idl / NonDocumentTypeChildNode.idl
+        https://bugs.webkit.org/show_bug.cgi?id=144825
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline test as the order of the methods changed when iterating.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2015-05-08  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        streams/reference-implementation/readable-stream-reader.html and streams/reference-implementation/bad-underlying-sources.html are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=144813
+
+        Reviewed by Alexey Proskuryakov.
+
+        Removed small timeouts for tests that went from TIMEOUT to PASS thanks to other patches.
+
+        * streams/reference-implementation/bad-underlying-sources.html:
+        * streams/reference-implementation/readable-stream-reader.html:
+
+2015-05-08  Alexey Proskuryakov  <ap@apple.com>
+
+        Update results after Sam's patch, the order of properties changed.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2015-05-08  Sam Weinig  <sam@webkit.org>
+
+        Element Traversal is not just Elements anymore
+        https://bugs.webkit.org/show_bug.cgi?id=144822
+
+        Reviewed by Simon Fraser.
+
+        Add new tests for element traversal functions on Document, DocumentFragment and CharacterData.
+
+        * fast/dom/element-traversal-on-character-data-expected.txt: Added.
+        * fast/dom/element-traversal-on-character-data.html: Added.
+        * fast/dom/element-traversal-on-document-expected.txt: Added.
+        * fast/dom/element-traversal-on-document-fragment-expected.txt: Added.
+        * fast/dom/element-traversal-on-document-fragment.html: Added.
+        * fast/dom/element-traversal-on-document.html: Added.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations: Unskip a test that was failing only because the shared
+        baseline had a failure in it.
+        * platform/gtk/fast/events/event-attribute-expected.txt: Added.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations: Un-expectation some tests that are now passing.
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        Remove expectations for tests that are also skipped for all WebKit2
+        ports. This will more easily allow us to handle them when they are
+        eventually (if at all) unskipped for WebKit2.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-08  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Some tests fail because they do not assume the popup menu captures click events
+        https://bugs.webkit.org/show_bug.cgi?id=40601
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unskip tests that are passing now
+        and classify remaining failures.
+        * platform/gtk/editing/selection/5354455-2-expected.txt: Rebaselined.
+        * platform/gtk/editing/selection/doubleclick-crash-expected.png: Rebaseline.
+        * platform/gtk/editing/selection/doubleclick-crash-expected.txt: Rebaseline.
+        * platform/gtk/editing/selection/user-select-all-image-with-single-click-expected.txt: Rebaselined.
+        * platform/gtk/editing/selection/user-select-all-with-single-click-expected.txt: Rebaselined.
+        * platform/gtk/fast/events/mouseup-from-button2-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/shadow-event-path-2-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/shadow-event-path-expected.txt: Rebaseline.
+        * platform/gtk/fast/events/updateLayoutForHitTest-expected.txt: Rebaselined.
+
+
+2015-05-08  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Scroll-snap tests timeout intermittently for overflow scroll cases
+        https://bugs.webkit.org/show_bug.cgi?id=144811
+
+        * platform/mac-wk2/TestExpectations: Mark tests as flaky.
+
+2015-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Throttle RequestAnimationFrame in subframes that are outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        <rdar://problem/20688782>
+
+        Reviewed by Simon Fraser.
+
+        * fast/animation/request-animation-frame-throttle-subframe-display-none-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe-display-none.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in "display: none" subframes.
+
+        * fast/animation/request-animation-frame-throttle-subframe-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in frames that are outside the viewport.
+
+        * fast/animation/resources/requestAnimationFrame-frame-2.html: Added.
+        * fast/animation/resources/requestAnimationFrame-frame.html: Added.
+
+        * platform/win/TestExpectations:
+        Skip the 2 new tests on Windows as requestAnimationFrame throttling is
+        only supported on Cocoa.
+
+2015-05-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WTR doesn't correctly handle the Escape key
+        https://bugs.webkit.org/show_bug.cgi?id=144788
+
+        Reviewed by Martin Robinson.
+
+        Unskip editing/selection/5354455-1.html.
+
+        * platform/gtk/TestExpectations:
+
+2015-05-08  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        [Win] Unskip passing test case after r183981
+        https://bugs.webkit.org/show_bug.cgi?id=140517
+
+        Reviewed by Brent Fulgham.
+
+        * platform/win/TestExpectations:
+
+2015-05-08  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening on 8th May.
+
+        Mark flaky tests and timeout tests after using xorgdriver on EFL port.
+
+        * platform/efl/TestExpectations:
+
+2015-05-08  Xabier Rodriguez Calvar  <calvaris@igalia.com> and Youenn Fablet <youenn.fablet@crf.canon.fr>
+
+        [Streams API] ReadableStream constructor start function should be able to error the stream
+        https://bugs.webkit.org/show_bug.cgi?id=141162
+
+        Reviewed by Darin Adler.
+
+        * streams/readable-stream-controller-error-expected.txt: Added.
+        * streams/readable-stream-controller-error.html: Added.
+        * streams/reference-implementation/bad-underlying-sources-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183985.
+        https://bugs.webkit.org/show_bug.cgi?id=144796
+
+        broke loader/go-back-to-different-window-size.html (Requested
+        by kling on #webkit).
+
+        Reverted changeset:
+
+        "Throttle RequestAnimationFrame in subframes that are outside
+        the viewport"
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        http://trac.webkit.org/changeset/183985
+
+2015-05-08  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r183072): dfg-put-by-id-prototype-check.js.layout-dfg-eager-no-cjit fails on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=144256
+
+        Unreviewed gardening, skip the failing test on AArch64 Linux.
+
+        * js/script-tests/dfg-put-by-val-direct-to-generic-array.js:
+
+2015-05-07  Chris Dumez  <cdumez@apple.com>
+
+        Throttle RequestAnimationFrame in subframes that are outside the viewport
+        https://bugs.webkit.org/show_bug.cgi?id=144718
+        <rdar://problem/20688782>
+
+        Reviewed by Simon Fraser.
+
+        * fast/animation/request-animation-frame-throttle-subframe-display-none-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe-display-none.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in "display: none" subframes.
+
+        * fast/animation/request-animation-frame-throttle-subframe-expected.txt: Added.
+        * fast/animation/request-animation-frame-throttle-subframe.html: Added.
+        Add layout test to test that RequestAnimationFrame is properly throttled
+        in frames that are outside the viewport.
+
+        * fast/animation/resources/requestAnimationFrame-frame-2.html: Added.
+        * fast/animation/resources/requestAnimationFrame-frame.html: Added.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Calculate source-size length as a float
+        https://bugs.webkit.org/show_bug.cgi?id=144766
+
+        Reviewed by Dean Jackson.
+
+        Add tests that make sure fractional source-size lengths are supported
+        and are calculated as floats.
+
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-1x.html:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-2x.html:
+
+2015-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183895.
+        https://bugs.webkit.org/show_bug.cgi?id=144786
+
+        Many tests became flaky (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Expose more font weights for -apple-system"
+        https://bugs.webkit.org/show_bug.cgi?id=144707
+        http://trac.webkit.org/changeset/183895
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove touchadjustment tests
+        https://bugs.webkit.org/show_bug.cgi?id=144780
+
+        Reviewed by Daniel Bates.
+
+        These tests test a feature that has been removed from WebKit entirely and all
+        ports skip the tests. This code was removed in http://trac.webkit.org/changeset/162231.
+
+        * platform/efl/TestExpectations: Remove expectations.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/ios-simulator/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+        * platform/wincairo/TestExpectations:
+        * touchadjustment: Removed all files in this directory.
+
+2015-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        New results after r183970. Fixed elements are now always considered to intersect
+        the coverage rect.
+
+        * platform/mac-wk2/tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+
+2015-05-07  Sam Weinig  <sam@webkit.org>
+
+        Consider implementing Document.scrollingElement
+        <rdar://problem/20845213>
+        https://bugs.webkit.org/show_bug.cgi?id=143609
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/Document/scrollingElement-quirks-mode-expected.txt: Added.
+        * fast/dom/Document/scrollingElement-quirks-mode.html: Added.
+        * fast/dom/Document/scrollingElement-standards-mode-expected.txt: Added.
+        * fast/dom/Document/scrollingElement-standards-mode.html: Added.
+
+2015-05-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Applying a filter on an SVG element, which is larger than 4096 pixels, causes this element to be rendered shifted to the left
+        https://bugs.webkit.org/show_bug.cgi?id=144335
+
+        Reviewed by Darin Adler.
+
+        * svg/filters/big-sized-off-viewport-filter-expected.svg: Added.
+        * svg/filters/big-sized-off-viewport-filter.svg: Added.
+        Ensure when applying a filter on a large SVG element, the viewport of the
+        SVG includes the correct drawing part of this element.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Handle meta viewport in HTMLPreloadScanner
+        https://bugs.webkit.org/show_bug.cgi?id=144640
+
+        Reviewed by Dean Jackson.
+
+        Added a layout test that is simply calling an internals method
+        that tests the HTMLPreloadScanner.
+
+        * fast/dom/HTMLMetaElement/meta-preloader-expected.txt: Added.
+        * fast/dom/HTMLMetaElement/meta-preloader.html: Added.
+
+2015-05-07  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r164449): Subpixel rendering: http://www.apple.com/iphone-6/ "Faster wireless." image displays vertical black line on 1x displays at specific window width.
+        https://bugs.webkit.org/show_bug.cgi?id=144723
+        rdar://problem/18307094
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that the backing store's graphics layer is always positioned on a device pixel boundary.
+
+        While calculating the backing store's graphics layer location, its ancestor layer's compositing bounds is taken into account.
+        However the compositing bounds is an unsnapped value, so in order to place the graphics layer properly,
+        we need to pixel align the ancestor compositing bounds before using it to adjust the child's graphics layer position.
+
+        * compositing/ancestor-compositing-layer-is-on-subpixel-position-expected.html: Added.
+        * compositing/ancestor-compositing-layer-is-on-subpixel-position.html: Added.
+        * platform/mac/compositing/layer-creation/overlap-animation-container-expected.txt: progression.
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix sizes crash and add invalid value tests.
+        https://bugs.webkit.org/show_bug.cgi?id=144739
+
+        Reviewed by Darin Adler.
+
+        Add tests that make sure that invalid values are properly handled, and a 100vw
+        source-size length is being used for srcset and for intrinsic dimension calculation.
+
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids-expected.txt: Added.
+        * fast/dom/HTMLImageElement/sizes/image-sizes-invalids.html: Added.
+
+2015-05-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the WK1-only code path for independently composited iframes
+        https://bugs.webkit.org/show_bug.cgi?id=144722
+
+        Reviewed by Dean Jackson.
+        
+        Results different from WK2, because WK1 does not make layers for scrollbars.
+
+        * platform/mac-wk1/compositing/visible-rect/iframe-no-layers-expected.txt: Added.
+
+2015-05-06  Dean Jackson  <dino@apple.com>
+
+        Handle backdrop views that have to tile
+        https://bugs.webkit.org/show_bug.cgi?id=142317
+        <rdar://problem/20049088>
+
+        Reviewed by Simon Fraser.
+
+        Take 2 - this was rolled out because Mavericks was crashing.
+
+        A test that creates some backdrop views, then makes them
+        big enough that it would trigger tiling (which we don't want
+        to happen).
+
+        * compositing/media-controls-bar-appearance-big-expected.txt: Added.
+        * compositing/media-controls-bar-appearance-big.html: Added.
+        * platform/mac-mavericks/TestExpectations: Skip tests on Mavericks.
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] All spell checking layout tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=144648
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unskip and reclassify previously failing tests.
+        * platform/gtk/editing/spelling/spellcheck-paste-expected.txt: Removed.
+
+2015-05-07  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] The pre element should be mapped to ATK_ROLE_SECTION; not ATK_ROLE_PANEL
+        https://bugs.webkit.org/show_bug.cgi?id=144702
+
+        Reviewed by Chris Fleizach.
+
+        In addition to updating the platform expectations for Efl and Gtk, the computed
+        roles test needed to be updated because there is not a one-to-one mapping between
+        the HTML pre element and any ARIA role type.
+
+        * accessibility/roles-computedRoleString-expected.txt: Updated.
+        * accessibility/roles-computedRoleString.html: Updated.
+        * platform/efl/accessibility/roles-exposed-expected.txt: Updated.
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated.
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Unreviewed gardening.
+
+        Removed stale expected files, because these tests are reftests now. (as RWT suggested)
+        Commented old expectations after r183925 to avoid having ambiguous expectations.
+
+        * platform/efl/TestExpectations:
+        * platform/efl/animations/cross-fade-background-image-expected.png: Removed.
+        * platform/efl/animations/cross-fade-background-image-expected.txt: Removed.
+        * platform/efl/css3/masking/clip-path-circle-relative-overflow-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-evenodd-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-expected.png: Removed.
+        * platform/efl/css3/masking/clip-path-polygon-nonzero-expected.png: Removed.
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Mouseevent/hover tests fail with XorgDriver
+        https://bugs.webkit.org/show_bug.cgi?id=144741
+
+        Unreviewed gardening, mark failing tests, skip timeouting tests.
+
+        * platform/efl/TestExpectations:
+
+2015-05-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] REGRESSION(r183907): It made all inspector-protocol test crash
+        https://bugs.webkit.org/show_bug.cgi?id=144737
+
+        Unreviewed gardening, skip crashing tests.
+
+        * platform/efl/TestExpectations:
+
+2015-05-07  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix <script srcset> being loaded by the preloader.
+        https://bugs.webkit.org/show_bug.cgi?id=144675
+
+        Reviewed by Darin Adler.
+
+        Add preloader tests to make sure that <script src> is preloaded,
+        and <script srcset> is not.
+
+        * http/tests/loading/preload-script-src-expected.txt: Added.
+        * http/tests/loading/preload-script-src.html: Added.
+        * http/tests/loading/preload-script-srcset-ignored-expected.txt: Added.
+        * http/tests/loading/preload-script-srcset-ignored.html: Added.
+
 2015-05-06  Yoav Weiss  <yoav@yoav.ws>
 
         Add srcset preloader tests

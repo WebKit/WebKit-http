@@ -42,6 +42,10 @@
 #include "WebHitTestResult.h"
 #endif
 
+#if PLUGIN_ARCHITECTURE(X11)
+#include <WebCore/XUniqueResource.h>
+#endif
+
 namespace WebCore {
 class MachSendRight;
 class HTTPHeaderMap;
@@ -297,8 +301,9 @@ private:
     // A transform that can be used to convert from root view coordinates to plug-in coordinates.
     WebCore::AffineTransform m_pluginToRootViewTransform;
 
-    // FIXME: Get rid of these.
+#if PLUGIN_ARCHITECTURE(X11)
     WebCore::IntRect m_frameRectInWindowCoordinates;
+#endif
 
     CString m_userAgent;
 
@@ -387,7 +392,7 @@ private:
     NP_CGContext m_npCGContext;
 #endif
 #elif PLUGIN_ARCHITECTURE(X11)
-    Pixmap m_drawable;
+    WebCore::XUniquePixmap m_drawable;
     Display* m_pluginDisplay;
 #if PLATFORM(GTK)
     GtkWidget* m_platformPluginWidget;

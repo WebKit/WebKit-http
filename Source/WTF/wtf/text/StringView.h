@@ -30,6 +30,8 @@
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/ConversionMode.h>
 #include <wtf/text/LChar.h>
 #include <wtf/text/StringCommon.h>
 
@@ -58,6 +60,7 @@ public:
 
     StringView(const String&);
     StringView(const StringImpl&);
+    StringView(const StringImpl*);
     StringView(const LChar*, unsigned length);
     StringView(const UChar*, unsigned length);
 
@@ -95,6 +98,8 @@ public:
     WTF_EXPORT_STRING_API RetainPtr<NSString> createNSStringWithoutCopying() const;
 #endif
 
+    WTF_EXPORT_STRING_API CString utf8(ConversionMode = LenientConversion) const;
+
     class UpconvertedCharacters;
     UpconvertedCharacters upconvertedCharacters() const;
 
@@ -104,6 +109,9 @@ public:
     StringView substring(unsigned start, unsigned length = std::numeric_limits<unsigned>::max()) const;
 
     size_t find(UChar, unsigned start = 0) const;
+
+    WTF_EXPORT_STRING_API size_t find(StringView, unsigned start) const;
+
     WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&) const;
     WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&, unsigned startOffset) const;
 
@@ -155,6 +163,12 @@ bool equal(StringView, StringView);
 bool equal(StringView, const LChar*);
 bool equal(StringView, const char*);
 bool equalIgnoringASCIICase(StringView, StringView);
+WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(StringView a, const char* b, unsigned bLength);
+template<unsigned charactersCount>
+bool equalIgnoringASCIICase(StringView a, const char (&b)[charactersCount])
+{
+    return equalIgnoringASCIICase(a, b, charactersCount - 1);
+}
 
 inline bool operator==(StringView a, StringView b) { return equal(a, b); }
 inline bool operator==(StringView a, const LChar* b) { return equal(a, b); }
@@ -269,6 +283,18 @@ inline StringView::StringView(const StringImpl& string)
         initialize(string.characters8(), string.length());
     else
         initialize(string.characters16(), string.length());
+}
+
+inline StringView::StringView(const StringImpl* string)
+{
+    if (!string)
+        return;
+
+    setUnderlyingString(string);
+    if (string->is8Bit())
+        initialize(string->characters8(), string->length());
+    else
+        initialize(string->characters16(), string->length());
 }
 
 inline StringView::StringView(const String& string)

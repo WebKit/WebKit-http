@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +33,8 @@ function every(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.every requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.every callback must be a function");
     
@@ -58,8 +59,8 @@ function forEach(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.forEach requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.forEach callback must be a function");
     
@@ -80,8 +81,8 @@ function filter(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.filter requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.filter callback must be a function");
     
@@ -109,8 +110,8 @@ function map(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.map requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.map callback must be a function");
     
@@ -136,8 +137,8 @@ function some(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.some requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.some callback must be a function");
     
@@ -160,7 +161,7 @@ function fill(value /* [, start [, end]] */)
     if (this === undefined)
         throw new @TypeError("Array.prototype.fill requires that |this| not be undefined");
     var O = @Object(this);
-    var len = O.length >>> 0;
+    var len = @ToLength(O.length);
     var relativeStart = 0;
     if (arguments.length > 1 && arguments[1] !== undefined)
         relativeStart = arguments[1] | 0;
@@ -201,15 +202,13 @@ function find(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.find requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.find callback must be a function");
     
     var thisArg = arguments.length > 1 ? arguments[1] : undefined;
     for (var i = 0; i < length; i++) {
-        if (!(i in array))
-            continue;
         var kValue = array[i];
         if (callback.@call(thisArg, kValue, i, array))
             return kValue;
@@ -226,15 +225,13 @@ function findIndex(callback /*, thisArg */) {
         throw new @TypeError("Array.prototype.findIndex requires that |this| not be undefined");
     
     var array = @Object(this);
-    var length = array.length >>> 0;
-    
+    var length = @ToLength(array.length);
+
     if (typeof callback !== "function")
         throw new @TypeError("Array.prototype.findIndex callback must be a function");
     
     var thisArg = arguments.length > 1 ? arguments[1] : undefined;
     for (var i = 0; i < length; i++) {
-        if (!(i in array))
-            continue;
         if (callback.@call(thisArg, array[i], i, array))
             return i;
     }
@@ -250,7 +247,7 @@ function includes(searchElement /*, fromIndex*/) {
         throw new @TypeError("Array.prototype.includes requires that |this| not be undefined");
 
     var array = @Object(this);
-    var length = array.length >>> 0;
+    var length = @ToLength(array.length);
 
     if (length === 0)
         return false;
@@ -458,4 +455,61 @@ function sort(comparator)
     var array = @Object(this);
     comparatorSort(array, comparator);
     return array;
+}
+
+function copyWithin(target, start /*, end */)
+{
+    "use strict";
+
+    function maxWithPositives(a, b)
+    {
+        return (a < b) ? b : a;
+    }
+
+    function minWithMaybeNegativeZeroAndPositive(maybeNegativeZero, positive)
+    {
+        return (maybeNegativeZero < positive) ? maybeNegativeZero : positive;
+    }
+
+    if (this === null || this === undefined)
+        throw new @TypeError("Array.copyWithin requires that |this| not be null or undefined");
+    var thisObject = @Object(this);
+
+    var length = @ToLength(thisObject.length);
+
+    var relativeTarget = @ToInteger(target);
+    var to = (relativeTarget < 0) ? maxWithPositives(length + relativeTarget, 0) : minWithMaybeNegativeZeroAndPositive(relativeTarget, length);
+
+    var relativeStart = @ToInteger(start);
+    var from = (relativeStart < 0) ? maxWithPositives(length + relativeStart, 0) : minWithMaybeNegativeZeroAndPositive(relativeStart, length);
+
+    var relativeEnd;
+    if (arguments.length >= 3) {
+        var end = arguments[2];
+        if (end === undefined)
+            relativeEnd = length;
+        else
+            relativeEnd = @ToInteger(end);
+    } else
+        relativeEnd = length;
+
+    var finalValue = (relativeEnd < 0) ? maxWithPositives(length + relativeEnd, 0) : minWithMaybeNegativeZeroAndPositive(relativeEnd, length);
+
+    var count = minWithMaybeNegativeZeroAndPositive(finalValue - from, length - to);
+
+    var direction = 1;
+    if (from < to && to < from + count) {
+        direction = -1;
+        from = from + count - 1;
+        to = to + count - 1;
+    }
+
+    for (var i = 0; i < count; ++i, from += direction, to += direction) {
+        if (from in thisObject)
+            thisObject[to] = thisObject[from];
+        else
+            delete thisObject[to];
+    }
+
+    return thisObject;
 }

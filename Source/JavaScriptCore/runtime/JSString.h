@@ -30,6 +30,7 @@
 #include "PropertySlot.h"
 #include "Structure.h"
 #include <array>
+#include <wtf/text/StringView.h>
 
 namespace JSC {
 
@@ -44,7 +45,6 @@ JSString* jsString(ExecState*, const String&); // returns empty string if passed
 
 JSString* jsSingleCharacterString(VM*, UChar);
 JSString* jsSingleCharacterString(ExecState*, UChar);
-JSString* jsSingleCharacterSubstring(ExecState*, const String&, unsigned offset);
 JSString* jsSubstring(VM*, const String&, unsigned offset, unsigned length);
 JSString* jsSubstring(ExecState*, const String&, unsigned offset, unsigned length);
 
@@ -143,6 +143,7 @@ public:
     Identifier toIdentifier(ExecState*) const;
     AtomicString toAtomicString(ExecState*) const;
     AtomicStringImpl* toExistingAtomicString(ExecState*) const;
+    StringView view(ExecState*) const;
     const String& value(ExecState*) const;
     const String& tryGetValue() const;
     const StringImpl* tryGetValueImpl() const;
@@ -369,6 +370,7 @@ private:
     void resolveRopeInternal16(UChar*) const;
     void resolveRopeInternal16NoSubstring(UChar*) const;
     void clearFibers() const;
+    StringView view(ExecState*) const;
 
     JS_EXPORT_PRIVATE JSString* getIndexSlowCase(ExecState*, unsigned);
 
@@ -441,16 +443,6 @@ ALWAYS_INLINE JSString* jsSingleCharacterString(VM* vm, UChar c)
     return JSString::create(*vm, String(&c, 1).impl());
 }
 
-ALWAYS_INLINE JSString* jsSingleCharacterSubstring(ExecState* exec, const String& s, unsigned offset)
-{
-    VM* vm = &exec->vm();
-    ASSERT(offset < static_cast<unsigned>(s.length()));
-    UChar c = s.characterAt(offset);
-    if (c <= maxSingleCharacterString)
-        return vm->smallStrings.singleCharacterString(c);
-    return JSString::create(*vm, StringImpl::createSubstringSharingImpl(s.impl(), offset, 1));
-}
-
 inline JSString* jsNontrivialString(VM* vm, const String& s)
 {
     ASSERT(s.length() > 1);
@@ -481,7 +473,7 @@ ALWAYS_INLINE AtomicStringImpl* JSString::toExistingAtomicString(ExecState* exec
         return static_cast<const JSRopeString*>(this)->resolveRopeToExistingAtomicString(exec);
     if (m_value.impl()->isAtomic())
         return static_cast<AtomicStringImpl*>(m_value.impl());
-    return AtomicString::find(m_value.impl());
+    return AtomicStringImpl::lookUp(m_value.impl());
 }
 
 inline const String& JSString::value(ExecState* exec) const
@@ -504,7 +496,7 @@ inline JSString* JSString::getIndex(ExecState* exec, unsigned i)
     if (isRope())
         return static_cast<JSRopeString*>(this)->getIndexSlowCase(exec, i);
     ASSERT(i < m_value.length());
-    return jsSingleCharacterSubstring(exec, m_value, i);
+    return jsSingleCharacterString(exec, m_value[i]);
 }
 
 inline JSString* jsString(VM* vm, const String& s)
@@ -696,6 +688,24 @@ ALWAYS_INLINE String JSValue::toWTFStringInline(ExecState* exec) const
         return static_cast<JSString*>(asCell())->value(exec);
 
     return inlineJSValueNotStringtoString(*this, exec);
+}
+
+ALWAYS_INLINE StringView JSRopeString::view(ExecState* exec) const
+{
+    if (isSubstring()) {
+        if (is8Bit())
+            return StringView(substringBase()->m_value.characters8() + substringOffset(), m_length);
+        return StringView(substringBase()->m_value.characters16() + substringOffset(), m_length);
+    }
+    resolveRope(exec);
+    return StringView(m_value);
+}
+
+ALWAYS_INLINE StringView JSString::view(ExecState* exec) const
+{
+    if (isRope())
+        return static_cast<const JSRopeString*>(this)->view(exec);
+    return StringView(m_value);
 }
 
 } // namespace JSC

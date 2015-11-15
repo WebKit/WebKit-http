@@ -30,13 +30,25 @@ var categorizedQueuesByPlatformAndBuildType = {};
 
 for (var i = 0; i < buildbots.length; ++i) {
     var buildbot = buildbots[i];
-    for (var id in buildbot.queues) {
-        var queue = buildbot.queues[id];
-        var platform = categorizedQueuesByPlatformAndBuildType[queue.platform];
+    for (var id in buildbot.queuesInfo) {
+        if (buildbot.queuesInfo[id].combinedQueues) {
+            var info = buildbot.queuesInfo[id];
+            var queue = {
+                id: id,
+                branch: info.branch,
+                platform: info.platform.name,
+                heading: info.heading,
+                combinedQueues: Object.keys(info.combinedQueues).map(function(combinedQueueID) { return buildbot.queues[combinedQueueID]; }),
+            };
+        } else
+            var queue = buildbot.queues[id];
+
+        var platformName = queue.platform;
+        var platform = categorizedQueuesByPlatformAndBuildType[platformName];
         if (!platform)
-            platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
+            platform = categorizedQueuesByPlatformAndBuildType[platformName] = {};
         if (!platform.builders)
-            platform.builders = {};
+            platform.builders = [];
 
         var categoryName;
         if (queue.builder)
@@ -47,6 +59,10 @@ for (var i = 0; i < buildbots.length; ++i) {
             categoryName = "performance";
         else if (queue.leaks)
             categoryName = "leaks";
+        else if (queue.staticAnalyzer)
+            categoryName = "staticAnalyzer";
+        else if ("combinedQueues" in queue)
+            categoryName = "combinedQueues";
         else {
             console.assert("Unknown queue type.");
             continue;
@@ -54,15 +70,9 @@ for (var i = 0; i < buildbots.length; ++i) {
 
         category = platform[categoryName];
         if (!category)
-            category = platform[categoryName] = {};
+            category = platform[categoryName] = [];
 
-        var buildType = queue.debug ? "debug" : "release";
-
-        buildQueues = category[buildType];
-        if (!buildQueues)
-            buildQueues = category[buildType] = [];
-
-        buildQueues.push(queue);
+        category.push(queue);
     }
 }
 
@@ -73,7 +83,7 @@ if (hasBubbles) {
         if (!platform)
             platform = categorizedQueuesByPlatformAndBuildType[queue.platform] = {};
         if (!platform.builders)
-            platform.builders = {};
+            platform.builders = [];
 
         var categoryName = BubblesCategory;
 
@@ -153,15 +163,8 @@ function documentReady()
     }
 
     var header = document.createElement("th");
-    header.textContent = "Performance";
+    header.textContent = "Other";
     row.appendChild(header);
-
-    if (hasBubbles) {
-        // Currently, EWS and commit queues are the only items in Other category.
-        var header = document.createElement("th");
-        header.textContent = "Other";
-        row.appendChild(header);
-    }
 
     table.appendChild(row);
 
@@ -199,7 +202,7 @@ function documentReady()
 
         cell = document.createElement("td");
 
-        var view = new BuildbotBuilderQueueView(platformQueues.builders.debug, platformQueues.builders.release);
+        var view = new BuildbotBuilderQueueView(platformQueues.builders);
         cell.appendChild(view.element);
         row.appendChild(cell);
 
@@ -208,7 +211,7 @@ function documentReady()
 
             var testerProperty = Buildbot.TestCategory[testerKey];
             if (platformQueues[testerProperty]) {
-                var view = new BuildbotTesterQueueView(platformQueues[testerProperty].debug, platformQueues[testerProperty].release);
+                var view = new BuildbotTesterQueueView(platformQueues[testerProperty]);
                 cell.appendChild(view.element);
             }
 
@@ -216,28 +219,35 @@ function documentReady()
         }
 
         var cell = document.createElement("td");
-        if (platformQueues.performance && platformQueues.performance.release) {
-            var view = new BuildbotPerformanceQueueView(platformQueues.performance.release);
+        if (platformQueues.performance) {
+            var view = new BuildbotPerformanceQueueView(platformQueues.performance);
             cell.appendChild(view.element);
         }
 
-        if (platformQueues.leaks && platformQueues.leaks.debug) {
-            var view = new BuildbotLeaksQueueView(platformQueues.leaks.debug);
+        if (platformQueues.staticAnalyzer) {
+            var view = new BuildbotStaticAnalyzerQueueView(platformQueues.staticAnalyzer);
             cell.appendChild(view.element);
+        }
+
+        if (platformQueues.leaks) {
+            var view = new BuildbotLeaksQueueView(platformQueues.leaks);
+            cell.appendChild(view.element);
+        }
+
+        if (platformQueues[BubblesCategory]) {
+            var view = new BubbleQueueView(platformQueues[BubblesCategory]);
+            cell.appendChild(view.element);
+        }
+
+        // Currently, all combined queues are in Other column.
+        if (platformQueues.combinedQueues) {
+            for (var i = 0; i < platformQueues.combinedQueues.length; ++i) {
+                var view = new BuildbotCombinedQueueView(platformQueues.combinedQueues[i]);
+                cell.appendChild(view.element);
+            }
         }
 
         row.appendChild(cell);
-
-        if (hasBubbles) {
-            var cell = document.createElement("td");
-
-            if (platformQueues[BubblesCategory]) {
-                var view = new BubbleQueueView(platformQueues[BubblesCategory]);
-                cell.appendChild(view.element);
-            }
-
-            row.appendChild(cell);
-        }
 
         table.appendChild(row);
     }

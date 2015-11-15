@@ -104,8 +104,8 @@ void XSLTProcessor::parseErrorFunc(void* userData, xmlError* error)
 }
 
 // FIXME: There seems to be no way to control the ctxt pointer for loading here, thus we have globals.
-static XSLTProcessor* globalProcessor = 0;
-static CachedResourceLoader* globalCachedResourceLoader = 0;
+static XSLTProcessor* globalProcessor = nullptr;
+static CachedResourceLoader* globalCachedResourceLoader = nullptr;
 static xmlDocPtr docLoaderFunc(const xmlChar* uri,
                                xmlDictPtr,
                                int options,
@@ -197,7 +197,7 @@ static int writeToStringBuilder(void* context, const char* buffer, int len)
 
 static bool saveResultToString(xmlDocPtr resultDoc, xsltStylesheetPtr sheet, String& resultString)
 {
-    xmlOutputBufferPtr outputBuf = xmlAllocOutputBuffer(0);
+    xmlOutputBufferPtr outputBuf = xmlAllocOutputBuffer(nullptr);
     if (!outputBuf)
         return false;
 
@@ -226,13 +226,12 @@ static const char** xsltParamArrayFromParameterMap(XSLTProcessor::ParameterMap& 
 
     const char** parameterArray = (const char**)fastMalloc(((parameters.size() * 2) + 1) * sizeof(char*));
 
-    XSLTProcessor::ParameterMap::iterator end = parameters.end();
     unsigned index = 0;
-    for (XSLTProcessor::ParameterMap::iterator it = parameters.begin(); it != end; ++it) {
-        parameterArray[index++] = fastStrDup(it->key.utf8().data());
-        parameterArray[index++] = fastStrDup(it->value.utf8().data());
+    for (auto& parameter : parameters) {
+        parameterArray[index++] = fastStrDup(parameter.key.utf8().data());
+        parameterArray[index++] = fastStrDup(parameter.value.utf8().data());
     }
-    parameterArray[index] = 0;
+    parameterArray[index] = nullptr;
 
     return parameterArray;
 }
@@ -273,7 +272,7 @@ static inline xmlDocPtr xmlDocPtrFromNode(Node& sourceNode, bool& shouldDelete)
     Ref<Document> ownerDocument(sourceNode.document());
     bool sourceIsDocument = (&sourceNode == &ownerDocument.get());
 
-    xmlDocPtr sourceDoc = 0;
+    xmlDocPtr sourceDoc = nullptr;
     if (sourceIsDocument && ownerDocument->transformSource())
         sourceDoc = (xmlDocPtr)ownerDocument->transformSource()->platformSource();
     if (!sourceDoc) {
@@ -370,7 +369,7 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
     sheet->method = origMethod;
     setXSLTLoadCallBack(0, 0, 0);
     xsltFreeStylesheet(sheet);
-    m_stylesheet = 0;
+    m_stylesheet = nullptr;
 
     return success;
 }

@@ -130,11 +130,13 @@ const Vector<WebProcessPool*>& WebProcessPool::allProcessPools()
     return processPools();
 }
 
-static WebsiteDataStore::Configuration websiteDataStoreConfiguration(API::ProcessPoolConfiguration& processPoolConfiguration)
+static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::ProcessPoolConfiguration& processPoolConfiguration)
 {
     WebsiteDataStore::Configuration configuration;
 
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
+    configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
+    configuration.applicationCacheDirectory = WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory();
 
     return configuration;
 }
@@ -158,7 +160,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_diskCacheSizeOverride(m_configuration->diskCacheSizeOverride())
     , m_memorySamplerEnabled(false)
     , m_memorySamplerInterval(1400.0)
-    , m_websiteDataStore(API::WebsiteDataStore::create(websiteDataStoreConfiguration(m_configuration.get())))
+    , m_websiteDataStore(m_configuration->shouldHaveLegacyDataStore() ? API::WebsiteDataStore::create(legacyWebsiteDataStoreConfiguration(m_configuration)) : nullptr)
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
 #endif
@@ -271,6 +273,11 @@ WebProcessPool::~WebProcessPool()
 
 #ifndef NDEBUG
     processPoolCounter.decrement();
+#endif
+
+#if ENABLE(NETWORK_PROCESS)
+    if (m_networkProcess)
+        m_networkProcess->shutDownProcess();
 #endif
 }
 
@@ -411,11 +418,14 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
-    parameters.cookieStorageDirectory = cookieStorageDirectory();
+#if ENABLE(SECCOMP_FILTERS)
+    parameters.cookieStorageDirectory = this->cookieStorageDirectory();
+#endif
 
 #if PLATFORM(IOS)
-    if (!parameters.cookieStorageDirectory.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(parameters.cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
+    String cookieStorageDirectory = this->cookieStorageDirectory();
+    if (!cookieStorageDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
 
     String containerCachesDirectory = this->networkingCachesDirectory();
     if (!containerCachesDirectory.isEmpty())
@@ -610,11 +620,14 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
-    parameters.cookieStorageDirectory = cookieStorageDirectory();
+#if ENABLE(SECCOMP_FILTERS)
+    parameters.cookieStorageDirectory = this->cookieStorageDirectory();
+#endif
 
 #if PLATFORM(IOS)
-    if (!parameters.cookieStorageDirectory.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(parameters.cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
+    String cookieStorageDirectory = this->cookieStorageDirectory();
+    if (!cookieStorageDirectory.isEmpty())
+        SandboxExtension::createHandleForReadWriteDirectory(cookieStorageDirectory, parameters.cookieStorageDirectoryExtensionHandle);
 
     String containerCachesDirectory = this->webContentCachesDirectory();
     if (!containerCachesDirectory.isEmpty())
@@ -1159,7 +1172,7 @@ String WebProcessPool::applicationCacheDirectory() const
     if (!m_overrideApplicationCacheDirectory.isEmpty())
         return m_overrideApplicationCacheDirectory;
 
-    return platformDefaultApplicationCacheDirectory();
+    return legacyPlatformDefaultApplicationCacheDirectory();
 }
 
 void WebProcessPool::setIconDatabasePath(const String& path)
@@ -1187,13 +1200,16 @@ String WebProcessPool::diskCacheDirectory() const
     return platformDefaultDiskCacheDirectory();
 }
 
+#if ENABLE(SECCOMP_FILTERS)
 String WebProcessPool::cookieStorageDirectory() const
 {
     if (!m_overrideCookieStorageDirectory.isEmpty())
         return m_overrideCookieStorageDirectory;
 
-    return platformDefaultCookieStorageDirectory();
+    // FIXME: This doesn't make much sense. Is this function used at all? We used to call platform code, but no existing platforms implemented that function.
+    return emptyString();
 }
+#endif
 
 void WebProcessPool::useTestingNetworkSession()
 {

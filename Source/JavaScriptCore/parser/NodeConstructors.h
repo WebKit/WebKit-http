@@ -143,6 +143,13 @@ namespace JSC {
         , m_templateExpressions(templateExpressions)
     {
     }
+
+    inline TaggedTemplateNode::TaggedTemplateNode(const JSTokenLocation& location, ExpressionNode* tag, TemplateLiteralNode* templateLiteral)
+        : ExpressionNode(location)
+        , m_tag(tag)
+        , m_templateLiteral(templateLiteral)
+    {
+    }
 #endif
 
     inline RegExpNode::RegExpNode(const JSTokenLocation& location, const Identifier& pattern, const Identifier& flags)
@@ -341,12 +348,13 @@ namespace JSC {
     {
     }
 
-    inline FunctionCallBracketNode::FunctionCallBracketNode(const JSTokenLocation& location, ExpressionNode* base, ExpressionNode* subscript, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+    inline FunctionCallBracketNode::FunctionCallBracketNode(const JSTokenLocation& location, ExpressionNode* base, ExpressionNode* subscript, bool subscriptHasAssignments, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
         : ExpressionNode(location)
         , ThrowableSubExpressionData(divot, divotStart, divotEnd)
         , m_base(base)
         , m_subscript(subscript)
         , m_args(args)
+        , m_subscriptHasAssignments(subscriptHasAssignments)
     {
     }
 

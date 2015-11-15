@@ -1196,6 +1196,7 @@ App.AnalysisTaskController = Ember.Controller.extend({
                 elementId: 'bug-' + bugTracker.get('id'),
                 content: bugTracker,
                 bugNumber: bugNumber,
+                bugUrl: bugTracker.urlFromBugNumber(bugNumber),
                 editedBugNumber: bugNumber,
             });
         }));
@@ -1228,7 +1229,7 @@ App.AnalysisTaskController = Ember.Controller.extend({
                 id: point.measurement.id(),
                 measurement: point.measurement,
                 label: 'Point ' + (index + 1),
-                value: chartData.formatWithUnit(point.value),
+                value: chartData.formatter(point.value),
             };
         });
 
@@ -1295,15 +1296,25 @@ App.AnalysisTaskController = Ember.Controller.extend({
         });
     }.observes('analysisPoints'),
     actions: {
-        associateBug: function (bugTracker, bugNumber)
+        addBug: function (bugTracker, bugNumber)
         {
             var model = this.get('model');
-            this.store.createRecord('bug',
-                {task: this.get('model'), bugTracker: bugTracker.get('content'), number: bugNumber}).save().then(function () {
-                    // FIXME: Should we notify the user?
-                }, function (error) {
-                    alert('Failed to associate the bug: ' + error);
-                });
+            if (!bugTracker)
+                bugTracker = this.get('bugTrackers').objectAt(0);
+            var bug = {task: this.get('model'), bugTracker: bugTracker.get('content'), number: bugNumber};
+            this.store.createRecord('bug', bug).save().then(function () {
+                alert('Associated the ' + bugTracker.get('name') + ' ' + bugNumber + ' with this analysis.');
+            }, function (error) {
+                alert('Failed to associate the bug: ' + error);
+            });
+        },
+        deleteBug: function (bug)
+        {
+            bug.destroyRecord().then(function () {
+                alert('Successfully deassociated the bug.');
+            }, function (error) {
+                alert('Failed to disassociate the bug: ' + error);
+            });
         },
         saveStatus: function ()
         {
@@ -1413,14 +1424,21 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
 
         this.set('configurations', configurations);
 
+        var probabilityFormatter = d3.format('.2p');
         var comparisons = [];
         for (var i = 0; i < configurations.length - 1; i++) {
             var summary1 = configurations[i].summary;
             for (var j = i + 1; j < configurations.length; j++) {
                 var summary2 = configurations[j].summary;
+
+                var valueDelta = testResults.deltaFormatter(summary2.value - summary1.value);
+                var relativeDelta = d3.format('+.2p')((summary2.value - summary1.value) / summary1.value);
+
+                var stat = this._computeStatisticalSignificance(summary1.measuredValues, summary2.measuredValues);
                 comparisons.push({
                     label: summary1.configLetter + ' / ' + summary2.configLetter,
-                    result: this._computeStatisticalSignificance(summary1.measuredValues, summary2.measuredValues)
+                    difference: isNaN(summary1.value) || isNaN(summary2.value) ? 'N/A' : valueDelta + ' (' + relativeDelta + ') ',
+                    result: stat,
                 });
             }
         }
@@ -1437,13 +1455,13 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
         var details = ' (t=' + tFormatter(statistics.t) + ' df=' + tFormatter(statistics.degreesOfFreedom) + ')';
 
         if (!statistics.range[0])
-            return 'Not statistically significant' + details;
+            return 'Not significant' + details;
 
         var lowerLimit = probabilityFormatter(statistics.range[0]);
         if (!statistics.range[1])
-            return 'Statistical significance > ' + lowerLimit + details;
+            return 'Significance > ' + lowerLimit + details;
 
-        return lowerLimit + ' < Statistical significance < ' + probabilityFormatter(statistics.range[1]) + details;
+        return lowerLimit + ' < Significance < ' + probabilityFormatter(statistics.range[1]) + details;
     },
     _updateReferenceChart: function ()
     {
@@ -1529,7 +1547,7 @@ App.TestGroupPane = Ember.ObjectProxy.extend({
                 }),
                 value: point ? point.value : null,
                 valueRange: range,
-                formattedValue: point ? testResults.formatWithUnit(point.value) : null,
+                formattedValue: point ? testResults.formatter(point.value) : null,
                 buildLabel: point ? 'Build ' + point.measurement.buildNumber() : null,
             });
         });

@@ -41,6 +41,12 @@ WebInspector.DebuggableType = {
 WebInspector.SelectedSidebarPanelCookieKey = "selected-sidebar-panel";
 WebInspector.TypeIdentifierCookieKey = "represented-object-type";
 
+WebInspector.StateRestorationType = {
+    Load: "state-restoration-load",
+    Navigation: "state-restoration-navigation",
+    Delayed: "state-restoration-delayed",
+};
+
 WebInspector.loaded = function()
 {
     // Initialize WebSocket to communication.
@@ -343,7 +349,7 @@ WebInspector.contentLoaded = function()
         this.tabBrowser.addTabForContentView(tabContentView, true);
     }
 
-    this._restoreCookieForOpenTabs();
+    this._restoreCookieForOpenTabs(WebInspector.StateRestorationType.Load);
 
     this.tabBar.selectedTabBarItem = this._selectedTabIndexSetting.value;
 
@@ -508,10 +514,12 @@ WebInspector.activateExtraDomains = function(domains)
 
         this.tabBrowser.addTabForContentView(tabContentView, true);
 
-        tabContentView.restoreStateFromCookie();
+        tabContentView.restoreStateFromCookie(WebInspector.StateRestorationType.Load);
     }
 
     this._pendingOpenTabTypes = stillPendingOpenTabTypes;
+
+    this._updateNewTabButtonState();
 };
 
 WebInspector.contentBrowserTreeElementForRepresentedObject = function(contentBrowser, representedObject)
@@ -1125,7 +1133,9 @@ WebInspector._mainResourceDidChange = function(event)
 
     this._inProvisionalLoad = false;
 
-    this._restoreCookieForOpenTabs();
+    // Run cookie restoration after we are sure all of the Tabs and NavigationSidebarPanels
+    // have updated with respect to the main resource change.
+    setTimeout(this._restoreCookieForOpenTabs.bind(this, WebInspector.StateRestorationType.Navigation));
 
     this._updateDownloadToolbarButton();
 
@@ -1142,13 +1152,13 @@ WebInspector._provisionalLoadStarted = function(event)
     this._inProvisionalLoad = true;
 };
 
-WebInspector._restoreCookieForOpenTabs = function(causedByReload)
+WebInspector._restoreCookieForOpenTabs = function(restorationType)
 {
     for (var tabBarItem of this.tabBar.tabBarItems) {
         var tabContentView = tabBarItem.representedObject;
         if (!(tabContentView instanceof WebInspector.TabContentView))
             continue;
-        tabContentView.restoreStateFromCookie(causedByReload);
+        tabContentView.restoreStateFromCookie(restorationType);
     }
 };
 
@@ -1739,20 +1749,9 @@ WebInspector.createSourceCodeLocationLink = function(sourceCodeLocation, dontFlo
     if (!sourceCodeLocation)
         return null;
 
-    function showSourceCodeLocation(event)
-    {
-        event.stopPropagation();
-        event.preventDefault();
-
-        if (event.metaKey)
-            this.showOriginalUnformattedSourceCodeLocation(sourceCodeLocation);
-        else
-            this.showSourceCodeLocation(sourceCodeLocation);
-    }
-
     var linkElement = document.createElement("a");
     linkElement.className = "go-to-link";
-    linkElement.addEventListener("click", showSourceCodeLocation.bind(this));
+    WebInspector.linkifyElement(linkElement, sourceCodeLocation);
     sourceCodeLocation.populateLiveDisplayLocationTooltip(linkElement);
 
     if (useGoToArrowButton)
@@ -1768,12 +1767,7 @@ WebInspector.createSourceCodeLocationLink = function(sourceCodeLocation, dontFlo
 
 WebInspector.linkifyLocation = function(url, lineNumber, columnNumber, className)
 {
-    var sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
-    if (!sourceCode) {
-        sourceCode = WebInspector.debuggerManager.scriptsForURL(url)[0];
-        if (sourceCode)
-            sourceCode = sourceCode.resource || sourceCode;
-    }
+    var sourceCode = WebInspector.sourceCodeForURL(url);
 
     if (!sourceCode) {
         var anchor = document.createElement("a");
@@ -1792,7 +1786,34 @@ WebInspector.linkifyLocation = function(url, lineNumber, columnNumber, className
     return linkElement;
 };
 
-WebInspector.linkifyURLAsNode = function(url, linkText, classes, tooltipText)
+WebInspector.linkifyElement = function(linkElement, sourceCodeLocation) {
+    console.assert(sourceCodeLocation);
+
+    function showSourceCodeLocation(event)
+    {
+        event.stopPropagation();
+        event.preventDefault();
+
+        if (event.metaKey)
+            this.showOriginalUnformattedSourceCodeLocation(sourceCodeLocation);
+        else
+            this.showSourceCodeLocation(sourceCodeLocation);
+    }
+
+    linkElement.addEventListener("click", showSourceCodeLocation.bind(this));
+};
+
+WebInspector.sourceCodeForURL = function(url) {
+    var sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
+    if (!sourceCode) {
+        sourceCode = WebInspector.debuggerManager.scriptsForURL(url)[0];
+        if (sourceCode)
+            sourceCode = sourceCode.resource || sourceCode;
+    }
+    return sourceCode || null;
+};
+
+WebInspector.linkifyURLAsNode = function(url, linkText, classes)
 {
     if (!linkText)
         linkText = url;
@@ -1802,11 +1823,6 @@ WebInspector.linkifyURLAsNode = function(url, linkText, classes, tooltipText)
     var a = document.createElement("a");
     a.href = url;
     a.className = classes;
-
-    if (tooltipText === undefined)
-        a.title = url;
-    else if (typeof tooltipText !== "string" || tooltipText.length)
-        a.title = tooltipText;
 
     a.textContent = linkText;
     a.style.maxWidth = "100%";

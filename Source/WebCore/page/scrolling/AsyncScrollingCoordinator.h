@@ -57,6 +57,7 @@ public:
     WEBCORE_EXPORT void scheduleUpdateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
 
 #if PLATFORM(COCOA)
+    void setActiveScrollSnapIndices(ScrollingNodeID, unsigned horizontalIndex, unsigned verticalIndex);
     void deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const;
     void removeTestDeferralForReason(WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReason) const;
 #endif
@@ -100,6 +101,10 @@ private:
     
     virtual bool isRubberBandInProgress() const override;
     virtual void setScrollPinningBehavior(ScrollPinningBehavior) override;
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    bool isScrollSnapInProgress() const override;
+#endif
 
     WEBCORE_EXPORT virtual void syncChildPositions(const LayoutRect& viewportRect) override;
     WEBCORE_EXPORT virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea&, ScrollbarOrientation) override;

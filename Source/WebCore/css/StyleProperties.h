@@ -36,9 +36,8 @@
 
 namespace WebCore {
 
-class CSSRule;
 class CSSStyleDeclaration;
-class ComputedStyleExtractor;
+class CachedResource;
 class ImmutableStyleProperties;
 class URL;
 class MutableStyleProperties;
@@ -109,7 +108,7 @@ public:
     bool isMutable() const { return m_isMutable; }
     bool hasCSSOMWrapper() const;
 
-    bool hasFailedOrCanceledSubresources() const;
+    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
 
     static unsigned averageSizeInBytes();
 

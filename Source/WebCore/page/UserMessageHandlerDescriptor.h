@@ -48,23 +48,24 @@ public:
         virtual void didPostMessage(UserMessageHandler&, SerializedScriptValue*) = 0;
     };
 
-    static PassRefPtr<UserMessageHandlerDescriptor> create(const AtomicString& name, DOMWrapperWorld& world, Client& client)
+    static Ref<UserMessageHandlerDescriptor> create(const AtomicString& name, DOMWrapperWorld& world, Client& client)
     {
-        return adoptRef(new UserMessageHandlerDescriptor(name, world, client));
+        return adoptRef(*new UserMessageHandlerDescriptor(name, world, client));
     }
     WEBCORE_EXPORT ~UserMessageHandlerDescriptor();
 
     const AtomicString& name();
     DOMWrapperWorld& world();
-    
-    Client& client() const { return m_client; }
+
+    Client* client() const { return m_client; }
+    void invalidateClient() { m_client = nullptr; }
 
 private:
     WEBCORE_EXPORT explicit UserMessageHandlerDescriptor(const AtomicString&, DOMWrapperWorld&, Client&);
-    
+
     AtomicString m_name;
     Ref<DOMWrapperWorld> m_world;
-    Client& m_client;
+    Client* m_client;
 };
 
 } // namespace WebCore

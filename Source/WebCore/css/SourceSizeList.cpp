@@ -32,15 +32,6 @@
 
 namespace WebCore {
 
-#if !ENABLE(PICTURE_SIZES)
-
-unsigned parseSizesAttribute(StringView, RenderView*, Frame*)
-{
-    return 0;
-}
-
-#else
-
 static bool match(std::unique_ptr<MediaQueryExp>&& expression, RenderStyle& style, Frame* frame)
 {
     if (expression->mediaFeature().isEmpty())
@@ -56,19 +47,26 @@ static bool match(std::unique_ptr<MediaQueryExp>&& expression, RenderStyle& styl
     return mediaQueryEvaluator.eval(mediaQuerySet.get());
 }
 
-static unsigned computeLength(CSSValue* value, RenderStyle& style, RenderView* view)
+static float defaultLength(RenderStyle& style, RenderView* view)
 {
-    CSSToLengthConversionData conversionData(&style, &style, view);
-    if (is<CSSPrimitiveValue>(value))
-        return downcast<CSSPrimitiveValue>(*value).computeLength<unsigned>(conversionData);
-    if (is<CSSCalcValue>(value)) {
-        Length length(downcast<CSSCalcValue>(*value).createCalculationValue(conversionData));
-        return CSSPrimitiveValue::create(length, &style)->computeLength<unsigned>(conversionData);
-    }
-    return 0;
+    return clampTo<float>(CSSPrimitiveValue::computeNonCalcLengthDouble(CSSToLengthConversionData(&style, &style, view), CSSPrimitiveValue::CSS_VW, 100.0));
 }
 
-unsigned parseSizesAttribute(StringView sizesAttribute, RenderView* view, Frame* frame)
+static float computeLength(CSSValue* value, RenderStyle& style, RenderView* view)
+{
+    CSSToLengthConversionData conversionData(&style, &style, view);
+    if (is<CSSPrimitiveValue>(value)) {
+        CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(*value);
+        if (!primitiveValue.isLength())
+            return defaultLength(style, view);
+        return primitiveValue.computeLength<float>(conversionData);
+    }
+    if (is<CSSCalcValue>(value))
+        return downcast<CSSCalcValue>(*value).computeLengthPx(conversionData);
+    return defaultLength(style, view);
+}
+
+float parseSizesAttribute(StringView sizesAttribute, RenderView* view, Frame* frame)
 {
     if (!view)
         return 0;
@@ -77,9 +75,7 @@ unsigned parseSizesAttribute(StringView sizesAttribute, RenderView* view, Frame*
         if (match(WTF::move(sourceSize.expression), style, frame))
             return computeLength(sourceSize.length.get(), style, view);
     }
-    return computeLength(CSSPrimitiveValue::create(100, CSSPrimitiveValue::CSS_VW).ptr(), style, view);
+    return defaultLength(style, view);
 }
-
-#endif
 
 } // namespace WebCore

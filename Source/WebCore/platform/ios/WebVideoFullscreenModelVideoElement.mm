@@ -83,7 +83,7 @@ void WebVideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* vide
         m_videoFullscreenInterface->resetMediaState();
 
     if (m_videoElement && m_videoElement->fullscreenMode())
-        m_videoElement->fullscreenModeChanged(HTMLMediaElement::VideoFullscreenModeNone);
+        m_videoElement->fullscreenModeChanged(HTMLMediaElementEnums::VideoFullscreenModeNone);
 
     if (m_videoElement && m_videoElement->videoFullscreenLayer())
         m_videoElement->setVideoFullscreenLayer(nullptr);
@@ -151,7 +151,7 @@ void WebVideoFullscreenModelVideoElement::updateForEventName(const WTF::AtomicSt
 
     if (all
         || eventName == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent) {
-        bool enabled = m_videoElement->mediaSession().currentPlaybackTargetIsWireless(*m_videoElement);
+        bool enabled = m_videoElement->webkitCurrentPlaybackTargetIsWireless();
         WebVideoFullscreenInterface::ExternalPlaybackTargetType targetType = WebVideoFullscreenInterface::TargetTypeNone;
         String localizedDeviceName;
 
@@ -452,7 +452,7 @@ const AtomicString& WebVideoFullscreenModelVideoElement::eventNameAll()
     return sEventNameAll;
 }
 
-void WebVideoFullscreenModelVideoElement::fullscreenModeChanged(HTMLMediaElement::VideoFullscreenMode videoFullscreenMode)
+void WebVideoFullscreenModelVideoElement::fullscreenModeChanged(HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode)
 {
     __block RefPtr<WebVideoFullscreenModelVideoElement> protect(this);
     WebThreadRun(^{

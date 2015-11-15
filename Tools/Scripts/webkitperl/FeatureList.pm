@@ -44,6 +44,7 @@ BEGIN {
 my (
     $threeDTransformsSupport,
     $accelerated2DCanvasSupport,
+    $arrowfunctionSyntax,
     $attachmentElementSupport,
     $batteryStatusSupport,
     $canvasPathSupport,
@@ -155,6 +156,9 @@ my @features = (
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => isGtk(), value => \$accelerated2DCanvasSupport },
 
+    { option => "arrowfunction-syntax", desc => "Toggle ES6 arrow function syntax support",
+      define => "ENABLE_ES6_ARROWFUNCTION_SYNTAX", default => 1, value => \$arrowfunctionSyntax },
+
     { option => "attachment-element", desc => "Toggle Attachment Element support",
       define => "ENABLE_ATTACHMENT_ELEMENT", default => 0, value => \$attachmentElementSupport },
 
@@ -258,7 +262,7 @@ my @features = (
       define => "ENABLE_ICONDATABASE", default => !isIOSWebKit(), value => \$icondatabaseSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => 0, value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => isGtk(), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -343,9 +347,6 @@ my @features = (
 
     { option => "performance-timeline", desc => "Toggle Performance Timeline support",
       define => "ENABLE_PERFORMANCE_TIMELINE", default => isGtk(), value => \$performanceTimelineSupport },
-
-    { option => "picture-sizes", desc => "Toggle sizes attribute support",
-      define => "ENABLE_PICTURE_SIZES", default => 1, value => \$pictureSizesSupport },
 
     { option => "promises", desc => "Toggle Promise support",
       define => "ENABLE_PROMISES", default => 1, value => \$promiseSupport },

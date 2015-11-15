@@ -81,7 +81,7 @@ void SVGFilterBuilder::appendEffectToEffectReferences(PassRefPtr<FilterEffect> p
 
 void SVGFilterBuilder::clearEffects()
 {
-    m_lastEffect = 0;
+    m_lastEffect = nullptr;
     m_namedEffects.clear();
     m_effectReferences.clear();
     m_effectRenderer.clear();
@@ -95,10 +95,8 @@ void SVGFilterBuilder::clearResultsRecursive(FilterEffect* effect)
 
     effect->clearResult();
 
-    HashSet<FilterEffect*>& effectReferences = this->effectReferences(effect);
-    HashSet<FilterEffect*>::iterator end = effectReferences.end();
-    for (HashSet<FilterEffect*>::iterator it = effectReferences.begin(); it != end; ++it)
-         clearResultsRecursive(*it);
+    for (auto& reference : effectReferences(effect))
+        clearResultsRecursive(reference);
 }
 
 } // namespace WebCore

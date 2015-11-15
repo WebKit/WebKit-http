@@ -1,3 +1,676 @@
+2015-05-26  Andreas Kling  <akling@apple.com>
+
+        StringView should have find(StringView, start).
+        <https://webkit.org/b/145351>
+
+        Reviewed by Darin Adler.
+
+        Move the class agnostic guts of StringImpl's find() implementation from StringImpl
+        to StringCommon.h and templatize the code into a findCommon() helper.
+
+        StringImpl::find() and StringView::find() now both call findCommon().
+
+        * wtf/text/StringCommon.h:
+        (WTF::findInner):
+        (WTF::find):
+        (WTF::findCommon):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::find):
+        (WTF::findInner): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::find): Deleted.
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::find):
+        * wtf/text/StringView.h:
+
+
+2015-05-26  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21104551> Update build settings
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2015-05-23  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused definitions of WEBKIT_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=145345
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Also changed to use $(inherited).
+
+2015-05-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce UniquedStringImpl and SymbolImpl to separate symbolic strings from AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=144848
+
+        Reviewed by Darin Adler.
+
+        he current AtomicStringImpl accidentally means the symbol OR atomic StringImpl.
+        t's not correct to its name and it's error prone.
+
+        In this patch, we'll introduce/changes classes into WTF.
+
+        1. UniquedStringImpl
+        It's derived class from StringImpl. And it represents symbol || atomic StringImpl.
+
+        2. SymbolImpl
+        It's derived class from UniquedStringImpl. Only symbol strings can become this.
+        It ensures the given StringImpl is symbol in compile time.
+
+        3. AtomicStringImpl
+        It's derived class from UniquedStringImpl. Only atomic (non-normal && non-symbol) strings can become this.
+        It ensures the given StringImpl is atomic in compile time.
+
+        And, in this time, I just accept UniqueStringImpl in AtomicString. As the result,
+        1. Now AtomicStringImpl issue is fixed. Its SymbolImpl is separated and UniquedStringImpl is introduced.
+        2. But AtomicString still have both symbol and atomic strings.
+        This should be solved in the separated patch.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PrintStream.cpp:
+        * wtf/PrintStream.h:
+        (WTF::printInternal):
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::createSymbol):
+        (WTF::StringImpl::createSymbolEmpty):
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.h: Copied from Source/JavaScriptCore/runtime/PrivateName.h.
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        (WTF::SymbolRegistry::remove):
+        * wtf/text/SymbolRegistry.h:
+        * wtf/text/UniquedStringImpl.h: Copied from Source/JavaScriptCore/runtime/PrivateName.h.
+
+2015-05-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move MainThreadGtk, RunLoopGtk, WorkQueueGtk under Source/WTF/wtf/glib/
+        https://bugs.webkit.org/show_bug.cgi?id=145117
+
+        Reviewed by Csaba Osztrogonác.
+
+        Move the MainThreadGtk, RunLoopGtk and WorkQueueGtk implementation files from
+        Source/WTF/wtf/gtk/ to Source/WTF/wtf/glib/. These implementations are not
+        GTK-specific and only depend on GLib, so they are renamed as well.
+
+        There are other such implementations under Source/WTF/wtf/gobject/ (GObject
+        is just a subset of GLib) that will be moved under the new directory in
+        future patches.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/glib/MainThreadGLib.cpp: Renamed from Source/WTF/wtf/gtk/MainThreadGtk.cpp.
+        (WTF::initializeMainThreadPlatform):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/glib/RunLoopGLib.cpp: Renamed from Source/WTF/wtf/gtk/RunLoopGtk.cpp.
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::~RunLoop):
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::stop):
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::TimerBase::TimerBase):
+        (WTF::RunLoop::TimerBase::~TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+        * wtf/glib/WorkQueueGLib.cpp: Renamed from Source/WTF/wtf/gtk/WorkQueueGtk.cpp.
+        (WTF::WorkQueue::platformInitialize):
+        (WTF::WorkQueue::platformInvalidate):
+        (WTF::WorkQueue::registerSocketEventHandler):
+        (WTF::WorkQueue::unregisterSocketEventHandler):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2015-05-19  Andreas Kling  <akling@apple.com>
+
+        Give StringView a utf8() API.
+        <https://webkit.org/b/145201>
+
+        Reviewed by Anders Carlsson
+
+        Added an LChar version of StringImpl::utf8ForCharacters() and use that to give
+        StringView a utf8() API just like String has.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::utf8ForCharacters):
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::utf8):
+        * wtf/text/StringView.h:
+
+2015-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Move AtomicStringImpl table related operations from AtomicString to AtomicStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=145109
+
+        Reviewed by Darin Adler.
+
+        Now AtomicStringImpl table operations are located in AtomicString.
+        But they should be under AtomicStringImpl.
+        This patch simply moves these operations to AtomicStringImpl.
+
+        And this patch renames static AtomicString::find to static AtomicStringImpl::lookUp
+        because it conflicts with AtomicStringImpl's member function name.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.vcxproj/copy-files.cmd:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::lower):
+        (WTF::AtomicString::convertToASCIILowercase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker): Deleted.
+        (WTF::stringTable): Deleted.
+        (WTF::addToStringTable): Deleted.
+        (WTF::CStringTranslator::hash): Deleted.
+        (WTF::CStringTranslator::equal): Deleted.
+        (WTF::CStringTranslator::translate): Deleted.
+        (WTF::AtomicString::add): Deleted.
+        (WTF::UCharBufferTranslator::hash): Deleted.
+        (WTF::UCharBufferTranslator::equal): Deleted.
+        (WTF::UCharBufferTranslator::translate): Deleted.
+        (WTF::HashAndCharactersTranslator::hash): Deleted.
+        (WTF::HashAndCharactersTranslator::equal): Deleted.
+        (WTF::HashAndCharactersTranslator::translate): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::hash): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::equal): Deleted.
+        (WTF::HashAndUTF8CharactersTranslator::translate): Deleted.
+        (WTF::SubstringTranslator::translate): Deleted.
+        (WTF::SubstringTranslator8::hash): Deleted.
+        (WTF::SubstringTranslator8::equal): Deleted.
+        (WTF::SubstringTranslator16::hash): Deleted.
+        (WTF::SubstringTranslator16::equal): Deleted.
+        (WTF::LCharBufferTranslator::hash): Deleted.
+        (WTF::LCharBufferTranslator::equal): Deleted.
+        (WTF::LCharBufferTranslator::translate): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::hash): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::equal): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::translate): Deleted.
+        (WTF::AtomicString::addFromLiteralData): Deleted.
+        (WTF::AtomicString::addSlowCase): Deleted.
+        (WTF::AtomicString::remove): Deleted.
+        (WTF::AtomicString::findSlowCase): Deleted.
+        (WTF::AtomicString::findInternal): Deleted.
+        (WTF::AtomicString::isInAtomicStringTable): Deleted.
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        (WTF::AtomicString::fromUTF8):
+        (WTF::AtomicString::find): Deleted.
+        (WTF::AtomicString::add): Deleted.
+        (WTF::AtomicString::addWithStringTableProvider): Deleted.
+        * wtf/text/AtomicStringImpl.cpp: Copied from Source/WTF/wtf/text/AtomicString.cpp.
+        (WTF::AtomicStringTableLocker::AtomicStringTableLocker):
+        (WTF::stringTable):
+        (WTF::addToStringTable):
+        (WTF::CStringTranslator::hash):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::AtomicStringImpl::add):
+        (WTF::UCharBufferTranslator::hash):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::HashAndCharactersTranslator::hash):
+        (WTF::HashAndCharactersTranslator::equal):
+        (WTF::HashAndCharactersTranslator::translate):
+        (WTF::HashAndUTF8CharactersTranslator::hash):
+        (WTF::HashAndUTF8CharactersTranslator::equal):
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        (WTF::SubstringTranslator::translate):
+        (WTF::SubstringTranslator8::hash):
+        (WTF::SubstringTranslator8::equal):
+        (WTF::SubstringTranslator16::hash):
+        (WTF::SubstringTranslator16::equal):
+        (WTF::LCharBufferTranslator::hash):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::CharBufferFromLiteralDataTranslator::hash):
+        (WTF::CharBufferFromLiteralDataTranslator::equal):
+        (WTF::CharBufferFromLiteralDataTranslator::translate):
+        (WTF::AtomicStringImpl::addLiteral):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::remove):
+        (WTF::AtomicStringImpl::lookUpSlowCase):
+        (WTF::AtomicStringImpl::addUTF8):
+        (WTF::AtomicStringImpl::lookUpInternal):
+        (WTF::AtomicStringImpl::isInAtomicStringTable):
+        * wtf/text/AtomicStringImpl.h:
+        (WTF::AtomicStringImpl::lookUp):
+        (WTF::AtomicStringImpl::add):
+        (WTF::AtomicStringImpl::addWithStringTableProvider):
+        (WTF::AtomicStringImpl::AtomicStringImpl): Deleted.
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        * wtf/text/cf/AtomicStringCF.cpp:
+        (WTF::AtomicString::add): Deleted.
+        * wtf/text/cf/AtomicStringImplCF.cpp: Renamed from Source/WTF/wtf/text/cf/AtomicStringCF.cpp.
+        (WTF::AtomicStringImpl::add):
+
+2015-05-19  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [SOUP] Use st_birthtime to get creation time of files on systems support it
+        https://bugs.webkit.org/show_bug.cgi?id=144989
+
+        Reviewed by Carlos Garcia Campos.
+
+        Define HAVE(STAT_BIRTHTIME) as 1 on operating systems supporting
+        getting creation time of files using st_birthtime in stat.
+
+        * wtf/Platform.h:
+
+2015-05-19  Chris Dumez  <cdumez@apple.com>
+
+        Mark static variables as const when possible
+        https://bugs.webkit.org/show_bug.cgi?id=145161
+
+        Reviewed by Andreas Kling.
+
+        * wtf/dtoa.cpp:
+        (WTF::pow5mult):
+
+2015-05-19  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Remove unnecessary PLATFORM(EFL) macro in EFL specific files
+        https://bugs.webkit.org/show_bug.cgi?id=145160
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/efl/EflTypedefs.h: Remove PLATFORM(EFL).
+        * wtf/efl/UniquePtrEfl.h: ditto.
+
+2015-05-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Ignore warnings in system headers
+        https://bugs.webkit.org/show_bug.cgi?id=144747
+
+        Reviewed by Darin Adler.
+
+        Separate include directories into WebKit project includes and system includes. Suppress all
+        warnings from headers in system include directories using the SYSTEM argument to
+        the include_directories command.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+
+2015-05-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments on r184353
+        https://bugs.webkit.org/show_bug.cgi?id=145146
+
+        Reviewed by Benjamin Poulain.
+
+        Create an overload for equalIgnoringASCIICase() for AtomicString and string literals.
+
+        * wtf/text/AtomicString.h:
+        (WTF::equalIgnoringASCIICase):
+
+2015-05-18  Skachkov Alexandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Feature flag for arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=145108
+
+        Reviewed by Ryosuke Niwa.
+
+        Added feature flag ENABLE_ES6_ARROWFUNCTION_SYNTAX for arrow function
+
+        * wtf/FeatureDefines.h:
+
+2015-05-17  Benjamin Poulain  <benjamin@webkit.org>
+
+        Do not use fastMallocGoodSize anywhere
+        https://bugs.webkit.org/show_bug.cgi?id=145103
+
+        Reviewed by Michael Saboff.
+
+        It is silly we see fastMallocGoodSize in profiles, it does absolutely nothing.
+
+        This patch keeps fastMallocGoodSize() around for older code linking
+        with newer WebKit, but remove any use of it inside WebKit.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocGoodSize):
+        * wtf/FastMalloc.h:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2015-05-15  Dan Bernstein  <mitz@apple.com>
+
+        Build fix for some versions of clang.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2015-05-14  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r177753, now that <rdar://problem/19347133> is fixed.
+
+        Rubber-stamped by Benjamin Poulain.
+
+        * wtf/SaturatedArithmetic.h:
+        (signedAddOverflows):
+        (signedSubtractOverflows):
+
+2015-05-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add String literal overloads to equalIgnoringASCIICase()
+        https://bugs.webkit.org/show_bug.cgi?id=145008
+
+        Reviewed by Benjamin Poulain.
+
+        Create an overload for equalIgnoringASCIICase for string literals.
+
+        * wtf/text/StringImpl.h:
+        (WTF::equalIgnoringASCIICase): Use a non-templated helper function.
+        * wtf/text/StringImpl.cpp:
+        (WTF::equalIgnoringASCIICase): Implement it.
+        * wtf/text/StringView.h:
+        (WTF::equalIgnoringASCIICase): Use a non-templated helper function.
+        * wtf/text/StringView.cpp:
+        (WTF::equalIgnoringASCIICase): Implement it.
+        * wtf/text/WTFString.h:
+        (WTF::equalIgnoringASCIICase): Delegate to StringImpl's implementation.
+
+2015-05-14  Žan Doberšek  <zdobersek@igalia.com>
+
+        [GTK] RunLoop constructor should properly retrieve or establish the thread-default GMainContext
+        https://bugs.webkit.org/show_bug.cgi?id=144732
+
+        Reviewed by Carlos Garcia Campos.
+
+        RunLoop constructor in the GTK implementation should use the
+        existing thread-default context, create a new one if not on
+        the main thread, or use the global-default one if on the main
+        thread.
+
+        In RunLoop::run(), the GMainContext should then be pushed as
+        the thread-default before calling g_main_loop_run(), and popped
+        off when the main loop stops.
+
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::run):
+
+2015-05-13  Oliver Hunt  <oliver@apple.com>
+       Ensure that all the smart pointer types in WTF clear their pointer before deref
+       https://bugs.webkit.org/show_bug.cgi?id=143789
+
+       Reviewed by Ryosuke Niwa.
+
+       In order to prevent use after free bugs caused by destructors
+       that end up trying to access the smart pointer itself, we should
+       make sure we always clear the m_ptr field before calling deref.
+
+       Essentially the UaF path is:
+       struct Foo : RefCounted<Foo> {
+         Wibble* m_wibble;
+         void doSomething();
+         ~Foo() { m_wibble->doSomethingLikeCleanup(); }
+       };
+
+       struct Wibble {
+         void doSomethingLikeCleanup()
+         {
+           if (m_foo) {
+               /* if this branch is not here we get a null deref */
+               m_foo->doSomething();
+           }
+         }
+         void replaceFoo(Foo* foo) { m_foo = foo; }
+         RefPtr<Foo> m_foo;
+       };
+
+       Wibble* someWibble = /* a Wibble with m_foo->m_refCount == 1 */;
+                            /* and m_foo points to someWibble       */;
+
+       someWibble->replaceFoo(someOtherFoo);
+       + someWibble->m_foo->m_ptr->deref();
+         + someWibble->m_foo->m_ptr->~Foo()
+           + someWibble->m_foo->m_ptr->m_wibble->doSomethingLikeCleanup()
+             + someWibble->m_foo->m_ptr->m_wibble /* someWibble */ ->m_foo->m_ptr /*logically dead*/ ->doSomething()
+
+       By clearing m_ptr first we either force a null pointer deref or
+       we force our code down a path that does not use the dead smart
+       pointer.
+
+       * wtf/PassRefPtr.h:
+       (WTF::PassRefPtr::~PassRefPtr):
+       * wtf/Ref.h:
+       (WTF::Ref::~Ref):
+       (WTF::Ref::operator=):
+       * wtf/RefPtr.h:
+       (WTF::RefPtr::~RefPtr):
+       * wtf/RetainPtr.h:
+       (WTF::RetainPtr::~RetainPtr):
+       (WTF::RetainPtr<T>::clear):
+
+2015-05-12  Michael Saboff  <msaboff@apple.com>
+
+        If JSC cannot get executable memory, it shouldn't call madvise
+        https://bugs.webkit.org/show_bug.cgi?id=144931
+
+        Reviewed by Mark Lam.
+
+        Made calling madvise conditional on really getting mmapped memory.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveUncommitted):
+
+2015-05-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Move Windows build target to Windows 7 (or newer)
+        https://bugs.webkit.org/show_bug.cgi?id=144890
+        <rdar://problem/20707307>
+
+        Reviewed by Anders Carlsson.
+
+        Update linked SDK and minimal Windows level to be compatible with
+        Windows 7 or newer.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTFGenerated.vcxproj:
+        * config.h:
+
+2015-05-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WorkQueue objects are not released
+        https://bugs.webkit.org/show_bug.cgi?id=144824
+
+        Reviewed by Žan Doberšek.
+
+        Do not keep a reference of the WorkQueue for the entire life of
+        its worker thread, since every task scheduled on the WorkQueue
+        already takes a reference. Instead, take a reference of the main
+        loop to make sure that when the worker thread starts, the main
+        loop hasn't been released to avoid runtime warnings (see
+        webkit.org/b/140998). Also removed the g_main_context_pop_thread_default()
+        from the thread body, since the thread-specific context queue will
+        be freed anyway when the thread exits.
+        If the WorkQueue is released early, before the thread has started,
+        schedule a main loop quit in the context, to make sure it will
+        be the first thing run by the main loop and the thread will exit.
+
+        * wtf/WorkQueue.h: Remove unused event loop mutex.
+        * wtf/gtk/WorkQueueGtk.cpp:
+        (WTF::WorkQueue::platformInitialize):
+        (WTF::WorkQueue::platformInvalidate):
+
+2015-05-09  Yoav Weiss  <yoav@yoav.ws>
+
+        Remove the PICTURE_SIZES build flag
+        https://bugs.webkit.org/show_bug.cgi?id=144679
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the PICTURE_SIZES build time flag.
+
+        * wtf/FeatureDefines.h:
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        No reason why StringView shouldn't have a StringImpl* constructor.
+
+        Test: StringView8Bit in TestWebKitAPI
+
+        * wtf/text/StringView.h: Add the constructor.
+
+2015-05-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183996.
+        https://bugs.webkit.org/show_bug.cgi?id=144806
+
+        ASan detected use-after free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove convenience constructors for TextRun"
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+        http://trac.webkit.org/changeset/183996
+
+2015-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove convenience constructors for TextRun
+        https://bugs.webkit.org/show_bug.cgi?id=144752
+
+        Reviewed by Anders Carlsson.
+
+        No reason why StringView shouldn't have a StringImpl* constructor.
+
+        Test: StringView8Bit in TestWebKitAPI
+
+        * wtf/text/StringView.h: Add the constructor.
+
+2015-05-08  Andreas Kling  <akling@apple.com>
+
+        Optimize serialization of quoted JSON strings.
+        <https://webkit.org/b/144754>
+
+        Reviewed by Darin Adler.
+
+        Add a StringBuilder API for appending a quoted JSON string. This is used by
+        JSON.stringify() to implement efficient appending of strings while escaping
+        quotes, control characters and \uNNNN-style characters.
+
+        The main benefit comes from only doing a single buffer expansion up front,
+        instead of doing it every time we append something. The fudge factor is pretty
+        large, since the maximum number of output characters per input character is 6.
+
+        The first landing of this patch had two bugs in it:
+
+        - Made \uNNNN escapes uppercase hexadecimal instead of lowercase.
+        - Didn't preallocate enough space for 8-bit input strings.
+
+        Both were caught by existing tests on our bots, and both were due to last-minute
+        changes before landing. :/
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternal):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+
+2015-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r183961.
+        https://bugs.webkit.org/show_bug.cgi?id=144784
+
+        Broke js/dom/JSON-stringify.html (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Optimize serialization of quoted JSON strings."
+        https://bugs.webkit.org/show_bug.cgi?id=144754
+        http://trac.webkit.org/changeset/183961
+
+2015-05-07  Andreas Kling  <akling@apple.com>
+
+        Optimize serialization of quoted JSON strings.
+        <https://webkit.org/b/144754>
+
+        Reviewed by Darin Adler.
+
+        Add a StringBuilder API for appending a quoted JSON string. This is used by
+        JSON.stringify() to implement efficient appending of strings while escaping
+        quotes, control characters and \uNNNN-style characters.
+
+        The main benefit comes from only doing a single buffer expansion up front,
+        instead of doing it every time we append something. The fudge factor is pretty
+        large for 16-bit strings, since the maximum number of output characters per
+        input character is 6.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternal):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+
+2015-05-07  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] All spell checking layout tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=144648
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Activate UNIFIED_TEXT_CHECKING for GTK+.
+
+2015-05-07  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/19317140> [Xcode] Remove usage of AspenFamily.xcconfig in Source/
+        https://bugs.webkit.org/show_bug.cgi?id=144727
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig: Don’t include AspenFamily.xcconfig, and define
+        INSTALL_PATH_PREFIX and LD_DYLIB_INSTALL_NAME for the iOS 8.x Simulator.
+
+2015-05-07  Žan Doberšek  <zdobersek@igalia.com>
+
+        [GTK] Clean up RunLoop implementation
+        https://bugs.webkit.org/show_bug.cgi?id=144729
+
+        Reviewed by Carlos Garcia Campos.
+
+        Clean up the RunLoop implementation for the GTK port,
+        removing unnecessary methods and using simpler variable names.
+
+        Nested GMainLoops in RunLoop::run() are now created for the
+        RunLoop's GMainContext, and not for the default context (enforced
+        through the null argument to g_main_loop_new()).
+
+        * wtf/RunLoop.h:
+        * wtf/gtk/RunLoopGtk.cpp:
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::~RunLoop):
+        (WTF::RunLoop::run):
+        (WTF::RunLoop::stop):
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::innermostLoop): Deleted.
+        (WTF::RunLoop::pushNestedMainLoop): Deleted.
+        (WTF::RunLoop::popNestedMainLoop): Deleted.
+
 2015-05-05  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Async operations running in the WorkQueue thread should schedule their sources to the WorkQueue main lopp

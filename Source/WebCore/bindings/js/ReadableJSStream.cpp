@@ -47,24 +47,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-void setInternalSlotToObject(ExecState* exec, JSValue objectValue, PrivateName& name, JSValue value)
-{
-    JSObject* object = objectValue.toObject(exec);
-    PutPropertySlot propertySlot(objectValue);
-    object->put(object, exec, Identifier::fromUid(name), value, propertySlot);
-}
-
-JSValue getInternalSlotFromObject(ExecState* exec, JSValue objectValue, PrivateName& name)
-{
-    JSObject* object = objectValue.toObject(exec);
-    PropertySlot propertySlot(objectValue);
-
-    Identifier propertyName = Identifier::fromUid(name);
-    if (!object->getOwnPropertySlot(object, exec, propertyName, propertySlot))
-        return JSValue();
-    return propertySlot.getValue(exec, propertyName);
-}
-
 static inline JSValue getPropertyFromObject(ExecState* exec, JSObject* object, const char* identifier)
 {
     return object->get(exec, Identifier::fromString(exec, identifier));
@@ -135,13 +117,8 @@ Ref<ReadableJSStream> ReadableJSStream::create(ExecState& exec, ScriptExecutionC
     Ref<ReadableJSStream::Source> source = ReadableJSStream::Source::create(exec);
     Ref<ReadableJSStream> readableStream = adoptRef(*new ReadableJSStream(scriptExecutionContext, WTF::move(source)));
 
-    static_cast<ReadableJSStream::Source&>(readableStream->source()).start(exec, readableStream.get());
+    readableStream->jsSource().start(exec, readableStream.get());
     return readableStream;
-}
-
-Ref<ReadableStreamReader> ReadableJSStream::createReader()
-{
-    return Reader::create(*this);
 }
 
 ReadableJSStream::ReadableJSStream(ScriptExecutionContext& scriptExecutionContext, Ref<ReadableJSStream::Source>&& source)
@@ -161,14 +138,14 @@ JSValue ReadableJSStream::jsController(ExecState& exec, JSDOMGlobalObject* globa
     return toJS(&exec, globalObject, m_controller.get());
 }
 
-Ref<ReadableJSStream::Reader> ReadableJSStream::Reader::create(ReadableJSStream& stream)
+void ReadableJSStream::storeError(JSC::ExecState& exec)
 {
-    return adoptRef(*new Reader(stream));
-}
+    if (m_error)
+        return;
+    JSValue error = exec.argumentCount() ? exec.argument(0) : createError(&exec, ASCIILiteral("Error function called."));
+    m_error.set(exec.vm(), error);
 
-ReadableJSStream::Reader::Reader(ReadableJSStream& readableStream)
-    : ReadableStreamReader(readableStream)
-{
+    changeStateToErrored();
 }
 
 } // namespace WebCore

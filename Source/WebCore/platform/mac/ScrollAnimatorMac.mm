@@ -45,19 +45,19 @@ using namespace WebCore;
 static bool supportsUIStateTransitionProgress()
 {
     // FIXME: This is temporary until all platforms that support ScrollbarPainter support this part of the API.
-    static bool globalSupportsUIStateTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(mouseEnteredScroller)];
+    static const bool globalSupportsUIStateTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(mouseEnteredScroller)];
     return globalSupportsUIStateTransitionProgress;
 }
 
 static bool supportsExpansionTransitionProgress()
 {
-    static bool globalSupportsExpansionTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(expansionTransitionProgress)];
+    static const bool globalSupportsExpansionTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(expansionTransitionProgress)];
     return globalSupportsExpansionTransitionProgress;
 }
 
 static bool supportsContentAreaScrolledInDirection()
 {
-    static bool globalSupportsContentAreaScrolledInDirection = [NSClassFromString(@"NSScrollerImpPair") instancesRespondToSelector:@selector(contentAreaScrolledInDirection:)];
+    static const bool globalSupportsContentAreaScrolledInDirection = [NSClassFromString(@"NSScrollerImpPair") instancesRespondToSelector:@selector(contentAreaScrolledInDirection:)];
     return globalSupportsContentAreaScrolledInDirection;
 }
 
@@ -758,6 +758,7 @@ void ScrollAnimatorMac::immediateScrollTo(const FloatPoint& newPosition)
     m_currentPosX = adjustedPosition.x();
     m_currentPosY = adjustedPosition.y();
     notifyPositionChanged(delta);
+    updateActiveScrollSnapIndexForOffset();
 }
 
 bool ScrollAnimatorMac::isRubberBandInProgress() const
@@ -766,6 +767,15 @@ bool ScrollAnimatorMac::isRubberBandInProgress() const
     return false;
 #else
     return m_scrollController.isRubberBandInProgress();
+#endif
+}
+
+bool ScrollAnimatorMac::isScrollSnapInProgress() const
+{
+#if ENABLE(CSS_SCROLL_SNAP)
+    return m_scrollController.isScrollSnapInProgress();
+#else
+    return false;
 #endif
 }
 
@@ -1091,16 +1101,18 @@ bool ScrollAnimatorMac::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
     if (!wheelEvent.hasPreciseScrollingDeltas() || !rubberBandingEnabledForSystem())
         return ScrollAnimator::handleWheelEvent(wheelEvent);
 
-    // FIXME: This is somewhat roundabout hack to allow forwarding wheel events
-    // up to the parent scrollable area. It takes advantage of the fact that
-    // the base class implementation of handleWheelEvent will not accept the
-    // wheel event if there is nowhere to scroll.
-    if (fabsf(wheelEvent.deltaY()) >= fabsf(wheelEvent.deltaX())) {
-        if (!allowsVerticalStretching(wheelEvent))
-            return ScrollAnimator::handleWheelEvent(wheelEvent);
-    } else {
-        if (!allowsHorizontalStretching(wheelEvent))
-            return ScrollAnimator::handleWheelEvent(wheelEvent);
+    if (wheelEvent.deltaX() || wheelEvent.deltaY()) {
+        // FIXME: This is somewhat roundabout hack to allow forwarding wheel events
+        // up to the parent scrollable area. It takes advantage of the fact that
+        // the base class implementation of handleWheelEvent will not accept the
+        // wheel event if there is nowhere to scroll.
+        if (fabsf(wheelEvent.deltaY()) >= fabsf(wheelEvent.deltaX())) {
+            if (!allowsVerticalStretching(wheelEvent))
+                return ScrollAnimator::handleWheelEvent(wheelEvent);
+        } else {
+            if (!allowsHorizontalStretching(wheelEvent))
+                return ScrollAnimator::handleWheelEvent(wheelEvent);
+        }
     }
 
     bool didHandleEvent = m_scrollController.handleWheelEvent(wheelEvent);
@@ -1267,6 +1279,7 @@ void ScrollAnimatorMac::immediateScrollBy(const FloatSize& delta)
     m_currentPosX = newPos.x();
     m_currentPosY = newPos.y();
     notifyPositionChanged(adjustedDelta);
+    updateActiveScrollSnapIndexForOffset();
 }
 #endif
 

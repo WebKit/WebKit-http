@@ -25,7 +25,6 @@
 #ifndef Element_h
 #define Element_h
 
-#include "CollectionType.h"
 #include "Document.h"
 #include "ElementData.h"
 #include "HTMLNames.h"
@@ -371,13 +370,6 @@ public:
     bool childNeedsShadowWalker() const;
     void didShadowTreeAwareChildrenChange();
 
-    // ElementTraversal API
-    Element* firstElementChild() const;
-    Element* lastElementChild() const;
-    Element* previousElementSibling() const;
-    Element* nextElementSibling() const;
-    unsigned childElementCount() const;
-
     virtual bool matchesReadWritePseudoClass() const;
     bool matches(const String& selectors, ExceptionCode&);
     Element* closest(const String& selectors, ExceptionCode&);
@@ -504,9 +496,6 @@ protected:
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(short);
-
-    Ref<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
-    HTMLCollection* cachedHTMLCollection(CollectionType);
 
     // classAttributeChanged() exists to share code between
     // parseAttribute (called via setAttribute()) and

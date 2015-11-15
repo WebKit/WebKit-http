@@ -593,8 +593,10 @@ void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dicti
 
     RetainPtr<NSMutableDictionary> mutableOptions = adoptNS([(NSDictionary *)dictionaryPopupInfo.options.get() mutableCopy]);
 
+    [m_wkView _prepareForDictionaryLookup];
+
     if (canLoadLUTermOptionDisableSearchTermIndicator() && dictionaryPopupInfo.textIndicator.contentImage) {
-        [m_wkView _setTextIndicator:*TextIndicator::create(dictionaryPopupInfo.textIndicator) withLifetime:TextIndicatorLifetime::Permanent];
+        [m_wkView _setTextIndicator:TextIndicator::create(dictionaryPopupInfo.textIndicator) withLifetime:TextIndicatorLifetime::Permanent];
         [mutableOptions setObject:@YES forKey:getLUTermOptionDisableSearchTermIndicator()];
         [getLULookupDefinitionModuleClass() showDefinitionForTerm:dictionaryPopupInfo.attributedString.string.get() atLocation:textBaselineOrigin options:mutableOptions.get()];
     } else
@@ -805,10 +807,10 @@ CGRect PageClientImpl::boundsOfLayerInLayerBackedWindowCoordinates(CALayer *laye
     return [windowContentLayer convertRect:layer.bounds fromLayer:layer];
 }
 
-void PageClientImpl::didPerformActionMenuHitTest(const WebHitTestResult::Data& result, bool forImmediateAction, bool contentPreventsDefault, API::Object* userData)
+void PageClientImpl::didPerformImmediateActionHitTest(const WebHitTestResult::Data& result, bool contentPreventsDefault, API::Object* userData)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-    [m_wkView _didPerformActionMenuHitTest:result forImmediateAction:forImmediateAction contentPreventsDefault:contentPreventsDefault userData:userData];
+    [m_wkView _didPerformImmediateActionHitTest:result contentPreventsDefault:contentPreventsDefault userData:userData];
 #endif
 }
 

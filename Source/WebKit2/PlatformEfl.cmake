@@ -226,6 +226,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/efl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
+    "${WEBCORE_DIR}/platform/graphics/x11"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
     "${WEBKIT2_DIR}/NetworkProcess/efl"
@@ -257,6 +258,9 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
     "${WTF_DIR}/wtf/efl/"
     "${WTF_DIR}/wtf/gobject"
+)
+
+list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${ECORE_EVAS_INCLUDE_DIRS}
     ${ECORE_IMF_EVAS_INCLUDE_DIRS}
@@ -327,7 +331,7 @@ if (ENABLE_SECCOMP_FILTERS)
     list(APPEND WebKit2_LIBRARIES
         ${LIBSECCOMP_LIBRARIES}
     )
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
         ${LIBSECCOMP_INCLUDE_DIRS}
     )
 
@@ -341,10 +345,10 @@ endif ()
 if (ENABLE_ECORE_X)
     list(APPEND WebProcess_LIBRARIES
         ${ECORE_X_LIBRARIES}
-        ${X11_Xext_LIB}
     )
     list(APPEND WebKit2_LIBRARIES
         ${ECORE_X_LIBRARIES}
+        ${X11_Xext_LIB}
     )
 endif ()
 
@@ -538,7 +542,7 @@ if (ENABLE_API_TESTS)
 endif ()
 
 if (ENABLE_SPELLCHECK)
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
         ${ENCHANT_INCLUDE_DIRS}
     )
     list(APPEND WebKit2_LIBRARIES
@@ -549,6 +553,8 @@ endif ()
 if (ENABLE_ACCESSIBILITY)
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBKIT2_DIR}/WebProcess/WebPage/atk"
+    )
+    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
         ${ATK_INCLUDE_DIRS}
     )
     list(APPEND WebKit2_LIBRARIES

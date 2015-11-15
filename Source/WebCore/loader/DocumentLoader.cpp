@@ -162,7 +162,7 @@ ResourceLoader* DocumentLoader::mainResourceLoader() const
 DocumentLoader::~DocumentLoader()
 {
     ASSERT(!m_frame || frameLoader()->activeDocumentLoader() != this || !isLoading());
-    RELEASE_ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback should never outlive its DocumentLoader.");
+    ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback should never outlive its DocumentLoader.");
     if (m_iconLoadDecisionCallback)
         m_iconLoadDecisionCallback->invalidate();
     if (m_iconDataCallback)
@@ -457,10 +457,10 @@ bool DocumentLoader::isPostOrRedirectAfterPost(const ResourceRequest& newRequest
 
 void DocumentLoader::handleSubstituteDataLoadNow()
 {
-    URL url = m_substituteData.responseURL();
-    if (url.isEmpty())
-        url = m_request.url();
-    ResourceResponse response(url, m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding());
+    ResourceResponse response = m_substituteData.response();
+    if (response.url().isEmpty())
+        response = ResourceResponse(m_request.url(), m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding());
+
     responseReceived(0, response);
 }
 
@@ -606,7 +606,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
     auto it = commonHeaders.find(HTTPHeaderName::XFrameOptions);
     if (it != commonHeaders.end()) {
         String content = it->value;
-        ASSERT(m_mainResource);
+        ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
         unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
         ASSERT(identifier);
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
@@ -667,7 +667,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
 
 void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
 {
-    RELEASE_ASSERT(m_waitingForContentPolicy);
+    ASSERT(m_waitingForContentPolicy);
     m_waitingForContentPolicy = false;
     if (isStopping())
         return;
@@ -927,7 +927,7 @@ void DocumentLoader::detachFromFrame()
     InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
     m_frame = nullptr;
     // The call to stopLoading() above should have canceled any pending content policy check.
-    RELEASE_ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback needs a valid frame.");
+    ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback needs a valid frame.");
 }
 
 void DocumentLoader::clearMainResourceLoader()
@@ -1234,7 +1234,7 @@ const URL& DocumentLoader::responseURL() const
 
 URL DocumentLoader::documentURL() const
 {
-    URL url = substituteData().responseURL();
+    URL url = substituteData().response().url();
 #if ENABLE(WEB_ARCHIVE)
     if (url.isEmpty() && m_archive && m_archive->type() == Archive::WebArchive)
         url = m_archive->mainResource()->url();
@@ -1297,6 +1297,7 @@ void DocumentLoader::stopLoadingPlugIns()
 void DocumentLoader::stopLoadingSubresources()
 {
     cancelAll(m_subresourceLoaders);
+    ASSERT(m_subresourceLoaders.isEmpty());
 }
 
 void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
@@ -1311,6 +1312,9 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
     ASSERT(loader->identifier());
     ASSERT(!m_subresourceLoaders.contains(loader->identifier()));
     ASSERT(!mainResourceLoader() || mainResourceLoader() != loader);
+
+    // A page in the PageCache should not be able to start loads.
+    ASSERT_WITH_SECURITY_IMPLICATION(!document() || !document()->inPageCache());
 
     m_subresourceLoaders.add(loader->identifier(), loader);
 }
@@ -1354,8 +1358,12 @@ bool DocumentLoader::maybeLoadEmpty()
     if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol()))
         return false;
 
-    if (m_request.url().isEmpty() && !frameLoader()->stateMachine().creatingInitialEmptyDocument())
+    if (m_request.url().isEmpty() && !frameLoader()->stateMachine().creatingInitialEmptyDocument()) {
         m_request.setURL(blankURL());
+        if (isLoadingMainResource())
+            frameLoader()->client().dispatchDidChangeProvisionalURL();
+    }
+
     String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client().generatedMIMETypeForURLScheme(m_request.url().protocol());
     m_response = ResourceResponse(m_request.url(), mimeType, 0, String());
     finishedLoading(monotonicallyIncreasingTime());
@@ -1605,7 +1613,8 @@ void DocumentLoader::contentFilterDidDecide()
     URL blockedURL;
     blockedURL.setProtocol(ContentFilter::urlScheme());
     blockedURL.setHost(ASCIILiteral("blocked-page"));
-    SubstituteData substituteData { contentFilter->replacementData(), ASCIILiteral("text/html"), ASCIILiteral("UTF-8"), documentURL() };
+    ResourceResponse response(URL(), ASCIILiteral("text/html"), contentFilter->replacementData()->size(), ASCIILiteral("UTF-8"));
+    SubstituteData substituteData { contentFilter->replacementData(), documentURL(), response, SubstituteData::SessionHistoryVisibility::Hidden };
     frame()->navigationScheduler().scheduleSubstituteDataLoad(blockedURL, substituteData);
 }
 #endif

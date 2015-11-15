@@ -23,6 +23,8 @@
 #include "APIDownloadClient.h"
 #include "APIProcessPoolConfiguration.h"
 #include "APIString.h"
+#include "TextChecker.h"
+#include "TextCheckerState.h"
 #include "WebBatteryManagerProxy.h"
 #include "WebCertificateInfo.h"
 #include "WebCookieManagerProxy.h"
@@ -40,7 +42,6 @@
 #include "WebKitRequestManagerClient.h"
 #include "WebKitSecurityManagerPrivate.h"
 #include "WebKitSettingsPrivate.h"
-#include "WebKitTextChecker.h"
 #include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitUserContentManagerPrivate.h"
 #include "WebKitWebContextPrivate.h"
@@ -101,7 +102,8 @@ using namespace WebKit;
 enum {
     PROP_0,
 
-    PROP_LOCAL_STORAGE_DIRECTORY
+    PROP_LOCAL_STORAGE_DIRECTORY,
+    PROP_INDEXED_DB_DIRECTORY
 };
 
 enum {
@@ -172,9 +174,6 @@ struct _WebKitWebContextPrivate {
 #if ENABLE(NOTIFICATIONS)
     RefPtr<WebKitNotificationProvider> notificationProvider;
 #endif
-#if ENABLE(SPELLCHECK)
-    std::unique_ptr<WebKitTextChecker> textChecker;
-#endif
     CString faviconDatabaseDirectory;
     WebKitTLSErrorsPolicy tlsErrorsPolicy;
 
@@ -184,6 +183,7 @@ struct _WebKitWebContextPrivate {
     GRefPtr<GVariant> webExtensionsInitializationUserData;
 
     CString localStorageDirectory;
+    CString indexedDBDirectory;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -218,7 +218,7 @@ static inline WebKitProcessModel toWebKitProcessModel(WebKit::ProcessModel proce
 
 static const char* injectedBundleDirectory()
 {
-#if defined(DEVELOPMENT_BUILD)
+#if ENABLE(DEVELOPER_MODE)
     const char* bundleDirectory = g_getenv("WEBKIT_INJECTED_BUNDLE_PATH");
     if (bundleDirectory && g_file_test(bundleDirectory, G_FILE_TEST_IS_DIR))
         return bundleDirectory;
@@ -237,6 +237,9 @@ static void webkitWebContextGetProperty(GObject* object, guint propID, GValue* v
     case PROP_LOCAL_STORAGE_DIRECTORY:
         g_value_set_string(value, context->priv->localStorageDirectory.data());
         break;
+    case PROP_INDEXED_DB_DIRECTORY:
+        g_value_set_string(value, context->priv->indexedDBDirectory.data());
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propID, paramSpec);
     }
@@ -249,6 +252,9 @@ static void webkitWebContextSetProperty(GObject* object, guint propID, const GVa
     switch (propID) {
     case PROP_LOCAL_STORAGE_DIRECTORY:
         context->priv->localStorageDirectory = g_value_get_string(value);
+        break;
+    case PROP_INDEXED_DB_DIRECTORY:
+        context->priv->indexedDBDirectory = g_value_get_string(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propID, paramSpec);
@@ -268,6 +274,8 @@ static void webkitWebContextConstructed(GObject* object)
     WebKitWebContextPrivate* priv = webContext->priv;
     if (!priv->localStorageDirectory.isNull())
         configuration->setLocalStorageDirectory(WebCore::filenameToString(priv->localStorageDirectory.data()));
+    if (!priv->indexedDBDirectory.isNull())
+        configuration->setIndexedDBDatabaseDirectory(WebCore::filenameToString(priv->indexedDBDirectory.data()));
 
     priv->context = WebProcessPool::create(configuration.get());
 
@@ -289,9 +297,6 @@ static void webkitWebContextConstructed(GObject* object)
 #endif
 #if ENABLE(NOTIFICATIONS)
     priv->notificationProvider = WebKitNotificationProvider::create(priv->context->supplement<WebNotificationManagerProxy>());
-#endif
-#if ENABLE(SPELLCHECK)
-    priv->textChecker = std::make_unique<WebKitTextChecker>();
 #endif
 }
 
@@ -333,6 +338,23 @@ static void webkit_web_context_class_init(WebKitWebContextClass* webContextClass
             "local-storage-directory",
             _("Local Storage Directory"),
             _("The directory where local storage data will be saved"),
+            nullptr,
+            static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
+
+    /**
+     * WebKitWebContext:indexed-db-directory:
+     *
+     * The directory where IndexedDB databases will be saved.
+     *
+     * Since: 2.10
+     */
+    g_object_class_install_property(
+        gObjectClass,
+        PROP_INDEXED_DB_DIRECTORY,
+        g_param_spec_string(
+            "indexed-db-directory",
+            _("IndexedDB Directory"),
+            _("The directory where IndexedDB databases will be saved"),
             nullptr,
             static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
 
@@ -671,7 +693,9 @@ void webkit_web_context_set_additional_plugins_directory(WebKitWebContext* conte
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
     g_return_if_fail(directory);
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     context->priv->context->setAdditionalPluginsDirectory(WebCore::filenameToString(directory));
+#endif
 }
 
 static void destroyPluginList(GList* plugins)
@@ -681,10 +705,12 @@ static void destroyPluginList(GList* plugins)
 
 static void webkitWebContextGetPluginThread(GTask* task, gpointer object, gpointer /* taskData */, GCancellable*)
 {
-    Vector<PluginModuleInfo> plugins = WEBKIT_WEB_CONTEXT(object)->priv->context->pluginInfoStore().plugins();
     GList* returnValue = 0;
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    Vector<PluginModuleInfo> plugins = WEBKIT_WEB_CONTEXT(object)->priv->context->pluginInfoStore().plugins();
     for (size_t i = 0; i < plugins.size(); ++i)
         returnValue = g_list_prepend(returnValue, webkitPluginCreate(plugins[i]));
+#endif
     g_task_return_pointer(task, returnValue, reinterpret_cast<GDestroyNotify>(destroyPluginList));
 }
 
@@ -802,7 +828,7 @@ gboolean webkit_web_context_get_spell_checking_enabled(WebKitWebContext* context
     g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), FALSE);
 
 #if ENABLE(SPELLCHECK)
-    return context->priv->textChecker->isSpellCheckingEnabled();
+    return TextChecker::state().isContinuousSpellCheckingEnabled;
 #else
     return false;
 #endif
@@ -820,7 +846,7 @@ void webkit_web_context_set_spell_checking_enabled(WebKitWebContext* context, gb
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
 
 #if ENABLE(SPELLCHECK)
-    context->priv->textChecker->setSpellCheckingEnabled(enabled);
+    TextChecker::setContinuousSpellCheckingEnabled(enabled);
 #endif
 }
 
@@ -839,10 +865,20 @@ void webkit_web_context_set_spell_checking_enabled(WebKitWebContext* context, gb
  */
 const gchar* const* webkit_web_context_get_spell_checking_languages(WebKitWebContext* context)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), 0);
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), nullptr);
 
 #if ENABLE(SPELLCHECK)
-    return context->priv->textChecker->getSpellCheckingLanguages();
+    Vector<String> spellCheckingLanguages = TextChecker::loadedSpellCheckingLanguages();
+    if (spellCheckingLanguages.isEmpty())
+        return nullptr;
+
+    static GRefPtr<GPtrArray> languagesToReturn;
+    languagesToReturn = adoptGRef(g_ptr_array_new_with_free_func(g_free));
+    for (const auto& language : spellCheckingLanguages)
+        g_ptr_array_add(languagesToReturn.get(), g_strdup(language.utf8().data()));
+    g_ptr_array_add(languagesToReturn.get(), nullptr);
+
+    return reinterpret_cast<char**>(languagesToReturn->pdata);
 #else
     return 0;
 #endif
@@ -871,7 +907,10 @@ void webkit_web_context_set_spell_checking_languages(WebKitWebContext* context, 
     g_return_if_fail(languages);
 
 #if ENABLE(SPELLCHECK)
-    context->priv->textChecker->setSpellCheckingLanguages(languages);
+    Vector<String> spellCheckingLanguages;
+    for (size_t i = 0; languages[i]; ++i)
+        spellCheckingLanguages.append(String::fromUTF8(languages[i]));
+    TextChecker::setSpellCheckingLanguages(spellCheckingLanguages);
 #endif
 }
 

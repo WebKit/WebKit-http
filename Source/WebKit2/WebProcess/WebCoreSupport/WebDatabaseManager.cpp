@@ -137,9 +137,9 @@ void WebDatabaseManager::deleteAllDatabases() const
     DatabaseManager::singleton().deleteAllDatabases();
 }
 
-void WebDatabaseManager::setPauseAllDatabases(bool pauseAllDatabases)
+void WebDatabaseManager::closeAllDatabases() const
 {
-    DatabaseManager::singleton().setPauseAllDatabases(pauseAllDatabases);
+    DatabaseManager::singleton().closeAllDatabases();
 }
 
 void WebDatabaseManager::setQuotaForOrigin(const String& originIdentifier, unsigned long long quota) const

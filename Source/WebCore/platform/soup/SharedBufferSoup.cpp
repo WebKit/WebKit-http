@@ -27,8 +27,7 @@
 namespace WebCore {
 
 SharedBuffer::SharedBuffer(SoupBuffer* soupBuffer)
-    : m_size(0)
-    , m_buffer(adoptRef(new DataBuffer))
+    : m_buffer(adoptRef(new DataBuffer))
     , m_soupBuffer(soupBuffer)
 {
     ASSERT(soupBuffer);
@@ -77,6 +76,16 @@ unsigned SharedBuffer::platformDataSize() const
 bool SharedBuffer::maybeAppendPlatformData(SharedBuffer*)
 {
     return false;
+}
+
+void SharedBuffer::tryReplaceContentsWithPlatformBuffer(SharedBuffer& newContents)
+{
+    if (!newContents.hasPlatformData())
+        return;
+
+    clear();
+    // FIXME: Use GRefPtr instead of GUniquePtr for the SoupBuffer.
+    m_soupBuffer.swap(newContents.m_soupBuffer);
 }
 
 } // namespace WebCore

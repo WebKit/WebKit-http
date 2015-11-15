@@ -390,12 +390,21 @@ void PageCache::markPagesForFullStyleRecalc(Page& page)
     }
 }
 
-void PageCache::markPagesForDeviceScaleChanged(Page& page)
+void PageCache::markPagesForDeviceOrPageScaleChanged(Page& page)
 {
     for (auto& item : m_items) {
         CachedPage& cachedPage = *item->m_cachedPage;
         if (&page.mainFrame() == &cachedPage.cachedMainFrame()->view()->frame())
-            cachedPage.markForDeviceScaleChanged();
+            cachedPage.markForDeviceOrPageScaleChanged();
+    }
+}
+
+void PageCache::markPagesForContentsSizeChanged(Page& page)
+{
+    for (auto& item : m_items) {
+        CachedPage& cachedPage = *item->m_cachedPage;
+        if (&page.mainFrame() == &cachedPage.cachedMainFrame()->view()->frame())
+            cachedPage.markForContentsSizeChanged();
     }
 }
 

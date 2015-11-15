@@ -21,7 +21,6 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/AspenFamily.xcconfig"
 #include "../../../../Internal/Configurations/HaveInternalSDK.xcconfig"
 
 USE_INTERNAL_SDK = $(USE_INTERNAL_SDK_$(CONFIGURATION));
@@ -81,7 +80,7 @@ TARGET_MAC_OS_X_VERSION_MAJOR = $(MAC_OS_X_VERSION_MAJOR);
 
 // DEBUG_DEFINES, GCC_OPTIMIZATION_LEVEL, STRIP_INSTALLED_PRODUCT and DEAD_CODE_STRIPPING vary between the debug and normal variants.
 // We set up the values for each variant here, and have the Debug configuration in the Xcode project use the _debug variant.
-DEBUG_DEFINES_debug = DISABLE_THREAD_CHECK;
+DEBUG_DEFINES_debug = ;
 DEBUG_DEFINES_normal = NDEBUG;
 DEBUG_DEFINES = $(DEBUG_DEFINES_$(CURRENT_VARIANT));
 
@@ -98,7 +97,11 @@ COPY_PHASE_STRIP = NO;
 // building the MiG bindings for WebKitPluginClient even when the functions that the bindings wrap are not built.
 DEAD_CODE_STRIPPING = YES;
 
+INSTALL_PATH_PREFIX[sdk=iphonesimulator8.*] = $(DEVELOPER_INSTALL_DIR)/Platforms/iPhoneSimulator.platform/Developer/SDKs/$(SDK_DIR:file);
 INSTALL_PATH = $(INSTALL_PATH_PREFIX)$(INSTALL_PATH_ACTUAL);
+
+LD_DYLIB_INSTALL_NAME[sdk=iphonesimulator8.*]=$(LD_DYLIB_INSTALL_NAME_$(MACH_O_TYPE));
+LD_DYLIB_INSTALL_NAME_mh_dylib=$(INSTALL_PATH_ACTUAL)/$(EXECUTABLE_PATH);
 
 SDKROOT = macosx.internal;
 

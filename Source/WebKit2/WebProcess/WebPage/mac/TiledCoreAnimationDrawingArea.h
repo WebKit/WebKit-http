@@ -86,6 +86,8 @@ private:
 
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
+    virtual void replyWithFenceAfterNextFlush(uint64_t callbackID) override;
+
     // WebCore::LayerFlushSchedulerClient
     virtual bool flushLayers() override;
 
@@ -97,6 +99,8 @@ private:
     void setLayerHostingMode(LayerHostingMode) override;
     virtual void setColorSpace(const ColorSpaceData&) override;
     virtual void addFence(const WebCore::MachSendRight&) override;
+
+    virtual void setShouldScaleViewToFitDocument(bool) override;
 
     virtual void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
     virtual void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
@@ -116,6 +120,7 @@ private:
 
     void updateIntrinsicContentSizeIfNeeded();
     void updateScrolledExposedRect();
+    void scaleViewToFitDocumentIfNeeded();
 
     bool m_layerTreeStateIsFrozen;
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
@@ -146,6 +151,12 @@ private:
     bool m_wantsDidUpdateViewState;
 
     WebCore::GraphicsLayer* m_viewOverlayRootLayer;
+
+    Vector<uint64_t> m_fenceCallbacksForAfterNextFlush;
+    bool m_shouldScaleViewToFitDocument { false };
+    bool m_isScalingViewToFitDocument { false };
+    WebCore::IntSize m_lastViewSizeForScaleToFit;
+    WebCore::IntSize m_lastDocumentSizeForScaleToFit;
 };
 
 } // namespace WebKit

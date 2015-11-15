@@ -80,7 +80,7 @@ static void initializeInspectorServer()
 #endif
 }
 
-String WebProcessPool::platformDefaultApplicationCacheDirectory() const
+String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
     return String::fromUTF8(efreet_cache_home_get()) + "/WebKitEfl/Applications";
 }
@@ -129,12 +129,6 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 String WebProcessPool::platformDefaultDiskCacheDirectory() const
 {
     return String::fromUTF8(efreet_cache_home_get()) + "/WebKitEfl";
-}
-
-String WebProcessPool::platformDefaultCookieStorageDirectory() const
-{
-    notImplemented();
-    return String();
 }
 
 void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)

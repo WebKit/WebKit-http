@@ -175,20 +175,6 @@ bool HTMLMediaSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement& e
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-bool HTMLMediaSession::currentPlaybackTargetIsWireless(const HTMLMediaElement& element) const
-{
-    MediaPlayer* player = element.player();
-    if (!player) {
-        LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsWireless - returning FALSE because player is NULL");
-        return false;
-    }
-
-    bool isWireless = player->isCurrentPlaybackTargetWireless();
-    LOG(Media, "HTMLMediaSession::currentPlaybackTargetIsWireless - returning %s", isWireless ? "TRUE" : "FALSE");
-
-    return isWireless;
-}
-
 void HTMLMediaSession::showPlaybackTargetPicker(const HTMLMediaElement& element)
 {
     LOG(Media, "HTMLMediaSession::showPlaybackTargetPicker");
@@ -228,7 +214,7 @@ bool HTMLMediaSession::hasWirelessPlaybackTargets(const HTMLMediaElement&) const
 bool HTMLMediaSession::wirelessVideoPlaybackDisabled(const HTMLMediaElement& element) const
 {
     Settings* settings = element.document().settings();
-    if (!settings || !settings->mediaPlaybackAllowsAirPlay()) {
+    if (!settings || !settings->allowsAirPlayForMediaPlayback()) {
         LOG(Media, "HTMLMediaSession::wirelessVideoPlaybackDisabled - returning TRUE because of settings");
         return true;
     }
@@ -305,11 +291,10 @@ void HTMLMediaSession::externalOutputDeviceAvailableDidChange(bool hasTargets)
     if (m_hasPlaybackTargets == hasTargets)
         return;
 
-    LOG(Media, "HTMLMediaSession::externalOutputDeviceAvailableDidChange - hasTargets %s", hasTargets ? "TRUE" : "FALSE");
+    LOG(Media, "HTMLMediaSession::externalOutputDeviceAvailableDidChange(%p) - hasTargets %s", this, hasTargets ? "TRUE" : "FALSE");
 
     m_hasPlaybackTargets = hasTargets;
-    if (!m_targetAvailabilityChangedTimer.isActive())
-        m_targetAvailabilityChangedTimer.startOneShot(0);
+    m_targetAvailabilityChangedTimer.startOneShot(0);
 }
 
 bool HTMLMediaSession::canPlayToWirelessPlaybackTarget() const
@@ -330,6 +315,7 @@ bool HTMLMediaSession::isPlayingToWirelessPlaybackTarget() const
 
 void HTMLMediaSession::setShouldPlayToPlaybackTarget(bool shouldPlay)
 {
+    LOG(Media, "HTMLMediaSession::setShouldPlayToPlaybackTarget - shouldPlay %s", shouldPlay ? "TRUE" : "FALSE");
     m_shouldPlayToPlaybackTarget = shouldPlay;
     client().setShouldPlayToPlaybackTarget(shouldPlay);
 }
@@ -362,7 +348,7 @@ bool HTMLMediaSession::requiresFullscreenForVideoPlayback(const HTMLMediaElement
         return false;
 
     Settings* settings = element.document().settings();
-    if (!settings || !settings->mediaPlaybackAllowsInline())
+    if (!settings || !settings->allowsInlineMediaPlayback())
         return true;
 
     if (element.fastHasAttribute(HTMLNames::webkit_playsinlineAttr))
@@ -386,7 +372,7 @@ void HTMLMediaSession::mediaEngineUpdated(const HTMLMediaElement& element)
     if (m_playbackTarget)
         client().setWirelessPlaybackTarget(*m_playbackTarget.copyRef());
     if (m_shouldPlayToPlaybackTarget)
-        client().setShouldPlayToPlaybackTarget(m_shouldPlayToPlaybackTarget);
+        client().setShouldPlayToPlaybackTarget(true);
 #else
     UNUSED_PARAM(element);
 #endif

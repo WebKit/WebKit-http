@@ -180,7 +180,8 @@ public:
     // Updates the expire date on the cache entry file
     void finish();
 
-    bool passesAccessControlCheck(SecurityOrigin*);
+    bool passesAccessControlCheck(SecurityOrigin&);
+    bool passesSameOriginPolicyCheck(SecurityOrigin&);
 
     // Called by the cache if the object has been removed from the cache
     // while still being referenced. This means the object should delete itself
@@ -197,6 +198,8 @@ public:
     virtual void responseReceived(const ResourceResponse&);
     void setResponse(const ResourceResponse& response) { m_response = response; }
     const ResourceResponse& response() const { return m_response; }
+    // This is the same as response() except after HTTP redirect to data: URL.
+    const ResourceResponse& responseForSameOriginPolicyChecks() const;
 
     bool canDelete() const { return !hasClients() && !m_loader && !m_preloadCount && !m_handleCount && !m_resourceToRevalidate && !m_proxyResource; }
     bool hasOneHandle() const { return m_handleCount == 1; }
@@ -211,7 +214,7 @@ public:
     void cancelLoad();
     bool wasCanceled() const { return m_error.isCancellation(); }
     bool errorOccurred() const { return m_status == LoadError || m_status == DecodeError; }
-    bool loadFailedOrCanceled() { return !m_error.isNull(); }
+    bool loadFailedOrCanceled() const { return !m_error.isNull(); }
 
     bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks() == SendCallbacks; }
     DataBufferingPolicy dataBufferingPolicy() const { return m_options.dataBufferingPolicy(); }
@@ -229,7 +232,8 @@ public:
     
     bool canUseCacheValidator() const;
 
-    virtual bool mustRevalidateDueToCacheHeaders(const CachedResourceLoader&, CachePolicy) const;
+    enum class RevalidationDecision { No, YesDueToCachePolicy, YesDueToNoStore, YesDueToNoCache, YesDueToExpired };
+    virtual RevalidationDecision makeRevalidationDecision(CachePolicy) const;
     bool redirectChainAllowsReuse(ReuseExpiredRedirectionOrNot) const;
 
     bool isCacheValidator() const { return m_resourceToRevalidate; }
@@ -248,7 +252,7 @@ public:
 
     virtual bool canReuse(const ResourceRequest&) const { return true; }
 
-#if USE(FOUNDATION)
+#if USE(FOUNDATION) || USE(SOUP)
     WEBCORE_EXPORT void tryReplaceEncodedData(SharedBuffer&);
 #endif
 
@@ -267,6 +271,7 @@ protected:
     RefPtr<SubresourceLoader> m_loader;
     ResourceLoaderOptions m_options;
     ResourceResponse m_response;
+    ResourceResponse m_redirectResponseForSameOriginPolicyChecks;
     RefPtr<SharedBuffer> m_data;
     DeferrableOneShotTimer m_decodedDataDeletionTimer;
 

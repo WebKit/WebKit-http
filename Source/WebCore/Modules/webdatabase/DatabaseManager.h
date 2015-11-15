@@ -85,6 +85,9 @@ public:
     PassRefPtr<Database> openDatabase(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback>, DatabaseError&);
 
     WEBCORE_EXPORT bool hasOpenDatabases(ScriptExecutionContext*);
+
+    WEBCORE_EXPORT void closeAllDatabases();
+
     void stopDatabases(ScriptExecutionContext*, DatabaseTaskSynchronizer*);
 
     String fullPathForDatabase(SecurityOrigin*, const String& name, bool createIfDoesNotExist = true);
@@ -102,8 +105,6 @@ public:
     WEBCORE_EXPORT void deleteAllDatabases();
     WEBCORE_EXPORT bool deleteOrigin(SecurityOrigin*);
     WEBCORE_EXPORT bool deleteDatabase(SecurityOrigin*, const String& name);
-
-    WEBCORE_EXPORT void setPauseAllDatabases(bool);
 
     void interruptAllDatabasesForContext(ScriptExecutionContext*);
 

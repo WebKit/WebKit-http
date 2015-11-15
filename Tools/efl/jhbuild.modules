@@ -142,11 +142,9 @@
       <dep package="glib-networking"/>
       <dep package="libxml2"/>
     </dependencies>
-    <branch module="/pub/gnome/sources/libsoup/2.42/libsoup-2.42.0.tar.xz" version="2.42.0"
+    <branch module="/pub/gnome/sources/libsoup/2.50/libsoup-2.50.0.tar.xz" version="2.50.0"
             repo="ftp.gnome.org"
-            hash="sha256:9e0e7eb5d3f7401ccf521fbc289fc1fa0923b7c7833729e2ed7696f7b848893e">
-      <patch file="soup-clang-warning-fix1.patch" strip="1"/>
-      <patch file="soup-clang-warning-fix2.patch" strip="1"/>
+            hash="sha256:1e01365ac4af3817187ea847f9d3588c27eee01fc519a5a7cb212bb78b0f667b">
     </branch>
   </autotools>
 
@@ -209,10 +207,9 @@
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="rel/libs/efl/efl-1.13.0.tar.gz" version="1.13.0"
+    <branch module="rel/libs/efl/efl-1.14.0.tar.gz" version="1.14.0"
             repo="download.enlightenment.org"
-            hash="sha256:7ff797d4cd01143edc1258a287be3ddfb11264f0b855878d8f5ad5129dee9357"
-            md5sum="c73f00e1e25b3b660e15ef754c76541d">
+            hash="sha256:30a8a239449e0d068a39787b5a4769dd26ddf0476f58f094c85e65b108086269">
       <patch file="ecore_remove_warnings.patch" strip="1"/>
     </branch>
   </autotools>
@@ -220,10 +217,9 @@
   <autotools id="elementary"
              autogen-sh="configure"
              autogenargs="--disable-emap --disable-eweather --with-elementary-web-backend=none">
-    <branch module="rel/libs/elementary/elementary-1.13.0.tar.gz" version="1.13.0"
+    <branch module="rel/libs/elementary/elementary-1.14.0.tar.gz" version="1.14.0"
             repo="download.enlightenment.org"
-            hash="sha256:52f1b4304f22156ab53d2d13b8d8f15c58a110a3bc3f31a13fc357eb9527778c"
-            md5sum="e8464cc2d89585cfe189584c7081845b">
+            hash="sha256:aa06ca1b332b3cd29ffd136c1f10edf08a06906b3532785ce7e390c1cad6090e">
     </branch>
     <dependencies>
         <dep package="efl"/>

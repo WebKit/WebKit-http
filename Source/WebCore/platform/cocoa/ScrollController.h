@@ -97,6 +97,11 @@ public:
     {
         return 1.0f;
     }
+
+    virtual unsigned activeScrollOffsetIndex(ScrollEventAxis) const
+    {
+        return 0;
+    }
 #endif
 };
 
@@ -109,11 +114,18 @@ public:
     bool handleWheelEvent(const PlatformWheelEvent&);
 
     bool isRubberBandInProgress() const;
+    bool isScrollSnapInProgress() const;
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
     bool processWheelEventForScrollSnap(const PlatformWheelEvent&);
     void updateScrollAnimatorsAndTimers(const ScrollableArea&);
     void updateScrollSnapPoints(ScrollEventAxis, const Vector<LayoutUnit>&);
+    unsigned activeScrollSnapIndexForAxis(ScrollEventAxis) const;
+    void setActiveScrollSnapIndexForAxis(ScrollEventAxis, unsigned);
+    void setActiveScrollSnapIndicesForOffset(int x, int y);
+    bool activeScrollSnapIndexDidChange() const { return m_activeScrollSnapIndexDidChange; }
+    void setScrollSnapIndexDidChange(bool state) { m_activeScrollSnapIndexDidChange = state; }
+    bool hasActiveScrollSnapTimerForAxis(ScrollEventAxis) const;
 #endif
 
 private:
@@ -133,6 +145,7 @@ private:
     LayoutUnit scrollOffsetOnAxis(ScrollEventAxis) const;
     void processWheelEventForScrollSnapOnAxis(ScrollEventAxis, const PlatformWheelEvent&);
     bool shouldOverrideWheelEvent(ScrollEventAxis, const PlatformWheelEvent&) const;
+    void setNearestScrollSnapIndexForAxisAndOffset(ScrollEventAxis, int);
 
     void beginScrollSnapAnimation(ScrollEventAxis, ScrollSnapState);
     void scrollSnapAnimationUpdate(ScrollEventAxis);
@@ -172,6 +185,7 @@ private:
     bool m_momentumScrollInProgress { false };
     bool m_ignoreMomentumScrolls { false };
     bool m_snapRubberbandTimerIsActive { false };
+    bool m_activeScrollSnapIndexDidChange { false };
 };
     
 } // namespace WebCore

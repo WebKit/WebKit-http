@@ -147,18 +147,24 @@ TEST(WTF, StringViewEqualIgnoringASCIICaseBasic)
     RefPtr<StringImpl> a = StringImpl::createFromLiteral("aBcDeFG");
     RefPtr<StringImpl> b = StringImpl::createFromLiteral("ABCDEFG");
     RefPtr<StringImpl> c = StringImpl::createFromLiteral("abcdefg");
+    const char d[] = "aBcDeFG";
     RefPtr<StringImpl> empty = StringImpl::create(reinterpret_cast<const LChar*>(""));
     RefPtr<StringImpl> shorter = StringImpl::createFromLiteral("abcdef");
+    RefPtr<StringImpl> different = StringImpl::createFromLiteral("abcrefg");
 
     StringView stringViewA(*a.get());
     StringView stringViewB(*b.get());
     StringView stringViewC(*c.get());
     StringView emptyStringView(*empty.get());
     StringView shorterStringView(*shorter.get());
+    StringView differentStringView(*different.get());
 
     ASSERT_TRUE(equalIgnoringASCIICase(stringViewA, stringViewB));
     ASSERT_TRUE(equalIgnoringASCIICase(stringViewB, stringViewC));
     ASSERT_TRUE(equalIgnoringASCIICase(stringViewB, stringViewC));
+    ASSERT_TRUE(equalIgnoringASCIICase(stringViewA, d));
+    ASSERT_TRUE(equalIgnoringASCIICase(stringViewB, d));
+    ASSERT_TRUE(equalIgnoringASCIICase(stringViewC, d));
 
     // Identity.
     ASSERT_TRUE(equalIgnoringASCIICase(stringViewA, stringViewA));
@@ -177,6 +183,12 @@ TEST(WTF, StringViewEqualIgnoringASCIICaseBasic)
     ASSERT_FALSE(equalIgnoringASCIICase(stringViewA, shorterStringView));
     ASSERT_FALSE(equalIgnoringASCIICase(stringViewB, shorterStringView));
     ASSERT_FALSE(equalIgnoringASCIICase(stringViewC, shorterStringView));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewA, differentStringView));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewB, differentStringView));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewC, differentStringView));
+    ASSERT_FALSE(equalIgnoringASCIICase(emptyStringView, d));
+    ASSERT_FALSE(equalIgnoringASCIICase(shorterStringView, d));
+    ASSERT_FALSE(equalIgnoringASCIICase(differentStringView, d));
 }
 
 TEST(WTF, StringViewEqualIgnoringASCIICaseWithEmpty)
@@ -195,6 +207,7 @@ TEST(WTF, StringViewEqualIgnoringASCIICaseWithLatin1Characters)
     RefPtr<StringImpl> b = StringImpl::create(reinterpret_cast<const LChar*>("ABCÉEFG"));
     RefPtr<StringImpl> c = StringImpl::create(reinterpret_cast<const LChar*>("ABCéEFG"));
     RefPtr<StringImpl> d = StringImpl::create(reinterpret_cast<const LChar*>("abcéefg"));
+    const char e[] = "aBcéeFG";
     StringView stringViewA(*a.get());
     StringView stringViewB(*b.get());
     StringView stringViewC(*c.get());
@@ -213,6 +226,10 @@ TEST(WTF, StringViewEqualIgnoringASCIICaseWithLatin1Characters)
     ASSERT_FALSE(equalIgnoringASCIICase(stringViewB, stringViewC));
     ASSERT_FALSE(equalIgnoringASCIICase(stringViewB, stringViewD));
     ASSERT_TRUE(equalIgnoringASCIICase(stringViewC, stringViewD));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewA, e));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewB, e));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewC, e));
+    ASSERT_FALSE(equalIgnoringASCIICase(stringViewD, e));
 }
 
 StringView stringViewFromLiteral(const char* characters)
@@ -385,7 +402,7 @@ TEST(WTF, StringViewFindIgnoringASCIICaseWithPatternLongerThanReference)
     String referenceHolder;
     StringView reference = stringViewFromUTF8(referenceHolder, "ABCÉEFG");
     String patternHolder;
-    StringView pattern = stringViewFromUTF8(referenceHolder, "ABCÉEFGA");
+    StringView pattern = stringViewFromUTF8(patternHolder, "ABCÉEFGA");
 
     EXPECT_EQ(static_cast<size_t>(WTF::notFound), reference.findIgnoringASCIICase(pattern));
     EXPECT_EQ(static_cast<size_t>(0), pattern.findIgnoringASCIICase(reference));
@@ -695,6 +712,25 @@ TEST(WTF, StringViewEndsWithIgnoringASCIICaseWithLatin1Characters)
 
     EXPECT_FALSE(reference.endsWithIgnoringASCIICase(referenceUTF8));
     EXPECT_FALSE(referenceUTF8.endsWithIgnoringASCIICase(reference));
+}
+
+TEST(WTF, StringView8Bit)
+{
+    StringView nullView;
+    StringView emptyView = StringView::empty();
+    EXPECT_TRUE(StringView().is8Bit());
+    EXPECT_TRUE(StringView::empty().is8Bit());
+
+    LChar* lcharPtr = nullptr;
+    UChar* ucharPtr = nullptr;
+    EXPECT_TRUE(StringView(lcharPtr, 0).is8Bit());
+    EXPECT_FALSE(StringView(ucharPtr, 0).is8Bit());
+
+    EXPECT_TRUE(StringView(String(lcharPtr, 0)).is8Bit());
+    EXPECT_TRUE(StringView(String(ucharPtr, 0)).is8Bit());
+
+    EXPECT_TRUE(StringView(String().impl()).is8Bit());
+    EXPECT_TRUE(StringView(emptyString().impl()).is8Bit());
 }
 
 } // namespace TestWebKitAPI

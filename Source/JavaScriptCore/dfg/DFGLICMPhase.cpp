@@ -130,6 +130,12 @@ public:
             
             DFG_ASSERT(m_graph, preHeader->terminal(), preHeader->terminal()->op() == Jump);
             
+            // We should validate the pre-header. If we placed forExit origins on nodes only if
+            // at the top of that node it is legal to exit, then we would simply check if Jump
+            // had a forExit. We should disable hoisting to pre-headers that don't validate.
+            // Or, we could only allow hoisting of things that definitely don't exit.
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=145204
+            
             data.preHeader = preHeader;
         }
         
@@ -282,6 +288,8 @@ private:
         node->owner = data.preHeader;
         NodeOrigin originalOrigin = node->origin;
         node->origin.forExit = data.preHeader->terminal()->origin.forExit;
+        if (!node->origin.semantic.isSet())
+            node->origin.semantic = node->origin.forExit;
         
         // Modify the states at the end of the preHeader of the loop we hoisted to,
         // and all pre-headers inside the loop.

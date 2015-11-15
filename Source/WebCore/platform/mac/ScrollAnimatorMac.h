@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2010, 2011, 2014-2015 Apple Inc. All rights reserved.
  *
@@ -131,7 +132,8 @@ private:
 
     void immediateScrollTo(const FloatPoint&);
 
-    virtual bool isRubberBandInProgress() const override;
+    bool isRubberBandInProgress() const override;
+    bool isScrollSnapInProgress() const override;
 
 #if ENABLE(RUBBER_BANDING)
     /// ScrollControllerClient member functions.

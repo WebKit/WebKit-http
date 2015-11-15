@@ -24,9 +24,11 @@
 # First come the common protocols that both interpreters use. Note that each
 # of these must have an ASSERT() in LLIntData.cpp
 
-# Work-around for the fact that the toolchain's awareness of armv7s results in
-# a separate slab in the fat binary, yet the offlineasm doesn't know to expect
-# it.
+# Work-around for the fact that the toolchain's awareness of armv7k / armv7s
+# results in a separate slab in the fat binary, yet the offlineasm doesn't know
+# to expect it.
+if ARMv7k
+end
 if ARMv7s
 end
 
@@ -1054,6 +1056,18 @@ _llint_op_del_by_val:
 _llint_op_put_by_index:
     traceExecution()
     callSlowPath(_llint_slow_path_put_by_index)
+    dispatch(4)
+
+
+_llint_op_put_getter_by_id:
+    traceExecution()
+    callSlowPath(_llint_slow_path_put_getter_by_id)
+    dispatch(4)
+
+
+_llint_op_put_setter_by_id:
+    traceExecution()
+    callSlowPath(_llint_slow_path_put_setter_by_id)
     dispatch(4)
 
 

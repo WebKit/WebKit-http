@@ -32,6 +32,7 @@
 #import "DOMDictionaryInternal.h"
 #import "DOMDocumentInternal.h"
 #import "DOMNodeInternal.h"
+#import "DOMPromiseInternal.h"
 #import "DOMSVGDocumentInternal.h"
 #import "DOMSVGPointInternal.h"
 #import "DOMTestEnumTypeInternal.h"
@@ -51,6 +52,7 @@
 #import "JSMainThreadExecState.h"
 #import "Node.h"
 #import "ObjCEventListener.h"
+#import "Promise.h"
 #import "SVGDocument.h"
 #import "SVGPoint.h"
 #import "SerializedScriptValue.h"
@@ -804,6 +806,12 @@
     return IMPL->attribute();
 }
 
+- (DOMPromise *)testPromiseAttr
+{
+    WebCore::JSMainThreadNullState state;
+    return kit(WTF::getPtr(IMPL->testPromiseAttr()));
+}
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -1184,7 +1192,7 @@ WebCore::TestObj* core(DOMTestObj *wrapper)
 
 DOMTestObj *kit(WebCore::TestObj* value)
 {
-    { DOM_ASSERT_MAIN_THREAD(); WebCoreThreadViolationCheckRoundOne(); };
+    WebCoreThreadViolationCheckRoundOne();
     if (!value)
         return nil;
     if (DOMTestObj *wrapper = getDOMWrapper(value))

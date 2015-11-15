@@ -843,10 +843,10 @@ inline void InlineFlowBox::addBorderOutsetVisualOverflow(LayoutRect& logicalVisu
 
     LayoutBoxExtent borderOutsets = lineStyle.borderImageOutsets();
 
-    LayoutUnit borderOutsetLogicalTop = borderOutsets.logicalTop(lineStyle.writingMode());
-    LayoutUnit borderOutsetLogicalBottom = borderOutsets.logicalBottom(lineStyle.writingMode());
-    LayoutUnit borderOutsetLogicalLeft = borderOutsets.logicalLeft(lineStyle.writingMode());
-    LayoutUnit borderOutsetLogicalRight = borderOutsets.logicalRight(lineStyle.writingMode());
+    LayoutUnit borderOutsetLogicalTop = borderOutsets.before(lineStyle.writingMode());
+    LayoutUnit borderOutsetLogicalBottom = borderOutsets.after(lineStyle.writingMode());
+    LayoutUnit borderOutsetLogicalLeft = borderOutsets.start(lineStyle.writingMode());
+    LayoutUnit borderOutsetLogicalRight = borderOutsets.end(lineStyle.writingMode());
 
     // Similar to how glyph overflow works, if our lines are flipped, then it's actually the opposite border that applies, since
     // the line is "upside down" in terms of block coordinates. vertical-rl and horizontal-bt are the flipped line modes.
@@ -1340,7 +1340,7 @@ void InlineFlowBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&
     GraphicsContext* context = paintInfo.context;
     LayoutRect paintRect = LayoutRect(adjustedPaintoffset, frameRect.size());
     // Shadow comes first and is behind the background and border.
-    if (!renderer().boxShadowShouldBeAppliedToBackground(BackgroundBleedNone, this))
+    if (!renderer().boxShadowShouldBeAppliedToBackground(adjustedPaintoffset, BackgroundBleedNone, this))
         paintBoxShadow(paintInfo, lineStyle, Normal, paintRect);
 
     Color c = lineStyle.visitedDependentColor(CSSPropertyBackgroundColor);

@@ -368,7 +368,7 @@ LayoutUnit RenderTable::convertStyleLogicalHeightToComputedHeight(const Length& 
             borders = borderAndPaddingBefore + borderAndPaddingAfter;
         }
         computedLogicalHeight = styleLogicalHeight.value() - borders;
-    } else if (styleLogicalHeight.isPercent())
+    } else if (styleLogicalHeight.isPercentOrCalculated())
         computedLogicalHeight = computePercentageLogicalHeight(styleLogicalHeight);
     else
         ASSERT_NOT_REACHED();
@@ -748,7 +748,7 @@ void RenderTable::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& p
     subtractCaptionRect(rect);
 
     BackgroundBleedAvoidance bleedAvoidance = determineBackgroundBleedAvoidance(paintInfo.context);
-    if (!boxShadowShouldBeAppliedToBackground(bleedAvoidance))
+    if (!boxShadowShouldBeAppliedToBackground(rect.location(), bleedAvoidance))
         paintBoxShadow(paintInfo, rect, style(), Normal);
     paintBackground(paintInfo, rect, bleedAvoidance);
     paintBoxShadow(paintInfo, rect, style(), Inset);

@@ -137,14 +137,14 @@ using namespace HTMLNames;
 class ClipRects {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<ClipRects> create()
+    static Ref<ClipRects> create()
     {
-        return adoptRef(new ClipRects);
+        return adoptRef(*new ClipRects);
     }
 
-    static PassRefPtr<ClipRects> create(const ClipRects& other)
+    static Ref<ClipRects> create(const ClipRects& other)
     {
-        return adoptRef(new ClipRects(other));
+        return adoptRef(*new ClipRects(other));
     }
 
     ClipRects() = default;
@@ -3204,6 +3204,17 @@ void RenderLayer::updateSnapOffsets()
     RenderBox* box = enclosingElement()->renderBox();
     updateSnapOffsetsForScrollableArea(*this, *downcast<HTMLElement>(enclosingElement()), *box, box->style());
 }
+
+bool RenderLayer::isScrollSnapInProgress() const
+{
+    if (!scrollsOverflow())
+        return false;
+    
+    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
+        return scrollAnimator->isScrollSnapInProgress();
+    
+    return false;
+}
 #endif
 
 int RenderLayer::verticalScrollbarWidth(OverlayScrollbarSizeRelevancy relevancy) const
@@ -3392,9 +3403,9 @@ void RenderLayer::updateScrollbarsAfterLayout()
     bool hasVerticalOverflow = this->hasVerticalOverflow();
 
     // If overflow requires a scrollbar, then we just need to enable or disable.
-    if (styleRequiresScrollbar(renderer().style(), HorizontalScrollbar))
+    if (m_hBar && styleRequiresScrollbar(renderer().style(), HorizontalScrollbar))
         m_hBar->setEnabled(hasHorizontalOverflow);
-    if (styleRequiresScrollbar(renderer().style(), VerticalScrollbar))
+    if (m_vBar && styleRequiresScrollbar(renderer().style(), VerticalScrollbar))
         m_vBar->setEnabled(hasVerticalOverflow);
 
     // Scrollbars with auto behavior may need to lay out again if scrollbars got added or removed.
@@ -3461,6 +3472,12 @@ void RenderLayer::updateScrollInfoAfterLayout()
 
     computeScrollDimensions();
 
+#if ENABLE(CSS_SCROLL_SNAP)
+    // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
+    // https://bugs.webkit.org/show_bug.cgi?id=135964
+    updateSnapOffsets();
+#endif
+
     if (box->style().overflowX() != OMARQUEE && !isRubberBandInProgress()) {
         // Layout may cause us to be at an invalid scroll position. In this case we need
         // to pull our scroll offsets back to the max (or push them up to the min).
@@ -3488,15 +3505,7 @@ void RenderLayer::updateScrollInfoAfterLayout()
     if (compositor().updateLayerCompositingState(*this))
         compositor().setCompositingLayersNeedRebuild();
 
-#if ENABLE(CSS_SCROLL_SNAP)
-    // FIXME: Ensure that offsets are also updated in case of programmatic style changes.
-    // https://bugs.webkit.org/show_bug.cgi?id=135964
-    updateSnapOffsets();
-#if PLATFORM(MAC)
-    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
-        return scrollAnimator->updateScrollAnimatorsAndTimers();
-#endif
-#endif
+    updateScrollSnapState();
 }
 
 bool RenderLayer::overflowControlsIntersectRect(const IntRect& localRect) const
@@ -5802,7 +5811,7 @@ LayoutRect RenderLayer::localBoundingBox(CalculateLayerBoundsFlags flags) const
         RenderBox* box = renderBox();
         ASSERT(box);
         if (!(flags & DontConstrainForMask) && box->hasMask()) {
-            result = box->maskClipRect();
+            result = box->maskClipRect(LayoutPoint());
             box->flipForWritingMode(result); // The mask clip rect is in physical coordinates, so we have to flip, since localBoundingBox is not.
         } else {
             LayoutRect bbox = box->borderBoxRect();
@@ -6699,7 +6708,7 @@ void RenderLayer::styleChanged(StyleDifference diff, const RenderStyle* oldStyle
     updateBlendMode();
 #endif
     updateOrRemoveFilterClients();
-    updateOrRemoveMaskImageClients(oldStyle);
+    updateOrRemoveMaskImageClients();
 
     updateNeedsCompositedScrolling();
 
@@ -6854,17 +6863,12 @@ void RenderLayer::updateOrRemoveFilterClients()
         filterInfo->removeReferenceFilterClients();
 }
 
-void RenderLayer::updateOrRemoveMaskImageClients(const RenderStyle* oldStyle)
+void RenderLayer::updateOrRemoveMaskImageClients()
 {
-    if (oldStyle && oldStyle->maskImage().get()) {
-        if (MaskImageInfo* maskImageInfo = MaskImageInfo::getIfExists(*this))
-            maskImageInfo->removeMaskImageClients(*oldStyle);
-    }
-
     if (renderer().style().maskImage().get())
         MaskImageInfo::get(*this).updateMaskImageClients();
     else if (MaskImageInfo* maskImageInfo = MaskImageInfo::getIfExists(*this))
-        maskImageInfo->removeMaskImageClients(renderer().style());
+        maskImageInfo->removeMaskImageClients();
 }
 
 void RenderLayer::updateOrRemoveFilterEffectRenderer()

@@ -4,7 +4,7 @@
              (C) 1998, 1999 Torben Weis (weis@kde.org)
              (C) 1999 Lars Knoll (knoll@kde.org)
              (C) 1999 Antti Koivisto (koivisto@kde.org)
-   Copyright (C) 2004-2009, 2014 Apple Inc. All rights reserved.
+   Copyright (C) 2004-2009, 2014-2015 Apple Inc. All rights reserved.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -104,6 +104,7 @@ public:
     virtual bool avoidScrollbarCreation() const override;
 
     virtual void setContentsSize(const IntSize&) override;
+    virtual void updateContentsSize() override;
 
     void layout(bool allowSubtree = true);
     WEBCORE_EXPORT bool didFirstLayout() const;
@@ -170,8 +171,6 @@ public:
     ScrollableArea* scrollableAreaForScrollLayerID(uint64_t) const;
 
     bool hasCompositedContent() const;
-    bool hasCompositedContentIncludingDescendants() const;
-    bool hasCompositingAncestor() const;
     WEBCORE_EXPORT void enterCompositingMode();
     WEBCORE_EXPORT bool isEnclosedInCompositingLayer() const;
 
@@ -189,7 +188,7 @@ public:
     void resetScrollbarsAndClearContentsSize();
     void prepareForDetach();
     void detachCustomScrollbars();
-    void recalculateScrollbarOverlayStyle();
+    WEBCORE_EXPORT void recalculateScrollbarOverlayStyle();
 
     void clear();
 
@@ -539,7 +538,8 @@ public:
     FloatRect exposedRect() const { return m_exposedRect; }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    virtual void updateSnapOffsets() override;
+    void updateSnapOffsets() override;
+    bool isScrollSnapInProgress() const override;
 #endif
 
     virtual float adjustScrollStepForFixedContent(float step, ScrollbarOrientation, ScrollGranularity) override;
@@ -598,13 +598,16 @@ private:
     void forceLayoutParentViewIfNeeded();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
-    void updateThrottledDOMTimersState();
+
+    void applyRecursivelyWithVisibleRect(const std::function<void (FrameView& frameView, const IntRect& visibleRect)>&);
+    void updateThrottledDOMTimersState(const IntRect& visibleRect);
+    void resumeVisibleImageAnimations(const IntRect& visibleRect);
+    void updateScriptedAnimationsThrottlingState(const IntRect& visibleRect);
 
     void updateLayerFlushThrottling();
     WEBCORE_EXPORT void adjustTiledBackingCoverage();
 
     virtual void repaintContentRectangle(const IntRect&) override;
-    virtual void updateContentsSize() override;
     virtual void addedOrRemovedScrollbar() override;
 
     virtual void delegatesScrollingDidChange() override;

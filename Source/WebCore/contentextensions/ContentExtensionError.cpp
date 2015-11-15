@@ -75,8 +75,12 @@ const std::error_category& contentExtensionErrorCategory()
                 return "Invalid css-display-none action type. Requires a selector.";
             case ContentExtensionError::JSONInvalidRegex:
                 return "Invalid or unsupported regular expression.";
-            case ContentExtensionError::RegexMatchesEverythingAfterIgnorePreviousRules:
-                return "Regular expressions that match everything are only allowed before the first ignore-previous-rules.";
+            case ContentExtensionError::JSONInvalidDomainList:
+                return "Invalid domain list.";
+            case ContentExtensionError::JSONDomainNotLowerCaseASCII:
+                return "Domains must be lower case ASCII.  Use punycode to encode non-ASCII characters.";
+            case ContentExtensionError::JSONUnlessAndIfDomain:
+                return "A trigger cannot have both unless- and if-domain.";
             }
 
             return std::string();

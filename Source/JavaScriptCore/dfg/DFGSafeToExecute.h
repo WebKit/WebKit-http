@@ -154,6 +154,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithPow:
     case ArithSqrt:
     case ArithFRound:
+    case ArithRound:
     case ArithSin:
     case ArithCos:
     case ArithLog:
@@ -245,9 +246,9 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
+    case CheckTierUpWithNestedTriggerAndOSREnter:
     case LoopHint:
     case StoreBarrier:
-    case StoreBarrierWithNullCheck:
     case InvalidationPoint:
     case NotifyWrite:
     case CheckInBounds:

@@ -27,6 +27,7 @@
 #include "config.h"
 #include "MaskImageOperation.h"
 
+#include "CSSValuePool.h"
 #include "CachedImage.h"
 #include "CachedSVGDocument.h"
 #include "RenderBoxModelObject.h"
@@ -77,7 +78,6 @@ MaskImageOperation::MaskImageOperation()
     : m_isExternalDocument(false)
     , m_renderLayerImageClient(nullptr)
 {
-    m_cssMaskImageValue = WebKitCSSResourceValue::create(CSSPrimitiveValue::createIdentifier(CSSValueNone));
 }
 
 MaskImageOperation::~MaskImageOperation()
@@ -98,8 +98,7 @@ bool MaskImageOperation::isCSSValueNone() const
     if (image())
         return false;
 
-    ASSERT(m_cssMaskImageValue.get());
-    return m_cssMaskImageValue->isCSSValueNone();
+    return !m_cssMaskImageValue || m_cssMaskImageValue->isCSSValueNone();
 }
 
 PassRefPtr<CSSValue> MaskImageOperation::cssValue()
@@ -108,7 +107,7 @@ PassRefPtr<CSSValue> MaskImageOperation::cssValue()
         return image()->cssValue();
     
     if (isCSSValueNone())
-        return m_cssMaskImageValue->innerValue();
+        return cssValuePool().createIdentifierValue(CSSValueNone);
 
     ASSERT(m_cssMaskImageValue.get());
     return m_cssMaskImageValue.get();
@@ -128,6 +127,28 @@ bool MaskImageOperation::isMaskLoaded() const
     }
     
     return false;
+}
+
+void MaskImageOperation::setImage(PassRefPtr<StyleImage> image)
+{
+    if (m_styleImage == image)
+        return;
+
+    if (m_styleImage) {
+        if (m_renderLayerImageClient && m_styleImage->cachedImage())
+            m_styleImage->cachedImage()->removeClient(m_renderLayerImageClient);
+        for (auto& client : m_rendererImageClients)
+            m_styleImage->removeClient(client.key);
+    }
+
+    m_styleImage = image;
+
+    if (m_styleImage) {
+        if (m_renderLayerImageClient && m_styleImage->cachedImage())
+            m_styleImage->cachedImage()->addClient(m_renderLayerImageClient);
+        for (auto& client : m_rendererImageClients)
+            m_styleImage->addClient(client.key);
+    }
 }
 
 void MaskImageOperation::setRenderLayerImageClient(CachedImageClient* client)
@@ -206,11 +227,7 @@ void MaskImageOperation::notifyFinished(CachedResource* resource)
         ASSERT(cachedSVGDocument->loader());
         if (SubresourceLoader* loader = cachedSVGDocument->loader()) {
             if (SharedBuffer* dataBuffer = loader->resourceData()) {
-                m_styleImage = StyleCachedImage::create(new CachedImage(cachedSVGDocument->resourceRequest(), cachedSVGDocument->sessionID()));
-                if (m_renderLayerImageClient)
-                    m_styleImage->cachedImage()->addClient(m_renderLayerImageClient);
-                for (auto itClient : m_rendererImageClients)
-                    m_styleImage->addClient(itClient.key);
+                setImage(StyleCachedImage::create(new CachedImage(cachedSVGDocument->resourceRequest(), cachedSVGDocument->sessionID())));
 
                 m_styleImage->cachedImage()->setResponse(cachedSVGDocument->response());
                 m_styleImage->cachedImage()->finishLoading(dataBuffer);

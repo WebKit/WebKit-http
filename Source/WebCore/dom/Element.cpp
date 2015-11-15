@@ -48,13 +48,10 @@
 #include "HTMLCanvasElement.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
-#include "HTMLFormControlsCollection.h"
 #include "HTMLLabelElement.h"
 #include "HTMLNameCollection.h"
-#include "HTMLOptionsCollection.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLSelectElement.h"
-#include "HTMLTableRowsCollection.h"
 #include "HTMLTemplateElement.h"
 #include "IdTargetObserverRegistry.h"
 #include "InsertionPoint.h"
@@ -2619,38 +2616,6 @@ void Element::clearAfterPseudoElement()
     elementRareData()->setAfterPseudoElement(nullptr);
 }
 
-// ElementTraversal API
-Element* Element::firstElementChild() const
-{
-    return ElementTraversal::firstChild(*this);
-}
-
-Element* Element::lastElementChild() const
-{
-    return ElementTraversal::lastChild(*this);
-}
-
-Element* Element::previousElementSibling() const
-{
-    return ElementTraversal::previousSibling(*this);
-}
-
-Element* Element::nextElementSibling() const
-{
-    return ElementTraversal::nextSibling(*this);
-}
-
-unsigned Element::childElementCount() const
-{
-    unsigned count = 0;
-    Node* n = firstChild();
-    while (n) {
-        count += n->isElementNode();
-        n = n->nextSibling();
-    }
-    return count;
-}
-
 bool Element::matchesReadWritePseudoClass() const
 {
     return false;
@@ -3086,27 +3051,6 @@ void Element::didRemoveAttribute(const QualifiedName& name, const AtomicString& 
     attributeChanged(name, oldValue, nullAtom);
     InspectorInstrumentation::didRemoveDOMAttr(document(), *this, name.localName());
     dispatchSubtreeModifiedEvent();
-}
-
-Ref<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType type)
-{
-    if (HTMLCollection* collection = cachedHTMLCollection(type))
-        return *collection;
-
-    if (type == TableRows) {
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLTableRowsCollection>(downcast<HTMLTableElement>(*this), type);
-    } else if (type == SelectOptions) {
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLOptionsCollection>(downcast<HTMLSelectElement>(*this), type);
-    } else if (type == FormControls) {
-        ASSERT(hasTagName(formTag) || hasTagName(fieldsetTag));
-        return ensureRareData().ensureNodeLists().addCachedCollection<HTMLFormControlsCollection>(*this, type);
-    }
-    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLCollection>(*this, type);
-}
-
-HTMLCollection* Element::cachedHTMLCollection(CollectionType type)
-{
-    return hasRareData() && rareData()->nodeLists() ? rareData()->nodeLists()->cachedCollection<HTMLCollection>(type) : 0;
 }
 
 IntSize Element::savedLayerScrollOffset() const

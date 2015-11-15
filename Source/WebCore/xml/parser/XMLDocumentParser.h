@@ -85,15 +85,15 @@ class Text;
         void setIsXHTMLDocument(bool isXHTML) { m_isXHTMLDocument = isXHTML; }
         bool isXHTMLDocument() const { return m_isXHTMLDocument; }
 
-        static bool parseDocumentFragment(const String&, DocumentFragment&, Element* parent = 0, ParserContentPolicy = AllowScriptingContent);
+        static bool parseDocumentFragment(const String&, DocumentFragment&, Element* parent = nullptr, ParserContentPolicy = AllowScriptingContent);
 
         // Used by the XMLHttpRequest to check if the responseXML was well formed.
-        virtual bool wellFormed() const { return !m_sawError; }
+        virtual bool wellFormed() const override { return !m_sawError; }
 
         static bool supportsXMLVersion(const String&);
 
     private:
-        XMLDocumentParser(Document&, FrameView* = 0);
+        XMLDocumentParser(Document&, FrameView* = nullptr);
         XMLDocumentParser(DocumentFragment&, Element*, ParserContentPolicy);
 
         // From DocumentParser
@@ -156,7 +156,7 @@ class Text;
 
         SegmentedString m_originalSourceForTransform;
 
-        xmlParserCtxtPtr context() const { return m_context ? m_context->context() : 0; };
+        xmlParserCtxtPtr context() const { return m_context ? m_context->context() : nullptr; };
         RefPtr<XMLParserContext> m_context;
         std::unique_ptr<PendingCallbacks> m_pendingCallbacks;
         Vector<xmlChar> m_bufferedText;

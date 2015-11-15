@@ -510,12 +510,12 @@ bool CachedImage::isOriginClean(SecurityOrigin* securityOrigin)
 {
     if (!image()->hasSingleSecurityOrigin())
         return false;
-    if (passesAccessControlCheck(securityOrigin))
+    if (passesAccessControlCheck(*securityOrigin))
         return true;
-    return !securityOrigin->taintsCanvas(response().url());
+    return !securityOrigin->taintsCanvas(responseForSameOriginPolicyChecks().url());
 }
 
-bool CachedImage::mustRevalidateDueToCacheHeaders(const CachedResourceLoader& cachedResourceLoader, CachePolicy policy) const
+CachedResource::RevalidationDecision CachedImage::makeRevalidationDecision(CachePolicy cachePolicy) const
 {
     if (UNLIKELY(isManuallyCached())) {
         // Do not revalidate manually cached images. This mechanism is used as a
@@ -523,9 +523,9 @@ bool CachedImage::mustRevalidateDueToCacheHeaders(const CachedResourceLoader& ca
         // the URL for that image may not represent a resource that can be
         // retrieved by standard means. If the manual caching SPI is used, it is
         // incumbent on the client to only use valid resources.
-        return false;
+        return RevalidationDecision::No;
     }
-    return CachedResource::mustRevalidateDueToCacheHeaders(cachedResourceLoader, policy);
+    return CachedResource::makeRevalidationDecision(cachePolicy);
 }
 
 } // namespace WebCore

@@ -83,7 +83,7 @@ static void initInspectorServer()
 #endif
 }
 
-WTF::String WebProcessPool::platformDefaultApplicationCacheDirectory() const
+WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
     GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "applications", nullptr));
     return WebCore::filenameToString(cacheDirectory.get());
@@ -146,12 +146,6 @@ String WebProcessPool::platformDefaultDiskCacheDirectory() const
 {
     GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), nullptr));
     return WebCore::filenameToString(diskCacheDirectory.get());
-}
-
-String WebProcessPool::platformDefaultCookieStorageDirectory() const
-{
-    notImplemented();
-    return String();
 }
 
 void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)

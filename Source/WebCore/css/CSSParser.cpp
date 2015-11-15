@@ -1282,15 +1282,30 @@ PassRefPtr<CSSValueList> CSSParser::parseFontFaceValue(const AtomicString& strin
 {
     if (string.isEmpty())
         return nullptr;
-    RefPtr<MutableStyleProperties> dummyStyle = MutableStyleProperties::create();
 
-    if (parseValue(dummyStyle.get(), CSSPropertyFontFamily, string, false, CSSQuirksMode, nullptr) == ParseResult::Error)
-        return nullptr;
+    Ref<CSSValueList> valueList = CSSValueList::createCommaSeparated();
 
-    RefPtr<CSSValue> fontFamily = dummyStyle->getPropertyCSSValue(CSSPropertyFontFamily);
-    if (!fontFamily->isValueList())
-        return nullptr; // FIXME: "initial" and "inherit" should be parsed as font names in the face attribute.
-    return static_pointer_cast<CSSValueList>(fontFamily.release());
+    Vector<String> familyNames;
+    string.string().split(',', true, familyNames);
+
+    for (auto& familyName : familyNames) {
+        String stripped = stripLeadingAndTrailingHTMLSpaces(familyName);
+        if (stripped.isEmpty())
+            return nullptr;
+
+        RefPtr<CSSValue> value;
+        for (auto propertyID : { CSSValueSerif, CSSValueSansSerif, CSSValueCursive, CSSValueFantasy, CSSValueMonospace, CSSValueWebkitBody }) {
+            if (equalIgnoringCase(stripped, getValueName(propertyID))) {
+                value = cssValuePool().createIdentifierValue(propertyID);
+                break;
+            }
+        }
+        if (!value)
+            value = cssValuePool().createFontFamilyValue(stripped);
+        valueList->append(value.releaseNonNull());
+    }
+
+    return WTF::move(valueList);
 }
 
 CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties* declaration, CSSPropertyID propertyID, const String& string, bool important, CSSParserMode cssParserMode, StyleSheetContents* contextStyleSheet)
@@ -1494,8 +1509,6 @@ std::unique_ptr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
     return WTF::move(m_mediaQuery);
 }
 
-#if ENABLE(PICTURE_SIZES)
-
 Vector<CSSParser::SourceSize> CSSParser::parseSizesAttribute(StringView string)
 {
     Vector<SourceSize> result;
@@ -1545,8 +1558,6 @@ CSSParser::SourceSize CSSParser::sourceSize(std::unique_ptr<MediaQueryExp>&& exp
     // For other compilers, we did not need to define the constructors and we could use aggregate initialization syntax.
     return SourceSize(WTF::move(expression), WTF::move(value));
 }
-
-#endif
 
 static inline void filterProperties(bool important, const CSSParser::ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties)
 {
@@ -6617,6 +6628,7 @@ void CSSParser::parseSystemFont(bool important)
     if (!fontDescription.isAbsoluteSize())
         return;
 
+    // We must set font's constituent properties, even for system fonts, so the cascade functions correctly.
     ShorthandScope scope(this, CSSPropertyFont);
     addProperty(CSSPropertyFontStyle, cssValuePool().createIdentifierValue(fontDescription.italic() == FontItalicOn ? CSSValueItalic : CSSValueNormal), important);
     addProperty(CSSPropertyFontWeight, cssValuePool().createValue(fontDescription.weight()), important);
@@ -11571,10 +11583,8 @@ inline void CSSParser::detectAtToken(int length, bool hasEscape)
         case 18:
             if (isEqualToCSSIdentifier(name + 2, "webkit-keyframes"))
                 m_token = KEYFRAMES_SYM;
-#if ENABLE(PICTURE_SIZES)
             else if (isEqualToCSSIdentifier(name + 2, "webkit-sizesattr"))
                 m_token = WEBKIT_SIZESATTR_SYM;
-#endif
             return;
 
         case 19:

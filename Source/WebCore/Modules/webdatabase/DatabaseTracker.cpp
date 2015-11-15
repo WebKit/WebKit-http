@@ -306,6 +306,24 @@ unsigned long long DatabaseTracker::getMaxSizeForDatabase(const Database* databa
     return maxSize;
 }
 
+void DatabaseTracker::closeAllDatabases()
+{
+    Vector<Ref<Database>> openDatabases;
+    {
+        MutexLocker openDatabaseMapLock(m_openDatabaseMapGuard);
+        if (!m_openDatabaseMap)
+            return;
+        for (auto& nameMap : m_openDatabaseMap->values()) {
+            for (auto& set : nameMap->values()) {
+                for (auto& database : *set)
+                    openDatabases.append(*database);
+            }
+        }
+    }
+    for (auto& database : openDatabases)
+        database->close();
+}
+
 void DatabaseTracker::interruptAllDatabasesForContext(const DatabaseContext* context)
 {
     Vector<RefPtr<DatabaseBackendBase>> openDatabases;
@@ -644,7 +662,7 @@ void DatabaseTracker::getOpenDatabases(SecurityOrigin* origin, const String& nam
         databases->add(*it);
 }
 
-PassRefPtr<OriginLock> DatabaseTracker::originLockFor(SecurityOrigin* origin)
+RefPtr<OriginLock> DatabaseTracker::originLockFor(SecurityOrigin* origin)
 {
     MutexLocker lockDatabase(m_databaseGuard);
     String databaseIdentifier = origin->databaseIdentifier();
@@ -662,11 +680,11 @@ PassRefPtr<OriginLock> DatabaseTracker::originLockFor(SecurityOrigin* origin)
         return addResult.iterator->value;
 
     String path = originPath(origin);
-    RefPtr<OriginLock> lock = adoptRef(new OriginLock(path));
+    RefPtr<OriginLock> lock = adoptRef(*new OriginLock(path));
     ASSERT(lock);
     addResult.iterator->value = lock;
 
-    return lock.release();
+    return WTF::move(lock);
 }
 
 void DatabaseTracker::deleteOriginLockFor(SecurityOrigin* origin)

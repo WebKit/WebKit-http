@@ -257,9 +257,11 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
                 }
             }
 
+            var parentDescription = this._propertyPath.object.description;
+
             // Native function property on a native function is likely a "Foo.method".
-            if (isFunctionStringNativeCode(this._propertyPath.object.description)) {
-                var match = this._propertyPath.object.description.match(/^function\s+([^)]+?)\(/);
+            if (isFunctionStringNativeCode(parentDescription)) {
+                var match = parentDescription.match(/^function\s+([^)]+?)\(/);
                 if (match) {
                     var name = match[1];
                     if (WebInspector.NativeConstructorFunctionParameters[name]) {
@@ -269,9 +271,9 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
                 }
             }
 
-            // Native DOM constructor.
-            if (this._propertyPath.object.description.endsWith("Constructor")) {
-                var name = this._propertyPath.object.description;
+            // Native DOM constructor or on native objects that are not functions.
+            if (parentDescription.endsWith("Constructor") || parentDescription === "Math" || parentDescription === "JSON") {
+                var name = parentDescription;
                 if (WebInspector.NativeConstructorFunctionParameters[name]) {
                     var params = WebInspector.NativeConstructorFunctionParameters[name][this._property.name];
                     return params ? "(" + params + ")" : "()";
@@ -279,7 +281,7 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
             }
         }
 
-        var match = resolvedValue.description.match(/^function.*?(\([^)]+?\))/);
+        var match = resolvedValue.description.match(/^function.*?(\([^)]*?\))/);
         return match ? match[1] : "()";
     }
 
@@ -363,6 +365,7 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
                 prototypeName = this._sanitizedPrototypeString(resolvedValue);
         }
 
+        var hadProto = false;
         for (var propertyDescriptor of properties) {
             // FIXME: If this is a pure API ObjectTree, we should show the native getters.
             // For now, just skip native binding getters in API mode, since we likely
@@ -377,11 +380,14 @@ WebInspector.ObjectTreePropertyTreeElement = class ObjectTreePropertyTreeElement
                     this.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, propertyPath, mode, prototypeName));
             } else
                 this.appendChild(new WebInspector.ObjectTreePropertyTreeElement(propertyDescriptor, propertyPath, mode, prototypeName));
+
+            if (propertyDescriptor.name === "__proto__")
+                hadProto = true;
         }
 
-        if (!this.children.length) {
+        if (!this.children.length || (hadProto && this.children.length === 1)) {
             var emptyMessageElement = WebInspector.ObjectTreeView.createEmptyMessageElement(WebInspector.UIString("No Properties."));
-            this.appendChild(new WebInspector.TreeElement(emptyMessageElement, null, false));
+            this.insertChild(new WebInspector.TreeElement(emptyMessageElement, null, false), 0);
         }
     }
 };

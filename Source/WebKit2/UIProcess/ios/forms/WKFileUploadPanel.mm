@@ -283,14 +283,17 @@ static UIImage* iconForFile(NSURL *file)
 
 @implementation WKFileUploadPanel {
     WKContentView *_view;
-    WebKit::WebOpenPanelResultListenerProxy* _listener;
+    RefPtr<WebKit::WebOpenPanelResultListenerProxy> _listener;
     RetainPtr<NSArray> _mimeTypes;
     CGPoint _interactionPoint;
     BOOL _allowMultipleFiles;
     BOOL _usingCamera;
     RetainPtr<UIImagePickerController> _imagePicker;
     RetainPtr<UIViewController> _presentationViewController; // iPhone always. iPad for Fullscreen Camera.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     RetainPtr<UIPopoverController> _presentationPopover; // iPad for action sheet and Photo Library.
+#pragma clang diagnostic pop
     RetainPtr<UIDocumentMenuViewController> _documentMenuController;
     RetainPtr<UIAlertController> _actionSheetController;
 }
@@ -565,7 +568,10 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 {
     [self _dismissDisplayAnimated:animated];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     _presentationPopover = adoptNS([[UIPopoverController alloc] initWithContentViewController:contentViewController]);
+#pragma clang diagnostic pop
     [_presentationPopover setDelegate:self];
     [_presentationPopover presentPopoverFromRect:CGRectIntegral(CGRectMake(_interactionPoint.x, _interactionPoint.y, 1, 1)) inView:_view permittedArrowDirections:UIPopoverArrowDirectionAny animated:animated];
 }

@@ -96,8 +96,10 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
             continue;
         }
         
-        // Identical sequential actions should not be rewritten.
-        if (ruleIndex && rule.action() == ruleList[ruleIndex - 1].action()) {
+        // Identical sequential actions should not be rewritten unless there are domains in the trigger.
+        // If there are domains in the trigger, we need to distinguish the actions by index to tell if we need to apply it
+        // by comparing the output of the filters with domains and the domain filters.
+        if (ruleIndex && rule.action() == ruleList[ruleIndex - 1].action() && rule.trigger().domains.isEmpty()) {
             actionLocations.append(actionLocations[ruleIndex - 1]);
             continue;
         }
@@ -119,21 +121,24 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
     return actionLocations;
 }
 
-typedef HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> UniversalActionLocationsSet;
+typedef HashSet<uint64_t, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> UniversalActionSet;
 
-static void addUniversalActionsToDFA(DFA& dfa, const UniversalActionLocationsSet& universalActionLocations)
+static void addUniversalActionsToDFA(DFA& dfa, const UniversalActionSet& universalActions)
 {
-    if (universalActionLocations.isEmpty())
+    if (universalActions.isEmpty())
         return;
 
+    DFANode& root = dfa.nodes[dfa.root];
+    ASSERT(!root.actionsLength());
     unsigned actionsStart = dfa.actions.size();
-    dfa.actions.reserveCapacity(dfa.actions.size() + universalActionLocations.size());
-    for (uint64_t actionLocation : universalActionLocations)
-        dfa.actions.uncheckedAppend(actionLocation);
+    dfa.actions.reserveCapacity(dfa.actions.size() + universalActions.size());
+    for (uint64_t action : universalActions)
+        dfa.actions.uncheckedAppend(action);
     unsigned actionsEnd = dfa.actions.size();
+
     unsigned actionsLength = actionsEnd - actionsStart;
     RELEASE_ASSERT_WITH_MESSAGE(actionsLength < std::numeric_limits<uint16_t>::max(), "Too many uncombined actions that match everything");
-    dfa.nodes[dfa.root].setActions(actionsStart, static_cast<uint16_t>(actionsLength));
+    root.setActions(actionsStart, static_cast<uint16_t>(actionsLength));
 }
 
 std::error_code compileRuleList(ContentExtensionCompilationClient& client, String&& ruleList)
@@ -154,32 +159,65 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
     LOG_LARGE_STRUCTURES(actions, actions.capacity() * sizeof(SerializedActionByte));
     actions.clear();
 
-    UniversalActionLocationsSet universalActionLocations;
+    UniversalActionSet universalActionsWithoutDomains;
+    UniversalActionSet universalActionsWithDomains;
 
-    CombinedURLFilters combinedURLFilters;
-    URLFilterParser urlFilterParser(combinedURLFilters);
+    // FIXME: These don't all need to be in memory at the same time.
+    CombinedURLFilters filtersWithoutDomains;
+    CombinedURLFilters filtersWithDomains;
+    CombinedURLFilters domainFilters;
+    URLFilterParser filtersWithoutDomainParser(filtersWithoutDomains);
+    URLFilterParser filtersWithDomainParser(filtersWithDomains);
+    
     bool ignorePreviousRulesSeen = false;
     for (unsigned ruleIndex = 0; ruleIndex < parsedRuleList.size(); ++ruleIndex) {
         const ContentExtensionRule& contentExtensionRule = parsedRuleList[ruleIndex];
         const Trigger& trigger = contentExtensionRule.trigger();
+        const Action& action = contentExtensionRule.action();
         ASSERT(trigger.urlFilter.length());
 
         // High bits are used for flags. This should match how they are used in DFABytecodeCompiler::compileNode.
         uint64_t actionLocationAndFlags = (static_cast<uint64_t>(trigger.flags) << 32) | static_cast<uint64_t>(actionLocations[ruleIndex]);
-        URLFilterParser::ParseStatus status = urlFilterParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocationAndFlags);
-
-        if (status == URLFilterParser::MatchesEverything) {
-            if (ignorePreviousRulesSeen)
-                return ContentExtensionError::RegexMatchesEverythingAfterIgnorePreviousRules;
-            universalActionLocations.add(actionLocationAndFlags);
+        URLFilterParser::ParseStatus status = URLFilterParser::Ok;
+        if (trigger.domains.isEmpty()) {
+            ASSERT(trigger.domainCondition == Trigger::DomainCondition::None);
+            status = filtersWithoutDomainParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocationAndFlags);
+            if (status == URLFilterParser::MatchesEverything) {
+                if (!ignorePreviousRulesSeen
+                    && trigger.domainCondition == Trigger::DomainCondition::None
+                    && action.type() == ActionType::CSSDisplayNoneSelector
+                    && !trigger.flags)
+                    actionLocationAndFlags |= DisplayNoneStyleSheetFlag;
+                universalActionsWithoutDomains.add(actionLocationAndFlags);
+                status = URLFilterParser::Ok;
+            }
+            if (status != URLFilterParser::Ok) {
+                dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), URLFilterParser::statusString(status).utf8().data());
+                return ContentExtensionError::JSONInvalidRegex;
+            }
+        } else {
+            if (trigger.domainCondition == Trigger::DomainCondition::IfDomain)
+                actionLocationAndFlags |= IfDomainFlag;
+            else {
+                ASSERT(trigger.domainCondition == Trigger::DomainCondition::UnlessDomain);
+                ASSERT(!(actionLocationAndFlags & IfDomainFlag));
+            }
+            
+            status = filtersWithDomainParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocationAndFlags);
+            if (status == URLFilterParser::MatchesEverything) {
+                universalActionsWithDomains.add(actionLocationAndFlags);
+                status = URLFilterParser::Ok;
+            }
+            if (status != URLFilterParser::Ok) {
+                dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), URLFilterParser::statusString(status).utf8().data());
+                return ContentExtensionError::JSONInvalidRegex;
+            }
+            for (const String& domain : trigger.domains)
+                domainFilters.addDomain(actionLocationAndFlags, domain);
         }
-
-        if (status != URLFilterParser::Ok && status != URLFilterParser::MatchesEverything) {
-            dataLogF("Error while parsing %s: %s\n", trigger.urlFilter.utf8().data(), URLFilterParser::statusString(status).utf8().data());
-            return ContentExtensionError::JSONInvalidRegex;
-        }
+        ASSERT(status == URLFilterParser::Ok);
         
-        if (contentExtensionRule.action().type() == ActionType::IgnorePreviousRules)
+        if (action.type() == ActionType::IgnorePreviousRules)
             ignorePreviousRulesSeen = true;
     }
     LOG_LARGE_STRUCTURES(parsedRuleList, parsedRuleList.capacity() * sizeof(ContentExtensionRule)); // Doesn't include strings.
@@ -192,7 +230,9 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
     dataLogF("    Time spent partitioning the rules into groups: %f\n", (patternPartitioningEnd - patternPartitioningStart));
 #endif
 
-    LOG_LARGE_STRUCTURES(combinedURLFilters, combinedURLFilters.memoryUsed());
+    LOG_LARGE_STRUCTURES(filtersWithoutDomains, filtersWithoutDomains.memoryUsed());
+    LOG_LARGE_STRUCTURES(filtersWithDomains, filtersWithDomains.memoryUsed());
+    LOG_LARGE_STRUCTURES(domainFilters, domainFilters.memoryUsed());
 
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double totalNFAToByteCodeBuildTimeStart = monotonicallyIncreasingTime();
@@ -201,10 +241,11 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
     // FIXME: This can be tuned. More NFAs take longer to interpret, fewer use more memory and time to compile.
     const unsigned maxNFASize = 50000;
     
-    bool firstNFASeen = false;
+    bool firstNFAWithoutDomainsSeen = false;
     // FIXME: Combine small NFAs to reduce the number of NFAs.
-    combinedURLFilters.processNFAs(maxNFASize, [&](NFA&& nfa) {
+    filtersWithoutDomains.processNFAs(maxNFASize, [&](NFA&& nfa) {
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("filtersWithoutDomains NFA\n");
         nfa.debugPrintDot();
 #endif
 
@@ -216,45 +257,121 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
         dfa.minimize();
 
 #if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
-        WTFLogAlways("DFA");
+        dataLogF("filtersWithoutDomains DFA\n");
         dfa.debugPrintDot();
 #endif
         ASSERT_WITH_MESSAGE(!dfa.nodes[dfa.root].hasActions(), "All actions on the DFA root should come from regular expressions that match everything.");
 
-        if (!firstNFASeen) {
+        if (!firstNFAWithoutDomainsSeen) {
             // Put all the universal actions on the first DFA.
-            addUniversalActionsToDFA(dfa, universalActionLocations);
+            addUniversalActionsToDFA(dfa, universalActionsWithoutDomains);
         }
 
         Vector<DFABytecode> bytecode;
         DFABytecodeCompiler compiler(dfa, bytecode);
         compiler.compile();
         LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-        client.writeBytecode(WTF::move(bytecode));
+        client.writeFiltersWithoutDomainsBytecode(WTF::move(bytecode));
 
-        firstNFASeen = true;
+        firstNFAWithoutDomainsSeen = true;
     });
-    ASSERT(combinedURLFilters.isEmpty());
+    ASSERT(filtersWithoutDomains.isEmpty());
 
-    if (!firstNFASeen) {
+    if (!firstNFAWithoutDomainsSeen) {
         // Our bytecode interpreter expects to have at least one DFA, so if we haven't seen any
         // create a dummy one and add any universal actions.
 
         NFA dummyNFA;
         DFA dummyDFA = NFAToDFA::convert(dummyNFA);
 
-        addUniversalActionsToDFA(dummyDFA, universalActionLocations);
+        addUniversalActionsToDFA(dummyDFA, universalActionsWithoutDomains);
 
         Vector<DFABytecode> bytecode;
         DFABytecodeCompiler compiler(dummyDFA, bytecode);
         compiler.compile();
         LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
-        client.writeBytecode(WTF::move(bytecode));
+        client.writeFiltersWithoutDomainsBytecode(WTF::move(bytecode));
     }
+    LOG_LARGE_STRUCTURES(universalAction, universalAction.capacity() * sizeof(unsigned));
+    universalActionsWithoutDomains.clear();
+    
+    bool firstNFAWithDomainsSeen = false;
+    filtersWithDomains.processNFAs(maxNFASize, [&](NFA&& nfa) {
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("filtersWithDomains NFA\n");
+        nfa.debugPrintDot();
+#endif
+        LOG_LARGE_STRUCTURES(nfa, nfa.memoryUsed());
+        DFA dfa = NFAToDFA::convert(nfa);
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("filtersWithDomains PRE MINIMIZING DFA\n");
+        dfa.debugPrintDot();
+#endif
+        LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
+        // Minimizing this DFA would not be effective because all actions with domains are unique.
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("filtersWithDomains POST MINIMIZING DFA\n");
+        dfa.debugPrintDot();
+#endif
+        ASSERT_WITH_MESSAGE(!dfa.nodes[dfa.root].hasActions(), "Filters with domains that match everything are not allowed right now.");
+        
+        if (!firstNFAWithDomainsSeen) {
+            // Put all the universal actions on the first DFA.
+            addUniversalActionsToDFA(dfa, universalActionsWithDomains);
+        }
+        
+        Vector<DFABytecode> bytecode;
+        DFABytecodeCompiler compiler(dfa, bytecode);
+        compiler.compile();
+        LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
+        client.writeFiltersWithDomainsBytecode(WTF::move(bytecode));
+        
+        firstNFAWithDomainsSeen = true;
+    });
+    ASSERT(filtersWithDomains.isEmpty());
+    
+    if (!firstNFAWithDomainsSeen) {
+        // Our bytecode interpreter expects to have at least one DFA, so if we haven't seen any
+        // create a dummy one and add any universal actions.
+        
+        NFA dummyNFA;
+        DFA dummyDFA = NFAToDFA::convert(dummyNFA);
+        
+        addUniversalActionsToDFA(dummyDFA, universalActionsWithDomains);
+        
+        Vector<DFABytecode> bytecode;
+        DFABytecodeCompiler compiler(dummyDFA, bytecode);
+        compiler.compile();
+        LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
+        client.writeFiltersWithDomainsBytecode(WTF::move(bytecode));
+    }
+    LOG_LARGE_STRUCTURES(universalActionsWithDomains, universalActionsWithDomains.capacity() * sizeof(unsigned));
+    universalActionsWithDomains.clear();
 
-    LOG_LARGE_STRUCTURES(universalActionLocations, universalActionLocations.capacity() * sizeof(unsigned));
-    universalActionLocations.clear();
-
+    domainFilters.processNFAs(maxNFASize, [&](NFA&& nfa) {
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("domainFilters NFA\n");
+        nfa.debugPrintDot();
+#endif
+        LOG_LARGE_STRUCTURES(nfa, nfa.memoryUsed());
+        DFA dfa = NFAToDFA::convert(nfa);
+#if CONTENT_EXTENSIONS_STATE_MACHINE_DEBUGGING
+        dataLogF("domainFilters DFA\n");
+        dfa.debugPrintDot();
+#endif
+        LOG_LARGE_STRUCTURES(dfa, dfa.memoryUsed());
+        // Minimizing this DFA would not be effective because all actions are unique
+        // and because of the tree-like structure of this DFA.
+        ASSERT_WITH_MESSAGE(!dfa.nodes[dfa.root].hasActions(), "There should not be any domains that match everything.");
+        
+        Vector<DFABytecode> bytecode;
+        DFABytecodeCompiler compiler(dfa, bytecode);
+        compiler.compile();
+        LOG_LARGE_STRUCTURES(bytecode, bytecode.capacity() * sizeof(uint8_t));
+        client.writeDomainFiltersBytecode(WTF::move(bytecode));
+    });
+    ASSERT(domainFilters.isEmpty());    
+    
 #if CONTENT_EXTENSIONS_PERFORMANCE_REPORTING
     double totalNFAToByteCodeBuildTimeEnd = monotonicallyIncreasingTime();
     dataLogF("    Time spent building and compiling the DFAs: %f\n", (totalNFAToByteCodeBuildTimeEnd - totalNFAToByteCodeBuildTimeStart));

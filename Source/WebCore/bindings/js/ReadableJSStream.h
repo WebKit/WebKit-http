@@ -48,13 +48,6 @@ class ReadableStreamController;
 
 class ReadableJSStream: public ReadableStream {
 private:
-    class Reader: public ReadableStreamReader {
-    public:
-        static Ref<Reader> create(ReadableJSStream&);
-    private:
-        explicit Reader(ReadableJSStream&);
-    };
-
     class Source: public ReadableStreamSource {
     public:
         static Ref<Source> create(JSC::ExecState&);
@@ -70,19 +63,19 @@ private:
 
 public:
     static Ref<ReadableJSStream> create(JSC::ExecState&, ScriptExecutionContext&);
-    virtual Ref<ReadableStreamReader> createReader() override;
 
     ReadableJSStream::Source& jsSource();
     JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
+
+    void storeError(JSC::ExecState&);
+    JSC::JSValue error() { return m_error.get(); }
 
 private:
     ReadableJSStream(ScriptExecutionContext&, Ref<ReadableJSStream::Source>&&);
 
     std::unique_ptr<ReadableStreamController> m_controller;
+    JSC::Strong<JSC::Unknown> m_error;
 };
-
-void setInternalSlotToObject(JSC::ExecState*, JSC::JSValue, JSC::PrivateName&, JSC::JSValue);
-JSC::JSValue getInternalSlotFromObject(JSC::ExecState*, JSC::JSValue, JSC::PrivateName&);
 
 } // namespace WebCore
 
