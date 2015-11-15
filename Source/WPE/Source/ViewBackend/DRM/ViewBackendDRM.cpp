@@ -160,6 +160,7 @@ ViewBackendDRM::ViewBackendDRM()
         int modeArea = currentMode->hdisplay * currentMode->vdisplay;
         if (modeArea > area) {
             m_drm.mode = currentMode;
+            m_drm.size = { currentMode->hdisplay, currentMode->vdisplay };
             area = modeArea;
         }
     }
@@ -237,6 +238,7 @@ ViewBackendDRM::~ViewBackendDRM()
 void ViewBackendDRM::setClient(Client* client)
 {
     m_pageFlipData.client = client;
+    client->setSize(m_drm.size.first, m_drm.size.second);
 }
 
 void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)

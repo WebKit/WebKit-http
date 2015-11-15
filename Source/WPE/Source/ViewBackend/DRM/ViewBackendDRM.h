@@ -63,6 +63,7 @@ private:
     struct {
         int fd { -1 };
         drmModeModeInfo* mode;
+        std::pair<uint16_t, uint16_t> size;
         uint32_t crtcId { 0 };
         uint32_t connectorId { 0 };
     } m_drm;
