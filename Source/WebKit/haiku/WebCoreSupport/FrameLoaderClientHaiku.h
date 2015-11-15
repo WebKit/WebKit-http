@@ -144,6 +144,9 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void willChangeTitle(DocumentLoader*) override;
     void didChangeTitle(DocumentLoader*) override;
 
+    virtual void willReplaceMultipartContent() override { }
+    virtual void didReplaceMultipartContent() override { }
+
     void committedLoad(DocumentLoader*, const char*, int) override;
     void finishedLoading(DocumentLoader*) override;
     void updateGlobalHistory() override;

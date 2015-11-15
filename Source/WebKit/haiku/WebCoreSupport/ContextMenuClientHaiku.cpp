@@ -101,7 +101,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
     if (Page* page = frame->page()) {
         page->mainFrame().loader().urlSelected(URL(ParsedURLString, url),
             String("_blank"), 0, LockHistory::No, LockBackForwardList::No,
-            MaybeSendReferrer);
+            MaybeSendReferrer, frame->document()->shouldOpenExternalURLsPolicyToPropagate());
     }
 }
 
