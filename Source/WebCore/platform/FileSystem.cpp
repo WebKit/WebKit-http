@@ -38,6 +38,10 @@
 #include <unistd.h>
 #endif
 
+#if PLATFORM(HAIKU)
+#define MAP_FILE 0
+#endif
+
 namespace WebCore {
 
 // The following lower-ASCII characters need escaping to be used in a filename

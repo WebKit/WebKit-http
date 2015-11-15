@@ -459,6 +459,11 @@ String contextMenuItemTagTextDirectionMenu()
     return String();
 }
 
+String AXAutoFillButtonText()
+{
+    return String::fromUTF8("autofill");
+}
+
 String AXButtonActionVerb()
 {
     return String();

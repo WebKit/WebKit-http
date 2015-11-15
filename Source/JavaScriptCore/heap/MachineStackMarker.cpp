@@ -158,6 +158,8 @@ static inline PlatformThread getCurrentPlatformThread()
     return pthread_mach_thread_np(pthread_self());
 #elif OS(WINDOWS)
     return GetCurrentThreadId();
+#elif OS(HAIKU)
+    return find_thread(NULL);
 #elif USE(PTHREADS)
     return pthread_self();
 #endif
@@ -226,6 +228,8 @@ public:
         
 #elif OS(WINDOWS)
         typedef CONTEXT PlatformRegisters;
+#elif OS(HAIKU)
+        typedef thread_info PlatformRegisters;
 #elif USE(PTHREADS)
         typedef pthread_attr_t PlatformRegisters;
 #else
@@ -279,7 +283,7 @@ MachineThreads::~MachineThreads()
 
 inline bool MachineThreads::Thread::operator==(const PlatformThread& other) const
 {
-#if OS(DARWIN) || OS(WINDOWS)
+#if OS(DARWIN) || OS(WINDOWS) || OS(HAIKU)
     return platformThread == other;
 #elif USE(PTHREADS)
     return !!pthread_equal(platformThread, other);
@@ -519,7 +523,7 @@ inline void* MachineThreads::Thread::Registers::stackPointer() const
 void MachineThreads::Thread::freeRegisters(MachineThreads::Thread::Registers& registers)
 {
     Thread::Registers::PlatformRegisters& regs = registers.regs;
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU)
     pthread_attr_destroy(&regs);
 #else
     UNUSED_PARAM(regs);

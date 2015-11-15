@@ -24,7 +24,6 @@
  */
 
 #include "config.h"
-#include "TiledBackingStoreBackend.h"
 
 #if USE(TILED_BACKING_STORE) && PLATFORM(HAIKU)
 
