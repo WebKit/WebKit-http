@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,47 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackend_h
-#define WPE_ViewBackend_ViewBackend_h
+#ifndef WPE_Graphics_BufferDataBCMRPi_h
+#define WPE_Graphics_BufferDataBCMRPi_h
 
-#include <WPE/WPE.h>
-#include <memory>
+#if WPE_BACKEND(BCM_RPI)
+
+#include <stdint.h>
 
 namespace WPE {
 
-namespace Input {
-class Client;
-}
+namespace Graphics {
 
-namespace ViewBackend {
+struct BufferDataBCMRPi {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t magic;
 
-class Client {
-public:
-    virtual void releaseBuffer(uint32_t handle) = 0;
-    virtual void frameComplete() = 0;
-    virtual void setSize(uint32_t width, uint32_t height) = 0;
+    static const uint32_t magicValue;
 };
 
-class ViewBackend {
-public:
-    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
+} // Graphics
 
-    virtual void setClient(Client*);
-    virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
-    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
-    virtual void destroyBuffer(uint32_t) = 0;
+} // WPE
 
-    virtual uint32_t createBCMNexusElement(int32_t, int32_t);
-    virtual void commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t);
+#endif // WPE_BACKEND(BCM_RPI)
 
-    virtual uint32_t createIntelCEElement(int32_t, int32_t);
-    virtual void commitIntelCEBuffer(uint32_t, uint32_t, uint32_t);
-
-    virtual void setInputClient(Input::Client*);
-};
-
-} // namespace ViewBackend
-
-} // namespace WPE
-
-#endif // WPE_ViewBackend_ViewBackend_h
+#endif // WPE_Graphics_RenderingBackendBCMRPi_h

@@ -31,6 +31,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
@@ -86,6 +87,9 @@ endif ()
 
 if (USE_WPE_BACKEND_BCM_RPI)
     list(APPEND WPE_SOURCES
+        Source/Graphics/BCMRPi/BufferDataBCMRPi.cpp
+        Source/Graphics/BCMRPi/RenderingBackendBCMRPi.cpp
+
         Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
     )
 endif ()

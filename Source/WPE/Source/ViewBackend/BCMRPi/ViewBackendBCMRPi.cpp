@@ -29,6 +29,7 @@
 
 #if WPE_BACKEND(BCM_RPI)
 
+#include "BufferDataBCMRPi.h"
 #include "LibinputServer.h"
 #include <cstdio>
 
@@ -58,7 +59,7 @@ void ViewBackendBCMRPi::setClient(Client* client)
         m_client->setSize(m_width, m_height);
 }
 
-uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
+uint32_t ViewBackendBCMRPi::constructRenderingTarget(uint32_t width, uint32_t height)
 {
     static VC_DISPMANX_ALPHA_T alpha = {
         static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS),
@@ -68,10 +69,8 @@ uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
     if (m_elementHandle != DISPMANX_NO_HANDLE)
         return 0;
 
-    uint32_t clampedWidth = std::max(0, width);
-    uint32_t clampedHeight = std::max(0, height);
-    if (m_width != clampedWidth || m_height != clampedHeight)
-        fprintf(stderr, "ViewBackendBCMRPi: mismatch in buffer parameters during creation\n");
+    if (m_width != width || m_height != height)
+        fprintf(stderr, "ViewBackendBCMRPi: mismatch in buffer parameters during construction\n");
 
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
@@ -87,11 +86,22 @@ uint32_t ViewBackendBCMRPi::createBCMElement(int32_t width, int32_t height)
     return m_elementHandle;
 }
 
-void ViewBackendBCMRPi::commitBCMBuffer(uint32_t elementHandle, uint32_t width, uint32_t height)
+void ViewBackendBCMRPi::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
+    if (!data || size != sizeof(Graphics::BufferDataBCMRPi) || fd != -1) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
+    auto& bufferData = *reinterpret_cast<const Graphics::BufferDataBCMRPi*>(data);
+    if (bufferData.magic != Graphics::BufferDataBCMRPi::magicValue) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
     DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
 
-    if (elementHandle != m_elementHandle || m_width != width || m_height != height)
+    if (m_elementHandle != bufferData.handle || m_width != bufferData.width || m_height != bufferData.height)
         fprintf(stderr, "ViewBackendBCMRPi: mismatch in buffer parameters during update\n");
 
     VC_RECT_T srcRect, destRect;
@@ -104,6 +114,10 @@ void ViewBackendBCMRPi::commitBCMBuffer(uint32_t elementHandle, uint32_t width, 
 
     if (m_client)
         m_client->frameComplete();
+}
+
+void ViewBackendBCMRPi::destroyBuffer(uint32_t)
+{
 }
 
 void ViewBackendBCMRPi::setInputClient(Input::Client* client)
