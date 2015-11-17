@@ -30,10 +30,6 @@
 #include "MessageReceiver.h"
 #include <WebCore/PlatformDisplayWPE.h>
 
-#if PLATFORM(BCM_RPI)
-#include <WebCore/PlatformDisplayBCMRPi.h>
-#endif
-
 #if PLATFORM(BCM_NEXUS)
 #include <WebCore/PlatformDisplayBCMNexus.h>
 #endif
@@ -58,14 +54,9 @@ public:
 
     void establishConnection(WebPage&, WTF::RunLoop&);
 
+    uint32_t constructRenderingTarget(uint32_t, uint32_t);
     void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
     void destroyBuffer(uint32_t);
-
-#if PLATFORM(BCM_RPI)
-    uint32_t createBCMElement(int32_t width, int32_t height);
-    void commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport&);
-    // void destroyBCMBuffer(...);
-#endif
 
 #if PLATFORM(BCM_NEXUS)
     uint32_t createBCMNexusElement(int32_t width, int32_t height);
