@@ -29,7 +29,7 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/PlatformDisplayGBM.h>
+#include <WebCore/PlatformDisplayWPE.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
@@ -166,7 +166,7 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
         if (protector->m_surface)
             protector->m_surface->resize(size);
 #endif
@@ -226,11 +226,11 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
 void ThreadedCompositor::destroyBuffer(uint32_t handle)
 {
-    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    m_compositingManager.destroyPrimeBuffer(handle);
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    m_compositingManager.destroyBuffer(handle);
 }
 #endif
 
@@ -257,11 +257,13 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-#if PLATFORM(GBM)
-    RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
-    m_surface = GBMSurface::create(IntSize(viewportController()->visibleContentsRect().size()), *this);
+#if PLATFORM(WPE)
+    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
+
+    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
     if (!m_surface)
-        return 0;
+        return nullptr;
 
     setNativeSurfaceHandleForCompositing(0);
     m_context = m_surface->createGLContext();
@@ -306,9 +308,9 @@ void ThreadedCompositor::renderLayerTree()
 
     glContext()->swapBuffers();
 
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
     auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitPrimeBuffer(bufferExport);
+    m_compositingManager.commitBuffer(bufferExport);
 #endif
 }
 
@@ -470,7 +472,7 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
     m_surface->releaseBuffer(handle);
 #endif
 }

@@ -41,9 +41,8 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
-#if PLATFORM(GBM)
-#include <WebCore/GBMSurface.h>
-#include <WebCore/PlatformDisplayGBM.h>
+#if PLATFORM(WPE)
+#include <WebCore/PlatformDisplayWPE.h>
 #endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -62,8 +61,8 @@ class CoordinatedGraphicsSceneClient;
 class WebPage;
 
 class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, 
-#if PLATFORM(GBM)
-    public WebCore::GBMSurface::Client,
+#if PLATFORM(WPE)
+    public WebCore::PlatformDisplayWPE::Surface::Client,
 #endif
     public CompositingManager::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
@@ -103,8 +102,8 @@ private:
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
-#if PLATFORM(GBM)
-    // GBMSurface::Client
+#if PLATFORM(WPE)
+    // PlatformDisplayWPE::Surface::Client
     virtual void destroyBuffer(uint32_t) override;
 #endif
 
@@ -130,8 +129,8 @@ private:
     RefPtr<CoordinatedGraphicsScene> m_scene;
     std::unique_ptr<SimpleViewportController> m_viewportController;
 
-#if PLATFORM(GBM)
-    std::unique_ptr<WebCore::GBMSurface> m_surface;
+#if PLATFORM(WPE)
+    std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
 
