@@ -36,6 +36,18 @@ pkg_check_modules(PC_EGL egl)
 
 if (PC_EGL_FOUND)
     set(EGL_DEFINITIONS ${PC_EGL_CFLAGS_OTHER})
+    set(EGL_NAMES ${PC_EGL_LIBRARIES})
+    foreach (_library ${EGL_NAMES})
+        find_library(EGL_LIBRARIES_${_library} ${_library}
+	    HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
+        )
+        set(EGL_LIBRARIES ${EGL_LIBRARIES} ${EGL_LIBRARIES_${_library}})
+    endforeach ()
+else ()
+    set(EGL_NAMES ${EGL_NAMES} egl EGL)
+    find_library(EGL_LIBRARIES NAMES ${EGL_NAMES}
+        HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
+    )
 endif ()
 
 find_path(EGL_INCLUDE_DIRS NAMES EGL/egl.h
@@ -43,11 +55,6 @@ find_path(EGL_INCLUDE_DIRS NAMES EGL/egl.h
 )
 
 set(EGL_INCLUDE_DIRS ${PC_EGL_INCLUDE_DIRS} CACHE FILEPATH "FIXME")
-
-set(EGL_NAMES ${EGL_NAMES} egl EGL)
-find_library(EGL_LIBRARIES NAMES ${EGL_NAMES}
-    HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
-)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(EGL DEFAULT_MSG EGL_INCLUDE_DIRS EGL_LIBRARIES)

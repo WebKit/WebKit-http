@@ -101,6 +101,12 @@ private:
 typedef OptionRange optionRange;
 typedef const char* optionString;
 
+#if CPU(ARM)
+#define JSC_USE_TAIL_CALLS false
+#else
+#define JSC_USE_TAIL_CALLS true
+#endif
+
 #define JSC_OPTIONS(v) \
     v(unsigned, dumpOptions, 0, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
     \
@@ -131,7 +137,7 @@ typedef const char* optionString;
     v(bool, forceProfilerBytecodeGeneration, false, nullptr) \
     \
     v(bool, useFunctionDotArguments, true, nullptr) \
-    v(bool, useTailCalls, false, nullptr) \
+    v(bool, useTailCalls, JSC_USE_TAIL_CALLS, nullptr) \
     \
     /* dumpDisassembly implies dumpDFGDisassembly. */ \
     v(bool, dumpDisassembly, false, "dumps disassembly of all JIT compiled code upon compilation") \
