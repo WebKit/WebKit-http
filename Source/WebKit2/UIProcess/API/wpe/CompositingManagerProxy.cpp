@@ -49,6 +49,11 @@ void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnect
     m_connection->open();
 }
 
+void CompositingManagerProxy::constructRenderingTarget(uint32_t width, uint32_t height, uint32_t& handle)
+{
+    handle = m_view.viewBackend().constructRenderingTarget(width, height);
+}
+
 void CompositingManagerProxy::commitBuffer(const IPC::Attachment& fd, const IPC::DataReference& bufferData)
 {
     m_view.viewBackend().commitBuffer(fd.fileDescriptor(), bufferData.data(), bufferData.size());
@@ -58,18 +63,6 @@ void CompositingManagerProxy::destroyBuffer(uint32_t handle)
 {
     m_view.viewBackend().destroyBuffer(handle);
 }
-
-#if PLATFORM(BCM_RPI)
-void CompositingManagerProxy::createBCMElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createBCMElement(width, height);
-}
-
-void CompositingManagerProxy::commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height)
-{
-    m_view.viewBackend().commitBCMBuffer(handle, width, height);
-}
-#endif
 
 #if PLATFORM(BCM_NEXUS)
 void CompositingManagerProxy::createBCMNexusElement(int32_t width, int32_t height, uint32_t& handle)
