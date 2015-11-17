@@ -92,15 +92,17 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     if (handlerData.client) {
         handlerData.client->frameComplete();
 
-        if (handlerData.bufferLocked) {
-            handlerData.bufferLocked = false;
-            handlerData.client->releaseBuffer(handlerData.lockedBufferHandle);
-        }
+        auto bufferToRelease = handlerData.lockedFB;
+        handlerData.lockedFB = handlerData.nextFB;
+        handlerData.nextFB = { false, 0 };
+
+        if (bufferToRelease.first)
+            handlerData.client->releaseBuffer(bufferToRelease.second);
     }
 }
 
 ViewBackendDRM::ViewBackendDRM()
-    : m_pageFlipData{ nullptr, false, 0 }
+    : m_pageFlipData{ nullptr, { }, { } }
 {
     m_drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (m_drm.fd < 0) {
@@ -111,21 +113,24 @@ ViewBackendDRM::ViewBackendDRM()
     drm_magic_t magic;
     if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic)) {
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
-    m_drm.gbmDevice = gbm_create_device(m_drm.fd);
-    if (!m_drm.gbmDevice) {
+    m_gbm.device = gbm_create_device(m_drm.fd);
+    if (!m_gbm.device) {
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
     drmModeRes* resources = drmModeGetResources(m_drm.fd);
     if (!resources) {
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -139,8 +144,13 @@ ViewBackendDRM::ViewBackendDRM()
     }
 
     if (!connector) {
+        drmModeFreeResources(resources);
+
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -150,13 +160,20 @@ ViewBackendDRM::ViewBackendDRM()
         int modeArea = currentMode->hdisplay * currentMode->vdisplay;
         if (modeArea > area) {
             m_drm.mode = currentMode;
+            m_drm.size = { currentMode->hdisplay, currentMode->vdisplay };
             area = modeArea;
         }
     }
 
     if (!m_drm.mode) {
+        drmModeFreeConnector(connector);
+        drmModeFreeResources(resources);
+
+        gbm_device_destroy(m_gbm.device);
+        m_gbm = { };
+
         close(m_drm.fd);
-        m_drm.fd = -1;
+        m_drm = { };
         return;
     }
 
@@ -205,20 +222,23 @@ ViewBackendDRM::~ViewBackendDRM()
         g_source_unref(m_eventSource);
     m_eventSource = nullptr;
 
-    m_pageFlipData = { nullptr, false, 0 };
+    m_pageFlipData = { nullptr, { }, { } };
+
+    if (m_gbm.device)
+        gbm_device_destroy(m_gbm.device);
+    m_gbm = { };
 
     if (m_drm.mode)
         drmModeFreeModeInfo(m_drm.mode);
-    if (m_drm.gbmDevice)
-        gbm_device_destroy(m_drm.gbmDevice);
     if (m_drm.fd >= 0)
         close(m_drm.fd);
-    m_drm = { -1, nullptr, nullptr, 0, 0 };
+    m_drm = { };
 }
 
 void ViewBackendDRM::setClient(Client* client)
 {
     m_pageFlipData.client = client;
+    client->setSize(m_drm.size.first, m_drm.size.second);
 }
 
 void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
@@ -228,7 +248,7 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
     if (fd >= 0) {
         assert(m_fbMap.find(handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, width, height, stride, format };
-        struct gbm_bo* bo = gbm_bo_import(m_drm.gbmDevice, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+        struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
             24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);
@@ -236,17 +256,15 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
             fprintf(stderr, "ViewBackendDRM: failed to add FB: %s, fbID %d\n", strerror(errno), fbID);
             return;
         }
-        m_fbMap.insert({ handle, { bo, fbID } });
 
-        m_pageFlipData.bufferLocked = true;
-        m_pageFlipData.lockedBufferHandle = handle;
+        m_fbMap.insert({ handle, { bo, fbID } });
+        m_pageFlipData.nextFB = { true, handle };
     } else {
         auto it = m_fbMap.find(handle);
         assert(it != m_fbMap.end());
-        fbID = it->second.second;
 
-        m_pageFlipData.bufferLocked = true;
-        m_pageFlipData.lockedBufferHandle = handle;
+        fbID = it->second.second;
+        m_pageFlipData.nextFB = { true, handle };
     }
 
     int ret = drmModePageFlip(m_drm.fd, m_drm.crtcId, fbID, DRM_MODE_PAGE_FLIP_EVENT, &m_pageFlipData);

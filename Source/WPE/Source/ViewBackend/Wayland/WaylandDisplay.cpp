@@ -32,6 +32,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
 #include <WPE/Input/Handling.h>
+#include <cassert>
 #include <cstring>
 #include <glib.h>
 #include <linux/input.h>
@@ -322,6 +323,76 @@ static const struct wl_keyboard_listener g_keyboardListener = {
     },
 };
 
+static const struct wl_touch_listener g_touchListener = {
+    // down
+    [](void* data, struct wl_touch*, uint32_t, uint32_t time, struct wl_surface* surface, int32_t id, wl_fixed_t x, wl_fixed_t y)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(!target.first && !target.second);
+
+        auto it = seatData.inputClients.find(surface);
+        if (it == seatData.inputClients.end())
+            return;
+
+        target = { surface, it->second };
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        touchPoints[id] = { Input::TouchEvent::Down, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Down, id, time });
+    },
+    // up
+    [](void* data, struct wl_touch*, uint32_t, uint32_t time, int32_t id)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(target.first && target.second);
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        auto& point = touchPoints[id];
+        point = { Input::TouchEvent::Up, time, id, point.x, point.y };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Up, id, time });
+
+        point = { Input::TouchEvent::Null, 0, 0, 0, 0 };
+        target = { nullptr, nullptr };
+    },
+    // motion
+    [](void* data, struct wl_touch*, uint32_t time, int32_t id, wl_fixed_t x, wl_fixed_t y)
+    {
+        auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+
+        int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
+        if (id < 0 || id >= arraySize)
+            return;
+
+        auto& target = seatData.touch.targets[id];
+        assert(target.first && target.second);
+
+        auto& touchPoints = seatData.touch.touchPoints;
+        touchPoints[id] = { Input::TouchEvent::Motion, time, id, wl_fixed_to_int(x), wl_fixed_to_int(y) };
+        target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Motion, id, time });
+    },
+    // frame
+    [](void*, struct wl_touch*)
+    {
+        // FIXME: Dispatching events via frame() would avoid dispatching events
+        // for every single event that's encapsulated in a frame with multiple
+        // other events.
+    },
+    // cancel
+    [](void*, struct wl_touch*) { },
+};
+
 static const struct wl_seat_listener g_seatListener = {
     // capabilities
     [](void* data, struct wl_seat* seat, uint32_t capabilities)
@@ -348,6 +419,17 @@ static const struct wl_seat_listener g_seatListener = {
         if (!hasKeyboardCap && seatData.keyboard.object) {
             wl_keyboard_destroy(seatData.keyboard.object);
             seatData.keyboard.object = nullptr;
+        }
+
+        // WL_SEAT_CAPABILITY_TOUCH
+        const bool hasTouchCap = capabilities & WL_SEAT_CAPABILITY_TOUCH;
+        if (hasTouchCap && !seatData.touch.object) {
+            seatData.touch.object = wl_seat_get_touch(seat);
+            wl_touch_add_listener(seatData.touch.object, &g_touchListener, &seatData);
+        }
+        if (!hasTouchCap && seatData.touch.object) {
+            wl_touch_destroy(seatData.touch.object);
+            seatData.touch.object = nullptr;
         }
     },
     // name
@@ -423,6 +505,8 @@ WaylandDisplay::~WaylandDisplay()
         wl_pointer_destroy(m_seatData.pointer.object);
     if (m_seatData.keyboard.object)
         wl_keyboard_destroy(m_seatData.keyboard.object);
+    if (m_seatData.touch.object)
+        wl_touch_destroy(m_seatData.touch.object);
     if (m_seatData.xkb.context)
         xkb_context_unref(m_seatData.xkb.context);
     if (m_seatData.xkb.keymap)

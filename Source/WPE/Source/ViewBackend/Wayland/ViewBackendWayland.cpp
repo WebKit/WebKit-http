@@ -36,6 +36,7 @@
 #include <cassert>
 #include <cstdio>
 #include <glib.h>
+#include <unistd.h>
 
 namespace WPE {
 

@@ -28,6 +28,8 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+#include <WPE/Input/Events.h>
+#include <array>
 #include <unordered_map>
 #include <utility>
 #include <xkbcommon/xkbcommon-compose.h>
@@ -42,6 +44,7 @@ struct wl_pointer;
 struct wl_registry;
 struct wl_seat;
 struct wl_surface;
+struct wl_touch;
 struct xdg_shell;
 
 typedef struct _GSource GSource;
@@ -81,6 +84,11 @@ public:
             struct wl_keyboard* object;
             std::pair<struct wl_surface*, Input::Client*> target;
         } keyboard { nullptr, { } };
+        struct {
+            struct wl_touch* object;
+            std::array<std::pair<struct wl_surface*, Input::Client*>, 10> targets;
+            std::array<Input::TouchEvent::Raw, 10> touchPoints;
+        } touch { nullptr, { }, { } };
 
         struct {
             struct xkb_context* context;

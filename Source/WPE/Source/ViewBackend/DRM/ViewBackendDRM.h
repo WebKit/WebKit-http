@@ -49,25 +49,28 @@ public:
     ViewBackendDRM();
     virtual ~ViewBackendDRM();
 
-
     void setClient(Client*) override;
     void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
     void destroyPrimeBuffer(uint32_t handle) override;
 
     struct PageFlipHandlerData {
         Client* client;
-        bool bufferLocked;
-        uint32_t lockedBufferHandle;
+        std::pair<bool, uint32_t> nextFB;
+        std::pair<bool, uint32_t> lockedFB;
     };
 
 private:
     struct {
-        int fd;
-        struct gbm_device* gbmDevice;
+        int fd { -1 };
         drmModeModeInfo* mode;
-        uint32_t crtcId;
-        uint32_t connectorId;
+        std::pair<uint16_t, uint16_t> size;
+        uint32_t crtcId { 0 };
+        uint32_t connectorId { 0 };
     } m_drm;
+
+    struct {
+        struct gbm_device* device;
+    } m_gbm;
 
     PageFlipHandlerData m_pageFlipData;
 

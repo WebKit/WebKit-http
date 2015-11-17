@@ -32,6 +32,7 @@
 #include "ViewBackendWayland.h"
 #include "ViewBackendIntelCE.h"
 #include <cstring>
+#include <cstdio>
 #include <cstdlib>
 
 namespace WPE {
@@ -67,6 +68,7 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
         return std::unique_ptr<ViewBackendIntelCE>(new ViewBackendIntelCE);
 #endif
 
+    fprintf(stderr, "ViewBackend: no usable backend found, will crash.\n");
     return nullptr;
 }
 
