@@ -184,7 +184,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPixmapContext(EGLContext shari
 }
 #endif // PLATFORM(X11)
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType window, GLContext* sharingContext)
+std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType window, GLContext* sharingContext, std::unique_ptr<GLContext::Data>&& contextData)
 {
     if (!sharedEGLDisplay())
         return nullptr;
@@ -209,6 +209,8 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType wi
     if (!context)
         context = createPbufferContext(eglSharingContext);
 
+    if (context)
+        context->m_contextData = WTF::move(contextData);
     return WTF::move(context);
 }
 

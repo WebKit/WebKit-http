@@ -35,7 +35,7 @@ class GLContextEGL : public GLContext {
     WTF_MAKE_NONCOPYABLE(GLContextEGL);
 public:
     enum EGLSurfaceType { PbufferSurface, WindowSurface, PixmapSurface };
-    static std::unique_ptr<GLContextEGL> createContext(EGLNativeWindowType, GLContext* sharingContext = 0);
+    static std::unique_ptr<GLContextEGL> createContext(EGLNativeWindowType, GLContext* sharingContext = 0, std::unique_ptr<GLContext::Data>&& = nullptr);
     static std::unique_ptr<GLContextEGL> createWindowContext(EGLNativeWindowType, GLContext* sharingContext, std::unique_ptr<GLContext::Data>&& = nullptr);
 
     GLContextEGL(EGLContext, EGLSurface, EGLSurfaceType);
