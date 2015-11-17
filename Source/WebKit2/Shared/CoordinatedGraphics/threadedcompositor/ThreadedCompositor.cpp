@@ -260,21 +260,10 @@ GLContext* ThreadedCompositor::glContext()
 #if PLATFORM(WPE)
     RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
 
-    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), *this);
-    if (!m_surface)
-        return nullptr;
-
-    setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
-#endif
-
-#if PLATFORM(BCM_RPI)
-    RELEASE_ASSERT(is<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()));
-
     IntSize size(viewportController()->visibleContentsRect().size());
-    m_surface = downcast<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()).createSurface(size,
-        m_compositingManager.createBCMElement(size.width(), size.height()));
+    uint32_t targetHandle = m_compositingManager.constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
+    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay())
+        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), targetHandle, *this);
     if (!m_surface)
         return nullptr;
 
@@ -344,11 +333,6 @@ void ThreadedCompositor::renderLayerTree()
     viewportTransform.translate(-scrollPostion.x(), -scrollPostion.y());
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
-
-#if PLATFORM(BCM_RPI)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitBCMBuffer(bufferExport);
-#endif
 
 #if PLATFORM(BCM_NEXUS)
     auto bufferExport = m_surface->lockFrontBuffer();
@@ -527,9 +511,6 @@ void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
 #if PLATFORM(WPE)
-    m_surface->releaseBuffer(handle);
-#endif
-#if PLATFORM(BCM_RPI)
     m_surface->releaseBuffer(handle);
 #endif
 }

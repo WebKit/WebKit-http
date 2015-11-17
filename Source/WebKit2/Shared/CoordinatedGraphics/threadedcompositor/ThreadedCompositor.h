@@ -45,11 +45,6 @@
 #include <WebCore/PlatformDisplayWPE.h>
 #endif
 
-#if PLATFORM(BCM_RPI)
-#include <WebCore/BCMRPiSurface.h>
-#include <WebCore/PlatformDisplayBCMRPi.h>
-#endif
-
 #if PLATFORM(BCM_NEXUS)
 #include <WebCore/BCMNexusSurface.h>
 #include <WebCore/PlatformDisplayBCMNexus.h>
@@ -146,9 +141,6 @@ private:
 
 #if PLATFORM(WPE)
     std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
-#endif
-#if PLATFORM(BCM_RPI)
-    std::unique_ptr<WebCore::BCMRPiSurface> m_surface;
 #endif
 #if PLATFORM(BCM_NEXUS)
     std::unique_ptr<WebCore::BCMNexusSurface> m_surface;
