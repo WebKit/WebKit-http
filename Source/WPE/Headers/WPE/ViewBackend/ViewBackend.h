@@ -49,8 +49,8 @@ public:
     static WPE_EXPORT std::unique_ptr<ViewBackend> create();
 
     virtual void setClient(Client*);
-    virtual void commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
-    virtual void destroyPrimeBuffer(uint32_t);
+    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
+    virtual void destroyBuffer(uint32_t) = 0;
 
     virtual uint32_t createBCMElement(int32_t, int32_t);
     virtual void commitBCMBuffer(uint32_t, uint32_t, uint32_t);

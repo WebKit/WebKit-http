@@ -64,10 +64,8 @@ private:
 
     void establishConnection(IPC::Attachment);
 
-#if PLATFORM(GBM)
-    void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment);
-    void destroyPrimeBuffer(uint32_t);
-#endif
+    void commitBuffer(const IPC::Attachment&, const IPC::DataReference&);
+    void destroyBuffer(uint32_t);
 
 #if PLATFORM(BCM_RPI)
     void createBCMElement(int32_t width, int32_t height, uint32_t& handle);

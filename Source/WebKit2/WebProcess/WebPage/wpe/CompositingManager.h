@@ -28,10 +28,7 @@
 
 #include "Connection.h"
 #include "MessageReceiver.h"
-
-#if PLATFORM(GBM)
-#include <WebCore/PlatformDisplayGBM.h>
-#endif
+#include <WebCore/PlatformDisplayWPE.h>
 
 #if PLATFORM(BCM_RPI)
 #include <WebCore/PlatformDisplayBCMRPi.h>
@@ -61,10 +58,8 @@ public:
 
     void establishConnection(WebPage&, WTF::RunLoop&);
 
-#if PLATFORM(GBM)
-    void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&);
-    void destroyPrimeBuffer(uint32_t);
-#endif
+    void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
+    void destroyBuffer(uint32_t);
 
 #if PLATFORM(BCM_RPI)
     uint32_t createBCMElement(int32_t width, int32_t height);

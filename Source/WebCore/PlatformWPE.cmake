@@ -38,12 +38,14 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/graphics/texmap/threadedcompositor"
+    "${WEBCORE_DIR}/platform/graphics/wpe"
     "${WEBCORE_DIR}/platform/graphics/wayland"
     "${WEBCORE_DIR}/platform/linux"
     "${WEBCORE_DIR}/platform/mediastream/openwebrtc"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/icu"
+    ${WPE_DIR}
     ${WTF_DIR}
 )
 
@@ -111,9 +113,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
-    platform/graphics/gbm/GBMSurface.cpp
-    platform/graphics/gbm/PlatformDisplayGBM.cpp
-
     platform/graphics/gstreamer/AudioTrackPrivateGStreamer.cpp
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
     platform/graphics/gstreamer/GStreamerUtilities.cpp
@@ -161,6 +160,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/texmap/coordinated/Tile.cpp
     platform/graphics/texmap/coordinated/TiledBackingStore.cpp
     platform/graphics/texmap/coordinated/UpdateAtlas.cpp
+
+    platform/graphics/wpe/PlatformDisplayWPE.cpp
 
     platform/image-decoders/ImageDecoder.cpp
     platform/image-encoders/JPEGImageEncoder.cpp

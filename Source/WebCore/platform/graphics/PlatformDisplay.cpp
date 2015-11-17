@@ -37,10 +37,6 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
-#if PLATFORM(GBM)
-#include "PlatformDisplayGBM.h"
-#endif
-
 #if PLATFORM(BCM_RPI)
 #include "PlatformDisplayBCMRPi.h"
 #endif
@@ -55,6 +51,10 @@
 
 #if PLATFORM(WIN)
 #include "PlatformDisplayWin.h"
+#endif
+
+#if PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -106,12 +106,7 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 #endif
 
 #if PLATFORM(WPE)
-#if PLATFORM(GBM)
-    return std::make_unique<PlatformDisplayGBM>();
-#endif
-#if PLATFORM(WAYLAND)
-    return PlatformDisplayWayland::create();
-#endif
+    return std::make_unique<PlatformDisplayWPE>();
 #if PLATFORM(BCM_RPI)
     return std::make_unique<PlatformDisplayBCMRPi>();
 #endif

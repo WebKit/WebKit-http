@@ -28,6 +28,7 @@
 
 #include "CompositingManagerMessages.h"
 #include "CompositingManagerProxyMessages.h"
+#include "DataReference.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 
@@ -50,23 +51,17 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
-#if PLATFORM(GBM)
-void CompositingManager::commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport& bufferExport)
+void CompositingManager::commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport& bufferExport)
 {
-    m_connection->send(Messages::CompositingManagerProxy::CommitPrimeBuffer(
-        std::get<1>(bufferExport),
-        std::get<2>(bufferExport),
-        std::get<3>(bufferExport),
-        std::get<4>(bufferExport),
-        std::get<5>(bufferExport),
-        IPC::Attachment(std::get<0>(bufferExport))), 0);
+    m_connection->send(Messages::CompositingManagerProxy::CommitBuffer(
+        IPC::Attachment(std::get<0>(bufferExport)),
+        IPC::DataReference(std::get<1>(bufferExport), std::get<2>(bufferExport))), 0);
 }
 
-void CompositingManager::destroyPrimeBuffer(uint32_t handle)
+void CompositingManager::destroyBuffer(uint32_t handle)
 {
-    m_connection->send(Messages::CompositingManagerProxy::DestroyPrimeBuffer(handle), 0);
+    m_connection->send(Messages::CompositingManagerProxy::DestroyBuffer(handle), 0);
 }
-#endif // PLATFORM(GBM)
 
 #if PLATFORM(BCM_RPI)
 uint32_t CompositingManager::createBCMElement(int32_t width, int32_t height)

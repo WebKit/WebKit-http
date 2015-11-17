@@ -23,54 +23,61 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GBMSurface_h
-#define GBMSurface_h
+#ifndef PlatformDisplayWPE_h
+#define PlatformDisplayWPE_h
+
+#if PLATFORM(WPE)
 
 #if PLATFORM(GBM)
+#include <gbm.h>
+#endif
 
-#include "IntSize.h"
-#include <tuple>
-#include <wtf/HashMap.h>
-
-struct gbm_bo;
-struct gbm_surface;
+#include <WPE/Graphics/RenderingBackend.h>
+#include "PlatformDisplay.h"
 
 namespace WebCore {
 
+class GLContext;
 class GLContextEGL;
+class IntSize;
 
-class GBMSurface {
+class PlatformDisplayWPE final : public PlatformDisplay {
 public:
-    class Client {
+    PlatformDisplayWPE();
+    virtual ~PlatformDisplayWPE();
+
+    using BufferExport = WPE::Graphics::RenderingBackend::BufferExport;
+
+    class Surface {
     public:
-        virtual void destroyBuffer(uint32_t) = 0;
+        using Client = WPE::Graphics::RenderingBackend::Surface::Client;
+
+        Surface(const PlatformDisplayWPE&, const IntSize&, Client&);
+
+        void resize(const IntSize&);
+        std::unique_ptr<GLContextEGL> createGLContext() const;
+
+        BufferExport lockFrontBuffer();
+        void releaseBuffer(uint32_t);
+
+    private:
+        std::unique_ptr<WPE::Graphics::RenderingBackend::Surface> m_backend;
     };
 
-    static std::unique_ptr<GBMSurface> create(const IntSize&, Client&);
-    GBMSurface(struct gbm_surface*, const IntSize&, Client&);
-    ~GBMSurface();
+    std::unique_ptr<Surface> createSurface(const IntSize&, Surface::Client&);
 
-    void resize(const IntSize&);
-
-    std::unique_ptr<GLContextEGL> createGLContext() const;
-
-    void destroyBuffer(uint32_t handle) { m_client.destroyBuffer(handle); }
-
-    using GBMBufferExport = std::tuple<int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, int>;
-    GBMBufferExport lockFrontBuffer();
-    void releaseBuffer(uint32_t);
+    std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 
 private:
-    struct gbm_surface* m_surface;
-    IntSize m_size;
-    Client& m_client;
+    Type type() const override { return PlatformDisplay::Type::WPE; }
 
-    static void boDataDestroyCallback(struct gbm_bo*, void*);
-    HashMap<uint32_t, struct gbm_bo*> m_lockedBuffers;
+    std::unique_ptr<WPE::Graphics::RenderingBackend> m_backend;
 };
 
 } // namespace WebCore
 
-#endif // PLATFORM(GBM)
+SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayWPE, WPE)
 
-#endif // GBMSurface_h
+#endif // PLATFORM(WPE)
+
+#endif // PlatformDisplayWPE_h

@@ -23,65 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendDRM_h
-#define WPE_ViewBackend_ViewBackendDRM_h
-
-#if WPE_BACKEND(DRM)
-
-#include <WPE/ViewBackend/ViewBackend.h>
-
-#include <unordered_map>
-#include <utility>
-
-struct gbm_bo;
-struct gbm_device;
-typedef struct _GSource GSource;
-typedef struct _drmModeModeInfo drmModeModeInfo;
+#include "Config.h"
+#include "BufferDataGBM.h"
 
 namespace WPE {
 
-namespace ViewBackend {
+namespace Graphics {
 
-class Client;
+static_assert(sizeof(BufferDataGBM) == 24, "BufferDataGBM is of expected size");
 
-class ViewBackendDRM final : public ViewBackend {
-public:
-    ViewBackendDRM();
-    virtual ~ViewBackendDRM();
+const uint32_t BufferDataGBM::magicValue = 0x0a31a904;
 
-    void setClient(Client*) override;
-    void commitBuffer(int, const uint8_t* data, size_t size) override;
-    void destroyBuffer(uint32_t handle) override;
-
-    struct PageFlipHandlerData {
-        Client* client;
-        std::pair<bool, uint32_t> nextFB;
-        std::pair<bool, uint32_t> lockedFB;
-    };
-
-private:
-    struct {
-        int fd { -1 };
-        drmModeModeInfo* mode;
-        std::pair<uint16_t, uint16_t> size;
-        uint32_t crtcId { 0 };
-        uint32_t connectorId { 0 };
-    } m_drm;
-
-    struct {
-        struct gbm_device* device;
-    } m_gbm;
-
-    PageFlipHandlerData m_pageFlipData;
-
-    GSource* m_eventSource;
-    std::unordered_map<uint32_t, std::pair<struct gbm_bo*, uint32_t>> m_fbMap;
-};
-
-} // namespace ViewBackend
+} // namespace Graphics
 
 } // namespace WPE
-
-#endif // WPE_BACKEND(DRM)
-
-#endif // WPE_ViewBackend_ViewBackendDRM_h

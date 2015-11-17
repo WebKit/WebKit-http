@@ -30,6 +30,8 @@ endif ()
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
@@ -53,6 +55,7 @@ set(WPE_LIBRARIES
     ${GDL_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
+    ${LIBGBM_LIBRARIES}
     ${LIBINPUT_LIBRARIES}
     ${LIBUDEV_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
@@ -60,6 +63,8 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
+    Source/Graphics/RenderingBackend.cpp
+
     Source/Input/Handling.cpp
     Source/Input/KeyboardEventRepeating.cpp
     Source/Input/LibinputServer.cpp
@@ -88,6 +93,13 @@ endif ()
 if (USE_WPE_BACKEND_INTEL_CE)
     list(APPEND WPE_SOURCES
         Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
+    )
+endif ()
+
+if (USE_WPE_BACKEND_DRM OR USE_WPE_BACKEND_WAYLAND)
+    list(APPEND WPE_SOURCES
+        Source/Graphics/GBM/BufferDataGBM.cpp
+        Source/Graphics/GBM/RenderingBackendGBM.cpp
     )
 endif ()
 

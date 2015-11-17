@@ -23,65 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendDRM_h
-#define WPE_ViewBackend_ViewBackendDRM_h
+#include "Config.h"
+#include <WPE/Graphics/RenderingBackend.h>
 
-#if WPE_BACKEND(DRM)
-
-#include <WPE/ViewBackend/ViewBackend.h>
-
-#include <unordered_map>
-#include <utility>
-
-struct gbm_bo;
-struct gbm_device;
-typedef struct _GSource GSource;
-typedef struct _drmModeModeInfo drmModeModeInfo;
+#include "RenderingBackendGBM.h"
 
 namespace WPE {
 
-namespace ViewBackend {
+namespace Graphics {
 
-class Client;
+std::unique_ptr<RenderingBackend> RenderingBackend::create()
+{
+    return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
+}
 
-class ViewBackendDRM final : public ViewBackend {
-public:
-    ViewBackendDRM();
-    virtual ~ViewBackendDRM();
+RenderingBackend::~RenderingBackend() = default;
 
-    void setClient(Client*) override;
-    void commitBuffer(int, const uint8_t* data, size_t size) override;
-    void destroyBuffer(uint32_t handle) override;
+RenderingBackend::Surface::~Surface() = default;
 
-    struct PageFlipHandlerData {
-        Client* client;
-        std::pair<bool, uint32_t> nextFB;
-        std::pair<bool, uint32_t> lockedFB;
-    };
+RenderingBackend::OffscreenSurface::~OffscreenSurface() = default;
 
-private:
-    struct {
-        int fd { -1 };
-        drmModeModeInfo* mode;
-        std::pair<uint16_t, uint16_t> size;
-        uint32_t crtcId { 0 };
-        uint32_t connectorId { 0 };
-    } m_drm;
-
-    struct {
-        struct gbm_device* device;
-    } m_gbm;
-
-    PageFlipHandlerData m_pageFlipData;
-
-    GSource* m_eventSource;
-    std::unordered_map<uint32_t, std::pair<struct gbm_bo*, uint32_t>> m_fbMap;
-};
-
-} // namespace ViewBackend
+} // namespace Graphics
 
 } // namespace WPE
-
-#endif // WPE_BACKEND(DRM)
-
-#endif // WPE_ViewBackend_ViewBackendDRM_h

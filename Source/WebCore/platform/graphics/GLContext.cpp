@@ -37,8 +37,8 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
-#if PLATFORM(GBM)
-#include "PlatformDisplayGBM.h"
+#if PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
 #endif
 
 using WTF::ThreadSpecific;
@@ -158,9 +158,9 @@ std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingC
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         return downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
 #endif
-#if PLATFORM(GBM)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::GBM)
-        return downcast<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
+#if PLATFORM(WPE)
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::WPE)
+        return downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
 #endif
     return createContextForWindow(0, sharingContext);
 }

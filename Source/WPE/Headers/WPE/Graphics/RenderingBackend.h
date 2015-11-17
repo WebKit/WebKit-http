@@ -23,65 +23,56 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendDRM_h
-#define WPE_ViewBackend_ViewBackendDRM_h
+#ifndef WPE_Graphics_RenderingBackend_h
+#define WPE_Graphics_RenderingBackend_h
 
-#if WPE_BACKEND(DRM)
-
-#include <WPE/ViewBackend/ViewBackend.h>
-
-#include <unordered_map>
-#include <utility>
-
-struct gbm_bo;
-struct gbm_device;
-typedef struct _GSource GSource;
-typedef struct _drmModeModeInfo drmModeModeInfo;
+#include <EGL/egl.h>
+#include <WPE/WPE.h>
+#include <memory>
+#include <tuple>
 
 namespace WPE {
 
-namespace ViewBackend {
+namespace Graphics {
 
-class Client;
-
-class ViewBackendDRM final : public ViewBackend {
+class RenderingBackend {
 public:
-    ViewBackendDRM();
-    virtual ~ViewBackendDRM();
+    using BufferExport = std::tuple<int, const uint8_t*, size_t>;
 
-    void setClient(Client*) override;
-    void commitBuffer(int, const uint8_t* data, size_t size) override;
-    void destroyBuffer(uint32_t handle) override;
+    class Surface {
+    public:
+        class Client {
+        public:
+            virtual void destroyBuffer(uint32_t) = 0;
+        };
 
-    struct PageFlipHandlerData {
-        Client* client;
-        std::pair<bool, uint32_t> nextFB;
-        std::pair<bool, uint32_t> lockedFB;
+        virtual ~Surface();
+
+        virtual EGLSurface eglSurface() = 0;
+        virtual void resize(uint32_t, uint32_t) = 0;
+
+        virtual BufferExport lockFrontBuffer() = 0;
+        virtual void releaseBuffer(uint32_t) = 0;
     };
 
-private:
-    struct {
-        int fd { -1 };
-        drmModeModeInfo* mode;
-        std::pair<uint16_t, uint16_t> size;
-        uint32_t crtcId { 0 };
-        uint32_t connectorId { 0 };
-    } m_drm;
+    class OffscreenSurface {
+    public:
+        virtual ~OffscreenSurface();
 
-    struct {
-        struct gbm_device* device;
-    } m_gbm;
+        virtual EGLSurface eglSurface() = 0;
+    };
 
-    PageFlipHandlerData m_pageFlipData;
+    static WPE_EXPORT std::unique_ptr<RenderingBackend> create();
 
-    GSource* m_eventSource;
-    std::unordered_map<uint32_t, std::pair<struct gbm_bo*, uint32_t>> m_fbMap;
+    virtual ~RenderingBackend();
+
+    virtual EGLDisplay eglDisplay() = 0;
+    virtual std::unique_ptr<Surface> createSurface(uint32_t, uint32_t, Surface::Client&) = 0;
+    virtual std::unique_ptr<OffscreenSurface> createOffscreenSurface() = 0;
 };
 
-} // namespace ViewBackend
+} // namespace Graphics
 
 } // namespace WPE
 
-#endif // WPE_BACKEND(DRM)
-
-#endif // WPE_ViewBackend_ViewBackendDRM_h
+#endif // WPE_Graphics_RenderingBackend_h

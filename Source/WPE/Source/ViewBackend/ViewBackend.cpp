@@ -76,14 +76,6 @@ void ViewBackend::setClient(Client*)
 {
 }
 
-void ViewBackend::commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
-{
-}
-
-void ViewBackend::destroyPrimeBuffer(uint32_t)
-{
-}
-
 uint32_t ViewBackend::createBCMElement(int32_t, int32_t)
 {
     return 0;
