@@ -800,9 +800,6 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
         g_cond_wait(&m_updateCondition, &m_updateMutex);
     }
 #endif
-    updateTexture(buffer->textureGL(), videoInfo);
-    m_platformLayerProxy->pushNextBuffer(locker, WTF::move(buffer));
-    m_platformLayerProxy->requestUpdate(locker);
     return;
 #endif
 
