@@ -51,6 +51,8 @@ public:
     virtual void setClient(Client*);
     virtual void commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
     virtual void destroyPrimeBuffer(uint32_t);
+    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
+    virtual void destroyBuffer(uint32_t) = 0;
 
     virtual void setInputClient(Input::Client*);
 };
