@@ -64,10 +64,8 @@ private:
 
     void establishConnection(IPC::Attachment);
 
-#if PLATFORM(GBM)
-    void commitPrimeBuffer(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, IPC::Attachment);
-    void destroyPrimeBuffer(uint32_t);
-#endif
+    void commitBuffer(const IPC::Attachment&, const IPC::DataReference&);
+    void destroyBuffer(uint32_t);
 
     // WPE::ViewBackend::Client
     void releaseBuffer(uint32_t) override;
