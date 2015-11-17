@@ -51,13 +51,11 @@ EGLDisplay RenderingBackendBCMRPi::eglDisplay()
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMRPi::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
-    fprintf(stderr, "RenderingBackendBCMRPi::createSurface() (%u,%u)\n", width, height);
     return std::unique_ptr<RenderingBackendBCMRPi::Surface>(new RenderingBackendBCMRPi::Surface(*this, width, height, targetHandle, client));
 }
 
 std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMRPi::createOffscreenSurface()
 {
-    fprintf(stderr, "RenderingBackendBCMRPi::createOffscreenSurface()\n");
     return std::unique_ptr<RenderingBackendBCMRPi::OffscreenSurface>(new RenderingBackendBCMRPi::OffscreenSurface(*this));
 }
 
