@@ -28,6 +28,7 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+#include "BufferDataGBM.h"
 #include "WaylandDisplay.h"
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -141,28 +142,39 @@ void ViewBackendWayland::setClient(Client* client)
     m_resizingData.client = client;
 }
 
-void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t)
+void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
+    if (!data || size != sizeof(Graphics::BufferDataGBM)) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
+    auto& bufferData = *reinterpret_cast<const Graphics::BufferDataGBM*>(data);
+    if (bufferData.magic != Graphics::BufferDataGBM::magicValue) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
     struct wl_buffer* buffer = nullptr;
     auto& bufferMap = m_bufferData.map;
-    auto it = bufferMap.find(handle);
+    auto it = bufferMap.find(bufferData.handle);
 
     if (fd >= 0) {
-        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, width, height, WL_DRM_FORMAT_ARGB8888, 0, stride, 0, 0, 0, 0);
+        buffer = wl_drm_create_prime_buffer(m_display.interfaces().drm, fd, bufferData.width, bufferData.height, WL_DRM_FORMAT_ARGB8888, 0, bufferData.stride, 0, 0, 0, 0);
         wl_buffer_add_listener(buffer, &g_bufferListener, &m_bufferData);
 
         if (it != bufferMap.end()) {
             wl_buffer_destroy(it->second);
             it->second = buffer;
         } else
-            bufferMap.insert({ handle, buffer });
+            bufferMap.insert({ bufferData.handle, buffer });
     } else {
         assert(it != bufferMap.end());
         buffer = it->second;
     }
 
     if (!buffer) {
-        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", handle);
+        fprintf(stderr, "ViewBackendWayland: failed to create/find a buffer for PRIME handle %u\n", bufferData.handle);
         return;
     }
 
@@ -175,7 +187,7 @@ void ViewBackendWayland::commitPrimeBuffer(int fd, uint32_t handle, uint32_t wid
     wl_display_flush(m_display.display());
 }
 
-void ViewBackendWayland::destroyPrimeBuffer(uint32_t handle)
+void ViewBackendWayland::destroyBuffer(uint32_t handle)
 {
     auto& bufferMap = m_bufferData.map;
     auto it = bufferMap.find(handle);

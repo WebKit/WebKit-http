@@ -58,14 +58,6 @@ void ViewBackend::setClient(Client*)
 {
 }
 
-void ViewBackend::commitPrimeBuffer(int, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)
-{
-}
-
-void ViewBackend::destroyPrimeBuffer(uint32_t)
-{
-}
-
 void ViewBackend::setInputClient(Input::Client*)
 {
 }
