@@ -45,6 +45,10 @@
 #include "PlatformDisplayWin.h"
 #endif
 
+#if PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
+#endif
+
 #if PLATFORM(GTK)
 #include <gdk/gdk.h>
 #endif
@@ -94,12 +98,7 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 #endif
 
 #if PLATFORM(WPE)
-#if PLATFORM(GBM)
-    return std::make_unique<PlatformDisplayGBM>();
-#endif
-#if PLATFORM(WAYLAND)
-    return PlatformDisplayWayland::create();
-#endif
+    return std::make_unique<PlatformDisplayWPE>();
 #endif
 
     ASSERT_NOT_REACHED();
