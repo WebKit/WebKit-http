@@ -48,9 +48,6 @@ public:
 #if PLATFORM(WAYLAND)
         Wayland,
 #endif
-#if PLATFORM(BCM_RPI)
-        BCMRPi,
-#endif
 #if PLATFORM(BCM_NEXUS)
         BCMNexus,
 #endif

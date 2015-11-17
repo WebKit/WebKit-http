@@ -37,10 +37,6 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
-#if PLATFORM(BCM_RPI)
-#include "PlatformDisplayBCMRPi.h"
-#endif
-
 #if PLATFORM(BCM_NEXUS)
 #include "PlatformDisplayBCMNexus.h"
 #endif
@@ -107,9 +103,6 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 
 #if PLATFORM(WPE)
     return std::make_unique<PlatformDisplayWPE>();
-#if PLATFORM(BCM_RPI)
-    return std::make_unique<PlatformDisplayBCMRPi>();
-#endif
 #if PLATFORM(BCM_NEXUS)
     return std::make_unique<PlatformDisplayBCMNexus>();
 #endif
