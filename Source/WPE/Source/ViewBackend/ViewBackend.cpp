@@ -29,6 +29,7 @@
 #include "ViewBackendDRM.h"
 #include "ViewBackendWayland.h"
 #include <cstring>
+#include <cstdio>
 #include <cstdlib>
 
 namespace WPE {
@@ -49,6 +50,7 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
         return std::unique_ptr<ViewBackendDRM>(new ViewBackendDRM);
 #endif
 
+    fprintf(stderr, "ViewBackend: no usable backend found, will crash.\n");
     return nullptr;
 }
 
