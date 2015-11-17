@@ -37,10 +37,6 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
-#if PLATFORM(GBM)
-#include "PlatformDisplayGBM.h"
-#endif
-
 #if PLATFORM(WIN)
 #include "PlatformDisplayWin.h"
 #endif
