@@ -52,7 +52,7 @@ public:
     public:
         using Client = WPE::Graphics::RenderingBackend::Surface::Client;
 
-        Surface(const PlatformDisplayWPE&, const IntSize&, Client&);
+        Surface(const PlatformDisplayWPE&, const IntSize&, uint32_t targetHandle, Client&);
 
         void resize(const IntSize&);
         std::unique_ptr<GLContextEGL> createGLContext() const;
@@ -64,7 +64,7 @@ public:
         std::unique_ptr<WPE::Graphics::RenderingBackend::Surface> m_backend;
     };
 
-    std::unique_ptr<Surface> createSurface(const IntSize&, Surface::Client&);
+    std::unique_ptr<Surface> createSurface(const IntSize&, uint32_t, Surface::Client&);
 
     std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
 

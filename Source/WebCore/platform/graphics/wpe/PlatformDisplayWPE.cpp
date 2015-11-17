@@ -43,9 +43,9 @@ PlatformDisplayWPE::PlatformDisplayWPE()
 
 PlatformDisplayWPE::~PlatformDisplayWPE() = default;
 
-std::unique_ptr<PlatformDisplayWPE::Surface> PlatformDisplayWPE::createSurface(const IntSize& size, PlatformDisplayWPE::Surface::Client& client)
+std::unique_ptr<PlatformDisplayWPE::Surface> PlatformDisplayWPE::createSurface(const IntSize& size, uint32_t targetHandle, PlatformDisplayWPE::Surface::Client& client)
 {
-    return std::make_unique<Surface>(*this, size, client);
+    return std::make_unique<Surface>(*this, size, targetHandle, client);
 }
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLContext* sharingContext)
@@ -60,12 +60,12 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
     auto contextData = std::make_unique<OffscreenContextData>();
     contextData->surface = m_backend->createOffscreenSurface();
 
-    return GLContextEGL::createWindowContext(contextData->surface->eglSurface(), sharingContext, WTF::move(contextData));
+    return GLContextEGL::createContext(contextData->surface->eglSurface(), sharingContext, WTF::move(contextData));
 }
 
-PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, const IntSize& size, Client& client)
+PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, const IntSize& size, uint32_t targetHandle, Client& client)
 {
-    m_backend = display.m_backend->createSurface(std::max(0, size.width()), std::max(0, size.height()), client);
+    m_backend = display.m_backend->createSurface(std::max(0, size.width()), std::max(0, size.height()), targetHandle, client);
 }
 
 void PlatformDisplayWPE::Surface::resize(const IntSize& size)
