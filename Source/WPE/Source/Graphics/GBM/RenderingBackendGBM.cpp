@@ -1,0 +1,178 @@
+/*
+ * Copyright (C) 2015 Igalia S.L.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "Config.h"
+#include "RenderingBackendGBM.h"
+
+#if WPE_BACKEND(WAYLAND)
+
+#include "BufferDataGBM.h"
+#include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
+
+namespace WPE {
+
+namespace Graphics {
+
+RenderingBackendGBM::RenderingBackendGBM()
+{
+    m_gbm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+    if (m_gbm.fd < 0) {
+        fprintf(stderr, "RenderingBackendGBM: cannot open the render node.\n");
+        return;
+    }
+
+    m_gbm.device = gbm_create_device(m_gbm.fd);
+    if (!m_gbm.device) {
+        fprintf(stderr, "RenderingBackendGBM: cannot create the GBM device.\n");
+        return;
+    }
+
+    m_eglDisplay = eglGetDisplay(m_gbm.device);
+    if (m_eglDisplay == EGL_NO_DISPLAY) {
+        fprintf(stderr, "RenderingBackendGBM: cannot create the EGL display.\n");
+        return;
+    }
+}
+
+RenderingBackendGBM::~RenderingBackendGBM()
+{
+    if (m_gbm.device)
+        gbm_device_destroy(m_gbm.device);
+    if (m_gbm.fd >= 0)
+        close(m_gbm.fd);
+    m_gbm = { };
+}
+
+EGLDisplay RenderingBackendGBM::eglDisplay()
+{
+    return m_eglDisplay;
+}
+
+std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, RenderingBackend::Surface::Client& client)
+{
+    return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, client));
+}
+
+std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendGBM::createOffscreenSurface()
+{
+    return std::unique_ptr<RenderingBackendGBM::OffscreenSurface>(new RenderingBackendGBM::OffscreenSurface(*this));
+}
+
+RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBackend, uint32_t width, uint32_t height, RenderingBackendGBM::Surface::Client& client)
+    : m_client(client)
+{
+    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, 2048, 2048, GBM_FORMAT_ARGB8888, 0);
+    m_size = { width, height };
+}
+
+RenderingBackendGBM::Surface::~Surface()
+{
+    for (auto& it : m_lockedBuffers) {
+        m_client.destroyBuffer(it.first);
+        gbm_bo_destroy(it.second);
+    }
+
+    if (m_surface)
+        gbm_surface_destroy(m_surface);
+}
+
+EGLSurface RenderingBackendGBM::Surface::eglSurface()
+{
+    return m_surface;
+}
+
+void RenderingBackendGBM::Surface::resize(uint32_t width, uint32_t height)
+{
+    m_size = { width, height };
+}
+
+static void destroyBOData(struct gbm_bo*, void* data)
+{
+    if (!data)
+        return;
+
+    auto* bufferData = static_cast<BufferDataGBM*>(data);
+    delete bufferData;
+}
+
+RenderingBackend::BufferExport RenderingBackendGBM::Surface::lockFrontBuffer()
+{
+    struct gbm_bo* bo = gbm_surface_lock_front_buffer(m_surface);
+    assert(bo);
+
+    uint32_t handle = gbm_bo_get_handle(bo).u32;
+#ifndef NDEBUG
+    auto result =
+#endif
+        m_lockedBuffers.insert({ handle, bo });
+    assert(result.second);
+
+    auto* data = static_cast<BufferDataGBM*>(gbm_bo_get_user_data(bo));
+    if (data) {
+        std::pair<uint32_t, uint32_t> storedSize{ data->width, data->height };
+        if (m_size == storedSize)
+            return { -1, reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+
+        delete data;
+    }
+
+    data = new BufferDataGBM{ handle, m_size.first, m_size.second, gbm_bo_get_stride(bo), gbm_bo_get_format(bo), BufferDataGBM::magicValue };
+    gbm_bo_set_user_data(bo, data, &destroyBOData);
+
+    return { gbm_bo_get_fd(bo), reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+}
+
+void RenderingBackendGBM::Surface::releaseBuffer(uint32_t handle)
+{
+    auto it = m_lockedBuffers.find(handle);
+    assert(it != m_lockedBuffers.end());
+
+    struct gbm_bo* bo = it->second;
+    if (bo)
+        gbm_surface_release_buffer(m_surface, bo);
+}
+
+RenderingBackendGBM::OffscreenSurface::OffscreenSurface(const RenderingBackendGBM& renderingBackend)
+{
+    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, 1, 1, GBM_FORMAT_ARGB8888, 0);
+}
+
+RenderingBackendGBM::OffscreenSurface::~OffscreenSurface()
+{
+    gbm_surface_destroy(m_surface);
+}
+
+EGLSurface RenderingBackendGBM::OffscreenSurface::eglSurface()
+{
+    return m_surface;
+}
+
+} // namespace Graphics
+
+} // namespace WPE
+
+#endif // WPE_BACKEND(WAYLAND)
