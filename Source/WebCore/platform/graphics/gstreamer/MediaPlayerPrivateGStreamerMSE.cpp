@@ -226,6 +226,10 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
         webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), 0);
         g_signal_handlers_disconnect_matched(m_webKitMediaSrc.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
     }
+
+    if (m_playbackPipeline)
+        m_playbackPipeline->setWebKitMediaSrc(nullptr);
+
 }
 
 void MediaPlayerPrivateGStreamerMSE::load(const String& urlString)
