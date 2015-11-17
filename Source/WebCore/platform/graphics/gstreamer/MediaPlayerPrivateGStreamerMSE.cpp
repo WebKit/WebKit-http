@@ -176,21 +176,6 @@ private:
     RefPtr<WebCore::TrackPrivateBase> m_track;
 };
 
-static void mediaPlayerPrivateVideoChangedCallback(GObject*, MediaPlayerPrivateGStreamerMSE* player)
-{
-    player->videoChanged();
-}
-
-static void mediaPlayerPrivateAudioChangedCallback(GObject*, MediaPlayerPrivateGStreamerMSE* player)
-{
-    player->audioChanged();
-}
-
-static void mediaPlayerPrivateTextChangedCallback(GObject*, MediaPlayerPrivateGStreamerMSE* player)
-{
-    player->textChanged();
-}
-
 void MediaPlayerPrivateGStreamerMSE::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
@@ -239,9 +224,7 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 
     if (m_webKitMediaSrc) {
         webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), 0);
-        g_signal_handlers_disconnect_by_func(m_webKitMediaSrc.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoChangedCallback), this);
-        g_signal_handlers_disconnect_by_func(m_webKitMediaSrc.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateAudioChangedCallback), this);
-        g_signal_handlers_disconnect_by_func(m_webKitMediaSrc.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateTextChangedCallback), this);
+        g_signal_handlers_disconnect_matched(m_webKitMediaSrc.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
     }
 }
 
@@ -433,9 +416,9 @@ void MediaPlayerPrivateGStreamerMSE::sourceChanged()
     m_playbackPipeline->setWebKitMediaSrc(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()));
 
     MediaSourceGStreamer::open(m_mediaSource.get(), this);
-    g_signal_connect(m_webKitMediaSrc.get(), "video-changed", G_CALLBACK(mediaPlayerPrivateVideoChangedCallback), this);
-    g_signal_connect(m_webKitMediaSrc.get(), "audio-changed", G_CALLBACK(mediaPlayerPrivateAudioChangedCallback), this);
-    g_signal_connect(m_webKitMediaSrc.get(), "text-changed", G_CALLBACK(mediaPlayerPrivateTextChangedCallback), this);
+    g_signal_connect_swapped(m_webKitMediaSrc.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
+    g_signal_connect_swapped(m_webKitMediaSrc.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
+    g_signal_connect_swapped(m_webKitMediaSrc.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
     webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), this);
 }
 

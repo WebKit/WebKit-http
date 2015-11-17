@@ -213,6 +213,7 @@ protected:
     static void textChangedCallback(MediaPlayerPrivateGStreamer*);
     static GstFlowReturn newTextSampleCallback(MediaPlayerPrivateGStreamer*);
 #endif
+    static gboolean durationChangedCallback(MediaPlayerPrivateGStreamer*);
 
     WeakPtrFactory<MediaPlayerPrivateGStreamer> m_weakPtrFactory;
 

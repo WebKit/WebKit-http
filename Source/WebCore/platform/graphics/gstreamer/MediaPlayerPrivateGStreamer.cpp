@@ -205,7 +205,7 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
 
     if (m_videoSink) {
         GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
-        g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
+        g_signal_handlers_disconnect_matched(videoSinkPad.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
     }
 
     if (m_pipeline) {
@@ -214,12 +214,6 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         gst_bus_set_sync_handler(bus.get(), nullptr, nullptr, nullptr);
         g_signal_handlers_disconnect_matched(m_pipeline.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
-    }
-
-
-    if (m_videoSink) {
-        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
-        g_signal_handlers_disconnect_by_func(videoSinkPad.get(), reinterpret_cast<gpointer>(videoSinkCapsChangedCallback), this);
     }
 
     // Cancel pending mediaPlayerPrivateNotifyDurationChanged() delayed calls
@@ -803,6 +797,12 @@ GstFlowReturn MediaPlayerPrivateGStreamer::newTextSampleCallback(MediaPlayerPriv
 {
     player->newTextSample();
     return GST_FLOW_OK;
+}
+
+gboolean MediaPlayerPrivateGStreamer::durationChangedCallback(MediaPlayerPrivateGStreamer* player)
+{
+    player->notifyDurationChanged();
+    return G_SOURCE_REMOVE;
 }
 
 void MediaPlayerPrivateGStreamer::newTextSample()
@@ -2083,7 +2083,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
     if (videoSinkPad)
-        g_signal_connect(videoSinkPad.get(), "notify::caps", G_CALLBACK(mediaPlayerPrivateVideoSinkCapsChangedCallback), this);
+        g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
 #endif
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
     configurePlaySink();
@@ -2099,10 +2099,6 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         else
             g_object_set(m_pipeline.get(), "audio-filter", scale, nullptr);
     }
-
-    GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
-    if (videoSinkPad)
-        g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
 }
 
 void MediaPlayerPrivateGStreamer::simulateAudioInterruption()
@@ -2136,7 +2132,7 @@ bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 {
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_DURATION_CHANGED) {
         m_pendingAsyncOperationsLock.lock();
-        guint asyncOperationId = g_timeout_add(0, (GSourceFunc)mediaPlayerPrivateNotifyDurationChanged, this);
+        guint asyncOperationId = g_timeout_add(0, (GSourceFunc)MediaPlayerPrivateGStreamer::durationChangedCallback, this);
         m_pendingAsyncOperations = g_list_append(m_pendingAsyncOperations, GUINT_TO_POINTER(asyncOperationId));
         m_pendingAsyncOperationsLock.unlock();
         return true;
