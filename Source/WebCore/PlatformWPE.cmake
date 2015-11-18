@@ -83,9 +83,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
 
-    platform/graphics/bcm/BCMNexusSurface.cpp
-    platform/graphics/bcm/PlatformDisplayBCMNexus.cpp
-
     platform/graphics/cairo/BackingStoreBackendCairoImpl.cpp
     platform/graphics/cairo/BitmapImageCairo.cpp
     platform/graphics/cairo/CairoUtilities.cpp

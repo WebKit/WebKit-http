@@ -48,9 +48,6 @@ public:
 #if PLATFORM(WAYLAND)
         Wayland,
 #endif
-#if PLATFORM(BCM_NEXUS)
-        BCMNexus,
-#endif
 #if PLATFORM(INTEL_CE)
         IntelCE,
 #endif
