@@ -29,7 +29,6 @@
 #if ENABLE(CONTEXT_MENUS)
 
 #include "ContextMenu.h"
-#include "PlatformMenuDescription.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -43,16 +42,12 @@ namespace WebCore {
         virtual ~ContextMenuClient() {  }
         virtual void contextMenuDestroyed() = 0;
         
-        virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*) = 0;
-
         virtual void downloadURL(const URL& url) = 0;
         virtual void searchWithGoogle(const Frame*) = 0;
         virtual void lookUpInDictionary(Frame*) = 0;
         virtual bool isSpeaking() = 0;
         virtual void speak(const String&) = 0;
         virtual void stopSpeaking() = 0;
-
-        virtual ContextMenuItem shareMenuItem(const HitTestResult&) = 0;
 
 #if PLATFORM(COCOA)
         virtual void searchWithSpotlight() = 0;

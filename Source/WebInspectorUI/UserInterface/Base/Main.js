@@ -403,7 +403,8 @@ WebInspector.contentLoaded = function()
 
     this._contentLoaded = true;
 
-    this.runBootstrapOperations();
+    if (this.runBootstrapOperations)
+        this.runBootstrapOperations();
 };
 
 WebInspector.isTabTypeAllowed = function(tabType)
@@ -1379,11 +1380,11 @@ WebInspector._setupViewHierarchy = function()
     let rootView = new WebInspector.View(document.body);
     rootView.addSubview(this.toolbar);
     rootView.addSubview(this.tabBar);
+    rootView.addSubview(this.navigationSidebar);
     rootView.addSubview(this.tabBrowser);
     rootView.addSubview(this.splitContentBrowser);
     rootView.addSubview(this.quickConsole);
-
-    // FIXME: add navigation and details sidebars to the tree once <https://webkit.org/b/151057> is fixed.
+    rootView.addSubview(this.detailsSidebar);
 
     rootView.makeRootView();
 };

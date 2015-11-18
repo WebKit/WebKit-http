@@ -156,9 +156,26 @@ private:
                 break;
             }
 
+            // Turn this: Integer Add(value, value)
+            // Into this: Shl(value, 1)
+            // This is a useful canonicalization. It's not meant to be a strength reduction.
+            if (m_value->isInteger() && m_value->child(0) == m_value->child(1)) {
+                replaceWithNewValue(
+                    m_proc.add<Value>(
+                        Shl, m_value->origin(), m_value->child(0),
+                        m_insertionSet.insert<Const32Value>(m_index, m_value->origin(), 1)));
+                break;
+            }
+
             // Turn this: Add(value, zero)
             // Into an Identity.
-            if (m_value->child(1)->isInt(0)) {
+            //
+            // Addition is subtle with doubles. Zero is not the neutral value, negative zero is:
+            //    0 + 0 = 0
+            //    0 + -0 = 0
+            //    -0 + 0 = 0
+            //    -0 + -0 = -0
+            if (m_value->child(1)->isInt(0) || m_value->child(1)->isNegativeZero()) {
                 m_value->replaceWithIdentity(m_value->child(0));
                 m_changed = true;
                 break;
@@ -180,6 +197,72 @@ private:
                     m_insertionSet.insertValue(m_index, negatedConstant);
                     replaceWithNew<Value>(
                         Add, m_value->origin(), m_value->child(0), negatedConstant);
+                    break;
+                }
+            }
+
+            break;
+
+        case Mul:
+            handleCommutativity();
+
+            // Turn this: Mul(constant1, constant2)
+            // Into this: constant1 * constant2
+            if (Value* value = m_value->child(0)->mulConstant(m_proc, m_value->child(1))) {
+                replaceWithNewValue(value);
+                break;
+            }
+
+            if (m_value->child(1)->hasInt()) {
+                int64_t factor = m_value->child(1)->asInt();
+
+                // Turn this: Mul(value, 0)
+                // Into this: 0
+                // Note that we don't do this for doubles because that's wrong. For example, -1 * 0
+                // and 1 * 0 yield different results.
+                if (!factor) {
+                    m_value->replaceWithIdentity(m_value->child(1));
+                    m_changed = true;
+                    break;
+                }
+
+                // Turn this: Mul(value, 1)
+                // Into this: value
+                if (factor == 1) {
+                    m_value->replaceWithIdentity(m_value->child(0));
+                    m_changed = true;
+                    break;
+                }
+
+                // Turn this: Mul(value, -1)
+                // Into this: Sub(0, value)
+                if (factor == -1) {
+                    replaceWithNewValue(
+                        m_proc.add<Value>(
+                            Sub, m_value->origin(),
+                            m_insertionSet.insertIntConstant(m_index, m_value, 0),
+                            m_value->child(0)));
+                    break;
+                }
+                
+                // Turn this: Mul(value, constant)
+                // Into this: Shl(value, log2(constant))
+                if (hasOneBitSet(factor)) {
+                    unsigned shiftAmount = WTF::fastLog2(static_cast<uint64_t>(factor));
+                    replaceWithNewValue(
+                        m_proc.add<Value>(
+                            Shl, m_value->origin(), m_value->child(0),
+                            m_insertionSet.insert<Const32Value>(
+                                m_index, m_value->origin(), shiftAmount)));
+                    break;
+                }
+            } else if (m_value->child(1)->hasDouble()) {
+                double factor = m_value->child(1)->asDouble();
+
+                // Turn this: Mul(value, 1)
+                // Into this: value
+                if (factor == 1) {
+                    m_value->replaceWithIdentity(m_value->child(0));
                     break;
                 }
             }
@@ -549,6 +632,76 @@ private:
                     m_value->child(0)->belowEqualConstant(m_value->child(1))));
             break;
 
+        case CheckAdd:
+            if (replaceWithNewValue(m_value->child(0)->checkAddConstant(m_proc, m_value->child(1))))
+                break;
+
+            handleCommutativity();
+            
+            if (m_value->child(1)->isInt(0)) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                m_changed = true;
+                break;
+            }
+            break;
+
+        case CheckSub:
+            if (replaceWithNewValue(m_value->child(0)->checkSubConstant(m_proc, m_value->child(1))))
+                break;
+
+            if (m_value->child(1)->isInt(0)) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                m_changed = true;
+                break;
+            }
+
+            if (Value* negatedConstant = m_value->child(1)->checkNegConstant(m_proc)) {
+                m_insertionSet.insertValue(m_index, negatedConstant);
+                m_value->as<CheckValue>()->convertToAdd();
+                m_value->child(1) = negatedConstant;
+                m_changed = true;
+                break;
+            }
+            break;
+
+        case CheckMul:
+            if (replaceWithNewValue(m_value->child(0)->checkMulConstant(m_proc, m_value->child(1))))
+                break;
+
+            handleCommutativity();
+
+            if (m_value->child(1)->hasInt()) {
+                bool modified = true;
+                switch (m_value->child(1)->asInt()) {
+                case 0:
+                    replaceWithNewValue(m_proc.addIntConstant(m_value, 0));
+                    break;
+                case 1:
+                    m_value->replaceWithIdentity(m_value->child(0));
+                    m_changed = true;
+                    break;
+                case 2:
+                    m_value->as<CheckValue>()->convertToAdd();
+                    m_value->child(1) = m_value->child(0);
+                    m_changed = true;
+                    break;
+                default:
+                    modified = false;
+                    break;
+                }
+                if (modified)
+                    break;
+            }
+            break;
+
+        case Check:
+            if (m_value->child(0)->isLikeZero()) {
+                m_value->replaceWithNop();
+                m_changed = true;
+                break;
+            }
+            break;
+
         case Branch: {
             ControlValue* branch = m_value->as<ControlValue>();
 
@@ -614,6 +767,10 @@ private:
     // If we decide that value2 coming first is the canonical ordering.
     void handleCommutativity()
     {
+        // Note that we have commutative operations that take more than two children. Those operations may
+        // commute their first two children while leaving the rest unaffected.
+        ASSERT(m_value->numChildren() >= 2);
+        
         // Leave it alone if the right child is a constant.
         if (m_value->child(1)->isConstant())
             return;
@@ -639,13 +796,14 @@ private:
         replaceWithNewValue(m_proc.add<ValueType>(arguments...));
     }
 
-    void replaceWithNewValue(Value* newValue)
+    bool replaceWithNewValue(Value* newValue)
     {
         if (!newValue)
-            return;
+            return false;
         m_insertionSet.insertValue(m_index, newValue);
         m_value->replaceWithIdentity(newValue);
         m_changed = true;
+        return true;
     }
 
     bool handleShiftByZero()

@@ -65,18 +65,13 @@ static void populateContextMenuItems(ExecState* exec, JSArray* array, ContextMen
 
         String typeString = type.toString(exec)->value(exec);
         if (typeString == "separator") {
-            ContextMenuItem item(SeparatorType,
-                                 ContextMenuItemCustomTagNoAction,
-                                 String());
+            ContextMenuItem item(SeparatorType, ContextMenuItemTagNoAction, String());
             menu.appendItem(item);
         } else if (typeString == "subMenu" && subItems.inherits(JSArray::info())) {
             ContextMenu subMenu;
             JSArray* subItemsArray = asArray(subItems);
             populateContextMenuItems(exec, subItemsArray, subMenu);
-            ContextMenuItem item(SubmenuType,
-                                 ContextMenuItemCustomTagNoAction,
-                                 label.toString(exec)->value(exec),
-                                 &subMenu);
+            ContextMenuItem item(SubmenuType, ContextMenuItemTagNoAction, label.toString(exec)->value(exec), &subMenu);
             menu.appendItem(item);
         } else {
             ContextMenuAction typedId = static_cast<ContextMenuAction>(ContextMenuItemBaseCustomTag + id.toInt32(exec));
@@ -102,12 +97,7 @@ JSValue JSInspectorFrontendHost::showContextMenu(ExecState& state)
     ContextMenu menu;
     populateContextMenuItems(&state, array, menu);
 
-#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    Vector<ContextMenuItem> items = contextMenuItemVector(menu.platformDescription());
-#else
-    Vector<ContextMenuItem> items = menu.items();
-#endif
-    wrapped().showContextMenu(event, items);
+    wrapped().showContextMenu(event, menu.items());
 #else
     UNUSED_PARAM(state);
 #endif

@@ -9,7 +9,11 @@ BenchmarkState.stages = {
     WARMING_UP: 0,
     SAMPLING: 1,
     FINISHED: 2,
-    messages: [ "Warming up", "Sampling", "Finished" ]
+    messages: [ 
+        Strings.text.runningState.warmingup,
+        Strings.text.runningState.sampling,
+        Strings.text.runningState.finished
+    ]
 }
 
 BenchmarkState.prototype =
@@ -59,9 +63,11 @@ BenchmarkState.prototype =
     }
 }
 
-function Animator(benchmark)
+function Animator(benchmark, options)
 {
     this._benchmark = benchmark;
+    this._options = options;
+    
     this._frameCount = 0;
     this._dropFrameCount = 1;
     this._measureFrameCount = 3; 
@@ -72,11 +78,6 @@ function Animator(benchmark)
 
 Animator.prototype =
 {
-    start: function()
-    {
-        this._intervalId = setInterval(this.animate.bind(this), 1);
-    },
-    
     timeDelta: function()
     {
         return this._currentTimeOffset - this._startTimeOffset;
@@ -109,20 +110,16 @@ Animator.prototype =
         var currentFrameRate = Math.floor(1000 / (measureTimeDelta / this._measureFrameCount));
          
         // Use Kalman filter to get a more non-fluctuating frame rate.
-        if (this._benchmark.options["estimated-frame-rate"])
+        if (this._options["estimated-frame-rate"])
             currentFrameRate = this._estimator.estimate(currentFrameRate);
         
         // Adjust the test to reach the desired FPS.
         var result = this._benchmark.update(this._currentTimeOffset, this.timeDelta(), currentFrameRate);
         
-        // Stop the animator if the benchmark has finished.
-        if (!result && typeof this._intervalId != "undefined")
-            clearInterval(this._intervalId);
-
         // Start the next drop/measure cycle.
         this._frameCount = 0;
         
-        // result may stop the animator if requestAnimationFrame() has been used.
+        // If result == 0, no more requestAnimationFrame() will be invoked.
         return result;
     },
     
@@ -136,9 +133,6 @@ Animator.prototype =
 function Benchmark(options)
 {
     this._options = options;
-    this._method = this._options["method"] || "requestAnimationFrame";
-
-    this.options = options;
     this._recordInterval = 200;    
     this._isSampling = false;
 
@@ -146,9 +140,9 @@ function Benchmark(options)
     var lowValue = -parseInt(this._options["addLimit"]) || 1;
     var highValue = parseInt(this._options["removeLimit"]) || 1;
     
-    this._controller = new PIDController(gain, options["frame-rate"], lowValue, highValue);
+    this._controller = new PIDController(gain, this._options["frame-rate"], lowValue, highValue);
     this._sampler = new Sampler(2);
-    this._state = new BenchmarkState(this.options["test-interval"] * 1000);
+    this._state = new BenchmarkState(this._options["test-interval"] * 1000);
 }
 
 Benchmark.prototype =
@@ -156,10 +150,7 @@ Benchmark.prototype =
     // Called from the load event listener or from this.run().
     start: function()
     {
-        if (this._method == "setInterval")
-            this._animator.start();
-        else
-            this._animator.animateLoop();
+        this._animator.animateLoop();
     },
     
     // Called from the animator to adjust the complexity of the test.
@@ -179,11 +170,11 @@ Benchmark.prototype =
         }
 
         var tuneValue = 0;
-        if (this.options["complexity"] && !this.options["adaptive-test"]) {
+        if (this._options["complexity"] && !this._options["adaptive-test"]) {
             // this.tune(0) returns the current complexity of the test.
-            tuneValue = this.options["complexity"] - this.tune(0);
+            tuneValue = this._options["complexity"] - this.tune(0);
         }
-        else if (!(this._isSampling && this.options["fix-test-complexity"])) {
+        else if (!(this._isSampling && this._options["fix-test-complexity"])) {
             // The relationship between frameRate and test complexity is inverse-proportional so we
             // need to use the negative of PIDController.tune() to change the complexity of the test.
             tuneValue = -this._controller.tune(currentFrameRate, timeDelta / 1000);

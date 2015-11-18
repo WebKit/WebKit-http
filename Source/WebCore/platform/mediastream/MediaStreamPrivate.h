@@ -75,6 +75,7 @@ public:
     String id() const { return m_id; }
 
     MediaStreamTrackPrivateVector tracks() const;
+    MediaStreamTrackPrivate* activeVideoTrack() { return m_activeVideoTrack; }
 
     bool active() const { return m_isActive; }
     void updateActiveState(NotifyClientOption);
@@ -100,12 +101,14 @@ public:
 private:
     MediaStreamPrivate(const String&, const MediaStreamTrackPrivateVector&);
 
-    void trackEnded(MediaStreamTrackPrivate&) override { }
+    // MediaStreamTrackPrivate::Observer
+    void trackEnded(MediaStreamTrackPrivate&) override;
     void trackMutedChanged(MediaStreamTrackPrivate&) override;
     void trackStatesChanged(MediaStreamTrackPrivate&) override;
     void trackEnabledChanged(MediaStreamTrackPrivate&) override;
 
     void characteristicsChanged();
+    void updateActiveVideoTrack();
 
     void scheduleDeferredTask(std::function<void()>);
 

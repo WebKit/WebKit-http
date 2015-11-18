@@ -1,3 +1,203 @@
+2015-11-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Reorganize the graphics benchmark string table
+        https://bugs.webkit.org/show_bug.cgi?id=151334
+
+        Reviewed by Simon Fraser.
+        
+        Make the graphics benchmark string table be an object of sub-objects. Each
+        sub-object represents an associative array, the key is the string name and
+        the value is the string data.
+
+        * Animometer/resources/extensions.js:
+        (ResultsDashboard.prototype.toJSON):
+        (ResultsTable.prototype._showGraph):
+        (ResultsTable.prototype._showJSON):
+        (ResultsTable.prototype._isNoisyMeasurement):
+        (ResultsTable.prototype._isNoisyTest):
+        (ResultsTable.prototype._showTest):
+        (ResultsTable.prototype._showSuite):
+        (ResultsTable.prototype._showIteration):
+        * Animometer/resources/sampler.js:
+        (Sampler.prototype.toJSON):
+        * Animometer/resources/strings.js:
+        * Animometer/runner/resources/animometer.js:
+        (window.benchmarkRunnerClient.didFinishLastIteration):
+        (window.suitesManager.updateLocalStorageFromJSON):
+        (window.benchmarkController.showResults):
+        (window.benchmarkController.showJson):
+        (window.benchmarkController.showTestGraph):
+        (window.benchmarkController.showTestJSON):
+        * Animometer/runner/resources/tests.js:
+        * Animometer/tests/resources/main.js:
+
+2015-11-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Disable flattening the stage iframe of the graphics benchmark when running on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=151361
+
+        Reviewed by Simon Fraser.
+        
+        Use fixed size for stage iframe of the graphics benchmark to disable
+        flattening the iframe while animating the particles. Also ensure the
+        bouncing particles do not go outside the iframe's boundaries.
+
+        * Animometer/runner/resources/animometer.css:
+        (section#running > #running-test > iframe):
+        (@media screen and (min-device-width: 1800px)):
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        (BouncingParticle.prototype.animate):
+
+2015-11-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Use the media queries to dynamically set the stage for the graphics benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=151327
+
+        Reviewed by Simon Fraser.
+
+        Clean setting the benchmark css rules by using the media queries. Accessing
+        document.stylesheets.cssRules seems to be unreliable. Fix the test harness
+        load event listener invocation. And also remove the options for normalizing
+        the stage resolution for retina display.
+
+        * Animometer/resources/extensions.js:
+        (window.DocumentExtension.insertCssRuleAfter): Deleted.
+        * Animometer/runner/animometer.html:
+        * Animometer/runner/resources/animometer.css:
+        (@media screen and (min-device-width: 1800px)):
+        * Animometer/runner/resources/animometer.js:
+        (window.sectionsManager.setupRunningSectionStyle):
+        (window.benchmarkController.initialize):
+        (window.sectionsManager.setupSectionStyle): Deleted.
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        (BouncingParticlesStage):
+        * Animometer/tests/text/layering-text.html:
+        * Animometer/tests/text/resources/layering-text.js:
+        (LayeringTextStage):
+        (LayeringTextStage.prototype._setFontSize): Deleted.
+
+2015-11-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the option for animating using setInterval from the graphics benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=151283
+
+        Reviewed by Darin Adler.
+        
+        Get rid of the option to run animation using setInterval().
+
+        * Animometer/tests/resources/main.js:
+        (Animator.prototype.animate):
+        (Benchmark):
+        (Benchmark.prototype.start):
+        (Animator.prototype.start): Deleted.
+
+2015-11-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Highlight the alarming test results in the graphics benchmark results page
+        https://bugs.webkit.org/show_bug.cgi?id=151286
+
+        Reviewed by Simon Fraser.
+        
+        When showing the results of a test in the graphics benchmark the following
+        criteria is going to be applied:
+        
+        1. If the standard deviation of the test complexity or the frame rate is
+           equal to or more than 10%, the standard deviation and the test name
+           will be displayed in red.
+        2. If the average frame rate is not in the range = [(desired_frame_rate - 2)
+           .. (desired_frame_rate + 2)], the average frame rate and the test name will
+           be displayed in red.
+
+        * Animometer/resources/extensions.js:
+        (ResultsTable.prototype._showHeaderRow):
+        (ResultsTable.prototype._showHeader):
+        (ResultsTable.prototype._showEmptyCell):
+        (ResultsTable.prototype._showText):
+        (ResultsTable.prototype._showFixedNumber):
+        (ResultsTable.prototype.):
+        (ResultsTable.prototype._showGraph):
+        (ResultsTable.prototype._showJSON):
+        (ResultsTable.prototype._isAlarmingMeasurement):
+        (ResultsTable.prototype._isAlarmingTestResults):
+        (ResultsTable.prototype._showEmptyCells):
+        (ResultsTable.prototype._showEmptyRow):
+        (ResultsTable.prototype._showTest):
+        (ResultsTable.prototype._showSuite):
+        (ResultsTable.prototype._showIteration):
+        (ResultsTable.prototype.showRecord):
+        (ResultsTable.prototype.showIterations):
+        (ResultsTable.prototype._showEmpty): Deleted.
+        * Animometer/runner/resources/animometer.js:
+        (window.benchmarkRunnerClient.didFinishLastIteration):
+        * Animometer/tests/resources/stage.js:
+        (StageBenchmark.prototype.showResults):
+
+2015-11-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Clean referencing the options object in the graphics benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=151284
+
+        Reviewed by Simon Fraser.
+
+        Get rid of the Benchmark.options member and rely only on the private member
+        Benchmark._options. The animator need to have its own options member instead
+        of accessing it from its reference to Benchmark object.
+
+        * Animometer/tests/bouncing-particles/resources/bouncing-canvas-particles.js:
+        (BouncingCanvasParticlesAnimator):
+        (BouncingCanvasParticlesBenchmark.prototype.createAnimator):
+        * Animometer/tests/bouncing-particles/resources/bouncing-particles.js:
+        (BouncingParticle.prototype.animate):
+        (BouncingParticlesAnimator):
+        (BouncingParticlesBenchmark.prototype.createAnimator):
+        * Animometer/tests/examples/resources/canvas-electrons.js:
+        (CanvasElectronsStage.prototype.animate):
+        (CanvasElectronsAnimator):
+        (CanvasElectronsBenchmark.prototype.createAnimator):
+        (window.benchmarkClient.create):
+        * Animometer/tests/examples/resources/canvas-stars.js:
+        (CanvasStarsStage.prototype.animate):
+        (CanvasStarsAnimator):
+        (CanvasStarsBenchmark.prototype.createAnimator):
+        (window.benchmarkClient.create):
+        * Animometer/tests/resources/main.js:
+        (BenchmarkState.prototype.currentProgress):
+        (Animator):
+        (Animator.prototype.animate):
+        (Benchmark):
+        (Benchmark.prototype.update):
+        * Animometer/tests/resources/stage.js:
+        (Stage.prototype.clear):
+        (StageAnimator):
+        (StageBenchmark.prototype.createAnimator):
+        (StageBenchmark.prototype.tune):
+        (StageBenchmark.prototype.showResults):
+        * Animometer/tests/simple/resources/simple-canvas.js:
+        (SimpleCanvasStage.prototype.animate):
+        (SimpleCanvasAnimator):
+        (SimpleCanvasAnimator.prototype.animate):
+        (SimpleCanvasBenchmark.prototype.createAnimator):
+        * Animometer/tests/template/resources/template-canvas.js:
+        (TemplateCanvasStage.prototype.animate):
+        (TemplateCanvasBenchmark.prototype.createAnimator):
+        (window.benchmarkClient.create):
+
+2015-11-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Eliminate a request for layout every time an item is added to the stage of the graphics benchmark
+        https://bugs.webkit.org/show_bug.cgi?id=151289
+
+        Reviewed by Simon Fraser.
+        
+        Cache the stage size when it is created instead of requesting every time
+        an object is added via clientWidth and clientHeight.
+
+        * Animometer/resources/extensions.js:
+        (Insets.elementPadding):
+        * Animometer/tests/resources/stage.js:
+        (Stage):
+        (Stage.prototype.get size):
+
 2015-11-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Initialize the graphics benchmark's Kalman filter with estimated 60 FPS

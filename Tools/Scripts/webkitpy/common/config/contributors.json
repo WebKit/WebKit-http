@@ -69,6 +69,14 @@
             "Savago"
          ]
       },
+      "Akos Kiss" : {
+         "emails" : [
+            "akiss@inf.u-szeged.hu"
+         ],
+         "nicks" : [
+            "akiss"
+         ]
+      },
       "Albert J. Wong" : {
          "emails" : [
             "ajwong@chromium.org"
@@ -3114,14 +3122,6 @@
             "aharon@google.com"
          ]
       },
-      "Akos Kiss" : {
-         "emails" : [
-            "akiss@inf.u-szeged.hu"
-         ],
-         "nicks" : [
-            "akiss"
-         ]
-      },
       "Alan Cutter" : {
          "emails" : [
             "alancutter@chromium.org"
@@ -4047,7 +4047,8 @@
       },
       "Daniel Bates" : {
          "emails" : [
-            "dbates@webkit.org"
+            "dbates@webkit.org",
+            "dabates@apple.com"
          ],
          "expertise" : "XSSAuditor, Drag and Drop, Tools, Perl, svn-apply/unapply",
          "nicks" : [
