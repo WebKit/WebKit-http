@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,44 +23,45 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackend_h
-#define WPE_ViewBackend_ViewBackend_h
+#ifndef WPE_ViewBackend_ViewBackendBCMNexus_h
+#define WPE_ViewBackend_ViewBackendBCMNexus_h
 
-#include <WPE/WPE.h>
-#include <memory>
+#if WPE_BACKEND(BCM_NEXUS)
+
+#include <WPE/ViewBackend/ViewBackend.h>
 
 namespace WPE {
 
-namespace Input {
-class Client;
-}
-
 namespace ViewBackend {
 
-class Client {
+class ViewBackendBCMNexus final : public ViewBackend {
 public:
-    virtual void releaseBuffer(uint32_t handle) = 0;
-    virtual void frameComplete() = 0;
-    virtual void setSize(uint32_t width, uint32_t height) = 0;
-};
+    ViewBackendBCMNexus();
+    virtual ~ViewBackendBCMNexus();
 
-class ViewBackend {
-public:
-    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
+    void setClient(Client*) override;
+    uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
+    void commitBuffer(int, const uint8_t*, size_t) override;
+    void destroyBuffer(uint32_t) override;
+#if 0
+    uint32_t createBCMNexusElement(int32_t width, int32_t height) override;
+    void commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
+#endif
 
-    virtual void setClient(Client*);
-    virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
-    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
-    virtual void destroyBuffer(uint32_t) = 0;
+    void setInputClient(Input::Client*) override;
 
-    virtual uint32_t createIntelCEElement(int32_t, int32_t);
-    virtual void commitIntelCEBuffer(uint32_t, uint32_t, uint32_t);
+private:
+    Client* m_client;
 
-    virtual void setInputClient(Input::Client*);
+    uint32_t m_width;
+    uint32_t m_height;
 };
 
 } // namespace ViewBackend
 
 } // namespace WPE
 
-#endif // WPE_ViewBackend_ViewBackend_h
+
+#endif // WPE_BACKEND(BCM_NEXUS)
+
+#endif // WPE_ViewBackend_ViewBackendBCMNexus_h

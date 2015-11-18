@@ -26,9 +26,9 @@
 #include "Config.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 
+#include "ViewBackendBCMNexus.h"
 #include "ViewBackendBCMRPi.h"
 #include "ViewBackendDRM.h"
-#include "ViewBackendNEXUS.h"
 #include "ViewBackendWayland.h"
 #include "ViewBackendIntelCE.h"
 #include <cstring>
@@ -60,7 +60,7 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 
 #if WPE_BACKEND(BCM_NEXUS)
     if (!backendEnv || !std::strcmp(backendEnv, "nexus"))
-        return std::unique_ptr<ViewBackendNexus>(new ViewBackendNexus);
+        return std::unique_ptr<ViewBackendBCMNexus>(new ViewBackendBCMNexus);
 #endif
 
 #if WPE_BACKEND(INTEL_CE)
@@ -73,15 +73,6 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
 }
 
 void ViewBackend::setClient(Client*)
-{
-}
-
-uint32_t ViewBackend::createBCMNexusElement(int32_t, int32_t)
-{
-    return 0;
-}
-
-void ViewBackend::commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t)
 {
 }
 

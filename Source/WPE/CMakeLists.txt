@@ -31,14 +31,15 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMNexus"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMNexus"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/IntelCE"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/NEXUS"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${BCM_HOST_INCLUDE_DIRS}
     ${GDL_INCLUDE_DIRS}
@@ -81,7 +82,10 @@ set(WPE_SOURCES
 
 if (USE_WPE_BACKEND_BCM_NEXUS)
     list(APPEND WPE_SOURCES
-        Source/ViewBackend/NEXUS/ViewBackendNEXUS.cpp
+        Source/Graphics/BCMNexus/BufferDataBCMNexus.cpp
+        Source/Graphics/BCMNexus/RenderingBackendBCMNexus.cpp
+
+        Source/ViewBackend/BCMNexus/ViewBackendBCMNexus.cpp
     )
 endif ()
 

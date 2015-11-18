@@ -26,6 +26,7 @@
 #include "Config.h"
 #include <WPE/Graphics/RenderingBackend.h>
 
+#include "RenderingBackendBCMNexus.h"
 #include "RenderingBackendBCMRPi.h"
 #include "RenderingBackendGBM.h"
 
@@ -37,6 +38,10 @@ std::unique_ptr<RenderingBackend> RenderingBackend::create()
 {
 #if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
     return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
+#endif
+
+#if WPE_BACKEND(BCM_NEXUS)
+    return std::unique_ptr<RenderingBackendBCMNexus>(new RenderingBackendBCMNexus);
 #endif
 
 #if WPE_BACKEND(BCM_RPI)
