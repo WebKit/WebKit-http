@@ -64,18 +64,6 @@ void CompositingManagerProxy::destroyBuffer(uint32_t handle)
     m_view.viewBackend().destroyBuffer(handle);
 }
 
-#if PLATFORM(INTEL_CE)
-void CompositingManagerProxy::createIntelCEElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createIntelCEElement(width, height);
-}
-
-void CompositingManagerProxy::commitIntelCEBuffer(uint32_t handle, uint32_t width, uint32_t height)
-{
-    m_view.viewBackend().commitIntelCEBuffer(handle, width, height);
-}
-#endif
-
 void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 {
     m_connection->send(Messages::CompositingManager::ReleaseBuffer(handle), 0);
