@@ -64,18 +64,6 @@ void CompositingManagerProxy::destroyBuffer(uint32_t handle)
     m_view.viewBackend().destroyBuffer(handle);
 }
 
-#if PLATFORM(BCM_NEXUS)
-void CompositingManagerProxy::createBCMNexusElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createBCMNexusElement(width, height);
-}
-
-void CompositingManagerProxy::commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height)
-{
-    m_view.viewBackend().commitBCMNexusBuffer(handle, width, height);
-}
-#endif
-
 #if PLATFORM(INTEL_CE)
 void CompositingManagerProxy::createIntelCEElement(int32_t width, int32_t height, uint32_t& handle)
 {

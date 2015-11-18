@@ -68,11 +68,6 @@ private:
     void commitBuffer(const IPC::Attachment&, const IPC::DataReference&);
     void destroyBuffer(uint32_t);
 
-#if PLATFORM(BCM_NEXUS)
-    void createBCMNexusElement(int32_t, int32_t, uint32_t&);
-    void commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t);
-#endif
-
 #if PLATFORM(INTEL_CE)
     void createIntelCEElement(int32_t, int32_t, uint32_t&);
     void commitIntelCEBuffer(uint32_t, uint32_t, uint32_t);
