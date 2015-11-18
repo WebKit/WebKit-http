@@ -45,11 +45,6 @@
 #include <WebCore/PlatformDisplayWPE.h>
 #endif
 
-#if PLATFORM(INTEL_CE)
-#include <WebCore/IntelCESurface.h>
-#include <WebCore/PlatformDisplayIntelCE.h>
-#endif
-
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
@@ -136,9 +131,6 @@ private:
 
 #if PLATFORM(WPE)
     std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
-#endif
-#if PLATFORM(INTEL_CE)
-    std::unique_ptr<WebCore::IntelCESurface> m_surface;
 #endif
     std::unique_ptr<WebCore::GLContext> m_context;
 
