@@ -89,13 +89,13 @@ uint32_t ViewBackendBCMRPi::constructRenderingTarget(uint32_t width, uint32_t he
 void ViewBackendBCMRPi::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     if (!data || size != sizeof(Graphics::BufferDataBCMRPi) || fd != -1) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendBCMRPi failed to validate the committed buffer\n");
         return;
     }
 
     auto& bufferData = *reinterpret_cast<const Graphics::BufferDataBCMRPi*>(data);
     if (bufferData.magic != Graphics::BufferDataBCMRPi::magicValue) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendBCMRPi: failed to validate the committed buffer\n");
         return;
     }
 
