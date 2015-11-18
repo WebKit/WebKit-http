@@ -46,7 +46,7 @@ RenderingBackendBCMRPi::~RenderingBackendBCMRPi() = default;
 
 EGLDisplay RenderingBackendBCMRPi::eglDisplay()
 {
-    return EGL_NO_DISPLAY;
+    return m_eglDisplay;
 }
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMRPi::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
