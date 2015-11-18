@@ -50,12 +50,11 @@ class Code {
     WTF_MAKE_NONCOPYABLE(Code);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Code(Procedure&);
     ~Code();
 
     Procedure& proc() { return m_proc; }
 
-    BasicBlock* addBlock(double frequency = PNaN);
+    BasicBlock* addBlock(double frequency = 1);
 
     StackSlot* addStackSlot(unsigned byteSize, StackSlotKind, StackSlotValue* = nullptr);
     StackSlot* addStackSlot(StackSlotValue*);
@@ -114,6 +113,10 @@ public:
     unsigned size() const { return m_blocks.size(); }
     BasicBlock* at(unsigned index) const { return m_blocks[index].get(); }
     BasicBlock* operator[](unsigned index) const { return at(index); }
+
+    // This is used by phases that optimize the block list. You shouldn't use this unless you really know
+    // what you're doing.
+    Vector<std::unique_ptr<BasicBlock>>& blockList() { return m_blocks; }
 
     // Finds the smallest index' such that at(index') != null and index' >= index.
     unsigned findFirstBlockIndex(unsigned index) const;
@@ -295,6 +298,10 @@ public:
     const char* lastPhaseName() const { return m_lastPhaseName; }
 
 private:
+    friend class ::JSC::B3::Procedure;
+    
+    Code(Procedure&);
+
     Procedure& m_proc; // Some meta-data, like byproducts, is stored in the Procedure.
     Vector<std::unique_ptr<StackSlot>> m_stackSlots;
     Vector<std::unique_ptr<BasicBlock>> m_blocks;

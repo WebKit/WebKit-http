@@ -93,6 +93,7 @@ void MockRealtimeVideoSource::updateStates()
 {
     RealtimeMediaSourceStates* states = currentStates();
 
+    states->setSourceType(RealtimeMediaSourceStates::Camera);
     states->setFacingMode(RealtimeMediaSourceStates::User);
     states->setFrameRate(m_frameRate);
     states->setWidth(m_size.width());
@@ -352,7 +353,6 @@ void MockRealtimeVideoSource::paintCurrentFrameInContext(GraphicsContext& contex
         return;
 
     GraphicsContextStateSaver stateSaver(context);
-//    context.translate(rect.x(), rect.y() + rect.height());
     context.setImageInterpolationQuality(InterpolationLow);
     IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
 

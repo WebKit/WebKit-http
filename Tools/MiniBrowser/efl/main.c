@@ -2438,7 +2438,7 @@ elm_main(int argc, char *argv[])
     if (evas_engine_name)
         elm_config_accel_preference_set(evas_engine_name);
     else {
-        evas_engine_name = "opengl";
+        evas_engine_name = "opengl:depth24:stencil8";
         elm_config_accel_preference_set(evas_engine_name);
     }
 

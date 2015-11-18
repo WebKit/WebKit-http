@@ -64,7 +64,8 @@ void WebContextMenu::show()
     RefPtr<API::Object> userData;
     menuItemsWithUserData(menuItems, userData);
 
-    auto menuLocation = view->contentsToWindow(controller.hitTestResult().roundedPointInInnerNodeFrame());
+    auto menuLocation = view->contentsToRootView(controller.hitTestResult().roundedPointInInnerNodeFrame());
+
     ContextMenuContextData contextMenuContextData(menuLocation, menuItems, controller.context());
 
     // Mark the WebPage has having a shown context menu then notify the UIProcess.
@@ -74,8 +75,7 @@ void WebContextMenu::show()
 
 void WebContextMenu::itemSelected(const WebContextMenuItemData& item)
 {
-    ContextMenuItem coreItem(ActionType, static_cast<ContextMenuAction>(item.action()), item.title());
-    m_page->corePage()->contextMenuController().contextMenuItemSelected(&coreItem);
+    m_page->corePage()->contextMenuController().contextMenuItemSelected(static_cast<ContextMenuAction>(item.action()), item.title());
 }
 
 void WebContextMenu::menuItemsWithUserData(Vector<WebContextMenuItemData> &menuItems, RefPtr<API::Object>& userData) const
@@ -87,11 +87,7 @@ void WebContextMenu::menuItemsWithUserData(Vector<WebContextMenuItemData> &menuI
         return;
 
     // Give the bundle client a chance to process the menu.
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
     const Vector<ContextMenuItem>& coreItems = menu->items();
-#else
-    Vector<ContextMenuItem> coreItems = contextMenuItemVector(menu->platformDescription());
-#endif
 
     if (m_page->injectedBundleContextMenuClient().getCustomMenuFromDefaultItems(*m_page, controller.hitTestResult(), coreItems, menuItems, userData))
         return;

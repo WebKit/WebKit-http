@@ -168,6 +168,11 @@ public:
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
+        if (!imm.m_value) {
+            move(src, dest);
+            return;
+        }
+
         ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
 
         // For adds with stack pointer destination, moving the src first to sp is
@@ -187,6 +192,9 @@ public:
 
     void add32(TrustedImm32 imm, Address address)
     {
+        if (!imm.m_value)
+            return;
+
         load32(address, dataTempRegister);
 
         ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
@@ -210,6 +218,9 @@ public:
 
     void add32(TrustedImm32 imm, AbsoluteAddress address)
     {
+        if (!imm.m_value)
+            return;
+
         load32(address.m_ptr, dataTempRegister);
 
         ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
@@ -1604,7 +1615,7 @@ public:
         return branchMul32(cond, src, dest, dest);
     }
 
-    Jump branchMul32(ResultCondition cond, TrustedImm32 imm, RegisterID src, RegisterID dest)
+    Jump branchMul32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
     {
         move(imm, dataTempRegister);
         return branchMul32(cond, dataTempRegister, src, dest);

@@ -46,7 +46,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.WaitingToPause, this._debuggerWaitingToPause, this);
 
         this._navigationBar = new WebInspector.NavigationBar;
-        this.element.appendChild(this._navigationBar.element);
+        this.addSubview(this._navigationBar);
 
         var breakpointsImage = {src: "Images/Breakpoints.svg", width: 15, height: 15};
         var pauseImage = {src: "Images/Pause.svg", width: 15, height: 15};
@@ -377,9 +377,12 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         if (![WebInspector.Resource.Type.Document, WebInspector.Resource.Type.Script].includes(resource.type))
             return;
 
-        this._addTreeElementForSourceCodeToContentTreeOutline(resource);
+        let treeElement = this._addTreeElementForSourceCodeToContentTreeOutline(resource);
         this._addBreakpointsForSourceCode(resource);
         this._addIssuesForSourceCode(resource);
+
+        if (!this.contentBrowser.currentContentView)
+            this.showDefaultContentViewForTreeElement(treeElement);
     }
 
     _mainResourceDidChange(event)
@@ -419,9 +422,12 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         if (script.resource)
             return;
 
-        this._addTreeElementForSourceCodeToContentTreeOutline(script);
+        let treeElement = this._addTreeElementForSourceCodeToContentTreeOutline(script);
         this._addBreakpointsForSourceCode(script);
         this._addIssuesForSourceCode(script);
+
+        if (!this.contentBrowser.currentContentView)
+            this.showDefaultContentViewForTreeElement(treeElement);
     }
 
     _scriptsCleared(event)
