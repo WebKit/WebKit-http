@@ -34,6 +34,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMNexus"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMNexus"
@@ -100,6 +101,9 @@ endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
     list(APPEND WPE_SOURCES
+        Source/Graphics/IntelCE/BufferDataIntelCE.cpp
+        Source/Graphics/IntelCE/RenderingBackendIntelCE.cpp
+
         Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
     )
 endif ()

@@ -29,6 +29,7 @@
 #include "RenderingBackendBCMNexus.h"
 #include "RenderingBackendBCMRPi.h"
 #include "RenderingBackendGBM.h"
+#include "RenderingBackendIntelCE.h"
 
 namespace WPE {
 
@@ -46,6 +47,10 @@ std::unique_ptr<RenderingBackend> RenderingBackend::create()
 
 #if WPE_BACKEND(BCM_RPI)
     return std::unique_ptr<RenderingBackendBCMRPi>(new RenderingBackendBCMRPi);
+#endif
+
+#if WPE_BACKEND(INTEL_CE)
+    return std::unique_ptr<RenderingBackendIntelCE>(new RenderingBackendIntelCE);
 #endif
 
     return nullptr;

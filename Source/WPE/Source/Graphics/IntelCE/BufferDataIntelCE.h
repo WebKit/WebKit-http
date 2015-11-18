@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackend_h
-#define WPE_ViewBackend_ViewBackend_h
+#ifndef WPE_Graphics_BufferDataIntelCE_h
+#define WPE_Graphics_BufferDataIntelCE_h
 
-#include <WPE/WPE.h>
-#include <memory>
+#if WPE_BACKEND(INTEL_CE)
+
+#include <stdint.h>
 
 namespace WPE {
 
-namespace Input {
-class Client;
-}
+namespace Graphics {
 
-namespace ViewBackend {
+struct BufferDataIntelCE {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t magic;
 
-class Client {
-public:
-    virtual void releaseBuffer(uint32_t handle) = 0;
-    virtual void frameComplete() = 0;
-    virtual void setSize(uint32_t width, uint32_t height) = 0;
+    static const uint32_t magicValue;
 };
 
-class ViewBackend {
-public:
-    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
+} // Graphics
 
-    virtual void setClient(Client*);
-    virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
-    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
-    virtual void destroyBuffer(uint32_t) = 0;
+} // WPE
 
-    virtual void setInputClient(Input::Client*);
-};
+#endif // WPE_BACKEND(IntelCE)
 
-} // namespace ViewBackend
-
-} // namespace WPE
-
-#endif // WPE_ViewBackend_ViewBackend_h
+#endif // WPE_Graphics_RenderingBackendIntelCE_h

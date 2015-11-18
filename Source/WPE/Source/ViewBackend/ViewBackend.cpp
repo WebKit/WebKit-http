@@ -76,15 +76,6 @@ void ViewBackend::setClient(Client*)
 {
 }
 
-uint32_t ViewBackend::createIntelCEElement(int32_t, int32_t)
-{
-    return 0;
-}
-
-void ViewBackend::commitIntelCEBuffer(uint32_t, uint32_t, uint32_t)
-{
-}
-
 void ViewBackend::setInputClient(Input::Client*)
 {
 }

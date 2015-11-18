@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
+ * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +24,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackend_h
-#define WPE_ViewBackend_ViewBackend_h
-
-#include <WPE/WPE.h>
-#include <memory>
+#include "Config.h"
+#include "BufferDataIntelCE.h"
 
 namespace WPE {
 
-namespace Input {
-class Client;
-}
+namespace Graphics {
 
-namespace ViewBackend {
+static_assert(sizeof(BufferDataIntelCE) == 16, "BufferDataIntelCE is of expected size");
 
-class Client {
-public:
-    virtual void releaseBuffer(uint32_t handle) = 0;
-    virtual void frameComplete() = 0;
-    virtual void setSize(uint32_t width, uint32_t height) = 0;
-};
+const uint32_t BufferDataIntelCE::magicValue = 0x031be9cf;
 
-class ViewBackend {
-public:
-    static WPE_EXPORT std::unique_ptr<ViewBackend> create();
-
-    virtual void setClient(Client*);
-    virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
-    virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
-    virtual void destroyBuffer(uint32_t) = 0;
-
-    virtual void setInputClient(Input::Client*);
-};
-
-} // namespace ViewBackend
+} // namespace Graphics
 
 } // namespace WPE
-
-#endif // WPE_ViewBackend_ViewBackend_h
