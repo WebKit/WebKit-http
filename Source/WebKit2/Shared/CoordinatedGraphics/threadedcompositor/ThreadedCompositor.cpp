@@ -271,19 +271,6 @@ GLContext* ThreadedCompositor::glContext()
     m_context = m_surface->createGLContext();
 #endif
 
-#if PLATFORM(BCM_NEXUS)
-    RELEASE_ASSERT(is<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()));
-
-    IntSize size(viewportController()->visibleContentsRect().size());
-    m_surface = downcast<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()).createSurface(size,
-        m_compositingManager.createBCMNexusElement(size.width(), size.height()));
-    if (!m_surface)
-        return nullptr;
-
-    setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
-#endif
-
 #if PLATFORM(INTEL_CE)
     RELEASE_ASSERT(is<PlatformDisplayIntelCE>(PlatformDisplay::sharedDisplay()));
 
@@ -333,11 +320,6 @@ void ThreadedCompositor::renderLayerTree()
     viewportTransform.translate(-scrollPostion.x(), -scrollPostion.y());
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
-
-#if PLATFORM(BCM_NEXUS)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitBCMNexusBuffer(bufferExport);
-#endif
 
 #if PLATFORM(INTEL_CE)
     auto bufferExport = m_surface->lockFrontBuffer();

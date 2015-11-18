@@ -45,11 +45,6 @@
 #include <WebCore/PlatformDisplayWPE.h>
 #endif
 
-#if PLATFORM(BCM_NEXUS)
-#include <WebCore/BCMNexusSurface.h>
-#include <WebCore/PlatformDisplayBCMNexus.h>
-#endif
-
 #if PLATFORM(INTEL_CE)
 #include <WebCore/IntelCESurface.h>
 #include <WebCore/PlatformDisplayIntelCE.h>
@@ -141,9 +136,6 @@ private:
 
 #if PLATFORM(WPE)
     std::unique_ptr<WebCore::PlatformDisplayWPE::Surface> m_surface;
-#endif
-#if PLATFORM(BCM_NEXUS)
-    std::unique_ptr<WebCore::BCMNexusSurface> m_surface;
 #endif
 #if PLATFORM(INTEL_CE)
     std::unique_ptr<WebCore::IntelCESurface> m_surface;
