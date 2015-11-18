@@ -30,10 +30,6 @@
 #include "MessageReceiver.h"
 #include <WebCore/PlatformDisplayWPE.h>
 
-#if PLATFORM(INTEL_CE)
-#include <WebCore/PlatformDisplayIntelCE.h>
-#endif
-
 namespace WebKit {
 
 class WebPage;
@@ -53,11 +49,6 @@ public:
     uint32_t constructRenderingTarget(uint32_t, uint32_t);
     void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
     void destroyBuffer(uint32_t);
-
-#if PLATFORM(INTEL_CE)
-    uint32_t createIntelCEElement(int32_t width, int32_t height);
-    void commitIntelCEBuffer(const WebCore::PlatformDisplayIntelCE::BufferExport&);
-#endif
 
     CompositingManager(const CompositingManager&) = delete;
     CompositingManager& operator=(const CompositingManager&) = delete;
