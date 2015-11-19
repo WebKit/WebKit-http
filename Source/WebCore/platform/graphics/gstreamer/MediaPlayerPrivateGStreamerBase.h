@@ -28,8 +28,9 @@
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include <glib.h>
+#include <wtf/Condition.h>
 #include <wtf/Forward.h>
-#include <wtf/glib/GSourceWrap.h>
+#include <wtf/RunLoop.h>
 
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #include "TextureMapperPlatformLayer.h"
@@ -112,6 +113,8 @@ public:
     void triggerDrain();
 
     void triggerRepaint(GstSample*);
+    void repaint();
+
     virtual void paint(GraphicsContext&, const FloatRect&) override;
 
     virtual bool hasSingleSecurityOrigin() const override { return true; }
@@ -222,8 +225,9 @@ public:
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
 #if USE(GSTREAMER_GL)
-    GCond m_drawCondition;
-    GMutex m_drawMutex;
+    RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
+    Condition m_drawCondition;
+    Lock m_drawMutex;
 #endif
     unsigned long m_repaintHandler;
     unsigned long m_drainHandler;

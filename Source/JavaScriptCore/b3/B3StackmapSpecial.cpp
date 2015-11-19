@@ -65,7 +65,7 @@ const RegisterSet& StackmapSpecial::extraClobberedRegs(Inst& inst)
 
 void StackmapSpecial::forEachArgImpl(
     unsigned numIgnoredB3Args, unsigned numIgnoredAirArgs,
-    Inst& inst, const ScopedLambda<Inst::EachArgCallback>& callback)
+    Inst& inst, Arg::Role role, const ScopedLambda<Inst::EachArgCallback>& callback)
 {
     Value* value = inst.origin;
 
@@ -78,7 +78,7 @@ void StackmapSpecial::forEachArgImpl(
         Arg& arg = inst.args[i + numIgnoredAirArgs];
         Value* child = value->child(i + numIgnoredB3Args);
 
-        callback(arg, Arg::Use, Arg::typeForB3Type(child->type()));
+        callback(arg, role, Arg::typeForB3Type(child->type()));
     }
 }
 
@@ -151,9 +151,17 @@ bool StackmapSpecial::isValidImpl(
             ASSERT_NOT_REACHED();
             break;
         case ValueRep::StackArgument:
-            if (arg != Arg::callArg(rep.offsetFromSP()))
-                return false;
-            break;
+            if (arg == Arg::callArg(rep.offsetFromSP()))
+                break;
+            if (arg.isAddr() && code().frameSize()) {
+                if (arg.base() == Tmp(GPRInfo::callFrameRegister)
+                    && arg.offset() == rep.offsetFromSP() - code().frameSize())
+                    break;
+                if (arg.base() == Tmp(MacroAssembler::stackPointerRegister)
+                    && arg.offset() == rep.offsetFromSP())
+                    break;
+            }
+            return false;
         case ValueRep::Constant:
             // This is not a valid input representation.
             ASSERT_NOT_REACHED();

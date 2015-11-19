@@ -230,8 +230,6 @@ list(APPEND WebCore_SOURCES
 
     platform/text/wpe/TextBreakIteratorInternalICUWPE.cpp
 
-    platform/wpe/ContextMenuItemWPE.cpp
-    platform/wpe/ContextMenuWPE.cpp
     platform/wpe/CursorWPE.cpp
     platform/wpe/EventLoopWPE.cpp
     platform/wpe/ErrorsWPE.cpp

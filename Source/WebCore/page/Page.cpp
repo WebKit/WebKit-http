@@ -180,7 +180,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_muted(false)
     , m_pageScaleFactor(1)
     , m_zoomedOutPageScaleFactor(0)
-    , m_deviceScaleFactor(1)
     , m_topContentInset(0)
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     , m_textAutosizingWidth(0)
@@ -1392,6 +1391,16 @@ bool Page::remoteInspectionAllowed() const
 void Page::setRemoteInspectionAllowed(bool allowed)
 {
     m_inspectorDebuggable->setRemoteDebuggingAllowed(allowed);
+}
+
+String Page::remoteInspectionNameOverride() const
+{
+    return m_inspectorDebuggable->nameOverride();
+}
+
+void Page::setRemoteInspectionNameOverride(const String& name)
+{
+    m_inspectorDebuggable->setNameOverride(name);
 }
 
 void Page::remoteInspectorInformationDidChange() const

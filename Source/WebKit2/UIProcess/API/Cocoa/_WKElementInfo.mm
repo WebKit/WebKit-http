@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "_WKElementInfo.h"
+#import "config.h"
+#import "_WKElementInfoInternal.h"
 
 #if WK_API_ENABLED
 
@@ -33,6 +33,11 @@
 - (id)copyWithZone:(NSZone *)zone
 {
     return [self retain];
+}
+
+- (NSURL *)linkURL
+{
+    return _linkURL.get();
 }
 
 @end

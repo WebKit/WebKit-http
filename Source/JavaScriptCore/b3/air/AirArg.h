@@ -83,6 +83,10 @@ public:
         // always escaping, and Stack is presumed to be always escaping if it's Locked.
         Use,
 
+        // LateUse means that the Inst will read from this value after doing its Def's. Note that LateUse
+        // on an Addr or Index still means Use on the internal temporaries.
+        LateUse,
+
         // Def means that the Inst will write to this value after doing everything else.
         //
         // For Tmp: The Inst will write to this Tmp.
@@ -123,8 +127,22 @@ public:
     };
 
     // Returns true if the Role implies that the Inst will Use the Arg. It's deliberately false for
-    // UseAddr, since isUse() for an Arg::addr means that we are loading from the address.
-    static bool isUse(Role role)
+    // UseAddr, since isAnyUse() for an Arg::addr means that we are loading from the address.
+    static bool isAnyUse(Role role)
+    {
+        switch (role) {
+        case Use:
+        case UseDef:
+        case LateUse:
+            return true;
+        case Def:
+        case UseAddr:
+            return false;
+        }
+    }
+
+    // Returns true if the Role implies that the Inst will Use the Arg before doing anything else.
+    static bool isEarlyUse(Role role)
     {
         switch (role) {
         case Use:
@@ -132,8 +150,15 @@ public:
             return true;
         case Def:
         case UseAddr:
+        case LateUse:
             return false;
         }
+    }
+
+    // Returns true if the Role implies that the Inst will Use the Arg after doing everything else.
+    static bool isLateUse(Role role)
+    {
+        return role == LateUse;
     }
 
     // Returns true if the Role implies that the Inst will Def the Arg.
@@ -142,6 +167,7 @@ public:
         switch (role) {
         case Use:
         case UseAddr:
+        case LateUse:
             return false;
         case Def:
         case UseDef:
@@ -378,6 +404,18 @@ public:
     bool isDoubleCond() const
     {
         return kind() == DoubleCond;
+    }
+
+    bool isCondition() const
+    {
+        switch (kind()) {
+        case RelCond:
+        case ResCond:
+        case DoubleCond:
+            return true;
+        default:
+            return false;
+        }
     }
 
     bool isSpecial() const
@@ -654,7 +692,7 @@ public:
     {
         switch (m_kind) {
         case Tmp:
-            ASSERT(isUse(argRole) || isDef(argRole));
+            ASSERT(isAnyUse(argRole) || isDef(argRole));
             functor(m_base, argRole, argType);
             break;
         case Addr:
@@ -722,6 +760,21 @@ public:
     {
         ASSERT(isDoubleCond());
         return static_cast<MacroAssembler::DoubleCondition>(m_offset);
+    }
+
+    // Tells you if the Arg is invertible. Only condition arguments are invertible, and even for those, there
+    // are a few exceptions - notably Overflow and Signed.
+    bool isInvertible() const
+    {
+        switch (kind()) {
+        case RelCond:
+        case DoubleCond:
+            return true;
+        case ResCond:
+            return MacroAssembler::isInvertible(asResultCondition());
+        default:
+            return false;
+        }
     }
 
     // This is valid for condition arguments. It will invert them.
