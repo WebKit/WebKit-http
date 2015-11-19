@@ -832,6 +832,7 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #else
     repaint();
 #endif
+#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::triggerDrain()
