@@ -90,6 +90,8 @@ static const GUID MFSamplePresenterSampleCounter =
 static const GUID MFSamplePresenterSampleSwapChain =
 { 0x24a2e076, 0x3673, 0x433d, { 0x87, 0x4, 0x55, 0x2b, 0x1f, 0x5c, 0x16, 0x8c } };
 
+static const double tenMegahertz = 10000000;
+
 namespace WebCore {
 
 MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer* player) 
@@ -207,7 +209,6 @@ bool MediaPlayerPrivateMediaFoundation::seeking() const
 
 void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
 {
-    const double tenMegahertz = 10000000;
     PROPVARIANT propVariant;
     PropVariantInit(&propVariant);
     propVariant.vt = VT_I8;
@@ -220,7 +221,6 @@ void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
 
 double MediaPlayerPrivateMediaFoundation::durationDouble() const
 {
-    const double tenMegahertz = 10000000;
     if (!m_mediaSource)
         return 0;
 
@@ -234,6 +234,14 @@ double MediaPlayerPrivateMediaFoundation::durationDouble() const
     descriptor->Release();
     
     return static_cast<double>(duration) / tenMegahertz;
+}
+
+float MediaPlayerPrivateMediaFoundation::currentTime() const
+{
+    if (!m_presenter)
+        return 0.0f;
+
+    return m_presenter->currentTime();
 }
 
 bool MediaPlayerPrivateMediaFoundation::paused() const
@@ -1256,6 +1264,22 @@ void MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::paintCurrentFrame(
 {
     if (m_presenterEngine)
         m_presenterEngine->paintCurrentFrame(context, r);
+}
+
+float MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::currentTime()
+{
+    if (!m_clock)
+        return 0.0f;
+
+    LONGLONG clockTime;
+    MFTIME systemTime;
+    HRESULT hr = m_clock->GetCorrelatedTime(0, &clockTime, &systemTime);
+
+    if (FAILED(hr))
+        return 0.0f;
+
+    // clockTime is in 100 nanoseconds, we need to convert to seconds.
+    return clockTime / tenMegahertz;
 }
 
 bool MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::isActive() const
@@ -2668,7 +2692,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::presentSample(IMFS
     return hr;
 }
 
-void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(WebCore::GraphicsContext& context, const WebCore::FloatRect& r)
+void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(WebCore::GraphicsContext& context, const WebCore::FloatRect& destRect)
 {
     UINT width = m_destRect.right - m_destRect.left;
     UINT height = m_destRect.bottom - m_destRect.top;
@@ -2688,10 +2712,8 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
 #if USE(CAIRO)
         WebCore::PlatformContextCairo* ctxt = context.platformContext();
         cairo_surface_t* image = cairo_image_surface_create_for_data(static_cast<unsigned char*>(data), CAIRO_FORMAT_ARGB32, width, height, pitch);
-        WebCore::FloatRect clip(0, 0, width, height);
-        WebCore::FloatRect rect = r;
-        rect.intersect(clip);
-        ctxt->drawSurfaceToContext(image, rect, rect, context);
+        FloatRect srcRect(0, 0, width, height);
+        ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
         cairo_surface_destroy(image);
 #else
 #error "Platform needs to implement drawing of Direct3D surface to graphics context!"

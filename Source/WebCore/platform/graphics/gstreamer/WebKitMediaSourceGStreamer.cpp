@@ -807,7 +807,10 @@ PlaybackPipeline::~PlaybackPipeline()
 void PlaybackPipeline::setWebKitMediaSrc(WebKitMediaSrc* webKitMediaSrc)
 {
     LOG_MEDIA_MESSAGE("webKitMediaSrc=%p", webKitMediaSrc);
-    m_webKitMediaSrc = adoptGRef(static_cast<WebKitMediaSrc*>(gst_object_ref(webKitMediaSrc)));
+    if (webKitMediaSrc)
+        gst_object_ref(webKitMediaSrc);
+
+    m_webKitMediaSrc = adoptGRef(static_cast<WebKitMediaSrc*>(webKitMediaSrc));
 }
 
 WebKitMediaSrc* PlaybackPipeline::webKitMediaSrc()
@@ -1269,7 +1272,7 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
 
 GstElement* PlaybackPipeline::pipeline()
 {
-    if (!m_webKitMediaSrc)
+    if (!m_webKitMediaSrc || !GST_ELEMENT_PARENT(GST_ELEMENT(m_webKitMediaSrc.get())))
         return nullptr;
 
     return GST_ELEMENT_PARENT(GST_ELEMENT_PARENT(GST_ELEMENT(m_webKitMediaSrc.get())));

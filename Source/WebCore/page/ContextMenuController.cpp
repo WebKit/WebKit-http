@@ -211,18 +211,11 @@ static void insertUnicodeCharacter(UChar character, Frame* frame)
 }
 #endif
 
-void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
+void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, const String& title)
 {
-    ASSERT(item->type() == ActionType || item->type() == CheckableActionType);
-
-    if (item->action() >= ContextMenuItemBaseApplicationTag) {
-        m_client.contextMenuItemSelected(item, m_contextMenu.get());
-        return;
-    }
-
-    if (item->action() >= ContextMenuItemBaseCustomTag) {
+    if (action >= ContextMenuItemBaseCustomTag) {
         ASSERT(m_menuProvider);
-        m_menuProvider->contextMenuItemSelected(item);
+        m_menuProvider->contextMenuItemSelected(action, title);
         return;
     }
 
@@ -230,7 +223,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
     if (!frame)
         return;
 
-    switch (item->action()) {
+    switch (action) {
     case ContextMenuItemTagOpenLinkInNewWindow:
         openNewWindow(m_context.hitTestResult().absoluteLinkURL(), frame, ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes);
         break;
@@ -359,7 +352,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
 #endif
     case ContextMenuItemTagSpellingGuess: {
         VisibleSelection selection = frame->selection().selection();
-        if (frame->editor().shouldInsertText(item->title(), selection.toNormalizedRange().get(), EditorInsertActionPasted)) {
+        if (frame->editor().shouldInsertText(title, selection.toNormalizedRange().get(), EditorInsertActionPasted)) {
             ReplaceSelectionCommand::CommandOptions replaceOptions = ReplaceSelectionCommand::MatchStyle | ReplaceSelectionCommand::PreventNesting;
 
             if (frame->editor().behavior().shouldAllowSpellingSuggestionsWithoutSelection()) {
@@ -374,7 +367,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
 
             Document* document = frame->document();
             ASSERT(document);
-            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(*document, item->title(), ""), replaceOptions);
+            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(*document, title, ""), replaceOptions);
             applyCommand(command);
             frame->selection().revealSelection(ScrollAlignment::alignToEdgeIfNeeded);
         }
@@ -398,9 +391,6 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
             targetFrame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(m_context.hitTestResult().absoluteLinkURL(), frame->loader().outgoingReferrer()), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Suppress, targetFrame->isMainFrame() ? ShouldOpenExternalURLsPolicy::ShouldAllow : ShouldOpenExternalURLsPolicy::ShouldNotAllow), nullptr, nullptr);
         else
             openNewWindow(m_context.hitTestResult().absoluteLinkURL(), frame, ShouldOpenExternalURLsPolicy::ShouldAllow);
-        break;
-    case ContextMenuItemTagOpenLinkInThisWindow:
-        frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(m_context.hitTestResult().absoluteLinkURL(), frame->loader().outgoingReferrer()), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Suppress, ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes), nullptr, nullptr);
         break;
     case ContextMenuItemTagBold:
         frame->editor().command("ToggleBold").execute();
@@ -518,7 +508,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
             page->inspectorController().inspect(m_context.hitTestResult().innerNonSharedNode());
         break;
     case ContextMenuItemTagDictationAlternative:
-        frame->editor().applyDictationAlternativelternative(item->title());
+        frame->editor().applyDictationAlternativelternative(title);
         break;
     default:
         break;
@@ -807,7 +797,7 @@ void ContextMenuController::populate()
     ContextMenuItem SelectAllItem(ActionType, ContextMenuItemTagSelectAll, contextMenuItemTagSelectAll());
 #endif
 
-    ContextMenuItem ShareMenuItem = m_client.shareMenuItem(m_context.hitTestResult());
+    ContextMenuItem ShareMenuItem(SubmenuType, ContextMenuItemTagShareMenu, emptyString());
 
     Node* node = m_context.hitTestResult().innerNonSharedNode();
     if (!node)
@@ -895,10 +885,8 @@ void ContextMenuController::populate()
 #if PLATFORM(COCOA)
                 appendItem(*separatorItem(), m_contextMenu.get());
 
-                if (!ShareMenuItem.isNull()) {
-                    appendItem(ShareMenuItem, m_contextMenu.get());
-                    appendItem(*separatorItem(), m_contextMenu.get());
-                }
+                appendItem(ShareMenuItem, m_contextMenu.get());
+                appendItem(*separatorItem(), m_contextMenu.get());
 
                 ContextMenuItem SpeechMenuItem(SubmenuType, ContextMenuItemTagSpeechMenu, contextMenuItemTagSpeechMenu());
                 createAndAppendSpeechSubMenu(SpeechMenuItem);
@@ -932,12 +920,10 @@ void ContextMenuController::populate()
                 if (frame->page() && !frame->isMainFrame())
                     appendItem(OpenFrameItem, m_contextMenu.get());
 
-                if (!ShareMenuItem.isNull()) {
-                    appendItem(*separatorItem(), m_contextMenu.get());
-                    appendItem(ShareMenuItem, m_contextMenu.get());
-                }
+                appendItem(*separatorItem(), m_contextMenu.get());
+                appendItem(ShareMenuItem, m_contextMenu.get());
             }
-        } else if (!ShareMenuItem.isNull()) {
+        } else {
             appendItem(*separatorItem(), m_contextMenu.get());
             appendItem(ShareMenuItem, m_contextMenu.get());
         }
@@ -1121,11 +1107,7 @@ void ContextMenuController::addInspectElementItem()
         return;
 
     ContextMenuItem InspectElementItem(ActionType, ContextMenuItemTagInspectElement, contextMenuItemTagInspectElement());
-#if USE(CROSS_PLATFORM_CONTEXT_MENUS)
     if (m_contextMenu && !m_contextMenu->items().isEmpty())
-#else
-    if (m_contextMenu && m_contextMenu->itemCount())
-#endif
         appendItem(*separatorItem(), m_contextMenu.get());
     appendItem(InspectElementItem, m_contextMenu.get());
 }
@@ -1322,7 +1304,6 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
 #endif
         case ContextMenuItemTagNoAction:
         case ContextMenuItemTagOpenLinkInNewWindow:
-        case ContextMenuItemTagOpenLinkInThisWindow:
         case ContextMenuItemTagDownloadLinkToDisk:
         case ContextMenuItemTagCopyLinkToClipboard:
         case ContextMenuItemTagOpenImageInNewWindow:
@@ -1404,7 +1385,6 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
         case ContextMenuItemTagPDFFacingPagesScrolling:
         case ContextMenuItemTagInspectElement:
         case ContextMenuItemBaseCustomTag:
-        case ContextMenuItemCustomTagNoAction:
         case ContextMenuItemLastCustomTag:
         case ContextMenuItemBaseApplicationTag:
         case ContextMenuItemTagDictationAlternative:

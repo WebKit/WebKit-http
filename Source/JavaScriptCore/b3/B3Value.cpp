@@ -134,6 +134,31 @@ Value* Value::subConstant(Procedure&, const Value*) const
     return nullptr;
 }
 
+Value* Value::mulConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::checkAddConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::checkSubConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::checkMulConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::checkNegConstant(Procedure&) const
+{
+    return nullptr;
+}
+
 Value* Value::divConstant(Procedure&, const Value*) const
 {
     return nullptr;

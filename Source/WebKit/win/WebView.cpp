@@ -1625,8 +1625,17 @@ void WebView::onMenuCommand(WPARAM wParam, LPARAM lParam)
     String title(buffer.get(), menuItemInfo.cch);
     ContextMenuAction action = static_cast<ContextMenuAction>(menuItemInfo.wID);
 
-    ContextMenuItem item(ActionType, action, title, true, false);
-    m_page->contextMenuController().contextMenuItemSelected(&item);
+    if (action >= ContextMenuItemBaseApplicationTag) {
+        if (m_uiDelegate) {
+            COMPtr<WebElementPropertyBag> propertyBag;
+            propertyBag.adoptRef(WebElementPropertyBag::createInstance(m_page->contextMenuController().hitTestResult()));
+
+            m_uiDelegate->contextMenuItemSelected(this, &menuItemInfo, propertyBag.get());
+        }
+        return;
+    }
+
+    m_page->contextMenuController().contextMenuItemSelected(action, title);
 }
 
 bool WebView::handleMouseEvent(UINT message, WPARAM wParam, LPARAM lParam)

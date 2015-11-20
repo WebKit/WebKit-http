@@ -45,16 +45,9 @@
 #endif
 #endif
 
-// Mail on Tiger expects the old value for WebMenuItemTagSearchInGoogle
-#define WebMenuItemTagSearchInGoogle OldWebMenuItemTagSearchWeb
-
 #define WEBMENUITEMTAG_WEBKIT_3_0_SPI_START 2000
 enum { 
-    // The next three values were used in WebKit 2.0 for SPI. In WebKit 3.0 these are API, with different values.
-    OldWebMenuItemTagSearchInSpotlight = 1000,
-    OldWebMenuItemTagSearchWeb,
-    OldWebMenuItemTagLookUpInDictionary,
-    // FIXME: These should move to WebUIDelegate.h as part of the WebMenuItemTag enum there, when we're not in API freeze 
+    // FIXME: These should move to WebUIDelegate.h as part of the WebMenuItemTag enum there, when we're not in API freeze
     // Note that these values must be kept aligned with values in WebCore/ContextMenuItem.h
     WebMenuItemTagOpenLink = WEBMENUITEMTAG_WEBKIT_3_0_SPI_START,
     WebMenuItemTagIgnoreGrammar,
@@ -99,6 +92,7 @@ enum {
     WebMenuItemTagCapitalize,
     WebMenuItemTagChangeBack,
     WebMenuItemTagOpenMediaInNewWindow,
+    WebMenuItemTagDownloadMediaToDisk,
     WebMenuItemTagCopyMediaLinkToClipboard,
     WebMenuItemTagToggleMediaControls,
     WebMenuItemTagToggleMediaLoop,
@@ -106,10 +100,8 @@ enum {
     WebMenuItemTagMediaPlayPause,
     WebMenuItemTagMediaMute,
     WebMenuItemTagDictationAlternative,
-    WebMenuItemBaseCustomTag = 5000,
-    WebMenuItemCustomTagNoAction = 5998,
-    WebMenuItemLastCustomTag = 5999,
-    WebMenuItemTagBaseApplication = 10000
+    WebMenuItemTagToggleVideoFullscreen,
+    WebMenuItemTagShareMenu,
 };
 
 // Deprecated; remove when there are no more clients.

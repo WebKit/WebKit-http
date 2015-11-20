@@ -230,6 +230,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_networkState(MediaPlayer::Empty)
     , m_isEndReached(false)
     , m_sample(0)
+#if USE(GSTREAMER_GL)
+    , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint())
+#endif
     , m_repaintHandler(0)
     , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
@@ -245,10 +248,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #endif
 {
     g_mutex_init(&m_sampleMutex);
-#if USE(GSTREAMER_GL)
-    g_cond_init(&m_drawCondition);
-    g_mutex_init(&m_drawMutex);
-#endif
+
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
     g_cond_init(&m_updateCondition);
@@ -275,11 +275,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     m_player = 0;
 
     g_signal_handlers_disconnect_matched(m_volumeElement.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
-
-#if USE(GSTREAMER_GL)
-    g_cond_clear(&m_drawCondition);
-    g_mutex_clear(&m_drawMutex);
-#endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     g_cond_clear(&m_updateCondition);
@@ -701,6 +696,28 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 }
 #endif
 
+void MediaPlayerPrivateGStreamerBase::repaint()
+{
+    ASSERT(m_sample);
+    ASSERT(isMainThread());
+
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+    if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client()) {
+        client()->setPlatformLayerNeedsDisplay();
+#if USE(GSTREAMER_GL)
+        m_drawCondition.notifyOne();
+#endif
+        return;
+    }
+#endif
+
+    m_player->repaint();
+
+#if USE(GSTREAMER_GL)
+    m_drawCondition.notifyOne();
+#endif
+}
+
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void MediaPlayerPrivateGStreamerBase::updateOnCompositorThread()
 {
@@ -806,24 +823,16 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #if USE(GSTREAMER_GL)
     {
-        WTF::GMutexLocker<GMutex> lock(m_drawMutex);
-        callOnMainThread([this] {
-                WTF::GMutexLocker<GMutex> lock(m_drawMutex);
-                if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client())
-                    client()->setPlatformLayerNeedsDisplay();
-                g_cond_signal(&m_drawCondition);
-            });
-        g_cond_wait(&m_drawCondition, &m_drawMutex);
+        ASSERT(!isMainThread());
+
+        LockHolder locker(m_drawMutex);
+        m_drawTimer.startOneShot(0);
+        m_drawCondition.wait();
     }
 #else
-    if (supportsAcceleratedRendering() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player) && client()) {
-        client()->setPlatformLayerNeedsDisplay();
-    }
+    repaint();
 #endif
-    return;
 #endif
-
-    m_player->repaint();
 }
 
 void MediaPlayerPrivateGStreamerBase::triggerDrain()

@@ -34,6 +34,7 @@
 #include "AirGenerationContext.h"
 #include "AirHandleCalleeSaves.h"
 #include "AirIteratedRegisterCoalescing.h"
+#include "AirOptimizeBlockOrder.h"
 #include "AirReportUsedRegisters.h"
 #include "AirSimplifyCFG.h"
 #include "AirSpillEverything.h"
@@ -45,9 +46,9 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
-void generate(Code& code, CCallHelpers& jit)
+void prepareForGeneration(Code& code)
 {
-    TimingScope timingScope("Air::generate");
+    TimingScope timingScope("Air::prepareForGeneration");
     
     // We don't expect the incoming code to have predecessors computed.
     code.resetReachability();
@@ -67,9 +68,14 @@ void generate(Code& code, CCallHelpers& jit)
     
     eliminateDeadCode(code);
 
-    // This is where we would have a real register allocator. Then, we could use spillEverything()
-    // in place of the register allocator only for testing.
-    iteratedRegisterCoalescing(code);
+    // Register allocation for all the Tmps that do not have a corresponding machine register.
+    // After this phase, every Tmp has a reg.
+    //
+    // For debugging, you can use spillEverything() to put everything to the stack between each Inst.
+    if (false)
+        spillEverything(code);
+    else
+        iteratedRegisterCoalescing(code);
 
     // Prior to this point the prologue and epilogue is implicit. This makes it explicit. It also
     // does things like identify which callee-saves we're using and saves them.
@@ -84,9 +90,11 @@ void generate(Code& code, CCallHelpers& jit)
     // phase.
     simplifyCFG(code);
 
-    // FIXME: We should really have a code layout optimization here.
-    // https://bugs.webkit.org/show_bug.cgi?id=150478
+    // This sorts the basic blocks in Code to achieve an ordering that maximizes the likelihood that a high
+    // frequency successor is also the fall-through target.
+    optimizeBlockOrder(code);
 
+    // This is needed to satisfy a requirement of B3::StackmapValue.
     reportUsedRegisters(code);
 
     if (shouldValidateIR())
@@ -98,8 +106,11 @@ void generate(Code& code, CCallHelpers& jit)
         dataLog("Air after ", code.lastPhaseName(), ", before generation:\n");
         dataLog(code);
     }
+}
 
-    TimingScope codeGenTimingScope("Air::generate backend");
+void generate(Code& code, CCallHelpers& jit)
+{
+    TimingScope timingScope("Air::generate");
 
     // And now, we generate code.
     jit.emitFunctionPrologue();

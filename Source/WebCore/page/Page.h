@@ -182,6 +182,8 @@ public:
 #if ENABLE(REMOTE_INSPECTOR)
     WEBCORE_EXPORT bool remoteInspectionAllowed() const;
     WEBCORE_EXPORT void setRemoteInspectionAllowed(bool);
+    WEBCORE_EXPORT String remoteInspectionNameOverride() const;
+    WEBCORE_EXPORT void setRemoteInspectionNameOverride(const String&);
     void remoteInspectorInformationDidChange() const;
 #endif
 
@@ -561,7 +563,7 @@ private:
 
     float m_pageScaleFactor;
     float m_zoomedOutPageScaleFactor;
-    float m_deviceScaleFactor;
+    float m_deviceScaleFactor { 1 };
     float m_viewScaleFactor { 1 };
 
     float m_topContentInset;
