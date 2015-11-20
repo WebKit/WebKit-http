@@ -142,6 +142,12 @@ void ViewBackendWayland::setClient(Client* client)
     m_resizingData.client = client;
 }
 
+uint32_t ViewBackendWayland::constructRenderingTarget(uint32_t, uint32_t)
+{
+    // This is for now meaningless for this ViewBackend.
+    return 0;
+}
+
 void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     if (!data || size != sizeof(Graphics::BufferDataGBM)) {

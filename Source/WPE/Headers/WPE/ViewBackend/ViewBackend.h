@@ -49,6 +49,7 @@ public:
     static WPE_EXPORT std::unique_ptr<ViewBackend> create();
 
     virtual void setClient(Client*);
+    virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
     virtual void commitBuffer(int, const uint8_t*, size_t) = 0;
     virtual void destroyBuffer(uint32_t) = 0;
 
