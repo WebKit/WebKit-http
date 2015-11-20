@@ -26,7 +26,7 @@
 #ifndef WPE_Graphics_RenderingBackend_h
 #define WPE_Graphics_RenderingBackend_h
 
-#include <EGL/egl.h>
+#include <EGL/eglplatform.h>
 #include <WPE/WPE.h>
 #include <memory>
 #include <tuple>
@@ -48,7 +48,7 @@ public:
 
         virtual ~Surface();
 
-        virtual EGLSurface eglSurface() = 0;
+        virtual EGLNativeWindowType nativeWindow() = 0;
         virtual void resize(uint32_t, uint32_t) = 0;
 
         virtual BufferExport lockFrontBuffer() = 0;
@@ -59,14 +59,14 @@ public:
     public:
         virtual ~OffscreenSurface();
 
-        virtual EGLSurface eglSurface() = 0;
+        virtual EGLNativeWindowType nativeWindow() = 0;
     };
 
     static WPE_EXPORT std::unique_ptr<RenderingBackend> create();
 
     virtual ~RenderingBackend();
 
-    virtual EGLDisplay eglDisplay() = 0;
+    virtual EGLNativeDisplayType nativeDisplay() = 0;
     virtual std::unique_ptr<Surface> createSurface(uint32_t, uint32_t, Surface::Client&) = 0;
     virtual std::unique_ptr<OffscreenSurface> createOffscreenSurface() = 0;
 };

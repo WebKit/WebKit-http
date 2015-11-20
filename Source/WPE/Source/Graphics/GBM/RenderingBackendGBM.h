@@ -45,7 +45,7 @@ public:
         Surface(const RenderingBackendGBM&, uint32_t, uint32_t, Client&);
         WPE_EXPORT virtual ~Surface();
 
-        EGLSurface eglSurface() override;
+        EGLNativeWindowType nativeWindow() override;
         void resize(uint32_t, uint32_t) override;
 
         BufferExport lockFrontBuffer() override;
@@ -63,7 +63,7 @@ public:
         OffscreenSurface(const RenderingBackendGBM&);
         virtual ~OffscreenSurface();
 
-        EGLSurface eglSurface() override;
+        EGLNativeWindowType nativeWindow() override;
 
     private:
         struct gbm_surface* m_surface;
@@ -72,7 +72,7 @@ public:
     RenderingBackendGBM();
     virtual ~RenderingBackendGBM();
 
-    EGLDisplay eglDisplay() override;
+    EGLNativeDisplayType nativeDisplay() override;
     std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
     std::unique_ptr<RenderingBackend::OffscreenSurface> createOffscreenSurface() override;
 
@@ -84,8 +84,6 @@ private:
         int fd { -1 };
         struct gbm_device* device;
     } m_gbm;
-
-    EGLDisplay m_eglDisplay;
 };
 
 } // Graphics

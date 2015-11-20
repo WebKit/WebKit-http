@@ -50,12 +50,6 @@ RenderingBackendGBM::RenderingBackendGBM()
         fprintf(stderr, "RenderingBackendGBM: cannot create the GBM device.\n");
         return;
     }
-
-    m_eglDisplay = eglGetDisplay(m_gbm.device);
-    if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "RenderingBackendGBM: cannot create the EGL display.\n");
-        return;
-    }
 }
 
 RenderingBackendGBM::~RenderingBackendGBM()
@@ -67,9 +61,9 @@ RenderingBackendGBM::~RenderingBackendGBM()
     m_gbm = { };
 }
 
-EGLDisplay RenderingBackendGBM::eglDisplay()
+EGLNativeDisplayType RenderingBackendGBM::nativeDisplay()
 {
-    return m_eglDisplay;
+    return m_gbm.device;
 }
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, RenderingBackend::Surface::Client& client)
@@ -100,7 +94,7 @@ RenderingBackendGBM::Surface::~Surface()
         gbm_surface_destroy(m_surface);
 }
 
-EGLSurface RenderingBackendGBM::Surface::eglSurface()
+EGLNativeWindowType RenderingBackendGBM::Surface::nativeWindow()
 {
     return m_surface;
 }
@@ -166,7 +160,7 @@ RenderingBackendGBM::OffscreenSurface::~OffscreenSurface()
     gbm_surface_destroy(m_surface);
 }
 
-EGLSurface RenderingBackendGBM::OffscreenSurface::eglSurface()
+EGLNativeWindowType RenderingBackendGBM::OffscreenSurface::nativeWindow()
 {
     return m_surface;
 }
