@@ -29,24 +29,19 @@
 
 #if WPE_BACKEND(INTEL_CE)
 
+#include <EGL/egl.h>
+
 namespace WPE {
 
 namespace Graphics {
 
-RenderingBackendIntelCE::RenderingBackendIntelCE()
-{
-    m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "RenderingBackendIntelCE: cannot create the EGL display.\n");
-        return;
-    }
-}
+RenderingBackendIntelCE::RenderingBackendIntelCE() = default;
 
 RenderingBackendIntelCE::~RenderingBackendIntelCE() = default;
 
-EGLDisplay RenderingBackendIntelCE::eglDisplay()
+EGLNativeDisplayType RenderingBackendIntelCE::nativeDisplay()
 {
-    return m_eglDisplay;
+    return EGL_DEFAULT_DISPLAY;
 }
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendIntelCE::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
@@ -69,7 +64,7 @@ RenderingBackendIntelCE::Surface::Surface(const RenderingBackendIntelCE&, uint32
 
 RenderingBackendIntelCE::Surface::~Surface() = default;
 
-EGLSurface RenderingBackendIntelCE::Surface::eglSurface()
+EGLNativeWindowType RenderingBackendIntelCE::Surface::nativeWindow()
 {
     return (EGLNativeWindowType)0x7; // GDL_PLANE_ID_UPP_C
 }
@@ -93,7 +88,7 @@ RenderingBackendIntelCE::OffscreenSurface::OffscreenSurface(const RenderingBacke
 
 RenderingBackendIntelCE::OffscreenSurface::~OffscreenSurface() = default;
 
-EGLSurface RenderingBackendIntelCE::OffscreenSurface::eglSurface()
+EGLNativeWindowType RenderingBackendIntelCE::OffscreenSurface::nativeWindow()
 {
     // This will in turn create a pbuffer-based GL context.
     return nullptr;
