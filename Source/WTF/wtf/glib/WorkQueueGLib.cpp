@@ -30,6 +30,7 @@
 
 #include <gio/gio.h>
 #include <string.h>
+#include <wtf/glib/GMutexLocker.h>
 
 namespace WTF {
 
@@ -37,6 +38,12 @@ static const size_t kVisualStudioThreadNameLimit = 31;
 
 void WorkQueue::platformInitialize(const char* name, Type, QOS)
 {
+    g_mutex_init(&m_threadMutex);
+    g_mutex_init(&m_threadInitializationMutex);
+    g_cond_init(&m_threadInitializationCondition);
+
+    WTF::GMutexLocker<GMutex> threadLocker(m_threadMutex);
+
     m_eventContext = adoptGRef(g_main_context_new());
     ASSERT(m_eventContext);
     m_eventLoop = adoptGRef(g_main_loop_new(m_eventContext.get(), FALSE));
@@ -57,6 +64,7 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
     if (strlen(threadName) > kVisualStudioThreadNameLimit)
         threadName += strlen(threadName) - kVisualStudioThreadNameLimit;
 
+    WTF::GMutexLocker<GMutex> threadInitializationLocker(m_threadInitializationMutex);
     GRefPtr<GMainLoop> eventLoop(m_eventLoop.get());
     m_workQueueThread = createThread(threadName, [eventLoop] {
         GMainContext* context = g_main_loop_get_context(eventLoop.get());
@@ -64,28 +72,35 @@ void WorkQueue::platformInitialize(const char* name, Type, QOS)
         g_main_loop_run(eventLoop.get());
         g_main_context_pop_thread_default(context);
     });
+
+    GSourceWrap::OneShot::construct("[WebKit] WorkQueue initialization",
+        [this] {
+            WTF::GMutexLocker<GMutex> locker(m_threadInitializationMutex);
+            g_cond_signal(&m_threadInitializationCondition);
+        }, std::chrono::microseconds(0), G_PRIORITY_DEFAULT, m_eventContext.get());
+    g_cond_wait(&m_threadInitializationCondition, &m_threadInitializationMutex);
 }
 
 void WorkQueue::platformInvalidate()
 {
-    if (m_workQueueThread) {
-        detachThread(m_workQueueThread);
-        m_workQueueThread = 0;
-    }
+    {
+        WTF::GMutexLocker<GMutex> threadLocker(m_threadMutex);
 
-    if (m_eventLoop) {
-        if (g_main_loop_is_running(m_eventLoop.get()))
-            g_main_loop_quit(m_eventLoop.get());
-        else {
-            // The thread hasn't started yet, so schedule a main loop quit to ensure the thread finishes.
-            GMainLoop* eventLoop = m_eventLoop.get();
-            GSourceWrap::OneShot::construct("[WebKit] WorkQueue quit main loop", [eventLoop] { g_main_loop_quit(eventLoop); },
-                std::chrono::microseconds(0), G_PRIORITY_HIGH, m_eventContext.get());
+        if (m_workQueueThread) {
+            detachThread(m_workQueueThread);
+            m_workQueueThread = 0;
         }
+
+        ASSERT(m_eventLoop && g_main_loop_is_running(m_eventLoop.get()));
+        g_main_loop_quit(m_eventLoop.get());
+
         m_eventLoop = nullptr;
+        m_eventContext = nullptr;
     }
 
-    m_eventContext = nullptr;
+    g_mutex_clear(&m_threadMutex);
+    g_mutex_clear(&m_threadInitializationMutex);
+    g_cond_clear(&m_threadInitializationCondition);
 }
 
 void WorkQueue::registerSocketEventHandler(int fileDescriptor, std::function<void ()> function, std::function<void ()> closeFunction)
