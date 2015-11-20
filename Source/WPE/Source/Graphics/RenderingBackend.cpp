@@ -27,6 +27,7 @@
 #include <WPE/Graphics/RenderingBackend.h>
 
 #include "RenderingBackendGBM.h"
+#include <cstdio>
 
 namespace WPE {
 
@@ -34,7 +35,12 @@ namespace Graphics {
 
 std::unique_ptr<RenderingBackend> RenderingBackend::create()
 {
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
     return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
+#endif
+
+    fprintf(stderr, "RenderingBackend: no usable backend found, will crash.\n");
+    return nullptr;
 }
 
 RenderingBackend::~RenderingBackend() = default;
