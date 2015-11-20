@@ -45,7 +45,7 @@ public:
         Surface(const RenderingBackendBCMNexus&, uint32_t, uint32_t, uint32_t,  Client&);
         virtual ~Surface();
 
-        EGLSurface eglSurface() override;
+        EGLNativeWindowType nativeWindow() override;
         void resize(uint32_t, uint32_t) override;
 
         BufferExport lockFrontBuffer() override;
@@ -61,18 +61,17 @@ public:
         OffscreenSurface(const RenderingBackendBCMNexus&);
         virtual ~OffscreenSurface();
 
-        EGLSurface eglSurface() override;
+        EGLNativeWindowType nativeWindow() override;
     };
 
     RenderingBackendBCMNexus();
     virtual ~RenderingBackendBCMNexus();
 
-    EGLDisplay eglDisplay() override;
+    EGLNativeDisplayType nativeDisplay() override;
     std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
     std::unique_ptr<RenderingBackend::OffscreenSurface> createOffscreenSurface() override;
 
 private:
-    EGLDisplay m_eglDisplay;
     NXPL_PlatformHandle m_nxplHandle;
 };
 

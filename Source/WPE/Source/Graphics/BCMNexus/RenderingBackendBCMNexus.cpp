@@ -117,9 +117,9 @@ RenderingBackendBCMNexus::RenderingBackendBCMNexus()
 
 RenderingBackendBCMNexus::~RenderingBackendBCMNexus() = default;
 
-EGLDisplay RenderingBackendBCMNexus::eglDisplay()
+EGLNativeDisplayType RenderingBackendBCMNexus::nativeDisplay()
 {
-    return EGL_NO_DISPLAY;
+    return EGL_DEFAULT_DISPLAY;
 }
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
@@ -146,7 +146,7 @@ RenderingBackendBCMNexus::Surface::Surface(const RenderingBackendBCMNexus&, uint
 
 RenderingBackendBCMNexus::Surface::~Surface() = default;
 
-EGLSurface RenderingBackendBCMNexus::Surface::eglSurface()
+EGLNativeWindowType RenderingBackendBCMNexus::Surface::nativeWindow()
 {
     return m_nativeWindow;
 }
@@ -170,7 +170,7 @@ RenderingBackendBCMNexus::OffscreenSurface::OffscreenSurface(const RenderingBack
 
 RenderingBackendBCMNexus::OffscreenSurface::~OffscreenSurface() = default;
 
-EGLSurface RenderingBackendBCMNexus::OffscreenSurface::eglSurface()
+EGLNativeWindowType RenderingBackendBCMNexus::OffscreenSurface::nativeWindow()
 {
     return nullptr;
 }
