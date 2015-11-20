@@ -27,6 +27,8 @@
 #include "Config.h"
 #include "BufferDataIntelCE.h"
 
+#if WPE_BACKEND(INTEL_CE)
+
 namespace WPE {
 
 namespace Graphics {
@@ -38,3 +40,5 @@ const uint32_t BufferDataIntelCE::magicValue = 0x031be9cf;
 } // namespace Graphics
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(INTEL_CE)
