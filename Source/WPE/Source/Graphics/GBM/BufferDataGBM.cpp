@@ -26,6 +26,8 @@
 #include "Config.h"
 #include "BufferDataGBM.h"
 
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
+
 namespace WPE {
 
 namespace Graphics {
@@ -37,3 +39,5 @@ const uint32_t BufferDataGBM::magicValue = 0x0a31a904;
 } // namespace Graphics
 
 } // namespace WPE
+
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)

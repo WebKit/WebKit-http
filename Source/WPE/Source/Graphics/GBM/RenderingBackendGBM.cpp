@@ -26,7 +26,7 @@
 #include "Config.h"
 #include "RenderingBackendGBM.h"
 
-#if WPE_BACKEND(WAYLAND)
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #include "BufferDataGBM.h"
 #include <cstdio>
@@ -169,4 +169,4 @@ EGLNativeWindowType RenderingBackendGBM::OffscreenSurface::nativeWindow()
 
 } // namespace WPE
 
-#endif // WPE_BACKEND(WAYLAND)
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)

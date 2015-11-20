@@ -26,7 +26,7 @@
 #ifndef WPE_Graphics_BufferDataGBM_h
 #define WPE_Graphics_BufferDataGBM_h
 
-#if WPE_BACKEND(WAYLAND)
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #include <stdint.h>
 
@@ -49,6 +49,6 @@ struct BufferDataGBM {
 
 } // WPE
 
-#endif // WPE_BACKEND(WAYLAND)
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #endif // WPE_Graphics_RenderingBackendGBM_h

@@ -26,7 +26,7 @@
 #ifndef WPE_Graphics_RenderingBackendGBM_h
 #define WPE_Graphics_RenderingBackendGBM_h
 
-#if WPE_BACKEND(WAYLAND)
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 // Included first to set up the EGL platform.
 #include <gbm.h>
@@ -90,6 +90,6 @@ private:
 
 } // WPE
 
-#endif // WPE_BACKEND(WAYLAND)
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #endif // WPE_Graphics_RenderingBackendGBM_h
