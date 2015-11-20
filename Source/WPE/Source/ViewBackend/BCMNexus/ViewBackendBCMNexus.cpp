@@ -83,7 +83,6 @@ void ViewBackendBCMNexus::setClient(Client* client)
 
 uint32_t ViewBackendBCMNexus::constructRenderingTarget(uint32_t width, uint32_t height)
 {
-    fprintf(stderr, "ViewBackendBCMNexus::constructRenderingTarget() (%u,%u)\n", width, height);
     if (m_width != width || m_height != height)
         fprintf(stderr, "ViewBackendBCMNexus: mismatch in buffer parameters during construction.\n");
 
@@ -101,21 +100,6 @@ void ViewBackendBCMNexus::commitBuffer(int, const uint8_t*, size_t)
 void ViewBackendBCMNexus::destroyBuffer(uint32_t)
 {
 }
-
-#if 0
-uint32_t ViewBackendBCMNexus::createBCMNexusElement(int32_t, int32_t)
-{
-    // Hard-code to returning the 0 client ID.
-    return 0;
-}
-
-void ViewBackendNexus::commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t)
-{
-    // Just a pass-through for now -- immediately return a frame completion signal.
-    if (m_client)
-        m_client->frameComplete();
-}
-#endif
 
 void ViewBackendBCMNexus::setInputClient(Input::Client* client)
 {
