@@ -37,7 +37,12 @@ PlatformDisplayWPE::PlatformDisplayWPE()
 {
     m_backend = WPE::Graphics::RenderingBackend::create();
 
-    m_eglDisplay = m_backend->eglDisplay();
+    m_eglDisplay = eglGetDisplay(m_backend->nativeDisplay());
+    if (m_eglDisplay == EGL_NO_DISPLAY) {
+        fprintf(stderr, "PlatformDisplayWPE: could not create the EGL display.\n");
+        return;
+    }
+
     PlatformDisplay::initializeEGLDisplay();
 }
 
@@ -60,7 +65,7 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
     auto contextData = std::make_unique<OffscreenContextData>();
     contextData->surface = m_backend->createOffscreenSurface();
 
-    return GLContextEGL::createWindowContext(contextData->surface->eglSurface(), sharingContext, WTF::move(contextData));
+    return GLContextEGL::createWindowContext(contextData->surface->nativeWindow(), sharingContext, WTF::move(contextData));
 }
 
 PlatformDisplayWPE::Surface::Surface(const PlatformDisplayWPE& display, const IntSize& size, Client& client)
@@ -75,7 +80,7 @@ void PlatformDisplayWPE::Surface::resize(const IntSize& size)
 
 std::unique_ptr<GLContextEGL> PlatformDisplayWPE::Surface::createGLContext() const
 {
-    return GLContextEGL::createWindowContext(m_backend->eglSurface(), GLContext::sharingContext());
+    return GLContextEGL::createWindowContext(m_backend->nativeWindow(), GLContext::sharingContext());
 }
 
 PlatformDisplayWPE::BufferExport PlatformDisplayWPE::Surface::lockFrontBuffer()
