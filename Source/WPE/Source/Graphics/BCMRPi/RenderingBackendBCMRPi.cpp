@@ -29,24 +29,19 @@
 
 #if WPE_BACKEND(BCM_RPI)
 
+#include <EGL/egl.h>
+
 namespace WPE {
 
 namespace Graphics {
 
-RenderingBackendBCMRPi::RenderingBackendBCMRPi()
-{
-    m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "RenderingBackendBCMRPi: cannot create the EGL display.\n");
-        return;
-    }
-}
+RenderingBackendBCMRPi::RenderingBackendBCMRPi() = default;
 
 RenderingBackendBCMRPi::~RenderingBackendBCMRPi() = default;
 
-EGLDisplay RenderingBackendBCMRPi::eglDisplay()
+EGLNativeDisplayType RenderingBackendBCMRPi::nativeDisplay()
 {
-    return m_eglDisplay;
+    return EGL_DEFAULT_DISPLAY;
 }
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMRPi::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
@@ -73,7 +68,7 @@ RenderingBackendBCMRPi::Surface::Surface(const RenderingBackendBCMRPi&, uint32_t
 
 RenderingBackendBCMRPi::Surface::~Surface() = default;
 
-EGLSurface RenderingBackendBCMRPi::Surface::eglSurface()
+EGLNativeWindowType RenderingBackendBCMRPi::Surface::nativeWindow()
 {
     return &m_nativeWindow;
 }
@@ -97,7 +92,7 @@ RenderingBackendBCMRPi::OffscreenSurface::OffscreenSurface(const RenderingBacken
 
 RenderingBackendBCMRPi::OffscreenSurface::~OffscreenSurface() = default;
 
-EGLSurface RenderingBackendBCMRPi::OffscreenSurface::eglSurface()
+EGLNativeWindowType RenderingBackendBCMRPi::OffscreenSurface::nativeWindow()
 {
     // This will in turn create a pbuffer-based GL context.
     return nullptr;
