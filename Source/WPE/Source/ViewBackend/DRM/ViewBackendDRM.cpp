@@ -242,6 +242,12 @@ void ViewBackendDRM::setClient(Client* client)
     client->setSize(m_drm.size.first, m_drm.size.second);
 }
 
+uint32_t ViewBackendDRM::constructRenderingTarget(uint32_t, uint32_t)
+{
+    // This is for now meaningless for this ViewBackend.
+    return 0;
+}
+
 void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     if (!data || size != sizeof(Graphics::BufferDataGBM)) {

@@ -262,8 +262,7 @@ GLContext* ThreadedCompositor::glContext()
 
     IntSize size(viewportController()->visibleContentsRect().size());
     uint32_t targetHandle = m_compositingManager.constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
-    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay())
-        .createSurface(IntSize(viewportController()->visibleContentsRect().size()), targetHandle, *this);
+    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(size, targetHandle, *this);
     if (!m_surface)
         return nullptr;
 

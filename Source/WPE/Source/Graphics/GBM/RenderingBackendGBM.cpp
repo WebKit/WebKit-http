@@ -66,8 +66,12 @@ EGLNativeDisplayType RenderingBackendGBM::nativeDisplay()
     return m_gbm.device;
 }
 
-std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, RenderingBackend::Surface::Client& client)
+std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
+    // targetHandle is expected to be 0.
+    if (targetHandle)
+        fprintf(stderr, "RenderingBackendGBM: creating rendering surface for an unexpected target.\n");
+
     return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, client));
 }
 

@@ -73,7 +73,7 @@ public:
     virtual ~RenderingBackendGBM();
 
     EGLNativeDisplayType nativeDisplay() override;
-    std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
+    std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
     std::unique_ptr<RenderingBackend::OffscreenSurface> createOffscreenSurface() override;
 
 private:

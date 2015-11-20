@@ -52,7 +52,7 @@ public:
     public:
         using Client = WPE::Graphics::RenderingBackend::Surface::Client;
 
-        Surface(const PlatformDisplayWPE&, const IntSize&, uint32_t targetHandle, Client&);
+        Surface(const PlatformDisplayWPE&, const IntSize&, uint32_t, Client&);
 
         void resize(const IntSize&);
         std::unique_ptr<GLContextEGL> createGLContext() const;
