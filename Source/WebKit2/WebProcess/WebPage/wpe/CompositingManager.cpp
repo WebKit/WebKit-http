@@ -51,6 +51,14 @@ void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& run
         Messages::CompositingManagerProxy::EstablishConnection::Reply(), webPage.pageID());
 }
 
+uint32_t CompositingManager::constructRenderingTarget(uint32_t width, uint32_t height)
+{
+    uint32_t handle = 0;
+    m_connection->sendSync(Messages::CompositingManagerProxy::ConstructRenderingTarget(width, height),
+        Messages::CompositingManagerProxy::ConstructRenderingTarget::Reply(handle), 0);
+    return handle;
+}
+
 void CompositingManager::commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport& bufferExport)
 {
     m_connection->send(Messages::CompositingManagerProxy::CommitBuffer(

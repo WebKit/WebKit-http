@@ -64,6 +64,7 @@ private:
 
     void establishConnection(IPC::Attachment);
 
+    void constructRenderingTarget(uint32_t, uint32_t, uint32_t& handle);
     void commitBuffer(const IPC::Attachment&, const IPC::DataReference&);
     void destroyBuffer(uint32_t);
 

@@ -67,7 +67,7 @@ public:
     virtual ~RenderingBackend();
 
     virtual EGLNativeDisplayType nativeDisplay() = 0;
-    virtual std::unique_ptr<Surface> createSurface(uint32_t, uint32_t, Surface::Client&) = 0;
+    virtual std::unique_ptr<Surface> createSurface(uint32_t, uint32_t, uint32_t, Surface::Client&) = 0;
     virtual std::unique_ptr<OffscreenSurface> createOffscreenSurface() = 0;
 };
 
