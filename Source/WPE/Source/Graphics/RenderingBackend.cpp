@@ -30,6 +30,7 @@
 #include "RenderingBackendBCMRPi.h"
 #include "RenderingBackendGBM.h"
 #include "RenderingBackendIntelCE.h"
+#include <cstdio>
 
 namespace WPE {
 
@@ -53,6 +54,7 @@ std::unique_ptr<RenderingBackend> RenderingBackend::create()
     return std::unique_ptr<RenderingBackendIntelCE>(new RenderingBackendIntelCE);
 #endif
 
+    fprintf(stderr, "RenderingBackend: no usable backend found, will crash.\n");
     return nullptr;
 }
 
