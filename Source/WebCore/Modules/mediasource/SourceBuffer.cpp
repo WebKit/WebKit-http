@@ -902,16 +902,72 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes%s", this, initialBufferedSize - extraMemoryCost(), m_bufferFull ? "" : " but FAILED to free enough");
 }
 
+size_t SourceBuffer::maxBufferSizeVideo = 0;
+size_t SourceBuffer::maxBufferSizeAudio = 0;
+size_t SourceBuffer::maxBufferSizeText = 0;
+
+static void maximumBufferSizeDefaults(size_t& maxBufferSizeVideo, size_t& maxBufferSizeAudio, size_t& maxBufferSizeText)
+{
+    // Syntax: Case insensitive, full type (audio, video, text), compact type (a, v, t),
+    //         wildcard (*), unit multipliers (M=Mb, K=Kb, <empty>=bytes).
+    // Examples: MSE_MAX_BUFFER_SIZE='V:50M,audio:12k,TeXT:500K'
+    //           MSE_MAX_BUFFER_SIZE='*:100M'
+    //           MSE_MAX_BUFFER_SIZE='video:90M,T:100000'
+
+    String s(getenv("MSE_MAX_BUFFER_SIZE"));
+    if (!s.isEmpty()) {
+        Vector<String> entries;
+        s.split(',', false, entries);
+        for (const String& entry : entries) {
+            Vector<String> keyvalue;
+            entry.split(':', false, keyvalue);
+            if (keyvalue.size() != 2)
+                continue;
+            String key = keyvalue[0].stripWhiteSpace().lower();
+            String value = keyvalue[1].stripWhiteSpace().lower();
+            size_t units = 1;
+            if (value.endsWith('k'))
+                units = 1024;
+            else if (value.endsWith('m'))
+                units = 1024 * 1024;
+            if (units != 1)
+                value = value.substring(0, value.length()-1);
+            bool ok = false;
+            size_t size = size_t(value.toUInt64(&ok));
+            if (!ok)
+                continue;
+
+            if (key == "a" || key == "audio" || key == "*")
+                maxBufferSizeAudio = size * units;
+            if (key == "v" || key == "video" || key == "*")
+                maxBufferSizeVideo = size * units;
+            if (key == "t" || key == "text" || key == "*")
+                maxBufferSizeText = size * units;
+        }
+    }
+
+    if (maxBufferSizeAudio == 0)
+        maxBufferSizeAudio = 10 * 1024 * 1024;
+    if (maxBufferSizeVideo == 0)
+        maxBufferSizeVideo = 100 * 1024 * 1024;
+    if (maxBufferSizeText == 0)
+        maxBufferSizeText = 1 * 1024 * 1024;
+}
+
 size_t SourceBuffer::maximumBufferSize() const
 {
     if (isRemoved())
         return 0;
 
-    if (m_videoTracks && m_videoTracks->length() > 0)
-        return 100 * 1024 * 1024;
+    if (!maxBufferSizeVideo)
+        maximumBufferSizeDefaults(maxBufferSizeVideo, maxBufferSizeAudio, maxBufferSizeText);
+
+    if (m_videoTracks && m_videoTracks->length() > 0) {
+        return maxBufferSizeVideo;
+    }
     if (m_audioTracks && m_audioTracks->length() > 0)
-        return 10 * 1024 * 1024;
-    return 1 * 1024 * 1024;
+        return maxBufferSizeAudio;
+    return maxBufferSizeText;
 }
 
 const AtomicString& SourceBuffer::decodeError()

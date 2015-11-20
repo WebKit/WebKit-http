@@ -248,6 +248,10 @@ private:
     bool m_bufferFull;
     bool m_shouldGenerateTimestamps;
     mutable bool m_shouldRecalculateBuffered;
+
+    static size_t maxBufferSizeVideo;
+    static size_t maxBufferSizeAudio;
+    static size_t maxBufferSizeText;
 };
 
 } // namespace WebCore
