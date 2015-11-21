@@ -29,6 +29,7 @@
 #if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #include "BufferDataGBM.h"
+#include <cassert>
 #include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
@@ -133,7 +134,7 @@ RenderingBackend::BufferExport RenderingBackendGBM::Surface::lockFrontBuffer()
     if (data) {
         std::pair<uint32_t, uint32_t> storedSize{ data->width, data->height };
         if (m_size == storedSize)
-            return { -1, reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+            return RenderingBackend::BufferExport{ -1, reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
 
         delete data;
     }
@@ -141,7 +142,7 @@ RenderingBackend::BufferExport RenderingBackendGBM::Surface::lockFrontBuffer()
     data = new BufferDataGBM{ handle, m_size.first, m_size.second, gbm_bo_get_stride(bo), gbm_bo_get_format(bo), BufferDataGBM::magicValue };
     gbm_bo_set_user_data(bo, data, &destroyBOData);
 
-    return { gbm_bo_get_fd(bo), reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+    return RenderingBackend::BufferExport{ gbm_bo_get_fd(bo), reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
 }
 
 void RenderingBackendGBM::Surface::releaseBuffer(uint32_t handle)
