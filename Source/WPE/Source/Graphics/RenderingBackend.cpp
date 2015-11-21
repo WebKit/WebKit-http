@@ -24,7 +24,6 @@
  */
 
 #include "Config.h"
-#include <WPE/Graphics/RenderingBackend.h>
 
 #include "RenderingBackendGBM.h"
 #include <cstdio>
