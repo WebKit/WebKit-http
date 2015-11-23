@@ -24,43 +24,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "BCMRPiSurface.h"
+#include "Config.h"
+#include "BufferDataBCMNexus.h"
 
-#if PLATFORM(BCM_RPI)
+#if WPE_BACKEND(BCM_NEXUS)
 
-#include "GLContextEGL.h"
-#include "IntSize.h"
+namespace WPE {
 
-namespace WebCore {
+namespace Graphics {
 
-BCMRPiSurface::BCMRPiSurface(const IntSize& size, uint32_t elementHandle)
-{
-    m_nativeWindow.element = elementHandle;
-    m_nativeWindow.width = size.width();
-    m_nativeWindow.height = size.height();
-}
+static_assert(sizeof(BufferDataBCMNexus) == 16, "BufferDataBCMNexus is of expected size");
 
-std::unique_ptr<GLContext> BCMRPiSurface::createGLContext()
-{
-    return GLContextEGL::createWindowContext(&m_nativeWindow, GLContext::sharingContext());
-}
+const uint32_t BufferDataBCMNexus::magicValue = 0x0e32f94e;
 
-void BCMRPiSurface::resize(const IntSize& size)
-{
-    m_nativeWindow.width = size.width();
-    m_nativeWindow.height = size.height();
-}
+} // namespace Graphics
 
-BCMRPiSurface::BCMBufferExport BCMRPiSurface::lockFrontBuffer()
-{
-    return BCMBufferExport{ m_nativeWindow.element, m_nativeWindow.width, m_nativeWindow.height };
-}
+} // namespace WPE
 
-void BCMRPiSurface::releaseBuffer(uint32_t)
-{
-}
-
-} // namespace WebCore
-
-#endif // PLATFORM(BCM_RPI)
+#endif // WPE_BACKEND(BCM_NEXUS)

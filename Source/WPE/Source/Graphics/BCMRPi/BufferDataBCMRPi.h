@@ -24,32 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "PlatformDisplayBCMRPi.h"
+#ifndef WPE_Graphics_BufferDataBCMRPi_h
+#define WPE_Graphics_BufferDataBCMRPi_h
 
-#if PLATFORM(BCM_RPI)
+#if WPE_BACKEND(BCM_RPI)
 
-#include <EGL/egl.h>
-#include "IntSize.h"
+#include <stdint.h>
 
-namespace WebCore {
+namespace WPE {
 
-PlatformDisplayBCMRPi::PlatformDisplayBCMRPi()
-{
-    m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "PlatformDisplayBCMRPi: could not create the EGL display\n");
-        return;
-    }
+namespace Graphics {
 
-    PlatformDisplay::initializeEGLDisplay();
-}
+struct BufferDataBCMRPi {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t magic;
 
-std::unique_ptr<BCMRPiSurface> PlatformDisplayBCMRPi::createSurface(const IntSize& size, uint32_t elementHandle)
-{
-    return std::make_unique<BCMRPiSurface>(size, elementHandle);
-}
+    static const uint32_t magicValue;
+};
 
-} // namespace WebCore
+} // Graphics
 
-#endif // PLATFORM(BCM_RPI)
+} // WPE
+
+#endif // WPE_BACKEND(BCM_RPI)
+
+#endif // WPE_Graphics_RenderingBackendBCMRPi_h

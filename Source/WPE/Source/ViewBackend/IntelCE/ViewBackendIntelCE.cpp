@@ -118,15 +118,19 @@ void ViewBackendIntelCE::setClient(Client* client)
         m_client->setSize(m_width, m_height);
 }
 
-uint32_t ViewBackendIntelCE::createIntelCEElement(int32_t width, int32_t height)
+uint32_t ViewBackendIntelCE::constructRenderingTarget(uint32_t, uint32_t)
 {
     return 0;
 }
 
-void ViewBackendIntelCE::commitIntelCEBuffer(uint32_t elementHandle, uint32_t width, uint32_t height)
+void ViewBackendIntelCE::commitBuffer(int, const uint8_t*, size_t)
 {
     if (m_client)
         m_client->frameComplete();
+}
+
+void ViewBackendIntelCE::destroyBuffer(uint32_t)
+{
 }
 
 void ViewBackendIntelCE::setInputClient(Input::Client* client)

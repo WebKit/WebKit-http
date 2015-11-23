@@ -24,13 +24,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "PlatformDisplayBCMNexus.h"
+#include "Config.h"
+#include "RenderingBackendBCMNexus.h"
 
-#if PLATFORM(BCM_NEXUS)
+#if WPE_BACKEND(BCM_NEXUS)
 
-#include "IntSize.h"
-#include <EGL/egl.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -41,8 +39,11 @@
 #include <refsw/nexus_display.h>
 #include <refsw/nexus_core_utils.h>
 #include <refsw/default_nexus.h>
+#include <tuple>
 
-namespace WebCore {
+namespace WPE {
+
+namespace Graphics {
 
 using FormatTuple = std::tuple<const char*, NEXUS_VideoFormat>;
 static const std::array<FormatTuple, 9> s_formatTable = {
@@ -57,7 +58,7 @@ static const std::array<FormatTuple, 9> s_formatTable = {
    FormatTuple{ "1080p60Hz", NEXUS_VideoFormat_e1080p60hz },
 };
 
-PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
+RenderingBackendBCMNexus::RenderingBackendBCMNexus()
 {
     const char* format = std::getenv("WPE_NEXUS_FORMAT");
     if (!format)
@@ -72,7 +73,7 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
 
     NEXUS_Error err = NEXUS_Platform_Init(&platformSettings);
     if (err != NEXUS_SUCCESS) {
-        fprintf(stderr, "PlatformDisplayBCMNexus: Failed to initialize.\n");
+        fprintf(stderr, "RenderingBackendBCMNexus: Failed to initialize.\n");
         return;
     }
 
@@ -80,7 +81,7 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
     NEXUS_Display_GetDefaultSettings(&displaySettings);
     NEXUS_DisplayHandle displayHandle = NEXUS_Display_Open(0, &displaySettings);
     if (!displayHandle) {
-        fprintf(stderr, "PlatformDisplayBCMNexus: Failed to open the display.\n");
+        fprintf(stderr, "RenderingBackendBCMNexus: Failed to open the display.\n");
         return;
     }
 
@@ -102,7 +103,7 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
         NEXUS_HdmiOutput_GetStatus(platformConfiguration.outputs.hdmi[0], &hdmiStatus);
         if (hdmiStatus.connected) {
             if (!hdmiStatus.videoFormatSupported[std::get<1>(selectedFormat)]) {
-                fprintf(stderr, "PlatformDisplayBCMNexus: Requested format '%s' is not supported, issues possible.\n",
+                fprintf(stderr, "RenderingBackendBCMNexus: Requested format '%s' is not supported, issues possible.\n",
                     std::get<0>(selectedFormat));
                 displaySettings.format = hdmiStatus.preferredVideoFormat;
             } else
@@ -112,28 +113,70 @@ PlatformDisplayBCMNexus::PlatformDisplayBCMNexus()
 
     NEXUS_Display_SetSettings(displayHandle, &displaySettings);
     NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, displayHandle);
-
-    m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (m_eglDisplay == EGL_NO_DISPLAY) {
-        fprintf(stderr, "PlatformDisplayBCMNexus: could not create the EGL display\n");
-        return;
-    }
-
-    PlatformDisplay::initializeEGLDisplay();
 }
 
-PlatformDisplayBCMNexus::~PlatformDisplayBCMNexus()
+RenderingBackendBCMNexus::~RenderingBackendBCMNexus() = default;
+
+EGLNativeDisplayType RenderingBackendBCMNexus::nativeDisplay()
 {
-    if (m_nxplHandle)
-        NXPL_UnregisterNexusDisplayPlatform(m_nxplHandle);
-    m_nxplHandle = nullptr;
+    return EGL_DEFAULT_DISPLAY;
 }
 
-std::unique_ptr<BCMNexusSurface> PlatformDisplayBCMNexus::createSurface(const IntSize& size, uintptr_t handle)
+std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
-    return std::make_unique<BCMNexusSurface>(size, handle);
+    return std::unique_ptr<RenderingBackendBCMNexus::Surface>(new RenderingBackendBCMNexus::Surface(*this, width, height, targetHandle, client));
 }
 
-} // namespace WebCore
+std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexus::createOffscreenSurface()
+{
+    return std::unique_ptr<RenderingBackendBCMNexus::OffscreenSurface>(new RenderingBackendBCMNexus::OffscreenSurface(*this));
+}
 
-#endif // PLATFORM(BCM_NEXUS)
+RenderingBackendBCMNexus::Surface::Surface(const RenderingBackendBCMNexus&, uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client&)
+{
+    NXPL_NativeWindowInfo windowInfo;
+    windowInfo.x = 0;
+    windowInfo.y = 0;
+    windowInfo.width = width;
+    windowInfo.height = height;
+    windowInfo.stretch = false;
+    windowInfo.clientID = targetHandle;
+    m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
+}
+
+RenderingBackendBCMNexus::Surface::~Surface() = default;
+
+EGLNativeWindowType RenderingBackendBCMNexus::Surface::nativeWindow()
+{
+    return m_nativeWindow;
+}
+
+void RenderingBackendBCMNexus::Surface::resize(uint32_t, uint32_t)
+{
+}
+
+RenderingBackend::BufferExport RenderingBackendBCMNexus::Surface::lockFrontBuffer()
+{
+    return std::make_tuple( -1, reinterpret_cast<uint8_t*>(&m_bufferData), sizeof(BufferDataBCMNexus) );
+}
+
+void RenderingBackendBCMNexus::Surface::releaseBuffer(uint32_t)
+{
+}
+
+RenderingBackendBCMNexus::OffscreenSurface::OffscreenSurface(const RenderingBackendBCMNexus&)
+{
+}
+
+RenderingBackendBCMNexus::OffscreenSurface::~OffscreenSurface() = default;
+
+EGLNativeWindowType RenderingBackendBCMNexus::OffscreenSurface::nativeWindow()
+{
+    return nullptr;
+}
+
+} // namespace Graphics
+
+} // namespace WPE
+
+#endif // WPE_BACKEND(BCM_NEXUS)

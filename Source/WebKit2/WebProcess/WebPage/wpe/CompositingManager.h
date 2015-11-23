@@ -28,22 +28,7 @@
 
 #include "Connection.h"
 #include "MessageReceiver.h"
-
-#if PLATFORM(GBM)
-#include <WebCore/PlatformDisplayGBM.h>
-#endif
-
-#if PLATFORM(BCM_RPI)
-#include <WebCore/PlatformDisplayBCMRPi.h>
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-#include <WebCore/PlatformDisplayBCMNexus.h>
-#endif
-
-#if PLATFORM(INTEL_CE)
-#include <WebCore/PlatformDisplayIntelCE.h>
-#endif
+#include <WebCore/PlatformDisplayWPE.h>
 
 namespace WebKit {
 
@@ -61,26 +46,9 @@ public:
 
     void establishConnection(WebPage&, WTF::RunLoop&);
 
-#if PLATFORM(GBM)
-    void commitPrimeBuffer(const WebCore::PlatformDisplayGBM::GBMBufferExport&);
-    void destroyPrimeBuffer(uint32_t);
-#endif
-
-#if PLATFORM(BCM_RPI)
-    uint32_t createBCMElement(int32_t width, int32_t height);
-    void commitBCMBuffer(const WebCore::PlatformDisplayBCMRPi::BCMBufferExport&);
-    // void destroyBCMBuffer(...);
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-    uint32_t createBCMNexusElement(int32_t width, int32_t height);
-    void commitBCMNexusBuffer(const WebCore::PlatformDisplayBCMNexus::BufferExport&);
-#endif
-
-#if PLATFORM(INTEL_CE)
-    uint32_t createIntelCEElement(int32_t width, int32_t height);
-    void commitIntelCEBuffer(const WebCore::PlatformDisplayIntelCE::BufferExport&);
-#endif
+    uint32_t constructRenderingTarget(uint32_t, uint32_t);
+    void commitBuffer(const WebCore::PlatformDisplayWPE::BufferExport&);
+    void destroyBuffer(uint32_t);
 
     CompositingManager(const CompositingManager&) = delete;
     CompositingManager& operator=(const CompositingManager&) = delete;

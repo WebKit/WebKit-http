@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,36 +23,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformDisplayIntelCE_h
-#define PlatformDisplayIntelCE_h
+#ifndef WPE_ViewBackend_ViewBackendBCMNexus_h
+#define WPE_ViewBackend_ViewBackendBCMNexus_h
 
-#if PLATFORM(INTEL_CE)
+#if WPE_BACKEND(BCM_NEXUS)
 
-#include "PlatformDisplay.h"
+#include <WPE/ViewBackend/ViewBackend.h>
 
-#include "IntelCESurface.h"
+namespace WPE {
 
-namespace WebCore {
+namespace ViewBackend {
 
-class IntSize;
-
-class PlatformDisplayIntelCE final : public PlatformDisplay {
+class ViewBackendBCMNexus final : public ViewBackend {
 public:
-    PlatformDisplayIntelCE();
-    virtual ~PlatformDisplayIntelCE() = default;
+    ViewBackendBCMNexus();
+    virtual ~ViewBackendBCMNexus();
 
-    std::unique_ptr<IntelCESurface> createSurface(const IntSize&, uint32_t elementHandle);
+    void setClient(Client*) override;
+    uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
+    void commitBuffer(int, const uint8_t*, size_t) override;
+    void destroyBuffer(uint32_t) override;
 
-    using BufferExport = IntelCESurface::BufferExport;
+    void setInputClient(Input::Client*) override;
 
 private:
-    Type type() const override { return PlatformDisplay::Type::IntelCE; }
+    Client* m_client;
+
+    uint32_t m_width;
+    uint32_t m_height;
 };
 
-} // namespace WebCore
+} // namespace ViewBackend
 
-SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayIntelCE, IntelCE)
+} // namespace WPE
 
-#endif // PLATFORM(INTEL_CE)
+#endif // WPE_BACKEND(BCM_NEXUS)
 
-#endif // PlatformDisplayIntelCE_h
+#endif // WPE_ViewBackend_ViewBackendBCMNexus_h

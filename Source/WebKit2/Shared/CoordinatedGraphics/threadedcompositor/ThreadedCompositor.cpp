@@ -29,7 +29,7 @@
 #include "ThreadedCompositor.h"
 
 #include <WebCore/GLContextEGL.h>
-#include <WebCore/PlatformDisplayGBM.h>
+#include <WebCore/PlatformDisplayWPE.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>
 #include <cstdlib>
@@ -166,7 +166,7 @@ void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
     RefPtr<ThreadedCompositor> protector(this);
     callOnCompositingThread([=] {
-#if PLATFORM(BCM_RPI)
+#if PLATFORM(WPE)
         if (protector->m_surface)
             protector->m_surface->resize(size);
 #endif
@@ -226,11 +226,11 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
 void ThreadedCompositor::destroyBuffer(uint32_t handle)
 {
-    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    m_compositingManager.destroyPrimeBuffer(handle);
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    m_compositingManager.destroyBuffer(handle);
 }
 #endif
 
@@ -257,48 +257,12 @@ GLContext* ThreadedCompositor::glContext()
     if (m_context)
         return m_context.get();
 
-#if PLATFORM(GBM)
-    RELEASE_ASSERT(is<PlatformDisplayGBM>(PlatformDisplay::sharedDisplay()));
-    m_surface = GBMSurface::create(IntSize(viewportController()->visibleContentsRect().size()), *this);
-    if (!m_surface)
-        return 0;
-
-    setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
-#endif
-
-#if PLATFORM(BCM_RPI)
-    RELEASE_ASSERT(is<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()));
+#if PLATFORM(WPE)
+    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
 
     IntSize size(viewportController()->visibleContentsRect().size());
-    m_surface = downcast<PlatformDisplayBCMRPi>(PlatformDisplay::sharedDisplay()).createSurface(size,
-        m_compositingManager.createBCMElement(size.width(), size.height()));
-    if (!m_surface)
-        return nullptr;
-
-    setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-    RELEASE_ASSERT(is<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()));
-
-    IntSize size(viewportController()->visibleContentsRect().size());
-    m_surface = downcast<PlatformDisplayBCMNexus>(PlatformDisplay::sharedDisplay()).createSurface(size,
-        m_compositingManager.createBCMNexusElement(size.width(), size.height()));
-    if (!m_surface)
-        return nullptr;
-
-    setNativeSurfaceHandleForCompositing(0);
-    m_context = m_surface->createGLContext();
-#endif
-
-#if PLATFORM(INTEL_CE)
-    RELEASE_ASSERT(is<PlatformDisplayIntelCE>(PlatformDisplay::sharedDisplay()));
-
-    IntSize size(viewportController()->visibleContentsRect().size());
-    m_surface = downcast<PlatformDisplayIntelCE>(PlatformDisplay::sharedDisplay()).createSurface(size,
-        m_compositingManager.createIntelCEElement(size.width(), size.height()));
+    uint32_t targetHandle = m_compositingManager.constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
+    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(size, targetHandle, *this);
     if (!m_surface)
         return nullptr;
 
@@ -343,26 +307,11 @@ void ThreadedCompositor::renderLayerTree()
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
 
-#if PLATFORM(BCM_RPI)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitBCMBuffer(bufferExport);
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitBCMNexusBuffer(bufferExport);
-#endif
-
-#if PLATFORM(INTEL_CE)
-    auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitIntelCEBuffer(bufferExport);
-#endif
-
     glContext()->swapBuffers();
 
-#if PLATFORM(GBM)
+#if PLATFORM(WPE)
     auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitPrimeBuffer(bufferExport);
+    m_compositingManager.commitBuffer(bufferExport);
 #endif
 }
 
@@ -524,10 +473,7 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
     RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-#if PLATFORM(GBM)
-    m_surface->releaseBuffer(handle);
-#endif
-#if PLATFORM(BCM_RPI)
+#if PLATFORM(WPE)
     m_surface->releaseBuffer(handle);
 #endif
 }

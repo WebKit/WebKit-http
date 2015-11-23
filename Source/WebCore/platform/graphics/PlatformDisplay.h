@@ -48,20 +48,11 @@ public:
 #if PLATFORM(WAYLAND)
         Wayland,
 #endif
-#if PLATFORM(GBM)
-        GBM,
-#endif
-#if PLATFORM(BCM_RPI)
-        BCMRPi,
-#endif
-#if PLATFORM(BCM_NEXUS)
-        BCMNexus,
-#endif
-#if PLATFORM(INTEL_CE)
-        IntelCE,
-#endif
 #if PLATFORM(WIN)
         Windows,
+#endif
+#if PLATFORM(WPE)
+        WPE,
 #endif
     };
 

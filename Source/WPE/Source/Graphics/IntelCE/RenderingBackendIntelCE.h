@@ -24,35 +24,55 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef WPE_Graphics_RenderingBackendIntelCE_h
+#define WPE_Graphics_RenderingBackendIntelCE_h
+
 #if WPE_BACKEND(INTEL_CE)
 
-#include <WPE/ViewBackend/ViewBackend.h>
+#include "BufferDataIntelCE.h"
+#include <WPE/Graphics/RenderingBackend.h>
 
 namespace WPE {
 
-namespace ViewBackend {
+namespace Graphics {
 
-class ViewBackendIntelCE final : public ViewBackend {
+class RenderingBackendIntelCE final : public RenderingBackend {
 public:
-    ViewBackendIntelCE();
-    virtual ~ViewBackendIntelCE();
+    class Surface final : public RenderingBackend::Surface {
+    public:
+        Surface(const RenderingBackendIntelCE&, uint32_t, uint32_t, uint32_t, Client&);
+        WPE_EXPORT virtual ~Surface();
 
-    void setClient(Client*) override;
-    uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
-    void commitBuffer(int, const uint8_t*, size_t) override;
-    void destroyBuffer(uint32_t) override;
+        EGLNativeWindowType nativeWindow() override;
+        void resize(uint32_t, uint32_t) override;
 
-    void setInputClient(Input::Client*) override;
+        BufferExport lockFrontBuffer() override;
+        void releaseBuffer(uint32_t) override;
 
-private:
-    Client* m_client;
+    private:
+        BufferDataIntelCE m_bufferData;
+    };
 
-    uint32_t m_width;
-    uint32_t m_height;
+    class OffscreenSurface final : public RenderingBackend::OffscreenSurface {
+    public:
+        OffscreenSurface(const RenderingBackendIntelCE&);
+        virtual ~OffscreenSurface();
+
+        EGLNativeWindowType nativeWindow() override;
+    };
+
+    RenderingBackendIntelCE();
+    virtual ~RenderingBackendIntelCE();
+
+    EGLNativeDisplayType nativeDisplay() override;
+    std::unique_ptr<RenderingBackend::Surface> createSurface(uint32_t, uint32_t, uint32_t, RenderingBackend::Surface::Client&) override;
+    std::unique_ptr<RenderingBackend::OffscreenSurface> createOffscreenSurface() override;
 };
 
-} // namespace ViewBackend
+} // namespace Graphics
 
 } // namespace WPE
 
 #endif // WPE_BACKEND(INTEL_CE)
+
+#endif // WPE_Graphics_RenderingBackendIntelCE_h

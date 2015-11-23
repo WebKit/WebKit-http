@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015 Igalia S.L.
  * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,40 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_ViewBackend_ViewBackendNexus_h
-#define WPE_ViewBackend_ViewBackendNexus_h
+#ifndef WPE_Graphics_BufferDataBCMNexus_h
+#define WPE_Graphics_BufferDataBCMNexus_h
 
 #if WPE_BACKEND(BCM_NEXUS)
 
-#include <WPE/ViewBackend/ViewBackend.h>
+#include <stdint.h>
 
 namespace WPE {
 
-namespace ViewBackend {
+namespace Graphics {
 
-class ViewBackendNexus final : public ViewBackend {
-public:
-    ViewBackendNexus();
-    virtual ~ViewBackendNexus();
+struct BufferDataBCMNexus {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t magic;
 
-    void setClient(Client*) override;
-    uint32_t createBCMNexusElement(int32_t width, int32_t height) override;
-    void commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
-
-    void setInputClient(Input::Client*) override;
-
-private:
-    Client* m_client;
-
-    uint32_t m_width;
-    uint32_t m_height;
+    static const uint32_t magicValue;
 };
 
-} // namespace ViewBackend
+} // Graphics
 
-} // namespace WPE
+} // WPE
 
+#endif // WPE_BACKEND(BCM_NEXUS)
 
-#endif // WPE_BACKEND(NEXUS)
-
-#endif // WPE_ViewBackend_ViewBackendNexus_h
+#endif // WPE_Graphics_RenderingBackendBCMNexus_h

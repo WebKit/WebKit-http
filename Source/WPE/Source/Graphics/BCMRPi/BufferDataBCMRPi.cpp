@@ -24,37 +24,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BCMRPiSurface_h
-#define BCMRPiSurface_h
+#include "Config.h"
+#include "BufferDataBCMRPi.h"
 
-#if PLATFORM(BCM_RPI)
+namespace WPE {
 
-#include <EGL/egl.h>
-#include <tuple>
+namespace Graphics {
 
-namespace WebCore {
+static_assert(sizeof(BufferDataBCMRPi) == 16, "BufferDataBCMRPi is of expected size");
 
-class GLContext;
-class IntSize;
+const uint32_t BufferDataBCMRPi::magicValue = 0x04895d9d;
 
-class BCMRPiSurface {
-public:
-    BCMRPiSurface(const IntSize&, uint32_t);
+} // namespace Graphics
 
-    std::unique_ptr<GLContext> createGLContext();
-
-    void resize(const IntSize&);
-
-    using BCMBufferExport = std::tuple<uint32_t, uint32_t, uint32_t>;
-    BCMBufferExport lockFrontBuffer();
-    void releaseBuffer(uint32_t);
-
-private:
-    EGL_DISPMANX_WINDOW_T m_nativeWindow;
-};
-
-} // namespace WebCore
-
-#endif // PLATFORM(BCM_RPI)
-
-#endif // BCMRPiSurface_h
+} // namespace WPE

@@ -54,8 +54,9 @@ public:
     virtual ~ViewBackendWayland();
 
     void setClient(Client* client) override;
-    void commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format) override;
-    void destroyPrimeBuffer(uint32_t handle) override;
+    uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
+    void commitBuffer(int, const uint8_t* data, size_t size) override;
+    void destroyBuffer(uint32_t handle) override;
 
     void setInputClient(Input::Client*) override;
 

@@ -28,6 +28,7 @@
 
 #if WPE_BACKEND(DRM)
 
+#include "BufferDataGBM.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
@@ -241,13 +242,33 @@ void ViewBackendDRM::setClient(Client* client)
     client->setSize(m_drm.size.first, m_drm.size.second);
 }
 
-void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format)
+uint32_t ViewBackendDRM::constructRenderingTarget(uint32_t, uint32_t)
 {
+    // This is for now meaningless for this ViewBackend.
+    return 0;
+}
+
+void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
+{
+    if (!data || size != sizeof(Graphics::BufferDataGBM)) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
+    auto& bufferData = *reinterpret_cast<const Graphics::BufferDataGBM*>(data);
+    if (bufferData.magic != Graphics::BufferDataGBM::magicValue) {
+        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        return;
+    }
+
+    fprintf(stderr, "ViewBackendDRM::commitPrimeBuffer() fd %d handle %u (%u,%u)\n",
+        fd, bufferData.handle, bufferData.width, bufferData.height);
+
     uint32_t fbID = 0;
 
     if (fd >= 0) {
-        assert(m_fbMap.find(handle) == m_fbMap.end());
-        struct gbm_import_fd_data fdData = { fd, width, height, stride, format };
+        assert(m_fbMap.find(bufferData.handle) == m_fbMap.end());
+        struct gbm_import_fd_data fdData = { fd, bufferData.width, bufferData.height, bufferData.stride, bufferData.format };
         struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
@@ -257,14 +278,14 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
             return;
         }
 
-        m_fbMap.insert({ handle, { bo, fbID } });
-        m_pageFlipData.nextFB = { true, handle };
+        m_fbMap.insert({ bufferData.handle, { bo, fbID } });
+        m_pageFlipData.nextFB = { true, bufferData.handle };
     } else {
-        auto it = m_fbMap.find(handle);
+        auto it = m_fbMap.find(bufferData.handle);
         assert(it != m_fbMap.end());
 
         fbID = it->second.second;
-        m_pageFlipData.nextFB = { true, handle };
+        m_pageFlipData.nextFB = { true, bufferData.handle };
     }
 
     int ret = drmModePageFlip(m_drm.fd, m_drm.crtcId, fbID, DRM_MODE_PAGE_FLIP_EVENT, &m_pageFlipData);
@@ -272,7 +293,7 @@ void ViewBackendDRM::commitPrimeBuffer(int fd, uint32_t handle, uint32_t width, 
         fprintf(stderr, "ViewBackendDRM: failed to queue page flip\n");
 }
 
-void ViewBackendDRM::destroyPrimeBuffer(uint32_t handle)
+void ViewBackendDRM::destroyBuffer(uint32_t handle)
 {
     auto it = m_fbMap.find(handle);
     assert(it != m_fbMap.end());

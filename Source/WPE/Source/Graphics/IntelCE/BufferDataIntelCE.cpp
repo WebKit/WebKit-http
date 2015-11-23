@@ -24,37 +24,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformDisplayBCMRPi_h
-#define PlatformDisplayBCMRPi_h
+#include "Config.h"
+#include "BufferDataIntelCE.h"
 
-#if PLATFORM(BCM_RPI)
+#if WPE_BACKEND(INTEL_CE)
 
-#include "PlatformDisplay.h"
+namespace WPE {
 
-#include "BCMRPiSurface.h"
+namespace Graphics {
 
-namespace WebCore {
+static_assert(sizeof(BufferDataIntelCE) == 16, "BufferDataIntelCE is of expected size");
 
-class BCMRPiSurface;
-class IntSize;
+const uint32_t BufferDataIntelCE::magicValue = 0x031be9cf;
 
-class PlatformDisplayBCMRPi final : public PlatformDisplay {
-public:
-    PlatformDisplayBCMRPi();
-    virtual ~PlatformDisplayBCMRPi() = default;
+} // namespace Graphics
 
-    std::unique_ptr<BCMRPiSurface> createSurface(const IntSize&, uint32_t elementHandle);
+} // namespace WPE
 
-    using BCMBufferExport = BCMRPiSurface::BCMBufferExport;
-
-private:
-    Type type() const override { return PlatformDisplay::Type::BCMRPi; }
-};
-
-} // namespace WebCore
-
-SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayBCMRPi, BCMRPi)
-
-#endif // PLATFORM(BCM_RPI)
-
-#endif // PlatformDisplayBCMRPi_h
+#endif // WPE_BACKEND(INTEL_CE)

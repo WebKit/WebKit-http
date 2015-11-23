@@ -49,53 +49,20 @@ void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnect
     m_connection->open();
 }
 
-#if PLATFORM(GBM)
-void CompositingManagerProxy::commitPrimeBuffer(uint32_t handle, uint32_t width, uint32_t height, uint32_t stride, uint32_t format, IPC::Attachment fd)
+void CompositingManagerProxy::constructRenderingTarget(uint32_t width, uint32_t height, uint32_t& handle)
 {
-    m_view.viewBackend().commitPrimeBuffer(fd.fileDescriptor(), handle, width, height, stride, format);
+    handle = m_view.viewBackend().constructRenderingTarget(width, height);
 }
 
-void CompositingManagerProxy::destroyPrimeBuffer(uint32_t handle)
+void CompositingManagerProxy::commitBuffer(const IPC::Attachment& fd, const IPC::DataReference& bufferData)
 {
-    m_view.viewBackend().destroyPrimeBuffer(handle);
-}
-#endif
-
-#if PLATFORM(BCM_RPI)
-void CompositingManagerProxy::createBCMElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createBCMElement(width, height);
+    m_view.viewBackend().commitBuffer(fd.fileDescriptor(), bufferData.data(), bufferData.size());
 }
 
-void CompositingManagerProxy::commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height)
+void CompositingManagerProxy::destroyBuffer(uint32_t handle)
 {
-    m_view.viewBackend().commitBCMBuffer(handle, width, height);
+    m_view.viewBackend().destroyBuffer(handle);
 }
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-void CompositingManagerProxy::createBCMNexusElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createBCMNexusElement(width, height);
-}
-
-void CompositingManagerProxy::commitBCMNexusBuffer(uint32_t handle, uint32_t width, uint32_t height)
-{
-    m_view.viewBackend().commitBCMNexusBuffer(handle, width, height);
-}
-#endif
-
-#if PLATFORM(INTEL_CE)
-void CompositingManagerProxy::createIntelCEElement(int32_t width, int32_t height, uint32_t& handle)
-{
-    handle = m_view.viewBackend().createIntelCEElement(width, height);
-}
-
-void CompositingManagerProxy::commitIntelCEBuffer(uint32_t handle, uint32_t width, uint32_t height)
-{
-    m_view.viewBackend().commitIntelCEBuffer(handle, width, height);
-}
-#endif
 
 void CompositingManagerProxy::releaseBuffer(uint32_t handle)
 {

@@ -37,24 +37,12 @@
 #include "PlatformDisplayWayland.h"
 #endif
 
-#if PLATFORM(GBM)
-#include "PlatformDisplayGBM.h"
-#endif
-
-#if PLATFORM(BCM_RPI)
-#include "PlatformDisplayBCMRPi.h"
-#endif
-
-#if PLATFORM(BCM_NEXUS)
-#include "PlatformDisplayBCMNexus.h"
-#endif
-
-#if PLATFORM(INTEL_CE)
-#include "PlatformDisplayIntelCE.h"
-#endif
-
 #if PLATFORM(WIN)
 #include "PlatformDisplayWin.h"
+#endif
+
+#if PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -106,21 +94,7 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 #endif
 
 #if PLATFORM(WPE)
-#if PLATFORM(GBM)
-    return std::make_unique<PlatformDisplayGBM>();
-#endif
-#if PLATFORM(WAYLAND)
-    return PlatformDisplayWayland::create();
-#endif
-#if PLATFORM(BCM_RPI)
-    return std::make_unique<PlatformDisplayBCMRPi>();
-#endif
-#if PLATFORM(BCM_NEXUS)
-    return std::make_unique<PlatformDisplayBCMNexus>();
-#endif
-#if PLATFORM(INTEL_CE)
-    return std::make_unique<PlatformDisplayIntelCE>();
-#endif
+    return std::make_unique<PlatformDisplayWPE>();
 #endif
 
     ASSERT_NOT_REACHED();

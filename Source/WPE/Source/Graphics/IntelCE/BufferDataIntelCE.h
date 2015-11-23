@@ -24,37 +24,30 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BCMNexusSurface_h
-#define BCMNexusSurface_h
+#ifndef WPE_Graphics_BufferDataIntelCE_h
+#define WPE_Graphics_BufferDataIntelCE_h
 
-#if PLATFORM(BCM_NEXUS)
+#if WPE_BACKEND(INTEL_CE)
 
-#include <memory>
-#include <tuple>
+#include <stdint.h>
 
-namespace WebCore {
+namespace WPE {
 
-class GLContext;
-class IntSize;
+namespace Graphics {
 
-class BCMNexusSurface {
-public:
-    BCMNexusSurface(const IntSize&, uintptr_t);
-    ~BCMNexusSurface();
+struct BufferDataIntelCE {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t magic;
 
-    std::unique_ptr<GLContext> createGLContext();
-
-    using BufferExport = std::tuple<uintptr_t, uint32_t, uint32_t>;
-    BufferExport lockFrontBuffer();
-
-private:
-    void* m_nativeWindow;
-    uint32_t m_width;
-    uint32_t m_height;
+    static const uint32_t magicValue;
 };
 
-} // namespace WebCore
+} // Graphics
 
-#endif // PLATFORM(BCM_NEXUS)
+} // WPE
 
-#endif // BCMNexusSurface_h
+#endif // WPE_BACKEND(IntelCE)
+
+#endif // WPE_Graphics_RenderingBackendIntelCE_h

@@ -30,12 +30,17 @@ endif ()
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMNexus"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPi"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMNexus"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/IntelCE"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/NEXUS"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${BCM_HOST_INCLUDE_DIRS}
     ${GDL_INCLUDE_DIRS}
@@ -53,6 +58,7 @@ set(WPE_LIBRARIES
     ${GDL_LIBRARIES}
     ${GLIB_LIBRARIES}
     ${LIBDRM_LIBRARIES}
+    ${LIBGBM_LIBRARIES}
     ${LIBINPUT_LIBRARIES}
     ${LIBUDEV_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
@@ -60,6 +66,8 @@ set(WPE_LIBRARIES
 )
 
 set(WPE_SOURCES
+    Source/Graphics/RenderingBackend.cpp
+
     Source/Input/Handling.cpp
     Source/Input/KeyboardEventRepeating.cpp
     Source/Input/LibinputServer.cpp
@@ -75,19 +83,35 @@ set(WPE_SOURCES
 
 if (USE_WPE_BACKEND_BCM_NEXUS)
     list(APPEND WPE_SOURCES
-        Source/ViewBackend/NEXUS/ViewBackendNEXUS.cpp
+        Source/Graphics/BCMNexus/BufferDataBCMNexus.cpp
+        Source/Graphics/BCMNexus/RenderingBackendBCMNexus.cpp
+
+        Source/ViewBackend/BCMNexus/ViewBackendBCMNexus.cpp
     )
 endif ()
 
 if (USE_WPE_BACKEND_BCM_RPI)
     list(APPEND WPE_SOURCES
+        Source/Graphics/BCMRPi/BufferDataBCMRPi.cpp
+        Source/Graphics/BCMRPi/RenderingBackendBCMRPi.cpp
+
         Source/ViewBackend/BCMRPi/ViewBackendBCMRPi.cpp
     )
 endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
     list(APPEND WPE_SOURCES
+        Source/Graphics/IntelCE/BufferDataIntelCE.cpp
+        Source/Graphics/IntelCE/RenderingBackendIntelCE.cpp
+
         Source/ViewBackend/IntelCE/ViewBackendIntelCE.cpp
+    )
+endif ()
+
+if (USE_WPE_BACKEND_DRM OR USE_WPE_BACKEND_WAYLAND)
+    list(APPEND WPE_SOURCES
+        Source/Graphics/GBM/BufferDataGBM.cpp
+        Source/Graphics/GBM/RenderingBackendGBM.cpp
     )
 endif ()
 

@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
- * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,50 +23,47 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "BCMNexusSurface.h"
+#include "Config.h"
+#include <WPE/Graphics/RenderingBackend.h>
 
-#if PLATFORM(BCM_NEXUS)
+#include "RenderingBackendBCMNexus.h"
+#include "RenderingBackendBCMRPi.h"
+#include "RenderingBackendGBM.h"
+#include "RenderingBackendIntelCE.h"
+#include <cstdio>
 
-#include "GLContextEGL.h"
-#include <refsw/nexus_config.h>
-#include <refsw/nexus_platform.h>
-#include <refsw/nexus_display.h>
-#include <refsw/default_nexus.h>
+namespace WPE {
 
-namespace WebCore {
+namespace Graphics {
 
-BCMNexusSurface::BCMNexusSurface(const IntSize& size, uintptr_t clientID)
-    : m_width(std::max(0, size.width()))
-    , m_height(std::max(0, size.height()))
+std::unique_ptr<RenderingBackend> RenderingBackend::create()
 {
-    NXPL_NativeWindowInfo windowInfo;
-    windowInfo.x = 0;
-    windowInfo.y = 0;
-    windowInfo.width = m_width;
-    windowInfo.height = m_height;
-    windowInfo.stretch = false;
-    windowInfo.clientID = clientID;
-    m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
-}
-
-BCMNexusSurface::~BCMNexusSurface()
-{
-    if (m_nativeWindow)
-        NXPL_DestroyNativeWindow(m_nativeWindow);
-    m_nativeWindow = nullptr;
-}
-
-std::unique_ptr<GLContext> BCMNexusSurface::createGLContext()
-{
-    return GLContextEGL::createWindowContext(m_nativeWindow, GLContext::sharingContext());
-}
-
-BCMNexusSurface::BufferExport BCMNexusSurface::lockFrontBuffer()
-{
-    return BufferExport{ (uintptr_t)m_nativeWindow, m_width, m_height };
-}
-
-} // namespace WebCore
-
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
+    return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
 #endif
+
+#if WPE_BACKEND(BCM_NEXUS)
+    return std::unique_ptr<RenderingBackendBCMNexus>(new RenderingBackendBCMNexus);
+#endif
+
+#if WPE_BACKEND(BCM_RPI)
+    return std::unique_ptr<RenderingBackendBCMRPi>(new RenderingBackendBCMRPi);
+#endif
+
+#if WPE_BACKEND(INTEL_CE)
+    return std::unique_ptr<RenderingBackendIntelCE>(new RenderingBackendIntelCE);
+#endif
+
+    fprintf(stderr, "RenderingBackend: no usable backend found, will crash.\n");
+    return nullptr;
+}
+
+RenderingBackend::~RenderingBackend() = default;
+
+RenderingBackend::Surface::~Surface() = default;
+
+RenderingBackend::OffscreenSurface::~OffscreenSurface() = default;
+
+} // namespace Graphics
+
+} // namespace WPE

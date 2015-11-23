@@ -25,7 +25,7 @@
  */
 
 #include "Config.h"
-#include "ViewBackendNEXUS.h"
+#include "ViewBackendBCMNexus.h"
 
 #if WPE_BACKEND(BCM_NEXUS)
 
@@ -54,7 +54,7 @@ static const std::array<FormatTuple, 9> s_formatTable = {
    FormatTuple{ "1080p60Hz", 1920, 1080 },
 };
 
-ViewBackendNexus::ViewBackendNexus()
+ViewBackendBCMNexus::ViewBackendBCMNexus()
     : m_client(nullptr)
 {
     const char* format = std::getenv("WPE_NEXUS_FORMAT");
@@ -66,35 +66,42 @@ ViewBackendNexus::ViewBackendNexus()
 
     m_width = std::get<1>(selectedFormat);
     m_height = std::get<2>(selectedFormat);
-    fprintf(stderr, "ViewBackendNexus: selected format '%s' (%d,%d)\n", std::get<0>(selectedFormat), m_width, m_height);
+    fprintf(stderr, "ViewBackendBCMNexus: selected format '%s' (%d,%d)\n", std::get<0>(selectedFormat), m_width, m_height);
 }
 
-ViewBackendNexus::~ViewBackendNexus()
+ViewBackendBCMNexus::~ViewBackendBCMNexus()
 {
     LibinputServer::singleton().setClient(nullptr);
 }
 
-void ViewBackendNexus::setClient(Client* client)
+void ViewBackendBCMNexus::setClient(Client* client)
 {
     assert ((client != nullptr) ^ (m_client != nullptr));
     m_client = client;
     m_client->setSize(m_width, m_height);
 }
 
-uint32_t ViewBackendNexus::createBCMNexusElement(int32_t, int32_t)
+uint32_t ViewBackendBCMNexus::constructRenderingTarget(uint32_t width, uint32_t height)
 {
-    // Hard-code to returning the 0 client ID.
+    if (m_width != width || m_height != height)
+        fprintf(stderr, "ViewBackendBCMNexus: mismatch in buffer parameters during construction.\n");
+
+    // Hard-coded to returning the 0 client ID.
     return 0;
 }
 
-void ViewBackendNexus::commitBCMNexusBuffer(uint32_t, uint32_t, uint32_t)
+void ViewBackendBCMNexus::commitBuffer(int, const uint8_t*, size_t)
 {
     // Just a pass-through for now -- immediately return a frame completion signal.
     if (m_client)
         m_client->frameComplete();
 }
 
-void ViewBackendNexus::setInputClient(Input::Client* client)
+void ViewBackendBCMNexus::destroyBuffer(uint32_t)
+{
+}
+
+void ViewBackendBCMNexus::setInputClient(Input::Client* client)
 {
     LibinputServer::singleton().setClient(client);
 }

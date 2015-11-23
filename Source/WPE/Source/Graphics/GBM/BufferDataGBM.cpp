@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
- * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,42 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "IntelCESurface.h"
+#include "Config.h"
+#include "BufferDataGBM.h"
 
-#if PLATFORM(INTEL_CE)
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
-#include "GLContextEGL.h"
-#include "IntSize.h"
+namespace WPE {
 
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
+namespace Graphics {
 
-namespace WebCore {
+static_assert(sizeof(BufferDataGBM) == 24, "BufferDataGBM is of expected size");
 
-IntelCESurface::IntelCESurface(const IntSize&, uint32_t)
-{
-}
+const uint32_t BufferDataGBM::magicValue = 0x0a31a904;
 
-std::unique_ptr<GLContext> IntelCESurface::createGLContext()
-{
-    return GLContextEGL::createWindowContext((EGLNativeWindowType)0x07 /* GDL_PLANE_ID_UPP_C */, GLContext::sharingContext());
-}
+} // namespace Graphics
 
-void IntelCESurface::resize(const IntSize&)
-{
-}
+} // namespace WPE
 
-IntelCESurface::BufferExport IntelCESurface::lockFrontBuffer()
-{
-    return BufferExport{ 0, 1280, 720 };
-}
-
-void IntelCESurface::releaseBuffer(uint32_t)
-{
-}
-
-} // namespace WebCore
-
-#endif // PLATFORM(INTEL_CE)
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)

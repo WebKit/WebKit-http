@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
- * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,40 +23,32 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformDisplayBCMNexus_h
-#define PlatformDisplayBCMNexus_h
+#ifndef WPE_Graphics_BufferDataGBM_h
+#define WPE_Graphics_BufferDataGBM_h
 
-#if PLATFORM(BCM_NEXUS)
+#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
-#include "PlatformDisplay.h"
+#include <stdint.h>
 
-#include "BCMNexusSurface.h"
+namespace WPE {
 
-typedef void* NXPL_PlatformHandle;
+namespace Graphics {
 
-namespace WebCore {
+struct BufferDataGBM {
+    uint32_t handle;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
+    uint32_t format;
+    uint32_t magic;
 
-class IntSize;
-
-class PlatformDisplayBCMNexus final : public PlatformDisplay {
-public:
-    PlatformDisplayBCMNexus();
-    virtual ~PlatformDisplayBCMNexus();
-
-    std::unique_ptr<BCMNexusSurface> createSurface(const IntSize&, uintptr_t);
-
-    using BufferExport = BCMNexusSurface::BufferExport;
-
-private:
-    Type type() const override { return PlatformDisplay::Type::BCMNexus; }
-
-    NXPL_PlatformHandle m_nxplHandle;
+    static const uint32_t magicValue;
 };
 
-} // namespace WebCore
+} // Graphics
 
-SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayBCMNexus, BCMNexus)
+} // WPE
 
-#endif // PLATFORM(BCM_NEXUS)
+#endif // WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
-#endif // PlatformDisplayBCMNexus_h
+#endif // WPE_Graphics_RenderingBackendGBM_h

@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
- * Copyright (C) 2015 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,34 +23,56 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntelCESurface_h
-#define IntelCESurface_h
+#ifndef WPE_Graphics_RenderingBackend_h
+#define WPE_Graphics_RenderingBackend_h
 
-#if PLATFORM(INTEL_CE)
-
-#include <EGL/egl.h>
+#include <EGL/eglplatform.h>
+#include <WPE/WPE.h>
+#include <memory>
 #include <tuple>
 
-namespace WebCore {
+namespace WPE {
 
-class GLContext;
-class IntSize;
+namespace Graphics {
 
-class IntelCESurface {
+class RenderingBackend {
 public:
-    IntelCESurface(const IntSize&, uint32_t);
+    using BufferExport = std::tuple<int, const uint8_t*, size_t>;
 
-    std::unique_ptr<GLContext> createGLContext();
+    class Surface {
+    public:
+        class Client {
+        public:
+            virtual void destroyBuffer(uint32_t) = 0;
+        };
 
-    void resize(const IntSize&);
+        virtual ~Surface();
 
-    using BufferExport = std::tuple<uint32_t, uint32_t, uint32_t>;
-    BufferExport lockFrontBuffer();
-    void releaseBuffer(uint32_t);
+        virtual EGLNativeWindowType nativeWindow() = 0;
+        virtual void resize(uint32_t, uint32_t) = 0;
+
+        virtual BufferExport lockFrontBuffer() = 0;
+        virtual void releaseBuffer(uint32_t) = 0;
+    };
+
+    class OffscreenSurface {
+    public:
+        virtual ~OffscreenSurface();
+
+        virtual EGLNativeWindowType nativeWindow() = 0;
+    };
+
+    static WPE_EXPORT std::unique_ptr<RenderingBackend> create();
+
+    virtual ~RenderingBackend();
+
+    virtual EGLNativeDisplayType nativeDisplay() = 0;
+    virtual std::unique_ptr<Surface> createSurface(uint32_t, uint32_t, uint32_t, Surface::Client&) = 0;
+    virtual std::unique_ptr<OffscreenSurface> createOffscreenSurface() = 0;
 };
 
-} // namespace WebCore
+} // namespace Graphics
 
-#endif // PLATFORM(INTEL_CE)
+} // namespace WPE
 
-#endif // IntelCESurface_h
+#endif // WPE_Graphics_RenderingBackend_h

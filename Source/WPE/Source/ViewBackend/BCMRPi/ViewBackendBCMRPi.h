@@ -43,8 +43,9 @@ public:
     virtual ~ViewBackendBCMRPi();
 
     void setClient(Client*) override;
-    uint32_t createBCMElement(int32_t width, int32_t height);
-    void commitBCMBuffer(uint32_t handle, uint32_t width, uint32_t height) override;
+    uint32_t constructRenderingTarget(uint32_t, uint32_t) override;
+    void commitBuffer(int, const uint8_t*, size_t) override;
+    void destroyBuffer(uint32_t) override;
 
     void setInputClient(Input::Client*) override;
 
