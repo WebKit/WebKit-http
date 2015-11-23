@@ -40,6 +40,7 @@
 #include <refsw/nexus_core_utils.h>
 #include <refsw/default_nexus.h>
 #include <tuple>
+#include <EGL/egl.h>
 
 namespace WPE {
 
