@@ -26,6 +26,9 @@
 #include "config.h"
 #include "EventHandler.h"
 
+#include "Page.h"
+#include "Frame.h"
+#include "FocusController.h"
 #include "NotImplemented.h"
 
 namespace WebCore {
@@ -38,7 +41,8 @@ bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
 
 void EventHandler::focusDocumentView()
 {
-    notImplemented();
+    if (Page* page = m_frame.page())
+        page->focusController().setFocusedFrame(&m_frame);
 }
 
 bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults&)
