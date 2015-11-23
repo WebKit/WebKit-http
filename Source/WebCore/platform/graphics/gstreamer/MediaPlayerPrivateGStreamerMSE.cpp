@@ -1681,12 +1681,15 @@ GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
     invalid = !m_playerPrivate || m_appendStage == Invalid;
     g_mutex_unlock(&m_newSampleMutex);
 
+    // Even if we're disabled, it's important to pull the sample out anyway to
+    // avoid deadlocks when changing to NULL state having a non empty appsink.
+    GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
+
     if (invalid) {
         LOG_MEDIA_MESSAGE("AppendPipeline has been disabled, ignoring this sample");
+        gst_sample_unref(sample);
         return GST_FLOW_ERROR;
     }
-
-    GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(appsink));
 
     if (WTF::isMainThread()) {
         appSinkNewSample(sample);
