@@ -947,9 +947,9 @@ static void maximumBufferSizeDefaults(size_t& maxBufferSizeVideo, size_t& maxBuf
     }
 
     if (maxBufferSizeAudio == 0)
-        maxBufferSizeAudio = 10 * 1024 * 1024;
+        maxBufferSizeAudio = 3 * 1024 * 1024;
     if (maxBufferSizeVideo == 0)
-        maxBufferSizeVideo = 100 * 1024 * 1024;
+        maxBufferSizeVideo = 30 * 1024 * 1024;
     if (maxBufferSizeText == 0)
         maxBufferSizeText = 1 * 1024 * 1024;
 }
