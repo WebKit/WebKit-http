@@ -863,8 +863,9 @@ void linkPolymorphicCall(
     
     RELEASE_ASSERT(callCases.size() == calls.size());
     for (CallToCodePtr callToCodePtr : calls) {
+        bool isTailCall = callToCodePtr.call.isFlagSet(CCallHelpers::Call::Tail);
         patchBuffer.link(
-            callToCodePtr.call, FunctionPtr(callToCodePtr.codePtr.executableAddress()));
+            callToCodePtr.call, FunctionPtr(isTailCall ? callToCodePtr.codePtr.dataLocation() : callToCodePtr.codePtr.executableAddress()));
     }
     if (JITCode::isOptimizingJIT(callerCodeBlock->jitType()))
         patchBuffer.link(done, callLinkInfo.callReturnLocation().labelAtOffset(0));
