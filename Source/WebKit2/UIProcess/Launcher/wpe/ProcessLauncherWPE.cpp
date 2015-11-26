@@ -70,11 +70,9 @@ void ProcessLauncher::launchProcess()
         realPluginPath = fileSystemRepresentation(pluginPath);
         break;
 #endif
-#if ENABLE(NETWORK_PROCESS)
     case NetworkProcess:
         executablePath = executablePathOfNetworkProcess();
         break;
-#endif
     default:
         ASSERT_NOT_REACHED();
         return;

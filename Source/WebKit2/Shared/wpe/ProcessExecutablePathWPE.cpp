@@ -73,11 +73,9 @@ String executablePathOfPluginProcess()
     return findWebKitProcess("WPEPluginProcess");
 }
 
-#if ENABLE(NETWORK_PROCESS)
 String executablePathOfNetworkProcess()
 {
     return findWebKitProcess("WPENetworkProcess");
 }
-#endif
 
 } // namespace WebKit
