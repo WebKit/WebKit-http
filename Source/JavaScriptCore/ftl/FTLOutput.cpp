@@ -33,8 +33,8 @@
 
 namespace JSC { namespace FTL {
 
-Output::Output(LContext context)
-    : IntrinsicRepository(context)
+Output::Output(State& state)
+    : IntrinsicRepository(state.context)
     , m_function(0)
     , m_heaps(0)
     , m_builder(llvm->CreateBuilderInContext(m_context))
@@ -79,6 +79,7 @@ LValue Output::sensibleDoubleToInt(LValue value)
 {
     RELEASE_ASSERT(isX86());
     return call(
+        int32,
         x86SSE2CvtTSD2SIIntrinsic(),
         insertElement(
             insertElement(getUndef(vectorType(doubleType, 2)), value, int32Zero),

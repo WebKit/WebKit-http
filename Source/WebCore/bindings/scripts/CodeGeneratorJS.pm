@@ -982,20 +982,23 @@ sub GenerateHeader
     my $namedGetterFunction = GetNamedGetterFunction($interface);
     my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
-    my $hasImpureNamedGetter = $interface->extendedAttributes->{"OverrideBuiltins"}
-        && ($namedGetterFunction || $interface->extendedAttributes->{"CustomNamedGetter"});
+    my $hasNamedGetter = $namedGetterFunction
+        || $interface->extendedAttributes->{"CustomNamedGetter"};
 
     my $hasComplexGetter =
         $indexedGetterFunction
         || $interface->extendedAttributes->{"JSCustomGetOwnPropertySlotAndDescriptor"}
         || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"}
-        || $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
+        || $hasNamedGetter;
     
     my $hasGetter = InstanceOverridesGetOwnPropertySlot($interface);
 
-    if ($hasImpureNamedGetter) {
-        $structureFlags{"JSC::HasImpureGetOwnPropertySlot"} = 1;
+    if ($hasNamedGetter) {
+        if ($interface->extendedAttributes->{"OverrideBuiltins"}) {
+            $structureFlags{"JSC::GetOwnPropertySlotIsImpure"} = 1;
+        } else {
+            $structureFlags{"JSC::GetOwnPropertySlotIsImpureForPropertyAbsence"} = 1;
+        }
     }
     if ($interface->extendedAttributes->{"NewImpurePropertyFiresWatchpoints"}) {
         $structureFlags{"JSC::NewImpurePropertyFiresWatchpoints"} = 1;
@@ -2436,7 +2439,7 @@ sub GenerateImplementation
                     if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                         my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                         $implIncludes{"${implementedBy}.h"} = 1;
-                        $functionName = "${implementedBy}::${functionName}";
+                        $functionName = "WebCore::${implementedBy}::${functionName}";
                         unshift(@arguments, "&impl") if !$attribute->isStatic;
                     } elsif ($attribute->isStatic) {
                         $functionName = "${interfaceName}::${functionName}";
@@ -2795,7 +2798,7 @@ sub GenerateImplementation
                         my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                         AddToImplIncludes("${implementedBy}.h", $attribute->signature->extendedAttributes->{"Conditional"});
                         unshift(@arguments, "&impl") if !$attribute->isStatic;
-                        $functionName = "${implementedBy}::${functionName}";
+                        $functionName = "WebCore::${implementedBy}::${functionName}";
                     } elsif ($attribute->isStatic) {
                         $functionName = "${interfaceName}::${functionName}";
                     } else {
@@ -3314,7 +3317,7 @@ sub GenerateParametersCheck
     if ($implementedBy) {
         AddToImplIncludes("${implementedBy}.h", $function->signature->extendedAttributes->{"Conditional"});
         unshift(@arguments, "&impl") if !$function->isStatic;
-        $functionName = "${implementedBy}::${functionImplementationName}";
+        $functionName = "WebCore::${implementedBy}::${functionImplementationName}";
     } elsif ($function->isStatic) {
         $functionName = "${interfaceName}::${functionImplementationName}";
     } elsif ($svgPropertyOrListPropertyType and !$svgListPropertyType) {

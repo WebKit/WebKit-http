@@ -95,7 +95,7 @@ IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
 
 IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
 {
-    LOG(IndexedDB, "MemoryIDBBackingStore::abortTransaction");
+    LOG(IndexedDB, "MemoryIDBBackingStore::abortTransaction - %s", transactionIdentifier.loggingString().utf8().data());
 
     auto transaction = m_transactions.take(transactionIdentifier);
     if (!transaction)
@@ -108,7 +108,7 @@ IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& tr
 
 IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)
 {
-    LOG(IndexedDB, "MemoryIDBBackingStore::commitTransaction");
+    LOG(IndexedDB, "MemoryIDBBackingStore::commitTransaction - %s", transactionIdentifier.loggingString().utf8().data());
 
     auto transaction = m_transactions.take(transactionIdentifier);
     if (!transaction)
@@ -199,6 +199,21 @@ IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transac
         return IDBError(IDBExceptionCode::ConstraintError);
 
     return objectStore->createIndex(*rawTransaction, info);
+}
+
+IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& indexName)
+{
+    LOG(IndexedDB, "MemoryIDBBackingStore::deleteIndex");
+
+    auto rawTransaction = m_transactions.get(transactionIdentifier);
+    ASSERT(rawTransaction);
+    ASSERT(rawTransaction->isVersionChange());
+
+    auto* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
+    if (!objectStore)
+        return IDBError(IDBExceptionCode::ConstraintError);
+
+    return objectStore->deleteIndex(*rawTransaction, indexName);
 }
 
 void MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort(MemoryObjectStore& objectStore)
@@ -354,7 +369,20 @@ IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transact
         break;
     }
     case IndexedDB::CursorSource::Index:
-        return IDBError(IDBExceptionCode::Unknown, ASCIILiteral("Index cursors not yet supported"));
+        auto* objectStore = m_objectStoresByIdentifier.get(info.objectStoreIdentifier());
+        if (!objectStore)
+            return IDBError(IDBExceptionCode::Unknown, ASCIILiteral("No backing store object store found"));
+
+        auto* index = objectStore->indexForIdentifier(info.sourceIdentifier());
+        if (!index)
+            return IDBError(IDBExceptionCode::Unknown, ASCIILiteral("No backing store index found"));
+
+        MemoryCursor* cursor = index->maybeOpenCursor(info);
+        if (!cursor)
+            return IDBError(IDBExceptionCode::Unknown, ASCIILiteral("Could not create index cursor in backing store"));
+
+        cursor->currentData(outData);
+        break;
     }
 
     return { };

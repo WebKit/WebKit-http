@@ -37,14 +37,18 @@ public:
     ValueRange()
         : m_begin(0)
         , m_end(0)
+#if !FTL_USES_B3
         , m_rangeMetadata(0)
+#endif
     {
     }
     
     ValueRange(LValue begin, LValue end)
         : m_begin(begin)
         , m_end(end)
+#if !FTL_USES_B3
         , m_rangeMetadata(0)
+#endif
     {
     }
     
@@ -56,7 +60,9 @@ public:
 private:
     LValue m_begin;
     LValue m_end;
+#if !FTL_USES_B3
     mutable LValue m_rangeMetadata;
+#endif
 };
 
 } } // namespace JSC::FTL

@@ -31,26 +31,38 @@
 #include "FTLAbbreviatedTypes.h"
 #include "FTLValueRange.h"
 
-namespace JSC { namespace FTL {
+namespace JSC {
+
+namespace B3 {
+class BasicBlock;
+class Procedure;
+}
+
+namespace FTL {
 
 class CommonValues {
 public:
     CommonValues(LContext context);
-    
+
+#if FTL_USES_B3
+    void initializeConstants(B3::Procedure&, B3::BasicBlock*);
+#else // FTL_USES_B3
     void initialize(LModule module)
     {
         m_module = module;
     }
+#endif // FTL_USES_B3
     
     const LType voidType;
     const LType boolean;
-    const LType int8;
-    const LType int16;
     const LType int32;
     const LType int64;
     const LType intPtr;
-    const LType floatType;
     const LType doubleType;
+#if !FTL_USES_B3
+    const LType int8;
+    const LType int16;
+    const LType floatType;
     const LType ref8;
     const LType ref16;
     const LType ref32;
@@ -58,24 +70,25 @@ public:
     const LType refPtr;
     const LType refFloat;
     const LType refDouble;
-    const LValue booleanTrue;
-    const LValue booleanFalse;
-    const LValue int8Zero;
-    const LValue int32Zero;
-    const LValue int32One;
-    const LValue int64Zero;
-    const LValue intPtrZero;
-    const LValue intPtrOne;
-    const LValue intPtrTwo;
-    const LValue intPtrThree;
-    const LValue intPtrFour;
-    const LValue intPtrEight;
-    const LValue intPtrPtr;
-    const LValue doubleZero;
+#endif
+    LValue booleanTrue { nullptr };
+    LValue booleanFalse { nullptr };
+#if !FTL_USES_B3
+    LValue int8Zero { nullptr };
+#endif
+    LValue int32Zero { nullptr };
+    LValue int32One { nullptr };
+    LValue int64Zero { nullptr };
+    LValue intPtrZero { nullptr };
+    LValue intPtrOne { nullptr };
+    LValue intPtrTwo { nullptr };
+    LValue intPtrThree { nullptr };
+    LValue intPtrEight { nullptr };
+    LValue doubleZero { nullptr };
     
-    const unsigned rangeKind;
-    const unsigned profKind;
-    const LValue branchWeights;
+    const unsigned rangeKind { 0 };
+    const unsigned profKind { 0 };
+    const LValue branchWeights { nullptr };
     
     const ValueRange nonNegativeInt32;
 

@@ -38,6 +38,7 @@ App.DashboardRow = Ember.Object.extend({
             store: this.get('store'),
             platformId: paneInfo ? paneInfo[0] : null,
             metricId: paneInfo ? paneInfo[1] : null,
+            inDashboard: true
         });
 
         return App.DashboardPaneProxyForPicker.create({content: pane});
@@ -300,6 +301,7 @@ App.Pane = Ember.Object.extend({
     selectedPoints: null,
     hoveredOrSelectedItem: null,
     showFullYAxis: false,
+    inDashboard: false,
     searchCommit: function (repository, keyword) {
         var self = this;
         var repositoryId = repository.get('id');
@@ -353,12 +355,15 @@ App.Pane = Ember.Object.extend({
             var useCache = true;
             App.Manifest.fetchRunsWithPlatformAndMetric(this.get('store'), platformId, metricId, null, useCache)
                 .then(function (result) {
-                    if (result || result.shouldRefetch)
+                    if (!result || !result.data || result.shouldRefetch)
                         self.refetchRuns(platformId, metricId);
                     else
                         self._didFetchRuns(result);
-                }, this._handleFetchErrors.bind(this, platformId, metricId));
-            this.fetchAnalyticRanges();
+                }, function () {
+                    self.refetchRuns(platformId, metricId);
+                });
+            if (!this.get('inDashboard'))
+                this.fetchAnalyticRanges();
         }
     }.observes('platformId', 'metricId').on('init'),
     refetchRuns: function (platformId, metricId) {

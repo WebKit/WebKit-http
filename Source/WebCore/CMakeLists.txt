@@ -238,6 +238,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/MediaTrackConstraint.idl
     Modules/mediastream/MediaTrackConstraintSet.idl
     Modules/mediastream/MediaTrackConstraints.idl
+    Modules/mediastream/MediaTrackSupportedConstraints.idl
     Modules/mediastream/NavigatorMediaDevices.idl
     Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/NavigatorUserMediaError.idl
@@ -908,6 +909,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/MemoryCursor.cpp
     Modules/indexeddb/server/MemoryIDBBackingStore.cpp
     Modules/indexeddb/server/MemoryIndex.cpp
+    Modules/indexeddb/server/MemoryIndexCursor.cpp
     Modules/indexeddb/server/MemoryObjectStore.cpp
     Modules/indexeddb/server/MemoryObjectStoreCursor.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
@@ -1205,6 +1207,7 @@ set(WebCore_SOURCES
     bindings/js/JSMainThreadExecState.cpp
     bindings/js/JSMediaSourceStatesCustom.cpp
     bindings/js/JSMediaStreamCapabilitiesCustom.cpp
+    bindings/js/JSMediaTrackSupportedConstraintsCustom.cpp
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp

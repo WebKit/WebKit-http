@@ -62,6 +62,11 @@ IDBDatabase::~IDBDatabase()
     m_serverConnection->unregisterDatabaseConnection(*this);
 }
 
+bool IDBDatabase::hasPendingActivity() const
+{
+    return !m_closedInServer;
+}
+
 const String IDBDatabase::name() const
 {
     return m_info.name();
@@ -151,7 +156,7 @@ RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*
         return nullptr;
     }
 
-    if (m_versionChangeTransaction) {
+    if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing()) {
         ec = INVALID_STATE_ERR;
         return nullptr;
     }
@@ -165,6 +170,8 @@ RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*
 
     auto info = IDBTransactionInfo::clientTransaction(m_serverConnection.get(), objectStores, mode);
     auto transaction = IDBTransaction::create(*this, info);
+
+    LOG(IndexedDB, "IDBDatabase::transaction - Added active transaction %s", info.identifier().loggingString().utf8().data());
 
     m_activeTransactions.set(info.identifier(), &transaction.get());
 
@@ -234,14 +241,14 @@ bool IDBDatabase::canSuspendForPageCache() const
     return true;
 }
 
-Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransactionInfo& info)
+Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransactionInfo& info, IDBOpenDBRequest& request)
 {
-    LOG(IndexedDB, "IDBDatabase::startVersionChangeTransaction");
+    LOG(IndexedDB, "IDBDatabase::startVersionChangeTransaction %s", info.identifier().loggingString().utf8().data());
 
     ASSERT(!m_versionChangeTransaction);
     ASSERT(info.mode() == IndexedDB::TransactionMode::VersionChange);
 
-    Ref<IDBTransaction> transaction = IDBTransaction::create(*this, info);
+    Ref<IDBTransaction> transaction = IDBTransaction::create(*this, info, request);
     m_versionChangeTransaction = &transaction.get();
 
     m_activeTransactions.set(transaction->info().identifier(), &transaction.get());
@@ -251,15 +258,19 @@ Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransact
 
 void IDBDatabase::didStartTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::didStartTransaction");
+    LOG(IndexedDB, "IDBDatabase::didStartTransaction %s", transaction.info().identifier().loggingString().utf8().data());
     ASSERT(!m_versionChangeTransaction);
+
+    // It is possible for the client to have aborted a transaction before the server replies back that it has started.
+    if (m_abortingTransactions.contains(transaction.info().identifier()))
+        return;
 
     m_activeTransactions.set(transaction.info().identifier(), &transaction);
 }
 
 void IDBDatabase::willCommitTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::willCommitTransaction");
+    LOG(IndexedDB, "IDBDatabase::willCommitTransaction %s", transaction.info().identifier().loggingString().utf8().data());
 
     auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
     ASSERT(refTransaction);
@@ -268,7 +279,7 @@ void IDBDatabase::willCommitTransaction(IDBTransaction& transaction)
 
 void IDBDatabase::didCommitTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::didCommitTransaction");
+    LOG(IndexedDB, "IDBDatabase::didCommitTransaction %s", transaction.info().identifier().loggingString().utf8().data());
 
     if (m_versionChangeTransaction == &transaction)
         m_info.setVersion(transaction.info().newVersion());
@@ -278,7 +289,7 @@ void IDBDatabase::didCommitTransaction(IDBTransaction& transaction)
 
 void IDBDatabase::willAbortTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::willAbortTransaction");
+    LOG(IndexedDB, "IDBDatabase::willAbortTransaction %s", transaction.info().identifier().loggingString().utf8().data());
 
     auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
     ASSERT(refTransaction);
@@ -287,7 +298,7 @@ void IDBDatabase::willAbortTransaction(IDBTransaction& transaction)
 
 void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::didAbortTransaction");
+    LOG(IndexedDB, "IDBDatabase::didAbortTransaction %s", transaction.info().identifier().loggingString().utf8().data());
 
     if (transaction.isVersionChange()) {
         ASSERT(transaction.originalDatabaseInfo());
@@ -299,7 +310,7 @@ void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
 
 void IDBDatabase::didCommitOrAbortTransaction(IDBTransaction& transaction)
 {
-    LOG(IndexedDB, "IDBDatabase::didCommitOrAbortTransaction");
+    LOG(IndexedDB, "IDBDatabase::didCommitOrAbortTransaction %s", transaction.info().identifier().loggingString().utf8().data());
 
     if (m_versionChangeTransaction == &transaction)
         m_versionChangeTransaction = nullptr;
@@ -319,6 +330,9 @@ void IDBDatabase::didCommitOrAbortTransaction(IDBTransaction& transaction)
     m_activeTransactions.remove(transaction.info().identifier());
     m_committingTransactions.remove(transaction.info().identifier());
     m_abortingTransactions.remove(transaction.info().identifier());
+
+    if (m_closePending)
+        maybeCloseInServer();
 }
 
 void IDBDatabase::fireVersionChangeEvent(uint64_t requestedVersion)
@@ -339,6 +353,13 @@ void IDBDatabase::didCreateIndexInfo(const IDBIndexInfo& info)
     auto* objectStore = m_info.infoForExistingObjectStore(info.objectStoreIdentifier());
     ASSERT(objectStore);
     objectStore->addExistingIndex(info);
+}
+
+void IDBDatabase::didDeleteIndexInfo(const IDBIndexInfo& info)
+{
+    auto* objectStore = m_info.infoForExistingObjectStore(info.objectStoreIdentifier());
+    ASSERT(objectStore);
+    objectStore->deleteIndex(info.name());
 }
 
 } // namespace IDBClient
