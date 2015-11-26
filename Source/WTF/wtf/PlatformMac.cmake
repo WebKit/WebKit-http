@@ -1,4 +1,4 @@
-set(WTF_LIBRARY_TYPE SHARED)
+set(WTF_LIBRARY_TYPE STATIC)
 
 find_library(COREFOUNDATION_LIBRARY CoreFoundation)
 find_library(FOUNDATION_LIBRARY Foundation)
