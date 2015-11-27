@@ -275,7 +275,7 @@ void ViewBackendDRM::setClient(Client* client)
 uint32_t ViewBackendDRM::constructRenderingTarget(uint32_t, uint32_t)
 {
     // This is for now meaningless for this ViewBackend.
-    return 0;
+    return 1 << 0;
 }
 
 void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)

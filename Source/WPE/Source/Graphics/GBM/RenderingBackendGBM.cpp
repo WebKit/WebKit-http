@@ -69,11 +69,7 @@ EGLNativeDisplayType RenderingBackendGBM::nativeDisplay()
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
-    // targetHandle is expected to be 0.
-    if (targetHandle)
-        fprintf(stderr, "RenderingBackendGBM: creating rendering surface for an unexpected target.\n");
-
-    return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, client));
+    return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, targetHandle, client));
 }
 
 std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendGBM::createOffscreenSurface()
@@ -81,11 +77,15 @@ std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendGBM::createO
     return std::unique_ptr<RenderingBackendGBM::OffscreenSurface>(new RenderingBackendGBM::OffscreenSurface(*this));
 }
 
-RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBackend, uint32_t width, uint32_t height, RenderingBackendGBM::Surface::Client& client)
+RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBackend, uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackendGBM::Surface::Client& client)
     : m_client(client)
 {
-    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, 2048, 2048, GBM_FORMAT_ARGB8888, 0);
     m_size = { width, height };
+    auto boSize = m_size;
+    if (!targetHandle)
+        boSize = { 2048, 2048 };
+
+    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, boSize.first, boSize.second, GBM_FORMAT_ARGB8888, 0);
 }
 
 RenderingBackendGBM::Surface::~Surface()
