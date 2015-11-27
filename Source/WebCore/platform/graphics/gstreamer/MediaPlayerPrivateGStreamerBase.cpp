@@ -272,7 +272,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 
     g_mutex_clear(&m_sampleMutex);
 
-    m_player = 0;
+    m_player = nullptr;
 
     g_signal_handlers_disconnect_matched(m_volumeElement.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
 
@@ -280,12 +280,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     g_cond_clear(&m_updateCondition);
     g_mutex_clear(&m_updateMutex);
 #endif
-
-    if (m_pipeline) {
-        GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
-        ASSERT(bus);
-        m_pipeline.clear();
-    }
 
 #if USE(DXDRM)
 #if ENABLE(ENCRYPTED_MEDIA)

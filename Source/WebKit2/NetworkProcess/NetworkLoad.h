@@ -26,8 +26,6 @@
 #ifndef NetworkLoad_h
 #define NetworkLoad_h
 
-#if ENABLE(NETWORK_PROCESS)
-
 #include "NetworkLoadClient.h"
 #include "NetworkLoadParameters.h"
 #include "RemoteNetworkingContext.h"
@@ -63,7 +61,7 @@ public:
     // NetworkSessionTaskClient.
     virtual void willPerformHTTPRedirection(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, std::function<void(const WebCore::ResourceRequest&)>) final override;
     virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, std::function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>) final override;
-    virtual void didReceiveResponse(const WebCore::ResourceResponse&, std::function<void(ResponseDisposition)>) final override;
+    virtual void didReceiveResponse(const WebCore::ResourceResponse&, std::function<void(WebCore::PolicyAction)>) final override;
     virtual void didReceiveData(RefPtr<WebCore::SharedBuffer>&&) final override;
     virtual void didCompleteWithError(const WebCore::ResourceError&) final override;
 #else
@@ -116,7 +114,7 @@ private:
     const NetworkLoadParameters m_parameters;
     RefPtr<RemoteNetworkingContext> m_networkingContext;
 #if USE(NETWORK_SESSION)
-    RefPtr<NetworkDataTask> m_task;
+    Ref<NetworkDataTask> m_task;
 #else
     RefPtr<WebCore::ResourceHandle> m_handle;
 #endif
@@ -125,7 +123,5 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // ENABLE(NETWORK_PROCESS)
 
 #endif // NetworkLoad_h

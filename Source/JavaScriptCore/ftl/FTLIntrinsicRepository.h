@@ -28,6 +28,10 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "DFGCommon.h"
+
+#if !FTL_USES_B3
+
 #include "DFGOperations.h"
 #include "FTLAbbreviations.h"
 #include "FTLCommonValues.h"
@@ -126,6 +130,7 @@ namespace JSC { namespace FTL {
     macro(Z_JITOperation_EGC, functionType(int32, intPtr, intPtr, intPtr)) \
     macro(Z_JITOperation_EJZ, functionType(int32, intPtr, int64, int32)) \
     macro(Z_JITOperation_ESJss, functionType(int32, intPtr, intPtr, int64)) \
+    macro(V_JITOperation_ECRUiUi, functionType(voidType, intPtr, intPtr, intPtr, int32, int32))
     
 class IntrinsicRepository : public CommonValues {
 public:
@@ -181,6 +186,7 @@ private:
 
 } } // namespace JSC::FTL
 
+#endif // !FTL_USES_B3
 #endif // ENABLE(FTL_JIT)
 
 #endif // FTLIntrinsicRepository_h

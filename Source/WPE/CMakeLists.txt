@@ -9,6 +9,10 @@ endif ()
 
 if (USE_WPE_BACKEND_DRM)
     add_definitions(-DWPE_BACKEND_DRM=1)
+
+    if (USE_WPE_BACKEND_DRM_TEGRA)
+        add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
+    endif ()
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
@@ -134,4 +138,8 @@ endif ()
 include_directories(${WPE_INCLUDE_DIRECTORIES})
 add_library(WPE SHARED ${WPE_SOURCES})
 target_link_libraries(WPE ${WPE_LIBRARIES})
+
+POPULATE_LIBRARY_VERSION(WPE)
+set_target_properties(WPE PROPERTIES VERSION ${WPE_VERSION} SOVERSION ${WPE_VERSION_MAJOR})
+
 install(TARGETS WPE DESTINATION "${LIB_INSTALL_DIR}")

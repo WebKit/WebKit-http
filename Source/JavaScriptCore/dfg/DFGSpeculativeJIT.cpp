@@ -2880,6 +2880,9 @@ void SpeculativeJIT::compileValueAdd(Node* node)
         leftFPR, rightFPR, scratchGPR, scratchFPR);
     gen.generateFastPath(m_jit);
 
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().append(m_jit.jump());
+
     gen.slowPathJumpList().link(&m_jit);
 
     silentSpillAllRegisters(resultRegs);
@@ -3239,6 +3242,9 @@ void SpeculativeJIT::compileArithSub(Node* node)
         JITSubGenerator gen(resultRegs, leftRegs, rightRegs, leftType, rightType,
             leftFPR, rightFPR, scratchGPR, scratchFPR);
         gen.generateFastPath(m_jit);
+
+        ASSERT(gen.didEmitFastPath());
+        gen.endJumpList().append(m_jit.jump());
 
         gen.slowPathJumpList().link(&m_jit);
         silentSpillAllRegisters(resultRegs);
@@ -5336,6 +5342,34 @@ void SpeculativeJIT::compileCreateClonedArguments(Node* node)
     m_jit.exceptionCheck();
     
     cellResult(resultGPR, node);
+}
+
+void SpeculativeJIT::compileCopyRest(Node* node)
+{
+    ASSERT(node->op() == CopyRest);
+
+    SpeculateCellOperand array(this, node->child1());
+    GPRReg arrayGPR = array.gpr();
+
+    GPRTemporary argumentsLength(this);
+    GPRReg argumentsLengthGPR = argumentsLength.gpr();
+
+    GPRTemporary argumentsStart(this);
+    GPRReg argumentsStartGPR = argumentsStart.gpr();
+
+    emitGetLength(node->origin.semantic, argumentsLengthGPR);
+    CCallHelpers::Jump done = m_jit.branch32(MacroAssembler::LessThanOrEqual, argumentsLengthGPR, TrustedImm32(node->numberOfArgumentsToSkip()));
+
+    emitGetArgumentStart(node->origin.semantic, argumentsStartGPR);
+    silentSpillAllRegisters(argumentsLengthGPR, argumentsStartGPR);
+    // Arguments: 0:exec, 1:JSCell* array, 2:arguments start, 3:number of arguments to skip, 4:number of arguments
+    callOperation(operationCopyRest, arrayGPR, argumentsStartGPR, TrustedImm32(node->numberOfArgumentsToSkip()), argumentsLengthGPR);
+    silentFillAllRegisters(argumentsLengthGPR);
+    m_jit.exceptionCheck();
+
+    done.link(&m_jit);
+
+    noResult(node);
 }
 
 void SpeculativeJIT::compileNotifyWrite(Node* node)

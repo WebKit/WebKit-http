@@ -30,6 +30,7 @@
 
 #include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
+#include "NetworkProcessMessages.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
@@ -40,10 +41,6 @@
 #include <WebCore/SchemeRegistry.h>
 #include <cstdlib>
 #include <wtf/glib/GUniquePtr.h>
-
-#if ENABLE(NETWORK_PROCESS)
-#include "NetworkProcessMessages.h"
-#endif
 
 // FIXME: Merge with WebProcessPoolGtk? Abstract the common parts?
 
@@ -94,10 +91,8 @@ WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 void WebProcessPool::platformInitialize()
 {
-#if ENABLE(NETWORK_PROCESS)
     setUsesNetworkProcess(true);
     setProcessModel(ProcessModelMultipleSecondaryProcesses);
-#endif
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
@@ -166,12 +161,10 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
 {
     m_ignoreTLSErrors = ignoreTLSErrors;
-#if ENABLE(NETWORK_PROCESS)
     if (usesNetworkProcess() && networkProcess()) {
         networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
         return;
     }
-#endif
     sendToAllProcesses(Messages::WebProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors));
 }
 

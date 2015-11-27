@@ -28,7 +28,7 @@
 #include "config.h"
 #include "FTLCompile.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "CodeBlockWithJITType.h"
 #include "CCallHelpers.h"
@@ -462,6 +462,7 @@ static void generateArithSubICFastPath(
         context.initializeRegisters(fastPathJIT);
         gen.generateFastPath(fastPathJIT);
 
+        ASSERT(gen.didEmitFastPath());
         gen.endJumpList().link(&fastPathJIT);
         context.restoreRegisters(fastPathJIT);
         allocator.restoreReusedRegistersByPopping(fastPathJIT, numberOfBytesUsedToPreserveReusedRegisters,
@@ -1318,5 +1319,5 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && FTL_USES_B3
 

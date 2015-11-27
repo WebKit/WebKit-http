@@ -851,10 +851,20 @@ public:
     {
         node->appendEntry(location, identifier, wasString, pattern, defaultValue);
     }
-    
+
+    void appendObjectPatternEntry(ObjectPattern node, const JSTokenLocation& location, ExpressionNode* propertyExpression, DestructuringPattern pattern, ExpressionNode* defaultValue)
+    {
+        node->appendEntry(location, propertyExpression, pattern, defaultValue);
+    }
+
     BindingPattern createBindingLocation(const JSTokenLocation&, const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end, AssignmentContext context)
     {
         return new (m_parserArena) BindingNode(boundProperty, start, end, context);
+    }
+
+    RestParameterNode* createRestParameter(const Identifier& name, size_t numParametersToSkip, const JSTextPosition& start, const JSTextPosition& end)
+    {
+        return new (m_parserArena) RestParameterNode(name, numParametersToSkip, start, end);
     }
 
     AssignmentElement createAssignmentElement(const Expression& assignmentTarget, const JSTextPosition& start, const JSTextPosition& end)

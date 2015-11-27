@@ -42,7 +42,7 @@ class RenderingBackendGBM final : public RenderingBackend {
 public:
     class Surface final : public RenderingBackend::Surface {
     public:
-        Surface(const RenderingBackendGBM&, uint32_t, uint32_t, Client&);
+        Surface(const RenderingBackendGBM&, uint32_t, uint32_t, uint32_t, Client&);
         WPE_EXPORT virtual ~Surface();
 
         EGLNativeWindowType nativeWindow() override;

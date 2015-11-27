@@ -60,6 +60,7 @@
 #define semanticFailIfTrue(cond, ...) do { if (cond) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define semanticFailIfFalse(cond, ...) do { if (!(cond)) internalFailWithMessage(false, __VA_ARGS__); } while (0)
 #define regexFail(failure) do { setErrorMessage(failure); return 0; } while (0)
+#define restoreSavePointAndFail(savePoint, message) do { restoreSavePointWithError(savePoint, message); return 0; } while (0)
 #define failDueToUnexpectedToken() do {\
         logError(true);\
     return 0;\
@@ -219,6 +220,7 @@ Parser<LexerType>::Parser(
     m_token.m_location.endOffset = source.startOffset();
     m_token.m_location.lineStartOffset = source.startOffset();
     m_functionCache = vm->addSourceProviderCache(source.provider());
+    m_expressionErrorClassifier = nullptr;
 
     ScopeRef scope = pushScope();
     scope->setSourceParseMode(parseMode);
@@ -667,7 +669,31 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseVariableDecl
 }
 
 template <typename LexerType>
-template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::createBindingPattern(TreeBuilder& context, DestructuringKind kind, ExportType exportType, const Identifier& name, int depth, JSToken token, AssignmentContext bindingContext, const Identifier** duplicateIdentifier)
+bool Parser<LexerType>::declareRestOrNormalParameter(const Identifier& name, const Identifier** duplicateIdentifier)
+{
+    DeclarationResultMask declarationResult = declareParameter(&name);
+    if ((declarationResult & DeclarationResult::InvalidStrictMode) && strictMode()) {
+        semanticFailIfTrue(isEvalOrArguments(&name), "Cannot destructure to a parameter name '", name.impl(), "' in strict mode");
+        if (m_lastFunctionName && name == *m_lastFunctionName)
+            semanticFail("Cannot declare a parameter named '", name.impl(), "' as it shadows the name of a strict mode function");
+        semanticFailureDueToKeyword("parameter name");
+        if (hasDeclaredParameter(name))
+            semanticFail("Cannot declare a parameter named '", name.impl(), "' in strict mode as it has already been declared");
+        semanticFail("Cannot declare a parameter named '", name.impl(), "' in strict mode");
+    }
+    if (declarationResult & DeclarationResult::InvalidDuplicateDeclaration) {
+        // It's not always an error to define a duplicate parameter.
+        // It's only an error when there are default parameter values or destructuring parameters.
+        // We note this value now so we can check it later.
+        if (duplicateIdentifier)
+            *duplicateIdentifier = &name;
+    }
+
+    return true;
+}
+
+template <typename LexerType>
+template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::createBindingPattern(TreeBuilder& context, DestructuringKind kind, ExportType exportType, const Identifier& name, JSToken token, AssignmentContext bindingContext, const Identifier** duplicateIdentifier)
 {
     ASSERT(!name.isNull());
     
@@ -685,42 +711,8 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::createB
             failIfTrue(declarationResult & DeclarationResult::InvalidDuplicateDeclaration, "Cannot declare a lexical variable twice: '", name.impl(), "'");
         }
     } else if (kind == DestructureToParameters) {
-        if (depth) {
-            auto bindingResult = declareBoundParameter(&name);
-            if (bindingResult == Scope::StrictBindingFailed && strictMode()) {
-                semanticFailIfTrue(isEvalOrArguments(&name), "Cannot destructure to a parameter name '", name.impl(), "' in strict mode");
-                if (m_lastFunctionName && name == *m_lastFunctionName)
-                    semanticFail("Cannot destructure to '", name.impl(), "' as it shadows the name of a strict mode function");
-                semanticFailureDueToKeyword("bound parameter name");
-                if (hasDeclaredParameter(name))
-                    semanticFail("Cannot destructure to '", name.impl(), "' as it has already been declared");
-                semanticFail("Cannot bind to a parameter named '", name.impl(), "' in strict mode");
-            }
-            if (bindingResult == Scope::BindingFailed) {
-                semanticFailureDueToKeyword("bound parameter name");
-                if (hasDeclaredParameter(name))
-                    semanticFail("Cannot destructure to '", name.impl(), "' as it has already been declared");
-                semanticFail("Cannot destructure to a parameter named '", name.impl(), "'");
-            }
-        } else {
-            DeclarationResultMask declarationResult = declareParameter(&name);
-            if ((declarationResult & DeclarationResult::InvalidStrictMode) && strictMode()) {
-                semanticFailIfTrue(isEvalOrArguments(&name), "Cannot destructure to a parameter name '", name.impl(), "' in strict mode");
-                if (m_lastFunctionName && name == *m_lastFunctionName)
-                    semanticFail("Cannot declare a parameter named '", name.impl(), "' as it shadows the name of a strict mode function");
-                semanticFailureDueToKeyword("parameter name");
-                if (hasDeclaredParameter(name))
-                    semanticFail("Cannot declare a parameter named '", name.impl(), "' in strict mode as it has already been declared");
-                semanticFail("Cannot declare a parameter named '", name.impl(), "' in strict mode");
-            }
-            if (declarationResult & DeclarationResult::InvalidDuplicateDeclaration) {
-                // It's not always an error to define a duplicate parameter.
-                // It's only an error when there are default parameter values or destructuring parameters.
-                // We note this value now so we can check it later.
-                if (duplicateIdentifier)
-                    *duplicateIdentifier = &name;
-            }
-        }
+        declareRestOrNormalParameter(name, duplicateIdentifier);
+        propagateError();
     }
 
     if (exportType == ExportType::Exported) {
@@ -869,6 +861,7 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
                 break;
 
             const Identifier* propertyName = nullptr;
+            TreeExpression propertyExpression = 0;
             TreeDestructuringPattern innerPattern = 0;
             JSTokenLocation location = m_token.m_location;
             if (matchSpecIdentifier()) {
@@ -879,7 +872,7 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
                 if (consume(COLON))
                     innerPattern = parseBindingOrAssignmentElement(context, kind, exportType, duplicateIdentifier, hasDestructuringPattern, bindingContext, depth + 1);
                 else
-                    innerPattern = createBindingPattern(context, kind, exportType, *propertyName, depth + 1, identifierToken, bindingContext, duplicateIdentifier);
+                    innerPattern = createBindingPattern(context, kind, exportType, *propertyName, identifierToken, bindingContext, duplicateIdentifier);
             } else {
                 JSTokenType tokenType = m_token.m_type;
                 switch (m_token.m_type) {
@@ -890,6 +883,12 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
                 case STRING:
                     propertyName = m_token.m_data.ident;
                     wasString = true;
+                    break;
+                case OPENBRACKET:
+                    next();
+                    propertyExpression = parseAssignmentExpression(context);
+                    failIfFalse(propertyExpression, "Cannot parse computed property name");
+                    matchOrFail(CLOSEBRACKET, "Expected ']' to end end a computed property name");
                     break;
                 default:
                     if (m_token.m_type != RESERVED && m_token.m_type != RESERVED_IF_STRICT && !(m_token.m_type & KeywordTokenFlag)) {
@@ -916,8 +915,12 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
                 return 0;
             failIfFalse(innerPattern, "Cannot parse this destructuring pattern");
             TreeExpression defaultValue = parseDefaultValueForDestructuringPattern(context);
-            ASSERT(propertyName);
-            context.appendObjectPatternEntry(objectPattern, location, wasString, *propertyName, innerPattern, defaultValue);
+            if (propertyExpression)
+                context.appendObjectPatternEntry(objectPattern, location, propertyExpression, innerPattern, defaultValue);
+            else {
+                ASSERT(propertyName);
+                context.appendObjectPatternEntry(objectPattern, location, wasString, *propertyName, innerPattern, defaultValue);
+            }
         } while (consume(COMMA));
 
         if (kind == DestructureToExpressions && !match(CLOSEBRACE))
@@ -935,7 +938,7 @@ template <class TreeBuilder> TreeDestructuringPattern Parser<LexerType>::parseDe
             failWithMessage("Expected a parameter pattern or a ')' in parameter list");
         }
         failIfTrue(match(LET) && (kind == DestructureToLet || kind == DestructureToConst), "Can't use 'let' as an identifier name for a LexicalDeclaration");
-        pattern = createBindingPattern(context, kind, exportType, *m_token.m_data.ident, depth, m_token, bindingContext, duplicateIdentifier);
+        pattern = createBindingPattern(context, kind, exportType, *m_token.m_data.ident, m_token, bindingContext, duplicateIdentifier);
         next();
         break;
     }
@@ -1553,32 +1556,45 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseStatement(Tre
 template <typename LexerType>
 template <class TreeBuilder> bool Parser<LexerType>::parseFormalParameters(TreeBuilder& context, TreeFormalParameterList list, unsigned& parameterCount)
 {
-#define failFromDuplicate() \
+#define failIfDuplicateIfViolation() \
     if (duplicateParameter) {\
         semanticFailIfTrue(defaultValue, "Duplicate parameter '", duplicateParameter->impl(), "' not allowed in function with default parameter values");\
         semanticFailIfTrue(hasDestructuringPattern, "Duplicate parameter '", duplicateParameter->impl(), "' not allowed in function with destructuring parameters");\
+        semanticFailIfTrue(isRestParameter, "Duplicate parameter '", duplicateParameter->impl(), "' not allowed in function with a rest parameter");\
     }
 
-    const Identifier* duplicateParameter = nullptr;
     bool hasDestructuringPattern = false;
-    auto parameter = parseDestructuringPattern(context, DestructureToParameters, ExportType::NotExported, &duplicateParameter, &hasDestructuringPattern);
-    failIfFalse(parameter, "Cannot parse parameter pattern");
-    auto defaultValue = parseDefaultValueForDestructuringPattern(context);
-    propagateError();
-    failFromDuplicate();
-    context.appendParameter(list, parameter, defaultValue);
-    parameterCount++;
-    while (consume(COMMA)) {
-        parameter = parseDestructuringPattern(context, DestructureToParameters, ExportType::NotExported, &duplicateParameter, &hasDestructuringPattern);
+    bool isRestParameter = false;
+    const Identifier* duplicateParameter = nullptr;
+    do {
+        TreeDestructuringPattern parameter = 0;
+        TreeExpression defaultValue = 0;
+
+        if (match(DOTDOTDOT)) {
+            next();
+            failIfFalse(matchSpecIdentifier(), "Rest parameter '...' should be followed by a variable identifier");
+            declareRestOrNormalParameter(*m_token.m_data.ident, &duplicateParameter);
+            propagateError();
+            JSTextPosition identifierStart = tokenStartPosition();
+            JSTextPosition identifierEnd = tokenEndPosition();
+            parameter = context.createRestParameter(*m_token.m_data.ident, parameterCount, identifierStart, identifierEnd);
+            next();
+            failIfTrue(match(COMMA), "Rest parameter should be the last parameter in a function declaration"); // Let's have a good error message for this common case.
+            isRestParameter = true;
+        } else
+            parameter = parseDestructuringPattern(context, DestructureToParameters, ExportType::NotExported, &duplicateParameter, &hasDestructuringPattern);
         failIfFalse(parameter, "Cannot parse parameter pattern");
-        defaultValue = parseDefaultValueForDestructuringPattern(context);
+        if (!isRestParameter)
+            defaultValue = parseDefaultValueForDestructuringPattern(context);
         propagateError();
-        failFromDuplicate();
+        failIfDuplicateIfViolation();
         context.appendParameter(list, parameter, defaultValue);
-        parameterCount++;
-    }
+        if (!isRestParameter)
+            parameterCount++;
+    } while (!isRestParameter && consume(COMMA));
+
     return true;
-#undef failFromDuplicate
+#undef failIfDuplicateIfViolation
 }
 
 template <typename LexerType>
@@ -2721,18 +2737,9 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
     JSTokenLocation location(tokenLocation());
     int initialAssignmentCount = m_assignmentCount;
     int initialNonLHSCount = m_nonLHSCount;
-    String assignmentPatternError = String();
-    if (match(OPENBRACE) || match(OPENBRACKET)) {
-        SavePoint savePoint = createSavePoint();
-        auto pattern = tryParseDestructuringPatternExpression(context, AssignmentContext::AssignmentExpression);
-        if (pattern && consume(EQUAL)) {
-            auto rhs = parseAssignmentExpression(context);
-            if (rhs)
-                return context.createDestructuringAssignment(location, pattern, rhs);
-        }
-        assignmentPatternError = m_errorMessage;
-        restoreSavePoint(savePoint);
-    }
+    bool maybeAssignmentPattern = match(OPENBRACE) || match(OPENBRACKET);
+    SavePoint savePoint = createSavePoint();
+    ExpressionErrorClassifier classifier(this);
 
 #if ENABLE(ES6_GENERATORS)
     if (match(YIELD))
@@ -2745,10 +2752,25 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
 #endif
     
     TreeExpression lhs = parseConditionalExpression(context);
-    if (!assignmentPatternError.isNull() && (lhs && (context.isObjectOrArrayLiteral(lhs) && match(EQUAL)))) {
-        setErrorMessage(assignmentPatternError);
-        return 0;
+
+    if (!lhs && (!maybeAssignmentPattern || !classifier.indicatesPossiblePattern()))
+        propagateError();
+
+    if (maybeAssignmentPattern && (!lhs || (context.isObjectOrArrayLiteral(lhs) && match(EQUAL)))) {
+        String expressionError = m_errorMessage;
+        SavePoint expressionErrorLocation = createSavePointForError();
+        restoreSavePoint(savePoint);
+        auto pattern = tryParseDestructuringPatternExpression(context, AssignmentContext::AssignmentExpression);
+        if (classifier.indicatesPossiblePattern() && (!pattern || !match(EQUAL)))
+            restoreSavePointAndFail(expressionErrorLocation, expressionError);
+        failIfFalse(pattern, "Cannot parse assignment pattern");
+        consumeOrFail(EQUAL, "Expected '=' following assignment pattern");
+        auto rhs = parseAssignmentExpression(context);
+        if (!rhs)
+            propagateError();
+        return context.createDestructuringAssignment(location, pattern, rhs);
     }
+
     failIfFalse(lhs, "Cannot parse expression");
     if (initialNonLHSCount != m_nonLHSCount) {
         if (m_token.m_type >= EQUAL && m_token.m_type <= OREQUAL)
@@ -2967,6 +2989,9 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
             TreeExpression node = context.createResolve(location, ident, start);
             return context.createProperty(ident, node, static_cast<PropertyNode::Type>(PropertyNode::Constant | PropertyNode::Shorthand), PropertyNode::KnownDirect, complete);
         }
+
+        if (match(EQUAL)) // CoverInitializedName is exclusive to BindingPattern and AssignmentPattern
+            classifyExpressionError(ErrorIndicatesPattern);
 
         PropertyNode::Type type;
         if (*ident == m_vm->propertyNames->get)
@@ -3541,7 +3566,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
         semanticFailIfFalse(currentScope()->isFunction(), "super is only valid inside functions");
         base = context.createSuperExpr(location);
         next();
-        currentScope()->setNeedsSuperBinding();
+        currentFunctionScope()->setNeedsSuperBinding();
     } else if (!baseIsNewTarget)
         base = parsePrimaryExpression(context);
 
@@ -3576,7 +3601,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
                 TreeArguments arguments = parseArguments(context, AllowSpread);
                 failIfFalse(arguments, "Cannot parse call arguments");
                 if (baseIsSuper)
-                    currentScope()->setHasDirectSuper();
+                    currentFunctionScope()->setHasDirectSuper();
                 base = context.makeFunctionCallNode(startLocation, base, arguments, expressionStart, expressionEnd, lastTokenEndPosition());
             }
             m_nonLHSCount = nonLHSCount;

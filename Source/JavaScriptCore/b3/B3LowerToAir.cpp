@@ -804,7 +804,7 @@ private:
             if (!canBeInternal(value) && value != m_value)
                 break;
             bool shouldInvert =
-                (value->opcode() == BitXor && value->child(1)->isInt(1) && value->child(0)->returnsBool())
+                (value->opcode() == BitXor && value->child(1)->hasInt() && (value->child(1)->asInt() & 1) && value->child(0)->returnsBool())
                 || (value->opcode() == Equal && value->child(1)->isInt(0));
             if (!shouldInvert)
                 break;
@@ -1185,6 +1185,82 @@ private:
             inverted);
     }
 
+    struct MoveConditionallyConfig {
+        Air::Opcode moveConditionally32;
+        Air::Opcode moveConditionally64;
+        Air::Opcode moveConditionallyTest32;
+        Air::Opcode moveConditionallyTest64;
+        Air::Opcode moveConditionallyDouble;
+        Tmp source;
+        Tmp destination;
+    };
+    Inst createSelect(Value* value, const MoveConditionallyConfig& config, bool inverted = false)
+    {
+        return createGenericCompare(
+            value,
+            [&] (
+                Arg::Width width, const Arg& relCond,
+                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                switch (width) {
+                case Arg::Width8:
+                    // FIXME: Support these things.
+                    // https://bugs.webkit.org/show_bug.cgi?id=151504
+                    return Inst();
+                case Arg::Width16:
+                    return Inst();
+                case Arg::Width32:
+                    if (isValidForm(config.moveConditionally32, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionally32, m_value, relCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                case Arg::Width64:
+                    if (isValidForm(config.moveConditionally64, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionally64, m_value, relCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                }
+            },
+            [&] (
+                Arg::Width width, const Arg& resCond,
+                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                switch (width) {
+                case Arg::Width8:
+                    // FIXME: Support more things.
+                    // https://bugs.webkit.org/show_bug.cgi?id=151504
+                    return Inst();
+                case Arg::Width16:
+                    return Inst();
+                case Arg::Width32:
+                    if (isValidForm(config.moveConditionallyTest32, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionallyTest32, m_value, resCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                case Arg::Width64:
+                    if (isValidForm(config.moveConditionallyTest64, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                        return Inst(
+                            config.moveConditionallyTest64, m_value, resCond,
+                            left.consume(*this), right.consume(*this), config.source, config.destination);
+                    }
+                    return Inst();
+                }
+            },
+            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                if (isValidForm(config.moveConditionallyDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
+                    return Inst(
+                        config.moveConditionallyDouble, m_value, doubleCond,
+                        left.consume(*this), right.consume(*this), config.source, config.destination);
+                }
+                return Inst();
+            },
+            inverted);
+    }
+
     template<typename BankInfo>
     Arg marshallCCallArgument(unsigned& argumentCount, unsigned& stackCount, Value* child)
     {
@@ -1315,6 +1391,10 @@ private:
         }
 
         case BitXor: {
+            if (m_value->child(1)->isInt(-1)) {
+                appendUnOp<Not32, Not64, Air::Oops>(m_value->child(0));
+                return;
+            }
             appendBinOp<Xor32, Xor64, Air::Oops, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
@@ -1344,6 +1424,11 @@ private:
             return;
         }
 
+        case BitwiseCast: {
+            appendUnOp<Air::Oops, Move64ToDouble, MoveDoubleTo64>(m_value->child(0));
+            return;
+        }
+
         case Store: {
             Value* valueToStore = m_value->child(0);
             if (canBeInternal(valueToStore)) {
@@ -1363,6 +1448,14 @@ private:
                     break;
                 case BitAnd:
                     matched = tryAppendStoreBinOp<And32, And64, Commutative>(
+                        valueToStore->child(0), valueToStore->child(1));
+                    break;
+                case BitXor:
+                    if (valueToStore->child(1)->isInt(-1)) {
+                        matched = tryAppendStoreUnOp<Not32, Not64>(valueToStore->child(0));
+                        break;
+                    }
+                    matched = tryAppendStoreBinOp<Xor32, Xor64, Commutative>(
                         valueToStore->child(0), valueToStore->child(1));
                     break;
                 default:
@@ -1390,6 +1483,11 @@ private:
             }
 
             append(Move32, tmp(m_value->child(0)), tmp(m_value));
+            return;
+        }
+
+        case SExt32: {
+            append(SignExtend32ToPtr, tmp(m_value->child(0)), tmp(m_value));
             return;
         }
 
@@ -1445,6 +1543,33 @@ private:
         case AboveEqual:
         case BelowEqual: {
             m_insts.last().append(createCompare(m_value));
+            return;
+        }
+
+        case Select: {
+            Tmp result = tmp(m_value);
+            append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
+
+            MoveConditionallyConfig config;
+            config.source = tmp(m_value->child(1));
+            config.destination = result;
+
+            if (isInt(m_value->type())) {
+                config.moveConditionally32 = MoveConditionally32;
+                config.moveConditionally64 = MoveConditionally64;
+                config.moveConditionallyTest32 = MoveConditionallyTest32;
+                config.moveConditionallyTest64 = MoveConditionallyTest64;
+                config.moveConditionallyDouble = MoveConditionallyDouble;
+            } else {
+                // FIXME: it's not obvious that these are particularly efficient.
+                config.moveConditionally32 = MoveDoubleConditionally32;
+                config.moveConditionally64 = MoveDoubleConditionally64;
+                config.moveConditionallyTest32 = MoveDoubleConditionallyTest32;
+                config.moveConditionallyTest64 = MoveDoubleConditionallyTest64;
+                config.moveConditionallyDouble = MoveDoubleConditionallyDouble;
+            }
+            
+            m_insts.last().append(createSelect(m_value->child(0), config));
             return;
         }
 
@@ -1711,6 +1836,11 @@ private:
             }
             append(move, immOrTmp(value), dest);
             append(Ret);
+            return;
+        }
+
+        case B3::Oops: {
+            append(Air::Oops);
             return;
         }
 

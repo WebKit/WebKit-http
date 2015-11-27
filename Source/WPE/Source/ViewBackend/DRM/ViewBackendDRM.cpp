@@ -41,6 +41,11 @@
 #include <xf86drmMode.h>
 #include <unistd.h>
 
+#if WPE_BACKEND(DRM_TEGRA)
+#include <tegra_drm.h>
+#include <sys/ioctl.h>
+#endif
+
 namespace WPE {
 
 namespace ViewBackend {
@@ -102,98 +107,123 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     }
 }
 
+template<typename T>
+struct Cleanup {
+    ~Cleanup()
+    {
+        if (valid)
+            cleanup();
+    }
+
+    T cleanup;
+    bool valid;
+};
+
+template<typename T>
+auto defer(T&& cleanup) -> Cleanup<T>
+{
+    return Cleanup<T>{ std::forward<T>(cleanup), true };
+}
+
 ViewBackendDRM::ViewBackendDRM()
     : m_pageFlipData{ nullptr, { }, { } }
 {
-    m_drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
-    if (m_drm.fd < 0) {
-        fprintf(stderr, "ViewBackendDRM: couldn't connect DRM\n");
+    decltype(m_drm) drm;
+    auto drmCleanup = defer(
+        [&drm] {
+            if (drm.mode)
+                drmModeFreeModeInfo(drm.mode);
+            if (drm.fd >= 0)
+                close(drm.fd);
+        });
+
+
+    drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+    if (drm.fd < 0) {
+        fprintf(stderr, "ViewBackendDRM: couldn't connect DRM.\n");
         return;
     }
 
     drm_magic_t magic;
-    if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic)) {
-        close(m_drm.fd);
-        m_drm = { };
+    if (drmGetMagic(drm.fd, &magic) || drmAuthMagic(drm.fd, magic))
+        return;
+
+    decltype(m_gbm) gbm;
+    auto gbmCleanup = defer(
+        [&gbm] {
+            if (gbm.device)
+                gbm_device_destroy(gbm.device);
+            if (gbm.fd >= 0)
+                close(gbm.fd);
+        });
+
+    int gbmFd = drm.fd;
+#if WPE_BACKEND(DRM_TEGRA)
+    gbm.fd = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
+    if (gbm.fd < 0) {
+        fprintf(stderr, "ViewBackendDRM: couldn't open the GBM rendering node.\n");
         return;
     }
+    gbmFd = gbm.fd;
+#endif
 
-    m_gbm.device = gbm_create_device(m_drm.fd);
-    if (!m_gbm.device) {
-        close(m_drm.fd);
-        m_drm = { };
+    gbm.device = gbm_create_device(gbmFd);
+    if (!gbm.device)
         return;
-    }
 
-    drmModeRes* resources = drmModeGetResources(m_drm.fd);
-    if (!resources) {
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    drmModeRes* resources = drmModeGetResources(drm.fd);
+    if (!resources)
         return;
-    }
+    auto drmResourcesCleanup = defer([&resources] { drmModeFreeResources(resources); });
 
     drmModeConnector* connector = nullptr;
     for (int i = 0; i < resources->count_connectors; ++i) {
-        connector = drmModeGetConnector(m_drm.fd, resources->connectors[i]);
+        connector = drmModeGetConnector(drm.fd, resources->connectors[i]);
         if (connector->connection == DRM_MODE_CONNECTED)
             break;
 
         drmModeFreeConnector(connector);
     }
 
-    if (!connector) {
-        drmModeFreeResources(resources);
-
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    if (!connector)
         return;
-    }
+    auto drmConnectorCleanup = defer([&connector] { drmModeFreeConnector(connector); });
 
     int area = 0;
     for (int i = 0; i < connector->count_modes; ++i) {
         drmModeModeInfo* currentMode = &connector->modes[i];
         int modeArea = currentMode->hdisplay * currentMode->vdisplay;
         if (modeArea > area) {
-            m_drm.mode = currentMode;
-            m_drm.size = { currentMode->hdisplay, currentMode->vdisplay };
+            drm.mode = currentMode;
+            drm.size = { currentMode->hdisplay, currentMode->vdisplay };
             area = modeArea;
         }
     }
 
-    if (!m_drm.mode) {
-        drmModeFreeConnector(connector);
-        drmModeFreeResources(resources);
-
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    if (!drm.mode)
         return;
-    }
 
     drmModeEncoder* encoder = nullptr;
     for (int i = 0; i < resources->count_encoders; ++i) {
-        encoder = drmModeGetEncoder(m_drm.fd, resources->encoders[i]);
+        encoder = drmModeGetEncoder(drm.fd, resources->encoders[i]);
         if (encoder->encoder_id == connector->encoder_id)
             break;
 
         drmModeFreeEncoder(encoder);
     }
 
-    m_drm.crtcId = encoder->crtc_id;
-    m_drm.connectorId = connector->connector_id;
-    fprintf(stderr, "ViewBackendDRM: successfully initialized DRM\n");
+    if (!encoder)
+        return;
+    auto drmEncoderCleanup = defer([&encoder] { drmModeFreeEncoder(encoder); });
 
-    drmModeFreeEncoder(encoder);
-    drmModeFreeConnector(connector);
-    drmModeFreeResources(resources);
+    drm.crtcId = encoder->crtc_id;
+    drm.connectorId = connector->connector_id;
+
+    m_drm = drm;
+    drmCleanup.valid = false;
+    m_gbm = gbm;
+    gbmCleanup.valid = false;
+    fprintf(stderr, "ViewBackendDRM: successfully initialized DRM.\n");
 
     m_eventSource = g_source_new(&DRM::EventSource::sourceFuncs, sizeof(DRM::EventSource));
     auto* source = reinterpret_cast<DRM::EventSource*>(m_eventSource);
@@ -245,24 +275,21 @@ void ViewBackendDRM::setClient(Client* client)
 uint32_t ViewBackendDRM::constructRenderingTarget(uint32_t, uint32_t)
 {
     // This is for now meaningless for this ViewBackend.
-    return 0;
+    return 1 << 0;
 }
 
 void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     if (!data || size != sizeof(Graphics::BufferDataGBM)) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendDRM: failed to validate the committed buffer\n");
         return;
     }
 
     auto& bufferData = *reinterpret_cast<const Graphics::BufferDataGBM*>(data);
     if (bufferData.magic != Graphics::BufferDataGBM::magicValue) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendDRM: failed to validate the committed buffer\n");
         return;
     }
-
-    fprintf(stderr, "ViewBackendDRM::commitPrimeBuffer() fd %d handle %u (%u,%u)\n",
-        fd, bufferData.handle, bufferData.width, bufferData.height);
 
     uint32_t fbID = 0;
 
@@ -270,9 +297,44 @@ void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
         assert(m_fbMap.find(bufferData.handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, bufferData.width, bufferData.height, bufferData.stride, bufferData.format };
         struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
+        uint32_t primeHandle = gbm_bo_get_handle(bo).u32;
+
+#if WPE_BACKEND(DRM_TEGRA)
+        {
+            int primeFd;
+
+            int ret = drmPrimeHandleToFD(m_gbm.fd, primeHandle, 0, &primeFd);
+            if (ret) {
+                fprintf(stderr, "ViewBackendDRM: failed to export the PRIME handle from the GBM device.\n");
+                return;
+            }
+
+            ret = drmPrimeFDToHandle(m_drm.fd, primeFd, &primeHandle);
+            if (ret) {
+                fprintf(stderr, "ViewBackendDRM: failed to import the PRIME fd into the DRM device.\n");
+                return;
+            }
+
+            close(primeFd);
+
+            {
+                struct drm_tegra_gem_set_tiling args;
+                memset(&args, 0, sizeof(args));
+                args.handle = primeHandle;
+                args.mode = DRM_TEGRA_GEM_TILING_MODE_BLOCK;
+                args.value = 4;
+
+                int ret = ioctl(m_drm.fd, DRM_IOCTL_TEGRA_GEM_SET_TILING, &args);
+                if (ret) {
+                    fprintf(stderr, "ViewBackendDRM: failed to set tiling parameters for the Tegra GEM.\n");
+                    return;
+                }
+            }
+        }
+#endif
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
-            24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);
+            24, 32, gbm_bo_get_stride(bo), primeHandle, &fbID);
         if (ret) {
             fprintf(stderr, "ViewBackendDRM: failed to add FB: %s, fbID %d\n", strerror(errno), fbID);
             return;

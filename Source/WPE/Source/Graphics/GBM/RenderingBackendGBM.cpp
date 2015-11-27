@@ -29,6 +29,7 @@
 #if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
 
 #include "BufferDataGBM.h"
+#include <cassert>
 #include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
@@ -68,11 +69,7 @@ EGLNativeDisplayType RenderingBackendGBM::nativeDisplay()
 
 std::unique_ptr<RenderingBackend::Surface> RenderingBackendGBM::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
-    // targetHandle is expected to be 0.
-    if (targetHandle)
-        fprintf(stderr, "RenderingBackendGBM: creating rendering surface for an unexpected target.\n");
-
-    return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, client));
+    return std::unique_ptr<RenderingBackendGBM::Surface>(new RenderingBackendGBM::Surface(*this, width, height, targetHandle, client));
 }
 
 std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendGBM::createOffscreenSurface()
@@ -80,11 +77,15 @@ std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendGBM::createO
     return std::unique_ptr<RenderingBackendGBM::OffscreenSurface>(new RenderingBackendGBM::OffscreenSurface(*this));
 }
 
-RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBackend, uint32_t width, uint32_t height, RenderingBackendGBM::Surface::Client& client)
+RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBackend, uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackendGBM::Surface::Client& client)
     : m_client(client)
 {
-    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, 2048, 2048, GBM_FORMAT_ARGB8888, 0);
     m_size = { width, height };
+    auto boSize = m_size;
+    if (!targetHandle)
+        boSize = { 2048, 2048 };
+
+    m_surface = gbm_surface_create(renderingBackend.m_gbm.device, boSize.first, boSize.second, GBM_FORMAT_ARGB8888, 0);
 }
 
 RenderingBackendGBM::Surface::~Surface()
@@ -133,7 +134,7 @@ RenderingBackend::BufferExport RenderingBackendGBM::Surface::lockFrontBuffer()
     if (data) {
         std::pair<uint32_t, uint32_t> storedSize{ data->width, data->height };
         if (m_size == storedSize)
-            return { -1, reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+            return RenderingBackend::BufferExport{ -1, reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
 
         delete data;
     }
@@ -141,7 +142,7 @@ RenderingBackend::BufferExport RenderingBackendGBM::Surface::lockFrontBuffer()
     data = new BufferDataGBM{ handle, m_size.first, m_size.second, gbm_bo_get_stride(bo), gbm_bo_get_format(bo), BufferDataGBM::magicValue };
     gbm_bo_set_user_data(bo, data, &destroyBOData);
 
-    return { gbm_bo_get_fd(bo), reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
+    return RenderingBackend::BufferExport{ gbm_bo_get_fd(bo), reinterpret_cast<const uint8_t*>(data), sizeof(BufferDataGBM) };
 }
 
 void RenderingBackendGBM::Surface::releaseBuffer(uint32_t handle)

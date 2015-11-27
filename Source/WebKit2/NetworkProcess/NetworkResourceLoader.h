@@ -26,8 +26,6 @@
 #ifndef NetworkResourceLoader_h
 #define NetworkResourceLoader_h
 
-#if ENABLE(NETWORK_PROCESS)
-
 #include "MessageSender.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkLoadClient.h"
@@ -63,7 +61,9 @@ public:
 
     NetworkLoad* networkLoad() const { return m_networkLoad.get(); }
 
+#if !USE(NETWORK_SESSION)
     void didConvertHandleToDownload();
+#endif
 
     void start();
     void abort();
@@ -150,7 +150,9 @@ private:
     std::unique_ptr<SynchronousLoadData> m_synchronousLoadData;
     Vector<RefPtr<WebCore::BlobDataFileReference>> m_fileReferences;
 
+#if !USE(NETWORK_SESSION)
     bool m_didConvertHandleToDownload { false };
+#endif
     bool m_didConsumeSandboxExtensions { false };
     bool m_defersLoading { false };
 
@@ -164,7 +166,5 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // ENABLE(NETWORK_PROCESS)
 
 #endif // NetworkResourceLoader_h

@@ -39,6 +39,7 @@
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
+#include <glib.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GSourceWrap.h>
 #elif PLATFORM(EFL)
@@ -106,6 +107,9 @@ private:
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
 #elif PLATFORM(GTK) || PLATFORM(WPE)
+    GMutex m_threadMutex;
+    GMutex m_threadInitializationMutex;
+    GCond m_threadInitializationCondition;
     ThreadIdentifier m_workQueueThread;
     GRefPtr<GMainContext> m_eventContext;
     GRefPtr<GMainLoop> m_eventLoop;

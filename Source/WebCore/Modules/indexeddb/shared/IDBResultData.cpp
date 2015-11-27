@@ -90,6 +90,13 @@ IDBResultData IDBResultData::openDatabaseUpgradeNeeded(const IDBResourceIdentifi
     return WTF::move(result);
 }
 
+IDBResultData IDBResultData::deleteDatabaseSuccess(const IDBResourceIdentifier& requestIdentifier, const IDBDatabaseInfo& info)
+{
+    IDBResultData result(IDBResultType::DeleteDatabaseSuccess, requestIdentifier);
+    result.m_databaseInfo = std::make_unique<IDBDatabaseInfo>(info);
+    return result;
+}
+
 IDBResultData IDBResultData::createObjectStoreSuccess(const IDBResourceIdentifier& requestIdentifier)
 {
     return { IDBResultType::CreateObjectStoreSuccess, requestIdentifier };
@@ -108,6 +115,11 @@ IDBResultData IDBResultData::clearObjectStoreSuccess(const IDBResourceIdentifier
 IDBResultData IDBResultData::createIndexSuccess(const IDBResourceIdentifier& requestIdentifier)
 {
     return { IDBResultType::CreateIndexSuccess, requestIdentifier };
+}
+
+IDBResultData IDBResultData::deleteIndexSuccess(const IDBResourceIdentifier& requestIdentifier)
+{
+    return { IDBResultType::DeleteIndexSuccess, requestIdentifier };
 }
 
 IDBResultData IDBResultData::putOrAddSuccess(const IDBResourceIdentifier& requestIdentifier, const IDBKeyData& resultKey)

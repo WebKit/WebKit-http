@@ -180,6 +180,17 @@ private:
                 m_changed = true;
                 break;
             }
+
+            // Turn this: Integer Add(Sub(0, value), -1)
+            // Into this: BitXor(value, -1)
+            if (m_value->isInteger()
+                && m_value->child(0)->opcode() == Sub
+                && m_value->child(1)->isInt(-1)
+                && m_value->child(0)->child(0)->isInt(0)) {
+                replaceWithNewValue(m_proc.add<Value>(BitXor, m_value->origin(), m_value->child(0)->child(1), m_value->child(1)));
+                break;
+            }
+
             break;
 
         case Sub:
@@ -326,6 +337,16 @@ private:
                 break;
             }
 
+            // Turn this: BitAnd(64-bit value, 32 ones)
+            // Into this: ZExt32(Trunc(64-bit value))
+            if (m_value->child(1)->isInt64(0xffffffffllu)) {
+                Value* newValue = m_insertionSet.insert<Value>(
+                    m_index, ZExt32, m_value->origin(),
+                    m_insertionSet.insert<Value>(m_index, Trunc, m_value->origin(), m_value->child(0)));
+                m_value->replaceWithIdentity(newValue);
+                m_changed = true;
+                break;
+            }
             break;
 
         case BitOr:
@@ -462,6 +483,101 @@ private:
             if (handleShiftByZero())
                 break;
 
+            break;
+
+        case BitwiseCast:
+            // Turn this: BitwiseCast(constant)
+            // Into this: bitwise_cast<value->type()>(constant)
+            if (Value* constant = m_value->child(0)->bitwiseCastConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            // Turn this: BitwiseCast(BitwiseCast(value))
+            // Into this: value
+            if (m_value->child(0)->opcode() == BitwiseCast) {
+                m_value->replaceWithIdentity(m_value->child(0)->child(0));
+                m_changed = true;
+                break;
+            }
+            break;
+
+        case SExt32:
+            // Turn this: SExt32(constant)
+            // Into this: static_cast<int64_t>(constant)
+            if (m_value->child(0)->hasInt32()) {
+                replaceWithNewValue(m_proc.addIntConstant(m_value, m_value->child(0)->asInt32()));
+                break;
+            }
+            break;
+
+        case ZExt32:
+            // Turn this: ZExt32(constant)
+            // Into this: static_cast<uint64_t>(static_cast<uint32_t>(constant))
+            if (m_value->child(0)->hasInt32()) {
+                replaceWithNewValue(
+                    m_proc.addIntConstant(
+                        m_value,
+                        static_cast<uint64_t>(static_cast<uint32_t>(m_value->child(0)->asInt32()))));
+                break;
+            }
+            break;
+
+        case Trunc:
+            // Turn this: Trunc(constant)
+            // Into this: static_cast<int32_t>(constant)
+            if (m_value->child(0)->hasInt64()) {
+                replaceWithNewValue(
+                    m_proc.addIntConstant(m_value, static_cast<int32_t>(m_value->child(0)->asInt64())));
+                break;
+            }
+
+            // Turn this: Trunc(SExt32(value)) or Trunc(ZExt32(value))
+            // Into this: value
+            if (m_value->child(0)->opcode() == SExt32 || m_value->child(0)->opcode() == ZExt32) {
+                m_value->replaceWithIdentity(m_value->child(0)->child(0));
+                m_changed = true;
+                break;
+            }
+            break;
+
+        case Select:
+            // Turn this: Select(constant, a, b)
+            // Into this: constant ? a : b
+            if (m_value->child(0)->hasInt32()) {
+                m_value->replaceWithIdentity(
+                    m_value->child(0)->asInt32() ? m_value->child(1) : m_value->child(2));
+                m_changed = true;
+                break;
+            }
+
+            // Turn this: Select(Equal(x, 0), a, b)
+            // Into this: Select(x, b, a)
+            if (m_value->child(0)->opcode() == Equal && m_value->child(0)->child(1)->isInt(0)) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                std::swap(m_value->child(1), m_value->child(2));
+                m_changed = true;
+                break;
+            }
+
+            // Turn this: Select(BitXor(bool, 1), a, b)
+            // Into this: Select(bool, b, a)
+            if (m_value->child(0)->opcode() == BitXor
+                && m_value->child(0)->child(1)->isInt32(1)
+                && m_value->child(0)->child(0)->returnsBool()) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                std::swap(m_value->child(1), m_value->child(2));
+                m_changed = true;
+                break;
+            }
+
+            // Turn this: Select(stuff, x, x)
+            // Into this: x
+            if (m_value->child(1) == m_value->child(2)) {
+                m_value->replaceWithIdentity(m_value->child(1));
+                m_changed = true;
+                break;
+            }
             break;
 
         case Load8Z:

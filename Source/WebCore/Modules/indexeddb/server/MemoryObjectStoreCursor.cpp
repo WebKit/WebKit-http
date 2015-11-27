@@ -34,11 +34,6 @@
 namespace WebCore {
 namespace IDBServer {
 
-std::unique_ptr<MemoryObjectStoreCursor> MemoryObjectStoreCursor::create(MemoryObjectStore& objectStore, const IDBCursorInfo& info)
-{
-    return std::make_unique<MemoryObjectStoreCursor>(objectStore, info);
-}
-
 MemoryObjectStoreCursor::MemoryObjectStoreCursor(MemoryObjectStore& objectStore, const IDBCursorInfo& info)
     : MemoryCursor(info)
     , m_objectStore(objectStore)
@@ -67,8 +62,6 @@ void MemoryObjectStoreCursor::keyDeleted(const IDBKeyData& key)
 
 void MemoryObjectStoreCursor::keyAdded(std::set<IDBKeyData>::iterator iterator)
 {
-    ASSERT(m_currentPositionKey.isValid());
-
     if (hasIterators())
         return;
 

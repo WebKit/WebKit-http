@@ -66,6 +66,8 @@ public:
     MemoryBackingStoreTransaction* writeTransaction() { return m_writeTransaction; }
 
     IDBError createIndex(MemoryBackingStoreTransaction&, const IDBIndexInfo&);
+    IDBError deleteIndex(MemoryBackingStoreTransaction&, const String& indexName);
+    void registerIndex(std::unique_ptr<MemoryIndex>&&);
 
     bool containsRecord(const IDBKeyData&);
     void deleteRecord(const IDBKeyData&);
@@ -78,6 +80,7 @@ public:
     void clear();
     void replaceKeyValueStore(std::unique_ptr<KeyValueMap>&&, std::unique_ptr<std::set<IDBKeyData>>&&);
 
+    ThreadSafeDataBuffer valueForKey(const IDBKeyData&) const;
     ThreadSafeDataBuffer valueForKeyRange(const IDBKeyRangeData&) const;
     IDBGetResult indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
     uint64_t countForKeyRange(uint64_t indexIdentifier, const IDBKeyRangeData&) const;
@@ -88,16 +91,23 @@ public:
 
     std::set<IDBKeyData>* orderedKeys() { return m_orderedKeys.get(); }
 
+    MemoryIndex* indexForIdentifier(uint64_t);
+
+    void maybeRestoreDeletedIndex(std::unique_ptr<MemoryIndex>);
+
 private:
     MemoryObjectStore(const IDBObjectStoreInfo&);
 
     IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     std::set<IDBKeyData>::iterator lowestIteratorInRange(const IDBKeyRangeData&, bool reverse) const;
 
+    IDBError populateIndexWithExistingRecords(MemoryIndex&);
     IDBError updateIndexesForPutRecord(const IDBKeyData&, const ThreadSafeDataBuffer& value);
     void updateIndexesForDeleteRecord(const IDBKeyData& value);
     void updateCursorsForPutRecord(std::set<IDBKeyData>::iterator);
     void updateCursorsForDeleteRecord(const IDBKeyData&);
+
+    std::unique_ptr<MemoryIndex> takeIndexByName(const String& name);
 
     IDBObjectStoreInfo m_info;
 
@@ -107,7 +117,6 @@ private:
     std::unique_ptr<KeyValueMap> m_keyValueStore;
     std::unique_ptr<std::set<IDBKeyData>> m_orderedKeys;
 
-    void registerIndex(std::unique_ptr<MemoryIndex>&&);
     void unregisterIndex(MemoryIndex&);
     HashMap<uint64_t, std::unique_ptr<MemoryIndex>> m_indexesByIdentifier;
     HashMap<String, MemoryIndex*> m_indexesByName;
