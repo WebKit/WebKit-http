@@ -102,98 +102,111 @@ static void pageFlipHandler(int, unsigned, unsigned, unsigned, void* data)
     }
 }
 
+template<typename T>
+struct Cleanup {
+    ~Cleanup()
+    {
+        if (valid)
+            cleanup();
+    }
+
+    T cleanup;
+    bool valid;
+};
+
+template<typename T>
+auto defer(T&& cleanup) -> Cleanup<T>
+{
+    return Cleanup<T>{ std::forward<T>(cleanup), true };
+}
+
 ViewBackendDRM::ViewBackendDRM()
     : m_pageFlipData{ nullptr, { }, { } }
 {
-    m_drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
-    if (m_drm.fd < 0) {
-        fprintf(stderr, "ViewBackendDRM: couldn't connect DRM\n");
+    decltype(m_drm) drm;
+    auto drmCleanup = defer(
+        [&drm] {
+            if (drm.mode)
+                drmModeFreeModeInfo(drm.mode);
+            if (drm.fd >= 0)
+                close(drm.fd);
+        });
+
+
+    drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+    if (drm.fd < 0) {
+        fprintf(stderr, "ViewBackendDRM: couldn't connect DRM.\n");
         return;
     }
 
     drm_magic_t magic;
-    if (drmGetMagic(m_drm.fd, &magic) || drmAuthMagic(m_drm.fd, magic)) {
-        close(m_drm.fd);
-        m_drm = { };
+    if (drmGetMagic(drm.fd, &magic) || drmAuthMagic(drm.fd, magic))
         return;
-    }
 
-    m_gbm.device = gbm_create_device(m_drm.fd);
-    if (!m_gbm.device) {
-        close(m_drm.fd);
-        m_drm = { };
+    decltype(m_gbm) gbm;
+    auto gbmCleanup = defer(
+        [&gbm] {
+            if (gbm.device)
+                gbm_device_destroy(gbm.device);
+        });
+
+    gbm.device = gbm_create_device(drm.fd);
+    if (!gbm.device)
         return;
-    }
 
-    drmModeRes* resources = drmModeGetResources(m_drm.fd);
-    if (!resources) {
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    drmModeRes* resources = drmModeGetResources(drm.fd);
+    if (!resources)
         return;
-    }
+    auto drmResourcesCleanup = defer([&resources] { drmModeFreeResources(resources); });
 
     drmModeConnector* connector = nullptr;
     for (int i = 0; i < resources->count_connectors; ++i) {
-        connector = drmModeGetConnector(m_drm.fd, resources->connectors[i]);
+        connector = drmModeGetConnector(drm.fd, resources->connectors[i]);
         if (connector->connection == DRM_MODE_CONNECTED)
             break;
 
         drmModeFreeConnector(connector);
     }
 
-    if (!connector) {
-        drmModeFreeResources(resources);
-
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    if (!connector)
         return;
-    }
+    auto drmConnectorCleanup = defer([&connector] { drmModeFreeConnector(connector); });
 
     int area = 0;
     for (int i = 0; i < connector->count_modes; ++i) {
         drmModeModeInfo* currentMode = &connector->modes[i];
         int modeArea = currentMode->hdisplay * currentMode->vdisplay;
         if (modeArea > area) {
-            m_drm.mode = currentMode;
-            m_drm.size = { currentMode->hdisplay, currentMode->vdisplay };
+            drm.mode = currentMode;
+            drm.size = { currentMode->hdisplay, currentMode->vdisplay };
             area = modeArea;
         }
     }
 
-    if (!m_drm.mode) {
-        drmModeFreeConnector(connector);
-        drmModeFreeResources(resources);
-
-        gbm_device_destroy(m_gbm.device);
-        m_gbm = { };
-
-        close(m_drm.fd);
-        m_drm = { };
+    if (!drm.mode)
         return;
-    }
 
     drmModeEncoder* encoder = nullptr;
     for (int i = 0; i < resources->count_encoders; ++i) {
-        encoder = drmModeGetEncoder(m_drm.fd, resources->encoders[i]);
+        encoder = drmModeGetEncoder(drm.fd, resources->encoders[i]);
         if (encoder->encoder_id == connector->encoder_id)
             break;
 
         drmModeFreeEncoder(encoder);
     }
 
-    m_drm.crtcId = encoder->crtc_id;
-    m_drm.connectorId = connector->connector_id;
-    fprintf(stderr, "ViewBackendDRM: successfully initialized DRM\n");
+    if (!encoder)
+        return;
+    auto drmEncoderCleanup = defer([&encoder] { drmModeFreeEncoder(encoder); });
 
-    drmModeFreeEncoder(encoder);
-    drmModeFreeConnector(connector);
-    drmModeFreeResources(resources);
+    drm.crtcId = encoder->crtc_id;
+    drm.connectorId = connector->connector_id;
+
+    m_drm = drm;
+    drmCleanup.valid = false;
+    m_gbm = gbm;
+    gbmCleanup.valid = false;
+    fprintf(stderr, "ViewBackendDRM: successfully initialized DRM.\n");
 
     m_eventSource = g_source_new(&DRM::EventSource::sourceFuncs, sizeof(DRM::EventSource));
     auto* source = reinterpret_cast<DRM::EventSource*>(m_eventSource);
