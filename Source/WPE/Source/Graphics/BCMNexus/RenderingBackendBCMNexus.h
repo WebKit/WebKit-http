@@ -37,15 +37,11 @@
 #include <refsw/nexus_display.h>
 #include <refsw/nexus_core_utils.h>
 #include <refsw/default_nexus.h>
-
-#ifdef NEXUS_MULTIPROCESS_ACCESS
 #include <refsw/nxclient.h>
-#endif
 
 typedef void* NXPL_PlatformHandle;
 
 namespace WPE {
-
 
 namespace Graphics {
 
@@ -84,10 +80,8 @@ public:
 
 private:
     NXPL_PlatformHandle m_nxplHandle;
-#ifdef NEXUS_MULTIPROCESS_ACCESS
     NxClient_AllocResults m_AllocResults;
     NEXUS_SurfaceClientHandle m_Client;
-#endif
 };
 
 } // namespace Graphics
