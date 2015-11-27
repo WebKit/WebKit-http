@@ -70,6 +70,7 @@ private:
     } m_drm;
 
     struct {
+        int fd { -1 };
         struct gbm_device* device;
     } m_gbm;
 

@@ -9,6 +9,10 @@ endif ()
 
 if (USE_WPE_BACKEND_DRM)
     add_definitions(-DWPE_BACKEND_DRM=1)
+
+    if (USE_WPE_BACKEND_DRM_TEGRA)
+        add_definitions(-DWPE_BACKEND_DRM_TEGRA=1)
+    endif ()
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)

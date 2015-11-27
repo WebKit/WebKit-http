@@ -41,6 +41,11 @@
 #include <xf86drmMode.h>
 #include <unistd.h>
 
+#if WPE_BACKEND(DRM_TEGRA)
+#include <tegra_drm.h>
+#include <sys/ioctl.h>
+#endif
+
 namespace WPE {
 
 namespace ViewBackend {
@@ -148,9 +153,21 @@ ViewBackendDRM::ViewBackendDRM()
         [&gbm] {
             if (gbm.device)
                 gbm_device_destroy(gbm.device);
+            if (gbm.fd >= 0)
+                close(gbm.fd);
         });
 
-    gbm.device = gbm_create_device(drm.fd);
+    int gbmFd = drm.fd;
+#if WPE_BACKEND(DRM_TEGRA)
+    gbm.fd = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
+    if (gbm.fd < 0) {
+        fprintf(stderr, "ViewBackendDRM: couldn't open the GBM rendering node.\n");
+        return;
+    }
+    gbmFd = gbm.fd;
+#endif
+
+    gbm.device = gbm_create_device(gbmFd);
     if (!gbm.device)
         return;
 
@@ -280,9 +297,44 @@ void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
         assert(m_fbMap.find(bufferData.handle) == m_fbMap.end());
         struct gbm_import_fd_data fdData = { fd, bufferData.width, bufferData.height, bufferData.stride, bufferData.format };
         struct gbm_bo* bo = gbm_bo_import(m_gbm.device, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_SCANOUT);
+        uint32_t primeHandle = gbm_bo_get_handle(bo).u32;
+
+#if WPE_BACKEND(DRM_TEGRA)
+        {
+            int primeFd;
+
+            int ret = drmPrimeHandleToFD(m_gbm.fd, primeHandle, 0, &primeFd);
+            if (ret) {
+                fprintf(stderr, "ViewBackendDRM: failed to export the PRIME handle from the GBM device.\n");
+                return;
+            }
+
+            ret = drmPrimeFDToHandle(m_drm.fd, primeFd, &primeHandle);
+            if (ret) {
+                fprintf(stderr, "ViewBackendDRM: failed to import the PRIME fd into the DRM device.\n");
+                return;
+            }
+
+            close(primeFd);
+
+            {
+                struct drm_tegra_gem_set_tiling args;
+                memset(&args, 0, sizeof(args));
+                args.handle = primeHandle;
+                args.mode = DRM_TEGRA_GEM_TILING_MODE_BLOCK;
+                args.value = 4;
+
+                int ret = ioctl(m_drm.fd, DRM_IOCTL_TEGRA_GEM_SET_TILING, &args);
+                if (ret) {
+                    fprintf(stderr, "ViewBackendDRM: failed to set tiling parameters for the Tegra GEM.\n");
+                    return;
+                }
+            }
+        }
+#endif
 
         int ret = drmModeAddFB(m_drm.fd, gbm_bo_get_width(bo), gbm_bo_get_height(bo),
-            24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fbID);
+            24, 32, gbm_bo_get_stride(bo), primeHandle, &fbID);
         if (ret) {
             fprintf(stderr, "ViewBackendDRM: failed to add FB: %s, fbID %d\n", strerror(errno), fbID);
             return;
