@@ -20,6 +20,7 @@ if (USE_WPE_BACKEND_WAYLAND)
 endif ()
 
 if (USE_WPE_BACKEND_BCM_NEXUS)
+    add_definitions(-DNEXUS_MULTIPROCESS_ACCESS)
     add_definitions(-DWPE_BACKEND_BCM_NEXUS=1)
 endif ()
 
