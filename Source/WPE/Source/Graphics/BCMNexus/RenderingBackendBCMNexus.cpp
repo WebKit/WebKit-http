@@ -42,9 +42,15 @@
 #include <tuple>
 #include <EGL/egl.h>
 
+#ifdef NEXUS_MULTIPROCESS_ACCESS
+#include <refsw/nxclient.h>
+#endif
+
 namespace WPE {
 
 namespace Graphics {
+
+#ifndef NEXUS_MULTIPROCESS_ACCESS
 
 using FormatTuple = std::tuple<const char*, NEXUS_VideoFormat>;
 static const std::array<FormatTuple, 9> s_formatTable = {
@@ -59,8 +65,13 @@ static const std::array<FormatTuple, 9> s_formatTable = {
    FormatTuple{ "1080p60Hz", NEXUS_VideoFormat_e1080p60hz },
 };
 
-RenderingBackendBCMNexus::RenderingBackendBCMNexus()
+#endif
+
+RenderingBackendBCMNexus::RenderingBackendBCMNexus() : m_nxplHandle (NULL)
 {
+
+#ifndef NEXUS_MULTIPROCESS_ACCESS
+
     const char* format = std::getenv("WPE_NEXUS_FORMAT");
     if (!format)
         format = "720p";
@@ -113,19 +124,49 @@ RenderingBackendBCMNexus::RenderingBackendBCMNexus()
     }
 
     NEXUS_Display_SetSettings(displayHandle, &displaySettings);
+
+#else
+    NEXUS_DisplayHandle displayHandle (NULL);
+    NxClient_AllocSettings allocSettings;
+    NxClient_JoinSettings joinSettings;
+    NxClient_GetDefaultJoinSettings( &joinSettings );
+
+    strcpy( joinSettings.name, "wpe" );
+
+    NEXUS_Error rc = NxClient_Join( &joinSettings );
+    BDBG_ASSERT(!rc);
+
+    NxClient_GetDefaultAllocSettings(&allocSettings);
+    allocSettings.surfaceClient = 1;
+    rc = NxClient_Alloc(&allocSettings, &m_AllocResults);
+    BDBG_ASSERT(!rc);
+
+#endif
+
     NXPL_RegisterNexusDisplayPlatform(&m_nxplHandle, displayHandle);
 }
 
-RenderingBackendBCMNexus::~RenderingBackendBCMNexus() = default;
+RenderingBackendBCMNexus::~RenderingBackendBCMNexus()
+{
+    NXPL_UnregisterNexusDisplayPlatform(m_nxplHandle);
+
+#ifdef NEXUS_MULTIPROCESS_ACCESS
+
+    NxClient_Free(&m_AllocResults);
+    NxClient_Uninit();
+
+#endif
+}
 
 EGLNativeDisplayType RenderingBackendBCMNexus::nativeDisplay()
 {
     return EGL_DEFAULT_DISPLAY;
 }
 
-std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
+std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t /* targetHandle */, RenderingBackend::Surface::Client& client)
 {
-    return std::unique_ptr<RenderingBackendBCMNexus::Surface>(new RenderingBackendBCMNexus::Surface(*this, width, height, targetHandle, client));
+
+    return std::unique_ptr<RenderingBackendBCMNexus::Surface>(new RenderingBackendBCMNexus::Surface(*this, width, height, m_AllocResults.surfaceClient[0].id, client));
 }
 
 std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexus::createOffscreenSurface()
@@ -141,11 +182,15 @@ RenderingBackendBCMNexus::Surface::Surface(const RenderingBackendBCMNexus&, uint
     windowInfo.width = width;
     windowInfo.height = height;
     windowInfo.stretch = false;
-    windowInfo.clientID = targetHandle;
+    // windowInfo.clientID = targetHandle;
+    windowInfo.clientID = 0; // For now we only accept 0. See Mail David Montgomery
     m_nativeWindow = NXPL_CreateNativeWindow(&windowInfo);
 }
 
-RenderingBackendBCMNexus::Surface::~Surface() = default;
+RenderingBackendBCMNexus::Surface::~Surface()
+{
+    NEXUS_SurfaceClient_Release (reinterpret_cast<NEXUS_SurfaceClient*>(m_nativeWindow));
+}
 
 EGLNativeWindowType RenderingBackendBCMNexus::Surface::nativeWindow()
 {
