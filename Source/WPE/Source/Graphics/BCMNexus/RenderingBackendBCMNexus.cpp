@@ -163,10 +163,14 @@ EGLNativeDisplayType RenderingBackendBCMNexus::nativeDisplay()
     return EGL_DEFAULT_DISPLAY;
 }
 
-std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t /* targetHandle */, RenderingBackend::Surface::Client& client)
+std::unique_ptr<RenderingBackend::Surface> RenderingBackendBCMNexus::createSurface(uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client& client)
 {
 
+#ifdef NEXUS_MULTIPROCESS_ACCESS
     return std::unique_ptr<RenderingBackendBCMNexus::Surface>(new RenderingBackendBCMNexus::Surface(*this, width, height, m_AllocResults.surfaceClient[0].id, client));
+#else
+    return std::unique_ptr<RenderingBackendBCMNexus::Surface>(new RenderingBackendBCMNexus::Surface(*this, width, height, targetHandle, client));
+#endif
 }
 
 std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexus::createOffscreenSurface()
@@ -174,7 +178,7 @@ std::unique_ptr<RenderingBackend::OffscreenSurface> RenderingBackendBCMNexus::cr
     return std::unique_ptr<RenderingBackendBCMNexus::OffscreenSurface>(new RenderingBackendBCMNexus::OffscreenSurface(*this));
 }
 
-RenderingBackendBCMNexus::Surface::Surface(const RenderingBackendBCMNexus&, uint32_t width, uint32_t height, uint32_t targetHandle, RenderingBackend::Surface::Client&)
+RenderingBackendBCMNexus::Surface::Surface(const RenderingBackendBCMNexus&, uint32_t width, uint32_t height, uint32_t /* targetHandle */, RenderingBackend::Surface::Client&)
 {
     NXPL_NativeWindowInfo windowInfo;
     windowInfo.x = 0;
