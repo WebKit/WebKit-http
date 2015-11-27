@@ -264,18 +264,15 @@ uint32_t ViewBackendDRM::constructRenderingTarget(uint32_t, uint32_t)
 void ViewBackendDRM::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
     if (!data || size != sizeof(Graphics::BufferDataGBM)) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendDRM: failed to validate the committed buffer\n");
         return;
     }
 
     auto& bufferData = *reinterpret_cast<const Graphics::BufferDataGBM*>(data);
     if (bufferData.magic != Graphics::BufferDataGBM::magicValue) {
-        fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
+        fprintf(stderr, "ViewBackendDRM: failed to validate the committed buffer\n");
         return;
     }
-
-    fprintf(stderr, "ViewBackendDRM::commitPrimeBuffer() fd %d handle %u (%u,%u)\n",
-        fd, bufferData.handle, bufferData.width, bufferData.height);
 
     uint32_t fbID = 0;
 
