@@ -29,6 +29,7 @@
 #if WPE_BACKEND(DRM)
 
 #include "BufferDataGBM.h"
+#include "LibinputServer.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 #include <cassert>
 #include <cstdio>
@@ -247,6 +248,8 @@ ViewBackendDRM::ViewBackendDRM()
 
 ViewBackendDRM::~ViewBackendDRM()
 {
+    LibinputServer::singleton().setClient(nullptr);
+
     m_fbMap = { };
 
     if (m_eventSource)
@@ -362,6 +365,11 @@ void ViewBackendDRM::destroyBuffer(uint32_t handle)
 
     drmModeRmFB(m_drm.fd, it->second.second);
     m_fbMap.erase(it);
+}
+
+void ViewBackendDRM::setInputClient(Input::Client* client)
+{
+    LibinputServer::singleton().setClient(client);
 }
 
 } // namespace ViewBackend

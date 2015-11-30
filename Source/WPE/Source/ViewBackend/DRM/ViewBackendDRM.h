@@ -54,6 +54,8 @@ public:
     void commitBuffer(int, const uint8_t* data, size_t size) override;
     void destroyBuffer(uint32_t handle) override;
 
+    void setInputClient(Input::Client*) override;
+
     struct PageFlipHandlerData {
         Client* client;
         std::pair<bool, uint32_t> nextFB;
