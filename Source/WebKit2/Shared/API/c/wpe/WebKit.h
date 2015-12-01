@@ -51,6 +51,33 @@
 #include <WebKit/WKUserContentInjectedFrames.h>
 #include <WebKit/WKUserScriptInjectionTime.h>
 
+// From Source/WebKit2/WebProcess/InjectedBundle/API/c/
+#include <WebKit/WKBundle.h>
+#include <WebKit/WKBundleBackForwardList.h>
+#include <WebKit/WKBundleBackForwardListItem.h>
+#include <WebKit/WKBundleFileHandleRef.h>
+#include <WebKit/WKBundleFrame.h>
+#include <WebKit/WKBundleHitTestResult.h>
+#include <WebKit/WKBundleInitialize.h>
+#include <WebKit/WKBundleInspector.h>
+#include <WebKit/WKBundleNavigationAction.h>
+#include <WebKit/WKBundleNodeHandle.h>
+#include <WebKit/WKBundlePage.h>
+#include <WebKit/WKBundlePageBanner.h>
+#include <WebKit/WKBundlePageContextMenuClient.h>
+#include <WebKit/WKBundlePageDiagnosticLoggingClient.h>
+#include <WebKit/WKBundlePageEditorClient.h>
+#include <WebKit/WKBundlePageFormClient.h>
+#include <WebKit/WKBundlePageFullScreenClient.h>
+#include <WebKit/WKBundlePageGroup.h>
+#include <WebKit/WKBundlePageLoaderClient.h>
+#include <WebKit/WKBundlePageOverlay.h>
+#include <WebKit/WKBundlePagePolicyClient.h>
+#include <WebKit/WKBundlePageResourceLoadClient.h>
+#include <WebKit/WKBundlePageUIClient.h>
+#include <WebKit/WKBundleRangeHandle.h>
+#include <WebKit/WKBundleScriptWorld.h>
+
 // From Source/WebKit2/UIProcess/API/C
 #include <WebKit/WKBackForwardListItemRef.h>
 #include <WebKit/WKBackForwardListRef.h>

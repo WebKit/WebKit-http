@@ -318,6 +318,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/Shared/API/c/WKEvent.h
     ${WEBKIT2_DIR}/Shared/API/c/WKFindOptions.h
     ${WEBKIT2_DIR}/Shared/API/c/WKGeometry.h
+    ${WEBKIT2_DIR}/Shared/API/c/WKImage.h
     ${WEBKIT2_DIR}/Shared/API/c/WKMutableArray.h
     ${WEBKIT2_DIR}/Shared/API/c/WKMutableDictionary.h
     ${WEBKIT2_DIR}/Shared/API/c/WKNumber.h
@@ -335,6 +336,33 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/Shared/API/c/WKUserScriptInjectionTime.h
 
     ${WEBKIT2_DIR}/Shared/API/c/wpe/WKBaseWPE.h
+
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundle.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleBackForwardList.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleBackForwardListItem.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleDOMWindowExtension.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleFileHandleRef.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleFrame.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleInitialize.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleInspector.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleNavigationAction.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePage.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageBanner.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageContextMenuClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageDiagnosticLoggingClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageEditorClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageFormClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageFullScreenClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageGroup.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageLoaderClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageOverlay.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePagePolicyClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageResourceLoadClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundlePageUIClient.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleRangeHandle.h
+    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.h
 
     ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListItemRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKBackForwardListRef.h
