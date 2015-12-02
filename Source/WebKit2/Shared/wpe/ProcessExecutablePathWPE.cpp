@@ -59,8 +59,7 @@ static String findWebKitProcess(const char* processName)
             return processPath;
     }
 
-    // FIXME: Define and use LIBEXECDIR.
-    return String(processName);
+    return pathByAppendingComponent(filenameToString(LIBEXECDIR), processName);
 }
 
 String executablePathOfWebProcess()
