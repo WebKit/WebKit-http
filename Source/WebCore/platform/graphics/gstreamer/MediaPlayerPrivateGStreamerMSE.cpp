@@ -39,6 +39,7 @@
 #include "TimeRanges.h"
 #include "URL.h"
 #include "VideoTrackPrivateGStreamer.h"
+#include <wtf/glib/GMutexLocker.h>
 
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
@@ -143,8 +144,8 @@ private:
 
     GMutex m_newSampleMutex;
     GCond m_newSampleCondition;
-    GMutex m_padRemovedMutex;
-    GCond m_padRemovedCondition;
+    GMutex m_padAddRemoveMutex;
+    GCond m_padAddRemoveCondition;
 
     GstCaps* m_appSinkCaps;
     GstCaps* m_demuxerSrcPadCaps;
@@ -916,35 +917,10 @@ public:
     {
         m_demuxerSrcPad = GST_PAD(gst_object_ref(demuxerSrcPad));
         m_ap = appendPipeline;
-        g_mutex_init(&m_mutex);
-        g_cond_init(&m_condition);
     }
     virtual ~PadInfo()
     {
-        g_cond_signal(&m_condition);
-        g_cond_clear(&m_condition);
-        g_mutex_clear(&m_mutex);
         gst_object_unref(m_demuxerSrcPad);
-    }
-
-    void lock()
-    {
-        g_mutex_lock(&m_mutex);
-    }
-
-    void unlock()
-    {
-        g_mutex_unlock(&m_mutex);
-    }
-
-    void wait()
-    {
-        g_cond_wait(&m_condition, &m_mutex);
-    }
-
-    void signal()
-    {
-        g_cond_signal(&m_condition);
     }
 
     GstPad* demuxerSrcPad() { return m_demuxerSrcPad; }
@@ -953,8 +929,6 @@ public:
 private:
     GstPad* m_demuxerSrcPad;
     RefPtr<AppendPipeline> m_ap;
-    GMutex m_mutex;
-    GCond m_condition;
 };
 
 static const char* dumpAppendStage(AppendPipeline::AppendStage appendStage)
@@ -1026,6 +1000,9 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     g_mutex_init(&m_newSampleMutex);
     g_cond_init(&m_newSampleCondition);
 
+    g_mutex_init(&m_padAddRemoveMutex);
+    g_cond_init(&m_padAddRemoveCondition);
+
     m_decryptor = NULL;
     m_appsrc = gst_element_factory_make("appsrc", NULL);
     m_typefind = gst_element_factory_make("typefind", NULL);
@@ -1066,9 +1043,15 @@ AppendPipeline::~AppendPipeline()
 {
     ASSERT(WTF::isMainThread());
 
+    g_mutex_lock(&m_newSampleMutex);
+    setAppendStage(Invalid);
     g_cond_signal(&m_newSampleCondition);
-    g_cond_clear(&m_newSampleCondition);
-    g_mutex_clear(&m_newSampleMutex);
+    g_mutex_unlock(&m_newSampleMutex);
+
+    g_mutex_lock(&m_padAddRemoveMutex);
+    m_playerPrivate = nullptr;
+    g_cond_signal(&m_padAddRemoveCondition);
+    g_mutex_unlock(&m_padAddRemoveMutex);
 
     LOG_MEDIA_MESSAGE("%p", this);
     if (m_noDataToDecodeTimeoutTag) {
@@ -1138,7 +1121,11 @@ AppendPipeline::~AppendPipeline()
         m_demuxerSrcPadCaps = NULL;
     }
 
-    m_playerPrivate = nullptr;
+    g_cond_clear(&m_newSampleCondition);
+    g_mutex_clear(&m_newSampleMutex);
+
+    g_cond_clear(&m_padAddRemoveCondition);
+    g_mutex_clear(&m_padAddRemoveMutex);
 };
 
 void AppendPipeline::clearPlayerPrivate()
@@ -1155,12 +1142,15 @@ void AppendPipeline::clearPlayerPrivate()
     g_cond_signal(&m_newSampleCondition);
     g_mutex_unlock(&m_newSampleMutex);
 
+    g_mutex_lock(&m_padAddRemoveMutex);
+    m_playerPrivate = nullptr;
+    g_cond_signal(&m_padAddRemoveCondition);
+    g_mutex_unlock(&m_padAddRemoveMutex);
+
     // And now that no handleNewSample operations will remain stalled waiting
     // for the main thread, stop the pipeline.
     if (m_pipeline)
         gst_element_set_state (m_pipeline, GST_STATE_NULL);
-
-    m_playerPrivate = nullptr;
 }
 
 void AppendPipeline::handleElementMessage(GstMessage* message)
@@ -1425,6 +1415,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
     case Invalid:
         ASSERT(m_noDataToDecodeTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
+        ok = true;
         break;
     }
 
@@ -1661,8 +1652,11 @@ void AppendPipeline::resetPipeline()
 {
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("resetting pipeline");
+    g_mutex_lock(&m_newSampleMutex);
+    g_cond_signal(&m_newSampleCondition);
     gst_element_set_state(m_pipeline, GST_STATE_READY);
     gst_element_get_state(m_pipeline, NULL, NULL, 0);
+    g_mutex_unlock(&m_newSampleMutex);
 
     {
         static int i = 0;
@@ -1753,12 +1747,12 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
         connectToAppSink(demuxerSrcPad);
     } else {
         // Call connectToAppSink() in the main thread and wait.
-        PadInfo* info = new PadInfo(demuxerSrcPad, this);
-        info->lock();
+        WTF::GMutexLocker<GMutex> lock(m_padAddRemoveMutex);
+        if (!m_playerPrivate)
+            return;
+        PadInfo* info = new PadInfo(demuxerSrcPad, this);  // will be deleted on main thread
         g_timeout_add(0, GSourceFunc(appendPipelineDemuxerConnectToAppSinkMainThread), info);
-        info->wait();
-        info->unlock();
-        delete info;
+        g_cond_wait(&m_padAddRemoveCondition, &m_padAddRemoveMutex);
     }
 
     // Must be done in the thread we were called from (usually streaming thread).
@@ -1803,27 +1797,31 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("Connecting to appsink");
 
+    WTF::GMutexLocker<GMutex> lock(m_padAddRemoveMutex);
     GRefPtr<GstPad> sinkSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
 
     // Only one Stream per demuxer is supported.
     ASSERT(!gst_pad_is_linked(sinkSinkPad.get()));
 
-    // TODO: Use RefPtr
-    GstCaps* caps = gst_pad_get_current_caps(GST_PAD(demuxerSrcPad));
+    GRefPtr<GstCaps> caps = adoptGRef(gst_pad_get_current_caps(GST_PAD(demuxerSrcPad)));
 
+    if (!caps || m_appendStage == Invalid || !m_playerPrivate) {
+        g_cond_signal(&m_padAddRemoveCondition);
+        return;
+    }
+
+#if !LOG_DISABLED
     {
-        gchar* strcaps = gst_caps_to_string(caps);
+        gchar* strcaps = gst_caps_to_string(caps.get());
         LOG_MEDIA_MESSAGE("%s", strcaps);
         g_free(strcaps);
     }
-
-    if (!caps)
-        return;
+#endif
 
     m_oldTrack = m_track;
 
     // May create m_decryptor
-    parseDemuxerCaps(gst_caps_ref(caps));
+    parseDemuxerCaps(gst_caps_ref(caps.get()));
 
     switch (m_streamType) {
     case WebCore::MediaSourceStreamTypeGStreamer::Audio:
@@ -1844,7 +1842,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
         break;
     }
 
-    gst_caps_unref(caps);
+    g_cond_signal(&m_padAddRemoveCondition);
 }
 
 void AppendPipeline::disconnectFromAppSinkFromAnyThread()
@@ -1865,12 +1863,18 @@ void AppendPipeline::disconnectFromAppSinkFromAnyThread()
     if (WTF::isMainThread()) {
         disconnectFromAppSink();
     } else {
-        PadInfo* info = new PadInfo(NULL, this);
-        info->lock();
+        WTF::GMutexLocker<GMutex> lock(m_padAddRemoveMutex);
+        if (!m_playerPrivate) {
+            if (m_decryptor) {
+                LOG_MEDIA_MESSAGE("Releasing decryptor");
+                gst_object_unref(m_decryptor);
+                m_decryptor = NULL;
+            }
+            return;
+        }
+        PadInfo* info = new PadInfo(NULL, this);  // will be deleted on main thread
         g_timeout_add(0, GSourceFunc(appendPipelineDemuxerDisconnectFromAppSinkMainThread), info);
-        info->wait();
-        info->unlock();
-        delete info;
+        g_cond_wait(&m_padAddRemoveCondition, &m_padAddRemoveMutex);
     }
 }
 
@@ -1878,11 +1882,13 @@ void AppendPipeline::disconnectFromAppSink()
 {
     ASSERT(WTF::isMainThread());
 
+    WTF::GMutexLocker<GMutex> lock(m_padAddRemoveMutex);
     if (m_decryptor) {
         LOG_MEDIA_MESSAGE("Releasing decryptor");
         gst_object_unref(m_decryptor);
         m_decryptor = NULL;
     }
+    g_cond_signal(&m_padAddRemoveCondition);
 }
 
 static gboolean appSinkCapsChangedFromMainThread(gpointer data)
@@ -1906,19 +1912,15 @@ static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, Ap
 
 static gboolean appendPipelineDemuxerConnectToAppSinkMainThread(PadInfo* info)
 {
-    info->lock();
     info->ap()->connectToAppSink(info->demuxerSrcPad());
-    info->signal();
-    info->unlock();
+    delete info;
     return G_SOURCE_REMOVE;
 }
 
 static gboolean appendPipelineDemuxerDisconnectFromAppSinkMainThread(PadInfo* info)
 {
-    info->lock();
     info->ap()->disconnectFromAppSink();
-    info->signal();
-    info->unlock();
+    delete info;
     return G_SOURCE_REMOVE;
 }
 
