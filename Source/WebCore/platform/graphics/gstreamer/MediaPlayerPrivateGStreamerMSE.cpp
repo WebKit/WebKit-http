@@ -91,6 +91,7 @@ public:
     void setAppendStage(AppendStage newAppendStage);
 
     GstFlowReturn handleNewSample(GstElement* appsink);
+    GstFlowReturn pushNewBuffer(GstBuffer* buffer);
 
     // Takes ownership of caps.
     void parseDemuxerCaps(GstCaps* demuxerSrcPadCaps);
@@ -174,6 +175,8 @@ private:
     WebCore::MediaSourceStreamTypeGStreamer m_streamType;
     RefPtr<WebCore::TrackPrivateBase> m_oldTrack;
     RefPtr<WebCore::TrackPrivateBase> m_track;
+
+    GRefPtr<GstBuffer> m_pendingBuffer;
 };
 
 void MediaPlayerPrivateGStreamerMSE::registerMediaEngine(MediaEngineRegistrar registrar)
@@ -1232,6 +1235,10 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             break;
         case NotStarted:
             ok = true;
+            if (m_pendingBuffer) {
+                gst_app_src_push_buffer(GST_APP_SRC(appsrc()), m_pendingBuffer.leakRef());
+                nextAppendStage = Ongoing;
+            }
             break;
         case Aborting:
             ok = true;
@@ -1398,6 +1405,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             ok = true;
             resetPipeline();
             m_abortPending = false;
+            nextAppendStage = NotStarted;
             break;
         case Invalid:
             ok = true;
@@ -1664,6 +1672,8 @@ void AppendPipeline::abort()
     ASSERT(WTF::isMainThread());
     LOG_MEDIA_MESSAGE("aborting");
 
+    m_pendingBuffer.clear();
+
     // Abort already ongoing.
     if (m_abortPending)
         return;
@@ -1674,6 +1684,15 @@ void AppendPipeline::abort()
     // Else, the automatic stage transitions will take care when the ongoing append finishes.
 }
 
+GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
+{
+    if (m_abortPending) {
+        m_pendingBuffer = adoptGRef(buffer);
+        return GST_FLOW_OK;
+    }
+    setAppendStage(AppendPipeline::Ongoing);
+    return gst_app_src_push_buffer(GST_APP_SRC(appsrc()), buffer);
+}
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
 {
@@ -2045,10 +2064,8 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
     RefPtr<AppendPipeline> ap = m_playerPrivate->m_appendPipelinesMap.get(sourceBufferPrivate);
     GstBuffer* buffer = gst_buffer_new_and_alloc(length);
     gst_buffer_fill(buffer, 0, data, length);
-    ap->setAppendStage(AppendPipeline::Ongoing);
 
-    GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(ap->appsrc()), buffer);
-    return (ret == GST_FLOW_OK);
+    return GST_FLOW_OK == ap->pushNewBuffer(buffer);
 }
 
 void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus)
