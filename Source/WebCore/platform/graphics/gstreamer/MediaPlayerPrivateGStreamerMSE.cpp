@@ -872,6 +872,14 @@ PassRefPtr<GStreamerMediaSample> GStreamerMediaSample::createFakeSample(GstCaps*
     return adoptRef(s);
 }
 
+void GStreamerMediaSample::applyPtsOffset(MediaTime timestampOffset)
+{
+    if (m_pts > timestampOffset) {
+        m_duration = m_duration + (m_pts - timestampOffset);
+        m_pts = timestampOffset;
+    }
+}
+
 GStreamerMediaSample::~GStreamerMediaSample()
 {
     if (m_sample)
@@ -1572,11 +1580,8 @@ void AppendPipeline::appSinkNewSample(GstSample* sample)
     // Add a fake sample if a gap is detected before the first sample
     if (mediaSample->presentationTime() >= timestampOffset &&
         mediaSample->presentationTime() <= timestampOffset + MediaTime::createWithDouble(0.1)) {
-        LOG_MEDIA_MESSAGE("Adding fake sample");
-        RefPtr<WebCore::GStreamerMediaSample> fakeSample = WebCore::GStreamerMediaSample::createFakeSample(
-                gst_sample_get_caps(sample), timestampOffset, mediaSample->decodeTime(), mediaSample->presentationTime() - timestampOffset, mediaSample->presentationSize(),
-                mediaSample->trackID());
-        m_sourceBufferPrivate->didReceiveSample(fakeSample);
+        LOG_MEDIA_MESSAGE("Adding fake offset");
+        mediaSample->applyPtsOffset(timestampOffset);
     }
 
     m_sourceBufferPrivate->didReceiveSample(mediaSample);
