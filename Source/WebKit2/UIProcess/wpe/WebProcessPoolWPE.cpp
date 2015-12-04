@@ -91,8 +91,6 @@ WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 
 void WebProcessPool::platformInitialize()
 {
-    setUsesNetworkProcess(true);
-    setProcessModel(ProcessModelMultipleSecondaryProcesses);
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
@@ -104,16 +102,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     if (!parameters.urlSchemesRegisteredAsLocal.contains("resource")) {
         WebCore::SchemeRegistry::registerURLSchemeAsLocal("resource");
         parameters.urlSchemesRegisteredAsLocal.append("resource");
-    }
-
-    if (!usesNetworkProcess()) {
-        parameters.urlSchemesRegisteredForCustomProtocols = supplement<WebSoupCustomProtocolRequestManager>()->registeredSchemesForCustomProtocols();
-
-        supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
-        parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
-
-        parameters.ignoreTLSErrors = m_ignoreTLSErrors;
-        parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
     }
 }
 
@@ -161,11 +149,8 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
 {
     m_ignoreTLSErrors = ignoreTLSErrors;
-    if (usesNetworkProcess() && networkProcess()) {
+    if (networkProcess())
         networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
-        return;
-    }
-    sendToAllProcesses(Messages::WebProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors));
 }
 
 } // namespace WebKit
