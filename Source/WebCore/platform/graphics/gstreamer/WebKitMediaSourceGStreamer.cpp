@@ -1258,6 +1258,8 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
         push_sample(GST_APP_SRC(appsrc), gstsample);
         // gst_app_src_push_sample() uses transfer-none for gstsample
 
+        gst_sample_unref(gstsample);
+
         GST_OBJECT_LOCK(m_webKitMediaSrc.get());
         stream->lastEnqueuedTime = lastEnqueuedTime;
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
