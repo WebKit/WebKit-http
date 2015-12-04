@@ -758,6 +758,9 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.securityOrigin = securityOrigin();
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
+    if (m_responseTypeCode == ResponseTypeArrayBuffer)
+        options.setDataBufferingPolicy(DoNotBufferData);
+
     if (m_timeoutMilliseconds) {
         if (!m_async)
             request.setTimeoutInterval(m_timeoutMilliseconds / 1000.0);
