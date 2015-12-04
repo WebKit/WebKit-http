@@ -130,17 +130,19 @@ static const struct xdg_shell_listener g_xdgShellListener = {
 
 static const struct wl_pointer_listener g_pointerListener = {
     // enter
-    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface, wl_fixed_t, wl_fixed_t)
+    [](void* data, struct wl_pointer*, uint32_t serial, struct wl_surface* surface, wl_fixed_t, wl_fixed_t)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end())
             seatData.pointer.target = *it;
     },
     // leave
-    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface)
+    [](void* data, struct wl_pointer*, uint32_t serial, struct wl_surface* surface)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end() && seatData.pointer.target.first == it->first)
             seatData.pointer.target = { };
@@ -157,8 +159,10 @@ static const struct wl_pointer_listener g_pointerListener = {
             pointer.target.second->handlePointerEvent({ Input::PointerEvent::Motion, time, x, y, 0, 0 });
     },
     // button
-    [](void* data, struct wl_pointer*, uint32_t, uint32_t time, uint32_t button, uint32_t state)
+    [](void* data, struct wl_pointer*, uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
     {
+        static_cast<WaylandDisplay::SeatData*>(data)->serial = serial;
+
         if (button >= BTN_MOUSE)
             button = button - BTN_MOUSE + 1;
         else
@@ -250,28 +254,31 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         xkb.indexes.shift = xkb_keymap_mod_get_index(xkb.keymap, XKB_MOD_NAME_SHIFT);
     },
     // enter
-    [](void* data, struct wl_keyboard*, uint32_t, struct wl_surface* surface, struct wl_array*)
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface, struct wl_array*)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end())
             seatData.keyboard.target = *it;
     },
     // leave
-    [](void* data, struct wl_keyboard*, uint32_t, struct wl_surface* surface)
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end() && seatData.keyboard.target.first == it->first)
             seatData.keyboard.target = { };
     },
     // key
-    [](void* data, struct wl_keyboard*, uint32_t, uint32_t time, uint32_t key, uint32_t state)
+    [](void* data, struct wl_keyboard*, uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
     {
         // IDK.
         key += 8;
 
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
         handleKeyEvent(seatData, key, state, time);
 
         if (!seatData.repeatInfo.rate)
@@ -292,8 +299,9 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         }
     },
     // modifiers
-    [](void* data, struct wl_keyboard*, uint32_t, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
+    [](void* data, struct wl_keyboard*, uint32_t serial, uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
     {
+        static_cast<WaylandDisplay::SeatData*>(data)->serial = serial;
         auto& xkb = static_cast<WaylandDisplay::SeatData*>(data)->xkb;
         xkb_state_update_mask(xkb.state, depressedMods, latchedMods, lockedMods, 0, 0, group);
 
@@ -326,9 +334,10 @@ static const struct wl_keyboard_listener g_keyboardListener = {
 
 static const struct wl_touch_listener g_touchListener = {
     // down
-    [](void* data, struct wl_touch*, uint32_t, uint32_t time, struct wl_surface* surface, int32_t id, wl_fixed_t x, wl_fixed_t y)
+    [](void* data, struct wl_touch*, uint32_t serial, uint32_t time, struct wl_surface* surface, int32_t id, wl_fixed_t x, wl_fixed_t y)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
 
         int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
         if (id < 0 || id >= arraySize)
@@ -348,9 +357,10 @@ static const struct wl_touch_listener g_touchListener = {
         target.second->handleTouchEvent({ touchPoints, Input::TouchEvent::Down, id, time });
     },
     // up
-    [](void* data, struct wl_touch*, uint32_t, uint32_t time, int32_t id)
+    [](void* data, struct wl_touch*, uint32_t serial, uint32_t time, int32_t id)
     {
         auto& seatData = *static_cast<WaylandDisplay::SeatData*>(data);
+        seatData.serial = serial;
 
         int32_t arraySize = std::tuple_size<decltype(seatData.touch.targets)>::value;
         if (id < 0 || id >= arraySize)

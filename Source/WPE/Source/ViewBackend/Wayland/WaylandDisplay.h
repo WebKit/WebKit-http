@@ -64,6 +64,8 @@ public:
 
     struct wl_display* display() const { return m_display; }
 
+    uint32_t serial() const { return m_seatData.serial; }
+
     struct Interfaces {
         struct wl_compositor* compositor;
         struct wl_drm* drm;
@@ -116,6 +118,8 @@ public:
             uint32_t state;
             uint32_t eventSource;
         } repeatData { 0, 0, 0, 0 };
+
+        uint32_t serial;
     };
 
     void registerInputClient(struct wl_surface*, Input::Client*);
