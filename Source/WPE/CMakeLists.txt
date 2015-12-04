@@ -19,23 +19,24 @@ if (USE_WPE_BACKEND_WAYLAND)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
 endif ()
 
+if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+    add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
+endif ()
+
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${GLIB_INCLUDE_DIRS}
-    ${LIBGBM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
     ${GLIB_LIBRARIES}
-    ${LIBGBM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
 )
@@ -55,7 +56,14 @@ set(WPE_SOURCES
     Source/ViewBackend/ViewBackend.cpp
 )
 
-if (USE_WPE_BACKEND_DRM OR USE_WPE_BACKEND_WAYLAND)
+if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
+        ${LIBGBM_INCLUDE_DIRS}
+    )
+    list(APPEND WPE_LIBRARIES
+        ${LIBGBM_LIBRARIES}
+    )
     list(APPEND WPE_SOURCES
         Source/Graphics/GBM/BufferDataGBM.cpp
         Source/Graphics/GBM/RenderingBackendGBM.cpp
