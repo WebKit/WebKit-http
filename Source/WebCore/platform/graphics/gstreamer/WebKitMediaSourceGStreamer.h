@@ -113,7 +113,6 @@ class PlaybackPipeline: public RefCounted<PlaybackPipeline> {
         PlaybackPipeline();
         GRefPtr<WebKitMediaSrc> m_webKitMediaSrc;
 
-        static const float lastSampleTolerance;
 };
 
 };

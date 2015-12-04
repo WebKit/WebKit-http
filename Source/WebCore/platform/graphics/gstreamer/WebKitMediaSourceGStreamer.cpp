@@ -793,8 +793,6 @@ PassRefPtr<PlaybackPipeline> PlaybackPipeline::create()
     return adoptRef(new PlaybackPipeline());
 }
 
-const float PlaybackPipeline::lastSampleTolerance = 3.0f;
-
 PlaybackPipeline::PlaybackPipeline()
     : RefCounted<PlaybackPipeline>()
 {
@@ -1200,27 +1198,27 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
+    double timestampOffset = stream->sourceBuffer->timestampOffset();
+
     // Actually no need to flush. The seek preparations have done it for us.
 
-    // Never enqueue non-consecutive-ish samples to avoid breaking the decoder.
-    MediaSample* lastSample = samples[samples.size()-1].get();
-    if (!stream->lastEnqueuedTime.isValid() || (lastEnqueuedTime.isValid() && lastSample->presentationTime().isValid() && abs(lastEnqueuedTime.toFloat() - lastSample->presentationTime().toFloat()) < lastSampleTolerance)) {
-        for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
-            GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(it->get());
-            if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
-                GstSample* gstsample = gst_sample_ref(sample->sample());
-                lastEnqueuedTime = sample->presentationTime();
+    for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
+        GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(it->get());
+        GstBuffer* buffer = nullptr;
+        if (sample->sample())
+            buffer = gst_sample_get_buffer(sample->sample());
+        if (buffer) {
+            GstSample* gstsample = gst_sample_ref(sample->sample());
+            lastEnqueuedTime = sample->presentationTime();
 
-                GST_BUFFER_FLAG_SET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-                push_sample(GST_APP_SRC(appsrc), gstsample);
-                // gst_app_src_push_sample() uses transfer-none for gstsample
+            GST_BUFFER_FLAG_SET(buffer, GST_BUFFER_FLAG_DECODE_ONLY);
+            GST_BUFFER_PTS(buffer) = GST_BUFFER_PTS(buffer) + toGstClockTime(static_cast<float>(timestampOffset));
+            push_sample(GST_APP_SRC(appsrc), gstsample);
+            // gst_app_src_push_sample() uses transfer-none for gstsample
 
-                gst_sample_unref(gstsample);
-            }
+            gst_sample_unref(gstsample);
         }
-    } else
-        LOG_MEDIA_MESSAGE("Not pushing, last sample PTS=%f too far away from lastEnqueuedTime=%f", lastSample->presentationTime().toFloat(), lastEnqueuedTime.toFloat());
-
+    }
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     stream->lastEnqueuedTime = lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
@@ -1247,26 +1245,22 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     GstElement* appsrc = stream->appsrc;
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+    double timestampOffset = stream->sourceBuffer->timestampOffset();
 
     GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(rsample.get());
     if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
         GstSample* gstsample = gst_sample_ref(sample->sample());
+        GstBuffer* buffer = gst_sample_get_buffer(gstsample);
+        lastEnqueuedTime = sample->presentationTime();
 
-        // Never enqueue non-consecutive-ish samples to avoid breaking the decoder.
-        if (!lastEnqueuedTime.isValid() || (lastEnqueuedTime.isValid() && sample->presentationTime().isValid() && abs(lastEnqueuedTime.toFloat() - sample->presentationTime().toFloat()) < lastSampleTolerance)) {
-            lastEnqueuedTime = sample->presentationTime();
+        GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DECODE_ONLY);
+        GST_BUFFER_PTS(buffer) = GST_BUFFER_PTS(buffer) + toGstClockTime(static_cast<float>(timestampOffset));
+        push_sample(GST_APP_SRC(appsrc), gstsample);
+        // gst_app_src_push_sample() uses transfer-none for gstsample
 
-            GST_BUFFER_FLAG_UNSET(gst_sample_get_buffer(gstsample), GST_BUFFER_FLAG_DECODE_ONLY);
-            push_sample(GST_APP_SRC(appsrc), gstsample);
-            // gst_app_src_push_sample() uses transfer-none for gstsample
-
-            GST_OBJECT_LOCK(m_webKitMediaSrc.get());
-            stream->lastEnqueuedTime = lastEnqueuedTime;
-            GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
-        } else
-            LOG_MEDIA_MESSAGE("Not pushing, PTS=%f too far away from lastEnqueuedTime=%f", sample->presentationTime().toFloat(), stream->lastEnqueuedTime.toFloat());
-
-        gst_sample_unref(gstsample);
+        GST_OBJECT_LOCK(m_webKitMediaSrc.get());
+        stream->lastEnqueuedTime = lastEnqueuedTime;
+        GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
     }
 }
 
