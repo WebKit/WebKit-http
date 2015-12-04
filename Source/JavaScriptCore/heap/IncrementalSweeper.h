@@ -42,7 +42,7 @@ public:
 #elif PLATFORM(WPE)
     explicit IncrementalSweeper(Heap*);
 #else
-    explicit IncrementalSweeper(VM*);
+    explicit IncrementalSweeper(Heap*);
 #endif
 
     void startSweeping();
@@ -51,7 +51,7 @@ public:
     bool sweepNextBlock();
     void willFinishSweeping();
 
-#if USE(CF) || PLATFORM(WPE)
+#if USE(CF) || (USE(GLIB) && !PLATFORM(EFL))
 private:
     void doSweep(double startTime);
     void scheduleTimer();

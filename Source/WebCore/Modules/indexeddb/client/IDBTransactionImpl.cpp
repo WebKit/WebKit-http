@@ -31,6 +31,7 @@
 #include "DOMError.h"
 #include "EventQueue.h"
 #include "IDBCursorWithValueImpl.h"
+#include "IDBDatabaseException.h"
 #include "IDBDatabaseImpl.h"
 #include "IDBError.h"
 #include "IDBEventDispatcher.h"
@@ -117,8 +118,7 @@ IDBConnectionToServer& IDBTransaction::serverConnection()
 
 RefPtr<DOMError> IDBTransaction::error() const
 {
-    ASSERT_NOT_REACHED();
-    return nullptr;
+    return m_domError;
 }
 
 RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& objectStoreName, ExceptionCode& ec)
@@ -165,18 +165,34 @@ RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& object
     return adoptRef(&objectStore.leakRef());
 }
 
+
+void IDBTransaction::abortDueToFailedRequest(DOMError& error)
+{
+    LOG(IndexedDB, "IDBTransaction::abortDueToFailedRequest");
+    ASSERT(!isFinishedOrFinishing());
+
+    m_domError = &error;
+    ExceptionCode ec;
+    abort(ec);
+}
+
 void IDBTransaction::abort(ExceptionCode& ec)
 {
     LOG(IndexedDB, "IDBTransaction::abort");
 
     if (isFinishedOrFinishing()) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::InvalidStateError;
         return;
     }
 
     m_state = IndexedDB::TransactionState::Aborting;
     m_database->willAbortTransaction(*this);
 
+    if (isVersionChange()) {
+        ASSERT(m_openDBRequest);
+        m_openDBRequest->versionChangeTransactionWillFinish();
+    }
+    
     m_abortQueue.swap(m_transactionOperationQueue);
 
     auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::abortOnServerAndCancelRequests);
@@ -191,7 +207,7 @@ void IDBTransaction::abortOnServerAndCancelRequests(TransactionOperation&)
 
     serverConnection().abortTransaction(*this);
 
-    IDBError error(IDBExceptionCode::AbortError);
+    IDBError error(IDBDatabaseException::AbortError);
     for (auto& operation : m_abortQueue)
         operation->completed(IDBResultData::error(operation->identifier(), error));
 
@@ -206,7 +222,7 @@ const char* IDBTransaction::activeDOMObjectName() const
     return "IDBTransaction";
 }
 
-bool IDBTransaction::canSuspendForPageCache() const
+bool IDBTransaction::canSuspendForDocumentSuspension() const
 {
     return false;
 }
@@ -285,6 +301,11 @@ void IDBTransaction::commit()
     m_state = IndexedDB::TransactionState::Committing;
     m_database->willCommitTransaction(*this);
 
+    if (isVersionChange()) {
+        ASSERT(m_openDBRequest);
+        m_openDBRequest->versionChangeTransactionWillFinish();
+    }
+
     auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::commitOnServer);
     scheduleOperation(WTF::move(operation));
 }
@@ -321,6 +342,18 @@ void IDBTransaction::didStart(const IDBError& error)
     scheduleOperationTimer();
 }
 
+void IDBTransaction::notifyDidAbort(const IDBError& error)
+{
+    m_database->didAbortTransaction(*this);
+    m_idbError = error;
+    fireOnAbort();
+
+    if (isVersionChange()) {
+        ASSERT(m_openDBRequest);
+        m_openDBRequest->fireErrorAfterVersionChangeAbort();
+    }
+}
+
 void IDBTransaction::didAbort(const IDBError& error)
 {
     LOG(IndexedDB, "IDBTransaction::didAbort");
@@ -328,10 +361,7 @@ void IDBTransaction::didAbort(const IDBError& error)
     if (m_state == IndexedDB::TransactionState::Finished)
         return;
 
-    m_database->didAbortTransaction(*this);
-
-    m_idbError = error;
-    fireOnAbort();
+    notifyDidAbort(error);
 
     finishAbortOrCommit();
 }
@@ -345,11 +375,8 @@ void IDBTransaction::didCommit(const IDBError& error)
     if (error.isNull()) {
         m_database->didCommitTransaction(*this);
         fireOnComplete();
-    } else {
-        m_database->didAbortTransaction(*this);
-        m_idbError = error;
-        fireOnAbort();
-    }
+    } else
+        notifyDidAbort(error);
 
     finishAbortOrCommit();
 }
@@ -465,8 +492,7 @@ void IDBTransaction::didCreateIndexOnServer(const IDBResultData& resultData)
         return;
 
     // Otherwise, failure to create an index forced abortion of the transaction.
-    ExceptionCode ec;
-    abort(ec);
+    abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(resultData.error().code())));
 }
 
 Ref<IDBRequest> IDBTransaction::requestOpenCursor(ScriptExecutionContext& context, IDBObjectStore& objectStore, const IDBCursorInfo& info)
@@ -602,13 +628,13 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
     const IDBGetResult& result = resultData.getResult();
 
     if (request.sourceIndexIdentifier() && request.requestedIndexRecordType() == IndexedDB::IndexRecordType::Key) {
-        if (!result.keyData.isNull())
-            request.setResult(&result.keyData);
+        if (!result.keyData().isNull())
+            request.setResult(&result.keyData());
         else
             request.setResultToUndefined();
     } else {
-        if (resultData.getResult().valueBuffer.data())
-            request.setResultToStructuredClone(resultData.getResult().valueBuffer);
+        if (resultData.getResult().valueBuffer().data())
+            request.setResultToStructuredClone(resultData.getResult().valueBuffer());
         else
             request.setResultToUndefined();
     }

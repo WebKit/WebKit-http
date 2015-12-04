@@ -630,8 +630,6 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->firstRectForCharacterRange(theRange, actualRange);
 }
 
-#if USE(ASYNC_NSTEXTINPUTCLIENT)
-
 - (void)selectedRangeWithCompletionHandler:(void(^)(NSRange selectedRange))completionHandlerPtr
 {
     _data->_impl->selectedRangeWithCompletionHandler(completionHandlerPtr);
@@ -661,8 +659,6 @@ Some other editing-related methods still unimplemented:
 {
     _data->_impl->characterIndexForPoint(thePoint, completionHandlerPtr);
 }
-
-#endif // USE(ASYNC_NSTEXTINPUTCLIENT)
 
 - (NSArray *)validAttributesForMarkedText
 {
@@ -1314,16 +1310,6 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::Scrol
 - (NSColor *)_pageExtendedBackgroundColor
 {
     return _data->_impl->pageExtendedBackgroundColor();
-}
-
-- (void)forceAsyncDrawingAreaSizeUpdate:(NSSize)size
-{
-    _data->_impl->forceAsyncDrawingAreaSizeUpdate(NSSizeToCGSize(size));
-}
-
-- (void)waitForAsyncDrawingAreaSizeUpdate
-{
-    _data->_impl->waitForAsyncDrawingAreaSizeUpdate();
 }
 
 - (BOOL)isUsingUISideCompositing

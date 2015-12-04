@@ -31,6 +31,7 @@
 #include "AirAllocateStack.h"
 #include "AirCode.h"
 #include "AirEliminateDeadCode.h"
+#include "AirFixPartialRegisterStalls.h"
 #include "AirGenerationContext.h"
 #include "AirHandleCalleeSaves.h"
 #include "AirIteratedRegisterCoalescing.h"
@@ -43,6 +44,7 @@
 #include "B3IndexMap.h"
 #include "B3TimingScope.h"
 #include "CCallHelpers.h"
+#include "DisallowMacroScratchRegisterUsage.h"
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -94,6 +96,10 @@ void prepareForGeneration(Code& code)
     // frequency successor is also the fall-through target.
     optimizeBlockOrder(code);
 
+    // Attempt to remove false dependencies between instructions created by partial register changes.
+    // This must be executed as late as possible as it depends on the instructions order and register use.
+    fixPartialRegisterStalls(code);
+
     // This is needed to satisfy a requirement of B3::StackmapValue.
     reportUsedRegisters(code);
 
@@ -112,9 +118,12 @@ void generate(Code& code, CCallHelpers& jit)
 {
     TimingScope timingScope("Air::generate");
 
+    DisallowMacroScratchRegisterUsage disallowScratch(jit);
+
     // And now, we generate code.
     jit.emitFunctionPrologue();
-    jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
+    if (code.frameSize())
+        jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
 
     GenerationContext context;
     context.code = &code;
@@ -146,7 +155,10 @@ void generate(Code& code, CCallHelpers& jit)
         if (block->last().opcode == Ret) {
             // We currently don't represent the full prologue/epilogue in Air, so we need to
             // have this override.
-            jit.emitFunctionEpilogue();
+            if (code.frameSize())
+                jit.emitFunctionEpilogue();
+            else
+                jit.emitFunctionEpilogueWithEmptyFrame();
             jit.ret();
             continue;
         }

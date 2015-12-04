@@ -35,9 +35,13 @@
 #include <wtf/HashSet.h>
 #include <wtf/WTFThreadData.h>
 
+#if USE(GLIB) && !PLATFORM(EFL)
+#include <glib.h>
+#endif
+
 namespace JSC {
 
-#if USE(CF) || PLATFORM(WPE)
+#if USE(CF) || (USE(GLIB) && !PLATFORM(EFL))
 
 static const double sweepTimeSlice = .01; // seconds
 static const double sweepTimeTotal = .10;
@@ -71,6 +75,26 @@ void IncrementalSweeper::cancelTimer()
 void IncrementalSweeper::scheduleTimer()
 {
     m_timer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(sweepTimeSlice * sweepTimeMultiplier)));
+}
+
+void IncrementalSweeper::cancelTimer()
+{
+    m_timer.cancel();
+}
+#elif USE(GLIB)
+IncrementalSweeper::IncrementalSweeper(Heap* heap)
+    : HeapTimer(heap->vm())
+    , m_blocksToSweep(heap->m_blockSnapshot)
+{
+}
+
+void IncrementalSweeper::scheduleTimer()
+{
+    auto delayDuration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(sweepTimeSlice * sweepTimeMultiplier));
+    gint64 currentTime = g_get_monotonic_time();
+    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delayDuration.count());
+    ASSERT(targetTime >= currentTime);
+    g_source_set_ready_time(m_timer.get(), targetTime);
 }
 
 void IncrementalSweeper::cancelTimer()
@@ -130,8 +154,8 @@ void IncrementalSweeper::willFinishSweeping()
 
 #else
 
-IncrementalSweeper::IncrementalSweeper(VM* vm)
-    : HeapTimer(vm)
+IncrementalSweeper::IncrementalSweeper(Heap* heap)
+    : HeapTimer(heap->vm())
 {
 }
 

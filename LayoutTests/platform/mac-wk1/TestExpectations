@@ -70,34 +70,39 @@ crypto/subtle/rsa-indexeddb.html
 crypto/subtle/rsa-indexeddb-non-exportable.html
 inspector/indexeddb
 
-# But Modern IndexedDB is.
+# Tests that are skipped above but that pass in Modern IDB are unskipped below.
+storage/indexeddb/aborted-versionchange-closes.html [ Pass ]
+storage/indexeddb/basics.html [ Pass ]
+storage/indexeddb/create-and-remove-object-store.html [ Pass ]
+storage/indexeddb/create-object-store-options.html [ Pass ]
+storage/indexeddb/cursor-advance.html [ Pass ]
+storage/indexeddb/cursor-basics.html [ Pass ]
+storage/indexeddb/cursor-cast.html [ Pass ]
+storage/indexeddb/cursor-finished.html [ Pass ]
+storage/indexeddb/cursor-index-delete.html [ Pass ]
+storage/indexeddb/cursor-overloads.html [ Pass ]
+storage/indexeddb/cursor-skip-deleted.html [ Pass ]
+storage/indexeddb/events.html [ Pass ]
 storage/indexeddb/modern [ Pass ]
-storage/indexeddb/mozilla/add-twice-failure.html [ Pass ]
-storage/indexeddb/mozilla/bad-keypath.html [ Pass ]
-storage/indexeddb/mozilla/create-index-unique.html [ Pass ]
-storage/indexeddb/mozilla/create-index-with-integer-keys.html [ Pass ]
-storage/indexeddb/mozilla/create-objectstore-basics.html [ Pass ]
-storage/indexeddb/mozilla/create-objectstore-null-name.html [ Pass ]
-storage/indexeddb/mozilla/delete-result.html [ Pass ]
-storage/indexeddb/mozilla/event-source.html [ Pass ]
-storage/indexeddb/mozilla/global-data.html [ Pass ]
-storage/indexeddb/mozilla/key-requirements-delete-null-key.html [ Pass ]
-storage/indexeddb/mozilla/key-requirements-inline-and-passed.html [ Pass ]
-storage/indexeddb/mozilla/key-requirements-put-no-key.html [ Pass ]
-storage/indexeddb/mozilla/key-requirements-put-null-key.html [ Pass ]
-storage/indexeddb/mozilla/key-requirements.html [ Pass ]
-storage/indexeddb/mozilla/object-cursors.html [ Pass ]
-storage/indexeddb/mozilla/object-identity.html [ Pass ]
-storage/indexeddb/mozilla/object-store-remove-values.html [ Pass ]
-storage/indexeddb/mozilla/objectstorenames.html [ Pass ]
-storage/indexeddb/mozilla/odd-result-order.html [ Pass ]
-storage/indexeddb/mozilla/open-database-null-name.html [ Pass ]
-storage/indexeddb/mozilla/put-get-values.html [ Pass ]
-storage/indexeddb/mozilla/readonly-transactions.html [ Pass ]
-storage/indexeddb/mozilla/readwrite-transactions.html [ Pass ]
-storage/indexeddb/mozilla/readyState.html [ Pass ]
-storage/indexeddb/mozilla/remove-index.html [ Pass ]
-storage/indexeddb/mozilla/versionchange-abort.html [ Pass ]
+storage/indexeddb/mozilla [ Pass ]
+storage/indexeddb/transaction-abort.html [ Pass ]
+storage/indexeddb/transaction-error.html [ Pass ]
+storage/indexeddb/transaction-event-propagation.html [ Pass ]
+
+# No workers support in Modern IDB yet
+storage/indexeddb/basics-workers.html
+storage/indexeddb/cursor-advance-workers.html
+storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-workers.html
+storage/indexeddb/factory-basics-workers.html
+storage/indexeddb/index-basics-workers.html
+storage/indexeddb/objectstore-basics-workers.html
+storage/indexeddb/open-twice-workers.html
+storage/indexeddb/pending-activity-workers.html
+storage/indexeddb/transaction-complete-workers.html
+storage/indexeddb/unprefix-workers.html
+
+# Complicated IDB failures that need a closer look
+storage/indexeddb/connection-leak.html
 
 # Fails with WebKit1 only.
 editing/secure-input/reset-state-on-navigation.html [ Failure ]

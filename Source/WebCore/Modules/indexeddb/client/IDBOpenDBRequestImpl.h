@@ -51,7 +51,10 @@ public:
     uint64_t version() const { return m_version; }
 
     void requestCompleted(const IDBResultData&);
+
+    void versionChangeTransactionWillFinish();
     void fireSuccessAfterVersionChangeCommit();
+    void fireErrorAfterVersionChangeAbort();
 
 private:
     IDBOpenDBRequest(IDBConnectionToServer&, ScriptExecutionContext*, const IDBDatabaseIdentifier&, uint64_t version);
@@ -60,6 +63,8 @@ private:
     void onSuccess(const IDBResultData&);
     void onUpgradeNeeded(const IDBResultData&);
     void onDeleteDatabaseSuccess(const IDBResultData&);
+
+    virtual bool isOpenDBRequest() const override { return true; }
 
     IDBDatabaseIdentifier m_databaseIdentifier;
     uint64_t m_version { 0 };

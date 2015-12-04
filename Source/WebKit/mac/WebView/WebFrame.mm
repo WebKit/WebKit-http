@@ -192,12 +192,7 @@ NSString *NSAccessibilityEnhancedUserInterfaceAttribute = @"AXEnhancedUserInterf
     [super dealloc];
 }
 
-- (void)finalize
-{
-    [super finalize];
-}
-
-- (void)setWebFrameView:(WebFrameView *)v 
+- (void)setWebFrameView:(WebFrameView *)v
 { 
     [v retain];
     [webFrameView release];
@@ -2053,7 +2048,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     if (Document* document = _private->coreFrame->document()) {
         if (DatabaseManager::singleton().hasOpenDatabases(document))
             [result setObject:[NSNumber numberWithBool:YES] forKey:WebFrameUsesDatabases];
-        if (!document->canSuspendActiveDOMObjectsForPageCache())
+        if (!document->canSuspendActiveDOMObjectsForDocumentSuspension())
             [result setObject:[NSNumber numberWithBool:YES] forKey:WebFrameCanSuspendActiveDOMObjects];
     }
     
@@ -2370,14 +2365,6 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     [_private release];
 
     [super dealloc];
-}
-
-- (void)finalize
-{
-    if (_private && _private->includedInWebKitStatistics)
-        --WebFrameCount;
-
-    [super finalize];
 }
 
 - (NSString *)name

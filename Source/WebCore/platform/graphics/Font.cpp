@@ -64,9 +64,6 @@ Font::Font(const FontPlatformData& platformData, std::unique_ptr<SVGData>&& svgD
     , m_isBrokenIdeographFallback(false)
     , m_hasVerticalGlyphs(false)
     , m_isUsedInSystemFallbackCache(false)
-#if PLATFORM(COCOA) || PLATFORM(WIN)
-    , m_isSystemFont(false)
-#endif
 #if PLATFORM(IOS)
     , m_shouldNotBeUsedForArabic(false)
 #endif
@@ -155,7 +152,7 @@ static bool fillGlyphPage(GlyphPage& pageToFill, UChar* buffer, unsigned bufferL
     if (auto* svgData = font.svgData())
         return svgData->fillSVGGlyphPage(&pageToFill, buffer, bufferLength);
 #endif
-    bool hasGlyphs = pageToFill.fill(buffer, bufferLength, &font);
+    bool hasGlyphs = pageToFill.fill(buffer, bufferLength);
 #if ENABLE(OPENTYPE_VERTICAL)
     if (hasGlyphs && font.verticalData())
         font.verticalData()->substituteWithVerticalGlyphs(&font, &pageToFill);
@@ -429,7 +426,7 @@ struct CharacterFallbackMapKeyHash {
         IntegerHasher hasher;
         hasher.add(key.character);
         hasher.add(key.isForPlatformFont);
-        hasher.add(key.locale.isNull() ? 0 : key.locale.impl()->existingHash());
+        hasher.add(key.locale.existingHash());
         return hasher.hash();
     }
 

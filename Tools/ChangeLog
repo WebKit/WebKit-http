@@ -1,62 +1,391 @@
-2015-11-22  Andy Estes  <aestes@apple.com>
+2015-12-03  Carlos Garcia Campos  <cgarcia@igalia.com>
 
-        Teach MiniBrowser how to enable the mock content filter
-        https://bugs.webkit.org/show_bug.cgi?id=151540
+        [GTK] Test /webkit2/WebKitWebResource/get-data is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=151797
+
+        Reviewed by Martin Robinson.
+
+        Since we switched to use the network process to run the unit tests
+        the test /webkit2/WebKitWebResource/get-data sometimes fails and
+        sometimes passes. We are now also getting the notification for the
+        css image. Since we wait for 3 resources, sometimes the css image
+        is loaded before and then checkResourceData is called for it, but
+        not handled. When the css image is the last one loaded the test
+        passes. So, we just need to wait for the 4 resources.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebResourceGetData):
+
+2015-12-03  David Kilzer  <ddkilzer@apple.com>
+
+        DumpRenderTree: Use-after-free in createBitmapContext() in PixelDumpSupportMac.mm
+        <http://webkit.org/b/151845>
+
+        Reviewed by Simon Fraser.
+
+        Fixes the following static analyzer warning:
+            DumpRenderTree/mac/PixelDumpSupportMac.mm:67:9: warning: Use of memory after it is freed
+                    WTFLogAlways("DumpRenderTree: CGBitmapContextCreate(%p, %llu, %llu, 8, %llu, %p, 0x%x) failed\n", buffer, pixelsHigh, pixelsWide, rowBytes, colorSpace.get(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (createBitmapContext): Free 'buffer' after using it in logging
+        to fix the use-after-free.  Assign a value of nullptr to buffer
+        so we don't return with it set to a freed address.
+
+2015-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Expose WebCore's InvisibleAutoplayNotPermitted setting to WebKit & WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=151830
+
+        Reviewed by Anders Carlsson.
+
+        Set invisibleAutoplayNotPermitted to NO by default both in WKTR and DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2015-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove Objective-C GC support
+        https://bugs.webkit.org/show_bug.cgi?id=151819
+        rdar://problem/23746991
+
+        Reviewed by Dan Bernstein.
+
+        * asan/asan.xcconfig:
+
+2015-12-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Allow nil for unspecified benchmark pathes
+        https://bugs.webkit.org/show_bug.cgi?id=151784
+
+        Reviewed by Filip Pizlo.
+
+        `Pathname.new(nil)` will raise an error.
+        Only generate Pathname if the benchmark path is specified.
+
+        * Scripts/run-jsc-benchmarks:
+
+2015-12-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Run non-http tests without Cygwin
+        https://bugs.webkit.org/show_bug.cgi?id=151721
+
+        Reviewed by Andy Estes.
+
+        Support native 32-bit and 64-bit Python (and Perl) builds
+        for running tests:
+
+        1. Use "startswith('win')", rather than "== 'win32'" to support
+        various Windows build types.
+        2. Supply full path for some native Windows utilities, since the
+        path environment does not always have the specified, and they are
+        guaranteed to exist in those specific locations.
+        3. Make sure native Windows Python test runs pass proper environment
+        variables to run programs.
+        4. Append 'exe' suffix when running Windows executables.
+        5. Use the _winreg Python module on Windows, since the Cygwin 'regtool'
+        command doesn't exist.
+        
+        * Scripts/update-webkit: Use Perl $^X command to refer to the path of
+        the current Perl executable, rather than requiring a new path search.
+        * Scripts/webkitpy/common/find_files_unittest.py:
+        (TestWinNormalize.test_win): Use startswith('win').
+        * Scripts/webkitpy/common/prettypatch_unittest.py:
+        (test_pretty_diff_encodings): Ditto.
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive._should_close_fds): Ditto.
+        (Executive.shell_command_for_script): Use startswith('win').
+        (Executive.kill_process): Use full path to killall executable.
+        (Executive.check_running_pid): Use startswith('win').
+        (Executive.running_pids): Ditto.
+        (Executive.kill_all): Ditto. Also use path to 'killall' executable when
+        running under native Windows Python.
+        (Executive._child_process_encoding): Use startswith('win').
+        (Executive._should_encode_child_process_arguments): Ditto.
+        (Executive.popen): Recognize proper script engine on Windows, since it
+        does not support the shebang syntax.
+        (Executive.run_in_parallel): Use startswith('win').
+        * Scripts/webkitpy/common/system/executive_unittest.py:
+        (never_ending_command): Ditto.
+        (ExecutiveTest.test_run_command_with_unicode): Ditto.
+        (ExecutiveTest.serial_test_kill_process): Ditto.
+        (ExecutiveTest.serial_test_kill_all): Ditto.
+        (ExecutiveTest.serial_test_check_running_pid): Ditto.
+        (ExecutiveTest.serial_test_run_in_parallel): Ditto.
+        (main): Ditto.
+        * Scripts/webkitpy/common/system/file_lock.py:
+        (FileLock._create_lock): Ditto.
+        (FileLock._remove_lock): Ditto.
+        * Scripts/webkitpy/common/system/filesystem_unittest.py:
+        (RealFileSystemTest.test_chdir): Ditto.
+        (RealFileSystemTest.test_chdir__notexists): Ditto.
+        (RealFileSystemTest.test_maybe_make_directory__failure): Ditto.
+        * Scripts/webkitpy/common/system/path_unittest.py:
+        (AbspathTest.test_abspath_to_uri_win): Ditto.
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._determine_os_name): Ditto.
+        * Scripts/webkitpy/common/system/user.py: Ditto.
+        * Scripts/webkitpy/layout_tests/controllers/manager_unittest.py:
+        (ManagerTest.integration_test_needs_servers): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__): Handle upper and lower-case
+        driver letters.
+        (LayoutTestApacheHttpd._get_apache_config_file_path): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server_unittest.py:
+        (TestLayoutTestApacheHttpd.test_start_cmd): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase._check_that_all_ports_are_available): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server_unittest.py:
+        (TestHttpServer.test_start_cmd): Ditto.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.setup_environ_for_server): Include 'COMSPEC', 'SYSTEMDRIVE',
+        and 'SYSTEMROOT' in environment passed to test runners.
+        (Port._apache_config_file_name_for_platform): Use startswith('win').
+        (Port._build_path): Ditto.
+        (Port._path_to_driver): Include 'exe' suffix when running under native
+        Windows.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): Explicitly make some environment
+        variables strings.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__): Use startswith('win').
+        * Scripts/webkitpy/port/win.py:
+        (WinPort): Use the win32 registry utilities on Windows, and appropriate
+        registry key formats.
+        (WinPort._ntsd_location): Revise tool search paths for Windows 10.
+        (WinPort.read_registry_value): Revise to use _winreg library on Windows,
+        and regtool on Cygwin.
+        (WinPort.write_registry_value): Ditto.
+        (WinPort.setup_crash_log_saving): Ditto.
+        (WinPort.restore_crash_log_saving): Ditto.
+        (WinPort.prevent_error_dialogs): Ditto.
+        (WinPort.allow_error_dialogs): Ditto.
+        (WinPort.find_system_pid): Revise to use Windows management
+        infrastructure on native Windows, continue using 'ps' on Cygwin.
+        (WinPort.read_registry_string): Deleted.
+        (WinPort.write_registry_string): Deleted.
+        * Scripts/webkitpy/test/main.py:
+        (main): Use startswith('win').
+        (Tester._parse_args): Ditto.
+
+2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+
+        Reviewed by Saam Barati.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-12-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192914.
+        https://bugs.webkit.org/show_bug.cgi?id=151734
+
+        JSC tests for this change are failing on 32 and 64-bit bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Implement LLInt/Baseline Support for ES6 Generators and
+        enable this feature"
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+        http://trac.webkit.org/changeset/192914
+
+2015-12-01  David Kilzer  <ddkilzer@apple.com>
+
+        EventSenderProxy::swipeGestureWithWheelAndMomentumPhases() leaks an EventSenderSyntheticEvent
+        <http://webkit.org/b/151726>
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::swipeGestureWithWheelAndMomentumPhases):
+        Deploy RetainPtr<EventSenderSyntheticEvent> to fix leak.
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Give String and AtomicString an existingHash() function
+        https://bugs.webkit.org/show_bug.cgi?id=151717
 
         Reviewed by Andreas Kling.
 
-        * MiniBrowser/Configurations/Base.xcconfig: Added WebCoreTestSupport and WTF to HEADER_SEARCH_PATHS.
-        * MiniBrowser/Configurations/MiniBrowser.xcconfig: Linked against libWebCoreTestSupport.
-        * MiniBrowser/Configurations/MiniBrowserBundle.xcconfig: Ditto.
-        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj: Added blocked-page.html.
-        * MiniBrowser/MiniBrowserWebProcessPlugIn.m:
-        (-[MiniBrowserWebProcessPlugIn webProcessPlugIn:initializeWithObject:]): Observed the WebMockContentFilterEnabler key path.
-        (-[MiniBrowserWebProcessPlugIn dealloc]):
-        (-[MiniBrowserWebProcessPlugIn observeValueForKeyPath:ofObject:change:context:]): Stored the value in _contentFilterEnabler.
-        * MiniBrowser/blocked-page.html: Added.
-        * MiniBrowser/mac/AppDelegate.m:
-        (defaultConfiguration): Created a _WKProcessPoolConfiguration with MiniBrowser.wkbundle as the injected bundle.
-        * MiniBrowser/mac/BrowserWindowController.h:
-        * MiniBrowser/mac/BrowserWindowController.m:
-        (+[BrowserWindowController contentFilteringBlockedString]): Returned an NSString containing blocked-page.html.
-        * MiniBrowser/mac/SettingsController.h:
-        * MiniBrowser/mac/SettingsController.m:
-        (-[SettingsController _populateMenu]): Added [self _contentFilteringMenuItem] to the Settings menu.
-        (-[SettingsController validateMenuItem:]): Validated the new menu items. Disabled Decision and Decision Point items if filtering is disabled.
-        (-[SettingsController _contentFilteringMenuItem]): Returned a new Content Filtering menu item with a submenu.
-        (-[SettingsController toggleContentFilteringEnabled:]): Toggled ContentFilteringEnabledKey.
-        (-[SettingsController contentFilteringEnabled]): Returned value of ContentFilteringEnabledKey.
-        (-[SettingsController setContentFilteringDecision:]): Set ContentFilterDecisionKey and called -[BrowserAppDelegate didChangeSettings].
-        (-[SettingsController contentFilteringDecision]): Returned the value of ContentFilterDecisionKey as a WebMockContentFilterDecision.
-        Defaulted to WebMockContentFilterDecisionAllow if the value is invalid.
-        (-[SettingsController setContentFilteringDecisionPoint:]): Set ContentFilterDecisionPointKey and called -[BrowserAppDelegate didChangeSettings].
-        (-[SettingsController contentFilteringDecisionPoint]): Returned the value of ContentFilterDecisionPointKey as a WebMockContentFilterDecisionPoint.
-        Defaulted to WebMockContentFilterDecisionPointAfterWillSendRequest if the value is invalid.
-        * MiniBrowser/mac/WK1BrowserWindowController.h:
-        * MiniBrowser/mac/WK1BrowserWindowController.m:
-        (-[WK1BrowserWindowController dealloc]):
-        (-[WK1BrowserWindowController didChangeSettings]): Created a WebMockContentFilterEnabler with the current settings and stored it in _contentFilterEnabler.
-        * MiniBrowser/mac/WK2BrowserWindowController.m:
-        (-[WK2BrowserWindowController didChangeSettings]): Created a WebMockContentFilterEnabler and set it as the object for the eponymous bundle parameter.
-        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig: Linked against libWebCoreTestSupport.
-        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFiltering.mm:
-        (configurationWithContentFilterSettings): Converted to use WebMockContentFilterEnabler, WebMockContentFilterDecision, and WebMockContentFilterDecisionPoint.
-        (TEST): Ditto.
-        (downloadTest): Ditto.
-        (+[MockContentFilterEnabler supportsSecureCoding]): Deleted.
-        (-[MockContentFilterEnabler copyWithZone:]): Deleted.
-        (-[MockContentFilterEnabler initWithCoder:]): Deleted.
-        (-[MockContentFilterEnabler initWithDecision:decisionPoint:]): Deleted.
-        (-[MockContentFilterEnabler encodeWithCoder:]): Deleted.
-        * TestWebKitAPI/Tests/WebKit2Cocoa/ContentFilteringPlugIn.mm:
-        (-[ContentFilteringPlugIn webProcessPlugIn:initializeWithObject:]): Converted to use WebMockContentFilterEnabler.
-        (-[ContentFilteringPlugIn dealloc]): Ditto.
-        (-[ContentFilteringPlugIn observeValueForKeyPath:ofObject:change:context:]): Ditto.
-        (+[MockContentFilterEnabler supportsSecureCoding]): Deleted.
-        (-[MockContentFilterEnabler copyWithZone:]): Deleted.
-        (-[MockContentFilterEnabler initWithCoder:]): Deleted.
-        (-[MockContentFilterEnabler dealloc]): Deleted.
-        (-[MockContentFilterEnabler encodeWithCoder:]): Deleted.
+        * TestWebKitAPI/Tests/WTF/AtomicString.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement LLInt/Baseline Support for ES6 Generators and enable this feature
+        https://bugs.webkit.org/show_bug.cgi?id=150792
+
+        Reviewed by Saam Barati.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-12-01  Sam Weinig  <sam@webkit.org>
+
+        Need completionHandler-based WebKit C SPI for alert, confirm, and prompt
+        <rdar://problem/23320863>
+        https://bugs.webkit.org/show_bug.cgi?id=151708
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        Update for new WKPageUIClient.
+
+2015-12-01  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKit2.framework
+        https://bugs.webkit.org/show_bug.cgi?id=151715
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit2/StopLoadingDuringDidFailProvisionalLoad.cpp:
+        * TestWebKitAPI/Tests/WebKit2/StopLoadingDuringDidFailProvisionalLoad_bundle.cpp:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsInvalidScheme.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/PreventImageLoadWithAutoResizing.mm:
+        * TestWebKitAPI/Tests/WebKit2ObjC/UserContentTest.mm:
+        * TestWebKitAPI/mac/TestBrowsingContextLoadDelegate.h:
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed common typo fix "occurance" => "occurrence".
+
+        * Scripts/webkitpy/tool/commands/queries.py:
+        (FindFlakyTests._print_statistics):
+
+2015-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        Make ProcessModel always MultipleSecondaryProcesses
+        https://bugs.webkit.org/show_bug.cgi?id=151662
+
+        Reviewed by Antti Koivisto.
+
+        * TestWebKitAPI/Tests/WebKit2/Geolocation.cpp:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generatePageConfiguration):
+
+2015-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        Make usesNetworkProcess always true
+        https://bugs.webkit.org/show_bug.cgi?id=151580
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2/Geolocation.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/mac/GetPIDAfterAbortedProcessLaunch.cpp:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generatePageConfiguration):
+
+2015-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Skip GTK+ test /webkit2/WebKitWebView/editable/editable in Debug.
+
+        Add a way to skip unit tests only for Debug or Release builds and
+        skipt the test /webkit2/WebKitWebView/editable/editable only for Debug.
+
+        * Scripts/run-gtk-tests:
+        (SkippedTest):
+        (SkippedTest.__init__):
+        (SkippedTest.__str__):
+        (SkippedTest.skip_entire_suite):
+        (SkippedTest.skip_for_build_type):
+        (TestRunner):
+        (TestRunner.__init__):
+
+2015-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix a crash in GTK+ test /webkit2/WebKitWebView/custom-charset.
+
+        It's an assert hit because we are reloading a view loaded with
+        HTML data which is not supported. Use loadURI instead.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewCustomCharset):
+
+2015-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Remove GMainLoopSource and GThreadSafeMainLoopSource
+        https://bugs.webkit.org/show_bug.cgi?id=151633
+
+        Reviewed by Csaba Osztrogonác.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WTF/glib/GMainLoopSource.cpp: Removed.
+
+2015-11-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove the remaining uses of GMainLoopSource
+        https://bugs.webkit.org/show_bug.cgi?id=151632
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (testWebViewSyncRequestOnMaxConns):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::TestRunner):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::timeoutSource):
+        (WTR::TestController::notifyDone):
+        (WTR::TestController::platformRunUntil):
+
+2015-11-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [cmake] Add testb3 to the build system
+        https://bugs.webkit.org/show_bug.cgi?id=151619
+
+        Reviewed by Gyuyoung Kim.
+
+        * Scripts/build-jsc:
+
+2015-11-27  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [jhbuild] Fix pixman build with clang
+        https://bugs.webkit.org/show_bug.cgi?id=151441
+
+        Reviewed by Carlos Garcia Campos.
+
+        * efl/jhbuild.modules:
+        * gtk/jhbuild.modules:
+
+2015-11-26  David Kilzer  <ddkilzer@apple.com>
+
+        Extract prependToEnvironmentVariableList
+        <http://webkit.org/b/151536>
+
+        Reviewed by Daniel Bates.
+
+        Tests: webkitdirs_unittest/appendToEnvironmentVariableList.pl
+               webkitdirs_unittest/prependToEnvironmentVariableList.pl
+
+        * Scripts/webkitdirs.pm: Export appendToEnvironmentVariableList
+        and prependToEnvironmentVariableList.
+        (appendToEnvironmentVariableList): Simplify variable name.
+        Switch to use $Config{path_sep}.
+        (prependToEnvironmentVariableList): Add new method.
+        (setupMacWebKitEnvironment): Switch to use
+        prependToEnvironmentVariableList().
+        (setupIOSWebKitEnvironment): Ditto.
+
+        * Scripts/webkitperl/webkitdirs_unittest/appendToEnvironmentVariableList.pl: Added.
+        * Scripts/webkitperl/webkitdirs_unittest/prependToEnvironmentVariableList.pl: Added.
 
 2015-11-24  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
 

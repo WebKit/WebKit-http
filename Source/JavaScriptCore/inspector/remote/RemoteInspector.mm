@@ -200,6 +200,10 @@ void RemoteInspector::updateAutomaticInspectionCandidate(RemoteInspectionTarget*
         auto result = m_targetMap.set(identifier, target);
         ASSERT_UNUSED(result, !result.isNewEntry);
 
+        // If the target has just allowed remote control, then the listing won't exist yet.
+        if (RetainPtr<NSDictionary> listing = listingForTarget(*target))
+            m_listingMap.set(identifier, listing);
+
         // Don't allow automatic inspection unless it is allowed or we are stopped.
         if (!m_automaticInspectionEnabled || !m_enabled) {
             pushListingsSoon();
@@ -264,6 +268,8 @@ void RemoteInspector::sendMessageToRemote(unsigned identifier, const String& mes
         return;
 
     auto connection = m_connectionMap.get(identifier);
+    if (!connection)
+        return;
 
     NSDictionary *userInfo = @{
         WIRRawDataKey: [static_cast<NSString *>(message) dataUsingEncoding:NSUTF8StringEncoding],
@@ -541,7 +547,7 @@ void RemoteInspector::pushListingsNow()
 
     RetainPtr<NSMutableDictionary> listings = adoptNS([[NSMutableDictionary alloc] init]);
     for (RetainPtr<NSDictionary> listing : m_listingMap.values()) {
-        NSString *identifier = [listing.get() objectForKey:WIRPageIdentifierKey];
+        NSString *identifier = [[listing.get() objectForKey:WIRPageIdentifierKey] stringValue];
         [listings setObject:listing.get() forKey:identifier];
     }
 
@@ -684,8 +690,6 @@ void RemoteInspector::receivedIndicateMessage(NSDictionary *userInfo)
         return;
 
     BOOL indicateEnabled = [[userInfo objectForKey:WIRIndicateEnabledKey] boolValue];
-
-    std::lock_guard<Lock> lock(m_mutex);
 
     callOnWebThreadOrDispatchAsyncOnMainThread(^{
         RemoteControllableTarget* target = nullptr;

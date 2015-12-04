@@ -528,7 +528,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
             break;
         case UntypedUse:
-            forNode(node).setType(m_graph, SpecHeapTop);
+            clobberWorld(node->origin.semantic, clobberLimit);
+            forNode(node).setType(m_graph, SpecBytecodeNumber);
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -632,6 +633,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             forNode(node).setType(
                 typeOfDoubleProduct(
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
+            break;
+        case UntypedUse:
+            clobberWorld(node->origin.semantic, clobberLimit);
+            forNode(node).setType(m_graph, SpecBytecodeNumber);
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -1760,6 +1765,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case GetArgumentCount:
+        forNode(node).setType(SpecInt32);
+        break;
+        
+    case GetRestLength:
         forNode(node).setType(SpecInt32);
         break;
         

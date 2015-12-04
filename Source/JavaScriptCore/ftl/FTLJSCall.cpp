@@ -54,7 +54,11 @@ void JSCall::emit(CCallHelpers& jit, State& state, int32_t osrExitFromGenericUnw
 {
     JSCallBase::emit(jit, state, osrExitFromGenericUnwindSpillSlots);
 
+#if FTL_USES_B3
+    jit.addPtr(CCallHelpers::TrustedImm32(- static_cast<int64_t>(state.jitCode->common.frameRegisterCount * sizeof(EncodedJSValue))), CCallHelpers::framePointerRegister, CCallHelpers::stackPointerRegister);
+#else // FTL_USES_B3
     jit.addPtr(CCallHelpers::TrustedImm32(- static_cast<int64_t>(state.jitCode->stackmaps.stackSizeForLocals())), CCallHelpers::framePointerRegister, CCallHelpers::stackPointerRegister);
+#endif // FTL_USES_B3
 }
 
 } } // namespace JSC::FTL

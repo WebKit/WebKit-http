@@ -28,6 +28,8 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "AirGenerationContext.h"
+#include "AllowMacroScratchRegisterUsage.h"
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
 #include "DFGDominators.h"
@@ -100,6 +102,7 @@ NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
     } while (false)
 
 class LowerDFGToLLVM {
+    WTF_MAKE_NONCOPYABLE(LowerDFGToLLVM);
 public:
     LowerDFGToLLVM(State& state)
         : m_graph(state.graph)
@@ -229,9 +232,11 @@ public:
                             maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, m_graph.localsLiveInBytecode(opCatchOrigin).bitCount());
                         break;
                     }
+                    case ArithMul:
                     case ArithSub:
                     case GetById:
-                    case GetByIdFlush: {
+                    case GetByIdFlush:
+                    case ValueAdd: {
                         // We may have to flush one thing for GetByIds/ArithSubs when the base and result or the left/right and the result
                         // are assigned the same register. For a more comprehensive overview, look at the comment in FTLCompile.cpp
                         if (node->op() == ArithSub && node->binaryUseKind() != UntypedUse)
@@ -240,8 +245,8 @@ public:
                         HandlerInfo* exceptionHandler;
                         bool willCatchException = m_graph.willCatchExceptionInMachineFrame(node->origin.forExit, opCatchOrigin, exceptionHandler);
                         if (willCatchException) {
-                            static const size_t numberOfGetByIdOrSubSpills = 1;
-                            maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, numberOfGetByIdOrSubSpills);
+                            static const size_t numberOfGetByIdOrBinaryOpSpills = 1;
+                            maxNumberOfCatchSpills = std::max(maxNumberOfCatchSpills, numberOfGetByIdOrBinaryOpSpills);
                         }
                         break;
                     }
@@ -970,6 +975,9 @@ private:
         case CopyRest:
             compileCopyRest();
             break;
+        case GetRestLength:
+            compileGetRestLength();
+            break;
 
         case PhantomLocal:
         case LoopHint:
@@ -1478,15 +1486,56 @@ private:
     
     void compileValueAdd()
     {
-        J_JITOperation_EJJ operation;
-        if (!(provenType(m_node->child1()) & SpecFullNumber)
-            && !(provenType(m_node->child2()) & SpecFullNumber))
-            operation = operationValueAddNotNumber;
-        else
-            operation = operationValueAdd;
-        setJSValue(vmCall(
-            m_out.int64, m_out.operation(operation), m_callFrame,
-            lowJSValue(m_node->child1()), lowJSValue(m_node->child2())));
+        Edge& leftChild = m_node->child1();
+        Edge& rightChild = m_node->child2();
+
+        if (!(provenType(leftChild) & SpecFullNumber) || !(provenType(rightChild) & SpecFullNumber)) {
+            setJSValue(vmCall(m_out.int64, m_out.operation(operationValueAddNotNumber), m_callFrame,
+                lowJSValue(leftChild), lowJSValue(rightChild)));
+            return;
+        }
+
+        unsigned stackmapID = m_stackmapIDs++;
+
+        if (Options::verboseCompilation())
+            dataLog("    Emitting ValueAdd patchpoint with stackmap #", stackmapID, "\n");
+
+#if FTL_USES_B3
+        CRASH();
+#else
+        LValue left = lowJSValue(leftChild);
+        LValue right = lowJSValue(rightChild);
+
+        SnippetOperand leftOperand(abstractValue(leftChild).resultType());
+        SnippetOperand rightOperand(abstractValue(rightChild).resultType());
+
+        // The DFG does not always fold the sum of 2 constant int operands together.
+        // Because the snippet does not support both operands being constant, if the left
+        // operand is already a constant, we'll just pretend the right operand is not.
+        if (leftChild->isInt32Constant())
+            leftOperand.setConstInt32(leftChild->asInt32());
+        if (!leftOperand.isConst() && rightChild->isInt32Constant())
+            rightOperand.setConstInt32(rightChild->asInt32());
+
+        // Arguments: id, bytes, target, numArgs, args...
+        StackmapArgumentList arguments;
+        arguments.append(m_out.constInt64(stackmapID));
+        arguments.append(m_out.constInt32(ValueAddDescriptor::icSize()));
+        arguments.append(constNull(m_out.ref8));
+        arguments.append(m_out.constInt32(2));
+        arguments.append(left);
+        arguments.append(right);
+
+        appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments,
+            ExceptionType::BinaryOpGenerator, 3); // left, right, and result show up in the stackmap locations.
+
+        LValue call = m_out.call(m_out.int64, m_out.patchpointInt64Intrinsic(), arguments);
+        setInstructionCallingConvention(call, LLVMAnyRegCallConv);
+
+        m_ftlState.binaryOps.append(ValueAddDescriptor(stackmapID, m_node->origin.semantic, leftOperand, rightOperand));
+
+        setJSValue(call);
+#endif
     }
     
     void compileStrCat()
@@ -1649,20 +1698,21 @@ private:
             // Arguments: id, bytes, target, numArgs, args...
             StackmapArgumentList arguments;
             arguments.append(m_out.constInt64(stackmapID));
-            arguments.append(m_out.constInt32(sizeOfArithSub()));
+            arguments.append(m_out.constInt32(ArithSubDescriptor::icSize()));
             arguments.append(constNull(m_out.ref8));
             arguments.append(m_out.constInt32(2));
             arguments.append(left);
             arguments.append(right);
 
-            appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments, ExceptionType::SubGenerator, 3); // left, right, and result show up in the stackmap locations.
+            appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments,
+                ExceptionType::BinaryOpGenerator, 3); // left, right, and result show up in the stackmap locations.
 
             LValue call = m_out.call(m_out.int64, m_out.patchpointInt64Intrinsic(), arguments);
             setInstructionCallingConvention(call, LLVMAnyRegCallConv);
 
-            m_ftlState.arithSubs.append(ArithSubDescriptor(stackmapID, m_node->origin.semantic,
-                abstractValue(m_node->child1()).resultType(),
-                abstractValue(m_node->child2()).resultType()));
+            SnippetOperand leftOperand(abstractValue(m_node->child1()).resultType());
+            SnippetOperand rightOperand(abstractValue(m_node->child2()).resultType());
+            m_ftlState.binaryOps.append(ArithSubDescriptor(stackmapID, m_node->origin.semantic, leftOperand, rightOperand));
 
             setJSValue(call);
 #endif
@@ -1678,8 +1728,7 @@ private:
     void compileArithClz32()
     {
         LValue operand = lowInt32(m_node->child1());
-        LValue isZeroUndef = m_out.booleanFalse;
-        setInt32(m_out.ctlz32(operand, isZeroUndef));
+        setInt32(m_out.ctlz32(operand));
     }
     
     void compileArithMul()
@@ -1760,7 +1809,60 @@ private:
                 m_out.doubleMul(lowDouble(m_node->child1()), lowDouble(m_node->child2())));
             break;
         }
-            
+
+        case UntypedUse: {
+            Edge& leftChild = m_node->child1();
+            Edge& rightChild = m_node->child2();
+
+            if (!(provenType(leftChild) & SpecFullNumber) || !(provenType(rightChild) & SpecFullNumber)) {
+                setJSValue(vmCall(m_out.int64, m_out.operation(operationValueMul), m_callFrame,
+                    lowJSValue(leftChild), lowJSValue(rightChild)));
+                return;
+            }
+
+            unsigned stackmapID = m_stackmapIDs++;
+
+            if (Options::verboseCompilation())
+                dataLog("    Emitting ArithMul patchpoint with stackmap #", stackmapID, "\n");
+
+#if FTL_USES_B3
+            CRASH();
+#else
+            LValue left = lowJSValue(leftChild);
+            LValue right = lowJSValue(rightChild);
+
+            SnippetOperand leftOperand(abstractValue(leftChild).resultType());
+            SnippetOperand rightOperand(abstractValue(rightChild).resultType());
+
+            if (leftChild->isInt32Constant())
+                leftOperand.setConstInt32(leftChild->asInt32());
+            if (rightChild->isInt32Constant())
+                rightOperand.setConstInt32(rightChild->asInt32());
+
+            RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+
+            // Arguments: id, bytes, target, numArgs, args...
+            StackmapArgumentList arguments;
+            arguments.append(m_out.constInt64(stackmapID));
+            arguments.append(m_out.constInt32(ArithSubDescriptor::icSize()));
+            arguments.append(constNull(m_out.ref8));
+            arguments.append(m_out.constInt32(2));
+            arguments.append(left);
+            arguments.append(right);
+
+            appendOSRExitArgumentsForPatchpointIfWillCatchException(arguments,
+                ExceptionType::BinaryOpGenerator, 3); // left, right, and result show up in the stackmap locations.
+
+            LValue call = m_out.call(m_out.int64, m_out.patchpointInt64Intrinsic(), arguments);
+            setInstructionCallingConvention(call, LLVMAnyRegCallConv);
+
+            m_ftlState.binaryOps.append(ArithMulDescriptor(stackmapID, m_node->origin.semantic, leftOperand, rightOperand));
+
+            setJSValue(call);
+#endif
+            break;
+        }
+
         default:
             DFG_CRASH(m_graph, m_node, "Bad use kind");
             break;
@@ -3645,21 +3747,41 @@ private:
         LBasicBlock doCopyRest = FTL_NEW_BLOCK(m_out, ("CopyRest C call"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("FillRestParameter continuation"));
 
-        LValue numberOfArgumentsToSkip = m_out.constInt32(m_node->numberOfArgumentsToSkip());
-        LValue numberOfArguments = getArgumentsLength().value;
+        LValue arrayLength = lowInt32(m_node->child2());
 
         m_out.branch(
-            m_out.above(numberOfArguments, numberOfArgumentsToSkip),
-            unsure(doCopyRest), unsure(continuation));
+            m_out.equal(arrayLength, m_out.constInt32(0)),
+            unsure(continuation), unsure(doCopyRest));
             
         LBasicBlock lastNext = m_out.appendTo(doCopyRest, continuation);
-        // Arguments: 0:exec, 1:JSCell* array, 2:arguments start, 3:number of arguments to skip, 4:number of arguments
+        // Arguments: 0:exec, 1:JSCell* array, 2:arguments start, 3:number of arguments to skip, 4:array length
+        LValue numberOfArgumentsToSkip = m_out.constInt32(m_node->numberOfArgumentsToSkip());
         vmCall(
             m_out.voidType,m_out.operation(operationCopyRest), m_callFrame, lowCell(m_node->child1()),
-            getArgumentsStart(), numberOfArgumentsToSkip, numberOfArguments);
+            getArgumentsStart(), numberOfArgumentsToSkip, arrayLength);
         m_out.jump(continuation);
 
         m_out.appendTo(continuation, lastNext);
+    }
+
+    void compileGetRestLength()
+    {
+        LBasicBlock nonZeroLength = FTL_NEW_BLOCK(m_out, ("GetRestLength non zero"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("GetRestLength continuation"));
+        
+        ValueFromBlock zeroLengthResult = m_out.anchor(m_out.constInt32(0));
+
+        LValue numberOfArgumentsToSkip = m_out.constInt32(m_node->numberOfArgumentsToSkip());
+        LValue argumentsLength = getArgumentsLength().value;
+        m_out.branch(m_out.above(argumentsLength, numberOfArgumentsToSkip),
+            unsure(nonZeroLength), unsure(continuation));
+        
+        LBasicBlock lastNext = m_out.appendTo(nonZeroLength, continuation);
+        ValueFromBlock nonZeroLengthResult = m_out.anchor(m_out.sub(argumentsLength, numberOfArgumentsToSkip));
+        m_out.jump(continuation);
+        
+        m_out.appendTo(continuation, lastNext);
+        setInt32(m_out.phi(m_out.int32, zeroLengthResult, nonZeroLengthResult));
     }
     
     void compileNewObject()
@@ -5252,15 +5374,12 @@ private:
         DFG_ASSERT(m_graph, m_node, m_origin.exitOK);
         
 
-        appendOSRExitDescriptor(UncountableInvalidation, ExceptionType::None, noValue(), nullptr, m_origin);
+        OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(UncountableInvalidation, ExceptionType::None, noValue(), nullptr, m_origin);
         
-        OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
-        
-        StackmapArgumentList arguments =
-            buildExitArguments(exitDescriptor, FormattedValue(), exitDescriptor.m_codeOrigin);
+        StackmapArgumentList arguments = buildExitArguments(exitDescriptor, m_ftlState.osrExitDescriptorImpls.last(), FormattedValue());
         callStackmap(exitDescriptor, arguments);
         
-        exitDescriptor.m_isInvalidationPoint = true;
+        exitDescriptor->m_isInvalidationPoint = true;
 #endif // FTL_USES_B3
     }
     
@@ -7812,14 +7931,78 @@ private:
     LValue lazySlowPath(const Functor& functor, const Vector<LValue>& userArguments)
     {
 #if FTL_USES_B3
-        UNUSED_PARAM(functor);
-
+        CodeOrigin origin = m_node->origin.semantic;
+        
         B3::PatchpointValue* result = m_out.patchpoint(B3::Int64);
         for (LValue arg : userArguments)
-            result->append(ConstrainedValue(arg, ValueRep::SomeRegister));
+            result->append(ConstrainedValue(arg, B3::ValueRep::SomeRegister));
+
+        // FIXME: As part of handling exceptions, we need to append OSR exit state here.
+        
+        result->clobber(RegisterSet::macroScratchRegisters());
+        State* state = &m_ftlState;
+
         result->setGenerator(
-            [&] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
-                jit.oops();
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                Vector<Location> locations;
+                for (const B3::ValueRep& rep : params.reps)
+                    locations.append(Location::forValueRep(rep));
+
+                RefPtr<LazySlowPath::Generator> generator = functor(locations);
+                
+                CCallHelpers::PatchableJump patchableJump = jit.patchableJump();
+                CCallHelpers::Label done = jit.label();
+
+                RegisterSet usedRegisters = params.usedRegisters;
+
+                // FIXME: As part of handling exceptions, we need to create a concrete OSRExit here.
+                // Doing so should automagically register late paths that emit exit thunks.
+                
+                params.context->latePaths.append(
+                    createSharedTask<Air::GenerationContext::LatePathFunction>(
+                        [=] (CCallHelpers& jit, Air::GenerationContext&) {
+                            AllowMacroScratchRegisterUsage allowScratch(jit);
+                            patchableJump.m_jump.link(&jit);
+                            unsigned index = state->jitCode->lazySlowPaths.size();
+                            state->jitCode->lazySlowPaths.append(nullptr);
+                            jit.pushToSaveImmediateWithoutTouchingRegisters(
+                                CCallHelpers::TrustedImm32(index));
+                            CCallHelpers::Jump generatorJump = jit.jump();
+
+                            // Note that so long as we're here, we don't really know if our late path
+                            // runs before or after any other late paths that we might depend on, like
+                            // the exception thunk.
+
+                            RefPtr<JITCode> jitCode = state->jitCode;
+                            VM* vm = &state->graph.m_vm;
+
+                            jit.addLinkTask(
+                                [=] (LinkBuffer& linkBuffer) {
+                                    linkBuffer.link(
+                                        generatorJump, CodeLocationLabel(
+                                            vm->getCTIStub(
+                                                lazySlowPathGenerationThunkGenerator).code()));
+                                    
+                                    CodeLocationJump linkedPatchableJump = CodeLocationJump(
+                                        linkBuffer.locationOf(patchableJump));
+                                    CodeLocationLabel linkedDone = linkBuffer.locationOf(done);
+
+                                    // FIXME: Need a story for exceptions in FTL-B3. That basically means
+                                    // doing a lookup of the exception entrypoint here. We will have an
+                                    // OSR exit data structure of some sort.
+                                    // https://bugs.webkit.org/show_bug.cgi?id=151686
+                                    CodeLocationLabel exceptionTarget;
+                                    CallSiteIndex callSiteIndex =
+                                        jitCode->common.addUniqueCallSiteIndex(origin);
+                                    
+                                    std::unique_ptr<LazySlowPath> lazySlowPath =
+                                        std::make_unique<LazySlowPath>(
+                                            linkedPatchableJump, linkedDone, exceptionTarget,
+                                            usedRegisters, callSiteIndex, generator);
+                                    
+                                    jitCode->lazySlowPaths[index] = WTF::move(lazySlowPath);
+                                });
+                        }));
             });
         return result;
 #else
@@ -9083,13 +9266,15 @@ private:
             return;
 
         appendOSRExitDescriptor(Uncountable, exceptionType, noValue(), nullptr, m_origin.withForExitAndExitOK(opCatchOrigin, true));
-        OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
-        exitDescriptor.m_semanticCodeOriginForCallFrameHeader = codeOriginDescriptionOfCallSite();
-        exitDescriptor.m_baselineExceptionHandler = *exceptionHandler;
-        exitDescriptor.m_stackmapID = m_stackmapIDs - 1;
+        OSRExitDescriptor* exitDescriptor = &m_ftlState.jitCode->osrExitDescriptors.last();
+        exitDescriptor->m_stackmapID = m_stackmapIDs - 1;
+
+        OSRExitDescriptorImpl& exitDescriptorImpl = m_ftlState.osrExitDescriptorImpls.last();
+        exitDescriptorImpl.m_semanticCodeOriginForCallFrameHeader = codeOriginDescriptionOfCallSite();
+        exitDescriptorImpl.m_baselineExceptionHandler = *exceptionHandler;
 
         StackmapArgumentList freshList =
-            buildExitArguments(exitDescriptor, noValue(), exitDescriptor.m_codeOrigin, offsetOfExitArguments);
+            buildExitArguments(exitDescriptor, exitDescriptorImpl, noValue(), offsetOfExitArguments);
         arguments.appendVector(freshList);
     }
 
@@ -9110,13 +9295,15 @@ private:
         return m_blocks.get(block);
     }
 
-    void appendOSRExitDescriptor(ExitKind kind, ExceptionType exceptionType, FormattedValue lowValue, Node* highValue, NodeOrigin origin)
+    OSRExitDescriptor* appendOSRExitDescriptor(ExitKind kind, ExceptionType exceptionType, FormattedValue lowValue, Node* highValue, NodeOrigin origin)
     {
-        m_ftlState.jitCode->osrExitDescriptors.append(OSRExitDescriptor(
-            kind, exceptionType, lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
-            origin.forExit, origin.semantic,
+        OSRExitDescriptor& result = m_ftlState.jitCode->osrExitDescriptors.alloc(
+            lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
             availabilityMap().m_locals.numberOfArguments(),
-            availabilityMap().m_locals.numberOfLocals()));
+            availabilityMap().m_locals.numberOfLocals());
+        m_ftlState.osrExitDescriptorImpls.alloc(
+            kind, origin.forExit, origin.semantic, exceptionType);
+        return &result;
     }
     
     void appendOSRExit(
@@ -9157,8 +9344,7 @@ private:
         blessSpeculation(
             m_out.speculate(failCondition), kind, lowValue, highValue, origin, isExceptionHandler);
 #else // FTL_USES_B3
-        appendOSRExitDescriptor(kind, isExceptionHandler ? ExceptionType::CCallException : ExceptionType::None, lowValue, highValue, origin);
-        OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
+        OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(kind, isExceptionHandler ? ExceptionType::CCallException : ExceptionType::None, lowValue, highValue, origin);
 
         if (failCondition == m_out.booleanTrue) {
             emitOSRExitCall(exitDescriptor, lowValue);
@@ -9184,53 +9370,50 @@ private:
     }
 
 #if FTL_USES_B3
-    void blessSpeculation(B3::StackmapValue* value, ExitKind kind, FormattedValue lowValue, Node* highValue, NodeOrigin origin, bool isExceptionHandler = false)
+    void blessSpeculation(B3::CheckValue* value, ExitKind kind, FormattedValue lowValue, Node* highValue, NodeOrigin origin, bool isExceptionHandler = false)
     {
-        appendOSRExitDescriptor(kind, isExceptionHandler ? ExceptionType::CCallException : ExceptionType::None, lowValue, highValue, origin);
-        OSRExitDescriptor& exitDescriptor = m_ftlState.jitCode->osrExitDescriptors.last();
-        CodeOrigin codeOrigin = exitDescriptor.m_codeOrigin;
-        StackmapArgumentList arguments = buildExitArguments(exitDescriptor, lowValue, codeOrigin);
-        for (LValue child : arguments)
-            value->append(child);
+        OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(
+            kind, isExceptionHandler ? ExceptionType::CCallException : ExceptionType::None, lowValue,
+            highValue, origin);
+        OSRExitDescriptorImpl* exitDescriptorImpl = &m_ftlState.osrExitDescriptorImpls.last();
+        
+        unsigned offset = value->numChildren();
+        value->appendColdAnys(buildExitArguments(exitDescriptor, m_ftlState.osrExitDescriptorImpls.last(), lowValue));
+
+        State* state = &m_ftlState;
         value->setGenerator(
-            [&] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
-                jit.oops();
+            [=] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
+                exitDescriptor->emitOSRExit(*state, exitDescriptorImpl, jit, params, offset);
             });
     }
 #endif
 
 #if !FTL_USES_B3
-    void emitOSRExitCall(OSRExitDescriptor& exitDescriptor, FormattedValue lowValue)
+    void emitOSRExitCall(OSRExitDescriptor* exitDescriptor, FormattedValue lowValue)
     {
-        StackmapArgumentList arguments;
-        
-        CodeOrigin codeOrigin = exitDescriptor.m_codeOrigin;
-        
-        buildExitArguments(exitDescriptor, arguments, lowValue, codeOrigin);
-        
-        callStackmap(exitDescriptor, arguments);
+        callStackmap(exitDescriptor, buildExitArguments(exitDescriptor, m_ftlState.osrExitDescriptorImpls.last(), lowValue));
     }
 #endif
 
     StackmapArgumentList buildExitArguments(
-        OSRExitDescriptor& exitDescriptor, FormattedValue lowValue, CodeOrigin codeOrigin,
+        OSRExitDescriptor* exitDescriptor, OSRExitDescriptorImpl& exitDescriptorImpl, FormattedValue lowValue,
         unsigned offsetOfExitArgumentsInStackmapLocations = 0)
     {
         StackmapArgumentList result;
         buildExitArguments(
-            exitDescriptor, result, lowValue, codeOrigin, offsetOfExitArgumentsInStackmapLocations);
+            exitDescriptor, exitDescriptorImpl, result, lowValue, offsetOfExitArgumentsInStackmapLocations);
         return result;
     }
     
     void buildExitArguments(
-        OSRExitDescriptor& exitDescriptor, StackmapArgumentList& arguments, FormattedValue lowValue,
-        CodeOrigin codeOrigin, unsigned offsetOfExitArgumentsInStackmapLocations = 0)
+        OSRExitDescriptor* exitDescriptor, OSRExitDescriptorImpl& exitDescriptorImpl, StackmapArgumentList& arguments, FormattedValue lowValue,
+        unsigned offsetOfExitArgumentsInStackmapLocations = 0)
     {
         if (!!lowValue)
             arguments.append(lowValue.value());
         
         AvailabilityMap availabilityMap = this->availabilityMap();
-        availabilityMap.pruneByLiveness(m_graph, codeOrigin);
+        availabilityMap.pruneByLiveness(m_graph, exitDescriptorImpl.m_codeOrigin);
         
         HashMap<Node*, ExitTimeObjectMaterialization*> map;
         availabilityMap.forEachAvailability(
@@ -9245,24 +9428,24 @@ private:
                 auto result = map.add(node, nullptr);
                 if (result.isNewEntry) {
                     result.iterator->value =
-                        exitDescriptor.m_materializations.add(node->op(), node->origin.semantic);
+                        exitDescriptor->m_materializations.add(node->op(), node->origin.semantic);
                 }
             });
         
-        for (unsigned i = 0; i < exitDescriptor.m_values.size(); ++i) {
-            int operand = exitDescriptor.m_values.operandForIndex(i);
+        for (unsigned i = 0; i < exitDescriptor->m_values.size(); ++i) {
+            int operand = exitDescriptor->m_values.operandForIndex(i);
             
             Availability availability = availabilityMap.m_locals[i];
             
             if (Options::validateFTLOSRExitLiveness()) {
                 DFG_ASSERT(
                     m_graph, m_node,
-                    (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), codeOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
+                    (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), exitDescriptorImpl.m_codeOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
             }
             ExitValue exitValue = exitValueForAvailability(arguments, map, availability);
             if (exitValue.hasIndexInStackmapLocations())
                 exitValue.adjustStackmapLocationsIndexByOffset(offsetOfExitArgumentsInStackmapLocations);
-            exitDescriptor.m_values[i] = exitValue;
+            exitDescriptor->m_values[i] = exitValue;
         }
         
         for (auto heapPair : availabilityMap.m_heap) {
@@ -9277,21 +9460,21 @@ private:
         }
         
         if (verboseCompilationEnabled()) {
-            dataLog("        Exit values: ", exitDescriptor.m_values, "\n");
-            if (!exitDescriptor.m_materializations.isEmpty()) {
+            dataLog("        Exit values: ", exitDescriptor->m_values, "\n");
+            if (!exitDescriptor->m_materializations.isEmpty()) {
                 dataLog("        Materializations: \n");
-                for (ExitTimeObjectMaterialization* materialization : exitDescriptor.m_materializations)
+                for (ExitTimeObjectMaterialization* materialization : exitDescriptor->m_materializations)
                     dataLog("            ", pointerDump(materialization), "\n");
             }
         }
     }
 
 #if !FTL_USES_B3
-    void callStackmap(OSRExitDescriptor& exitDescriptor, StackmapArgumentList& arguments)
+    void callStackmap(OSRExitDescriptor* exitDescriptor, StackmapArgumentList arguments)
     {
-        exitDescriptor.m_stackmapID = m_stackmapIDs++;
+        exitDescriptor->m_stackmapID = m_stackmapIDs++;
         arguments.insert(0, m_out.constInt32(MacroAssembler::maxJumpReplacementSize()));
-        arguments.insert(0, m_out.constInt64(exitDescriptor.m_stackmapID));
+        arguments.insert(0, m_out.constInt64(exitDescriptor->m_stackmapID));
         
         m_out.call(m_out.voidType, m_out.stackmapIntrinsic(), arguments);
     }
@@ -9755,10 +9938,6 @@ private:
 
 void lowerDFGToLLVM(State& state)
 {
-#if FTL_USES_B3
-    state.proc = std::make_unique<Procedure>();
-#endif
-
     LowerDFGToLLVM lowering(state);
     lowering.lower();
 }

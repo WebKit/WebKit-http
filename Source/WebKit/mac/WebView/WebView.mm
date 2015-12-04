@@ -95,6 +95,7 @@
 #import "WebPreferenceKeysPrivate.h"
 #import "WebPreferencesPrivate.h"
 #import "WebProgressTrackerClient.h"
+#import "WebResourceLoadScheduler.h"
 #import "WebScriptDebugDelegate.h"
 #import "WebScriptWorldInternal.h"
 #import "WebSelectionServiceController.h"
@@ -167,7 +168,6 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/RenderWidget.h>
 #import <WebCore/ResourceHandle.h>
-#import <WebCore/ResourceLoadScheduler.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/RuntimeEnabledFeatures.h>
@@ -192,7 +192,6 @@
 #import <WebKitSystemInterface.h>
 #import <bindings/ScriptValue.h>
 #import <mach-o/dyld.h>
-#import <objc/objc-auto.h>
 #import <objc/runtime.h>
 #import <runtime/ArrayPrototype.h>
 #import <runtime/DateInstance.h>
@@ -264,6 +263,7 @@
 #import <WebCore/WebCoreThreadRun.h>
 #import <WebCore/WebEvent.h>
 #import <WebCore/WebVideoFullscreenControllerAVKit.h>
+#import <libkern/OSAtomic.h>
 #import <wtf/FastMalloc.h>
 #endif // !PLATFORM(IOS)
 
@@ -761,7 +761,7 @@ static bool shouldRestrictWindowFocus()
 
 - (void)_dispatchPendingLoadRequests
 {
-    resourceLoadScheduler()->servePendingRequests();
+    webResourceLoadScheduler().servePendingRequests();
 }
 
 #if !PLATFORM(IOS)
@@ -1616,9 +1616,9 @@ static NSMutableSet *knownPluginMIMETypes()
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend
 {
     if (suspend)
-        resourceLoadScheduler()->suspendPendingRequests();
+        webResourceLoadScheduler().suspendPendingRequests();
     else
-        resourceLoadScheduler()->resumePendingRequests();
+        webResourceLoadScheduler().resumePendingRequests();
 }
 
 + (void)_setAllowCookies:(BOOL)allow
@@ -2306,6 +2306,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAudioPlaybackRequiresUserGesture([preferences audioPlaybackRequiresUserGesture]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute([preferences inlineMediaPlaybackRequiresPlaysInlineAttribute]);
+    settings.setInvisibleAutoplayNotPermitted([preferences invisibleAutoplayNotPermitted]);
     settings.setAllowsPictureInPictureMediaPlayback([preferences allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback());
     settings.setMediaControlsScaleWithPageZoom([preferences mediaControlsScaleWithPageZoom]);
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
@@ -4482,7 +4483,8 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (void)_setLoadResourcesSerially:(BOOL)serialize 
 {
     WebPlatformStrategies::initializeIfNecessary();
-    resourceLoadScheduler()->setSerialLoadingEnabled(serialize);
+
+    webResourceLoadScheduler().setSerialLoadingEnabled(serialize);
 }
 
 + (BOOL)_HTTPPipeliningEnabled
@@ -5146,15 +5148,6 @@ static bool needsWebViewInitThreadWorkaround()
     }
 
     [super dealloc];
-}
-
-- (void)finalize
-{
-    ASSERT(_private->closed);
-
-    --WebViewCount;
-
-    [super finalize];
 }
 
 - (void)close

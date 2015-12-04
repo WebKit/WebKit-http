@@ -230,6 +230,7 @@ CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'height' on a 
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'naturalWidth' on a non-HTMLImageElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'naturalHeight' on a non-HTMLImageElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'complete' on a non-HTMLImageElement object.
+CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'currentSrc' on a non-HTMLImageElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'name' on a non-HTMLImageElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'lowsrc' on a non-HTMLImageElement object.
 CONSOLE MESSAGE: line 1152: Deprecated attempt to access property 'align' on a non-HTMLImageElement object.
@@ -2703,12 +2704,12 @@ PASS HTMLModElement must be primary interface of document.createElement("del")
 PASS Stringification of document.createElement("del") 
 PASS HTMLModElement interface: document.createElement("del") must inherit property "cite" with the proper type (0) 
 PASS HTMLModElement interface: document.createElement("del") must inherit property "dateTime" with the proper type (1) 
-FAIL HTMLPictureElement interface: existence and properties of interface object assert_own_property: self does not have own property "HTMLPictureElement" expected property "HTMLPictureElement" missing
-FAIL HTMLPictureElement interface object length assert_own_property: self does not have own property "HTMLPictureElement" expected property "HTMLPictureElement" missing
-FAIL HTMLPictureElement interface: existence and properties of interface prototype object assert_own_property: self does not have own property "HTMLPictureElement" expected property "HTMLPictureElement" missing
-FAIL HTMLPictureElement interface: existence and properties of interface prototype object's "constructor" property assert_own_property: self does not have own property "HTMLPictureElement" expected property "HTMLPictureElement" missing
-FAIL HTMLPictureElement must be primary interface of document.createElement("picture") assert_own_property: self does not have own property "HTMLPictureElement" expected property "HTMLPictureElement" missing
-FAIL Stringification of document.createElement("picture") assert_equals: class string of document.createElement("picture") expected "[object HTMLPictureElement]" but got "[object HTMLUnknownElement]"
+FAIL HTMLPictureElement interface: existence and properties of interface object assert_equals: class string of HTMLPictureElement expected "[object Function]" but got "[object HTMLPictureElementConstructor]"
+PASS HTMLPictureElement interface object length 
+PASS HTMLPictureElement interface: existence and properties of interface prototype object 
+FAIL HTMLPictureElement interface: existence and properties of interface prototype object's "constructor" property assert_true: HTMLPictureElement.prototype.constructor is not writable expected true got false
+PASS HTMLPictureElement must be primary interface of document.createElement("picture") 
+PASS Stringification of document.createElement("picture") 
 FAIL HTMLImageElement interface: existence and properties of interface object assert_equals: class string of HTMLImageElement expected "[object Function]" but got "[object HTMLImageElementConstructor]"
 PASS HTMLImageElement interface object length 
 PASS HTMLImageElement interface: existence and properties of interface prototype object 
@@ -2749,7 +2750,9 @@ FAIL HTMLImageElement interface: attribute naturalHeight assert_throws: getting 
 FAIL HTMLImageElement interface: attribute complete assert_throws: getting property on prototype object must throw TypeError function "function () {
     [native code]
 }" did not throw
-FAIL HTMLImageElement interface: attribute currentSrc assert_true: The prototype object must have a property "currentSrc" expected true got false
+FAIL HTMLImageElement interface: attribute currentSrc assert_throws: getting property on prototype object must throw TypeError function "function () {
+    [native code]
+}" did not throw
 FAIL HTMLImageElement interface: attribute name assert_throws: getting property on prototype object must throw TypeError function "function () {
     [native code]
 }" did not throw
@@ -2785,7 +2788,7 @@ PASS HTMLImageElement interface: document.createElement("img") must inherit prop
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "naturalWidth" with the proper type (9) 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "naturalHeight" with the proper type (10) 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "complete" with the proper type (11) 
-FAIL HTMLImageElement interface: document.createElement("img") must inherit property "currentSrc" with the proper type (12) assert_inherits: property "currentSrc" not found in prototype chain
+PASS HTMLImageElement interface: document.createElement("img") must inherit property "currentSrc" with the proper type (12) 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "name" with the proper type (13) 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "lowsrc" with the proper type (14) 
 PASS HTMLImageElement interface: document.createElement("img") must inherit property "align" with the proper type (15) 
@@ -2807,7 +2810,7 @@ PASS HTMLImageElement interface: new Image() must inherit property "height" with
 PASS HTMLImageElement interface: new Image() must inherit property "naturalWidth" with the proper type (9) 
 PASS HTMLImageElement interface: new Image() must inherit property "naturalHeight" with the proper type (10) 
 PASS HTMLImageElement interface: new Image() must inherit property "complete" with the proper type (11) 
-FAIL HTMLImageElement interface: new Image() must inherit property "currentSrc" with the proper type (12) assert_inherits: property "currentSrc" not found in prototype chain
+PASS HTMLImageElement interface: new Image() must inherit property "currentSrc" with the proper type (12) 
 PASS HTMLImageElement interface: new Image() must inherit property "name" with the proper type (13) 
 PASS HTMLImageElement interface: new Image() must inherit property "lowsrc" with the proper type (14) 
 PASS HTMLImageElement interface: new Image() must inherit property "align" with the proper type (15) 

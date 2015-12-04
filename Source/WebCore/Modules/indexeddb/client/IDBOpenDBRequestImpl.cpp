@@ -67,15 +67,36 @@ void IDBOpenDBRequest::onError(const IDBResultData& data)
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
 }
 
+void IDBOpenDBRequest::versionChangeTransactionWillFinish()
+{
+    // 3.3.7 "versionchange" transaction steps
+    // When the transaction is finished, immediately set request's transaction property to null.
+    m_shouldExposeTransactionToDOM = false;
+}
+
 void IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()
 {
     LOG(IndexedDB, "IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()");
 
+    ASSERT(hasPendingActivity());
     ASSERT(m_result);
     ASSERT(m_result->type() == IDBAny::Type::IDBDatabase);
     m_transaction->addRequest(*this);
 
     enqueueEvent(Event::create(eventNames().successEvent, false, false));
+}
+
+void IDBOpenDBRequest::fireErrorAfterVersionChangeAbort()
+{
+    LOG(IndexedDB, "IDBOpenDBRequest::fireErrorAfterVersionChangeAbort()");
+
+    ASSERT(hasPendingActivity());
+
+    IDBError idbError(IDBDatabaseException::AbortError);
+    m_domError = DOMError::create(idbError.name());
+
+    m_transaction->addRequest(*this);
+    enqueueEvent(Event::create(eventNames().errorEvent, true, true));
 }
 
 void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)

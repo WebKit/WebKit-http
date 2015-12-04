@@ -26,7 +26,9 @@
 #ifndef FTLOSRExitCompilationInfo_h
 #define FTLOSRExitCompilationInfo_h
 
-#if ENABLE(FTL_JIT)
+#include "DFGCommon.h"
+
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "FTLAbbreviatedTypes.h"
 #include "MacroAssembler.h"
@@ -37,16 +39,15 @@ struct OSRExitCompilationInfo {
     OSRExitCompilationInfo()
     {
     }
-    
+
     MacroAssembler::Label m_thunkLabel;
-    MacroAssembler::Label m_callOperationExceptionOSRExitEntrance;
     MacroAssembler::PatchableJump m_thunkJump;
     CodeLocationLabel m_thunkAddress;
 };
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #endif // FTLOSRExitCompilationInfo_h
 

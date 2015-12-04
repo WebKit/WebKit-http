@@ -27,6 +27,7 @@
 
 #include "APIDictionary.h"
 #include "WKArray.h"
+#include "WKContextPrivate.h"
 #include "WKMutableDictionary.h"
 #include "WKPreferencesRefPrivate.h"
 #include "WKSharedAPICast.h"
@@ -132,6 +133,19 @@ bool WKInspectorIsProfilingJavaScript(WKInspectorRef)
 
 void WKInspectorToggleJavaScriptProfiling(WKInspectorRef)
 {
+}
+
+void WKContextSetUsesNetworkProcess(WKContextRef, bool)
+{
+}
+
+void WKContextSetProcessModel(WKContextRef, WKProcessModel)
+{
+}
+
+WKProcessModel WKContextGetProcessModel(WKContextRef)
+{
+    return kWKProcessModelMultipleSecondaryProcesses;
 }
 
 #if PLATFORM(MAC)

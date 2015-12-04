@@ -247,15 +247,29 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
 
     case ArithAdd:
-    case ArithSub:
     case ArithNegate:
-    case ArithMul:
     case ArithDiv:
     case ArithMod:
     case DoubleAsInt32:
     case UInt32ToNumber:
         def(PureValue(node, node->arithMode()));
         return;
+
+    case ArithSub:
+    case ArithMul:
+        switch (node->binaryUseKind()) {
+        case Int32Use:
+        case Int52RepUse:
+        case DoubleRepUse:
+            def(PureValue(node, node->arithMode()));
+            return;
+        case UntypedUse:
+            read(World);
+            write(Heap);
+            return;
+        default:
+            DFG_CRASH(graph, node, "Bad use kind");
+        }
 
     case ArithRound:
         def(PureValue(node, static_cast<uintptr_t>(node->arithRoundingMode())));
@@ -427,6 +441,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetArgumentCount:
         read(AbstractHeap(Stack, JSStack::ArgumentCount));
         def(HeapLocation(StackPayloadLoc, AbstractHeap(Stack, JSStack::ArgumentCount)), LazyNode(node));
+        return;
+
+    case GetRestLength:
+        read(Stack);
         return;
         
     case GetLocal:

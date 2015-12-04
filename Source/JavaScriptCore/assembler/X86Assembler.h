@@ -283,6 +283,7 @@ private:
         OP2_IMUL_GvEv       = 0xAF,
         OP2_MOVZX_GvEb      = 0xB6,
         OP2_BSR             = 0xBD,
+        OP2_LZCNT           = 0xBD,
         OP2_MOVSX_GvEb      = 0xBE,
         OP2_MOVZX_GvEw      = 0xB7,
         OP2_MOVSX_GvEw      = 0xBF,
@@ -860,10 +861,53 @@ public:
 
 #endif
 
+    void lzcnt_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_LZCNT, dst, src);
+    }
+
+    void lzcnt_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_LZCNT, dst, base, offset);
+    }
+
+#if CPU(X86_64)
+    void lzcntq_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_LZCNT, dst, src);
+    }
+
+    void lzcntq_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_LZCNT, dst, base, offset);
+    }
+#endif
+
     void bsr_rr(RegisterID src, RegisterID dst)
     {
         m_formatter.twoByteOp(OP2_BSR, dst, src);
     }
+
+    void bsr_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.twoByteOp(OP2_BSR, dst, base, offset);
+    }
+
+#if CPU(X86_64)
+    void bsrq_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.twoByteOp64(OP2_BSR, dst, src);
+    }
+
+    void bsrq_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.twoByteOp64(OP2_BSR, dst, base, offset);
+    }
+#endif
 
     void sarl_i8r(int imm, RegisterID dst)
     {
@@ -2120,8 +2164,17 @@ public:
         m_formatter.twoByteOp(OP2_DIVSD_VsdWsd, (RegisterID)dst, base, offset);
     }
 
+    void xorps_rr(XMMRegisterID src, XMMRegisterID dst)
+    {
+        m_formatter.twoByteOp(OP2_XORPD_VpdWpd, (RegisterID)dst, (RegisterID)src);
+    }
+
     void xorpd_rr(XMMRegisterID src, XMMRegisterID dst)
     {
+        if (src == dst) {
+            xorps_rr(src, dst);
+            return;
+        }
         m_formatter.prefix(PRE_SSE_66);
         m_formatter.twoByteOp(OP2_XORPD_VpdWpd, (RegisterID)dst, (RegisterID)src);
     }
@@ -2137,7 +2190,13 @@ public:
         m_formatter.prefix(PRE_SSE_F2);
         m_formatter.twoByteOp(OP2_SQRTSD_VsdWsd, (RegisterID)dst, (RegisterID)src);
     }
-    
+
+    void sqrtsd_mr(int offset, RegisterID base, XMMRegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F2);
+        m_formatter.twoByteOp(OP2_SQRTSD_VsdWsd, (RegisterID)dst, base, offset);
+    }
+
     // Misc instructions:
 
     void int3()

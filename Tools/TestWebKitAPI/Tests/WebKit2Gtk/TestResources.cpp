@@ -22,7 +22,6 @@
 #include "WebKitTestServer.h"
 #include "WebViewTest.h"
 #include <wtf/Vector.h>
-#include <wtf/glib/GMainLoopSource.h>
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GRefPtr.h>
 
@@ -191,6 +190,13 @@ public:
         } else if (uri == kServer->getURIForPath("/javascript.js")) {
             g_assert_cmpint(m_resourceDataSize, ==, strlen(kJavascript));
             g_assert(!strncmp(m_resourceData.get(), kJavascript, m_resourceDataSize));
+        } else if (uri == kServer->getURIForPath("/blank.ico")) {
+            GUniquePtr<char> filePath(g_build_filename(Test::getResourcesDir().data(), "blank.ico", nullptr));
+            GUniqueOutPtr<char> contents;
+            gsize contentsLength;
+            g_file_get_contents(filePath.get(), &contents.outPtr(), &contentsLength, nullptr);
+            g_assert_cmpint(m_resourceDataSize, ==, contentsLength);
+            g_assert(!memcmp(m_resourceData.get(), contents.get(), contentsLength));
         } else
             g_assert_not_reached();
         m_resourceData.reset();
@@ -519,9 +525,7 @@ static void testWebResourceActiveURI(ResourceURITrackingTest* test, gconstpointe
 static void testWebResourceGetData(ResourcesTest* test, gconstpointer)
 {
     test->loadURI(kServer->getURIForPath("/").data());
-    // FIXME: this should be 4 instead of 3, but we don't get the css image resource
-    // due to bug https://bugs.webkit.org/show_bug.cgi?id=78510.
-    test->waitUntilResourcesLoaded(3);
+    test->waitUntilResourcesLoaded(4);
 
     WebKitWebResource* resource = webkit_web_view_get_main_resource(test->m_webView);
     g_assert(resource);
@@ -706,12 +710,27 @@ static void testWebViewSyncRequestOnMaxConns(SyncRequestOnMaxConnsTest* test, gc
     }
 
     // By default sync XHRs have a 10 seconds timeout, we don't want to wait all that so use our own timeout.
-    GMainLoopSource timeoutSource;
-    timeoutSource.scheduleAfterDelay("Timeout", [] { g_assert_not_reached(); }, std::chrono::seconds(1));
+    guint timeoutSourceID = g_timeout_add(1000, [] (gpointer) -> gboolean {
+        g_assert_not_reached();
+        return G_SOURCE_REMOVE;
+    }, nullptr);
 
-    GMainLoopSource unlockServerSource;
-    unlockServerSource.schedule("Unlock Server Idle", [&lock] { lock.unlock(); });
+    struct UnlockServerSourceContext {
+        WTF::GMutexLocker<GMutex>& lock;
+        guint unlockServerSourceID;
+    } context = {
+        lock,
+        g_idle_add_full(G_PRIORITY_DEFAULT, [](gpointer userData) -> gboolean {
+            auto& context = *static_cast<UnlockServerSourceContext*>(userData);
+            context.unlockServerSourceID = 0;
+            context.lock.unlock();
+            return G_SOURCE_REMOVE;
+        }, &context, nullptr)
+    };
     test->waitUntilResourcesLoaded(s_maxConnectionsPerHost + 3); // s_maxConnectionsPerHost resource + main resource + 2 XHR.
+    g_source_remove(timeoutSourceID);
+    if (context.unlockServerSourceID)
+        g_source_remove(context.unlockServerSourceID);
 }
 
 static void addCacheHTTPHeadersToResponse(SoupMessage* message)

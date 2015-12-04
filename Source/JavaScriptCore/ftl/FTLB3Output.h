@@ -147,10 +147,8 @@ public:
     LValue lShr(LValue left, LValue right) { return m_block->appendNew<B3::Value>(m_proc, B3::ZShr, origin(), left, castToInt32(right)); }
     LValue bitNot(LValue);
 
-    LValue insertElement(LValue vector, LValue element, LValue index) { CRASH(); }
-
     LValue ceil64(LValue operand) { CRASH(); }
-    LValue ctlz32(LValue xOperand, LValue yOperand) { CRASH(); }
+    LValue ctlz32(LValue operand) { return m_block->appendNew<B3::Value>(m_proc, B3::Clz, origin(), operand); }
     LValue addWithOverflow32(LValue left, LValue right) { CRASH(); }
     LValue subWithOverflow32(LValue left, LValue right) { CRASH(); }
     LValue mulWithOverflow32(LValue left, LValue right) { CRASH(); }
@@ -159,16 +157,16 @@ public:
     LValue mulWithOverflow64(LValue left, LValue right) { CRASH(); }
     LValue doubleAbs(LValue value) { CRASH(); }
 
-    LValue doubleSin(LValue value) { CRASH(); }
-    LValue doubleCos(LValue value) { CRASH(); }
+    LValue doubleSin(LValue value) { return callWithoutSideEffects(B3::Double, sin, value); }
+    LValue doubleCos(LValue value) { return callWithoutSideEffects(B3::Double, cos, value); }
 
-    LValue doublePow(LValue xOperand, LValue yOperand) { CRASH(); }
+    LValue doublePow(LValue xOperand, LValue yOperand) { return callWithoutSideEffects(B3::Double, pow, xOperand, yOperand); }
 
     LValue doublePowi(LValue xOperand, LValue yOperand) { CRASH(); }
 
-    LValue doubleSqrt(LValue value) { CRASH(); }
+    LValue doubleSqrt(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::Sqrt, origin(), value); }
 
-    LValue doubleLog(LValue value) { CRASH(); }
+    LValue doubleLog(LValue value) { return callWithoutSideEffects(B3::Double, log, value); }
 
     static bool hasSensibleDoubleToInt() { CRASH(); }
     LValue sensibleDoubleToInt(LValue) { CRASH(); }
@@ -196,20 +194,6 @@ public:
     LValue bitCast(LValue, LType);
 
     LValue fround(LValue doubleValue) { CRASH(); }
-
-    // Hilariously, the #define machinery in the stdlib means that this method is actually called
-    // __builtin_alloca. So far this appears benign. :-|
-    LValue alloca(LType type) { CRASH(); }
-
-    // Access the value of an alloca. Also used as a low-level implementation primitive for
-    // load(). Never use this to load from "pointers" in the FTL sense, since FTL pointers
-    // are actually integers. This requires an LLVM pointer. Broadly speaking, you don't
-    // have any LLVM pointers even if you really think you do. A TypedPointer is not an
-    // LLVM pointer. See comment block at top of this file to understand the distinction
-    // between LLVM pointers, FTL pointers, and FTL references.
-    LValue get(LValue reference) { CRASH(); }
-    // Similar to get() but for storing to the value in an alloca.
-    LValue set(LValue value, LValue reference) { CRASH(); }
 
     LValue load(TypedPointer, LType);
     void store(LValue, TypedPointer);
@@ -448,6 +432,16 @@ public:
     LBasicBlock m_nextBlock { nullptr };
 
     AbstractHeapRepository* m_heaps;
+
+private:
+    template<typename Function, typename... Args>
+    LValue callWithoutSideEffects(B3::Type type, Function function, LValue arg1, Args... args)
+    {
+        return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), B3::Effects::none(),
+            m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), bitwise_cast<void*>(function)),
+            arg1, args...);
+    }
+
 };
 
 template<typename... Params>

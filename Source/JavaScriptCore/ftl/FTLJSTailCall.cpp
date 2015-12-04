@@ -38,7 +38,26 @@
 
 namespace JSC { namespace FTL {
 
+using namespace B3;
 using namespace DFG;
+
+#if FTL_USES_B3
+
+JSTailCall::JSTailCall(PatchpointValue* patchpoint, Node* node, const Vector<ExitValue>& arguments)
+    : JSCallBase(CallLinkInfo::TailCall, node->origin.semantic, node->origin.semantic)
+    , m_patchpoint(patchpoint)
+    , m_arguments(arguments)
+    , m_instructionOffset(0)
+{
+    UNREACHABLE_FOR_PLATFORM();
+}
+
+void JSTailCall::emit(JITCode&, CCallHelpers&)
+{
+    UNREACHABLE_FOR_PLATFORM();
+}
+
+#else // FTL_USES_B3
 
 namespace {
 
@@ -71,11 +90,11 @@ ValueRecovery recoveryFor(const ExitValue& value, StackMaps::Record& record, Sta
         switch (location.kind()) {
         case Location::Register:
             // We handle the addend outside
-            return ValueRecovery::inRegister(location.dwarfReg().reg(), format);
+            return ValueRecovery::inRegister(location.reg(), format);
 
         case Location::Indirect:
             // Oh LLVM, you crazy...
-            RELEASE_ASSERT(location.dwarfReg().reg() == Reg(MacroAssembler::framePointerRegister));
+            RELEASE_ASSERT(location.reg() == Reg(MacroAssembler::framePointerRegister));
             RELEASE_ASSERT(!(location.offset() % sizeof(void*)));
             // DataFormatInt32 and DataFormatBoolean should be already be boxed.
             RELEASE_ASSERT(format != DataFormatInt32 && format != DataFormatBoolean);
@@ -180,10 +199,10 @@ uint32_t sizeFor(DataFormat format)
 
 } // anonymous namespace
 
-JSTailCall::JSTailCall(unsigned stackmapID, Node* node, Vector<ExitValue> arguments)
+JSTailCall::JSTailCall(unsigned stackmapID, Node* node, const Vector<ExitValue>& arguments)
     : JSCallBase(CallLinkInfo::TailCall, node->origin.semantic, node->origin.semantic)
     , m_stackmapID(stackmapID)
-    , m_arguments { WTF::move(arguments) }
+    , m_arguments(arguments)
     , m_instructionOffset(0)
 {
     ASSERT(node->op() == TailCall);
@@ -263,7 +282,7 @@ void JSTailCall::emit(JITCode& jitCode, CCallHelpers& jit)
         shuffleData.args[i] = recoveryFor(m_arguments[i], *record, jitCode.stackmaps);
         if (FTL::Location addend = getRegisterWithAddend(m_arguments[i], *record, jitCode.stackmaps)) {
             withAddend.add(
-                addend.dwarfReg().reg(),
+                addend.reg(),
                 Vector<std::pair<ValueRecovery*, int32_t>>()).iterator->value.append(
                     std::make_pair(&shuffleData.args[i], addend.addend()));
             numAddends++;
@@ -322,6 +341,8 @@ void JSTailCall::emit(JITCode& jitCode, CCallHelpers& jit)
 
     m_callLinkInfo->setUpCall(m_type, m_semanticeOrigin, calleeGPR);
 }
+
+#endif // FTL_USES_B3
 
 } } // namespace JSC::FTL
 

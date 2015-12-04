@@ -1,3 +1,989 @@
+2015-12-03  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Fix height computation of grid items with borders inside fr tracks
+        https://bugs.webkit.org/show_bug.cgi?id=151798
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css-grid-layout/grid-item-with-border-in-fr-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-with-border-in-fr.html: Added.
+
+2015-12-03  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Fix up tests that refer to non-standard IDBVersionChangeEvent.dataLoss.
+        https://bugs.webkit.org/show_bug.cgi?id=151850
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+        
+        * storage/indexeddb/data-corruption-expected.txt: Removed.
+        * storage/indexeddb/data-corruption.html: Removed.
+        * storage/indexeddb/resources/data-corruption.js: Removed.
+
+        * storage/indexeddb/events-expected.txt:
+        * storage/indexeddb/resources/events.js:
+
+2015-12-03  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/cursor-index-delete.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=151847
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Update MediaStreamTrack.getCapabilities
+        https://bugs.webkit.org/show_bug.cgi?id=151728
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/MediaStreamTrack-getCapabilities-expected.txt: Added.
+        * fast/mediastream/MediaStreamTrack-getCapabilities.html: Added.
+        * fast/mediastream/MediaStreamTrack-getSettings-expected.txt:
+        * fast/mediastream/MediaStreamTrack-getSettings.html:
+
+2015-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing deleted test storage/indexeddb/objectstore-keycursor.html from TestExpectations file
+        https://bugs.webkit.org/show_bug.cgi?id=151772
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-03  Keith Rollin  <krollin@apple.com>
+
+        [Win] fast/forms/HTMLOptionElement_label03.html failing on win7
+        https://bugs.webkit.org/show_bug.cgi?id=150909
+        rdar://problem/23539673
+
+        Reviewed by Darin Adler.
+
+        Mark fast/forms/HTMLOptionElement_label03.html as being expected to
+        pass. Also update some text in HTMLOptionElement_label02.html and
+        HTMLOptionElement_label03.html so that it no longer refers to our
+        trying to match IE (which we are no longer doing).
+
+        * fast/forms/HTMLOptionElement_label02.html:
+        * fast/forms/HTMLOptionElement_label03.html:
+        * platform/win/TestExpectations:
+
+2015-12-03  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/cursor-advance.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=151731
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/cursor-advance-expected.txt:
+
+2015-12-03  Brent Fulgham  <bfulgham@apple.com>
+
+        Allow JavaScript to iterate over plugins for local files
+        https://bugs.webkit.org/show_bug.cgi?id=151783
+        <rdar://problem/23692113>
+
+        Modify the existing 'local file' plugin tests so that they don't turn on the debugging
+        flag to allow iterating over all plugins. Then create a new HTTP test (based on the
+        existing plugin-javascript-access test) to make sure that plugin iteration is blocked
+        for non-local-file access.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/plugins/plugin-javascript-access-expected.txt: Added.
+        * http/tests/plugins/plugin-javascript-access.html: Added.
+        * plugins/plugin-javascript-access.html: Remove unneeded 'internals.setShowAllPlugins' call.
+        * plugins/script-tests/navigator-mimeTypes-length.js: Ditto.
+
+2015-12-03  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/cursor-skip-deleted.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=151794
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-02  Sam Weinig  <sam@webkit.org>
+
+        Promise callbacks should be called at microtask checkpoints
+        https://bugs.webkit.org/show_bug.cgi?id=147933
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/microtask-promise-mutation-observer-order-expected.txt: Added.
+        * fast/dom/microtask-promise-mutation-observer-order.html: Added.
+
+2015-12-03  Daniel Bates  <dabates@apple.com>
+
+        ASSERT_WITH_SECURITY_IMPLICATION in WebCore::DocumentOrderedMap::add()
+        https://bugs.webkit.org/show_bug.cgi?id=126662
+        <rdar://problem/15775508>
+
+        Reviewed by Brent Fulgham.
+
+        Add test to ensure that we do not assert when inserting a subtree that has an element with
+        a duplicate id before removing the original subtree.
+
+        * svg/custom/insert-subtree-with-duplicate-id-before-removing-subtree-expected.txt: Added.
+        * svg/custom/insert-subtree-with-duplicate-id-before-removing-subtree.svg: Added.
+
+2015-12-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] margin-left:auto and margin-top:auto discards the margin on opposite side
+        https://bugs.webkit.org/show_bug.cgi?id=151802
+
+        Reviewed by Sergio Villar Senin.
+
+        Tests to verify the specified margins account for determining the available space for
+        auto-margins alignment.
+
+        * fast/css-grid-layout/grid-item-auto-margins-must-respect-specified-margins-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-must-respect-specified-margins.html: Added.
+
+2015-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining svg/custom/bug78807.svg since actual results now match Mac expectations
+        https://bugs.webkit.org/show_bug.cgi?id=151804
+
+        Unreviewed test gardening.
+
+        * platform/win/svg/custom/bug78807-expected.txt:
+
+2015-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping failing sputnik/Unicode/Unicode_510 tests pending further investigation
+        https://bugs.webkit.org/show_bug.cgi?id=151505
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/css/pseudo-visited-background-color-on-input.html as failing on win
+        https://bugs.webkit.org/show_bug.cgi?id=151756
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-12-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        fast/borders/hidpi-border-clipping-right-after-move.html
+        https://bugs.webkit.org/show_bug.cgi?id=151754
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-12-03  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL urgent gardening. Skip web-platform-tests
+        because it has been timeout since r192796.
+
+        * platform/efl/TestExpectations:
+
+2015-12-02  Mark Lam  <mark.lam@apple.com>
+
+        Polymorphic operand types for DFG and FTL mul.
+        https://bugs.webkit.org/show_bug.cgi?id=151746
+
+        Reviewed by Filip Pizlo.
+
+        * js/regress/ftl-object-mul-expected.txt: Added.
+        * js/regress/ftl-object-mul.html: Added.
+        * js/regress/script-tests/ftl-object-mul.js: Added.
+        (o1.valueOf):
+        (foo):
+
+2015-12-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unify font-variant-* with font-variant shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=149773
+
+        Reviewed by Darin Adler.
+
+        Update tests. Also temporarily skip existing font-features tests until
+        https://bugs.webkit.org/show_bug.cgi?id=149774 is fixed.
+
+        * css3/font-variant-parsing-expected.txt:
+        * css3/font-variant-parsing.html:
+        * fast/css/font-property-priority-expected.txt:
+        * fast/css/font-shorthand-expected.txt:
+        * fast/css/parsing-font-variant-ligatures-expected.txt:
+        * fast/css/parsing-font-variant-ligatures.html:
+        * fast/inspector-support/style-expected.txt:
+        * fast/text/font-variant-shorthand-expected.txt: Added.
+        * fast/text/font-variant-shorthand.html: Added.
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.txt:
+
+2015-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining fast/dom/adopt-attribute-crash-expected for win
+        https://bugs.webkit.org/show_bug.cgi?id=151762
+
+        Reviewed by Darin Adler.
+
+        * platform/win/fast/dom/adopt-attribute-crash-expected.txt:
+
+2015-12-02  Alex Christensen  <achristensen@webkit.org>
+
+        Asynchronously call onerror when a content blocker blocks ascript element's load
+        https://bugs.webkit.org/show_bug.cgi?id=151649
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/contentextensions/script-onerror-expected.txt: Added.
+        * http/tests/contentextensions/script-onerror.html: Added.
+        * http/tests/contentextensions/script-onerror.html.json: Added.
+        * http/tests/misc/unloadable-script-expected.txt:
+        * http/tests/misc/unloadable-script.html:
+        * http/tests/security/local-JavaScript-from-remote-expected.txt:
+        * http/tests/security/local-JavaScript-from-remote.html:
+        Added testRunner.waitUntilDone and testRunner.notifyDone to reflect the fact that onerror is no longer called synchronously.
+
+2015-12-02  Eric Carlson  <eric.carlson@apple.com>
+
+        Fix flaky test added with r192954.
+
+        Unreviewed.
+
+        * fast/mediastream/MediaStreamTrack-getSettings.html:
+
+2015-12-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192955.
+        https://bugs.webkit.org/show_bug.cgi?id=151776
+
+        A large number of the tests added with this change are failing
+        on Windows (Requested by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[css border] border-image doesn't honor border-style"
+        https://bugs.webkit.org/show_bug.cgi?id=99922
+        http://trac.webkit.org/changeset/192955
+
+2015-12-02  Yoav Weiss  <yoav@yoav.ws>
+
+        Fix preloader issue with srcdoc documents.
+        https://bugs.webkit.org/show_bug.cgi?id=151744
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a test that makes sure that srcdoc based subresources are properly preloaded.
+
+        * fast/preloader/iframe-srcdoc-expected.txt: Added.
+        * fast/preloader/iframe-srcdoc.html: Added.
+
+2015-12-02  Jer Noble  <jer.noble@apple.com>
+
+        Add a setting and restriction which will pause invisible autoplaying video
+        https://bugs.webkit.org/show_bug.cgi?id=151412
+
+        Reviewed by Eric Carlson.
+
+        * media/video-restricted-invisible-autoplay-not-allowed-expected.txt: Added.
+        * media/video-restricted-invisible-autoplay-not-allowed.html: Added.
+
+2015-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/parser/xml-declaration-missing-ending-mark.html, fast/parser/xml-colon-entity.html for Win
+        https://bugs.webkit.org/show_bug.cgi?id=151763
+
+        Reviewed by Brent Fulgham.
+
+        * platform/win/fast/parser/xml-colon-entity-expected.txt:
+        * platform/win/fast/parser/xml-declaration-missing-ending-mark-expected.txt:
+
+2015-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/dynamic/text-combine.html on win
+        https://bugs.webkit.org/show_bug.cgi?id=151761
+
+        Unreviewed test gardening.
+
+        * platform/win/fast/dynamic/text-combine-expected.png:
+        * platform/win/fast/dynamic/text-combine-expected.txt:
+
+2015-12-02  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Remove all traces of IDBObjectStore::openKeyCursor from tests.
+        https://bugs.webkit.org/show_bug.cgi?id=151772
+
+        Reviewed by Alex Christensen.
+        
+        IDBObjectStore::openKeyCursor no longer exists, so testing it is inherently bogus.
+
+        * platform/mac-wk1/TestExpectations: Two tests now pass with small expectations changes.
+        * storage/indexeddb/cursor-basics-expected.txt:
+        * storage/indexeddb/cursor-overloads-expected.txt:
+
+        * storage/indexeddb/cursor-overloads.html:
+        * storage/indexeddb/optional-arguments.html:
+        * storage/indexeddb/resources/cursor-basics.js:
+        * storage/indexeddb/resources/deleted-objects.js:
+        * storage/indexeddb/resources/exceptions.js:
+        * storage/indexeddb/resources/objectstore-basics.js:
+        
+        * storage/indexeddb/objectstore-keycursor-expected.txt: Removed.
+        * storage/indexeddb/objectstore-keycursor.html: Removed.
+        * storage/indexeddb/resources/objectstore-keycursor.js: Removed.
+
+2015-12-02  David Hyatt  <hyatt@apple.com>
+
+        Add some more picture element layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=151769
+
+        Reviewed by Dean Jackson.
+
+        * fast/picture/image-picture-invalid-expected.txt: Added.
+        * fast/picture/image-picture-invalid.html: Added.
+        * fast/picture/image-picture-nested-expected.txt: Added.
+        * fast/picture/image-picture-nested.html: Added.
+
+2015-12-02  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Enable a couple more passing tests.
+        https://bugs.webkit.org/show_bug.cgi?id=151766
+
+        Reviewed by Beth Dakin.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/create-object-store-options-expected.txt:
+
+2015-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping tests on Win that fail due to unimplemented showModalDialog function.
+        https://bugs.webkit.org/show_bug.cgi?id=151506
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-12-02  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: IDBTransaction::error is not exposed.
+        https://bugs.webkit.org/show_bug.cgi?id=151752
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/basic-add.html:
+        * storage/indexeddb/modern/double-abort-expected.txt:
+        * storage/indexeddb/modern/index-3.html:
+        * storage/indexeddb/resources/transaction-error.js:
+        * storage/indexeddb/transaction-error-expected.txt:
+
+2015-12-02  Adenilson Cavalcanti  <cavalcantii@gmail.com>
+
+        [css border] border-image doesn't honor border-style
+        https://bugs.webkit.org/show_bug.cgi?id=99922
+
+        Reviewed by Simon Fraser.
+
+        Ensure that WebKit will be compliant to css-backgrounds spec where
+        a border with an image will only be rendered if there is a style defined.
+
+        Previous border image tests had to be edited (i.e. define border-style)
+        to ensure that a decorated border would be rendered.
+
+        * fast/borders/border-image-01.html:
+        * fast/borders/border-image-border-radius.html:
+        * fast/borders/border-image-fill-no-intrinsic-size.html:
+        * fast/borders/border-image-longhand.html:
+        * fast/borders/border-image-massive-scale.html:
+        * fast/borders/border-image-omit-right-slice.html:
+        * fast/borders/border-image-outset-in-shorthand.html:
+        * fast/borders/border-image-outset-split-inline-expected.txt:
+        * fast/borders/border-image-outset-split-inline-vertical-lr-expected.txt:
+        * fast/borders/border-image-outset-split-inline-vertical-lr.html:
+        * fast/borders/border-image-outset-split-inline.html:
+        * fast/borders/border-image-outset.html:
+        * fast/borders/border-image-repeat.html:
+        * fast/borders/border-image-rotate-transform.html:
+        * fast/borders/border-image-scale-transform.html:
+        * fast/borders/border-image-scaled.html:
+        * fast/borders/border-image-scrambled.html:
+        * fast/borders/border-image-should-not-display-expected.html: Added.
+        * fast/borders/border-image-should-not-display.html: Added.
+        * fast/borders/border-image-side-reduction.html:
+        * fast/borders/border-image-slice-constrained.html:
+        * fast/borders/border-image-slice-missing-right.html:
+        * fast/borders/border-image-slices.html:
+        * fast/borders/border-image-source.html:
+        * fast/borders/border-image-trumps-radius-expected.txt:
+        * fast/borders/border-image-trumps-radius.html:
+        * fast/borders/hidpi-border-image-gradient-on-subpixels.html:
+        * fast/borders/resources/red.png: Added.
+        * fast/borders/scaled-border-image.html:
+        * fast/gradients/border-image-gradient-expected.txt:
+        * fast/gradients/border-image-gradient.html:
+        * fast/hidpi/image-set-border-image-comparison.html:
+        * fast/hidpi/image-set-border-image-dynamic.html:
+        * fast/hidpi/image-set-border-image-simple.html:
+        * fast/writing-mode/border-image-horizontal-bt.html:
+        * fast/writing-mode/border-image-vertical-lr.html:
+        * fast/writing-mode/border-image-vertical-rl.html:
+        * platform/mac/fast/borders/border-image-01-expected.txt:
+        * platform/mac/fast/borders/border-image-border-radius-expected.txt:
+        * platform/mac/fast/borders/border-image-longhand-expected.txt:
+        * platform/mac/fast/borders/border-image-massive-scale-expected.txt:
+        * platform/mac/fast/borders/border-image-omit-right-slice-expected.txt:
+        * platform/mac/fast/borders/border-image-outset-expected.txt:
+        * platform/mac/fast/borders/border-image-outset-in-shorthand-expected.txt:
+        * platform/mac/fast/borders/border-image-repeat-expected.txt:
+        * platform/mac/fast/borders/border-image-rotate-transform-expected.txt:
+        * platform/mac/fast/borders/border-image-scale-transform-expected.txt:
+        * platform/mac/fast/borders/border-image-scaled-expected.txt:
+        * platform/mac/fast/borders/border-image-scrambled-expected.txt:
+        * platform/mac/fast/borders/border-image-side-reduction-expected.txt:
+        * platform/mac/fast/borders/border-image-slice-constrained-expected.txt:
+        * platform/mac/fast/borders/border-image-slices-expected.txt:
+        * platform/mac/fast/borders/border-image-source-expected.txt:
+        * platform/mac/fast/borders/scaled-border-image-expected.txt:
+        * platform/mac/fast/hidpi/image-set-border-image-comparison-expected.txt:
+        * platform/mac/fast/hidpi/image-set-border-image-dynamic-expected.txt:
+        * platform/mac/fast/hidpi/image-set-border-image-simple-expected.txt:
+        * platform/mac/fast/writing-mode/border-image-horizontal-bt-expected.txt:
+        * platform/mac/fast/writing-mode/border-image-vertical-lr-expected.txt:
+        * platform/mac/fast/writing-mode/border-image-vertical-rl-expected.txt:
+
+2015-12-02  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Implement MediaStreamTrack.getSettings()
+        https://bugs.webkit.org/show_bug.cgi?id=151727
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/MediaStream-video-element-expected.txt:
+        * fast/mediastream/MediaStream-video-element-track-stop-expected.txt:
+        * fast/mediastream/MediaStream-video-element-track-stop.html:
+        * fast/mediastream/MediaStream-video-element.html:
+        * fast/mediastream/MediaStreamTrack-getSettings-expected.txt: Added.
+        * fast/mediastream/MediaStreamTrack-getSettings.html: Added.
+
+2015-12-01  David Hyatt  <hyatt@apple.com>
+
+        Implement the picture element.
+        https://bugs.webkit.org/show_bug.cgi?id=116963
+
+        Reviewed by Dean Jackson.
+
+        * fast/picture: Added.
+        * fast/picture/image-picture-1x-expected.txt: Added.
+        * fast/picture/image-picture-1x.html: Added.
+        * fast/picture/resources: Added.
+        * fast/picture/resources/blue_rect.jpg: Added.
+        * fast/picture/resources/currentSrcHelper.js: Added.
+        (fileName):
+        (currentSrcFileName):
+        (currentSrcFileNameNoParams):
+        * fast/picture/resources/image-set-4x.png: Added.
+
+2015-12-02  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null dereference loading Blink layout test fast/loader/unload-mutation-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=149305
+        <rdar://problem/22747892>
+
+        Reviewed by Brent Fulgham.
+
+        This test case is from Blink r180918:
+        https://codereview.chromium.org/495743003
+
+        * fast/loader/unload-mutation-crash-expected.txt: Added.
+        * fast/loader/unload-mutation-crash.html: Added.
+
+2015-12-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Handle YieldExpressions in the ScriptSyntaxTree
+        https://bugs.webkit.org/show_bug.cgi?id=151730
+
+        Reviewed by Brian Burg.
+
+        * inspector/model/parse-script-syntax-tree-expected.txt:
+        * inspector/model/parse-script-syntax-tree.html:
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Test gardening after r192895
+
+        Unreviewed.
+
+        * fast/text/emoji-overlap-expected.html:
+        * fast/text/emoji-overlap.html:
+
+2015-12-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192894 and r192904.
+        https://bugs.webkit.org/show_bug.cgi?id=151738
+
+        Crashes sometimes on Windows (Requested by litherum on
+        #webkit).
+
+        Reverted changesets:
+
+        "[Win] Web fonts with small caps have excess whitespace with
+        the complex text codepath"
+        https://bugs.webkit.org/show_bug.cgi?id=151698
+        http://trac.webkit.org/changeset/192894
+
+        "Test gardening after r192894"
+        http://trac.webkit.org/changeset/192904
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [SVG -> OTF Converter] Force UnitsPerEm to 1000
+        https://bugs.webkit.org/show_bug.cgi?id=151650
+
+        Reviewed by Antti Koivisto.
+
+        Some tests have quantization differences.
+
+        * fast/ruby/ruby-expansion-cjk-2-expected.html:
+        * fast/ruby/ruby-expansion-cjk-3-expected.html:
+        * fast/ruby/ruby-expansion-cjk-4-expected.html:
+        * fast/ruby/ruby-expansion-cjk-5-expected.html:
+        * fast/ruby/ruby-expansion-cjk-expected.html:
+        * platform/mac-wk2/svg/W3C-SVG-1.1/fonts-elem-04-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/fonts-elem-01-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/fonts-elem-02-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/fonts-elem-03-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/fonts-elem-07-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-01-t-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-02-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-03-b-expected.txt:
+        * platform/mac/svg/W3C-SVG-1.1/text-intro-04-t-expected.txt:
+        * platform/mac/svg/batik/text/textEffect3-expected.txt:
+        * platform/mac/svg/batik/text/textPosition2-expected.txt:
+        * platform/mac/svg/wicd/test-rightsizing-b-expected.txt:
+        * svg/custom/acid3-test-77-expected.txt:
+
+2015-12-01  Brady Eidson  <beidson@apple.com>
+
+        Add updated test result missing from http://trac.webkit.org/changeset/192924
+        https://bugs.webkit.org/show_bug.cgi?id=151725
+
+        * storage/indexeddb/modern/opendatabase-request-event-expected.txt:
+
+2015-12-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/xmlhttprequest/methods-async.html as flaky on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=151729
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-01  Brady Eidson  <beidson@apple.com>
+
+        Give a more detailed message for TypeErrors that result from EnforceRange.
+        https://bugs.webkit.org/show_bug.cgi?id=151725
+
+        Reviewed by Tim Horton.
+
+        * crypto/subtle/aes-cbc-generate-key-expected.txt:
+        * js/dom/webidl-type-mapping-expected.txt:
+        * storage/indexeddb/intversion-bad-parameters-expected.txt:
+        * storage/indexeddb/version-change-event-basic-expected.txt:
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r192894
+
+        Unreviewed.
+
+        * fast/text/small-caps-complex-expected.html:
+        * fast/text/small-caps-complex.html:
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Adjacent emoji overlap each other
+        https://bugs.webkit.org/show_bug.cgi?id=151690
+        <rdar://problem/23430453>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/emoji-overlap-expected.html: Added.
+        * fast/text/emoji-overlap.html: Added.
+
+2015-12-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Win] Web fonts with small caps have excess whitespace with the complex text codepath
+        https://bugs.webkit.org/show_bug.cgi?id=151698
+
+        Reviewed by Darin Adler.
+
+        * fast/text/resources/tinyfont.svg: Added.
+        * fast/text/small-caps-complex-expected.html: Added.
+        * fast/text/small-caps-complex.html: Added.
+
+2015-12-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/xmlhttprequest/workers/methods.html as flaky on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=151709
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-01  Brady Eidson  <beidson@apple.com>
+
+        Skip some specific IDB tests in preparation for enabling the entire directory.
+
+        Reviewed in person by Sam Weinig.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-01  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/create-and-remove-object-store.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=151704
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-expected.txt:
+
+2015-12-01  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/basics.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=151694
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/deletedatabase-1.html:
+        * storage/indexeddb/modern/opendatabase-versions.html:
+        * storage/indexeddb/modern/versionchange-event.html:
+
+2015-12-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r192876.
+
+        It broke a lot of JSC and layout tests for GTK and EFL
+
+        Reverted changeset:
+
+        "[ES6] "super" and "this" should be lexically bound inside an
+        arrow function and should live in a JSLexicalEnvironment"
+        https://bugs.webkit.org/show_bug.cgi?id=149338
+        http://trac.webkit.org/changeset/192876
+
+2015-12-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] pull function of tee should call readFromReadableStreamReader directly
+        https://bugs.webkit.org/show_bug.cgi?id=151497
+
+        Unreviewed.
+
+        Adding non regression test.
+
+        * streams/streams-promises-expected.txt:
+        * streams/streams-promises.html:
+
+2015-12-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] teeReadableStream should not directly use stream.getReader()
+        https://bugs.webkit.org/show_bug.cgi?id=151487
+
+        Reviewed by Darin Adler.
+
+        Adding non-regression test.
+
+        * streams/streams-promises-expected.txt:
+        * streams/streams-promises.html:
+
+2015-12-01  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] "super" and "this" should be lexically bound inside an arrow function and should live in a JSLexicalEnvironment
+        https://bugs.webkit.org/show_bug.cgi?id=149338
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-supercall-expected.txt: Added.
+        * js/arrowfunction-supercall.html: Added.
+        * js/arrowfunction-tdz-expected.txt: Added new expectation.
+        * js/script-tests/arrowfunction-supercall.js: Added.
+        * js/script-tests/arrowfunction-tdz.js: Added new cases.
+
+2015-12-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] streams should not directly use Number and related methods
+        https://bugs.webkit.org/show_bug.cgi?id=151499
+
+        Reviewed by Darin Adler.
+
+        Added a non-regression test.
+
+        * streams/streams-promises-expected.txt:
+        * streams/streams-promises.html:
+
+2015-12-01  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Remove use of @catch for exposed promises
+        https://bugs.webkit.org/show_bug.cgi?id=151625
+
+        Reviewed by Darin Adler.
+
+        * streams/streams-promises.html: beefing up the catch test by also overwritting Promise.prototype.then.
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Unskip "storage/indexeddb/mozilla" instead of each individual test inside of it.
+        https://bugs.webkit.org/show_bug.cgi?id=151693
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Amazon.com Additional Information links aren't clickable
+        https://bugs.webkit.org/show_bug.cgi?id=151401
+        <rdar://problem/23454261>
+
+        Reviewed by Darin Adler.
+
+        * fast/block/float/hit-test-on-overlapping-floats-expected.txt: Added.
+        * fast/block/float/hit-test-on-overlapping-floats.html: Added.
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Iterating index cursors to a specific key is busted.
+        https://bugs.webkit.org/show_bug.cgi?id=151684
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: ObjectStore cursors should not be able to iterate out of their range.
+        https://bugs.webkit.org/show_bug.cgi?id=151683
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: "prevunique" cursors should point at the lowest primary key that matches, not the highest.
+        https://bugs.webkit.org/show_bug.cgi?id=151675.
+
+        Reviewed by Darin Adler.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/index-cursor-1-expected.txt:
+        * storage/indexeddb/modern/index-cursor-2-expected.txt:
+        * storage/indexeddb/modern/index-cursor-3-expected.txt:
+
+2015-11-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Null dereference loading Blink layout test http/tests/misc/detach-during-notifyDone.html
+        https://bugs.webkit.org/show_bug.cgi?id=149309
+        <rdar://problem/22748363>
+
+        Reviewed by Brent Fulgham.
+
+        The test case is from Blink r175601:
+        https://codereview.chromium.org/317513002
+        The test case will generate a set of weird ordering events that affects the documentLoader:
+        1. The subframe finishes loading, and since the frame’s testRunner is not set to wait until
+        done, WebKitTestRunner stops the load (by calling WKBundlePageStopLoading()).
+        2. This causes the in-progress XHR to be aborted, which causes its readyState to become DONE
+        (this bug doesn’t always reproduce because sometimes the XHR has already finished before the
+        frame finishes loading).
+        3. The onreadystatechange callback is executed, which sets innerHTML on the parent frame.
+        4. Setting innerHTML disconnects the subframe, nulling out its DocumentLoader.
+        5. We return to WebFrameLoaderClient::dispatchDidFinishLoad() from step #1, but now the
+        FrameLoader’s DocumentLoader is null. And WebKit crashes here.
+
+        Note that steps 2-4 happen synchronously inside WebFrameLoaderClient::dispatchDidFinishLoad().
+
+        * http/tests/misc/detach-during-notifyDone-expected.txt: Added.
+        * http/tests/misc/detach-during-notifyDone.html: Added.
+        * http/tests/misc/resources/detached-frame.html: Added.
+
+2015-11-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r192819.
+        https://bugs.webkit.org/show_bug.cgi?id=151681
+
+        This change broke existing layout tests on Windows (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Unify font-variant-* with font-variant shorthand"
+        https://bugs.webkit.org/show_bug.cgi?id=149773
+        http://trac.webkit.org/changeset/192819
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Set the correct source on the IDBRequest for cursor updates
+        https://bugs.webkit.org/show_bug.cgi?id=151665
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/forms/state-restore-per-form.html as a flaky timeout on mac-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=150542
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Correct handling of cursors finishing iteration.
+        https://bugs.webkit.org/show_bug.cgi?id=151664
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unify font-variant-* with font-variant shorthand
+        https://bugs.webkit.org/show_bug.cgi?id=149773
+
+        Reviewed by Darin Adler.
+
+        Update tests. Also temporarily skip existing font-features tests until
+        https://bugs.webkit.org/show_bug.cgi?id=149774 is fixed.
+
+        * css3/font-variant-parsing-expected.txt:
+        * css3/font-variant-parsing.html:
+        * fast/css/font-property-priority-expected.txt:
+        * fast/css/font-shorthand-expected.txt:
+        * fast/css/parsing-font-variant-ligatures-expected.txt:
+        * fast/css/parsing-font-variant-ligatures.html:
+        * fast/inspector-support/style-expected.txt:
+        * fast/text/font-variant-shorthand-expected.txt: Added.
+        * fast/text/font-variant-shorthand.html: Added.
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/writing-mode/broken-ideograph-small-caps-expected.txt:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: After versionchange transactions abort, fire onerror on the original IDBOpenDBRequest.
+        https://bugs.webkit.org/show_bug.cgi?id=151648
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/abort-requests-cancelled-expected.txt:
+        * storage/indexeddb/modern/abort-requests-cancelled.html:
+        * storage/indexeddb/modern/aborted-put-expected.txt:
+        * storage/indexeddb/modern/aborted-put.html:
+        * storage/indexeddb/modern/createobjectstore-basic-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-basic.html:
+        * storage/indexeddb/modern/deleteindex-2-expected.txt:
+        * storage/indexeddb/modern/deleteindex-2.html:
+        * storage/indexeddb/modern/deleteobjectstore-1-expected.txt:
+        * storage/indexeddb/modern/deleteobjectstore-1.html:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen.html:
+
+2015-11-30  Chris Dumez  <cdumez@apple.com>
+
+        location.origin is undefined in a web worker
+        https://bugs.webkit.org/show_bug.cgi?id=151614
+
+        Reviewed by Darin Adler.
+
+        Update existing layout test to confirm the existence of location.origin when in a
+        WorkerGlobalScope.
+
+        * fast/workers/resources/worker-location.js:
+        * fast/workers/worker-location-expected.txt:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Support updating cursor values when the object store uses inline keys.
+        https://bugs.webkit.org/show_bug.cgi?id=151647
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: openCursor() fix resulting in at least 4 more passing tests.
+        https://bugs.webkit.org/show_bug.cgi?id=151630
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/cursor-2-expected.txt:
+        * storage/indexeddb/modern/cursor-2.html:
+        * storage/indexeddb/modern/cursor-3-expected.txt:
+        * storage/indexeddb/modern/cursor-3.html:
+        * storage/indexeddb/modern/cursor-4-expected.txt:
+        * storage/indexeddb/modern/cursor-4.html:
+        * storage/indexeddb/modern/deleteindex-1-expected.txt:
+        * storage/indexeddb/modern/deleteindex-1.html:
+        * storage/indexeddb/modern/deleteindex-2-expected.txt:
+        * storage/indexeddb/modern/deleteindex-2.html:
+        * storage/indexeddb/modern/index-4-expected.txt:
+        * storage/indexeddb/modern/index-4.html:
+        * storage/indexeddb/modern/index-cursor-1-expected.txt:
+        * storage/indexeddb/modern/index-cursor-1.html:
+        * storage/indexeddb/modern/index-cursor-2-expected.txt:
+        * storage/indexeddb/modern/index-cursor-2.html:
+        * storage/indexeddb/modern/index-cursor-3-expected.txt:
+        * storage/indexeddb/modern/index-cursor-3.html:
+
+2015-11-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/cache/disk-cache/disk-cache-request-max-stale.html as flaky on Yosemite WK2
+        https://bugs.webkit.org/show_bug.cgi?id=143159
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-11-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Support keyPath injection into object store records.
+        https://bugs.webkit.org/show_bug.cgi?id=151640
+
+        Reviewed by Andy Estes.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-11-29  Antoine Quint  <graouts@apple.com>
+
+        Browser does not fall back to SVG attribute value when CSS style value is invalid or not supported
+        https://bugs.webkit.org/show_bug.cgi?id=147932
+
+        Reviewed by Dean Jackson.
+
+        Testing that we correctly fall back to the presentation attribute for SVGPaint and SVGColor values
+        specified with an invalid keyword in a `style` attribute. We also update the expected output for
+        svg/css/svg-attribute-parser-mode.html which is now in line with values returned by Firefox and
+        Chrome, where we correctly use the default value instead of null objects, which was definitely
+        an error.
+
+        * svg/css/invalid-color-cascade-expected.svg: Added.
+        * svg/css/invalid-color-cascade.svg: Added.
+        * svg/css/invalid-paint-cascade-expected.svg: Added.
+        * svg/css/invalid-paint-cascade.svg: Added.
+        * svg/css/script-tests/svg-attribute-parser-mode.js:
+        * svg/css/svg-attribute-parser-mode-expected.txt:
+
 2015-11-18  Andy Estes  <aestes@apple.com>
 
         [Content Filtering] Crash in DocumentLoader::notifyFinished() when allowing a media document to load

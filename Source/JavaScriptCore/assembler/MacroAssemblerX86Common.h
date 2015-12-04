@@ -36,7 +36,16 @@ namespace JSC {
 class MacroAssemblerX86Common : public AbstractMacroAssembler<X86Assembler, MacroAssemblerX86Common> {
 public:
 #if CPU(X86_64)
-    static const X86Registers::RegisterID scratchRegister = X86Registers::r11;
+    // Use this directly only if you're not generating code with it.
+    static const X86Registers::RegisterID s_scratchRegister = X86Registers::r11;
+
+    // Use this when generating code so that we get enforcement of the disallowing of scratch register
+    // usage.
+    X86Registers::RegisterID scratchRegister()
+    {
+        RELEASE_ASSERT(m_allowScratchRegister);
+        return s_scratchRegister;
+    }
 #endif
 
 protected:
@@ -143,6 +152,11 @@ public:
             return;
         }
 
+        if (src == dest) {
+            add32(imm, dest);
+            return;
+        }
+
         m_assembler.leal_mr(imm.m_value, src, dest);
     }
     
@@ -191,14 +205,22 @@ public:
 
     void countLeadingZeros32(RegisterID src, RegisterID dst)
     {
+        if (supportsLZCNT()) {
+            m_assembler.lzcnt_rr(src, dst);
+            return;
+        }
         m_assembler.bsr_rr(src, dst);
-        Jump srcIsNonZero = m_assembler.jCC(x86Condition(NonZero));
-        move(TrustedImm32(32), dst);
+        clz32AfterBsr(dst);
+    }
 
-        Jump skipNonZeroCase = jump();
-        srcIsNonZero.link(this);
-        xor32(TrustedImm32(0x1f), dst);
-        skipNonZeroCase.link(this);
+    void countLeadingZeros32(Address src, RegisterID dst)
+    {
+        if (supportsLZCNT()) {
+            m_assembler.lzcnt_mr(src.offset, src.base, dst);
+            return;
+        }
+        m_assembler.bsr_mr(src.offset, src.base, dst);
+        clz32AfterBsr(dst);
     }
 
     void lshift32(RegisterID shift_amount, RegisterID dest)
@@ -496,6 +518,11 @@ public:
         m_assembler.sqrtsd_rr(src, dst);
     }
 
+    void sqrtDouble(Address src, FPRegisterID dst)
+    {
+        m_assembler.sqrtsd_mr(src.offset, src.base, dst);
+    }
+
     void absDouble(FPRegisterID src, FPRegisterID dst)
     {
         ASSERT(src != dst);
@@ -742,8 +769,8 @@ public:
         ASSERT(isSSE2Present());
         m_assembler.movsd_mr(address.m_value, dest);
 #else
-        move(address, scratchRegister);
-        loadDouble(scratchRegister, dest);
+        move(address, scratchRegister());
+        loadDouble(scratchRegister(), dest);
 #endif
     }
 
@@ -964,8 +991,8 @@ public:
 #if CPU(X86_64)
         if (negZeroCheck) {
             Jump valueIsNonZero = branchTest32(NonZero, dest);
-            m_assembler.movmskpd_rr(src, scratchRegister);
-            failureCases.append(branchTest32(NonZero, scratchRegister, TrustedImm32(1)));
+            m_assembler.movmskpd_rr(src, scratchRegister());
+            failureCases.append(branchTest32(NonZero, scratchRegister(), TrustedImm32(1)));
             valueIsNonZero.link(this);
         }
 #else
@@ -982,7 +1009,7 @@ public:
 
     void moveZeroToDouble(FPRegisterID reg)
     {
-        m_assembler.xorpd_rr(reg, reg);
+        m_assembler.xorps_rr(reg, reg);
     }
 
     Jump branchDoubleNonZero(FPRegisterID reg, FPRegisterID scratch)
@@ -1687,6 +1714,42 @@ protected:
 #endif
     }
     
+    static bool supportsLZCNT()
+    {
+        if (s_lzcntCheckState == LZCNTCheckState::NotChecked) {
+            int flags = 0;
+#if COMPILER(MSVC)
+            int cpuInfo[4];
+            __cpuid(cpuInfo, 0x80000001);
+            flags = cpuInfo[2];
+#elif COMPILER(GCC_OR_CLANG)
+#if CPU(X86_64)
+            asm (
+                "movl $0x80000001, %%eax;"
+                "cpuid;"
+                "movl %%ecx, %0;"
+                : "=g" (flags)
+                :
+                : "%eax", "%ebx", "%ecx", "%edx"
+                );
+#else
+            asm (
+                "movl $0x80000001, %%eax;"
+                "pushl %%ebx;"
+                "cpuid;"
+                "popl %%ebx;"
+                "movl %%ecx, %0;"
+                : "=g" (flags)
+                :
+                : "%eax", "%ecx", "%edx"
+                );
+#endif
+#endif // COMPILER(GCC_OR_CLANG)
+            s_lzcntCheckState = (flags & 0x20) ? LZCNTCheckState::Set : LZCNTCheckState::Clear;
+        }
+        return s_lzcntCheckState == LZCNTCheckState::Set;
+    }
+
 private:
     // Only MacroAssemblerX86 should be using the following method; SSE2 is always available on
     // x86_64, and clients & subclasses of MacroAssembler should be using 'supportsFloatingPoint()'.
@@ -1719,6 +1782,19 @@ private:
     void add32AndSetFlags(TrustedImm32 imm, Address address)
     {
         m_assembler.addl_im(imm.m_value, address.offset, address.base);
+    }
+
+    // If lzcnt is not available, use this after BSR
+    // to count the leading zeros.
+    void clz32AfterBsr(RegisterID dst)
+    {
+        Jump srcIsNonZero = m_assembler.jCC(x86Condition(NonZero));
+        move(TrustedImm32(32), dst);
+
+        Jump skipNonZeroCase = jump();
+        srcIsNonZero.link(this);
+        xor32(TrustedImm32(0x1f), dst);
+        skipNonZeroCase.link(this);
     }
 
 #if CPU(X86)
@@ -1784,6 +1860,13 @@ private:
     }
 
 #endif
+
+    enum class LZCNTCheckState {
+        NotChecked,
+        Clear,
+        Set
+    };
+    static LZCNTCheckState s_lzcntCheckState;
 };
 
 } // namespace JSC

@@ -86,7 +86,7 @@ Notification::Notification(ScriptExecutionContext& context, const String& title)
     , m_state(Idle)
     , m_taskTimer(std::make_unique<Timer>(*this, &Notification::taskTimerFired))
 {
-    m_notificationCenter = DOMWindowNotifications::webkitNotifications(downcast<Document>(context).domWindow());
+    m_notificationCenter = DOMWindowNotifications::webkitNotifications(*downcast<Document>(context).domWindow());
     
     ASSERT(m_notificationCenter->client());
     m_taskTimer->startOneShot(0);
@@ -175,7 +175,7 @@ const char* Notification::activeDOMObjectName() const
     return "Notification";
 }
 
-bool Notification::canSuspendForPageCache() const
+bool Notification::canSuspendForDocumentSuspension() const
 {
     // We can suspend if the Notification is not shown yet or after it is closed.
     return m_state == Idle || m_state == Closed;

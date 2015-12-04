@@ -26,7 +26,7 @@
 #include "config.h"
 #include "FTLExitThunkGenerator.h"
 
-#if ENABLE(FTL_JIT)
+#if ENABLE(FTL_JIT) && !FTL_USES_B3
 
 #include "FTLOSRExitCompilationInfo.h"
 #include "FTLState.h"
@@ -53,27 +53,18 @@ void ExitThunkGenerator::emitThunk(unsigned index, int32_t osrExitFromGenericUnw
     
     info.m_thunkLabel = label();
 
-    Jump jumpToPushIndexFromGenericUnwind;
-    if (exit.m_descriptor.mightArriveAtOSRExitFromGenericUnwind()) {
+    ASSERT(!(exit.willArriveAtOSRExitFromGenericUnwind() && exit.willArriveAtOSRExitFromCallOperation()));
+    if (exit.willArriveAtOSRExitFromGenericUnwind()) {
         restoreCalleeSavesFromVMCalleeSavesBuffer();
         loadPtr(vm()->addressOfCallFrameForCatch(), framePointerRegister);
         addPtr(TrustedImm32(- static_cast<int64_t>(m_state.jitCode->stackmaps.stackSizeForLocals())), 
             framePointerRegister, stackPointerRegister);
 
-        if (exit.m_descriptor.needsRegisterRecoveryOnGenericUnwindOSRExitPath())
+        if (exit.needsRegisterRecoveryOnGenericUnwindOSRExitPath())
             exit.recoverRegistersFromSpillSlot(*this, osrExitFromGenericUnwindStackSpillSlot);
-
-        jumpToPushIndexFromGenericUnwind = jump();
-    }
-
-    if (exit.m_descriptor.mightArriveAtOSRExitFromCallOperation()) {
-        info.m_callOperationExceptionOSRExitEntrance = label();
+    } else if (exit.willArriveAtOSRExitFromCallOperation())
         exit.recoverRegistersFromSpillSlot(*this, osrExitFromGenericUnwindStackSpillSlot);
-    }
     
-    if (exit.m_descriptor.mightArriveAtOSRExitFromGenericUnwind())
-        jumpToPushIndexFromGenericUnwind.link(this);
-
     pushToSaveImmediateWithoutTouchingRegisters(TrustedImm32(index));
     info.m_thunkJump = patchableJump();
     
@@ -88,5 +79,5 @@ void ExitThunkGenerator::emitThunks(int32_t osrExitFromGenericUnwindStackSpillSl
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FTL_JIT)
+#endif // ENABLE(FTL_JIT) && !FTL_USES_B3
 

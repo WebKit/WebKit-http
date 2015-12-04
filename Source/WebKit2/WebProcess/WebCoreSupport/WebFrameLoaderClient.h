@@ -248,6 +248,8 @@ private:
 
     void prefetchDNS(const String&) override;
 
+    void didRestoreScrollPosition() override;
+
     bool shouldPaintBrokenImage(const WebCore::URL&) const override;
 
     WebFrame* m_frame;

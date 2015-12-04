@@ -349,7 +349,7 @@ Heap::Heap(VM* vm, HeapType heapType)
 #elif PLATFORM(WPE)
     , m_sweeper(std::make_unique<IncrementalSweeper>(this))
 #else
-    , m_sweeper(std::make_unique<IncrementalSweeper>(this->vm()))
+    , m_sweeper(std::make_unique<IncrementalSweeper>(this))
 #endif
     , m_deferralDepth(0)
 #if USE(CF)

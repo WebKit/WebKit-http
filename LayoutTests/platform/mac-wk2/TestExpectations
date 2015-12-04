@@ -281,6 +281,14 @@ webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failu
 webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
 
 webkit.org/b/151455 [ Yosemite ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+
+webkit.org/b/151661 [ Yosemite ] http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+
+webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
+
+webkit.org/b/151709 [ Yosemite ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
+
+webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -408,7 +416,6 @@ storage/indexeddb/key-type-binary.html [ Skip ]
 storage/indexeddb/lazy-index-population.html [ Skip ]
 storage/indexeddb/noblobs.html [ Skip ] # Missing DRT file/blob support
 storage/indexeddb/objectstore-autoincrement.html [ Skip ]
-storage/indexeddb/objectstore-keycursor.html [ Skip ]
 storage/indexeddb/optional-arguments.html [ Skip ]
 storage/indexeddb/request-leak.html [ Skip ] # Missing WKTR support? GC?
 storage/indexeddb/setversion-blocked-by-versionchange-close.html [ Skip ]

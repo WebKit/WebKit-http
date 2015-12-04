@@ -275,6 +275,9 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         0, // runJavaScriptPrompt
         0, // mediaSessionMetadataDidChange
         createOtherPage,
+        0, // runJavaScriptAlert
+        0, // runJavaScriptConfirm
+        0  // runJavaScriptPrompt
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient.base);
     
@@ -399,11 +402,6 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(WK
     m_context = platformAdjustContext(adoptWK(WKContextCreateWithConfiguration(configuration)).get(), configuration);
 
     m_geolocationProvider = std::make_unique<GeolocationProviderMock>(m_context.get());
-
-#if PLATFORM(EFL)
-    WKContextSetUsesNetworkProcess(m_context.get(), false);
-    WKContextSetProcessModel(m_context.get(), kWKProcessModelSharedSecondaryProcess);
-#endif
 
     if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
         String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
@@ -539,6 +537,9 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // runJavaScriptPrompt
         0, // mediaSessionMetadataDidChange
         createOtherPage,
+        0, // runJavaScriptAlert
+        0, // runJavaScriptConfirm
+        0, // runJavaScriptPrompt
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient.base);
 
