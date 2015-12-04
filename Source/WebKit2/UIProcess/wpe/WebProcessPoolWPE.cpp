@@ -103,6 +103,8 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         WebCore::SchemeRegistry::registerURLSchemeAsLocal("resource");
         parameters.urlSchemesRegisteredAsLocal.append("resource");
     }
+
+    parameters.memoryCacheDisabled = m_memoryCacheDisabled || cacheModel() == CacheModelDocumentViewer;
 }
 
 void WebProcessPool::platformInvalidateContext()
