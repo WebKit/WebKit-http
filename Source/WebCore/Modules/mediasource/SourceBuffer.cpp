@@ -478,6 +478,7 @@ bool SourceBuffer::hasPendingActivity() const
 
 void SourceBuffer::stop()
 {
+    m_asyncEventQueue.close();
     m_appendBufferTimer.stop();
     m_removeTimer.stop();
 }
