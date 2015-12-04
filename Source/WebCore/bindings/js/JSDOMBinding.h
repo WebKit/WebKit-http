@@ -51,6 +51,9 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
+// FIXME: We could make this file a lot easier to read by putting all function declarations at the top,
+// and function definitions below, even for template and inline functions.
+
 namespace JSC {
 class HashEntry;
 class JSFunction;
@@ -65,14 +68,15 @@ class Frame;
 class URL;
 class Node;
 
-typedef int ExceptionCode;
-
+struct ExceptionCodeWithMessage;
 struct ExceptionDetails {
     String message;
     int lineNumber { 0 };
     int columnNumber { 0 };
     String sourceURL;
 };
+
+typedef int ExceptionCode;
 
 DOMWindow& activeDOMWindow(JSC::ExecState*);
 DOMWindow& firstDOMWindow(JSC::ExecState*);
@@ -283,8 +287,10 @@ WEBCORE_EXPORT void reportException(JSC::ExecState*, JSC::Exception*, CachedScri
 void reportCurrentException(JSC::ExecState*);
 
 JSC::JSValue createDOMException(JSC::ExecState*, ExceptionCode);
+
 // Convert a DOM implementation exception code into a JavaScript exception in the execution state.
 WEBCORE_EXPORT void setDOMException(JSC::ExecState*, ExceptionCode);
+void setDOMException(JSC::ExecState*, const ExceptionCodeWithMessage&);
 
 JSC::JSValue jsString(JSC::ExecState*, const URL&); // empty if the URL is null
 
@@ -304,6 +310,8 @@ AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
 String valueToStringWithNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null
 String valueToStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null or undefined
+
+template<typename T> JSC::JSValue toNullableJSNumber(Optional<T>); // null if the optional is null
 
 inline int32_t finiteInt32Value(JSC::JSValue value, JSC::ExecState* exec, bool& okay)
 {
@@ -350,10 +358,12 @@ inline uint32_t toUInt32(JSC::ExecState* exec, JSC::JSValue value, IntegerConver
 WEBCORE_EXPORT int64_t toInt64(JSC::ExecState*, JSC::JSValue, IntegerConversionConfiguration);
 WEBCORE_EXPORT uint64_t toUInt64(JSC::ExecState*, JSC::JSValue, IntegerConversionConfiguration);
 
-// Returns a Date instnace for the specified value, or NaN if the date is not a number.
+// Returns a Date instance for the specified value, or NaN if the date is not a number.
 JSC::JSValue jsDateOrNaN(JSC::ExecState*, double);
+
 // Returns a Date instance for the specified value, or null if the value is NaN or infinity.
 JSC::JSValue jsDateOrNull(JSC::ExecState*, double);
+
 // NaN if the value can't be converted to a date.
 double valueToDate(JSC::ExecState*, JSC::JSValue);
 
@@ -685,7 +695,12 @@ inline void setPropertyToObject(JSC::ExecState& exec, JSC::JSObject& object, con
     JSC::PutPropertySlot propertySlot(&object);
     JSC::JSObject::put(&object, &exec, JSC::Identifier::fromString(&exec, name), value, propertySlot);
 }
-    
+
+template<typename T> inline JSC::JSValue toNullableJSNumber(Optional<T> optionalNumber)
+{
+    return optionalNumber ? JSC::jsNumber(optionalNumber.value()) : JSC::jsNull();
+}
+
 } // namespace WebCore
 
 #endif // JSDOMBinding_h

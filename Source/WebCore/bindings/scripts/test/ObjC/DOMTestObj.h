@@ -85,7 +85,9 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 @property BOOL reflectedCustomBooleanAttr;
 @property (copy) NSString *reflectedCustomURLAttr;
 @property int attrWithGetterException;
+@property int attrWithGetterExceptionWithMessage;
 @property int attrWithSetterException;
+@property int attrWithSetterExceptionWithMessage;
 @property (copy) NSString *stringAttrWithGetterException;
 @property (copy) NSString *stringAttrWithSetterException;
 @property (strong) DOMTestObj *strictTypeCheckingAttribute;
@@ -143,6 +145,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)serializedValue:(NSString *)serializedArg;
 - (void)optionsObject:(DOMDictionary *)oo ooo:(DOMDictionary *)ooo;
 - (void)methodWithException;
+- (void)methodWithExceptionWithMessage;
 - (void)customMethod;
 - (void)customMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture;

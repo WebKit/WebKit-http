@@ -28,6 +28,7 @@
 #include "Internals.h"
 
 #include "AXObjectCache.h"
+#include "ActiveDOMCallbackMicrotask.h"
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardController.h"
@@ -81,8 +82,6 @@
 #include "MediaPlayer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
-#include "MicroTask.h"
-#include "MicroTaskTest.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -948,7 +947,7 @@ void Internals::enableMockSpeechSynthesizer()
     Document* document = contextDocument();
     if (!document || !document->domWindow())
         return;
-    SpeechSynthesis* synthesis = DOMWindowSpeechSynthesis::speechSynthesis(document->domWindow());
+    SpeechSynthesis* synthesis = DOMWindowSpeechSynthesis::speechSynthesis(*document->domWindow());
     if (!synthesis)
         return;
     
@@ -2823,6 +2822,8 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement* element, const Str
             restrictions |= MediaElementSession::MetadataPreloadingNotPermitted;
         if (equalIgnoringCase(restrictionString, "AutoPreloadingNotPermitted"))
             restrictions |= MediaElementSession::AutoPreloadingNotPermitted;
+        if (equalIgnoringCase(restrictionString, "InvisibleAutoplayNotPermitted"))
+            restrictions |= MediaElementSession::InvisibleAutoplayNotPermitted;
     }
     element->mediaSession().addBehaviorRestriction(restrictions);
 }
@@ -3053,8 +3054,15 @@ RefPtr<File> Internals::createFile(const String& path)
 
 void Internals::queueMicroTask(int testNumber)
 {
-    if (contextDocument())
-        MicroTaskQueue::singleton().queueMicroTask(std::make_unique<MicroTaskTest>(contextDocument()->createWeakPtr(), testNumber));
+    Document* document = contextDocument();
+    if (!document)
+        return;
+
+    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *document, [document, testNumber]() {
+        document->addConsoleMessage(MessageSource::JS, MessageLevel::Debug, makeString("MicroTask #", String::number(testNumber), " has run."));
+    });
+
+    MicrotaskQueue::mainThreadQueue().append(WTF::move(microtask));
 }
 
 #if ENABLE(CONTENT_FILTERING)

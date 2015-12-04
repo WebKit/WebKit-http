@@ -102,8 +102,6 @@ using namespace WebKit;
 
 namespace WebKit {
 
-static const double sharedSecondaryProcessShutdownTimeout = 60;
-
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, processPoolCounter, ("WebProcessPool"));
 
 Ref<WebProcessPool> WebProcessPool::create(API::ProcessPoolConfiguration& configuration)
@@ -158,9 +156,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_processTerminationEnabled(true)
     , m_canHandleHTTPSServerTrustEvaluation(true)
     , m_didNetworkProcessCrash(false)
-#if USE(SOUP)
-    , m_ignoreTLSErrors(true)
-#endif
     , m_memoryCacheDisabled(false)
     , m_userObservablePageCounter([this](bool) { updateProcessSuppressionState(); })
     , m_processSuppressionDisabledForPageCounter([this](bool) { updateProcessSuppressionState(); })
@@ -284,17 +279,6 @@ void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient> down
         m_downloadClient = WTF::move(downloadClient);
 }
 
-void WebProcessPool::setProcessModel(ProcessModel processModel)
-{
-    // Guard against API misuse.
-    if (!m_processes.isEmpty())
-        CRASH();
-    if (processModel != ProcessModelSharedSecondaryProcess && !m_messagesToInjectedBundlePostedToEmptyContext.isEmpty())
-        CRASH();
-
-    m_configuration->setProcessModel(processModel);
-}
-
 void WebProcessPool::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcesses)
 {
     // Guard against API misuse.
@@ -306,17 +290,7 @@ void WebProcessPool::setMaximumNumberOfProcesses(unsigned maximumNumberOfProcess
 
 IPC::Connection* WebProcessPool::networkingProcessConnection()
 {
-    switch (processModel()) {
-    case ProcessModelSharedSecondaryProcess:
-        if (usesNetworkProcess())
-            return m_networkProcess->connection();
-        return m_processes[0]->connection();
-    case ProcessModelMultipleSecondaryProcesses:
-        ASSERT(usesNetworkProcess());
-        return m_networkProcess->connection();
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
+    return m_networkProcess->connection();
 }
 
 void WebProcessPool::languageChanged(void* context)
@@ -328,7 +302,7 @@ void WebProcessPool::languageChanged()
 {
     sendToAllProcesses(Messages::WebProcess::UserPreferredLanguagesChanged(userPreferredLanguages()));
 #if USE(SOUP)
-    if (usesNetworkProcess() && m_networkProcess)
+    if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::UserPreferredLanguagesChanged(userPreferredLanguages()), 0);
 #endif
 }
@@ -341,16 +315,6 @@ void WebProcessPool::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnable
 void WebProcessPool::textCheckerStateChanged()
 {
     sendToAllProcesses(Messages::WebProcess::SetTextCheckerState(TextChecker::state()));
-}
-
-void WebProcessPool::setUsesNetworkProcess(bool usesNetworkProcess)
-{
-    m_configuration->setUseNetworkProcess(usesNetworkProcess);
-}
-
-bool WebProcessPool::usesNetworkProcess() const
-{
-    return m_configuration->useNetworkProcess();
 }
 
 NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
@@ -504,7 +468,7 @@ void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool private
 {
     m_iconDatabase->setPrivateBrowsingEnabled(privateBrowsingEnabled);
 
-    if (usesNetworkProcess() && networkProcess()) {
+    if (networkProcess()) {
         if (privateBrowsingEnabled)
             networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession(SessionID::legacyPrivateSessionID()), 0);
         else
@@ -544,18 +508,9 @@ void WebProcessPool::processDidCachePage(WebProcessProxy* process)
     m_processWithPageCache = process;
 }
 
-WebProcessProxy& WebProcessPool::ensureSharedWebProcess()
-{
-    ASSERT(processModel() == ProcessModelSharedSecondaryProcess);
-    if (m_processes.isEmpty())
-        createNewWebProcess();
-    return *m_processes[0];
-}
-
 WebProcessProxy& WebProcessPool::createNewWebProcess()
 {
-    if (usesNetworkProcess())
-        ensureNetworkProcess();
+    ensureNetworkProcess();
 
     Ref<WebProcessProxy> process = WebProcessProxy::create(*this);
 
@@ -619,7 +574,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     // iconDatabasePath is non-empty by default, but m_iconDatabase isn't enabled in UI process unless setDatabasePath is called explicitly.
     parameters.iconDatabaseEnabled = !iconDatabasePath().isEmpty();
 
-    parameters.terminationTimeout = (processModel() == ProcessModelSharedSecondaryProcess) ? sharedSecondaryProcessShutdownTimeout : 0;
+    parameters.terminationTimeout = 0;
 
     parameters.textCheckerState = TextChecker::state();
 
@@ -631,8 +586,6 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     // FIXME: There should be a generic way for supplements to add to the intialization parameters.
     supplement<WebNotificationManagerProxy>()->populateCopyOfNotificationPermissions(parameters.notificationPermissions);
 #endif
-
-    parameters.usesNetworkProcess = usesNetworkProcess();
 
     parameters.plugInAutoStartOriginHashes = m_plugInAutoStartProvider.autoStartOriginHashesCopy();
     copyToVector(m_plugInAutoStartProvider.autoStartOrigins(), parameters.plugInAutoStartOrigins);
@@ -677,15 +630,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
 
     m_processes.append(process.ptr());
 
-    if (processModel() == ProcessModelSharedSecondaryProcess) {
-        for (size_t i = 0; i != m_messagesToInjectedBundlePostedToEmptyContext.size(); ++i) {
-            auto& messageNameAndBody = m_messagesToInjectedBundlePostedToEmptyContext[i];
-
-            process->send(Messages::WebProcess::HandleInjectedBundleMessage(messageNameAndBody.first, UserData(process->transformObjectsToHandles(messageNameAndBody.second.get()).get())), 0);
-        }
-        m_messagesToInjectedBundlePostedToEmptyContext.clear();
-    } else
-        ASSERT(m_messagesToInjectedBundlePostedToEmptyContext.isEmpty());
+    ASSERT(m_messagesToInjectedBundlePostedToEmptyContext.isEmpty());
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Initialize remote inspector connection now that we have a sub-process that is hosting one of our web views.
@@ -767,30 +712,14 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
     if (m_haveInitialEmptyProcess && process == m_processes.last())
         m_haveInitialEmptyProcess = false;
 
-    // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls below are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
+    // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls of the other supplements are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
     // Clearing everything causes assertion failures, so it's less trouble to skip that for now.
-    if (processModel() != ProcessModelSharedSecondaryProcess) {
-        RefPtr<WebProcessProxy> protect(process);
-        if (m_processWithPageCache == process)
-            m_processWithPageCache = 0;
-
-        static_cast<WebContextSupplement*>(supplement<WebGeolocationManagerProxy>())->processDidClose(process);
-
-        m_processes.removeFirst(process);
-        return;
-    }
-
-    WebContextSupplementMap::const_iterator it = m_supplements.begin();
-    WebContextSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it)
-        it->value->processDidClose(process);
-
-    // The vector may have the last reference to process proxy, which in turn may have the last reference to the context.
-    // Since vector elements are destroyed in place, we would recurse into WebProcessProxy destructor
-    // if it were invoked from Vector::remove(). RefPtr delays destruction until it's safe.
     RefPtr<WebProcessProxy> protect(process);
     if (m_processWithPageCache == process)
         m_processWithPageCache = nullptr;
+
+    static_cast<WebContextSupplement*>(supplement<WebGeolocationManagerProxy>())->processDidClose(process);
+
     m_processes.removeFirst(process);
 }
 
@@ -822,18 +751,14 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     }
 
     RefPtr<WebProcessProxy> process;
-    if (processModel() == ProcessModelSharedSecondaryProcess) {
-        process = &ensureSharedWebProcess();
-    } else {
-        if (m_haveInitialEmptyProcess) {
-            process = m_processes.last();
-            m_haveInitialEmptyProcess = false;
-        } else if (pageConfiguration->relatedPage()) {
-            // Sharing processes, e.g. when creating the page via window.open().
-            process = &pageConfiguration->relatedPage()->process();
-        } else
-            process = &createNewWebProcessRespectingProcessCountLimit();
-    }
+    if (m_haveInitialEmptyProcess) {
+        process = m_processes.last();
+        m_haveInitialEmptyProcess = false;
+    } else if (pageConfiguration->relatedPage()) {
+        // Sharing processes, e.g. when creating the page via window.open().
+        process = &pageConfiguration->relatedPage()->process();
+    } else
+        process = &createNewWebProcessRespectingProcessCountLimit();
 
     return process->createWebPage(pageClient, WTF::move(pageConfiguration));
 }
@@ -841,16 +766,14 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
 DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
 {
     DownloadProxy* downloadProxy = createDownloadProxy(request);
-    uint64_t initiatingPageID = initiatingPage ? initiatingPage->pageID() : 0;
     SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : SessionID::defaultSessionID();
 
-    if (usesNetworkProcess() && networkProcess()) {
+    if (networkProcess()) {
         // FIXME (NetworkProcess): Replicate whatever FrameLoader::setOriginalURLForDownloadRequest does with the request here.
         networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), request), 0);
         return downloadProxy;
     }
 
-    m_processes[0]->send(Messages::WebProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), initiatingPageID, request), 0);
     return downloadProxy;
 }
 
@@ -862,23 +785,16 @@ DownloadProxy* WebProcessPool::resumeDownload(const API::Data* resumeData, const
     if (!path.isEmpty())
         SandboxExtension::createHandle(path, SandboxExtension::ReadWrite, sandboxExtensionHandle);
 
-    if (usesNetworkProcess() && networkProcess()) {
+    if (networkProcess()) {
         networkProcess()->send(Messages::NetworkProcess::ResumeDownload(downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
         return downloadProxy;
     }
 
-    m_processes[0]->send(Messages::WebProcess::ResumeDownload(downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
     return downloadProxy;
 }
 
 void WebProcessPool::postMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
 {
-    if (m_processes.isEmpty()) {
-        if (processModel() == ProcessModelSharedSecondaryProcess)
-            m_messagesToInjectedBundlePostedToEmptyContext.append(std::make_pair(messageName, messageBody));
-        return;
-    }
-
     for (auto& process : m_processes) {
         // FIXME: Return early if the message body contains any references to WKPageRefs/WKFrameRefs etc. since they're local to a process.
         process->send(Messages::WebProcess::HandleInjectedBundleMessage(messageName, UserData(process->transformObjectsToHandles(messageBody).get())), 0);
@@ -954,7 +870,7 @@ void WebProcessPool::setDomainRelaxationForbiddenForURLScheme(const String& urlS
 void WebProcessPool::setCanHandleHTTPSServerTrustEvaluation(bool value)
 {
     m_canHandleHTTPSServerTrustEvaluation = value;
-    if (usesNetworkProcess() && m_networkProcess) {
+    if (m_networkProcess) {
         m_networkProcess->send(Messages::NetworkProcess::SetCanHandleHTTPSServerTrustEvaluation(value), 0);
         return;
     }
@@ -1025,7 +941,7 @@ void WebProcessPool::setCacheModel(CacheModel cacheModel)
     m_configuration->setCacheModel(cacheModel);
     sendToAllProcesses(Messages::WebProcess::SetCacheModel(cacheModel));
 
-    if (usesNetworkProcess() && m_networkProcess)
+    if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::SetCacheModel(cacheModel), 0);
 }
 
@@ -1036,13 +952,7 @@ void WebProcessPool::setDefaultRequestTimeoutInterval(double timeoutInterval)
 
 DownloadProxy* WebProcessPool::createDownloadProxy(const ResourceRequest& request)
 {
-    if (usesNetworkProcess()) {
-        ensureNetworkProcess();
-        ASSERT(m_networkProcess);
-        return m_networkProcess->createDownloadProxy(request);
-    }
-
-    return ensureSharedWebProcess().createDownloadProxy(request);
+    return ensureNetworkProcess().createDownloadProxy(request);
 }
 
 void WebProcessPool::addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& messageReceiver)
@@ -1152,22 +1062,8 @@ void WebProcessPool::useTestingNetworkSession()
 
 void WebProcessPool::allowSpecificHTTPSCertificateForHost(const WebCertificateInfo* certificate, const String& host)
 {
-    if (usesNetworkProcess() && m_networkProcess) {
+    if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::AllowSpecificHTTPSCertificateForHost(certificate->certificateInfo(), host), 0);
-        return;
-    }
-
-#if USE(SOUP)
-    m_processes[0]->send(Messages::WebProcess::AllowSpecificHTTPSCertificateForHost(certificate->certificateInfo(), host), 0);
-    return;
-#else
-    UNUSED_PARAM(certificate);
-    UNUSED_PARAM(host);
-#endif
-
-#if !PLATFORM(IOS)
-    ASSERT_NOT_REACHED();
-#endif
 }
 
 void WebProcessPool::setHTTPPipeliningEnabled(bool enabled)
@@ -1206,22 +1102,12 @@ void WebProcessPool::getStatistics(uint32_t statisticsMask, std::function<void (
 
 void WebProcessPool::requestWebContentStatistics(StatisticsRequest* request)
 {
-    if (processModel() == ProcessModelSharedSecondaryProcess) {
-        if (m_processes.isEmpty())
-            return;
-        
-        uint64_t requestID = request->addOutstandingRequest();
-        m_statisticsRequests.set(requestID, request);
-        m_processes[0]->send(Messages::WebProcess::GetWebCoreStatistics(requestID), 0);
-
-    } else {
-        // FIXME (Multi-WebProcess) <rdar://problem/13200059>: Make getting statistics from multiple WebProcesses work.
-    }
+    // FIXME (Multi-WebProcess) <rdar://problem/13200059>: Make getting statistics from multiple WebProcesses work.
 }
 
 void WebProcessPool::requestNetworkingStatistics(StatisticsRequest* request)
 {
-    if (!usesNetworkProcess() || !m_networkProcess) {
+    if (!m_networkProcess) {
         LOG_ERROR("Attempt to get NetworkProcess statistics but the NetworkProcess is unavailable");
         return;
     }

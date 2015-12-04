@@ -194,10 +194,6 @@ public:
     virtual void selectionDidChange() = 0;
 #endif
 
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    virtual void notifyApplicationAboutInputContextChange() = 0;
-#endif
-
 #if USE(APPKIT)
     virtual void setPromisedDataForImage(const String& pasteboardName, PassRefPtr<WebCore::SharedBuffer> imageBuffer, const String& filename, const String& extension, const String& title,
                                  const String& url, const String& visibleUrl, PassRefPtr<WebCore::SharedBuffer> archiveBuffer) = 0;
@@ -359,6 +355,8 @@ public:
 #if USE(GSTREAMER)
     virtual bool decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) = 0;
 #endif
+
+    virtual void didRestoreScrollPosition() = 0;
 };
 
 } // namespace WebKit

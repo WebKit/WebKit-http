@@ -37,9 +37,13 @@
 #if PLATFORM(WPE)
 #include <wtf/glib/GSourceWrap.h>
 #endif
+#if USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(WPE)
+#include <wtf/glib/GRefPtr.h>
+#endif
 
 namespace JSC {
 
+class JSLock;
 class VM;
 
 class HeapTimer {
@@ -72,6 +76,10 @@ protected:
     Ecore_Timer* m_timer;
 #elif PLATFORM(WPE)
     GSourceWrap::Static m_timer;
+#elif USE(GLIB)
+    void timerDidFire();
+    RefPtr<JSLock> m_apiLock;
+    GRefPtr<GSource> m_timer;
 #endif
     
 private:

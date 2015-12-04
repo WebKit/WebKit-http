@@ -91,7 +91,7 @@ public:
     SegmentedVector<GetByIdDescriptor> getByIds;
     SegmentedVector<PutByIdDescriptor> putByIds;
     SegmentedVector<CheckInDescriptor> checkIns;
-    SegmentedVector<ArithSubDescriptor> arithSubs;
+    SegmentedVector<BinaryOpDescriptor> binaryOps;
     SegmentedVector<LazySlowPathDescriptor> lazySlowPaths;
 #if ENABLE(MASM_PROBE)
     SegmentedVector<ProbeDescriptor> probes;
@@ -101,6 +101,7 @@ public:
     Vector<JSTailCall> jsTailCalls;
     Vector<CString> codeSectionNames;
     Vector<CString> dataSectionNames;
+    SegmentedVector<OSRExitDescriptorImpl> osrExitDescriptorImpls;
     void* unwindDataSection;
     size_t unwindDataSectionSize;
     RefPtr<DataSection> stackmapsSection;

@@ -105,7 +105,6 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
 
 # Constants
 my $shouldUseCGColor = defined $ENV{PLATFORM_NAME} && $ENV{PLATFORM_NAME} ne "macosx";
-my $nullableInit = "bool isNull = false;";
 my $exceptionInit = "WebCore::ExceptionCode ec = 0;";
 my $jsContextSetter = "WebCore::JSMainThreadNullState state;";
 my $exceptionRaiseOnError = "WebCore::raiseOnDOMError(ec);";
@@ -134,7 +133,6 @@ my %conflictMethod = (
     "description" => "NSObject",
     "doesNotRecognizeSelector:" => "NSObject",
     "encodeWithCoder:" => "NSObject",
-    "finalize" => "NSObject",
     "forwardInvocation:" => "NSObject",
     "hash" => "NSObject",
     "init" => "NSObject",
@@ -1216,7 +1214,7 @@ sub GenerateImplementation
     # START implementation
     push(@implContent, "\@implementation $className\n\n");
 
-    # Only generate 'dealloc' and 'finalize' methods for direct subclasses of DOMObject.
+    # Only generate 'dealloc' for direct subclasses of DOMObject.
     if ($parentImplClassName eq "Object") {
         $implIncludes{"WebCoreObjCExtras.h"} = 1;
         push(@implContent, "- (void)dealloc\n");
@@ -1235,21 +1233,6 @@ sub GenerateImplementation
         }
         push(@implContent, "    [super dealloc];\n");
         push(@implContent, "}\n\n");
-
-        push(@implContent, "- (void)finalize\n");
-        push(@implContent, "{\n");
-        if ($interfaceName eq "NodeIterator") {
-            push(@implContent, "    if (_internal) {\n");
-            push(@implContent, "        [self detach];\n");
-            push(@implContent, "        IMPL->deref();\n");
-            push(@implContent, "    };\n");
-        } else {
-            push(@implContent, "    if (_internal)\n");
-            push(@implContent, "        IMPL->deref();\n");
-        }
-        push(@implContent, "    [super finalize];\n");
-        push(@implContent, "}\n\n");
-        
     }
 
     %attributeNames = ();
@@ -1360,14 +1343,14 @@ sub GenerateImplementation
                 $getterContentTail .= "))";
             }
 
+            # It would be easy to add nullable support here if we ever need it, but we probably never
+            # will since we are unlikely to add Objective-C bindings that require it in the future.
+            # In particular, we'd have to decide what return type to use for "number or null".
+
             my $getterContent;
-            if ($hasGetterException || $attribute->signature->isNullable) {
+            if ($hasGetterException) {
                 $getterContent = $getterContentHead;
                 my $getterWithoutAttributes = $getterContentHead =~ /\($|, $/ ? "ec" : ", ec";
-                if ($attribute->signature->isNullable) {
-                    $getterContent .= $getterWithoutAttributes ? "isNull" : ", isNull";
-                    $getterWithoutAttributes = 0;
-                }
                 if ($hasGetterException) {
                     $getterContent .= $getterWithoutAttributes ? "ec" : ", ec";
                 }
@@ -1382,11 +1365,6 @@ sub GenerateImplementation
             push(@implContent, "{\n");
             push(@implContent, "    $jsContextSetter\n");
             push(@implContent, @customGetterContent);
-
-            # FIXME: Should we return a default value when isNull == true?
-            if ($attribute->signature->isNullable) {
-                push(@implContents, "    $nullableInit\n");
-            }
 
             if ($hasGetterException) {
                 # Differentiated between when the return type is a pointer and

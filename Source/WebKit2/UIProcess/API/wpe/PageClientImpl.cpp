@@ -268,4 +268,8 @@ bool PageClientImpl::decicePolicyForInstallMissingMediaPluginsPermissionRequest(
 }
 #endif
 
+void PageClientImpl::didRestoreScrollPosition()
+{
+}
+
 } // namespace WebKit

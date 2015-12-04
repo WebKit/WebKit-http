@@ -834,7 +834,10 @@ class Port(object):
             '_NT_SYMBOL_PATH',
 
             # Windows:
+            'COMSPEC',
             'PATH',
+            'SYSTEMDRIVE',
+            'SYSTEMROOT',
 
             # WPE:
             'WAYLAND_DISPLAY',
@@ -1110,7 +1113,7 @@ class Port(object):
 
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
-        if sys_platform == 'cygwin' or sys_platform == 'win32':
+        if sys_platform == 'cygwin' or sys_platform.startswith('win'):
             return 'apache' + self._apache_version() + '-httpd-win.conf'
         if sys_platform.startswith('linux'):
             if self._is_redhat_based():
@@ -1156,14 +1159,18 @@ class Port(object):
             # the options list.
             self.set_option('_cached_root', root_directory)
 
-        if sys.platform in ('cygwin', 'win32'):
+        if sys.platform.startswith('win') or sys.platform == 'cygwin':
             return self._filesystem.join(root_directory, *comps)
 
         return self._filesystem.join(self._filesystem.abspath(root_directory), *comps)
 
     def _path_to_driver(self, configuration=None):
         """Returns the full path to the test driver (DumpRenderTree)."""
-        return self._build_path(self.driver_name())
+        local_driver_path = self._build_path(self.driver_name())
+        if sys.platform.startswith('win'):
+            base = os.path.splitext(local_driver_path)[0]
+            local_driver_path = base + ".exe"
+        return local_driver_path
 
     def _driver_tempdir(self):
         return self._filesystem.mkdtemp(prefix='%s-' % self.driver_name())

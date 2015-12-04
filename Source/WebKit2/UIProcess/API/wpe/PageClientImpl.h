@@ -113,6 +113,8 @@ private:
     virtual bool decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
 #endif
 
+    virtual void didRestoreScrollPosition() override;
+
     WKWPE::View& m_view;
 };
 

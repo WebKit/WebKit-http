@@ -301,6 +301,15 @@ WEBKIT_API void
 webkit_dom_test_obj_method_with_exception(WebKitDOMTestObj* self, GError** error);
 
 /**
+ * webkit_dom_test_obj_method_with_exception_with_message:
+ * @self: A #WebKitDOMTestObj
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_method_with_exception_with_message(WebKitDOMTestObj* self);
+
+/**
  * webkit_dom_test_obj_with_script_state_void:
  * @self: A #WebKitDOMTestObj
  *
@@ -1115,6 +1124,27 @@ WEBKIT_API void
 webkit_dom_test_obj_set_attr_with_getter_exception(WebKitDOMTestObj* self, glong value);
 
 /**
+ * webkit_dom_test_obj_get_attr_with_getter_exception_with_message:
+ * @self: A #WebKitDOMTestObj
+ *
+ * Returns: A #glong
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API glong
+webkit_dom_test_obj_get_attr_with_getter_exception_with_message(WebKitDOMTestObj* self);
+
+/**
+ * webkit_dom_test_obj_set_attr_with_getter_exception_with_message:
+ * @self: A #WebKitDOMTestObj
+ * @value: A #glong
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_set_attr_with_getter_exception_with_message(WebKitDOMTestObj* self, glong value);
+
+/**
  * webkit_dom_test_obj_get_attr_with_setter_exception:
  * @self: A #WebKitDOMTestObj
  *
@@ -1135,6 +1165,27 @@ webkit_dom_test_obj_get_attr_with_setter_exception(WebKitDOMTestObj* self);
 **/
 WEBKIT_API void
 webkit_dom_test_obj_set_attr_with_setter_exception(WebKitDOMTestObj* self, glong value, GError** error);
+
+/**
+ * webkit_dom_test_obj_get_attr_with_setter_exception_with_message:
+ * @self: A #WebKitDOMTestObj
+ *
+ * Returns: A #glong
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API glong
+webkit_dom_test_obj_get_attr_with_setter_exception_with_message(WebKitDOMTestObj* self);
+
+/**
+ * webkit_dom_test_obj_set_attr_with_setter_exception_with_message:
+ * @self: A #WebKitDOMTestObj
+ * @value: A #glong
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_set_attr_with_setter_exception_with_message(WebKitDOMTestObj* self, glong value);
 
 /**
  * webkit_dom_test_obj_get_string_attr_with_getter_exception:

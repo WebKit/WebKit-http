@@ -80,6 +80,10 @@ enum Opcode : int16_t {
     Shl,
     SShr, // Arithmetic Shift.
     ZShr, // Logical Shift.
+    Clz, // Count leading zeros.
+
+    // Double math.
+    Sqrt,
 
     // Casts and such.
     // Bitwise Cast of Double->Int64 or Int64->Double

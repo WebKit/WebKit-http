@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3OpaqueByproducts.h"
 #include "B3Origin.h"
 #include "B3Type.h"
 #include "PureNaN.h"
@@ -43,7 +44,6 @@ namespace JSC { namespace B3 {
 
 class BasicBlock;
 class BlockInsertionSet;
-class OpaqueByproducts;
 class Value;
 
 namespace Air { class Code; }
@@ -219,11 +219,13 @@ public:
     // just keeps alive things like the double constant pool and switch lookup tables. If this sounds
     // confusing, you should probably be using the B3::Compilation API to compile code. If you use
     // that API, then you don't have to worry about this.
-    std::unique_ptr<OpaqueByproducts> takeByproducts() { return WTF::move(m_byproducts); }
+    std::unique_ptr<OpaqueByproducts> releaseByproducts() { return WTF::move(m_byproducts); }
 
+    const Air::Code& code() const { return *m_code; }
     Air::Code& code() { return *m_code; }
 
-    const RegisterAtOffsetList& calleeSaveRegisters();
+    JS_EXPORT_PRIVATE unsigned frameSize() const;
+    const RegisterAtOffsetList& calleeSaveRegisters() const;
 
 private:
     friend class BlockInsertionSet;

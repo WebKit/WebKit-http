@@ -192,11 +192,17 @@ public:
                 VALIDATE(value->child(0)->type() == Int32, ("At ", *value));
                 VALIDATE(value->type() == Int64, ("At ", *value));
                 break;
+            case Clz:
+                VALIDATE(value->numChildren() == 1, ("At ", *value));
+                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(isInt(value->type()), ("At ", *value));
+                break;
             case Trunc:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == Int64, ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 break;
+            case Sqrt:
             case FRound:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == Double, ("At ", *value));
@@ -284,6 +290,22 @@ public:
                 // return type.
                 break;
             case Patchpoint:
+                if (value->type() == Void)
+                    VALIDATE(value->as<PatchpointValue>()->resultConstraint == ValueRep::WarmAny, ("At ", *value));
+                else {
+                    switch (value->as<PatchpointValue>()->resultConstraint.kind()) {
+                    case ValueRep::WarmAny:
+                    case ValueRep::SomeRegister:
+                    case ValueRep::Register:
+                    case ValueRep::StackArgument:
+                        break;
+                    default:
+                        VALIDATE(false, ("At ", *value));
+                        break;
+                    }
+                    
+                    validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraint));
+                }
                 validateStackmap(value);
                 break;
             case CheckAdd:
@@ -292,14 +314,14 @@ public:
                 VALIDATE(value->numChildren() >= 2, ("At ", *value));
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
                 VALIDATE(isInt(value->child(1)->type()), ("At ", *value));
-                VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::Any, ("At ", *value));
-                VALIDATE(value->as<StackmapValue>()->constrainedChild(1).rep() == ValueRep::Any, ("At ", *value));
+                VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::WarmAny, ("At ", *value));
+                VALIDATE(value->as<StackmapValue>()->constrainedChild(1).rep() == ValueRep::WarmAny, ("At ", *value));
                 validateStackmap(value);
                 break;
             case Check:
                 VALIDATE(value->numChildren() >= 1, ("At ", *value));
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
-                VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::Any, ("At ", *value));
+                VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::WarmAny, ("At ", *value));
                 validateStackmap(value);
                 break;
             case Upsilon:
@@ -332,14 +354,28 @@ private:
         StackmapValue* stackmap = value->as<StackmapValue>();
         VALIDATE(stackmap, ("At ", *value));
         VALIDATE(stackmap->numChildren() >= stackmap->reps().size(), ("At ", *stackmap));
-        for (unsigned i = 0; i < stackmap->reps().size(); ++i) {
-            const ValueRep& rep = stackmap->reps()[i];
-            if (rep.kind() != ValueRep::Register)
-                continue;
-            if (rep.reg().isGPR())
-                VALIDATE(isInt(stackmap->child(i)->type()), ("At ", *stackmap));
+        for (ConstrainedValue child : stackmap->constrainedChildren())
+            validateStackmapConstraint(stackmap, child);
+    }
+    
+    void validateStackmapConstraint(Value* context, const ConstrainedValue& value)
+    {
+        switch (value.rep().kind()) {
+        case ValueRep::WarmAny:
+        case ValueRep::ColdAny:
+        case ValueRep::LateColdAny:
+        case ValueRep::SomeRegister:
+        case ValueRep::StackArgument:
+            break;
+        case ValueRep::Register:
+            if (value.rep().reg().isGPR())
+                VALIDATE(isInt(value.value()->type()), ("At ", *context, ": ", value));
             else
-                VALIDATE(isFloat(stackmap->child(i)->type()), ("At ", *stackmap));
+                VALIDATE(isFloat(value.value()->type()), ("At ", *context, ": ", value));
+            break;
+        default:
+            VALIDATE(false, ("At ", *context, ": ", value));
+            break;
         }
     }
 

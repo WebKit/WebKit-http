@@ -37,7 +37,8 @@
 #import "MediaConstraints.h"
 #import "NotImplemented.h"
 #import "PlatformLayer.h"
-#import "RealtimeMediaSourceStates.h"
+#import "RealtimeMediaSourceCenter.h"
+#import "RealtimeMediaSourceSettings.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
 
@@ -107,31 +108,35 @@ AVVideoCaptureSource::~AVVideoCaptureSource()
 {
 }
 
-void AVVideoCaptureSource::initializeCapabilities(RealtimeMediaSourceCapabilities& capabilities)
+void AVVideoCaptureSource::initializeCapabilities(RealtimeMediaSourceCapabilities&)
 {
     // FIXME: finish this implementation
-    capabilities.setSourceId(currentStates()->sourceId());
-    capabilities.addSourceType(RealtimeMediaSourceStates::Camera);
 }
 
-void AVVideoCaptureSource::updateStates()
+void AVVideoCaptureSource::initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints& supportedConstraints)
 {
-    RealtimeMediaSourceStates* states = currentStates();
+    supportedConstraints.setSupportsWidth(true);
+    supportedConstraints.setSupportsHeight(true);
+    supportedConstraints.setSupportsAspectRatio(true);
+    supportedConstraints.setSupportsFrameRate(true);
+    supportedConstraints.setSupportsFacingMode(true);
+}
 
-    states->setSourceId(id());
-    states->setSourceType(RealtimeMediaSourceStates::Camera);
+void AVVideoCaptureSource::updateSettings(RealtimeMediaSourceSettings& settings)
+{
+    settings.setDeviceId(id());
 
     if ([device() position] == AVCaptureDevicePositionFront)
-        states->setFacingMode(RealtimeMediaSourceStates::User);
+        settings.setFacingMode(RealtimeMediaSourceSettings::User);
     else if ([device() position] == AVCaptureDevicePositionBack)
-        states->setFacingMode(RealtimeMediaSourceStates::Environment);
+        settings.setFacingMode(RealtimeMediaSourceSettings::Environment);
     else
-        states->setFacingMode(RealtimeMediaSourceStates::Unknown);
+        settings.setFacingMode(RealtimeMediaSourceSettings::Unknown);
     
-    states->setFrameRate(m_frameRate);
-    states->setWidth(m_width);
-    states->setHeight(m_height);
-    states->setAspectRatio(static_cast<float>(m_width) / m_height);
+    settings.setFrameRate(m_frameRate);
+    settings.setWidth(m_width);
+    settings.setHeight(m_height);
+    settings.setAspectRatio(static_cast<float>(m_width) / m_height);
 }
 
 bool AVVideoCaptureSource::setFrameRateConstraint(float minFrameRate, float maxFrameRate)
@@ -179,36 +184,39 @@ bool AVVideoCaptureSource::applyConstraints(MediaConstraints* constraints)
 {
     ASSERT(constraints);
 
-    const Vector<AtomicString>& constraintNames = AVCaptureDeviceManager::validConstraintNames();
-    String widthConstraint;
-    String heightConstraint;
+    const RealtimeMediaSourceSupportedConstraints& supportedConstraints = RealtimeMediaSourceCenter::singleton().supportedConstraints();
+    String widthConstraintValue;
+    String heightConstraintValue;
+    String widthConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::Width);
+    String heightConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::Height);
 
-    constraints->getMandatoryConstraintValue(constraintNames[AVCaptureDeviceManager::Width], widthConstraint);
-    constraints->getMandatoryConstraintValue(constraintNames[AVCaptureDeviceManager::Height], heightConstraint);
+    constraints->getMandatoryConstraintValue(widthConstraintName, widthConstraintValue);
+    constraints->getMandatoryConstraintValue(heightConstraintName, heightConstraintValue);
 
-    int width = widthConstraint.toInt();
-    int height = heightConstraint.toInt();
+    int width = widthConstraintValue.toInt();
+    int height = heightConstraintValue.toInt();
     if (!width && !height) {
-        constraints->getOptionalConstraintValue(constraintNames[AVCaptureDeviceManager::Width], widthConstraint);
-        constraints->getOptionalConstraintValue(constraintNames[AVCaptureDeviceManager::Height], heightConstraint);
-        width = widthConstraint.toInt();
-        height = heightConstraint.toInt();
+        constraints->getOptionalConstraintValue(widthConstraintName, widthConstraintValue);
+        constraints->getOptionalConstraintValue(heightConstraintName, heightConstraintValue);
+        width = widthConstraintValue.toInt();
+        height = heightConstraintValue.toInt();
     }
     
     if (width || height) {
-        NSString *preset = AVCaptureDeviceManager::bestSessionPresetForVideoSize(session(), width, height);
+        NSString *preset = AVCaptureSessionInfo(session()).bestSessionPresetForVideoDimensions(width, height);
         if (!preset || ![session() canSetSessionPreset:preset])
             return false;
         
         [session() setSessionPreset:preset];
     }
 
-    String frameRateConstraint;
-    constraints->getMandatoryConstraintValue(constraintNames[AVCaptureDeviceManager::FrameRate], frameRateConstraint);
-    float frameRate = frameRateConstraint.toFloat();
+    String frameRateConstraintValue;
+    String frameRateConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::FrameRate);
+    constraints->getMandatoryConstraintValue(frameRateConstraintName, frameRateConstraintValue);
+    float frameRate = frameRateConstraintValue.toFloat();
     if (!frameRate) {
-        constraints->getOptionalConstraintValue(constraintNames[AVCaptureDeviceManager::FrameRate], frameRateConstraint);
-        frameRate = frameRateConstraint.toFloat();
+        constraints->getOptionalConstraintValue(frameRateConstraintName, frameRateConstraintValue);
+        frameRate = frameRateConstraintValue.toFloat();
     }
     if (frameRate && !setFrameRateConstraint(frameRate, 0))
         return false;
@@ -288,7 +296,7 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
 
     updateFramerate(sampleBuffer.get());
 
-    bool statesChanged = false;
+    bool settingsChanged = false;
 
     m_buffer = sampleBuffer;
     m_lastImage = nullptr;
@@ -297,11 +305,11 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     if (dimensions.width != m_width || dimensions.height != m_height) {
         m_width = dimensions.width;
         m_height = dimensions.height;
-        statesChanged = true;
+        settingsChanged = true;
     }
 
-    if (statesChanged)
-        this->statesDidChanged();
+    if (settingsChanged)
+        this->settingsDidChanged();
 }
 
 void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType*)

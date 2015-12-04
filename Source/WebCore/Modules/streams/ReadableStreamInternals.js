@@ -73,7 +73,7 @@ function teeReadableStream(stream, shouldClone)
     @assert(@isReadableStream(stream));
     @assert(typeof(shouldClone) === "boolean");
 
-    const reader = stream.getReader();
+    const reader = new @ReadableStreamReader(stream);
 
     const teeState = {
         closedOrErrored: false,
@@ -96,7 +96,7 @@ function teeReadableStream(stream, shouldClone)
         "cancel": @teeReadableStreamBranch2CancelFunction(teeState, stream)
     });
 
-    @Promise.prototype.@catch.@call(reader.closed, function(e) {
+    @Promise.prototype.@then.@call(reader.closed, undefined, function(e) {
         if (teeState.closedOrErrored)
             return;
         @errorReadableStream(branch1, e);
@@ -116,7 +116,7 @@ function teeReadableStreamPullFunction(teeState, reader, shouldClone)
     "use strict";
 
     return function() {
-        @Promise.prototype.@then.@call(reader.read(), function(result) {
+        @Promise.prototype.@then.@call(@readFromReadableStreamReader(reader), function(result) {
             @assert(@isObject(result));
             @assert(typeof result.done === "boolean");
             if (result.done && !teeState.closedOrErrored) {
@@ -322,8 +322,8 @@ function enqueueInReadableStream(stream, chunk)
     try {
         let size = 1;
         if (stream.@strategy.size) {
-            size = Number(stream.@strategy.size(chunk));
-            if (Number.isNaN(size) || size === +Infinity || size < 0)
+            size = @Number(stream.@strategy.size(chunk));
+            if (!@isFinite(size) || size < 0)
                 throw new @RangeError("Chunk size is not valid");
         }
         @enqueueValueWithSize(stream.@queue, chunk, size);

@@ -145,7 +145,7 @@ public:
         , m_constantNaN(graph.freeze(jsNumber(PNaN)))
         , m_constantOne(graph.freeze(jsNumber(1)))
         , m_numArguments(m_codeBlock->numParameters())
-        , m_numLocals(m_codeBlock->m_numCalleeRegisters)
+        , m_numLocals(m_codeBlock->m_numCalleeLocals)
         , m_parameterSlots(0)
         , m_numPassedVarArgs(0)
         , m_inlineStackTop(0)
@@ -1413,7 +1413,7 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
     
     ensureLocals(
         VirtualRegister(inlineCallFrameStart).toLocal() + 1 +
-        JSStack::CallFrameHeaderSize + codeBlock->m_numCalleeRegisters);
+        JSStack::CallFrameHeaderSize + codeBlock->m_numCalleeLocals);
     
     size_t argumentPositionStart = m_graph.m_argumentPositions.size();
 
@@ -2927,7 +2927,7 @@ void ByteCodeParser::handleGetById(
     
     // Start with a register offset that corresponds to the last in-use register.
     int registerOffset = virtualRegisterForLocal(
-        m_inlineStackTop->m_profiledBlock->m_numCalleeRegisters - 1).offset();
+        m_inlineStackTop->m_profiledBlock->m_numCalleeLocals - 1).offset();
     registerOffset -= numberOfParameters;
     registerOffset -= JSStack::CallFrameHeaderSize;
     
@@ -3096,7 +3096,7 @@ void ByteCodeParser::handlePutById(
     
         // Start with a register offset that corresponds to the last in-use register.
         int registerOffset = virtualRegisterForLocal(
-            m_inlineStackTop->m_profiledBlock->m_numCalleeRegisters - 1).offset();
+            m_inlineStackTop->m_profiledBlock->m_numCalleeLocals - 1).offset();
         registerOffset -= numberOfParameters;
         registerOffset -= JSStack::CallFrameHeaderSize;
     
@@ -3331,10 +3331,31 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_new_regexp);
         }
 
+        case op_get_rest_length: {
+            InlineCallFrame* inlineCallFrame = this->inlineCallFrame();
+            Node* length;
+            if (inlineCallFrame && !inlineCallFrame->isVarargs()) {
+                unsigned argumentsLength = inlineCallFrame->arguments.size() - 1;
+                unsigned numParamsToSkip = currentInstruction[2].u.unsignedValue;
+                JSValue restLength;
+                if (argumentsLength <= numParamsToSkip)
+                    restLength = jsNumber(0);
+                else
+                    restLength = jsNumber(argumentsLength - numParamsToSkip);
+
+                length = jsConstant(restLength);
+            } else
+                length = addToGraph(GetRestLength, OpInfo(currentInstruction[2].u.unsignedValue));
+            set(VirtualRegister(currentInstruction[1].u.operand), length);
+            NEXT_OPCODE(op_get_rest_length);
+        }
+
         case op_copy_rest: {
             noticeArgumentsUse();
-            addToGraph(CopyRest,
-                OpInfo(currentInstruction[2].u.unsignedValue), get(VirtualRegister(currentInstruction[1].u.operand)));
+            Node* array = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* arrayLength = get(VirtualRegister(currentInstruction[2].u.operand));
+            addToGraph(CopyRest, OpInfo(currentInstruction[3].u.unsignedValue),
+                array, arrayLength);
             NEXT_OPCODE(op_copy_rest);
         }
             

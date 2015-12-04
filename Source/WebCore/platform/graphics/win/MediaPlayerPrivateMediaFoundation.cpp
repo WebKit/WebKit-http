@@ -217,6 +217,8 @@ void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
     HRESULT hr = m_mediaSession->Start(&GUID_NULL, &propVariant);
     ASSERT(SUCCEEDED(hr));
     PropVariantClear(&propVariant);
+
+    m_player->timeChanged();
 }
 
 double MediaPlayerPrivateMediaFoundation::durationDouble() const
@@ -260,10 +262,17 @@ MediaPlayer::ReadyState MediaPlayerPrivateMediaFoundation::readyState() const
     return m_readyState;
 }
 
+float MediaPlayerPrivateMediaFoundation::maxTimeSeekable() const
+{
+    return durationDouble();
+}
+
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateMediaFoundation::buffered() const
 { 
-    notImplemented();
-    return std::make_unique<PlatformTimeRanges>();
+    auto ranges = std::make_unique<PlatformTimeRanges>();
+    if (m_presenter && m_presenter->maxTimeLoaded() > 0)
+        ranges->add(MediaTime::zeroTime(), MediaTime::createWithDouble(m_presenter->maxTimeLoaded()));
+    return ranges;
 }
 
 bool MediaPlayerPrivateMediaFoundation::didLoadingProgress() const
@@ -1279,7 +1288,12 @@ float MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::currentTime()
         return 0.0f;
 
     // clockTime is in 100 nanoseconds, we need to convert to seconds.
-    return clockTime / tenMegahertz;
+    float currentTime = clockTime / tenMegahertz;
+
+    if (currentTime > m_maxTimeLoaded)
+        m_maxTimeLoaded = currentTime;
+
+    return currentTime;
 }
 
 bool MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::isActive() const
@@ -2188,14 +2202,8 @@ HRESULT MediaPlayerPrivateMediaFoundation::VideoScheduler::stopScheduler()
     if (!m_schedulerThread.isValid())
         return S_OK;
 
-    {
-        // Clearing the sample queue before we post the thread terminate message will make sure
-        // the thread exits quickly, and we will not be stuck waiting for it to finish.
-        LockHolder locker(m_lock);
-        m_scheduledSamples.clear();
-    }
-
     // Terminate the scheduler thread
+    stopThread();
     ::PostThreadMessage(m_threadID, EventTerminate, 0, 0);
 
     // Wait for the scheduler thread to finish.
@@ -2203,6 +2211,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::VideoScheduler::stopScheduler()
 
     LockHolder locker(m_lock);
 
+    m_scheduledSamples.clear();
     m_schedulerThread.clear();
     m_flushEvent.clear();
 
@@ -2267,7 +2276,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::VideoScheduler::processSamplesInQueue
 
     // Process samples as long as there are samples in the queue, and they have not arrived too early.
 
-    while (true) {
+    while (!m_exitThread) {
         COMPtr<IMFSample> sample;
 
         if (true) {
@@ -2386,15 +2395,15 @@ DWORD MediaPlayerPrivateMediaFoundation::VideoScheduler::schedulerThreadProcPriv
     SetEvent(m_threadReadyEvent.get());
 
     LONG wait = INFINITE;
-    bool exitThread = false;
-    while (!exitThread) {
+    m_exitThread = false;
+    while (!m_exitThread) {
         // Wait for messages
         DWORD result = MsgWaitForMultipleObjects(0, nullptr, FALSE, wait, QS_POSTMESSAGE);
 
         if (result == WAIT_TIMEOUT) {
             hr = processSamplesInQueue(wait);
             if (FAILED(hr))
-                exitThread = true;
+                m_exitThread = true;
         }
 
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -2402,7 +2411,7 @@ DWORD MediaPlayerPrivateMediaFoundation::VideoScheduler::schedulerThreadProcPriv
 
             switch (msg.message) {
             case EventTerminate:
-                exitThread = true;
+                m_exitThread = true;
                 break;
 
             case EventFlush:
@@ -2418,7 +2427,7 @@ DWORD MediaPlayerPrivateMediaFoundation::VideoScheduler::schedulerThreadProcPriv
                 if (processSamples) {
                     hr = processSamplesInQueue(wait);
                     if (FAILED(hr))
-                        exitThread = true;
+                        m_exitThread = true;
                     processSamples = (wait != INFINITE);
                 }
                 break;
@@ -2663,7 +2672,11 @@ HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::presentSample(IMFS
 
         if (width > 0 && height > 0) {
             if (!m_memSurface || m_width != width || m_height != height) {
-                hr = m_device->CreateOffscreenPlainSurface(width, height, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &m_memSurface, nullptr);
+                D3DFORMAT format = D3DFMT_A8R8G8B8;
+                D3DSURFACE_DESC desc;
+                if (SUCCEEDED(surface->GetDesc(&desc)))
+                    format = desc.Format;
+                hr = m_device->CreateOffscreenPlainSurface(width, height, format, D3DPOOL_SYSTEMMEM, &m_memSurface, nullptr);
                 m_width = width;
                 m_height = height;
             }
@@ -2714,11 +2727,34 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
         void* data = lockedRect.pBits;
         int pitch = lockedRect.Pitch;
 #if USE(CAIRO)
-        WebCore::PlatformContextCairo* ctxt = context.platformContext();
-        cairo_surface_t* image = cairo_image_surface_create_for_data(static_cast<unsigned char*>(data), CAIRO_FORMAT_ARGB32, width, height, pitch);
+        D3DFORMAT format = D3DFMT_UNKNOWN;
+        D3DSURFACE_DESC desc;
+        if (SUCCEEDED(m_memSurface->GetDesc(&desc)))
+            format = desc.Format;
+
+        cairo_format_t cairoFormat = CAIRO_FORMAT_INVALID;
+
+        switch (format) {
+        case D3DFMT_A8R8G8B8:
+            cairoFormat = CAIRO_FORMAT_ARGB32;
+            break;
+        case D3DFMT_X8R8G8B8:
+            cairoFormat = CAIRO_FORMAT_RGB24;
+            break;
+        }
+
+        ASSERT(cairoFormat != CAIRO_FORMAT_INVALID);
+
+        cairo_surface_t* image = nullptr;
+        if (cairoFormat != CAIRO_FORMAT_INVALID)
+            image = cairo_image_surface_create_for_data(static_cast<unsigned char*>(data), cairoFormat, width, height, pitch);
+
         FloatRect srcRect(0, 0, width, height);
-        ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
-        cairo_surface_destroy(image);
+        if (image) {
+            WebCore::PlatformContextCairo* ctxt = context.platformContext();
+            ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
+            cairo_surface_destroy(image);
+        }
 #else
 #error "Platform needs to implement drawing of Direct3D surface to graphics context!"
 #endif

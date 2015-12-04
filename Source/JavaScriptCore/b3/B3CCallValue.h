@@ -50,6 +50,13 @@ private:
         , effects(Effects::forCall())
     {
     }
+
+    template<typename... Arguments>
+    CCallValue(unsigned index, Type type, Origin origin, const Effects& effects, Arguments... arguments)
+        : Value(index, CheckedOpcode, CCall, type, origin, arguments...)
+        , effects(effects)
+    {
+    }
 };
 
 } } // namespace JSC::B3

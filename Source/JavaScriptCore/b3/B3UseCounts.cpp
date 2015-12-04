@@ -35,11 +35,22 @@ namespace JSC { namespace B3 {
 UseCounts::UseCounts(Procedure& procedure)
     : m_counts(procedure.values().size())
 {
-    for (Value* value : procedure.values())
-        ASSERT_UNUSED(value, !m_counts[value]);
+    Vector<Value*, 64> children;
     for (Value* value : procedure.values()) {
-        for (Value* child : value->children())
-            m_counts[child]++;
+        children.resize(0);
+        for (Value* child : value->children()) {
+            m_counts[child].numUses++;
+            children.append(child);
+        }
+        std::sort(children.begin(), children.end());
+        Value* last = nullptr;
+        for (Value* child : children) {
+            if (child == last)
+                continue;
+
+            m_counts[child].numUsingInstructions++;
+            last = child;
+        }
     }
 }
 

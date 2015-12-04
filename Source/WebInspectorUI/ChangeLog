@@ -1,3 +1,570 @@
+2015-12-03  Anders Carlsson  <andersca@apple.com>
+
+        Remove Objective-C GC support
+        https://bugs.webkit.org/show_bug.cgi?id=151819
+        rdar://problem/23746991
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2015-12-03  Matt Baker  <mattbaker@apple.com>
+
+        Uncaught Exception in Web Inspector: TypeError: null is not an object (evaluating 'dataGridNode.element.classList')
+        https://bugs.webkit.org/show_bug.cgi?id=151790
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGridNode):
+        (WebInspector.DataGridNode.prototype.get hidden):
+        (WebInspector.DataGridNode.prototype.set hidden):
+        Make hidden a property, so it can be set before the grid node's DOM element exists.
+        (WebInspector.DataGridNode.prototype.get selectable):
+        (WebInspector.DataGridNode.prototype.get element):
+        Add hidden style, if needed, when element is created.
+
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementVisibilityDidChange):
+        (WebInspector.TreeOutlineDataGridSynchronizer):
+        Don't access the grid node's element directly, since it may not exist yet.
+
+2015-12-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Handle YieldExpressions in the ScriptSyntaxTree
+        https://bugs.webkit.org/show_bug.cgi?id=151730
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        Add the Generator API.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        Handle YieldExpressions.
+
+2015-12-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TreeOutline should just dispatch events via WebInspector.Object
+        https://bugs.webkit.org/show_bug.cgi?id=148067
+
+        Reviewed by Timothy Hatcher.
+
+        TreeOutline now dispatches most events via WebInspector.Object. The onselect and
+        ondeselect callbacks are replaced by a SelectionDidChange event, which includes
+        both the selected and deselected elements in its event data. The onexpand and oncollapse
+        callbacks are replaced by an ElementDisclosureDidChange event. This is consistent with the
+        behavior of onhidden, which had no corresponding onvisible callback.
+
+        Alas, TimelineView and TreeOutlineDataGridSynchronizer depended on the order in which
+        TreeOutline.onselect callbacks were chained together. The synchronizer added its
+        callback after the timeline view, which ensured that the tree and grid were in sync
+        before the view handled onselect and dispatched a SelectionPathComponentsDidChange.
+        The change notification causes the view's path components to be read, and timeline
+        views need the grid selection to be in a valid state to build path components.
+
+        This is addressed by having timeline views dispatch SelectionPathComponentsDidChange
+        events when the grid selection changes, instead of the tree selection. The change
+        required that the synchronizer no longer suppress notifications when selecting grid nodes.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.createContentTreeOutline):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype._treeSelectionDidChange):
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected): Deleted.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateWatchExpressionsSection):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._treeElementAdded):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._treeElementDisclosureDidChange):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeExpandHandler): Deleted.
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._objectTreeCollapseHandler): Deleted.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel):
+        (WebInspector.SearchSidebarPanel.prototype._treeSelectionDidChange):
+        (WebInspector.SearchSidebarPanel.prototype._treeElementSelected): Deleted.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel):
+        (WebInspector.StorageSidebarPanel._treeSelectionDidChange):
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._createPopoverContent):
+        (WebInspector.TimelineDataGrid.prototype._popoverCallStackTreeSelectionDidChange):
+        (WebInspector.TimelineDataGrid):
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype._recordingsTreeSelectionDidChange):
+        (WebInspector.TimelineSidebarPanel.prototype._timelinesTreeSelectionDidChange):
+        (WebInspector.TimelineSidebarPanel.prototype._timelinesTreeElementSelected): Deleted.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView):
+        (WebInspector.TimelineView.prototype._treeSelectionDidChange):
+        (WebInspector.TimelineView.prototype.treeElementSelected):
+        Don't dispatch SelectionPathComponentsDidChange. Timeline views already do this
+        in response to grid selection events.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype.appendChild):
+        (WebInspector.TreeOutline.prototype.insertChild):
+        (WebInspector.TreeOutline.prototype.removeChildAtIndex):
+        (WebInspector.TreeOutline.prototype.removeChildren):
+        (WebInspector.TreeOutline.prototype.removeChildrenRecursive):
+        (WebInspector.TreeOutline.prototype._treeElementDidChange):
+        (WebInspector.TreeElement.prototype.set hidden):
+        (WebInspector.TreeElement.prototype.collapse):
+        (WebInspector.TreeElement.prototype.expand):
+        (WebInspector.TreeElement.prototype.select):
+        (WebInspector.TreeElement.prototype.deselect):
+        (WebInspector.TreeElement.prototype.get childrenListElement): Deleted.
+        Removed dead code.
+
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js:
+        (WebInspector.TreeOutlineDataGridSynchronizer):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeSelectionDidChange):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementAdded):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementRemoved):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementDisclosureDidChange):
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementVisibilityDidChange):
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.onadd): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.onremove): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.onexpand): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.oncollapse): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.onhidden): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.treeOutline.onselect): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementSelected): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementExpanded): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementCollapsed): Deleted.
+        (WebInspector.TreeOutlineDataGridSynchronizer.prototype._treeElementHiddenChanged): Deleted.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._treeSelectionDidChange):
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype._treeElementSelected): Deleted.
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timestamp in Tooltip of Event Markers is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=151722
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.addMarker):
+        Convert the marker's time, to be relative to the start of the recording.
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed common typo fix "occurance" => "occurrence".
+
+        * Scripts/combine-resources.pl:
+        (concatenateFiles):
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Spacebar to toggle Timeline recording doesn't work in Timeline tab after reloading the page
+        https://bugs.webkit.org/show_bug.cgi?id=151530
+
+        Reviewed by Timothy Hatcher.
+
+        If reloading the page caused the console to clear, that was triggering
+        the console prompt to be focused. When the console prompt is focused,
+        keyboard input like Spacebar, was just inputing characters instead of
+        triggering the keyboard shortcut that was expected.
+
+        This also means that console.clear() in the inspected page would cause
+        the inspector to focus the console. That is unexpected as well.
+
+        Focusing the console prompt whenever the console log is cleared
+        is not ideal. If we do want to focus the prompt the caller should
+        make that determination, not clear.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.clear):
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update Timeline UI based on the Instruments in the Active Recording
+        https://bugs.webkit.org/show_bug.cgi?id=151374
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._updateTimelineOverviewHeight):
+        Modernize as I was in this code while looking into this patch.
+
+        * UserInterface/Views/TimelineSidebarPanel.css:
+        (.sidebar > .panel.navigation.timeline > .title-bar.timeline-events): Deleted.
+        (.sidebar > .panel.navigation.timeline > .timelines-content): Deleted.
+        These defaults are no longer necessary, the UI overrides them anyways.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        Include both the basic and rendering frames toolbars. They will be
+        mutually exclusive based on if the FPSIntrument is available.
+
+        (WebInspector.TimelineSidebarPanel.prototype._recordingSelected):
+        (WebInspector.TimelineSidebarPanel.prototype._clearInstruments):
+        When loading a new Recording clear the UI.
+
+        (WebInspector.TimelineSidebarPanel.prototype._instrumentAdded):
+        (WebInspector.TimelineSidebarPanel.prototype._instrumentRemoved):
+        (WebInspector.TimelineSidebarPanel.prototype._addedFPSInstrument):
+        (WebInspector.TimelineSidebarPanel.prototype._removedFPSInstrument):
+        Handle toggling the toolbars when the FPS instrument is added/removed.
+
+        (WebInspector.TimelineSidebarPanel.prototype._timelineCountChanged):
+        (WebInspector.TimelineSidebarPanel.prototype._updateTimelineOverviewHeight):
+        (WebInspector.TimelineSidebarPanel.prototype._changeViewMode):
+        Properly update the sidebar's understanding of the TimelineOverview size.
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Initial support for variable timelines
+        https://bugs.webkit.org/show_bug.cgi?id=151372
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager.defaultInstruments):
+        (WebInspector.TimelineManager.prototype._loadNewRecording):
+        Keep the status quo which is the same set of instruments for each recording.
+
+        (WebInspector.TimelineManager.prototype.startCapturing):
+        (WebInspector.TimelineManager.prototype.stopCapturing):
+        Push responsibility of capturing to the Recording, which has a specific set
+        of instruments that know what they need to turn on an off from the backend.
+        
+        * UserInterface/Main.html:
+        * UserInterface/Models/Instrument.js: Added.
+        (WebInspector.Instrument):
+        (WebInspector.Instrument.startLegacyTimelineAgent):
+        (WebInspector.Instrument.stopLegacyTimelineAgent):
+        (WebInspector.Instrument.prototype.get timelineRecordType):
+        (WebInspector.Instrument.prototype.startInstrumentation):
+        (WebInspector.Instrument.prototype.stopInstrumentation):
+        New class representing something that can be turned on and off
+        from the backend and produces a set of Timeline record types.
+        Currently instruments are 1-to-1 to a Timeline type.
+
+        * UserInterface/Models/LayoutInstrument.js: Added.
+        (WebInspector.LayoutInstrument.prototype.get timelineRecordType):
+        (WebInspector.LayoutInstrument):
+        * UserInterface/Models/NetworkInstrument.js: Added.
+        (WebInspector.NetworkInstrument.prototype.get timelineRecordType):
+        (WebInspector.NetworkInstrument.prototype.startInstrumentation):
+        (WebInspector.NetworkInstrument.prototype.stopInstrumentation):
+        (WebInspector.NetworkInstrument):
+        * UserInterface/Models/ScriptInstrument.js: Added.
+        (WebInspector.ScriptInstrument.prototype.get timelineRecordType):
+        (WebInspector.ScriptInstrument):
+        The default set of instruments. Currently they all enable the TimelineAgent,
+        so they share code to enable/disable in the base class to avoid duplication.
+
+        * UserInterface/Models/FPSInstrument.js: Added.
+        (WebInspector.FPSInstrument):
+        (WebInspector.FPSInstrument.supported):
+        (WebInspector.FPSInstrument.prototype.get timelineRecordType):
+        Provide a "supported" static method and simplify other code that
+        checks whether or not RenderingFrames is available or not.
+
+
+        * UserInterface/Models/Timeline.js:
+        (WebInspector.Timeline.prototype.get displayName): Deleted.
+        (WebInspector.Timeline.prototype.get iconClassName): Deleted.
+        Move these to a View class, as this is primarily View logic.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WebInspector.TimelineRecording):
+        (WebInspector.TimelineRecording.prototype.get instruments):
+        (WebInspector.TimelineRecording.prototype.start):
+        (WebInspector.TimelineRecording.prototype.stop):
+        (WebInspector.TimelineRecording.prototype.timelineForInstrument):
+        (WebInspector.TimelineRecording.prototype.addInstrument):
+        (WebInspector.TimelineRecording.prototype.removeInstrument):
+        (WebInspector.TimelineRecording.prototype.addEventMarker):
+        (WebInspector.TimelineRecording.prototype.addTimeline): Deleted.
+        (WebInspector.TimelineRecording.prototype.removeTimeline): Deleted.
+        A recording now has a set of Instruments and its own start/stop
+        which starts/stops its set of Instruments! Treat Instruments as
+        the variable property of a Recording instead of Timelines.
+    
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview):
+        (WebInspector.TimelineOverview.prototype._instrumentAdded):
+        (WebInspector.TimelineOverview.prototype._instrumentRemoved):
+        (WebInspector.TimelineOverview.prototype._timelineAdded): Deleted.
+        (WebInspector.TimelineOverview.prototype._timelineRemoved): Deleted.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        (WebInspector.TimelineRecordingContentView.prototype._instrumentAdded):
+        (WebInspector.TimelineRecordingContentView.prototype._instrumentRemoved):
+        (WebInspector.TimelineRecordingContentView.prototype._timelineAdded): Deleted.
+        (WebInspector.TimelineRecordingContentView.prototype._timelineRemoved): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.displayNameForTimeline):
+        (WebInspector.TimelineSidebarPanel.iconClassNameForTimeline):
+        (WebInspector.TimelineSidebarPanel.prototype.updateFrameSelection):
+        (WebInspector.TimelineSidebarPanel.prototype.restoreStateFromCookie):
+        (WebInspector.TimelineSidebarPanel.prototype._recordingSelected):
+        (WebInspector.TimelineSidebarPanel.prototype._instrumentAdded):
+        (WebInspector.TimelineSidebarPanel.prototype._instrumentRemoved):
+        (WebInspector.TimelineSidebarPanel.prototype._changeViewMode):
+        (WebInspector.TimelineSidebarPanel.prototype._timelineAdded): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._timelineRemoved): Deleted.
+        Update all TimelineAdded/TimelineRemoved clients to instead check
+        InstrumentAdded/InstrumentRemoved. Immediately convert from an Instrument
+        to a Timeline to keep the patch simple.
+
+2015-12-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Broken Inspector when resources are minified
+        https://bugs.webkit.org/show_bug.cgi?id=151711
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/combine-resources.pl:
+        (concatenateFiles):
+        Provide a way to just strip resources matches a pattern.
+
+        * Scripts/copy-user-interface-resources.pl:
+        Strip "Debug/" resources before combining / minifying others.
+
+        * UserInterface/Views/View.js:
+        (WebInspector.View.prototype.makeRootView):
+        (WebInspector.View.prototype.didDetach):
+        Address warnings from the console.assert stripping phase
+        for console.assert statements lacking a trailing semicolon.
+
+2015-11-30  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: show something useful when the inspector frontend fails to load
+        https://bugs.webkit.org/show_bug.cgi?id=151643
+
+        Reviewed by Timothy Hatcher.
+
+        When a parse error or other early error happens before the inspector
+        is fully loaded, we can't use the second-level inspector to tell what's
+        going on. It would be better to catch any early errors and list them.
+
+        This patch adds an error page that shows the early errors that happened
+        during loading. It provides a list of errors, a link to reload the
+        inspector, and a link to submit a pre-filled bug report about the error.
+
+        For now, this page only shows up in engineering builds because it's
+        located in the Debug/ directory. We can move it later when it works
+        better in all cases. Follow-up patches can address smaller issues,
+        such as the transparent title bar and broken text selection.
+
+         * UserInterface/Debug/CatchEarlyErrors.css: Added.
+         * UserInterface/Debug/CatchEarlyErrors.js: Added.
+         * UserInterface/Main.html:
+         * UserInterface/Main.js: Abort setting up the UI if something happened.
+
+2015-11-30  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: delete-by-word and similar shortcuts should add text to the WebCore kill ring
+        https://bugs.webkit.org/show_bug.cgi?id=151312
+
+        Reviewed by Darin Adler.
+
+        Add support for other kill ring-eligible keybindinsg, such as
+        deleting by word, group, or line forwards and backwards.
+
+        * UserInterface/Controllers/CodeMirrorTextKillController.js:
+        (WebInspector.CodeMirrorTextKillController):
+        (WebInspector.CodeMirrorTextKillController.prototype._handleTextKillCommand): Renamed from _handleKillLine.
+
+            Parameterize the function so it can handle any keybinding and
+            command. Take a kill ring insertion mode argument, too.
+
+        (WebInspector.CodeMirrorTextKillController.prototype._handleTextChange):
+
+            Add some special casing for changes received from Delete Line
+            (Cmd-D) so the right text is added to the kill ring. Thread the
+            kill ring insertion mode to the frontend host call.
+
+        (WebInspector.CodeMirrorTextKillController.prototype._handleKillLine): Deleted.
+
+2015-11-29  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Add context menu item to Reload the Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=141742
+
+        Reviewed by Timothy Hatcher.
+
+        Add a global context menu and global shortcut (Cmd-Opt-Shift-R) to
+        reload the Web Inspector frontend without closing the browser.
+
+        This should make it possible to more quickly fix typos, small nits,
+        etc. without having to relaunch. It might also make state
+        restoration bugs more visible in engineering builds, since there
+        is hardly any delay between seeing the old and reloaded frontends.
+
+        Note that this functionality reloads scripts from the configuration's
+        build directory, so you still need to "build" WebInspectorUI to ensure
+        that any changed files are properly minified and staged.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.unlocalizedString):
+
+            Added. Make it obvious when strings are intentionally not localized.
+
+        (WebInspector._contextMenuRequested):
+
+            If the "Show Debug UI" setting is available and true, add
+            a global "Reload Web Inspector" menu item to every context
+            menu. Otherwise, don't eagerly create a context menu.
+        * UserInterface/Debug/Bootstrap.js: Add Cmd-Opt-Shift-R shortcut.
+
+2015-11-29  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: allow multiple UI components to add menu items upon getting a "contextmenu" event
+        https://bugs.webkit.org/show_bug.cgi?id=151629
+
+        Reviewed by Timothy Hatcher.
+
+        The existing Context Menu system assumes that only one UI component
+        will need to provide context menu items. But in some scenarios, there
+        are multiple UI components that could provide relevant menu items. For
+        example, right-clicking on an DOM element in the console should show
+        menu items relevant to 1) the DOM element, 2) the console in general,
+        and 3) global menu items. Existing code shows menu items provided by
+        the first object that handles the event and calls ContextMenu.show().
+
+        This patch changes behavior so that a context menu can be built up
+        by multiple 'contextmenu' event handlers. A ContextMenu instance is
+        hidden on the 'contextmenu' event object; client code calls a
+        factory method that digs out this existing context menu or creates a
+        new one as needed. To actually show the context menu through the
+        InspectorFrontendHost methods, the top-level app controller adds a
+        bubbling listener for 'contextmenu' and shows the event's context
+        menu if one has been created.
+
+        Along the way, do some cleanup. Do s/var/let/, arrowize some functions,
+        use Array.{map,some}, and simplify some other code as a result.
+
+        No new tests yet, since we can't trigger context menu easily from
+        an inspector test. All affected context menus were manually verified.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems):
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.editBreakpoint): Deleted.
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.removeBreakpoint): Deleted.
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.toggleBreakpoint): Deleted.
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.toggleAutoContinue): Deleted.
+        (WebInspector.BreakpointPopoverController.prototype.appendContextMenuItems.revealOriginalSourceCodeLocation): Deleted.
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.oncontextmenu):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        * UserInterface/Views/ContextMenu.js:
+        (WebInspector.ContextMenuItem.prototype._buildDescriptor):
+        (WebInspector.ContextMenuItem):
+        (WebInspector.ContextSubMenuItem.prototype.appendItem):
+        (WebInspector.ContextSubMenuItem.prototype.appendSubMenuItem):
+        (WebInspector.ContextSubMenuItem.prototype.appendCheckboxItem):
+        (WebInspector.ContextSubMenuItem.prototype._pushItem):
+        (WebInspector.ContextSubMenuItem.prototype._buildDescriptor):
+        (WebInspector.ContextSubMenuItem):
+        (WebInspector.ContextMenu.createFromEvent):
+        (WebInspector.ContextMenu.prototype.show):
+        (WebInspector.ContextMenu.prototype.handleEvent):
+        (WebInspector.ContextMenu.prototype._buildDescriptor):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype._contextMenuEventFired):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.logElement):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._contextMenuInDataTable):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointTreeOutlineContextMenuTreeElement):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointTreeOutlineContextMenuTreeElement.removeAllResourceBreakpoints): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointTreeOutlineContextMenuTreeElement.toggleAllResourceBreakpoints): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._contextMenuHandler):
+        (WebInspector.ObjectPreviewView):
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._contextMenuHandler):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+        (WebInspector.ObjectTreeBaseTreeElement):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.continueToLocation): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.addBreakpoint): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.revealInSidebar): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.removeBreakpoints): Deleted.
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorGutterContextMenu.toggleBreakpoints): Deleted.
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem.prototype._handleContextMenuEvent):
+        (WebInspector.TabBarItem):
+        (WebInspector.TabBarItem.prototype._handleContextMenuEvent.closeTab): Deleted.
+        (WebInspector.TabBarItem.prototype._handleContextMenuEvent.closeOtherTabs): Deleted.
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype._contextMenuNavigationBarOrStatusBar):
+        (WebInspector.TimelineSidebarPanel.prototype._contextMenuNavigationBarOrStatusBar.toggleReplayInterface): Deleted.
+        * UserInterface/Views/Toolbar.js:
+        (WebInspector.Toolbar.prototype._handleContextMenuEvent):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+
+2015-11-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Styles sidebar placeholder is misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=151638
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-placeholder):
+
+2015-11-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: REGRESSION: "Duplicate Selector" context menu item doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=151628
+
+        Reviewed by Brian Burg.
+
+        Merged the two "add rule" functions inside DOMNodeStyles to create a
+        new rule with the given selector and use the generated best selector
+        for that node otherwise. This also preserves all fallbacks across all
+        functions for creating new CSS rules.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.addEmptyRule): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.addRuleWithSelector): Deleted.
+        (WebInspector.DOMNodeStyles.prototype.addRule):
+        Creates a new CSS rule using either the provided selector or the best
+        selector for the current node.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleContextMenuEvent):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype._addNewRule):
+
 2015-11-24  Brian Burg  <bburg@apple.com>
 
         Web Inspector: save Inspector's breakpoints to localStorage whenever they are modified

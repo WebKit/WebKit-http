@@ -48,12 +48,6 @@
 
 using namespace WebCore;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
-#define ENABLE_LEGACY_SWIPE_SHADOW_STYLE 1
-#else
-#define ENABLE_LEGACY_SWIPE_SHADOW_STYLE 0
-#endif
-
 static const double minMagnification = 1;
 static const double maxMagnification = 3;
 
@@ -66,14 +60,9 @@ static const double zoomOutResistance = 0.10;
 static const float smartMagnificationElementPadding = 0.05;
 static const float smartMagnificationPanScrollThreshold = 100;
 
-#if ENABLE(LEGACY_SWIPE_SHADOW_STYLE)
-static const double swipeOverlayShadowOpacity = 0.66;
-static const double swipeOverlayShadowRadius = 3;
-#else
 static const double swipeOverlayShadowOpacity = 0.06;
 static const double swipeOverlayDimmingOpacity = 0.12;
 static const CGFloat swipeOverlayShadowWidth = 81;
-#endif
 
 static const CGFloat minimumHorizontalSwipeDistance = 15;
 static const float minimumScrollEventRatioForSwipe = 0.5;
@@ -611,23 +600,6 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
 
     // We don't know enough about the custom views' hierarchy to apply a shadow.
     if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap && m_customSwipeViews.isEmpty()) {
-#if ENABLE(LEGACY_SWIPE_SHADOW_STYLE)
-        if (direction == SwipeDirection::Back) {
-            float topContentInset = m_webPageProxy.topContentInset();
-            FloatRect shadowRect(FloatPoint(0, topContentInset), m_webPageProxy.viewSize() - FloatSize(0, topContentInset));
-            RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect(shadowRect, 0));
-            [rootContentLayer setShadowColor:CGColorGetConstantColor(kCGColorBlack)];
-            [rootContentLayer setShadowOpacity:swipeOverlayShadowOpacity];
-            [rootContentLayer setShadowRadius:swipeOverlayShadowRadius];
-            [rootContentLayer setShadowPath:shadowPath.get()];
-        } else {
-            RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect([m_swipeLayer bounds], 0));
-            [m_swipeLayer setShadowColor:CGColorGetConstantColor(kCGColorBlack)];
-            [m_swipeLayer setShadowOpacity:swipeOverlayShadowOpacity];
-            [m_swipeLayer setShadowRadius:swipeOverlayShadowRadius];
-            [m_swipeLayer setShadowPath:shadowPath.get()];
-        }
-#else
         FloatRect dimmingRect(FloatPoint(), m_webPageProxy.viewSize());
         m_swipeDimmingLayer = adoptNS([[CALayer alloc] init]);
         [m_swipeDimmingLayer setName:@"Gesture Swipe Dimming Layer"];
@@ -691,7 +663,6 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
             [snapshotLayerParent insertSublayer:m_swipeDimmingLayer.get() below:m_swipeLayer.get()];
 
         [snapshotLayerParent insertSublayer:m_swipeShadowLayer.get() above:m_swipeLayer.get()];
-#endif
     }
 }
 
@@ -710,7 +681,6 @@ void ViewGestureController::handleSwipeGesture(WebBackForwardListItem* targetIte
 
     double swipingLayerOffset = floor(width * progress);
 
-#if !ENABLE(LEGACY_SWIPE_SHADOW_STYLE)
     double dimmingProgress = (direction == SwipeDirection::Back) ? 1 - progress : -progress;
     dimmingProgress = std::min(1., std::max(dimmingProgress, 0.));
     [m_swipeDimmingLayer setOpacity:dimmingProgress * swipeOverlayDimmingOpacity];
@@ -725,7 +695,6 @@ void ViewGestureController::handleSwipeGesture(WebBackForwardListItem* targetIte
 
     if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap)
         [m_swipeShadowLayer setTransform:CATransform3DMakeTranslation((direction == SwipeDirection::Back ? 0 : width) + swipingLayerOffset, 0, 0)];
-#endif
 
     if (m_swipeTransitionStyle == SwipeTransitionStyle::Overlap) {
         if (direction == SwipeDirection::Forward) {
@@ -765,10 +734,11 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
 
     m_swipeCancellationTracker = nullptr;
 
+#if ENABLE(LEGACY_SWIPE_SHADOW_STYLE)
     CALayer *rootLayer = m_webPageProxy.acceleratedCompositingRootLayer();
-
-    [rootLayer setShadowOpacity:0];
-    [rootLayer setShadowRadius:0];
+    rootLayer.shadowOpacity = 0;
+    rootLayer.shadowRadius = 0;
+#endif
 
     if (cancelled) {
         removeSwipeSnapshot();
@@ -785,11 +755,10 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
     m_webPageProxy.navigationGestureDidEnd(true, *targetItem);
     m_webPageProxy.goToBackForwardItem(targetItem);
 
-    // FIXME: We should be able to include scroll position restoration here,
-    // and then can address the FIXME in didFirstVisuallyNonEmptyLayoutForMainFrame.
     SnapshotRemovalTracker::Events desiredEvents = SnapshotRemovalTracker::VisuallyNonEmptyLayout
         | SnapshotRemovalTracker::MainFrameLoad
-        | SnapshotRemovalTracker::SubresourceLoads;
+        | SnapshotRemovalTracker::SubresourceLoads
+        | SnapshotRemovalTracker::ScrollPositionRestoration;
     if (renderTreeSize)
         desiredEvents |= SnapshotRemovalTracker::RenderTreeSizeThreshold;
     m_snapshotRemovalTracker.start(desiredEvents, [this] { this->forceRepaintIfNeeded(); });
@@ -840,13 +809,11 @@ void ViewGestureController::removeSwipeSnapshot()
     [m_swipeLayer removeFromSuperlayer];
     m_swipeLayer = nullptr;
 
-#if !ENABLE(LEGACY_SWIPE_SHADOW_STYLE)
     [m_swipeShadowLayer removeFromSuperlayer];
     m_swipeShadowLayer = nullptr;
 
     [m_swipeDimmingLayer removeFromSuperlayer];
     m_swipeDimmingLayer = nullptr;
-#endif
 
     m_currentSwipeLiveLayers.clear();
 

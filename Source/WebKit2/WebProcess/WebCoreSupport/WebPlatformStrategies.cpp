@@ -40,7 +40,6 @@
 #include "WebErrors.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
-#include "WebFrameNetworkingContext.h"
 #include "WebIDBFactoryBackend.h"
 #include "WebPage.h"
 #include "WebPasteboardOverrides.h"
@@ -92,7 +91,7 @@ CookiesStrategy* WebPlatformStrategies::createCookiesStrategy()
 
 LoaderStrategy* WebPlatformStrategies::createLoaderStrategy()
 {
-    return this;
+    return &WebProcess::singleton().webResourceLoadScheduler();
 }
 
 PasteboardStrategy* WebPlatformStrategies::createPasteboardStrategy()
@@ -105,166 +104,52 @@ PluginStrategy* WebPlatformStrategies::createPluginStrategy()
     return this;
 }
 
+BlobRegistry* WebPlatformStrategies::createBlobRegistry()
+{
+    return new BlobRegistryProxy;
+}
+
 // CookiesStrategy
 
 String WebPlatformStrategies::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        String result;
-        if (!webProcess.networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesForDOM(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(result), 0))
-            return String();
-        return result;
-    }
-
-    return WebCore::cookiesForDOM(session, firstParty, url);
+    String result;
+    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesForDOM(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesForDOM::Reply(result), 0))
+        return String();
+    return result;
 }
 
 void WebPlatformStrategies::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& cookieString)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        webProcess.networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::SetCookiesFromDOM(SessionTracker::sessionID(session), firstParty, url, cookieString), 0);
-        return;
-    }
-
-    WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
+    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::SetCookiesFromDOM(SessionTracker::sessionID(session), firstParty, url, cookieString), 0);
 }
 
 bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        bool result;
-        if (!webProcess.networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesEnabled(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesEnabled::Reply(result), 0))
-            return false;
-        return result;
-    }
-
-    return WebCore::cookiesEnabled(session, firstParty, url);
+    bool result;
+    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookiesEnabled(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookiesEnabled::Reply(result), 0))
+        return false;
+    return result;
 }
 
 String WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        String result;
-        if (!webProcess.networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue::Reply(result), 0))
-            return String();
-        return result;
-    }
-
-    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
+    String result;
+    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::CookieRequestHeaderFieldValue::Reply(result), 0))
+        return String();
+    return result;
 }
 
 bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        if (!webProcess.networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::GetRawCookies(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::GetRawCookies::Reply(rawCookies), 0))
-            return false;
-        return true;
-    }
-
-    return WebCore::getRawCookies(session, firstParty, url, rawCookies);
+    if (!WebProcess::singleton().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::GetRawCookies(SessionTracker::sessionID(session), firstParty, url), Messages::NetworkConnectionToWebProcess::GetRawCookies::Reply(rawCookies), 0))
+        return false;
+    return true;
 }
 
 void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
 {
-    auto& webProcess = WebProcess::singleton();
-    if (webProcess.usesNetworkProcess()) {
-        webProcess.networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::DeleteCookie(SessionTracker::sessionID(session), url, cookieName), 0);
-        return;
-    }
-
-    WebCore::deleteCookie(session, url, cookieName);
-}
-
-// LoaderStrategy
-
-ResourceLoadScheduler* WebPlatformStrategies::resourceLoadScheduler()
-{
-    static ResourceLoadScheduler* scheduler;
-    if (!scheduler) {
-        auto& webProcess = WebProcess::singleton();
-        if (webProcess.usesNetworkProcess())
-            scheduler = &webProcess.webResourceLoadScheduler();
-        else
-            scheduler = WebCore::resourceLoadScheduler();
-    }
-    
-    return scheduler;
-}
-
-void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context, unsigned long resourceLoadIdentifier, const ResourceRequest& request, StoredCredentials storedCredentials, ClientCredentialPolicy clientCredentialPolicy, ResourceError& error, ResourceResponse& response, Vector<char>& data)
-{
-    auto& webProcess = WebProcess::singleton();
-    if (!webProcess.usesNetworkProcess()) {
-        LoaderStrategy::loadResourceSynchronously(context, resourceLoadIdentifier, request, storedCredentials, clientCredentialPolicy, error, response, data);
-        return;
-    }
-
-    WebFrameNetworkingContext* webContext = static_cast<WebFrameNetworkingContext*>(context);
-    // FIXME: Some entities in WebCore use WebCore's "EmptyFrameLoaderClient" instead of having a proper WebFrameLoaderClient.
-    // EmptyFrameLoaderClient shouldn't exist and everything should be using a WebFrameLoaderClient,
-    // but in the meantime we have to make sure not to mis-cast.
-    WebFrameLoaderClient* webFrameLoaderClient = webContext->webFrameLoaderClient();
-    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
-    WebPage* webPage = webFrame ? webFrame->page() : 0;
-
-    NetworkResourceLoadParameters loadParameters;
-    loadParameters.identifier = resourceLoadIdentifier;
-    loadParameters.webPageID = webPage ? webPage->pageID() : 0;
-    loadParameters.webFrameID = webFrame ? webFrame->frameID() : 0;
-    loadParameters.sessionID = webPage ? webPage->sessionID() : SessionID::defaultSessionID();
-    loadParameters.request = request;
-    loadParameters.contentSniffingPolicy = SniffContent;
-    loadParameters.allowStoredCredentials = storedCredentials;
-    loadParameters.clientCredentialPolicy = clientCredentialPolicy;
-    loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = context->shouldClearReferrerOnHTTPSToHTTPRedirect();
-
-    data.resize(0);
-
-    HangDetectionDisabler hangDetectionDisabler;
-
-    if (!webProcess.networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, data), 0)) {
-        response = ResourceResponse();
-        error = internalError(request.url());
-    }
-}
-
-void WebPlatformStrategies::createPingHandle(NetworkingContext* networkingContext, ResourceRequest& request, bool shouldUseCredentialStorage)
-{
-    // It's possible that call to createPingHandle might be made during initial empty Document creation before a NetworkingContext exists.
-    // It is not clear that we should send ping loads during that process anyways.
-    if (!networkingContext)
-        return;
-
-    auto& webProcess = WebProcess::singleton();
-    if (!webProcess.usesNetworkProcess()) {
-        LoaderStrategy::createPingHandle(networkingContext, request, shouldUseCredentialStorage);
-        return;
-    }
-
-    WebFrameNetworkingContext* webContext = static_cast<WebFrameNetworkingContext*>(networkingContext);
-    WebFrameLoaderClient* webFrameLoaderClient = webContext->webFrameLoaderClient();
-    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : nullptr;
-    WebPage* webPage = webFrame ? webFrame->page() : nullptr;
-    
-    NetworkResourceLoadParameters loadParameters;
-    loadParameters.request = request;
-    loadParameters.sessionID = webPage ? webPage->sessionID() : SessionID::defaultSessionID();
-    loadParameters.allowStoredCredentials = shouldUseCredentialStorage ? AllowStoredCredentials : DoNotAllowStoredCredentials;
-    loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = networkingContext->shouldClearReferrerOnHTTPSToHTTPRedirect();
-
-    webProcess.networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::LoadPing(loadParameters), 0);
-}
-
-BlobRegistry* WebPlatformStrategies::createBlobRegistry()
-{
-    if (!WebProcess::singleton().usesNetworkProcess())
-        return LoaderStrategy::createBlobRegistry();
-    return new BlobRegistryProxy;    
+    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::DeleteCookie(SessionTracker::sessionID(session), url, cookieName), 0);
 }
 
 // PluginStrategy

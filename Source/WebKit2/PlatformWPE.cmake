@@ -4,6 +4,8 @@ configure_file(wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
 
+add_definitions(-DLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
+
 set(WebKit2_USE_PREFIX_HEADER ON)
 
 add_custom_target(webkit2wpe-forwarding-headers

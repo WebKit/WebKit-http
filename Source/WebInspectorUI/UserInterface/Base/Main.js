@@ -175,6 +175,10 @@ WebInspector.loaded = function()
 
 WebInspector.contentLoaded = function()
 {
+    // If a loading error page was already shown, then don't set up the Inspector UI.
+    if (window.__earlyErrors)
+        return;
+
     // Register for global events.
     document.addEventListener("beforecopy", this._beforecopy.bind(this));
     document.addEventListener("copy", this._copy.bind(this));
@@ -190,6 +194,7 @@ WebInspector.contentLoaded = function()
     window.addEventListener("keyup", this._windowKeyUp.bind(this));
     window.addEventListener("mousemove", this._mouseMoved.bind(this), true);
     window.addEventListener("pagehide", this._pageHidden.bind(this));
+    window.addEventListener("contextmenu", this._contextMenuRequested.bind(this));
 
     // Add platform style classes so the UI can be tweaked per-platform.
     document.body.classList.add(WebInspector.Platform.name + "-platform");
@@ -882,6 +887,14 @@ WebInspector.showTimelineTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WebInspector.unlocalizedString = function(string)
+{
+    // Intentionally do nothing, since this is for engineering builds
+    // (such as in Debug UI) or in text that is standardized in English.
+    // For example, CSS property names and values are never localized.
+    return string;
+}
+
 WebInspector.UIString = function(string, vararg)
 {
     if (WebInspector.dontLocalizeUserInterface)
@@ -1323,6 +1336,27 @@ WebInspector._mouseMoved = function(event)
 WebInspector._pageHidden = function(event)
 {
     this._saveCookieForOpenTabs();
+};
+
+WebInspector._contextMenuRequested = function(event)
+{
+    let proposedContextMenu;
+
+    // This is setting is only defined in engineering builds.
+    let showDebugUI = WebInspector.showDebugUISetting && WebInspector.showDebugUISetting.value;
+    if (showDebugUI) {
+        proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event);
+        proposedContextMenu.appendSeparator();
+        proposedContextMenu.appendItem(WebInspector.unlocalizedString("Reload Web Inspector"), () => {
+            window.location.reload();
+        });
+    } else {
+        const onlyExisting = true;
+        proposedContextMenu = WebInspector.ContextMenu.createFromEvent(event, onlyExisting);
+    }
+
+    if (proposedContextMenu)
+        proposedContextMenu.show();
 };
 
 WebInspector._undock = function(event)

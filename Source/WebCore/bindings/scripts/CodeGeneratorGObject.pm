@@ -575,8 +575,6 @@ sub GenerateProperty {
 
     push(@txtGetProps, "    case ${propEnum}:\n");
 
-    # FIXME: Should we return a default value when isNull == true?
-
     my $postConvertFunction = "";
     if ($gtype eq "string") {
         push(@txtGetProps, "        g_value_take_string(value, " . $getterFunctionName . "(" . join(", ", @getterArguments) . "));\n");
@@ -1239,18 +1237,18 @@ sub GenerateFunction {
             $assignPost = ")";
         } else {
             $assign = "${returnType} result = ";
+            if ($function->signature->isNullable) {
+                # FIXME: Returning 0 is probably not right for all nullable attribute values.
+                # We may want to handle this the way we do in the Objective-C bindings: not
+                # handle it at all, and not expose any nullables.
+                $assignPost = ".valueOr(0)";
+            }
         }
 
         if ($functionSigType eq "SerializedScriptValue") {
             $assignPre = "convertToUTF8String(";
             $assignPost = "->toString())";
         }
-    }
-
-    # FIXME: Should we return a default value when isNull == true?
-    if ($function->signature->isNullable) {
-        push(@cBody, "    bool isNull = false;\n");
-        push(@callImplParams, "isNull");
     }
 
     if ($raisesException) {
@@ -1313,7 +1311,7 @@ EOF
             if ($function->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                unshift(@arguments, "item");
+                unshift(@arguments, "*item");
                 $functionName = "WebCore::${implementedBy}::${functionName}";
             } else {
                 $functionName = "item->${functionName}";
@@ -1325,7 +1323,7 @@ EOF
             if ($function->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                unshift(@arguments, "item");
+                unshift(@arguments, "*item");
                 $functionName = "WebCore::${implementedBy}::${functionName}";
                 $contentHead = "${assign}${assignPre}${functionName}(" . join(", ", @arguments) . ")${assignPost};\n";
             } else {
@@ -1337,7 +1335,7 @@ EOF
             if ($function->signature->extendedAttributes->{"ImplementedBy"}) {
                 my $implementedBy = $function->signature->extendedAttributes->{"ImplementedBy"};
                 $implIncludes{"${implementedBy}.h"} = 1;
-                unshift(@arguments, "item");
+                unshift(@arguments, "*item");
                 $contentHead = "${assign}${assignPre}WebCore::${implementedBy}::${functionImplementationName}(" . join(", ", @arguments) . ")${assignPost};\n";
             } else {
                 $contentHead = "${assign}${assignPre}item->${functionImplementationName}(" . join(", ", @arguments) . ")${assignPost};\n";

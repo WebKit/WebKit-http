@@ -1,8 +1,6 @@
 list(APPEND WTF_SOURCES
-    glib/GMainLoopSource.cpp
     glib/GRefPtr.cpp
     glib/GSourceWrap.cpp
-    glib/GThreadSafeMainLoopSource.cpp
     glib/GLibUtilities.cpp
     glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp

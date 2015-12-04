@@ -138,12 +138,12 @@ RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*
     LOG(IndexedDB, "IDBDatabase::transaction");
 
     if (m_closePending) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::InvalidStateError;
         return nullptr;
     }
 
     if (objectStores.isEmpty()) {
-        ec = INVALID_ACCESS_ERR;
+        ec = IDBDatabaseException::InvalidAccessError;
         return nullptr;
     }
 
@@ -157,14 +157,14 @@ RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*
     }
 
     if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing()) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::InvalidStateError;
         return nullptr;
     }
 
     for (auto& objectStoreName : objectStores) {
         if (m_info.hasObjectStore(objectStoreName))
             continue;
-        ec = NOT_FOUND_ERR;
+        ec = IDBDatabaseException::NotFoundError;
         return nullptr;
     }
 
@@ -190,7 +190,7 @@ void IDBDatabase::deleteObjectStore(const String& objectStoreName, ExceptionCode
     LOG(IndexedDB, "IDBDatabase::deleteObjectStore");
 
     if (!m_versionChangeTransaction) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::InvalidStateError;
         return;
     }
 
@@ -234,7 +234,7 @@ const char* IDBDatabase::activeDOMObjectName() const
     return "IDBDatabase";
 }
 
-bool IDBDatabase::canSuspendForPageCache() const
+bool IDBDatabase::canSuspendForDocumentSuspension() const
 {
     // FIXME: This value will sometimes be false when database operations are actually in progress.
     // Such database operations do not yet exist.
@@ -294,6 +294,9 @@ void IDBDatabase::willAbortTransaction(IDBTransaction& transaction)
     auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
     ASSERT(refTransaction);
     m_abortingTransactions.set(transaction.info().identifier(), WTF::move(refTransaction));
+
+    if (transaction.isVersionChange())
+        m_closePending = true;
 }
 
 void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
@@ -303,6 +306,9 @@ void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
     if (transaction.isVersionChange()) {
         ASSERT(transaction.originalDatabaseInfo());
         m_info = *transaction.originalDatabaseInfo();
+        m_closePending = true;
+        m_closedInServer = true;
+        m_serverConnection->databaseConnectionClosed(*this);
     }
 
     didCommitOrAbortTransaction(transaction);

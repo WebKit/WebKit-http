@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,93 +28,30 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "AirGenerationContext.h"
+#include "B3StackmapValue.h"
 #include "CodeBlock.h"
 #include "DFGBasicBlock.h"
 #include "DFGNode.h"
 #include "FTLExitArgument.h"
 #include "FTLJITCode.h"
 #include "FTLLocation.h"
+#include "FTLState.h"
 #include "JSCInlines.h"
 
 namespace JSC { namespace FTL {
 
+using namespace B3;
 using namespace DFG;
 
 OSRExitDescriptor::OSRExitDescriptor(
-    ExitKind exitKind, ExceptionType exceptionType, DataFormat profileDataFormat,
-    MethodOfGettingAValueProfile valueProfile, CodeOrigin codeOrigin,
-    CodeOrigin originForProfile, unsigned numberOfArguments,
-    unsigned numberOfLocals)
-    : m_kind(exitKind)
-    , m_exceptionType(exceptionType)
-    , m_codeOrigin(codeOrigin)
-    , m_codeOriginForExitProfile(originForProfile)
-    , m_profileDataFormat(profileDataFormat)
+    DataFormat profileDataFormat, MethodOfGettingAValueProfile valueProfile,
+    unsigned numberOfArguments, unsigned numberOfLocals)
+    : m_profileDataFormat(profileDataFormat)
     , m_valueProfile(valueProfile)
     , m_values(numberOfArguments, numberOfLocals)
     , m_isInvalidationPoint(false)
 {
-}
-
-bool OSRExitDescriptor::willArriveAtExitFromIndirectExceptionCheck() const
-{
-    switch (m_exceptionType) {
-    case ExceptionType::JSCall:
-    case ExceptionType::GetById:
-    case ExceptionType::PutById:
-    case ExceptionType::LazySlowPath:
-    case ExceptionType::SubGenerator:
-        return true;
-    default:
-        return false;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-bool OSRExitDescriptor::mightArriveAtOSRExitFromGenericUnwind() const
-{
-    switch (m_exceptionType) {
-    case ExceptionType::JSCall:
-    case ExceptionType::GetById:
-    case ExceptionType::PutById:
-        return true;
-    default:
-        return false;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-bool OSRExitDescriptor::mightArriveAtOSRExitFromCallOperation() const
-{
-    switch (m_exceptionType) {
-    case ExceptionType::GetById:
-    case ExceptionType::PutById:
-    case ExceptionType::SubGenerator:
-        return true;
-    default:
-        return false;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-bool OSRExitDescriptor::needsRegisterRecoveryOnGenericUnwindOSRExitPath() const
-{
-    // Calls/PutByIds/GetByIds all have a generic unwind osr exit paths.
-    // But, GetById and PutById ICs will do register recovery themselves
-    // because they're responsible for spilling necessary registers, so
-    // they also must recover registers themselves.
-    // Calls don't work this way. We compile Calls as patchpoints in LLVM.
-    // A call patchpoint might pass us volatile registers for locations
-    // we will do value recovery on. Therefore, before we make the call,
-    // we must spill these registers. Otherwise, the call will clobber them.
-    // Therefore, the corresponding OSR exit for the call will need to
-    // recover the spilled registers.
-    return m_exceptionType == ExceptionType::JSCall;
-}
-
-bool OSRExitDescriptor::isExceptionHandler() const
-{
-    return m_exceptionType != ExceptionType::None;
 }
 
 void OSRExitDescriptor::validateReferences(const TrackedReferences& trackedReferences)
@@ -126,22 +63,61 @@ void OSRExitDescriptor::validateReferences(const TrackedReferences& trackedRefer
         materialization->validateReferences(trackedReferences);
 }
 
-
-OSRExit::OSRExit(OSRExitDescriptor& descriptor, uint32_t stackmapRecordIndex)
-    : OSRExitBase(descriptor.m_kind, descriptor.m_codeOrigin, descriptor.m_codeOriginForExitProfile)
-    , m_descriptor(descriptor)
-    , m_stackmapRecordIndex(stackmapRecordIndex)
+#if FTL_USES_B3
+RefPtr<OSRExitHandle> OSRExitDescriptor::emitOSRExit(
+    State& state, OSRExitDescriptorImpl* exitDescriptorImpl, CCallHelpers& jit, const StackmapGenerationParams& params, unsigned offset)
 {
-    m_isExceptionHandler = descriptor.isExceptionHandler();
+    RefPtr<OSRExitHandle> handle = prepareOSRExitHandle(state, exitDescriptorImpl, params, offset);
+    handle->emitExitThunk(jit);
+    return handle;
+}
+
+RefPtr<OSRExitHandle> OSRExitDescriptor::emitOSRExitLater(
+    State& state, OSRExitDescriptorImpl* exitDescriptorImpl, const StackmapGenerationParams& params, unsigned offset)
+{
+    RefPtr<OSRExitHandle> handle = prepareOSRExitHandle(state, exitDescriptorImpl, params, offset);
+    params.context->latePaths.append(
+        createSharedTask<Air::GenerationContext::LatePathFunction>(
+            [handle] (CCallHelpers& jit, Air::GenerationContext&) {
+                handle->emitExitThunk(jit);
+            }));
+    return handle;
+}
+
+RefPtr<OSRExitHandle> OSRExitDescriptor::prepareOSRExitHandle(
+    State& state, OSRExitDescriptorImpl* exitDescriptorImpl, const StackmapGenerationParams& params, unsigned offset)
+{
+    unsigned index = state.jitCode->osrExit.size();
+    RefPtr<OSRExitHandle> handle = adoptRef(
+        new OSRExitHandle(index, state.jitCode->osrExit.alloc(this, *exitDescriptorImpl)));
+    for (unsigned i = offset; i < params.reps.size(); ++i)
+        handle->exit.m_valueReps.append(params.reps[i]);
+    handle->exit.m_valueReps.shrinkToFit();
+    return handle;
+}
+#endif // FTL_USES_B3
+
+OSRExit::OSRExit(
+    OSRExitDescriptor* descriptor, OSRExitDescriptorImpl& exitDescriptorImpl
+#if !FTL_USES_B3
+    , uint32_t stackmapRecordIndex
+#endif // !FTL_USES_B3
+    )
+    : OSRExitBase(exitDescriptorImpl.m_kind, exitDescriptorImpl.m_codeOrigin, exitDescriptorImpl.m_codeOriginForExitProfile)
+    , m_descriptor(descriptor)
+#if !FTL_USES_B3
+    , m_stackmapRecordIndex(stackmapRecordIndex)
+#endif // !FTL_USES_B3
+    , m_exceptionType(exitDescriptorImpl.m_exceptionType)
+{
+    m_isExceptionHandler = exitDescriptorImpl.m_exceptionType != ExceptionType::None;
 }
 
 CodeLocationJump OSRExit::codeLocationForRepatch(CodeBlock* ftlCodeBlock) const
 {
 #if FTL_USES_B3
-    return CodeLocationJump(
-        reinterpret_cast<char*>(
-            ftlCodeBlock->jitCode()->ftl()->b3Code().code().dataLocation()) +
-        m_patchableCodeOffset);
+    UNUSED_PARAM(ftlCodeBlock);
+    return m_patchableJump;
 #else // FTL_USES_B3
     return CodeLocationJump(
         reinterpret_cast<char*>(
@@ -150,9 +126,10 @@ CodeLocationJump OSRExit::codeLocationForRepatch(CodeBlock* ftlCodeBlock) const
 #endif // FTL_USES_B3
 }
 
+#if !FTL_USES_B3
 void OSRExit::gatherRegistersToSpillForCallIfException(StackMaps& stackmaps, StackMaps::Record& record)
 {
-    RELEASE_ASSERT(m_descriptor.m_exceptionType == ExceptionType::JSCall);
+    RELEASE_ASSERT(m_exceptionType == ExceptionType::JSCall);
 
     RegisterSet volatileRegisters = RegisterSet::volatileRegistersForJSCall();
 
@@ -176,17 +153,17 @@ void OSRExit::gatherRegistersToSpillForCallIfException(StackMaps& stackmaps, Sta
             break;
         }
     };
-    for (ExitTimeObjectMaterialization* materialization : m_descriptor.m_materializations) {
+    for (ExitTimeObjectMaterialization* materialization : m_descriptor->m_materializations) {
         for (unsigned propertyIndex = materialization->properties().size(); propertyIndex--;)
             addNeededRegisters(materialization->properties()[propertyIndex].value());
     }
-    for (unsigned index = m_descriptor.m_values.size(); index--;)
-        addNeededRegisters(m_descriptor.m_values[index]);
+    for (unsigned index = m_descriptor->m_values.size(); index--;)
+        addNeededRegisters(m_descriptor->m_values[index]);
 }
 
 void OSRExit::spillRegistersToSpillSlot(CCallHelpers& jit, int32_t stackSpillSlot)
 {
-    RELEASE_ASSERT(m_descriptor.mightArriveAtOSRExitFromGenericUnwind() || m_descriptor.mightArriveAtOSRExitFromCallOperation());
+    RELEASE_ASSERT(willArriveAtOSRExitFromGenericUnwind() || willArriveAtOSRExitFromCallOperation());
     unsigned count = 0;
     for (GPRReg reg = MacroAssembler::firstRegister(); reg <= MacroAssembler::lastRegister(); reg = MacroAssembler::nextRegister(reg)) {
         if (registersToPreserveForCallThatMightThrow.get(reg)) {
@@ -204,7 +181,7 @@ void OSRExit::spillRegistersToSpillSlot(CCallHelpers& jit, int32_t stackSpillSlo
 
 void OSRExit::recoverRegistersFromSpillSlot(CCallHelpers& jit, int32_t stackSpillSlot)
 {
-    RELEASE_ASSERT(m_descriptor.mightArriveAtOSRExitFromGenericUnwind() || m_descriptor.mightArriveAtOSRExitFromCallOperation());
+    RELEASE_ASSERT(willArriveAtOSRExitFromGenericUnwind() || willArriveAtOSRExitFromCallOperation());
     unsigned count = 0;
     for (GPRReg reg = MacroAssembler::firstRegister(); reg <= MacroAssembler::lastRegister(); reg = MacroAssembler::nextRegister(reg)) {
         if (registersToPreserveForCallThatMightThrow.get(reg)) {
@@ -218,6 +195,70 @@ void OSRExit::recoverRegistersFromSpillSlot(CCallHelpers& jit, int32_t stackSpil
             count++;
         }
     }
+}
+#endif // !FTL_USES_B3
+
+bool OSRExit::willArriveAtExitFromIndirectExceptionCheck() const
+{
+    switch (m_exceptionType) {
+    case ExceptionType::JSCall:
+    case ExceptionType::GetById:
+    case ExceptionType::PutById:
+    case ExceptionType::LazySlowPath:
+    case ExceptionType::BinaryOpGenerator:
+    case ExceptionType::GetByIdCallOperation:
+    case ExceptionType::PutByIdCallOperation:
+        return true;
+    default:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool exceptionTypeWillArriveAtOSRExitFromGenericUnwind(ExceptionType exceptionType)
+{
+    switch (exceptionType) {
+    case ExceptionType::JSCall:
+    case ExceptionType::GetById:
+    case ExceptionType::PutById:
+        return true;
+    default:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool OSRExit::willArriveAtOSRExitFromGenericUnwind() const
+{
+    return exceptionTypeWillArriveAtOSRExitFromGenericUnwind(m_exceptionType);
+}
+
+bool OSRExit::willArriveAtOSRExitFromCallOperation() const
+{
+    switch (m_exceptionType) {
+    case ExceptionType::GetByIdCallOperation:
+    case ExceptionType::PutByIdCallOperation:
+    case ExceptionType::BinaryOpGenerator:
+        return true;
+    default:
+        return false;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool OSRExit::needsRegisterRecoveryOnGenericUnwindOSRExitPath() const
+{
+    // Calls/PutByIds/GetByIds all have a generic unwind osr exit paths.
+    // But, GetById and PutById ICs will do register recovery themselves
+    // because they're responsible for spilling necessary registers, so
+    // they also must recover registers themselves.
+    // Calls don't work this way. We compile Calls as patchpoints in LLVM.
+    // A call patchpoint might pass us volatile registers for locations
+    // we will do value recovery on. Therefore, before we make the call,
+    // we must spill these registers. Otherwise, the call will clobber them.
+    // Therefore, the corresponding OSR exit for the call will need to
+    // recover the spilled registers.
+    return m_exceptionType == ExceptionType::JSCall;
 }
 
 } } // namespace JSC::FTL

@@ -345,9 +345,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_maintainsInactiveSelection(false)
     , m_isEditable(false)
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    , m_temporarilyClosedComposition(false)
-#endif
     , m_textZoomFactor(1)
     , m_pageZoomFactor(1)
     , m_pageScaleFactor(1)
@@ -691,10 +688,7 @@ void WebPageProxy::reattachToWebProcess()
     m_process->removeWebPage(m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
-    if (m_process->processPool().processModel() == ProcessModelSharedSecondaryProcess)
-        m_process = m_process->processPool().ensureSharedWebProcess();
-    else
-        m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit();
+    m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit();
 
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
     if (m_process->state() == ChildProcessProxy::State::Running)
@@ -5046,9 +5040,6 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_isPageSuspended = false;
 
     m_editorState = EditorState();
-#if PLATFORM(MAC) && !USE(ASYNC_NSTEXTINPUTCLIENT)
-    m_temporarilyClosedComposition = false;
-#endif
 
     m_pageClient.processDidExit();
 
@@ -6092,6 +6083,11 @@ void WebPageProxy::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocu
         return;
 
     m_process->send(Messages::WebPage::SetShouldScaleViewToFitDocument(shouldScaleViewToFitDocument), m_pageID);
+}
+
+void WebPageProxy::didRestoreScrollPosition()
+{
+    m_pageClient.didRestoreScrollPosition();
 }
 
 } // namespace WebKit

@@ -79,7 +79,7 @@ public:
     virtual bool dispatchEvent(Event&) override final;
 
     virtual const char* activeDOMObjectName() const override final;
-    virtual bool canSuspendForPageCache() const override final;
+    virtual bool canSuspendForDocumentSuspension() const override final;
     virtual bool hasPendingActivity() const override final;
 
     const IDBTransactionInfo info() const { return m_info; }
@@ -116,6 +116,8 @@ public:
     void addRequest(IDBRequest&);
     void removeRequest(IDBRequest&);
 
+    void abortDueToFailedRequest(DOMError&);
+
     IDBConnectionToServer& serverConnection();
 
     void activate();
@@ -130,6 +132,7 @@ private:
 
     void commit();
 
+    void notifyDidAbort(const IDBError&);
     void finishAbortOrCommit();
 
     void scheduleOperation(RefPtr<TransactionOperation>&&);
@@ -190,6 +193,7 @@ private:
     bool m_startedOnServer { false };
 
     IDBError m_idbError;
+    RefPtr<DOMError> m_domError;
 
     Timer m_operationTimer;
     std::unique_ptr<Timer> m_activationTimer;
