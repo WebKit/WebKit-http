@@ -1401,10 +1401,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
 
         // METRO FIXME: Hack to add fake range to fill start hole
         double fakeRangeEnd = 0.0;
-        if (buffered() && buffered()->length() == 0 &&
-                presentationTimestamp >= m_timestampOffset &&
-                presentationTimestamp <= m_timestampOffset + MediaTime::createWithDouble(0.1)) {
-            fakeRangeEnd = presentationTimestamp.toDouble();
+        if (buffered() && buffered()->length()) {
+            ExceptionCode exceptionCode;
+            MediaTime previousRangeEnd = MediaTime::createWithDouble(trackBuffer.m_buffered->end(trackBuffer.m_buffered->length() - 1, exceptionCode));
+            if (previousRangeEnd <= presentationTimestamp + MediaTime::createWithDouble(0.1))
+                fakeRangeEnd = presentationTimestamp.toDouble();
         }
 
         // 1.7 If last decode timestamp for track buffer is set and decode timestamp is less than last
