@@ -26,18 +26,15 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
     ${GLIB_INCLUDE_DIRS}
     ${LIBGBM_INCLUDE_DIRS}
-    ${LIBDRM_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
 )
 
 set(WPE_LIBRARIES
     ${GLIB_LIBRARIES}
-    ${LIBDRM_LIBRARIES}
     ${LIBGBM_LIBRARIES}
     ${LIBXKBCOMMON_LIBRARIES}
     ${WAYLAND_LIBRARIES}
@@ -66,6 +63,13 @@ if (USE_WPE_BACKEND_DRM OR USE_WPE_BACKEND_WAYLAND)
 endif ()
 
 if (USE_WPE_BACKEND_DRM)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
+        ${LIBDRM_INCLUDE_DIRS}
+    )
+    list(APPEND WPE_LIBRARIES
+        ${LIBDRM_LIBRARIES}
+    )
     list(APPEND WPE_SOURCES
         Source/ViewBackend/DRM/ViewBackendDRM.cpp
     )
