@@ -104,6 +104,9 @@ const struct wl_registry_listener g_registryListener = {
         if (!std::strcmp(interface, "wl_compositor"))
             interfaces.compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
 
+        if (!std::strcmp(interface, "wl_data_device_manager"))
+            interfaces.data_device_manager = static_cast<struct wl_data_device_manager*>(wl_registry_bind(registry, name, &wl_data_device_manager_interface, 2));
+
         if (!std::strcmp(interface, "wl_drm"))
             interfaces.drm = static_cast<struct wl_drm*>(wl_registry_bind(registry, name, &wl_drm_interface, 2));
 
@@ -496,6 +499,8 @@ WaylandDisplay::~WaylandDisplay()
 
     if (m_interfaces.compositor)
         wl_compositor_destroy(m_interfaces.compositor);
+    if (m_interfaces.data_device_manager)
+        wl_data_device_manager_destroy(m_interfaces.data_device_manager);
     if (m_interfaces.drm)
         wl_drm_destroy(m_interfaces.drm);
     if (m_interfaces.seat)
@@ -504,7 +509,7 @@ WaylandDisplay::~WaylandDisplay()
         xdg_shell_destroy(m_interfaces.xdg);
     if (m_interfaces.ivi_application)
         ivi_application_destroy(m_interfaces.ivi_application);
-    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr };
+    m_interfaces = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
     if (m_registry)
         wl_registry_destroy(m_registry);
