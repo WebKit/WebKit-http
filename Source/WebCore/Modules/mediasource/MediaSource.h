@@ -73,6 +73,7 @@ public:
     // MediaSourcePrivateClient
     virtual void setPrivateAndOpen(Ref<MediaSourcePrivate>&&) override;
     virtual MediaTime duration() const override;
+    virtual void durationChanged(const MediaTime&) override;
     virtual std::unique_ptr<PlatformTimeRanges> buffered() const override;
     virtual void seekToTime(const MediaTime&) override;
 

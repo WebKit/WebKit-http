@@ -85,6 +85,7 @@ public:
     virtual ~AppendPipeline();
 
     void handleElementMessage(GstMessage*);
+    void handleAsyncDoneMessage();
 
     gint id();
     AppendStage appendStage() { return m_appendStage; }
@@ -639,10 +640,12 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
         LOG_MEDIA_MESSAGE("m_mediaSourceClient is null, not doing anything");
         return;
     }
-    m_mediaDuration = m_mediaSourceClient->duration().toFloat();
+    MediaTime duration = m_mediaSourceClient->duration();
+    m_mediaDuration = duration.toFloat();
+    m_mediaSource->durationChanged(duration);
 
     LOG_MEDIA_MESSAGE("previous=%f, new=%f", previousDuration, m_mediaDuration);
-    cacheDuration();
+
     // Avoid emiting durationchanged in the case where the previous
     // duration was 0 because that case is already handled by the
     // HTMLMediaElement.
@@ -985,6 +988,11 @@ static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, A
     ap->handleElementMessage(message);
 }
 
+static void appendPipelineAsyncDoneMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
+{
+    ap->handleAsyncDoneMessage();
+}
+
 AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate)
     : m_mediaSourceClient(mediaSourceClient)
     , m_sourceBufferPrivate(sourceBufferPrivate)
@@ -1007,8 +1015,11 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     m_pipeline = gst_pipeline_new(NULL);
 
     GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
+    gst_bus_add_signal_watch(bus.get());
     gst_bus_enable_sync_message_emission(bus.get());
+
     g_signal_connect(bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
+    g_signal_connect(bus.get(), "message::async-done", G_CALLBACK(appendPipelineAsyncDoneMessageCallback), this);
 
     g_mutex_init(&m_newSampleMutex);
     g_cond_init(&m_newSampleCondition);
@@ -1076,6 +1087,7 @@ AppendPipeline::~AppendPipeline()
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
         ASSERT(bus);
         g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(appendPipelineElementMessageCallback), this);
+        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(appendPipelineAsyncDoneMessageCallback), this);
         gst_bus_disable_sync_message_emission(bus.get());
 
         gst_element_set_state (m_pipeline, GST_STATE_NULL);
@@ -1161,6 +1173,15 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
         m_playerPrivate->handleSyncMessage(message);
+}
+
+void AppendPipeline::handleAsyncDoneMessage()
+{
+    gint64 timeLength = 0;
+
+    // Duration should be available after the pipeline emitted the async-done message.
+    if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &timeLength) && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
+        m_mediaSourceClient->durationChanged(MediaTime(timeLength, GST_SECOND));
 }
 
 gint AppendPipeline::id()
