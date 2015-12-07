@@ -230,6 +230,7 @@ list(APPEND WebCore_SOURCES
     platform/wpe/MainThreadSharedTimerWPE.cpp
     platform/wpe/PasteboardWPE.cpp
     platform/wpe/PlatformKeyboardEventWPE.cpp
+    platform/wpe/PlatformPasteboardWPE.cpp
     platform/wpe/PlatformScreenWPE.cpp
     platform/wpe/RenderThemeWPE.cpp
     platform/wpe/SSLKeyGeneratorWPE.cpp
@@ -276,6 +277,7 @@ list(APPEND WebCore_LIBRARIES
     ${PNG_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${WEBP_LIBRARIES}
+    WPE
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
@@ -300,6 +302,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${PNG_INCLUDE_DIRS}
     ${SQLITE_INCLUDE_DIR}
     ${WEBP_INCLUDE_DIRS}
+    ${WPE_DIR}
 )
 
 if (ENABLE_WEB_AUDIO)
