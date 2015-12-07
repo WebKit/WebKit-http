@@ -25,8 +25,11 @@
  */
 
 #include "Config.h"
+#include <WPE/Graphics/RenderingBackend.h>
 
+#if WPE_BUFFER_MANAGEMENT(GBM)
 #include "RenderingBackendGBM.h"
+#endif
 #include <cstdio>
 
 namespace WPE {
@@ -35,7 +38,7 @@ namespace Graphics {
 
 std::unique_ptr<RenderingBackend> RenderingBackend::create()
 {
-#if WPE_BACKEND(DRM) || WPE_BACKEND(WAYLAND)
+#if WPE_BUFFER_MANAGEMENT(GBM)
     return std::unique_ptr<RenderingBackendGBM>(new RenderingBackendGBM);
 #endif
 

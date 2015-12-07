@@ -474,7 +474,8 @@ WaylandDisplay::WaylandDisplay()
 
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     m_seatData.xkb.composeTable = xkb_compose_table_new_from_locale(m_seatData.xkb.context, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
-    m_seatData.xkb.composeState = xkb_compose_state_new(m_seatData.xkb.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
+    if (m_seatData.xkb.composeTable)
+        m_seatData.xkb.composeState = xkb_compose_state_new(m_seatData.xkb.composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
 }
 
 WaylandDisplay::~WaylandDisplay()

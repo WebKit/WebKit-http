@@ -27,8 +27,13 @@
 #include "Config.h"
 #include <WPE/ViewBackend/ViewBackend.h>
 
+#if WPE_BACKEND(DRM)
 #include "ViewBackendDRM.h"
+#endif
+#if WPE_BACKEND(WAYLAND)
 #include "ViewBackendWayland.h"
+#endif
+
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>

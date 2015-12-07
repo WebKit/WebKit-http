@@ -27,7 +27,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
     "${WEBCORE_DIR}/platform/graphics/freetype"
-    "${WEBCORE_DIR}/platform/graphics/gbm"
     "${WEBCORE_DIR}/platform/graphics/gstreamer"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
@@ -271,8 +270,6 @@ list(APPEND WebCore_LIBRARIES
     ${HARFBUZZ_LIBRARIES}
     ${ICU_LIBRARIES}
     ${JPEG_LIBRARIES}
-    ${LIBGBM_LIBRARIES}
-    ${LIBDRM_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
@@ -297,8 +294,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${HARFBUZZ_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
     ${JPEG_INCLUDE_DIRS}
-    ${LIBGBM_INCLUDE_DIRS}
-    ${LIBDRM_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
