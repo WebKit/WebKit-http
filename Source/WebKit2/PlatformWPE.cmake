@@ -124,6 +124,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/wpe/TextCheckerWPE.cpp
     UIProcess/wpe/WebInspectorProxyWPE.cpp
     UIProcess/wpe/WebPageProxyWPE.cpp
+    UIProcess/wpe/WebPasteboardProxyWPE.cpp
     UIProcess/wpe/WebPreferencesWPE.cpp
     UIProcess/wpe/WebProcessPoolWPE.cpp
     UIProcess/wpe/WebProcessProxyWPE.cpp

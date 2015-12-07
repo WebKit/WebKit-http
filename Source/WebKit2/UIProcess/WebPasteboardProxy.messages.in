@@ -48,4 +48,10 @@ messages -> WebPasteboardProxy {
     SetPasteboardStringForType(String pasteboardName, String pasteboardType, String string) -> (uint64_t changeCount)
     SetPasteboardBufferForType(String pasteboardName, String pasteboardType, WebKit::SharedMemory::Handle handle, uint64_t size) -> (uint64_t changeCount)
 #endif
+
+#if PLATFORM(WPE)
+    GetPasteboardTypes() -> (Vector<String> types)
+    ReadStringFromPasteboard(uint64_t index, String pasteboardType) -> (String string)
+    WriteStringToPasteboard(String pasteboardType, String text)
+#endif
 }
