@@ -80,6 +80,7 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 {
 }
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void ImageBufferData::swapBuffersIfNeeded()
 {
@@ -90,7 +91,6 @@ void ImageBufferData::swapBuffersIfNeeded()
 }
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
 void clearSurface(cairo_surface_t* surface)
 {
     if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
@@ -139,11 +139,11 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     if (m_size.isEmpty())
         return;
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
     LockHolder locker(m_data.m_platformLayerProxy->mutex());
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated) {
         m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
