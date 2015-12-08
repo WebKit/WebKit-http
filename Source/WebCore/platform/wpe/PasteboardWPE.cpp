@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2014-2015 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
 #include "config.h"
 #include "Pasteboard.h"
 
+#include "PasteboardStrategy.h"
+#include "PlatformStrategies.h"
+
 namespace WebCore {
 
 std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
@@ -44,21 +47,27 @@ Pasteboard::Pasteboard()
 
 bool Pasteboard::hasData()
 {
-    return false;
+    // FIXME: Getting the list of types for this is wasteful. Do this in the UI process.
+    Vector<String> types;
+    platformStrategies()->pasteboardStrategy()->getTypes(types);
+    return !types.isEmpty();
 }
 
 Vector<String> Pasteboard::types()
 {
-    return Vector<String>();
+    Vector<String> types;
+    platformStrategies()->pasteboardStrategy()->getTypes(types);
+    return types;
 }
 
-String Pasteboard::readString(const String&)
+String Pasteboard::readString(const String& type)
 {
-    return String();
+    return platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, type);
 }
 
-void Pasteboard::writeString(const String&, const String&)
+void Pasteboard::writeString(const String& type, const String& text)
 {
+    platformStrategies()->pasteboardStrategy()->writeToPasteboard(type, text);
 }
 
 void Pasteboard::clear()
@@ -69,16 +78,18 @@ void Pasteboard::clear(const String&)
 {
 }
 
-void Pasteboard::read(PasteboardPlainText&)
+void Pasteboard::read(PasteboardPlainText& text)
 {
+    text.text = platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, "text/plain;charset=utf-8");
 }
 
 void Pasteboard::read(PasteboardWebContentReader&)
 {
 }
 
-void Pasteboard::write(const PasteboardURL&)
+void Pasteboard::write(const PasteboardURL& url)
 {
+    platformStrategies()->pasteboardStrategy()->writeToPasteboard("text/plain;charset=utf-8", url.url.string());
 }
 
 void Pasteboard::write(const PasteboardImage&)
@@ -103,8 +114,9 @@ void Pasteboard::writeMarkup(const String&)
 {
 }
 
-void Pasteboard::writePlainText(const String&, SmartReplaceOption)
+void Pasteboard::writePlainText(const String& text, SmartReplaceOption)
 {
+    writeString("text/plain;charset=utf-8", text);
 }
 
 void Pasteboard::writePasteboard(const Pasteboard&)
