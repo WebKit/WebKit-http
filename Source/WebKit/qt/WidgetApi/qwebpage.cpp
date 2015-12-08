@@ -389,7 +389,7 @@ bool QWebPagePrivate::errorPageExtension(QWebPageAdapter::ErrorPageOption *opt, 
         option.domain = QWebPage::QtNetwork;
     else if (opt->domain == QLatin1String("HTTP"))
         option.domain = QWebPage::Http;
-    else if (opt->domain == QLatin1String("WebKit"))
+    else if (opt->domain == QLatin1String("WebKit") || opt->domain == QLatin1String("WebKitErrorDomain"))
         option.domain = QWebPage::WebKit;
     else
         return false;
