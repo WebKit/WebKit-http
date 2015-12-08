@@ -62,18 +62,6 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
     return static_cast<BitmapTextureGL*>(texture);
 }
 
-// If GL_EXT_texture_format_BGRA8888 is supported in the OpenGLES
-// internal and external formats need to be BGRA
-static bool driverSupportsExternalTextureBGRA(GraphicsContext3D* context)
-{
-    if (context->isGLES2Compliant()) {
-        static bool supportsExternalTextureBGRA = context->getExtensions()->supports("GL_EXT_texture_format_BGRA8888");
-        return supportsExternalTextureBGRA;
-    }
-
-    return true;
-}
-
 BitmapTextureGL::BitmapTextureGL(PassRefPtr<GraphicsContext3D> context3D)
     : m_id(0)
     , m_fbo(0)
