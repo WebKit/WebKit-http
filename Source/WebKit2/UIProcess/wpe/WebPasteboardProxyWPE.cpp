@@ -42,6 +42,11 @@ void WebPasteboardProxy::readStringFromPasteboard(uint64_t index, const String& 
     value = PlatformPasteboard().readString(index, pasteboardType);
 }
 
+void WebPasteboardProxy::writeWebContentToPasteboard(const WebCore::PasteboardWebContent& content)
+{
+    PlatformPasteboard().write(content);
+}
+
 void WebPasteboardProxy::writeStringToPasteboard(const String& pasteboardType, const String& text)
 {
     PlatformPasteboard().write(pasteboardType, text);

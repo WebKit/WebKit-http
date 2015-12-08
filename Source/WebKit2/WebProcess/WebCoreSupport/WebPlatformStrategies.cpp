@@ -480,6 +480,11 @@ String WebPlatformStrategies::readStringFromPasteboard(int index, const String& 
     return value;
 }
 
+void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content), 0);
+}
+
 void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text)
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text), 0);

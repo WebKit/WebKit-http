@@ -83,10 +83,6 @@ void Pasteboard::read(PasteboardPlainText& text)
     text.text = platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, "text/plain;charset=utf-8");
 }
 
-void Pasteboard::read(PasteboardWebContentReader&)
-{
-}
-
 void Pasteboard::write(const PasteboardURL& url)
 {
     platformStrategies()->pasteboardStrategy()->writeToPasteboard("text/plain;charset=utf-8", url.url.string());
@@ -96,8 +92,9 @@ void Pasteboard::write(const PasteboardImage&)
 {
 }
 
-void Pasteboard::write(const PasteboardWebContent&)
+void Pasteboard::write(const PasteboardWebContent& content)
 {
+    platformStrategies()->pasteboardStrategy()->writeToPasteboard(content);
 }
 
 Vector<String> Pasteboard::readFilenames()

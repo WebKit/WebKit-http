@@ -106,6 +106,12 @@ struct ViewportArguments;
 }
 #endif
 
+#if PLATFORM(WPE)
+namespace WebCore {
+struct PasteboardWebContents;
+}
+#endif
+
 #if ENABLE(CONTENT_FILTERING)
 namespace WebCore {
 class ContentFilterUnblockHandler;
@@ -318,6 +324,13 @@ template<> struct ArgumentCoder<WebCore::PasteboardWebContent> {
 template<> struct ArgumentCoder<WebCore::PasteboardImage> {
     static void encode(ArgumentEncoder&, const WebCore::PasteboardImage&);
     static bool decode(ArgumentDecoder&, WebCore::PasteboardImage&);
+};
+#endif
+
+#if PLATFORM(WPE)
+template<> struct ArgumentCoder<WebCore::PasteboardWebContent> {
+    static void encode(ArgumentEncoder&, const WebCore::PasteboardWebContent&);
+    static bool decode(ArgumentDecoder&, WebCore::PasteboardWebContent&);
 };
 #endif
 

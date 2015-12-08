@@ -85,6 +85,7 @@ private:
 #if PLATFORM(WPE)
     void getPasteboardTypes(Vector<String>& pasteboardTypes);
     void readStringFromPasteboard(uint64_t index, const String& pasteboardType, WTF::String&);
+    void writeWebContentToPasteboard(const WebCore::PasteboardWebContent&);
     void writeStringToPasteboard(const String& pasteboardType, const String&);
 #endif
 };

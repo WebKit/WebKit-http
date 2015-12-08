@@ -85,6 +85,10 @@ struct PasteboardWebContent {
     String markup;
     GRefPtr<GClosure> callback;
 #endif
+#if PLATFORM(WPE)
+    String text;
+    String markup;
+#endif
 };
 
 struct PasteboardURL {

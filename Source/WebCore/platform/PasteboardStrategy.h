@@ -71,6 +71,7 @@ public:
 #if PLATFORM(WPE)
     virtual void getTypes(Vector<String>& types) = 0;
     virtual String readStringFromPasteboard(int index, const String& pasteboardType) = 0;
+    virtual void writeToPasteboard(const PasteboardWebContent&) = 0;
     virtual void writeToPasteboard(const String& pasteboardType, const String&) = 0;
 #endif
 
