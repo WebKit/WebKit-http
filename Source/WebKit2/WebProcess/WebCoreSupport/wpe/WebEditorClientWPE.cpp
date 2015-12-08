@@ -111,13 +111,13 @@ static const KeyDownEntry keyDownEntries[] = {
     // These probably need handling somewhere else so do not execute them. The
     // 'Cut' command is removing text so let's avoid losing the user losing data
     // until we implement clipboard support wherever it should be.
-    // { VK_INSERT, CtrlKey,            "Copy"                                    },
-    // { VK_INSERT, ShiftKey,           "Paste"                                   },
-    // { VK_DELETE, ShiftKey,           "Cut"                                     },
-    // { 'C',         CtrlKey,          "Copy"                                    },
-    // { 'V',         CtrlKey,          "Paste"                                   },
-    // { 'V',         CtrlKey | ShiftKey, "PasteAndMatchStyle"                    },
-    // { 'X',         CtrlKey,          "Cut"                                     },
+    { VK_INSERT, CtrlKey,            "Copy"                                    },
+    { VK_INSERT, ShiftKey,           "Paste"                                   },
+    { VK_DELETE, ShiftKey,           "Cut"                                     },
+    { 'C',         CtrlKey,          "Copy"                                    },
+    { 'V',         CtrlKey,          "Paste"                                   },
+    { 'V',         CtrlKey | ShiftKey, "PasteAndMatchStyle"                    },
+    { 'X',         CtrlKey,          "Cut"                                     },
     { 'A',         CtrlKey,          "SelectAll"                               },
     { 'Z',         CtrlKey,          "Undo"                                    },
     { 'Z',         CtrlKey | ShiftKey, "Redo"                                  },
