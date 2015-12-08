@@ -29,6 +29,7 @@
 #if PLATFORM(WAYLAND)
 
 #include "PlatformDisplay.h"
+#include "WebKitGtkWaylandClientProtocol.h"
 #include <memory>
 #include <wayland-client.h>
 #include <wayland-egl.h>
@@ -36,7 +37,6 @@
 
 namespace WebCore {
 
-class GLContext;
 class GLContextEGL;
 class IntSize;
 class WaylandSurface;
@@ -48,9 +48,9 @@ public:
 
     struct wl_display* native() const { return m_display; }
 
-    std::unique_ptr<WaylandSurface> createSurface(const IntSize&);
+    std::unique_ptr<WaylandSurface> createSurface(const IntSize&, int widgetID);
 
-    std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
+    std::unique_ptr<GLContextEGL> createSharingGLContext();
 
 private:
     static const struct wl_registry_listener m_registryListener;
@@ -58,6 +58,8 @@ private:
     static void globalRemoveCallback(void* data, struct wl_registry*, uint32_t name);
 
     PlatformDisplayWayland(struct wl_display*);
+
+    // FIXME: This should check also for m_webkitgtk once the UIProcess embedded Wayland subcompositer is implemented.
     bool isInitialized() { return m_compositor && m_eglDisplay != EGL_NO_DISPLAY && m_eglConfigChosen; }
 
     Type type() const override { return PlatformDisplay::Type::Wayland; }
@@ -65,6 +67,7 @@ private:
     struct wl_display* m_display;
     struct wl_registry* m_registry;
     struct wl_compositor* m_compositor;
+    struct wl_webkitgtk* m_webkitgtk;
 
     EGLConfig m_eglConfig;
     bool m_eglConfigChosen;
