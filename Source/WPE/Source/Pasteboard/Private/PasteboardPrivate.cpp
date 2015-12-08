@@ -26,18 +26,6 @@
 #include "Config.h"
 #include "PasteboardPrivate.h"
 
-//#if !WPE_BACKEND(WAYLAND)
-
-// #include <algorithm>
-// #include <glib.h>
-// #include <cassert>
-// #include <cstdio>
-// #include <cstring>
-// #include <fcntl.h>
-// #include <memory>
-// #include <unistd.h>
-// #include <wayland-client.h>
-
 namespace WPE {
 
 namespace Pasteboard {
@@ -48,7 +36,6 @@ PasteboardPrivate::PasteboardPrivate()
 
 PasteboardPrivate::~PasteboardPrivate()
 {
-    m_dataMap.clear();
 }
 
 std::vector<std::string> PasteboardPrivate::getTypes()
