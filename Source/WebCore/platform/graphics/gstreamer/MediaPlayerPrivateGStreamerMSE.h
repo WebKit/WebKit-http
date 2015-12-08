@@ -126,6 +126,7 @@ public:
 
     virtual ~GStreamerMediaSample();
 
+    void applyPtsOffset(MediaTime timestampOffset);
     MediaTime presentationTime() const { return m_pts; }
     MediaTime decodeTime() const { return m_dts; }
     MediaTime duration() const { return m_duration; }
