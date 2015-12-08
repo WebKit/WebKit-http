@@ -214,6 +214,8 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
     : MediaPlayerPrivateGStreamer(player)
     , m_webKitMediaSrc(0)
     , m_seekCompleted(true)
+    , m_durationTimerHandler("[WebKit] mediaPlayerPrivateDurationTimeoutCallback", [this] { m_mediaSource->durationChanged(m_mediaTimeDuration); })
+
 {
     LOG_MEDIA_MESSAGE("%p", this);
 }
@@ -221,6 +223,8 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
 MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 {
     LOG_MEDIA_MESSAGE("destroying the player");
+
+    m_durationTimerHandler.cancel();
 
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it)
         it->value->clearPlayerPrivate();
@@ -656,7 +660,13 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
         LOG_MEDIA_MESSAGE("Notifying player and WebKitMediaSrc");
         m_player->durationChanged();
         m_playbackPipeline->notifyDurationChanged();
-        m_mediaSource->durationChanged(m_mediaTimeDuration);
+
+        // FIXME: Delay duration notification by 3 seconds to work-around a
+        // behaviour difference with Chrome which isn't able to figure out the
+        // media duration as quickly as us...
+        static const unsigned durationTimerDelay = 3;
+        m_durationTimerHandler.schedule(std::chrono::seconds(durationTimerDelay));
+
     }
 }
 
