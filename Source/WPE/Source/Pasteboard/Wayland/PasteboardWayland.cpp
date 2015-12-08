@@ -141,8 +141,7 @@ const struct wl_data_source_listener g_dataSourceListener = {
         assert(dataSourceData->data_source == source);
         assert(!dataSourceData->dataMap.count(mime_type));
 
-        // FIXME: Should probably do the same for all text mimetypes.
-        if (strcmp(mime_type, "text/plain;charset=utf-8") == 0) {
+        if (strncmp(mime_type, "text/", 5) == 0) {
             std::string stringToSend(*static_cast<std::string*>(dataSourceData->dataMap[mime_type]));
             const char* p = stringToSend.data();
             ssize_t length = stringToSend.size();
