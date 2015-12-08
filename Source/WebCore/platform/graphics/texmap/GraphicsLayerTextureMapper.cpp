@@ -608,9 +608,6 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
-    if (m_filters == filters)
-        return true;
-
     TextureMapper* textureMapper = m_layer.textureMapper();
     if (!textureMapper)
         return false;
