@@ -36,6 +36,55 @@
 
 namespace WebCore {
 
+class EventSource {
+public:
+    static GSourceFuncs sourceFuncs;
+
+    GSource source;
+    GPollFD pfd;
+    struct wl_display* display;
+};
+
+GSourceFuncs EventSource::sourceFuncs = {
+    // prepare
+    [](GSource* base, gint* timeout) -> gboolean
+    {
+        auto* source = reinterpret_cast<EventSource*>(base);
+        struct wl_display* display = source->display;
+
+        *timeout = -1;
+
+        wl_display_flush(display);
+        wl_display_dispatch_pending(display);
+
+        return FALSE;
+    },
+    // check
+    [](GSource* base) -> gboolean
+    {
+        auto* source = reinterpret_cast<EventSource*>(base);
+        return !!source->pfd.revents;
+    },
+    // dispatch
+    [](GSource* base, GSourceFunc, gpointer) -> gboolean
+    {
+        auto* source = reinterpret_cast<EventSource*>(base);
+        struct wl_display* display = source->display;
+
+        if (source->pfd.revents & G_IO_IN)
+            wl_display_dispatch(display);
+
+        if (source->pfd.revents & (G_IO_ERR | G_IO_HUP))
+            return FALSE;
+
+        source->pfd.revents = 0;
+        return TRUE;
+    },
+    nullptr, // finalize
+    nullptr, // closure_callback
+    nullptr, // closure_marshall
+};
+
 const struct wl_registry_listener PlatformDisplayWayland::m_registryListener = {
     PlatformDisplayWayland::globalCallback,
     PlatformDisplayWayland::globalRemoveCallback
@@ -46,8 +95,6 @@ void PlatformDisplayWayland::globalCallback(void* data, struct wl_registry* regi
     auto display = static_cast<PlatformDisplayWayland*>(data);
     if (!std::strcmp(interface, "wl_compositor"))
         display->m_compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
-    else if (!std::strcmp(interface, "wl_webkitgtk"))
-        display->m_webkitgtk = static_cast<struct wl_webkitgtk*>(wl_registry_bind(registry, name, &wl_webkitgtk_interface, 1));
 }
 
 void PlatformDisplayWayland::globalRemoveCallback(void*, struct wl_registry*, uint32_t)
@@ -64,11 +111,25 @@ std::unique_ptr<PlatformDisplayWayland> PlatformDisplayWayland::create()
         return nullptr;
     }
 
-    auto display = std::unique_ptr<PlatformDisplayWayland>(new PlatformDisplayWayland(wlDisplay));
+    std::unique_ptr<PlatformDisplayWayland> display(new PlatformDisplayWayland(wlDisplay));
     if (!display->isInitialized()) {
         WTFLogAlways("PlatformDisplayWayland initialization: failed to complete the initialization of the display.");
         return nullptr;
     }
+
+    GSource* baseSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
+    auto* source = reinterpret_cast<EventSource*>(baseSource);
+    source->display = display->m_display;
+
+    source->pfd.fd = wl_display_get_fd(display->m_display);
+    source->pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
+    source->pfd.revents = 0;
+    g_source_add_poll(baseSource, &source->pfd);
+
+    g_source_set_name(baseSource, "[WebKit] WaylandDisplay");
+    g_source_set_priority(baseSource, G_PRIORITY_HIGH + 30);
+    g_source_set_can_recurse(baseSource, TRUE);
+    g_source_attach(baseSource, g_main_context_get_thread_default());
 
     return display;
 }
@@ -107,8 +168,6 @@ PlatformDisplayWayland::PlatformDisplayWayland(struct wl_display* wlDisplay)
 
 PlatformDisplayWayland::~PlatformDisplayWayland()
 {
-    if (m_webkitgtk)
-        wl_webkitgtk_destroy(m_webkitgtk);
     if (m_compositor)
         wl_compositor_destroy(m_compositor);
     if (m_registry)
@@ -117,19 +176,15 @@ PlatformDisplayWayland::~PlatformDisplayWayland()
         wl_display_disconnect(m_display);
 }
 
-std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntSize& size, int widgetId)
+std::unique_ptr<WaylandSurface> PlatformDisplayWayland::createSurface(const IntSize& size)
 {
     struct wl_surface* wlSurface = wl_compositor_create_surface(m_compositor);
     // We keep the minimum size at 1x1px since Mesa returns null values in wl_egl_window_create() for zero width or height.
     EGLNativeWindowType nativeWindow = wl_egl_window_create(wlSurface, std::max(1, size.width()), std::max(1, size.height()));
-
-    wl_webkitgtk_set_surface_for_widget(m_webkitgtk, wlSurface, widgetId);
-    wl_display_roundtrip(m_display);
-
     return std::make_unique<WaylandSurface>(wlSurface, nativeWindow);
 }
 
-std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createSharingGLContext()
+std::unique_ptr<GLContextEGL> PlatformDisplayWayland::createOffscreenContext(GLContext* sharingContext)
 {
     class OffscreenContextData : public GLContext::Data {
     public:
