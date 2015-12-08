@@ -1857,7 +1857,6 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
-
     if (!state().hasInvertibleTransform)
         return;
 
