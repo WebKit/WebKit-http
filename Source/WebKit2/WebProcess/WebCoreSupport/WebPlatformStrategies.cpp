@@ -466,4 +466,25 @@ long WebPlatformStrategies::changeCount()
 
 #endif // PLATFORM(COCOA)
 
+#if PLATFORM(WPE)
+
+void WebPlatformStrategies::getTypes(Vector<String>& types)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypes(), Messages::WebPasteboardProxy::GetPasteboardTypes::Reply(types), 0);
+}
+
+String WebPlatformStrategies::readStringFromPasteboard(int index, const String& pasteboardType)
+{
+    String value;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadStringFromPasteboard(index, pasteboardType), Messages::WebPasteboardProxy::ReadStringFromPasteboard::Reply(value), 0);
+    return value;
+}
+
+void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text), 0);
+}
+
+#endif // PLATFORM(WPE)
+
 } // namespace WebKit

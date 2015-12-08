@@ -100,6 +100,11 @@ private:
     virtual long setPathnamesForType(const Vector<String>&, const String& pasteboardType, const String& pasteboardName) override;
     virtual long setStringForType(const String&, const String& pasteboardType, const String& pasteboardName) override;
 #endif
+#if PLATFORM(WPE)
+    virtual void getTypes(Vector<String>& types) override;
+    virtual String readStringFromPasteboard(int index, const String& pasteboardType) override;
+    virtual void writeToPasteboard(const String& pasteboardType, const String&) override;
+#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // WebCore::PluginStrategy implementation.
