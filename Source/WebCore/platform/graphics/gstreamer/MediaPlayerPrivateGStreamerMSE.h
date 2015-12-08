@@ -53,6 +53,7 @@ public:
 
     bool seeking() const override;
     void durationChanged() override;
+    MediaTime durationMediaTime() const override { return m_mediaTimeDuration; }
     float duration() const override;
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
@@ -98,7 +99,6 @@ private:
 
     RefPtr<AppendPipeline> appendPipelineByTrackId(const AtomicString& trackId);
 
-private:
     GRefPtr<GstElement> m_webKitMediaSrc;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     bool m_seekCompleted;
@@ -106,6 +106,7 @@ private:
     HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> > m_appendPipelinesMap;
     RefPtr<PlaybackPipeline> m_playbackPipeline;
     RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
+    MediaTime m_mediaTimeDuration;
 };
 
 class GStreamerMediaSample : public MediaSample

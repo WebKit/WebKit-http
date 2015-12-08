@@ -268,7 +268,7 @@ float MediaPlayerPrivateGStreamerMSE::duration() const
     if (m_errorOccured)
         return 0.0f;
 
-    return m_mediaDuration;
+    return m_mediaTimeDuration.toFloat();
 }
 
 static gboolean dumpPipeline(gpointer data)
@@ -459,7 +459,7 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
 
         if (state <= GST_STATE_READY) {
             m_resetPipeline = true;
-            m_mediaDuration = 0;
+            m_mediaTimeDuration = MediaTime::zeroTime();
         } else {
             m_resetPipeline = false;
             cacheDuration();
@@ -639,25 +639,24 @@ RefPtr<AppendPipeline> MediaPlayerPrivateGStreamerMSE::appendPipelineByTrackId(c
 
 void MediaPlayerPrivateGStreamerMSE::durationChanged()
 {
-    float previousDuration = m_mediaDuration;
+    MediaTime previousDuration = m_mediaTimeDuration;
 
     if (!m_mediaSourceClient) {
         LOG_MEDIA_MESSAGE("m_mediaSourceClient is null, not doing anything");
         return;
     }
-    MediaTime duration = m_mediaSourceClient->duration();
-    m_mediaDuration = duration.toFloat();
-    m_mediaSource->durationChanged(duration);
+    m_mediaTimeDuration = m_mediaSourceClient->duration();
 
-    LOG_MEDIA_MESSAGE("previous=%f, new=%f", previousDuration, m_mediaDuration);
+    LOG_MEDIA_MESSAGE("previous=%f, new=%f", previousDuration.toFloat(), m_mediaTimeDuration.toFloat());
 
     // Avoid emiting durationchanged in the case where the previous
     // duration was 0 because that case is already handled by the
     // HTMLMediaElement.
-    if (m_mediaDuration != previousDuration && !std::isnan(m_mediaDuration) && !std::isnan(previousDuration)) {
+    if (m_mediaTimeDuration != previousDuration && m_mediaTimeDuration.isValid() && previousDuration.isValid()) {
         LOG_MEDIA_MESSAGE("Notifying player and WebKitMediaSrc");
         m_player->durationChanged();
         m_playbackPipeline->notifyDurationChanged();
+        m_mediaSource->durationChanged(m_mediaTimeDuration);
     }
 }
 
