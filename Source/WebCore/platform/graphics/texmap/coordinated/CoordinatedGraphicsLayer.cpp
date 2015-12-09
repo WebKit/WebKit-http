@@ -1015,14 +1015,12 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
 
     // This is the only place we (re)create the main tiled backing store, once we
     // have a remote client and we are ready to send our data to the UI process.
-    bool newBackingStore = false;
     if (!m_mainBackingStore) {
         createBackingStore();
         m_pendingVisibleRectAdjustment = true;
-        newBackingStore = true;
     }
 
-    if (m_pendingVisibleRectAdjustment || newBackingStore) {
+    if (m_pendingVisibleRectAdjustment) {
         m_pendingVisibleRectAdjustment = false;
         m_mainBackingStore->createTilesIfNeeded(transformedVisibleRect(), IntRect(0, 0, size().width(), size().height()));
     }
