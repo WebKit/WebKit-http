@@ -33,6 +33,8 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/wpe/NetworkProcessMainWPE.cpp
 
+    Platform/IPC/glib/GSocketMonitor.cpp
+
     Platform/IPC/unix/AttachmentUnix.cpp
     Platform/IPC/unix/ConnectionUnix.cpp
 
@@ -200,6 +202,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
+    "${WEBKIT2_DIR}/Platform/IPC/glib"
     "${WEBKIT2_DIR}/Shared/API/c/wpe"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
     "${WEBKIT2_DIR}/Shared/CoordinatedGraphics/threadedcompositor"
