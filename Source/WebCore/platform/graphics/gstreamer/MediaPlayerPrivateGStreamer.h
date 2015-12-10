@@ -35,7 +35,6 @@
 #include <wtf/Forward.h>
 #include <wtf/RunLoop.h>
 #include <wtf/WeakPtr.h>
-#include <wtf/glib/GSourceWrap.h>
 
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
 #include <wtf/text/AtomicStringHash.h>
@@ -233,7 +232,7 @@ private:
     bool m_volumeAndMuteInitialized;
     bool m_hasVideo;
     bool m_hasAudio;
-    GSourceWrap::Static m_readyTimerHandler;
+    RunLoop::Timer<MediaPlayerPrivateGStreamer> m_readyTimerHandler;
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
