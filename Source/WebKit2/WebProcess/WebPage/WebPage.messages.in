@@ -215,6 +215,7 @@ messages -> WebPage LegacyReceiver {
     SetGapBetweenPages(double gap)
 
     PostInjectedBundleMessage(String messageName, WebKit::UserData messageBody)
+    PostSynchronousInjectedBundleMessage(String messageName, WebKit::UserData messageBody) -> ()
 
     # Find.
     FindString(String string, uint32_t findOptions, unsigned maxMatchCount)
