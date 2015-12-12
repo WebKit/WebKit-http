@@ -205,12 +205,15 @@ void ViewBackendBCMRPi::destroyBuffer(uint32_t)
 
 void ViewBackendBCMRPi::setInputClient(Input::Client* client)
 {
+    if (std::getenv("WPE_BCMRPI_TOUCH")) {
+        LibinputServer::singleton().setHandleTouchEvents(true);
+    }
     if (std::getenv("WPE_BCMRPI_CURSOR")) {
         m_cursor.reset(new Cursor(client, m_displayHandle, m_width, m_height));
         client = m_cursor.get();
         LibinputServer::singleton().setHandlePointerEvents(true);
-        LibinputServer::singleton().setPointerBounds(m_width, m_height);
     }
+    LibinputServer::singleton().setPointerBounds(m_width, m_height);
 
     LibinputServer::singleton().setClient(client);
 }
@@ -291,8 +294,9 @@ void ViewBackendBCMRPi::Cursor::handleAxisEvent(Input::AxisEvent&& event)
     m_targetClient->handleAxisEvent(std::move(event));
 }
 
-void ViewBackendBCMRPi::Cursor::handleTouchEvent(Input::TouchEvent&&)
+void ViewBackendBCMRPi::Cursor::handleTouchEvent(Input::TouchEvent&& event)
 {
+    m_targetClient->handleTouchEvent(std::move(event));
 }
 
 // The cursor pointer data uses the modified left_ptr cursor from the

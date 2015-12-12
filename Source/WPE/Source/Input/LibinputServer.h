@@ -46,6 +46,7 @@ public:
 
     void setClient(Input::Client* client);
     void setHandlePointerEvents(bool handle);
+    void setHandleTouchEvents(bool handle);
     void setPointerBounds(uint32_t, uint32_t);
 
 private:
@@ -67,6 +68,10 @@ private:
     bool m_handlePointerEvents { false };
     std::pair<int32_t, int32_t> m_pointerCoords;
     std::pair<uint32_t, uint32_t> m_pointerBounds;
+
+    bool m_handleTouchEvents { false };
+    std::array<Input::TouchEvent::Raw, 10> m_touchEvents;
+    void handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type)
 
     class EventSource {
     public:

@@ -103,6 +103,12 @@ void LibinputServer::setHandlePointerEvents(bool handle)
     fprintf(stderr, "[LibinputServer] %s pointer events.\n", handle ? "Enabling" : "Disabling");
 }
 
+void LibinputServer::setHandleTouchEvents(bool handle)
+{
+    m_handleTouchEvents = handle;
+    fprintf(stderr, "[LibinputServer] %s handle events.\n", handle ? "Enabling" : "Disabling");
+}
+
 void LibinputServer::setPointerBounds(uint32_t width, uint32_t height)
 {
     m_pointerBounds = { width, height };
@@ -114,6 +120,19 @@ void LibinputServer::processEvents()
 
     while (auto* event = libinput_get_event(m_libinput)) {
         switch (libinput_event_get_type(event)) {
+        case LIBINPUT_EVENT_TOUCH_DOWN: 
+            if (m_handleTouchEvents)	
+                handleTouchEvent(event, Input::TouchEvent::Type::Down);
+            printf("touch down\n");
+            break;
+        case LIBINPUT_EVENT_TOUCH_UP:	
+            if (m_handleTouchEvents)	
+                handleTouchEvent(event, Input::TouchEvent::Type::Up);    
+            break;
+        case LIBINPUT_EVENT_TOUCH_MOTION:
+            if (m_handleTouchEvents)	
+                handleTouchEvent(event, Input::TouchEvent::Type::Motion);    
+            break;        
         case LIBINPUT_EVENT_KEYBOARD_KEY:
         {
             auto* keyEvent = libinput_event_get_keyboard_event(event);
@@ -203,6 +222,37 @@ void LibinputServer::dispatchKeyboardEvent(const Input::KeyboardEvent::Raw& even
     Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(event);
     m_client->handleKeyboardEvent({ event.time, std::get<0>(result), std::get<1>(result), !!event.state, std::get<2>(result) });
 }
+
+void LibinputServer::handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type)
+{
+    auto* touchEvent = libinput_event_get_touch_event(event);
+    uint32_t time = libinput_event_touch_get_time(touchEvent);
+    int id = libinput_event_touch_get_slot(touchEvent);
+    auto& targetPoint = m_touchEvents[id];
+    int32_t x, y;
+    
+    if (type != Input::TouchEvent::Up) {
+      x = libinput_event_touch_get_x_transformed(touchEvent, m_pointerBounds.first);
+      y = libinput_event_touch_get_y_transformed(touchEvent, m_pointerBounds.second);
+    } else {
+      // libinput can't return pointer position on touch-up
+      x = targetPoint.x;
+      y = targetPoint.y;
+    }
+    targetPoint = Input::TouchEvent::Raw{ type, time, id, x, y };
+    
+    m_client->handleTouchEvent({
+      m_touchEvents,
+      type,
+      id,
+      time
+    });
+    
+    if (type == Input::TouchEvent::Up) {
+        targetPoint = Input::TouchEvent::Raw{ Input::TouchEvent::Null, 0, -1, -1, -1 };
+    }
+}
+
 
 GSourceFuncs LibinputServer::EventSource::s_sourceFuncs = {
     nullptr, // prepare
