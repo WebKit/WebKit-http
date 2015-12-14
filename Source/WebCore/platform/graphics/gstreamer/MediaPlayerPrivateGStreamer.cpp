@@ -1942,6 +1942,10 @@ GstElement* MediaPlayerPrivateGStreamer::createAudioSink()
 
     g_signal_connect_swapped(m_autoAudioSink.get(), "child-added", G_CALLBACK(setAudioStreamPropertiesCallback), this);
 
+#if PLATFORM(BCM_NEXUS)
+    return m_autoAudioSink.get();
+#endif
+
     GstElement* audioSinkBin;
 
     if (webkitGstCheckVersion(1, 4, 2)) {
