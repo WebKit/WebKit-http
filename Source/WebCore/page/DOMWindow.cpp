@@ -1735,13 +1735,13 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, RefPtr<EventList
     }
 #else
     else if (eventType == eventNames().devicemotionEvent && RuntimeEnabledFeatures::sharedFeatures().deviceMotionEnabled()) {
-        if (isSameSecurityOriginAsMainFrame()) {
+        if (isSameSecurityOriginAsMainFrame() || (document() && document()->isSandboxed(SandboxDeviceSensors))) {
             if (DeviceMotionController* controller = DeviceMotionController::from(page()))
                 controller->addDeviceEventListener(this);
         } else if (document())
             document()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Blocked attempt add device motion listener from child frame that wasn't the same security origin as the main page."));
     } else if (eventType == eventNames().deviceorientationEvent && RuntimeEnabledFeatures::sharedFeatures().deviceOrientationEnabled()) {
-        if (isSameSecurityOriginAsMainFrame()) {
+        if (isSameSecurityOriginAsMainFrame() || (document() && document()->isSandboxed(SandboxDeviceSensors))) {
             if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
                 controller->addDeviceEventListener(this);
         } else if (document())
