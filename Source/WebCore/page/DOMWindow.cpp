@@ -1725,7 +1725,7 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, RefPtr<EventList
 #if ENABLE(DEVICE_ORIENTATION)
 #if PLATFORM(IOS)
     else if ((eventType == eventNames().devicemotionEvent || eventType == eventNames().deviceorientationEvent) && document()) {
-        if (isSameSecurityOriginAsMainFrame()) {
+        if (isSameSecurityOriginAsMainFrame() || document()->isSandboxed(SandboxDeviceSensors)) {
             if (eventType == eventNames().deviceorientationEvent)
                 document()->deviceOrientationController()->addDeviceEventListener(this);
             else
