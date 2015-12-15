@@ -89,8 +89,8 @@ void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapp
 void TextureMapperPlatformLayerProxy::requestUpdate()
 {
     ASSERT(m_lock.isHeld());
-    ASSERT(m_compositor);
-    m_compositor->onNewBufferAvailable();
+    if (m_compositor)
+        m_compositor->onNewBufferAvailable();
 }
 
 std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(const IntSize& size, GC3Dint internalFormat)
