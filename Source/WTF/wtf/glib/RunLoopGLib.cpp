@@ -66,6 +66,7 @@ RunLoop::RunLoop()
         static_cast<RunLoop*>(userData)->performWork();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
+    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
     g_source_attach(m_source.get(), m_mainContext.get());
 }
 
@@ -133,6 +134,7 @@ RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
             timer->updateReadyTime();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
+    g_source_set_priority(m_source.get(), G_PRIORITY_HIGH + 30);
     g_source_attach(m_source.get(), m_runLoop.m_mainContext.get());
 }
 
