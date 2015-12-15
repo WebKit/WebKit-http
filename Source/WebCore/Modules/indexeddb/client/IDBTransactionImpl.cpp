@@ -71,7 +71,7 @@ IDBTransaction::IDBTransaction(IDBDatabase& database, const IDBTransactionInfo& 
 
     if (m_info.mode() == IndexedDB::TransactionMode::VersionChange) {
         ASSERT(m_openDBRequest);
-        m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(m_database->info());
+        m_openDBRequest->setVersionChangeTransaction(*this);
         m_startedOnServer = true;
     } else {
         activate();
@@ -121,17 +121,13 @@ RefPtr<DOMError> IDBTransaction::error() const
     return m_domError;
 }
 
-RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& objectStoreName, ExceptionCode& ec)
+RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& objectStoreName, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBTransaction::objectStore");
 
-    if (objectStoreName.isEmpty()) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
-
     if (isFinishedOrFinishing()) {
-        ec = INVALID_STATE_ERR;
+        ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'objectStore' on 'IDBTransaction': The transaction finished.");
         return nullptr;
     }
 
@@ -149,13 +145,15 @@ RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& object
 
     auto* info = m_database->info().infoForExistingObjectStore(objectStoreName);
     if (!info) {
-        ec = NOT_FOUND_ERR;
+        ec.code = IDBDatabaseException::NotFoundError;
+        ec.message = ASCIILiteral("Failed to execute 'objectStore' on 'IDBTransaction': The specified object store was not found.");
         return nullptr;
     }
 
     // Version change transactions are scoped to every object store in the database.
-    if (!found && !isVersionChange()) {
-        ec = NOT_FOUND_ERR;
+    if (!info || (!found && !isVersionChange())) {
+        ec.code = IDBDatabaseException::NotFoundError;
+        ec.message = ASCIILiteral("Failed to execute 'objectStore' on 'IDBTransaction': The specified object store was not found.");
         return nullptr;
     }
 
@@ -169,19 +167,21 @@ RefPtr<WebCore::IDBObjectStore> IDBTransaction::objectStore(const String& object
 void IDBTransaction::abortDueToFailedRequest(DOMError& error)
 {
     LOG(IndexedDB, "IDBTransaction::abortDueToFailedRequest");
-    ASSERT(!isFinishedOrFinishing());
+    if (isFinishedOrFinishing())
+        return;
 
     m_domError = &error;
-    ExceptionCode ec;
+    ExceptionCodeWithMessage ec;
     abort(ec);
 }
 
-void IDBTransaction::abort(ExceptionCode& ec)
+void IDBTransaction::abort(ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBTransaction::abort");
 
     if (isFinishedOrFinishing()) {
-        ec = IDBDatabaseException::InvalidStateError;
+        ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'abort' on 'IDBTransaction': The transaction is inactive or finished.");
         return;
     }
 
@@ -189,8 +189,8 @@ void IDBTransaction::abort(ExceptionCode& ec)
     m_database->willAbortTransaction(*this);
 
     if (isVersionChange()) {
-        ASSERT(m_openDBRequest);
-        m_openDBRequest->versionChangeTransactionWillFinish();
+        for (auto& objectStore : m_referencedObjectStores.values())
+            objectStore->rollbackInfoForVersionChangeAbort();
     }
     
     m_abortQueue.swap(m_transactionOperationQueue);
@@ -229,7 +229,13 @@ bool IDBTransaction::canSuspendForDocumentSuspension() const
 
 bool IDBTransaction::hasPendingActivity() const
 {
-    return m_state != IndexedDB::TransactionState::Finished;
+    return !m_contextStopped && m_state != IndexedDB::TransactionState::Finished;
+}
+
+void IDBTransaction::stop()
+{
+    ASSERT(!m_contextStopped);
+    m_contextStopped = true;
 }
 
 bool IDBTransaction::isActive() const
@@ -301,11 +307,6 @@ void IDBTransaction::commit()
     m_state = IndexedDB::TransactionState::Committing;
     m_database->willCommitTransaction(*this);
 
-    if (isVersionChange()) {
-        ASSERT(m_openDBRequest);
-        m_openDBRequest->versionChangeTransactionWillFinish();
-    }
-
     auto operation = createTransactionOperation(*this, nullptr, &IDBTransaction::commitOnServer);
     scheduleOperation(WTF::move(operation));
 }
@@ -320,8 +321,6 @@ void IDBTransaction::finishAbortOrCommit()
 {
     ASSERT(m_state != IndexedDB::TransactionState::Finished);
     m_state = IndexedDB::TransactionState::Finished;
-
-    m_originalDatabaseInfo = nullptr;
 }
 
 void IDBTransaction::didStart(const IDBError& error)
@@ -350,7 +349,7 @@ void IDBTransaction::notifyDidAbort(const IDBError& error)
 
     if (isVersionChange()) {
         ASSERT(m_openDBRequest);
-        m_openDBRequest->fireErrorAfterVersionChangeAbort();
+        m_openDBRequest->fireErrorAfterVersionChangeCompletion();
     }
 }
 
@@ -397,7 +396,7 @@ void IDBTransaction::enqueueEvent(Ref<Event>&& event)
 {
     ASSERT(m_state != IndexedDB::TransactionState::Finished);
 
-    if (!scriptExecutionContext())
+    if (!scriptExecutionContext() || m_contextStopped)
         return;
 
     event->setTarget(this);
@@ -409,6 +408,7 @@ bool IDBTransaction::dispatchEvent(Event& event)
     LOG(IndexedDB, "IDBTransaction::dispatchEvent");
 
     ASSERT(scriptExecutionContext());
+    ASSERT(!m_contextStopped);
     ASSERT(event.target() == this);
     ASSERT(event.type() == eventNames().completeEvent || event.type() == eventNames().abortEvent);
 
@@ -418,9 +418,16 @@ bool IDBTransaction::dispatchEvent(Event& event)
 
     bool result = IDBEventDispatcher::dispatch(event, targets);
 
-    if (isVersionChange() && event.type() == eventNames().completeEvent) {
+    if (isVersionChange()) {
         ASSERT(m_openDBRequest);
-        m_openDBRequest->fireSuccessAfterVersionChangeCommit();
+        m_openDBRequest->versionChangeTransactionDidFinish();
+
+        if (event.type() == eventNames().completeEvent) {
+            if (m_database->isClosingOrClosed())
+                m_openDBRequest->fireErrorAfterVersionChangeCompletion();
+            else
+                m_openDBRequest->fireSuccessAfterVersionChangeCommit();
+        }
     }
 
     return result;

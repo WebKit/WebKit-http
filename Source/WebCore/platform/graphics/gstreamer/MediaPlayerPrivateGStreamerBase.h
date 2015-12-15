@@ -35,13 +35,13 @@
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #include "TextureMapperPlatformLayer.h"
 #endif
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
-typedef struct _GstSample GstSample;
-typedef struct _GstElement GstElement;
+typedef struct _GstMessage GstMessage;
+typedef struct _GstStreamVolume GstStreamVolume;
+typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
 typedef struct _GstGLDisplay GstGLDisplay;
 typedef struct _GstMessage GstMessage;
@@ -53,6 +53,7 @@ namespace WebCore {
 
 class BitmapTextureGL;
 class GraphicsContext;
+class GraphicsContext3D;
 class IntSize;
 class IntRect;
 
@@ -70,7 +71,7 @@ public:
     virtual FloatSize naturalSize() const override;
 
     virtual void setVolume(float) override;
-    virtual float volume() const override;
+    virtual float volume() const;
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
@@ -113,7 +114,12 @@ public:
 #else
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float);
+    virtual void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
+#endif
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
+    virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -138,7 +144,7 @@ protected:
 
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 #if USE(GSTREAMER_GL)
-    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstContext*, GstSample*);
+    static gboolean drawCallback(MediaPlayerPrivateGStreamerBase*, GstGLContext*, GstSample*);
 #endif
 
     void notifyPlayerOfVolumeChange();
@@ -171,25 +177,28 @@ protected:
     GRefPtr<GstSample> m_sample;
 #if USE(GSTREAMER_GL)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
-    Condition m_drawCondition;
-    Lock m_drawMutex;
 #endif
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    PassRefPtr<BitmapTexture> updateTexture(TextureMapper*);
     void updateTexture(BitmapTextureGL&, GstVideoInfo&);
+#endif
+#if USE(GSTREAMER_GL)
+    GRefPtr<GstGLContext> m_glContext;
+    GRefPtr<GstGLDisplay> m_glDisplay;
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
     virtual void swapBuffersIfNeeded() override { };
+    void pushTextureToCompositor();
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
-    RefPtr<GraphicsContext3D> m_context3D;
 #endif
-#if USE(GSTREAMER_GL)
-    GRefPtr<GstGLContext> m_glContext;
-    GRefPtr<GstGLDisplay> m_glDisplay;
+
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    RefPtr<GraphicsContext3D> m_context3D;
+    Condition m_drawCondition;
+    Lock m_drawMutex;
 #endif
 };
 }

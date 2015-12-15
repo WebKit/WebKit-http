@@ -673,6 +673,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 typeOfDoubleQuotient(
                     forNode(node->child1()).m_type, forNode(node->child2()).m_type));
             break;
+        case UntypedUse:
+            clobberWorld(node->origin.semantic, clobberLimit);
+            forNode(node).setType(m_graph, SpecBytecodeNumber);
+            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             break;
@@ -815,6 +819,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         forNode(node).setType(typeOfDoublePow(forNode(node->child1()).m_type, forNode(node->child2()).m_type));
+        break;
+    }
+
+    case ArithRandom: {
+        forNode(node).setType(m_graph, SpecDoubleReal);
         break;
     }
 
@@ -1810,15 +1819,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(m_graph, SpecObjectOther);
         break;
 
-    case LoadArrowFunctionThis:
-        if (JSValue base = forNode(node->child1()).m_value) {
-            JSArrowFunction* function = jsDynamicCast<JSArrowFunction*>(base);
-            setConstant(node, *m_graph.freeze(function->boundThis()));
-            break;
-        }
-        forNode(node).setType(m_graph, SpecFinalObject);
-        break;
-            
     case SkipScope: {
         JSValue child = forNode(node->child1()).value();
         if (child) {

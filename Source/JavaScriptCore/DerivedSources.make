@@ -90,6 +90,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/InternalPromiseConstructor.js \
     $(JavaScriptCore)/builtins/IteratorPrototype.js \
     $(JavaScriptCore)/builtins/ModuleLoaderObject.js \
+    $(JavaScriptCore)/builtins/NumberPrototype.js \
     $(JavaScriptCore)/builtins/ObjectConstructor.js \
     $(JavaScriptCore)/builtins/PromiseConstructor.js \
     $(JavaScriptCore)/builtins/PromiseOperations.js \
@@ -194,7 +195,6 @@ INSPECTOR_DOMAINS = \
     $(JavaScriptCore)/inspector/protocol/Page.json \
     $(JavaScriptCore)/inspector/protocol/Runtime.json \
     $(JavaScriptCore)/inspector/protocol/Timeline.json \
-    $(JavaScriptCore)/inspector/protocol/Worker.json \
 #
 
 ifeq ($(findstring ENABLE_INDEXED_DATABASE,$(FEATURE_DEFINES)), ENABLE_INDEXED_DATABASE)

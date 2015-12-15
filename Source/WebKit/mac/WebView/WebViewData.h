@@ -97,6 +97,10 @@ class WebViewGroup;
 class WebSelectionServiceController;
 #endif
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebViewDataAdditionsDeclarations.h>
+#endif
+
 class WebViewLayerFlushScheduler : public WebCore::LayerFlushScheduler {
 public:
     WebViewLayerFlushScheduler(LayerFlushController*);
@@ -171,6 +175,11 @@ private:
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     WebImmediateActionController *immediateActionController;
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebViewDataAdditions.h>
+#endif
+
     std::unique_ptr<WebCore::TextIndicatorWindow> textIndicatorWindow;
     BOOL hasInitializedLookupObserver;
     RetainPtr<WebWindowVisibilityObserver> windowVisibilityObserver;

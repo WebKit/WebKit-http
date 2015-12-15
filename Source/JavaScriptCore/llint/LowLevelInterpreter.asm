@@ -1445,12 +1445,17 @@ _llint_op_jngreatereq:
 
 _llint_op_loop_hint:
     traceExecution()
+    checkSwitchToJITForLoop()
+    dispatch(1)
+
+
+_llint_op_watchdog:
+    traceExecution()
     loadp CodeBlock[cfr], t1
     loadp CodeBlock::m_vm[t1], t1
-    loadp VM::watchdog[t1], t0
+    loadp VM::m_watchdog[t1], t0
     btpnz t0, .handleWatchdogTimer
 .afterWatchdogTimerCheck:
-    checkSwitchToJITForLoop()
     dispatch(1)
 .handleWatchdogTimer:
     loadb Watchdog::m_timerDidFire[t0], t0
@@ -1459,6 +1464,7 @@ _llint_op_loop_hint:
     jmp .afterWatchdogTimerCheck
 .throwHandler:
     jmp _llint_throw_from_slow_path_trampoline
+
 
 _llint_op_switch_string:
     traceExecution()
@@ -1479,7 +1485,7 @@ _llint_op_new_generator_func_exp:
 _llint_op_new_arrow_func_exp:
     traceExecution()
     callSlowPath(_llint_slow_path_new_arrow_func_exp)
-    dispatch(5)
+    dispatch(4)
 
 _llint_op_call:
     traceExecution()

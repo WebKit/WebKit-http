@@ -32,12 +32,14 @@
 #include "MachVMSPI.h"
 #include "PlatformCALayer.h"
 #include <CoreGraphics/CGContext.h>
+#include <JavaScriptCore/GCActivityCallback.h>
 #include <QuartzCore/CALayer.h>
 #include <QuartzCore/CATransaction.h>
 #include <array>
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
 #include <runtime/JSLock.h>
+#include <sys/sysctl.h>
 #include <thread>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -68,6 +70,19 @@ using namespace WebCore;
 @end
 
 namespace WebCore {
+
+static size_t vmPageSize()
+{
+    static size_t pageSize;
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [&] {
+        size_t outputSize = sizeof(pageSize);
+        int status = sysctlbyname("vm.pagesize", &pageSize, &outputSize, nullptr, 0);
+        ASSERT_UNUSED(status, status != -1);
+        ASSERT(pageSize);
+    });
+    return pageSize;
+}
 
 template<typename T, size_t size = 70>
 class RingBuffer {
@@ -130,6 +145,13 @@ static const unsigned Layers = 7;
 static const unsigned NumberOfCategories = 8;
 }
 
+static CGColorRef createColor(float r, float g, float b, float a)
+{
+    static CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    CGFloat components[4] = { r, g, b, a };
+    return CGColorCreate(colorSpace, components);
+}
+
 struct MemoryCategoryInfo {
     MemoryCategoryInfo() { } // Needed for std::array.
 
@@ -140,7 +162,7 @@ struct MemoryCategoryInfo {
     {
         float r, g, b, a;
         Color(rgba).getRGBA(r, g, b, a);
-        color = adoptCF(CGColorCreateGenericRGB(r, g, b, a));
+        color = adoptCF(createColor(r, g, b, a));
     }
 
     String name;
@@ -164,6 +186,9 @@ struct ResourceUsageData {
 
     HashSet<CALayer *> overlayLayers;
     JSC::VM* vm { nullptr };
+
+    double timeOfNextEdenCollection { 0 };
+    double timeOfNextFullCollection { 0 };
 };
 
 ResourceUsageData::ResourceUsageData()
@@ -203,11 +228,18 @@ void ResourceUsageOverlay::platformInitialize()
 
     m_layer = adoptNS([[WebOverlayLayer alloc] initWithResourceUsageOverlay:this]);
 
-    [overlay().layer().platformLayer() addSublayer:m_layer.get()];
+    m_containerLayer = adoptNS([[CALayer alloc] init]);
+    [m_containerLayer.get() addSublayer:m_layer.get()];
 
+    [m_containerLayer.get() setAnchorPoint:CGPointZero];
+    [m_containerLayer.get() setBounds:CGRectMake(0, 0, normalWidth, normalHeight)];
+
+    [m_layer.get() setAnchorPoint:CGPointZero];
     [m_layer.get() setContentsScale:2.0];
-    [m_layer.get() setBackgroundColor:adoptCF(CGColorCreateGenericRGB(0, 0, 0, 0.8)).get()];
-    [m_layer.get() setFrame:CGRectMake(0, 0, normalWidth, normalHeight)];
+    [m_layer.get() setBackgroundColor:adoptCF(createColor(0, 0, 0, 0.8)).get()];
+    [m_layer.get() setBounds:CGRectMake(0, 0, normalWidth, normalHeight)];
+
+    overlay().layer().setContentsToPlatformLayer(m_layer.get(), GraphicsLayer::NoContentsLayer);
 
     data.overlayLayers.add(m_layer.get());
 }
@@ -221,17 +253,23 @@ void ResourceUsageOverlay::platformDestroy()
 
 static void showText(CGContextRef context, float x, float y, CGColorRef color, const String& text)
 {
+    CGContextSaveGState(context);
+
     CGContextSetTextDrawingMode(context, kCGTextFill);
     CGContextSetFillColorWithColor(context, color);
-
-    CGContextSaveGState(context);
 
     CGContextSetTextMatrix(context, CGAffineTransformMakeScale(1, -1));
 
     // FIXME: Don't use deprecated APIs.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
+#if PLATFORM(IOS)
+    CGContextSelectFont(context, "Courier", 10, kCGEncodingMacRoman);
+#else
     CGContextSelectFont(context, "Menlo", 11, kCGEncodingMacRoman);
+#endif
+
     CString cstr = text.ascii();
     CGContextShowTextAtPoint(context, x, y, cstr.data(), cstr.length());
 #pragma clang diagnostic pop
@@ -241,15 +279,15 @@ static void showText(CGContextRef context, float x, float y, CGColorRef color, c
 
 static void drawGraphLabel(CGContextRef context, float x, float y, const String& text)
 {
-    static CGColorRef black = CGColorCreateGenericRGB(0, 0, 0, 1);
+    static CGColorRef black = createColor(0, 0, 0, 1);
     showText(context, x + 5, y - 3, black, text);
-    static CGColorRef white = CGColorCreateGenericRGB(1, 1, 1, 1);
+    static CGColorRef white = createColor(1, 1, 1, 1);
     showText(context, x + 4, y - 4, white, text);
 }
 
 static void drawCpuHistory(CGContextRef context, float x1, float y1, float y2, RingBuffer<float>& history)
 {
-    static CGColorRef cpuColor = CGColorCreateGenericRGB(0, 1, 0, 1);
+    static CGColorRef cpuColor = createColor(0, 1, 0, 1);
 
     CGContextSetStrokeColorWithColor(context, cpuColor);
     CGContextSetLineWidth(context, 1);
@@ -282,7 +320,7 @@ static void drawGCHistory(CGContextRef context, float x1, float y1, float y2, Ri
 
     CGContextSetLineWidth(context, 1);
 
-    static CGColorRef capacityColor = CGColorCreateGenericRGB(1, 0, 0.3, 1);
+    static CGColorRef capacityColor = createColor(1, 0, 0.3, 1);
     CGContextSetStrokeColorWithColor(context, capacityColor);
 
     size_t i = 0;
@@ -296,7 +334,7 @@ static void drawGCHistory(CGContextRef context, float x1, float y1, float y2, Ri
         i++;
     });
 
-    static CGColorRef sizeColor = CGColorCreateGenericRGB(0.6, 0.5, 0.9, 1);
+    static CGColorRef sizeColor = createColor(0.6, 0.5, 0.9, 1);
     CGContextSetStrokeColorWithColor(context, sizeColor);
 
     i = 0;
@@ -387,7 +425,7 @@ static void drawMemoryPie(CGContextRef context, FloatRect& rect, ResourceUsageDa
 static String formatByteNumber(size_t number)
 {
     if (number >= 1024 * 1048576)
-        return String::format("%.3f GB", static_cast<double>(number) / 1024 * 1048576);
+        return String::format("%.3f GB", static_cast<double>(number) / (1024 * 1048576));
     if (number >= 1048576)
         return String::format("%.2f MB", static_cast<double>(number) / 1048576);
     if (number >= 1024)
@@ -395,10 +433,22 @@ static String formatByteNumber(size_t number)
     return String::format("%lu", number);
 }
 
+static String gcTimerString(double timerFireDate, double now)
+{
+    if (!timerFireDate)
+        return ASCIILiteral("[not scheduled]");
+    return String::format("%g", timerFireDate - now);
+}
+
 void ResourceUsageOverlay::platformDraw(CGContextRef context)
 {
     auto& data = sharedData();
     LockHolder locker(data.lock);
+
+    if (![m_layer.get() contentsAreFlipped]) {
+        CGContextScaleCTM(context, 1, -1);
+        CGContextTranslateCTM(context, 0, -normalHeight);
+    }
 
     CGContextSetShouldAntialias(context, false);
     CGContextSetShouldSmoothFonts(context, false);
@@ -406,7 +456,7 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
     CGRect viewBounds = m_overlay->bounds();
     CGContextClearRect(context, viewBounds);
 
-    static CGColorRef colorForLabels = CGColorCreateGenericRGB(0.9, 0.9, 0.9, 1);
+    static CGColorRef colorForLabels = createColor(0.9, 0.9, 0.9, 1);
     showText(context, 10, 20, colorForLabels, String::format("        CPU: %g", data.cpuHistory.last()));
     showText(context, 10, 30, colorForLabels, "  Footprint: " + formatByteNumber(data.totalDirty.last()));
 
@@ -421,6 +471,10 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
         showText(context, 10, y, category.color.get(), label);
         y += 10;
     }
+
+    double now = WTF::currentTime();
+    showText(context, 10, y + 10, colorForLabels, String::format("    Eden GC: %s", gcTimerString(data.timeOfNextEdenCollection, now).ascii().data()));
+    showText(context, 10, y + 20, colorForLabels, String::format("    Full GC: %s", gcTimerString(data.timeOfNextFullCollection, now).ascii().data()));
 
     drawCpuHistory(context, viewBounds.size.width - 70, 0, viewBounds.size.height, data.cpuHistory);
     drawGCHistory(context, viewBounds.size.width - 140, 0, viewBounds.size.height, data.gcHeapSizeHistory, data.categories[MemoryCategory::GCHeap].history);
@@ -459,8 +513,7 @@ static std::array<TagInfo, 256> pagesPerVMTag()
         }
 
         if (purgeableState == VM_PURGABLE_EMPTY) {
-            static size_t vmPageSize = getpagesize();
-            tags[info.user_tag].reclaimable += size / vmPageSize;
+            tags[info.user_tag].reclaimable += size / vmPageSize();
             continue;
         }
 
@@ -533,7 +586,6 @@ static unsigned categoryForVMTag(unsigned tag)
 
 NO_RETURN void runSamplerThread(void*)
 {
-    static size_t vmPageSize = getpagesize();
     auto& data = sharedData();
     while (1) {
         float cpu = cpuUsage();
@@ -556,10 +608,10 @@ NO_RETURN void runSamplerThread(void*)
             for (auto& category : data.categories) {
                 if (category.isSubcategory) // Only do automatic tallying for top-level categories.
                     continue;
-                category.history.append(pagesPerCategory[category.type].dirty * vmPageSize);
-                category.reclaimableHistory.append(pagesPerCategory[category.type].reclaimable * vmPageSize);
+                category.history.append(pagesPerCategory[category.type].dirty * vmPageSize());
+                category.reclaimableHistory.append(pagesPerCategory[category.type].reclaimable * vmPageSize());
             }
-            data.totalDirty.append(totalDirtyPages * vmPageSize);
+            data.totalDirty.append(totalDirtyPages * vmPageSize());
 
             copyToVector(data.overlayLayers, layers);
 
@@ -572,11 +624,21 @@ NO_RETURN void runSamplerThread(void*)
             // Subtract known subchunks from the bmalloc bucket.
             // FIXME: Handle running with bmalloc disabled.
             data.categories[MemoryCategory::bmalloc].history.last() -= currentGCHeapCapacity + currentGCOwned;
+
+            data.timeOfNextEdenCollection = data.vm->heap.edenActivityCallback()->nextFireTime();
+            data.timeOfNextFullCollection = data.vm->heap.fullActivityCallback()->nextFireTime();
         }
 
         [CATransaction begin];
-        for (CALayer *layer : layers)
+        for (CALayer *layer : layers) {
+            // FIXME: It shouldn't be necessary to update the bounds on every single thread loop iteration,
+            // but something is causing them to become 0x0.
+            CALayer *containerLayer = [layer superlayer];
+            CGRect rect = CGRectMake(0, 0, ResourceUsageOverlay::normalWidth, ResourceUsageOverlay::normalHeight);
+            [layer setBounds:rect];
+            [containerLayer setBounds:rect];
             [layer setNeedsDisplay];
+        }
         [CATransaction commit];
 
         // FIXME: Find a way to get the size of the current GC heap size safely from the sampler thread.

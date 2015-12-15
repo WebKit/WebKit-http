@@ -113,13 +113,14 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         if (!newTreeOutline)
             return;
 
-        if (this._contentTreeOutline)
-            this._contentTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
+        if (this._contentTreeOutline) {
+            this._contentTreeOutline.hidden = true;
+            this._visibleContentTreeOutlines.delete(this._contentTreeOutline);
+        }
 
         this._contentTreeOutline = newTreeOutline;
-        this._contentTreeOutline.element.classList.remove(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
+        this._contentTreeOutline.hidden = false;
 
-        this._visibleContentTreeOutlines.delete(this._contentTreeOutline);
         this._visibleContentTreeOutlines.add(newTreeOutline);
 
         this._updateFilter();
@@ -156,14 +157,12 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
 
     createContentTreeOutline(dontHideByDefault, suppressFiltering)
     {
-        var contentTreeOutlineElement = document.createElement("ol");
-        contentTreeOutlineElement.className = WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementStyleClassName;
-        if (!dontHideByDefault)
-            contentTreeOutlineElement.classList.add(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName);
-        this.contentElement.appendChild(contentTreeOutlineElement);
-
-        var contentTreeOutline = new WebInspector.TreeOutline(contentTreeOutlineElement);
+        let contentTreeOutline = new WebInspector.TreeOutline(document.createElement("ol"));
         contentTreeOutline.allowsRepeatSelection = true;
+        contentTreeOutline.hidden = !dontHideByDefault;
+        contentTreeOutline.element.classList.add(WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementStyleClassName);
+
+        this.contentElement.appendChild(contentTreeOutline.element);
 
         if (!suppressFiltering) {
             contentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementAdded, this._treeElementAddedOrChanged, this);
@@ -175,6 +174,16 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
             this._visibleContentTreeOutlines.add(contentTreeOutline);
 
         return contentTreeOutline;
+    }
+
+    suppressFilteringOnTreeElements(treeElements)
+    {
+        console.assert(Array.isArray(treeElements), "TreeElements should be an array.");
+
+        for (let treeElement of treeElements)
+            treeElement[WebInspector.NavigationSidebarPanel.SuppressFilteringSymbol] = true;
+
+        this._updateFilter();
     }
 
     treeElementForRepresentedObject(representedObject)
@@ -385,7 +394,9 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
             }
         }
 
-        if (matchTextFilter(filterableData.text) && this.matchTreeElementAgainstFilterFunctions(treeElement, flags) && this.matchTreeElementAgainstCustomFilters(treeElement, flags)) {
+        let suppressFiltering = treeElement[WebInspector.NavigationSidebarPanel.SuppressFilteringSymbol];
+
+        if (suppressFiltering || (matchTextFilter(filterableData.text) && this.matchTreeElementAgainstFilterFunctions(treeElement, flags) && this.matchTreeElementAgainstCustomFilters(treeElement, flags))) {
             // Make this element visible since it matches.
             makeVisible();
 
@@ -498,7 +509,7 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
         // Iterate over all the top level tree elements. If any are visible, return early.
         var currentTreeElement = this._contentTreeOutline.children[0];
         while (currentTreeElement) {
-            if (!currentTreeElement.hidden) {
+            if (!currentTreeElement.hidden && !currentTreeElement[WebInspector.NavigationSidebarPanel.SuppressFilteringSymbol]) {
                 // Not hidden, so hide any empty content message.
                 this.hideEmptyContentPlaceholder();
                 this._emptyFilterResults = false;
@@ -717,11 +728,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
     }
 };
 
+WebInspector.NavigationSidebarPanel.SuppressFilteringSymbol = Symbol("supresss-filtering");
 WebInspector.NavigationSidebarPanel.WasExpandedDuringFilteringSymbol = Symbol("was-expanded-during-filtering");
 
 WebInspector.NavigationSidebarPanel.OverflowShadowElementStyleClassName = "overflow-shadow";
 WebInspector.NavigationSidebarPanel.TopOverflowShadowElementStyleClassName = "top";
-WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementHiddenStyleClassName = "hidden";
 WebInspector.NavigationSidebarPanel.ContentTreeOutlineElementStyleClassName = "navigation-sidebar-panel-content-tree-outline";
 WebInspector.NavigationSidebarPanel.HideDisclosureButtonsStyleClassName = "hide-disclosure-buttons";
 WebInspector.NavigationSidebarPanel.EmptyContentPlaceholderElementStyleClassName = "empty-content-placeholder";

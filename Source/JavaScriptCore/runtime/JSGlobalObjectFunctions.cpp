@@ -567,6 +567,12 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
     if (!x.isString())
         return JSValue::encode(x);
 
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    if (!globalObject->evalEnabled()) {
+        exec->vm().throwException(exec, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
+        return JSValue::encode(jsUndefined());
+    }
+
     String s = x.toString(exec)->value(exec);
 
     if (s.is8Bit()) {
@@ -581,7 +587,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
 
     JSGlobalObject* calleeGlobalObject = exec->callee()->globalObject();
     VariableEnvironment emptyTDZVariables; // Indirect eval does not have access to the lexical scope.
-    EvalExecutable* eval = EvalExecutable::create(exec, makeSource(s), false, ThisTDZMode::CheckIfNeeded, &emptyTDZVariables);
+    EvalExecutable* eval = EvalExecutable::create(exec, makeSource(s), false, ThisTDZMode::CheckIfNeeded, false, false, &emptyTDZVariables);
     if (!eval)
         return JSValue::encode(jsUndefined());
 

@@ -39,6 +39,7 @@
 #include "DFGSlowPathGenerator.h"
 #include "DirectArguments.h"
 #include "JITAddGenerator.h"
+#include "JITDivGenerator.h"
 #include "JITMulGenerator.h"
 #include "JITSubGenerator.h"
 #include "JSArrowFunction.h"
@@ -1494,8 +1495,9 @@ void SpeculativeJIT::compileCurrentBlock()
                 m_currentNode->origin.semantic.bytecodeIndex, m_jit.debugOffset());
             dataLog("\n");
         }
-        
-        m_jit.jitAssertNoException();
+
+        if (Options::validateDFGExceptionHandling() && mayExit(m_jit.graph(), m_currentNode) != DoesNotExit)
+            m_jit.jitReleaseAssertNoException();
 
         compile(m_currentNode);
         
@@ -2784,11 +2786,76 @@ void SpeculativeJIT::compileInstanceOf(Node* node)
     blessedBooleanResult(scratchReg, node);
 }
 
+void SpeculativeJIT::compileBitwiseOp(Node* node)
+{
+    NodeType op = node->op();
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (leftChild->isInt32Constant()) {
+        SpeculateInt32Operand op2(this, rightChild);
+        GPRTemporary result(this, Reuse, op2);
+
+        bitOp(op, leftChild->asInt32(), op2.gpr(), result.gpr());
+
+        int32Result(result.gpr(), node);
+
+    } else if (rightChild->isInt32Constant()) {
+        SpeculateInt32Operand op1(this, leftChild);
+        GPRTemporary result(this, Reuse, op1);
+
+        bitOp(op, rightChild->asInt32(), op1.gpr(), result.gpr());
+
+        int32Result(result.gpr(), node);
+
+    } else {
+        SpeculateInt32Operand op1(this, leftChild);
+        SpeculateInt32Operand op2(this, rightChild);
+        GPRTemporary result(this, Reuse, op1, op2);
+        
+        GPRReg reg1 = op1.gpr();
+        GPRReg reg2 = op2.gpr();
+        bitOp(op, reg1, reg2, result.gpr());
+        
+        int32Result(result.gpr(), node);
+    }
+}
+
+void SpeculativeJIT::compileShiftOp(Node* node)
+{
+    NodeType op = node->op();
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (rightChild->isInt32Constant()) {
+        SpeculateInt32Operand op1(this, leftChild);
+        GPRTemporary result(this, Reuse, op1);
+
+        shiftOp(op, op1.gpr(), rightChild->asInt32() & 0x1f, result.gpr());
+
+        int32Result(result.gpr(), node);
+    } else {
+        // Do not allow shift amount to be used as the result, MacroAssembler does not permit this.
+        SpeculateInt32Operand op1(this, leftChild);
+        SpeculateInt32Operand op2(this, rightChild);
+        GPRTemporary result(this, Reuse, op1);
+
+        GPRReg reg1 = op1.gpr();
+        GPRReg reg2 = op2.gpr();
+        shiftOp(op, reg1, reg2, result.gpr());
+
+        int32Result(result.gpr(), node);
+    }
+}
+
 void SpeculativeJIT::compileValueAdd(Node* node)
 {
-    if (isKnownNotNumber(node->child1().node()) || isKnownNotNumber(node->child2().node())) {
-        JSValueOperand left(this, node->child1());
-        JSValueOperand right(this, node->child2());
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
         JSValueRegs leftRegs = left.jsValueRegs();
         JSValueRegs rightRegs = right.jsValueRegs();
 #if USE(JSVALUE64)
@@ -2803,27 +2870,6 @@ void SpeculativeJIT::compileValueAdd(Node* node)
         callOperation(operationValueAddNotNumber, resultRegs, leftRegs, rightRegs);
         m_jit.exceptionCheck();
     
-        jsValueResult(resultRegs, node);
-        return;
-    }
-
-    bool leftIsConstInt32 = node->child1()->isInt32Constant();
-    bool rightIsConstInt32 = node->child2()->isInt32Constant();
-
-    // The DFG does not always fold the sum of 2 constant int operands together.
-    if (leftIsConstInt32 && rightIsConstInt32) {
-#if USE(JSVALUE64)
-        GPRTemporary result(this);
-        JSValueRegs resultRegs = JSValueRegs(result.gpr());
-#else
-        GPRTemporary resultTag(this);
-        GPRTemporary resultPayload(this);
-        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
-#endif
-        int64_t leftConst = node->child1()->asInt32();
-        int64_t rightConst = node->child2()->asInt32();
-        int64_t resultConst = leftConst + rightConst;
-        m_jit.moveValue(JSValue(resultConst), resultRegs);
         jsValueResult(resultRegs, node);
         return;
     }
@@ -2854,22 +2900,24 @@ void SpeculativeJIT::compileValueAdd(Node* node)
     FPRReg scratchFPR = fprScratch.fpr();
 #endif
 
-    SnippetOperand leftOperand(m_state.forNode(node->child1()).resultType());
-    SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
+    SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
+    SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
 
-    if (leftIsConstInt32)
-        leftOperand.setConstInt32(node->child1()->asInt32());
-    if (rightIsConstInt32)
-        rightOperand.setConstInt32(node->child2()->asInt32());
+    // The snippet generator does not support both operands being constant. If the left
+    // operand is already const, we'll ignore the right operand's constness.
+    if (leftChild->isInt32Constant())
+        leftOperand.setConstInt32(leftChild->asInt32());
+    else if (rightChild->isInt32Constant())
+        rightOperand.setConstInt32(rightChild->asInt32());
 
     ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
 
     if (!leftOperand.isConst()) {
-        left = JSValueOperand(this, node->child1());
+        left = JSValueOperand(this, leftChild);
         leftRegs = left->jsValueRegs();
     }
     if (!rightOperand.isConst()) {
-        right = JSValueOperand(this, node->child2());
+        right = JSValueOperand(this, rightChild);
         rightRegs = right->jsValueRegs();
     }
 
@@ -2884,14 +2932,12 @@ void SpeculativeJIT::compileValueAdd(Node* node)
 
     silentSpillAllRegisters(resultRegs);
 
-    if (leftIsConstInt32) {
+    if (leftOperand.isConst()) {
         leftRegs = resultRegs;
-        int64_t leftConst = node->child1()->asInt32();
-        m_jit.moveValue(JSValue(leftConst), leftRegs);
-    } else if (rightIsConstInt32) {
+        m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+    } else if (rightOperand.isConst()) {
         rightRegs = resultRegs;
-        int64_t rightConst = node->child2()->asInt32();
-        m_jit.moveValue(JSValue(rightConst), rightRegs);
+        m_jit.moveValue(rightChild->asJSValue(), rightRegs);
     }
 
     callOperation(operationValueAdd, resultRegs, leftRegs, rightRegs);
@@ -3207,8 +3253,11 @@ void SpeculativeJIT::compileArithSub(Node* node)
     }
 
     case UntypedUse: {
-        JSValueOperand left(this, node->child1());
-        JSValueOperand right(this, node->child2());
+        Edge& leftChild = node->child1();
+        Edge& rightChild = node->child2();
+
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
 
         JSValueRegs leftRegs = left.jsValueRegs();
         JSValueRegs rightRegs = right.jsValueRegs();
@@ -3233,8 +3282,8 @@ void SpeculativeJIT::compileArithSub(Node* node)
         FPRReg scratchFPR = fprScratch.fpr();
 #endif
 
-        SnippetOperand leftOperand(m_state.forNode(node->child1()).resultType());
-        SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
+        SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
+        SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
 
         JITSubGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
             leftFPR, rightFPR, scratchGPR, scratchFPR);
@@ -3499,12 +3548,14 @@ void SpeculativeJIT::compileArithMul(Node* node)
         SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
         SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
 
+        // The snippet generator does not support both operands being constant. If the left
+        // operand is already const, we'll ignore the right operand's constness.
         if (leftChild->isInt32Constant())
             leftOperand.setConstInt32(leftChild->asInt32());
-        if (rightChild->isInt32Constant())
+        else if (rightChild->isInt32Constant())
             rightOperand.setConstInt32(rightChild->asInt32());
 
-        RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+        ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
 
         if (!leftOperand.isPositiveConstInt32()) {
             left = JSValueOperand(this, leftChild);
@@ -3527,13 +3578,10 @@ void SpeculativeJIT::compileArithMul(Node* node)
 
         if (leftOperand.isPositiveConstInt32()) {
             leftRegs = resultRegs;
-            int64_t leftConst = leftOperand.asConstInt32();
-            m_jit.moveValue(JSValue(leftConst), leftRegs);
-        }
-        if (rightOperand.isPositiveConstInt32()) {
+            m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+        } else if (rightOperand.isPositiveConstInt32()) {
             rightRegs = resultRegs;
-            int64_t rightConst = rightOperand.asConstInt32();
-            m_jit.moveValue(JSValue(rightConst), rightRegs);
+            m_jit.moveValue(rightChild->asJSValue(), rightRegs);
         }
 
         callOperation(operationValueMul, resultRegs, leftRegs, rightRegs);
@@ -3685,7 +3733,117 @@ void SpeculativeJIT::compileArithDiv(Node* node)
         doubleResult(result.fpr(), node);
         break;
     }
-        
+
+    case UntypedUse: {
+        Edge& leftChild = node->child1();
+        Edge& rightChild = node->child2();
+
+        if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+            JSValueOperand left(this, leftChild);
+            JSValueOperand right(this, rightChild);
+            JSValueRegs leftRegs = left.jsValueRegs();
+            JSValueRegs rightRegs = right.jsValueRegs();
+#if USE(JSVALUE64)
+            GPRTemporary result(this);
+            JSValueRegs resultRegs = JSValueRegs(result.gpr());
+#else
+            GPRTemporary resultTag(this);
+            GPRTemporary resultPayload(this);
+            JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+#endif
+            flushRegisters();
+            callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
+            m_jit.exceptionCheck();
+
+            jsValueResult(resultRegs, node);
+            return;
+        }
+
+        Optional<JSValueOperand> left;
+        Optional<JSValueOperand> right;
+
+        JSValueRegs leftRegs;
+        JSValueRegs rightRegs;
+
+        FPRTemporary leftNumber(this);
+        FPRTemporary rightNumber(this);
+        FPRReg leftFPR = leftNumber.fpr();
+        FPRReg rightFPR = rightNumber.fpr();
+        FPRTemporary fprScratch(this);
+        FPRReg scratchFPR = fprScratch.fpr();
+
+#if USE(JSVALUE64)
+        GPRTemporary result(this);
+        JSValueRegs resultRegs = JSValueRegs(result.gpr());
+        GPRTemporary scratch(this);
+        GPRReg scratchGPR = scratch.gpr();
+#else
+        GPRTemporary resultTag(this);
+        GPRTemporary resultPayload(this);
+        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+        GPRReg scratchGPR = resultTag.gpr();
+#endif
+
+        SnippetOperand leftOperand(m_state.forNode(leftChild).resultType());
+        SnippetOperand rightOperand(m_state.forNode(rightChild).resultType());
+
+        if (leftChild->isInt32Constant())
+            leftOperand.setConstInt32(leftChild->asInt32());
+#if USE(JSVALUE64)
+        else if (leftChild->isDoubleConstant())
+            leftOperand.setConstDouble(leftChild->asNumber());
+#endif
+
+        if (leftOperand.isConst()) {
+            // The snippet generator only supports 1 argument as a constant.
+            // Ignore the rightChild's const-ness.
+        } else if (rightChild->isInt32Constant())
+            rightOperand.setConstInt32(rightChild->asInt32());
+#if USE(JSVALUE64)
+        else if (rightChild->isDoubleConstant())
+            rightOperand.setConstDouble(rightChild->asNumber());
+#endif
+
+        RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+
+        if (!leftOperand.isConst()) {
+            left = JSValueOperand(this, leftChild);
+            leftRegs = left->jsValueRegs();
+        }
+        if (!rightOperand.isConst()) {
+            right = JSValueOperand(this, rightChild);
+            rightRegs = right->jsValueRegs();
+        }
+
+        JITDivGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
+            leftFPR, rightFPR, scratchGPR, scratchFPR);
+        gen.generateFastPath(m_jit);
+
+        ASSERT(gen.didEmitFastPath());
+        gen.endJumpList().append(m_jit.jump());
+
+        gen.slowPathJumpList().link(&m_jit);
+        silentSpillAllRegisters(resultRegs);
+
+        if (leftOperand.isConst()) {
+            leftRegs = resultRegs;
+            m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+        }
+        if (rightOperand.isConst()) {
+            rightRegs = resultRegs;
+            m_jit.moveValue(rightChild->asJSValue(), rightRegs);
+        }
+
+        callOperation(operationValueDiv, resultRegs, leftRegs, rightRegs);
+
+        silentFillAllRegisters(resultRegs);
+        m_jit.exceptionCheck();
+
+        gen.endJumpList().link(&m_jit);
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
     default:
         RELEASE_ASSERT_NOT_REACHED();
         break;
@@ -4030,8 +4188,7 @@ void SpeculativeJIT::compileArithSqrt(Node* node)
 static MacroAssembler::Jump compileArithPowIntegerFastPath(JITCompiler& assembler, FPRReg xOperand, GPRReg yOperand, FPRReg result)
 {
     MacroAssembler::JumpList skipFastPath;
-    skipFastPath.append(assembler.branch32(MacroAssembler::LessThan, yOperand, MacroAssembler::TrustedImm32(0)));
-    skipFastPath.append(assembler.branch32(MacroAssembler::GreaterThan, yOperand, MacroAssembler::TrustedImm32(1000)));
+    skipFastPath.append(assembler.branch32(MacroAssembler::Above, yOperand, MacroAssembler::TrustedImm32(1000)));
 
     static const double oneConstant = 1.0;
     assembler.loadDouble(MacroAssembler::TrustedImmPtr(&oneConstant), result);
@@ -4839,15 +4996,6 @@ void SpeculativeJIT::compileGetScope(Node* node)
     SpeculateCellOperand function(this, node->child1());
     GPRTemporary result(this, Reuse, function);
     m_jit.loadPtr(JITCompiler::Address(function.gpr(), JSFunction::offsetOfScopeChain()), result.gpr());
-    cellResult(result.gpr(), node);
-}
-
-    
-void SpeculativeJIT::compileLoadArrowFunctionThis(Node* node)
-{
-    SpeculateCellOperand function(this, node->child1());
-    GPRTemporary result(this, Reuse, function);
-    m_jit.loadPtr(JITCompiler::Address(function.gpr(), JSArrowFunction::offsetOfThisValue()), result.gpr());
     cellResult(result.gpr(), node);
 }
     

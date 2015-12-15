@@ -58,7 +58,7 @@ static JSValue putOrAdd(JSC::ExecState& state, bool overwrite)
     if (UNLIKELY(argsCount < 1))
         return JSValue::decode(throwVMError(&state, createNotEnoughArgumentsError(&state)));
 
-    ExceptionCode ec = 0;
+    ExceptionCodeWithMessage ec;
     auto value = state.uncheckedArgument(0);
 
     if (argsCount == 1) {
@@ -120,7 +120,7 @@ JSValue JSIDBObjectStore::createIndex(ExecState& state)
 
     JSValue optionsValue = state.argument(2);
     if (!optionsValue.isUndefinedOrNull() && !optionsValue.isObject())
-        return throwTypeError(&state, "Not an object.");
+        return throwTypeError(&state, "Failed to execute 'createIndex' on 'IDBObjectStore': No function was found that matched the signature provided.");
 
     bool unique = false;
     bool multiEntry = false;
@@ -134,7 +134,7 @@ JSValue JSIDBObjectStore::createIndex(ExecState& state)
             return jsUndefined();
     }
 
-    ExceptionCode ec = 0;
+    ExceptionCodeWithMessage ec;
     JSValue result = toJS(&state, globalObject(), wrapped().createIndex(context, name, keyPath, unique, multiEntry, ec).get());
     setDOMException(&state, ec);
     return result;

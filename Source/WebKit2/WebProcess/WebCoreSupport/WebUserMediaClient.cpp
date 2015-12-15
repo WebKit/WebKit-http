@@ -39,15 +39,24 @@ void WebUserMediaClient::pageDestroyed()
     delete this;
 }
 
-void WebUserMediaClient::requestPermission(Ref<UserMediaRequest>&& prRequest)
+void WebUserMediaClient::requestUserMediaAccess(UserMediaRequest& request)
 {
-    UserMediaRequest& request = prRequest.leakRef();
-    m_page.userMediaPermissionRequestManager().startRequest(request);
+    m_page.userMediaPermissionRequestManager().startUserMediaRequest(request);
 }
 
-void WebUserMediaClient::cancelRequest(UserMediaRequest& request)
+void WebUserMediaClient::cancelUserMediaAccessRequest(UserMediaRequest& request)
 {
-    m_page.userMediaPermissionRequestManager().cancelRequest(request);
+    m_page.userMediaPermissionRequestManager().cancelUserMediaRequest(request);
+}
+
+void WebUserMediaClient::checkUserMediaPermission(WebCore::UserMediaPermissionCheck& request)
+{
+    m_page.userMediaPermissionRequestManager().startUserMediaPermissionCheck(request);
+}
+
+void WebUserMediaClient::cancelUserMediaPermissionCheck(WebCore::UserMediaPermissionCheck& request)
+{
+    m_page.userMediaPermissionRequestManager().cancelUserMediaPermissionCheck(request);
 }
 
 } // namespace WebKit;

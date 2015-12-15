@@ -29,6 +29,8 @@
 #if ENABLE(FTL_JIT)
 #if FTL_USES_B3
 
+#include "B3MathExtras.h"
+
 namespace JSC { namespace FTL {
 
 Output::Output(State& state)
@@ -57,7 +59,7 @@ void Output::appendTo(LBasicBlock block)
     m_block = block;
 }
 
-LValue Output::lockedStackSlot(size_t bytes)
+B3::StackSlotValue* Output::lockedStackSlot(size_t bytes)
 {
     return m_block->appendNew<B3::StackSlotValue>(m_proc, origin(), bytes, B3::StackSlotKind::Locked);
 }
@@ -67,6 +69,13 @@ LValue Output::load(TypedPointer pointer, LType type)
     LValue load = m_block->appendNew<B3::MemoryValue>(m_proc, B3::Load, type, origin(), pointer.value());
     pointer.heap().decorateInstruction(load, *m_heaps);
     return load;
+}
+
+LValue Output::doublePowi(LValue x, LValue y)
+{
+    auto result = powDoubleInt32(m_proc, m_block, origin(), x, y);
+    m_block = result.first;
+    return result.second;
 }
 
 LValue Output::load8SignExt32(TypedPointer pointer)
@@ -97,16 +106,21 @@ LValue Output::load16ZeroExt32(TypedPointer pointer)
     return load;
 }
 
-LValue Output::loadFloatToDouble(TypedPointer pointer)
-{
-    LValue load = m_block->appendNew<B3::MemoryValue>(m_proc, B3::LoadFloat, B3::Double, origin(), pointer.value());
-    pointer.heap().decorateInstruction(load, *m_heaps);
-    return load;
-}
-
 void Output::store(LValue value, TypedPointer pointer)
 {
     LValue store = m_block->appendNew<B3::MemoryValue>(m_proc, B3::Store, origin(), value, pointer.value());
+    pointer.heap().decorateInstruction(store, *m_heaps);
+}
+
+void Output::store32As8(LValue value, TypedPointer pointer)
+{
+    LValue store = m_block->appendNew<B3::MemoryValue>(m_proc, B3::Store8, origin(), value, pointer.value());
+    pointer.heap().decorateInstruction(store, *m_heaps);
+}
+
+void Output::store32As16(LValue value, TypedPointer pointer)
+{
+    LValue store = m_block->appendNew<B3::MemoryValue>(m_proc, B3::Store16, origin(), value, pointer.value());
     pointer.heap().decorateInstruction(store, *m_heaps);
 }
 

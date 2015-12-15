@@ -2912,6 +2912,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setMediaSourceEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaSourceEnabledKey()));
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    settings.setMockCaptureDevicesEnabled(store.getBoolValueForKey(WebPreferencesKey::mockCaptureDevicesEnabledKey()));
+#endif
+
     settings.setShouldConvertPositionStyleOnCopy(store.getBoolValueForKey(WebPreferencesKey::shouldConvertPositionStyleOnCopyKey()));
 
     settings.setStandalone(store.getBoolValueForKey(WebPreferencesKey::standaloneKey()));
@@ -3374,6 +3378,11 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 void WebPage::didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& audioDeviceUID, const String& videoDeviceUID)
 {
     m_userMediaPermissionRequestManager.didReceiveUserMediaPermissionDecision(userMediaID, allowed, audioDeviceUID, videoDeviceUID);
+}
+
+void WebPage::didCompleteUserMediaPermissionCheck(uint64_t userMediaID, bool allowed)
+{
+    m_userMediaPermissionRequestManager.didCompleteUserMediaPermissionCheck(userMediaID, allowed);
 }
 #endif
 

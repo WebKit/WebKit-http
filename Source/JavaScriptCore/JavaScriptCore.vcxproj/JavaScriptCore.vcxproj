@@ -644,6 +644,9 @@
     <ClCompile Include="..\jit\JITAddGenerator.cpp" />
     <ClCompile Include="..\jit\JITArithmetic.cpp" />
     <ClCompile Include="..\jit\JITArithmetic32_64.cpp" />
+    <ClCompile Include="..\jit\JITBitAndGenerator.cpp" />
+    <ClCompile Include="..\jit\JITBitOrGenerator.cpp" />
+    <ClCompile Include="..\jit\JITBitXorGenerator.cpp" />
     <ClCompile Include="..\jit\JITCall.cpp" />
     <ClCompile Include="..\jit\JITCall32_64.cpp" />
     <ClCompile Include="..\jit\JITCode.cpp" />
@@ -651,6 +654,7 @@
     <ClCompile Include="..\jit\JITDivGenerator.cpp" />
     <ClCompile Include="..\jit\JITExceptions.cpp" />
     <ClCompile Include="..\jit\JITInlineCacheGenerator.cpp" />
+    <ClCompile Include="..\jit\JITLeftShiftGenerator.cpp" />
     <ClCompile Include="..\jit\JITMulGenerator.cpp" />
     <ClCompile Include="..\jit\JITOpcodes.cpp" />
     <ClCompile Include="..\jit\JITOpcodes32_64.cpp" />
@@ -658,6 +662,7 @@
     <ClCompile Include="..\jit\JITOperationsMSVC64.cpp" />
     <ClCompile Include="..\jit\JITPropertyAccess.cpp" />
     <ClCompile Include="..\jit\JITPropertyAccess32_64.cpp" />
+    <ClCompile Include="..\jit\JITRightShiftGenerator.cpp" />
     <ClCompile Include="..\jit\JITStubRoutine.cpp" />
     <ClCompile Include="..\jit\JITSubGenerator.cpp" />
     <ClCompile Include="..\jit\JITThunks.cpp" />
@@ -1314,7 +1319,6 @@
     <ClInclude Include="..\ftl\FTLForOSREntryJITCode.h" />
     <ClInclude Include="..\ftl\FTLGeneratedFunction.h" />
     <ClInclude Include="..\ftl\FTLInlineCacheDescriptor.h" />
-    <ClInclude Include="..\ftl\FTLInlineCacheDescriptorInlines.h" />
     <ClInclude Include="..\ftl\FTLInlineCacheSize.h" />
     <ClInclude Include="..\ftl\FTLIntrinsicRepository.h" />
     <ClInclude Include="..\ftl\FTLJITCode.h" />
@@ -1472,6 +1476,10 @@
     <ClInclude Include="..\jit\HostCallReturnValue.h" />
     <ClInclude Include="..\jit\JIT.h" />
     <ClInclude Include="..\jit\JITAddGenerator.h" />
+    <ClInclude Include="..\jit\JITBitAndGenerator.h" />
+    <ClInclude Include="..\jit\JITBitBinaryOpGenerator.h" />
+    <ClInclude Include="..\jit\JITBitOrGenerator.h" />
+    <ClInclude Include="..\jit\JITBitXorGenerator.h" />
     <ClInclude Include="..\jit\JITCode.h" />
     <ClInclude Include="..\jit\JITCompilationEffort.h" />
     <ClInclude Include="..\jit\JITDisassembler.h" />
@@ -1479,8 +1487,10 @@
     <ClInclude Include="..\jit\JITExceptions.h" />
     <ClInclude Include="..\jit\JITInlineCacheGenerator.h" />
     <ClInclude Include="..\jit\JITInlines.h" />
+    <ClInclude Include="..\jit\JITLeftShiftGenerator.h" />
     <ClInclude Include="..\jit\JITMulGenerator.h" />
     <ClInclude Include="..\jit\JITOperations.h" />
+    <ClInclude Include="..\jit\JITRightShiftGenerator.h" />
     <ClInclude Include="..\jit\JITStubRoutine.h" />
     <ClInclude Include="..\jit\JITSubGenerator.h" />
     <ClInclude Include="..\jit\JITThunks.h" />

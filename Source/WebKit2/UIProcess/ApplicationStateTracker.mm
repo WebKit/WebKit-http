@@ -31,10 +31,9 @@
 #import "AssertionServicesSPI.h"
 #import "SandboxUtilities.h"
 #import "UIKitSPI.h"
-#import "WKContentView.h"
-#import <WebCore/SecuritySPI.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/spi/cocoa/SecuritySPI.h>
 
 @interface UIWindow (WKDetails)
 - (BOOL)_isHostedInAnotherProcess;
@@ -74,7 +73,7 @@ static bool isBackgroundState(BKSApplicationState state)
     }
 }
 
-ApplicationStateTracker::ApplicationStateTracker(WKContentView *view, SEL didEnterBackgroundSelector, SEL willEnterForegroundSelector)
+ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackgroundSelector, SEL willEnterForegroundSelector)
     : m_view(view)
     , m_didEnterBackgroundSelector(didEnterBackgroundSelector)
     , m_willEnterForegroundSelector(willEnterForegroundSelector)

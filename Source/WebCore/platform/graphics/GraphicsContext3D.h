@@ -60,7 +60,7 @@
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS WebGLLayer;
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN_CAIRO) || PLATFORM(WPE)
 typedef unsigned int GLuint;
 #endif
 

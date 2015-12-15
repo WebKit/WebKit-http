@@ -185,8 +185,8 @@ private:
         case ArithAdd:
         case ArithSub: {
             if (op == ArithSub
-                && (Node::shouldSpeculateUntypedForArithmetic(node->child1().node(), node->child2().node())
-                    || m_graph.hasExitSite(node->origin.semantic, BadType))) {
+                && Node::shouldSpeculateUntypedForArithmetic(node->child1().node(), node->child2().node())
+                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
 
                 fixEdge<UntypedUse>(node->child1());
                 fixEdge<UntypedUse>(node->child2());
@@ -230,7 +230,7 @@ private:
             Edge& leftChild = node->child1();
             Edge& rightChild = node->child2();
             if (Node::shouldSpeculateUntypedForArithmetic(leftChild.node(), rightChild.node())
-                || m_graph.hasExitSite(node->origin.semantic, BadType)) {
+                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
                 fixEdge<UntypedUse>(leftChild);
                 fixEdge<UntypedUse>(rightChild);
                 node->setResult(NodeResultJS);
@@ -265,11 +265,21 @@ private:
 
         case ArithDiv:
         case ArithMod: {
-            if (Node::shouldSpeculateInt32OrBooleanForArithmetic(node->child1().node(), node->child2().node())
+            Edge& leftChild = node->child1();
+            Edge& rightChild = node->child2();
+            if (op == ArithDiv
+                && Node::shouldSpeculateUntypedForArithmetic(leftChild.node(), rightChild.node())
+                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
+                fixEdge<UntypedUse>(leftChild);
+                fixEdge<UntypedUse>(rightChild);
+                node->setResult(NodeResultJS);
+                break;
+            }
+            if (Node::shouldSpeculateInt32OrBooleanForArithmetic(leftChild.node(), rightChild.node())
                 && node->canSpeculateInt32(FixupPass)) {
                 if (optimizeForX86() || optimizeForARM64() || optimizeForARMv7IDIVSupported()) {
-                    fixIntOrBooleanEdge(node->child1());
-                    fixIntOrBooleanEdge(node->child2());
+                    fixIntOrBooleanEdge(leftChild);
+                    fixIntOrBooleanEdge(rightChild);
                     if (bytecodeCanTruncateInteger(node->arithNodeFlags()))
                         node->setArithMode(Arith::Unchecked);
                     else if (bytecodeCanIgnoreNegativeZero(node->arithNodeFlags()))
@@ -280,8 +290,8 @@ private:
                 }
                 
                 // This will cause conversion nodes to be inserted later.
-                fixDoubleOrBooleanEdge(node->child1());
-                fixDoubleOrBooleanEdge(node->child2());
+                fixDoubleOrBooleanEdge(leftChild);
+                fixDoubleOrBooleanEdge(rightChild);
                 
                 // We don't need to do ref'ing on the children because we're stealing them from
                 // the original division.
@@ -297,8 +307,8 @@ private:
                     node->setArithMode(Arith::CheckOverflowAndNegativeZero);
                 break;
             }
-            fixDoubleOrBooleanEdge(node->child1());
-            fixDoubleOrBooleanEdge(node->child2());
+            fixDoubleOrBooleanEdge(leftChild);
+            fixDoubleOrBooleanEdge(rightChild);
             node->setResult(NodeResultDouble);
             break;
         }
@@ -338,6 +348,11 @@ private:
 
             fixDoubleOrBooleanEdge(node->child1());
             fixDoubleOrBooleanEdge(node->child2());
+            break;
+        }
+
+        case ArithRandom: {
+            node->setResult(NodeResultDouble);
             break;
         }
 
@@ -925,6 +940,8 @@ private:
         }
             
         case NewArray: {
+            watchHavingABadTime(node);
+            
             for (unsigned i = m_graph.varArgNumChildren(node); i--;) {
                 node->setIndexingType(
                     leastUpperBoundOfIndexingTypeAndType(
@@ -962,6 +979,8 @@ private:
         }
             
         case NewTypedArray: {
+            watchHavingABadTime(node);
+            
             if (node->child1()->shouldSpeculateInt32()) {
                 fixEdge<Int32Use>(node->child1());
                 node->clearFlags(NodeMustGenerate);
@@ -971,6 +990,7 @@ private:
         }
             
         case NewArrayWithSize: {
+            watchHavingABadTime(node);
             fixEdge<Int32Use>(node->child1());
             break;
         }
@@ -1018,11 +1038,6 @@ private:
         case PutToArguments: {
             fixEdge<KnownCellUse>(node->child1());
             speculateForBarrier(node->child2());
-            break;
-        }
-
-        case LoadArrowFunctionThis: {
-            fixEdge<KnownCellUse>(node->child1());
             break;
         }
 
@@ -1449,6 +1464,20 @@ private:
             break;
 #endif
         }
+    }
+
+    void watchHavingABadTime(Node* node)
+    {
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+
+        // If this global object is not having a bad time, watch it. We go down this path anytime the code
+        // does an array allocation. The types of array allocations may change if we start to have a bad
+        // time. It's easier to reason about this if we know that whenever the types change after we start
+        // optimizing, the code just gets thrown out. Doing this at FixupPhase is just early enough, since
+        // prior to this point nobody should have been doing optimizations based on the indexing type of
+        // the allocation.
+        if (!globalObject->isHavingABadTime())
+            m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
     }
     
     template<UseKind useKind>

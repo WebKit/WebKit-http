@@ -152,6 +152,7 @@ namespace JSC { namespace DFG {
     macro(ArithMax, NodeResultNumber) \
     macro(ArithFRound, NodeResultNumber) \
     macro(ArithPow, NodeResultNumber) \
+    macro(ArithRandom, NodeResultDouble | NodeMustGenerate) \
     macro(ArithRound, NodeResultNumber) \
     macro(ArithSqrt, NodeResultNumber) \
     macro(ArithSin, NodeResultNumber) \
@@ -207,7 +208,6 @@ namespace JSC { namespace DFG {
     macro(MultiPutByOffset, NodeMustGenerate) \
     macro(GetArrayLength, NodeResultInt32) \
     macro(GetTypedArrayByteOffset, NodeResultInt32) \
-    macro(LoadArrowFunctionThis, NodeResultJS) \
     macro(GetScope, NodeResultJS) \
     macro(SkipScope, NodeResultJS) \
     macro(GetClosureVar, NodeResultJS) \

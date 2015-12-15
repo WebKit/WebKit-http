@@ -146,7 +146,10 @@ RegisterID* RegExpNode::emitBytecode(BytecodeGenerator& generator, RegisterID* d
 
 RegisterID* ThisNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
-    if (m_shouldAlwaysEmitTDZCheck || generator.constructorKind() == ConstructorKind::Derived || generator.generatorThisMode() == GeneratorThisMode::Empty)
+    if (generator.constructorKind() == ConstructorKind::Derived && generator.needsToUpdateArrowFunctionContext())
+        generator.emitLoadThisFromArrowFunctionLexicalEnvironment();
+
+    if (m_shouldAlwaysEmitTDZCheck || generator.constructorKind() == ConstructorKind::Derived || generator.generatorThisMode() == GeneratorThisMode::Empty || generator.isDerivedConstructorContext())
         generator.emitTDZCheck(generator.thisRegister());
 
     if (dst == generator.ignoredResult())
@@ -164,6 +167,9 @@ RegisterID* SuperNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
 {
     if (dst == generator.ignoredResult())
         return 0;
+
+    if (generator.isDerivedConstructorContext())
+        return generator.emitGetById(generator.finalDestination(dst), generator.emitLoadDerivedConstructorFromArrowFunctionLexicalEnvironment(), generator.propertyNames().underscoreProto);
 
     RegisterID callee;
     callee.setIndex(JSStack::Callee);
@@ -596,11 +602,16 @@ void PropertyListNode::emitPutConstantProperty(BytecodeGenerator& generator, Reg
 
 // ------------------------------ BracketAccessorNode --------------------------------
 
+static bool isNonIndexStringElement(ExpressionNode& element)
+{
+    return element.isString() && !parseIndex(static_cast<StringNode&>(element).value());
+}
+
 RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     if (m_base->isSuperNode()) {
         // FIXME: Should we generate the profiler info?
-        if (m_subscript->isString()) {
+        if (isNonIndexStringElement(*m_subscript)) {
             const Identifier& id = static_cast<StringNode*>(m_subscript)->value();
             return generator.emitGetById(generator.finalDestination(dst), emitSuperBaseForCallee(generator), id);
         }
@@ -610,7 +621,7 @@ RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, Regi
     RegisterID* ret;
     RegisterID* finalDest = generator.finalDestination(dst);
 
-    if (m_subscript->isString()) {
+    if (isNonIndexStringElement(*m_subscript)) {
         RefPtr<RegisterID> base = generator.emitNode(m_base);
         ret = generator.emitGetById(finalDest, base.get(), static_cast<StringNode*>(m_subscript)->value());
     } else {
@@ -696,6 +707,21 @@ CallArguments::CallArguments(BytecodeGenerator& generator, ArgumentsNode* argume
 
 RegisterID* EvalFunctionCallNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
+    // We need try to load 'this' before call eval in constructor, because 'this' can created by 'super' in some of the arrow function
+    // var A = class A {
+    //   constructor () { this.id = 'A'; }
+    // }
+    //
+    // var B = class B extend A {
+    //    constructor () {
+    //       var arrow = () => super();
+    //       arrow();
+    //       eval("this.id = 'B'");
+    //    }
+    // }
+    if (generator.constructorKind() == ConstructorKind::Derived && generator.needsToUpdateArrowFunctionContext())
+        generator.emitLoadThisFromArrowFunctionLexicalEnvironment();
+
     Variable var = generator.variable(generator.propertyNames().eval);
     if (RegisterID* local = var.local()) {
         RefPtr<RegisterID> func = generator.emitMove(generator.tempDestination(dst), local);
@@ -723,11 +749,16 @@ RegisterID* FunctionCallValueNode::emitBytecode(BytecodeGenerator& generator, Re
     RefPtr<RegisterID> returnValue = generator.finalDestination(dst, func.get());
     CallArguments callArguments(generator, m_args);
     if (m_expr->isSuperNode()) {
-        ASSERT(generator.isConstructor());
-        ASSERT(generator.constructorKind() == ConstructorKind::Derived);
+        ASSERT(generator.isConstructor() || generator.isDerivedConstructorContext());
+        ASSERT(generator.constructorKind() == ConstructorKind::Derived || generator.isDerivedConstructorContext());
         generator.emitMove(callArguments.thisRegister(), generator.newTarget());
         RegisterID* ret = generator.emitConstruct(returnValue.get(), func.get(), NoExpectedFunction, callArguments, divot(), divotStart(), divotEnd());
         generator.emitMove(generator.thisRegister(), ret);
+        
+        bool isConstructorKindDerived = generator.constructorKind() == ConstructorKind::Derived;
+        if (generator.isDerivedConstructorContext() || (isConstructorKindDerived && generator.needsToUpdateArrowFunctionContext()))
+            generator.emitPutThisToArrowFunctionContextScope();
+        
         return ret;
     }
     generator.emitLoad(callArguments.thisRegister(), jsUndefined());
@@ -820,20 +851,20 @@ RegisterID* BytecodeIntrinsicNode::emit_intrinsic_toString(BytecodeGenerator& ge
 RegisterID* FunctionCallBracketNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     bool baseIsSuper = m_base->isSuperNode();
-    bool subscriptIsString = m_subscript->isString();
+    bool subscriptIsNonIndexString = isNonIndexStringElement(*m_subscript);
 
     RefPtr<RegisterID> base;
     if (baseIsSuper)
         base = emitSuperBaseForCallee(generator);
     else {
-        if (subscriptIsString)
+        if (subscriptIsNonIndexString)
             base = generator.emitNode(m_base);
         else
             base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
     }
 
     RefPtr<RegisterID> function;
-    if (subscriptIsString) {
+    if (subscriptIsNonIndexString) {
         generator.emitExpressionInfo(subexpressionDivot(), subexpressionStart(), subexpressionEnd());
         function = generator.emitGetById(generator.tempDestination(dst), base.get(), static_cast<StringNode*>(m_subscript)->value());
     } else {
@@ -1924,7 +1955,7 @@ RegisterID* AssignBracketNode::emitBytecode(BytecodeGenerator& generator, Regist
     generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
     RegisterID* forwardResult = (dst == generator.ignoredResult()) ? result.get() : generator.moveToDestinationIfNeeded(generator.tempDestination(result.get()), result.get());
 
-    if (m_subscript->isString())
+    if (isNonIndexStringElement(*m_subscript))
         generator.emitPutById(base.get(), static_cast<StringNode*>(m_subscript)->value(), forwardResult);
     else
         generator.emitPutByVal(base.get(), property.get(), forwardResult);
@@ -3052,6 +3083,9 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
 
         // If there is no return we must automatically insert one.
         if (!returnNode) {
+            if (generator.constructorKind() == ConstructorKind::Derived && generator.needsToUpdateArrowFunctionContext())
+                generator.emitLoadThisFromArrowFunctionLexicalEnvironment(); // Arrow function can invoke 'super' in constructor and before leave constructor we need load 'this' from lexical arrow function environment
+            
             RegisterID* r0 = generator.isConstructor() ? generator.thisRegister() : generator.emitLoad(0, jsUndefined());
             generator.emitProfileType(r0, ProfileTypeBytecodeFunctionReturnStatement); // Do not emit expression info for this profile because it's not in the user's source code.
             ASSERT(startOffset() >= lineStartOffset());
@@ -3429,9 +3463,16 @@ void ObjectPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs)
     for (size_t i = 0; i < m_targetPatterns.size(); i++) {
         auto& target = m_targetPatterns[i];
         RefPtr<RegisterID> temp = generator.newTemporary();
-        if (!target.propertyExpression)
-            generator.emitGetById(temp.get(), rhs, target.propertyName);
-        else {
+        if (!target.propertyExpression) {
+            // Should not emit get_by_id for indexed ones.
+            Optional<uint32_t> optionalIndex = parseIndex(target.propertyName);
+            if (!optionalIndex)
+                generator.emitGetById(temp.get(), rhs, target.propertyName);
+            else {
+                RefPtr<RegisterID> index = generator.emitLoad(generator.newTemporary(), jsNumber(optionalIndex.value()));
+                generator.emitGetByVal(temp.get(), rhs, index.get());
+            }
+        } else {
             RefPtr<RegisterID> propertyName = generator.emitNode(target.propertyExpression);
             generator.emitGetByVal(temp.get(), rhs, propertyName.get());
         }

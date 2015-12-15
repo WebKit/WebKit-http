@@ -31,6 +31,7 @@
 #include "BitmapTextureGL.h"
 #include "TextureMapperGL.h"
 #include "TextureMapperLayer.h"
+#include "TextureMapperPlatformLayerBuffer.h"
 
 const double s_releaseUnusedSecondsTolerance = 1;
 const double s_releaseUnusedBuffersTimerInterval = 1.2;
@@ -38,57 +39,66 @@ const double s_releaseUnusedBuffersTimerInterval = 1.2;
 namespace WebCore {
 
 TextureMapperPlatformLayerProxy::TextureMapperPlatformLayerProxy()
-    : m_compositor(0)
-    , m_targetLayer(0)
-    , m_runLoop(RunLoop::current())
-    , m_releaseUnusedBuffersTimer(m_runLoop, this, &TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired)
+    : m_compositor(nullptr)
+    , m_targetLayer(nullptr)
+    , m_releaseUnusedBuffersTimer(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired)
 {
 }
 
 TextureMapperPlatformLayerProxy::~TextureMapperPlatformLayerProxy()
 {
+    LockHolder locker(m_lock);
     if (m_targetLayer)
         m_targetLayer->setContentsLayer(nullptr);
 }
 
-void TextureMapperPlatformLayerProxy::setCompositor(LockHolder&, Compositor* compositor)
+void TextureMapperPlatformLayerProxy::activateOnCompositingThread(Compositor* compositor, TextureMapperLayer* targetLayer)
 {
 #ifndef NDEBUG
-    m_compositorThreadID = WTF::currentThread();
+    m_compositorThreadID = m_compositorThreadID ? m_compositorThreadID : WTF::currentThread();
 #endif
+    ASSERT(m_compositorThreadID == WTF::currentThread());
+    ASSERT(compositor);
+    ASSERT(targetLayer);
+    LockHolder locker(m_lock);
     m_compositor = compositor;
-    m_condition.notifyOne();
+    m_targetLayer = targetLayer;
+    m_compositorThreadUpdateTimer = std::make_unique<RunLoop::Timer<TextureMapperPlatformLayerProxy>>(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired);
 }
 
-void TextureMapperPlatformLayerProxy::setTargetLayer(LockHolder&, TextureMapperLayer* layer)
+void TextureMapperPlatformLayerProxy::invalidate()
 {
     ASSERT(m_compositorThreadID == WTF::currentThread());
-    m_targetLayer = layer;
-    m_condition.notifyOne();
+    LockHolder locker(m_lock);
+    m_compositor = nullptr;
+    m_targetLayer = nullptr;
 }
 
-bool TextureMapperPlatformLayerProxy::hasTargetLayer(LockHolder&)
+bool TextureMapperPlatformLayerProxy::isActive()
 {
-    return !!m_targetLayer;
+    ASSERT(m_lock.isHeld());
+    return !!m_targetLayer && !!m_compositor;
 }
 
-void TextureMapperPlatformLayerProxy::pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
+void TextureMapperPlatformLayerProxy::pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer> newBuffer)
 {
+    ASSERT(m_lock.isHeld());
     m_pendingBuffer = WTF::move(newBuffer);
 }
 
-void TextureMapperPlatformLayerProxy::requestUpdate(LockHolder&)
+void TextureMapperPlatformLayerProxy::requestUpdate()
 {
-    if (m_compositor)
-        m_compositor->onNewBufferAvailable();
+    ASSERT(m_lock.isHeld());
+    ASSERT(m_compositor);
+    m_compositor->onNewBufferAvailable();
 }
 
-std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(LockHolder&, const IntSize& size, GC3Dint internalFormat)
+std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProxy::getAvailableBuffer(const IntSize& size, GC3Dint internalFormat)
 {
+    ASSERT(m_lock.isHeld());
     std::unique_ptr<TextureMapperPlatformLayerBuffer> availableBuffer;
 
     auto buffers = WTF::move(m_usedBuffers);
-
     for (auto& buffer : buffers) {
         if (!buffer)
             continue;
@@ -98,7 +108,6 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProx
             availableBuffer->markUsed();
             continue;
         }
-
         m_usedBuffers.append(WTF::move(buffer));
     }
 
@@ -109,15 +118,13 @@ std::unique_ptr<TextureMapperPlatformLayerBuffer> TextureMapperPlatformLayerProx
 
 void TextureMapperPlatformLayerProxy::scheduleReleaseUnusedBuffers()
 {
-    if (m_releaseUnusedBuffersTimer.isActive())
-        return;
-
-    m_releaseUnusedBuffersTimer.startOneShot(s_releaseUnusedBuffersTimerInterval);
+    if (!m_releaseUnusedBuffersTimer.isActive())
+        m_releaseUnusedBuffersTimer.startOneShot(s_releaseUnusedBuffersTimerInterval);
 }
 
 void TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired()
 {
-    LockHolder locker(m_mutex);
+    LockHolder locker(m_lock);
     if (m_usedBuffers.isEmpty())
         return;
 
@@ -136,7 +143,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
     std::unique_ptr<TextureMapperPlatformLayerBuffer> prevBuffer;
 
     {
-        LockHolder locker(m_mutex);
+        LockHolder locker(m_lock);
         if (!m_targetLayer || !m_pendingBuffer)
             return;
 
@@ -144,13 +151,36 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
 
         m_currentBuffer = WTF::move(m_pendingBuffer);
         m_targetLayer->setContentsLayer(m_currentBuffer.get());
-        m_condition.notifyOne();
     }
 
     if (prevBuffer && prevBuffer->hasManagedTexture())
         m_usedBuffers.append(WTF::move(prevBuffer));
 }
 
-};
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
+{
+    LockHolder locker(m_lock);
+    if (!m_compositorThreadUpdateTimer)
+        return false;
+
+    m_compositorThreadUpdateFunction = WTF::move(updateFunction);
+    m_compositorThreadUpdateTimer->startOneShot(0);
+    return true;
+}
+
+void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
+{
+    std::function<void()> updateFunction;
+    {
+        LockHolder locker(m_lock);
+        if (!m_compositorThreadUpdateFunction)
+            return;
+        updateFunction = WTF::move(m_compositorThreadUpdateFunction);
+    }
+
+    updateFunction();
+}
+
+} // namespace WebCore
 
 #endif // USE(COORDINATED_GRAPHICS_THREADED)

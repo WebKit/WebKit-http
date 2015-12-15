@@ -33,6 +33,7 @@
 #include "MediaDevices.h"
 #include "MediaStreamCreationClient.h"
 #include "MediaStreamTrackSourcesRequestClient.h"
+#include "UserMediaPermissionCheck.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -45,7 +46,7 @@ class SecurityOrigin;
 
 typedef int ExceptionCode;
 
-class MediaDevicesRequest : public MediaStreamTrackSourcesRequestClient, public ContextDestructionObserver {
+class MediaDevicesRequest : public MediaStreamTrackSourcesRequestClient, public UserMediaPermissionCheckClient, public ContextDestructionObserver {
 public:
     static RefPtr<MediaDevicesRequest> create(Document*, MediaDevices::EnumerateDevicesPromise&&, ExceptionCode&);
 
@@ -63,10 +64,16 @@ private:
     void didCompleteRequest(const TrackSourceInfoVector&) final;
 
     // ContextDestructionObserver
-    virtual void contextDestroyed() override final;
+    void contextDestroyed() override final;
+
+    // UserMediaPermissionCheckClient
+    void didCompleteCheck(bool) override final;
 
     MediaDevices::EnumerateDevicesPromise m_promise;
     RefPtr<MediaDevicesRequest> m_protector;
+    RefPtr<UserMediaPermissionCheck> m_permissionCheck;
+
+    bool m_hasUserMediaPermission { false };
 };
 
 } // namespace WebCore

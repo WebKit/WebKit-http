@@ -477,6 +477,10 @@ css3/font-feature-settings-rendering.html [ Skip ]
 webkit.org/b/149771 css3/font-feature-settings-font-face-rendering.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-all.html [ Skip ] # WontFix
 webkit.org/b/149771 css3/font-variant-font-face-override.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-petite-caps-synthesis-coverage.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-petite-caps-synthesis.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-small-caps-synthesis-coverage.html [ Skip ] # WontFix
+webkit.org/b/149774 css3/font-variant-small-caps-synthesis.html [ Skip ] # WontFix
 
 # TODO HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
 # https://bugs.webkit.org/show_bug.cgi?id=87919
@@ -3134,6 +3138,10 @@ accessibility/treeitem-child-exposed.html [ Failure ]
 
 webkit.org/b/144673 fast/forms/button-line-height.html [ ImageOnlyFailure ]
 
+webkit.org/b/151759 fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Failure ]
+
+webkit.org/b/152009 fast/canvas/canvas-too-large-to-draw.html [ Skip ]
+
 ################################################################################
 ######################### End list of UNREVIEWED failures ##########################
 ################################################################################
@@ -3306,10 +3314,6 @@ webkit.org/b/150684 editing/input/reveal-caret-of-multiline-contenteditable.html
 webkit.org/b/150684 editing/input/reveal-caret-of-multiline-input.html [ Pass Failure ]
 
 webkit.org/b/150808 fast/text/multiple-feature-properties.html [ ImageOnlyFailure ]
-
-webkit.org/b/147933 streams/reference-implementation/count-queuing-strategy.html [ Pass Failure ]
-webkit.org/b/147933 streams/reference-implementation/pipe-to.html [ Pass Failure ]
-webkit.org/b/147933 streams/reference-implementation/writable-stream-abort.html [ Pass Failure ]
 
 webkit.org/b/150946 [ Debug ] scrollbars/custom-scrollbar-appearance-property.html [ Crash ]
 

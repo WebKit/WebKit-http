@@ -60,11 +60,6 @@ SOFT_LINK_OPTIONAL(Mfplat, MFCreateSample, HRESULT, STDAPICALLTYPE, (IMFSample**
 SOFT_LINK_OPTIONAL(Mfplat, MFCreateMediaType, HRESULT, STDAPICALLTYPE, (IMFMediaType**));
 SOFT_LINK_OPTIONAL(Mfplat, MFFrameRateToAverageTimePerFrame, HRESULT, STDAPICALLTYPE, (UINT32, UINT32, UINT64*));
 
-STDAPI MFCreateMediaType(_Outptr_ IMFMediaType**  ppMFType)
-{
-    return MFCreateMediaTypePtr()(ppMFType);
-}
-
 SOFT_LINK_LIBRARY(evr);
 SOFT_LINK_OPTIONAL(evr, MFCreateVideoSampleFromSurface, HRESULT, STDAPICALLTYPE, (IUnknown*, IMFSample**));
 
@@ -219,6 +214,20 @@ void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
     PropVariantClear(&propVariant);
 
     m_player->timeChanged();
+}
+
+void MediaPlayerPrivateMediaFoundation::setRateDouble(double rate)
+{
+    COMPtr<IMFRateControl> rateControl;
+
+    HRESULT hr = MFGetServicePtr()(m_mediaSession.get(), MF_RATE_CONTROL_SERVICE, IID_IMFRateControl, (void**)&rateControl);
+
+    if (!SUCCEEDED(hr))
+        return;
+
+    BOOL reduceSamplesInStream = rate > 2.0;
+
+    rateControl->SetRate(reduceSamplesInStream, rate);
 }
 
 double MediaPlayerPrivateMediaFoundation::durationDouble() const
@@ -1617,7 +1626,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::isMediaTypeSupp
 HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::createOptimalVideoType(IMFMediaType* proposedType, IMFMediaType** optimalType)
 {
     COMPtr<IMFMediaType> optimalVideoType;
-    HRESULT hr = MFCreateMediaType(&optimalVideoType);
+    HRESULT hr = MFCreateMediaTypePtr()(&optimalVideoType);
     if (FAILED(hr))
         return hr;
     hr = optimalVideoType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);

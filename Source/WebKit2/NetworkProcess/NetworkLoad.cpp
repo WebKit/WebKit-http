@@ -63,6 +63,8 @@ NetworkLoad::~NetworkLoad()
 {
     ASSERT(RunLoop::isMain());
 #if USE(NETWORK_SESSION)
+    if (m_responseCompletionHandler)
+        m_responseCompletionHandler(PolicyIgnore);
     m_task->clearClient();
 #else
     if (m_handle)
@@ -102,8 +104,8 @@ void NetworkLoad::continueWillSendRequest(const WebCore::ResourceRequest& newReq
 
     if (m_currentRequest.isNull()) {
 #if USE(NETWORK_SESSION)
-        // FIXME: Do something here.
-        notImplemented();
+        m_task->cancel();
+        m_client.didFailLoading(cancelledError(m_currentRequest));
 #else
         m_handle->cancel();
         didFail(m_handle.get(), cancelledError(m_currentRequest));
@@ -112,8 +114,9 @@ void NetworkLoad::continueWillSendRequest(const WebCore::ResourceRequest& newReq
     }
 
 #if USE(NETWORK_SESSION)
-    // FIXME: Do something here.
-    notImplemented();
+    ASSERT(m_redirectCompletionHandler);
+    m_redirectCompletionHandler(newRequest);
+    m_redirectCompletionHandler = nullptr;
 #else
     m_handle->continueWillSendRequest(m_currentRequest);
 #endif
@@ -122,8 +125,9 @@ void NetworkLoad::continueWillSendRequest(const WebCore::ResourceRequest& newReq
 void NetworkLoad::continueDidReceiveResponse()
 {
 #if USE(NETWORK_SESSION)
-    // FIXME: Do something here.
-    notImplemented();
+    ASSERT(m_responseCompletionHandler);
+    m_responseCompletionHandler(PolicyUse);
+    m_responseCompletionHandler = nullptr;
 #else
     m_handle->continueDidReceiveResponse();
 #endif
@@ -151,10 +155,18 @@ void NetworkLoad::sharedWillSendRedirectedRequest(const ResourceRequest& request
 
 #if USE(NETWORK_SESSION)
 
-void NetworkLoad::willPerformHTTPRedirection(const ResourceResponse& response, const ResourceRequest& request, std::function<void(const ResourceRequest&)> completionHandler)
+void NetworkLoad::convertTaskToDownload()
 {
+    ASSERT(m_responseCompletionHandler);
+    m_responseCompletionHandler(PolicyDownload);
+    m_responseCompletionHandler = nullptr;
+}
+
+void NetworkLoad::willPerformHTTPRedirection(const ResourceResponse& response, const ResourceRequest& request, RedirectCompletionHandler completionHandler)
+{
+    ASSERT(!m_redirectCompletionHandler);
+    m_redirectCompletionHandler = completionHandler;
     sharedWillSendRedirectedRequest(request, response);
-    completionHandler(request);
 }
 
 void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, std::function<void(AuthenticationChallengeDisposition, const Credential&)> completionHandler)
@@ -177,16 +189,18 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
         return;
     }
 
-    m_completionHandler = completionHandler;
+    m_challengeCompletionHandler = completionHandler;
     m_challenge = challenge;
     m_client.canAuthenticateAgainstProtectionSpaceAsync(challenge.protectionSpace());
 }
 
-void NetworkLoad::didReceiveResponse(const ResourceResponse& response, std::function<void(WebCore::PolicyAction)> completionHandler)
+void NetworkLoad::didReceiveResponse(const ResourceResponse& response, ResponseCompletionHandler completionHandler)
 {
     ASSERT(isMainThread());
-    sharedDidReceiveResponse(response);
-    completionHandler(PolicyUse);
+    if (sharedDidReceiveResponse(response) == NetworkLoadClient::ShouldContinueDidReceiveResponse::Yes)
+        completionHandler(PolicyUse);
+    else
+        m_responseCompletionHandler = completionHandler;
 }
 
 void NetworkLoad::didReceiveData(RefPtr<SharedBuffer>&& buffer)
@@ -202,6 +216,11 @@ void NetworkLoad::didCompleteWithError(const ResourceError& error)
         m_client.didFinishLoading(WTF::monotonicallyIncreasingTime());
     else
         m_client.didFailLoading(error);
+}
+
+void NetworkLoad::didBecomeDownload()
+{
+    m_client.didConvertToDownload();
 }
 
 #else
@@ -277,8 +296,8 @@ void NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle* han
 void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
 {
 #if USE(NETWORK_SESSION)
-    ASSERT(m_completionHandler);
-    auto completionHandler = WTF::move(m_completionHandler);
+    ASSERT(m_challengeCompletionHandler);
+    auto completionHandler = WTF::move(m_challengeCompletionHandler);
     if (!result) {
         completionHandler(AuthenticationChallengeDisposition::PerformDefaultHandling, Credential());
         return;

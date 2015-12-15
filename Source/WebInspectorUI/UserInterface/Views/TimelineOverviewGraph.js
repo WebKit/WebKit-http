@@ -71,10 +71,12 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
 
     set zeroTime(x)
     {
+        x = x || 0;
+
         if (this._zeroTime === x)
             return;
 
-        this._zeroTime = x || 0;
+        this._zeroTime = x;
 
         this.needsLayout();
     }
@@ -86,10 +88,12 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
 
     set startTime(x)
     {
+        x = x || 0;
+
         if (this._startTime === x)
             return;
 
-        this._startTime = x || 0;
+        this._startTime = x;
 
         this.needsLayout();
     }
@@ -101,10 +105,12 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
 
     set endTime(x)
     {
+        x = x || 0;
+
         if (this._endTime === x)
             return;
 
-        this._endTime = x || 0;
+        this._endTime = x;
 
         this.needsLayout();
     }
@@ -116,12 +122,14 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
 
     set currentTime(x)
     {
+        x = x || 0;
+
         if (this._currentTime === x)
             return;
 
-        var oldCurrentTime = this._currentTime;
+        let oldCurrentTime = this._currentTime;
 
-        this._currentTime = x || 0;
+        this._currentTime = x;
 
         if ((this._startTime <= oldCurrentTime && oldCurrentTime <= this._endTime) || (this._startTime <= this._currentTime && this._currentTime <= this._endTime))
             this.needsLayout();
@@ -211,10 +219,10 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
         if (this._scheduledSelectedRecordLayoutUpdateIdentifier)
             return;
 
-        this._scheduledSelectedRecordLayoutUpdateIdentifier = requestAnimationFrame(() => {
+        this._scheduledSelectedRecordLayoutUpdateIdentifier = requestAnimationFrame(function() {
             this._scheduledSelectedRecordLayoutUpdateIdentifier = undefined;
             this.updateSelectedRecord();
-        });
+        }.bind(this));
     }
 };
 
