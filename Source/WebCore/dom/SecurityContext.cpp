@@ -117,6 +117,8 @@ SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy, String& i
             flags &= ~SandboxPopups;
         else if (equalIgnoringCase(sandboxToken, "allow-pointer-lock"))
             flags &= ~SandboxPointerLock;
+        else if (equalIgnoringCase(sandboxToken, "allow-device-sensors"))
+            flags &= ~SandboxDeviceSensors;
         else {
             if (numberOfTokenErrors)
                 tokenErrors.appendLiteral(", '");
