@@ -210,6 +210,8 @@ list(APPEND WebCore_SOURCES
 
     page/wpe/EventHandlerWPE.cpp
 
+    platform/glib/MainThreadSharedTimerGLib.cpp
+
     platform/graphics/cairo/GraphicsContextCairo.cpp
 
     platform/graphics/freetype/FontPlatformDataFreeType.cpp
@@ -227,7 +229,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/LoggingWPE.cpp
     platform/wpe/LocalizedStringsWPE.cpp
     platform/wpe/MIMETypeRegistryWPE.cpp
-    platform/wpe/MainThreadSharedTimerWPE.cpp
     platform/wpe/PasteboardWPE.cpp
     platform/wpe/PlatformKeyboardEventWPE.cpp
     platform/wpe/PlatformScreenWPE.cpp
