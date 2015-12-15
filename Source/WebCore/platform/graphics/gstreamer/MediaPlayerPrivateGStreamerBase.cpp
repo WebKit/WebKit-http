@@ -496,6 +496,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(frameHolder->textureID(), frameHolder->size(), frameHolder->flags());
     layerBuffer->setUnmanagedBufferDataHolder(WTF::move(frameHolder));
     m_platformLayerProxy->pushNextBuffer(WTF::move(layerBuffer));
+    m_platformLayerProxy->requestUpdate();
 #else
     GstCaps* caps = gst_sample_get_caps(m_sample.get());
     if (UNLIKELY(!caps))
@@ -519,6 +520,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     }
     updateTexture(buffer->textureGL(), videoInfo);
     m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
+    m_platformLayerProxy->requestUpdate();
 #endif
 }
 #endif
