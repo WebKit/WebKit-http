@@ -56,12 +56,6 @@ IncrementalSweeper::IncrementalSweeper(Heap* heap, CFRunLoopRef runLoop)
     , m_blocksToSweep(heap->m_blockSnapshot)
 {
 }
-#elif PLATFORM(WPE)
-IncrementalSweeper::IncrementalSweeper(Heap* heap)
-    : HeapTimer(heap->vm())
-    , m_blocksToSweep(heap->m_blockSnapshot)
-{
-}
 #endif
 
 #if USE(CF)
@@ -112,7 +106,7 @@ void IncrementalSweeper::scheduleTimer()
 
 void IncrementalSweeper::cancelTimer()
 {
-    m_timer.cancel();
+    g_source_set_ready_time(m_timer.get(), -1);
 }
 #endif
 

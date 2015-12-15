@@ -77,7 +77,7 @@ protected:
         , m_delay(s_decade)
     {
     }
-#elif PLATFORM(EFL) || PLATFORM(WPE)
+#elif PLATFORM(EFL)
     static constexpr double s_hour = 3600;
     GCActivityCallback(VM* vm, bool flag)
         : HeapTimer(vm)

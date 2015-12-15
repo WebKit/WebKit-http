@@ -34,10 +34,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#if PLATFORM(WPE)
-#include <wtf/glib/GSourceWrap.h>
-#endif
-#if USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(WPE)
+#if USE(GLIB) && !PLATFORM(EFL)
 #include <wtf/glib/GRefPtr.h>
 #endif
 
@@ -74,8 +71,6 @@ protected:
     Ecore_Timer* add(double delay, void* agent);
     void stop();
     Ecore_Timer* m_timer;
-#elif PLATFORM(WPE)
-    GSourceWrap::Static m_timer;
 #elif USE(GLIB)
     void timerDidFire();
     RefPtr<JSLock> m_apiLock;
