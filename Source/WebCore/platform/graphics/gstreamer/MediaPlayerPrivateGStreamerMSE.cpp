@@ -760,6 +760,23 @@ void MediaPlayerPrivateGStreamerMSE::emitSession()
 }
 #endif
 
+void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
+{
+    if (status != MediaSourcePrivate::EosNoError)
+        return;
+
+    if (m_networkState != MediaPlayer::Loaded) {
+        m_networkState = MediaPlayer::Loaded;
+        m_player->networkStateChanged();
+    }
+    m_playbackPipeline->markEndOfStream(status);
+
+    m_isEndReached = true;
+    m_cachedPosition = m_mediaTimeDuration.toFloat();
+    m_mediaDuration = m_mediaTimeDuration.toFloat();
+    timeChanged();
+}
+
 class GStreamerMediaDescription : public MediaDescription {
 private:
     GstCaps* m_caps;
@@ -2105,11 +2122,11 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
     return GST_FLOW_OK == ap->pushNewBuffer(buffer);
 }
 
-void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus)
+void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     ASSERT(WTF::isMainThread());
 
-    // TODO
+    m_playerPrivate->markEndOfStream(status);
 }
 
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)
