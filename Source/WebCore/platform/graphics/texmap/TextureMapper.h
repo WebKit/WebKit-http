@@ -22,10 +22,6 @@
 
 #if USE(TEXTURE_MAPPER)
 
-#if USE(OPENGL_ES_2)
-#define TEXMAP_OPENGL_ES_2
-#endif
-
 #include "BitmapTexture.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
@@ -100,7 +96,7 @@ public:
 
     virtual IntSize maxTextureSize() const = 0;
 
-    PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&, bool hasAlpha = true);
+    virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&, const BitmapTexture::Flags = BitmapTexture::SupportsAlpha);
 
     void setPatternTransform(const TransformationMatrix& p) { m_patternTransform = p; }
     void setWrapMode(WrapMode m) { m_wrapMode = m; }

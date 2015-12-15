@@ -35,13 +35,16 @@
 #include <wtf/HashSet.h>
 #include <wtf/WTFThreadData.h>
 
-#if USE(GLIB) && !PLATFORM(EFL)
+#if PLATFORM(EFL)
+#include <Ecore.h>
+#include <wtf/CurrentTime.h>
+#elif USE(GLIB)
 #include <glib.h>
 #endif
 
 namespace JSC {
 
-#if USE(CF) || (USE(GLIB) && !PLATFORM(EFL))
+#if USE(CF) || PLATFORM(EFL) || USE(GLIB)
 
 static const double sweepTimeSlice = .01; // seconds
 static const double sweepTimeTotal = .10;
@@ -50,12 +53,6 @@ static const double sweepTimeMultiplier = 1.0 / sweepTimeTotal;
 #if USE(CF)
 IncrementalSweeper::IncrementalSweeper(Heap* heap, CFRunLoopRef runLoop)
     : HeapTimer(heap->vm(), runLoop)
-    , m_blocksToSweep(heap->m_blockSnapshot)
-{
-}
-#elif PLATFORM(WPE)
-IncrementalSweeper::IncrementalSweeper(Heap* heap)
-    : HeapTimer(heap->vm())
     , m_blocksToSweep(heap->m_blockSnapshot)
 {
 }
@@ -71,15 +68,25 @@ void IncrementalSweeper::cancelTimer()
 {
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + s_decade);
 }
-#elif PLATFORM(WPE)
+#elif PLATFORM(EFL)
+IncrementalSweeper::IncrementalSweeper(Heap* heap)
+    : HeapTimer(heap->vm())
+    , m_blocksToSweep(heap->m_blockSnapshot)
+{
+}
+
 void IncrementalSweeper::scheduleTimer()
 {
-    m_timer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(sweepTimeSlice * sweepTimeMultiplier)));
+    if (ecore_timer_freeze_get(m_timer))
+        ecore_timer_thaw(m_timer);
+
+    double targetTime = currentTime() + (sweepTimeSlice * sweepTimeMultiplier);
+    ecore_timer_interval_set(m_timer, targetTime);
 }
 
 void IncrementalSweeper::cancelTimer()
 {
-    m_timer.cancel();
+    ecore_timer_freeze(m_timer);
 }
 #elif USE(GLIB)
 IncrementalSweeper::IncrementalSweeper(Heap* heap)
@@ -99,7 +106,7 @@ void IncrementalSweeper::scheduleTimer()
 
 void IncrementalSweeper::cancelTimer()
 {
-    m_timer.cancel();
+    g_source_set_ready_time(m_timer.get(), -1);
 }
 #endif
 

@@ -139,7 +139,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithCos:
     case ArithLog:
     case GetScope:
-    case LoadArrowFunctionThis:
     case SkipScope:
     case StringCharCodeAt:
     case StringFromCharCode:
@@ -163,6 +162,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case BottomValue:
     case TypeOf:
         def(PureValue(node));
+        return;
+
+    case ArithRandom:
+        read(MathDotRandomState);
+        write(MathDotRandomState);
         return;
         
     case HasGenericProperty:
@@ -248,15 +252,15 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case ArithAdd:
     case ArithNegate:
-    case ArithDiv:
     case ArithMod:
     case DoubleAsInt32:
     case UInt32ToNumber:
         def(PureValue(node, node->arithMode()));
         return;
 
-    case ArithSub:
+    case ArithDiv:
     case ArithMul:
+    case ArithSub:
         switch (node->binaryUseKind()) {
         case Int32Use:
         case Int52RepUse:

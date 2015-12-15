@@ -61,6 +61,7 @@
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerBuffer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 #endif
@@ -115,12 +116,12 @@ void ImageBufferData::swapBuffersIfNeeded()
         return;
 
     GLContext* previousActiveContext = GLContext::getCurrent();
+    cairo_surface_flush(m_surface.get());
 
     if (!m_compositorTexture) {
         createCompositorBuffer();
-
-        LockHolder locker(m_platformLayerProxy->mutex());
-        m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend));
+        LockHolder holder(m_platformLayerProxy->lock());
+        m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_compositorTexture, m_size, TextureMapperGL::ShouldBlend));
     }
 
     // It would be great if we could just swap the buffers here as we do with webgl, but that breaks the cases
@@ -146,14 +147,14 @@ void clearSurface(cairo_surface_t* surface)
     cairo_paint(cr.get());
 }
 
-PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t& texture)
+void ImageBufferData::createCairoGLSurface()
 {
     GLContext::sharingContext()->makeContextCurrent();
 
     // We must generate the texture ourselves, because there is no Cairo API for extracting it
     // from a pre-existing surface.
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -161,7 +162,7 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, size.width(), size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0 /* level */, GL_RGBA, m_size.width(), m_size.height(), 0 /* border */, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
     GLContext* context = GLContext::sharingContext();
     cairo_device_t* device = context->cairoDevice();
@@ -169,9 +170,8 @@ PassRefPtr<cairo_surface_t> createCairoGLSurface(const FloatSize& size, uint32_t
     // Thread-awareness is a huge performance hit on non-Intel drivers.
     cairo_gl_device_set_thread_aware(device, FALSE);
 
-    auto surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, texture, size.width(), size.height()));
-    clearSurface(surface.get());
-    return surface;
+    m_surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, m_texture, m_size.width(), m_size.height()));
+    clearSurface(m_surface.get());
 }
 #endif
 
@@ -184,19 +184,19 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     if (m_size.isEmpty())
         return;
 
+#if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_data.m_platformLayerProxy->mutex());
+    LockHolder locker(m_data.m_platformLayerProxy->lock());
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated) {
-        m_data.m_surface = createCairoGLSurface(size, m_data.m_texture);
+        m_data.createCairoGLSurface();
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
             renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
 #if USE(COORDINATED_GRAPHICS_THREADED)
         else {
-            m_data.m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
-            m_data.m_platformLayerProxy->requestUpdate(locker);
+            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
+            m_data.m_platformLayerProxy->requestUpdate();
         }
 #endif
 
@@ -226,6 +226,11 @@ GraphicsContext& ImageBuffer::context() const
     return *m_data.m_context;
 }
 
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+{
+    return imageBuffer->copyImage(DontCopyBackingStore, scaleBehavior);
+}
+
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
     if (copyBehavior == CopyBackingStore)
@@ -243,6 +248,11 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
 void ImageBuffer::clip(GraphicsContext& context, const FloatRect& maskRect) const
 {
     context.platformContext()->pushImageMask(m_data.m_surface.get(), maskRect);
+}
+
+void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+{
+    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode, useLowQualityScale);
 }
 
 void ImageBuffer::draw(GraphicsContext& destinationContext, const FloatRect& destRect, const FloatRect& srcRect,
@@ -498,9 +508,8 @@ String ImageBuffer::toDataURL(const String& mimeType, const double* quality, Coo
 }
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS)
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
+#if ENABLE(ACCELERATED_2D_CANVAS) && !USE(COORDINATED_GRAPHICS_THREADED)
+void ImageBufferData::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     ASSERT(m_texture);
 
@@ -511,9 +520,8 @@ void ImageBufferData::paintToTextureMapper(TextureMapper* textureMapper, const F
     cairo_surface_flush(m_surface.get());
     previousActiveContext->makeContextCurrent();
 
-    static_cast<TextureMapperGL*>(textureMapper)->drawTexture(m_texture, TextureMapperGL::ShouldBlend, m_size, targetRect, matrix, opacity);
+    static_cast<TextureMapperGL&>(textureMapper).drawTexture(m_texture, TextureMapperGL::ShouldBlend, m_size, targetRect, matrix, opacity);
 }
-#endif
 #endif
 
 PlatformLayer* ImageBuffer::platformLayer() const

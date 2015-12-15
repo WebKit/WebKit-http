@@ -104,18 +104,18 @@ void GraphicsContext3DPrivate::swapBuffersIfNeeded()
 void GraphicsContext3DPrivate::swapPlatformTexture()
 {
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    LockHolder locker(m_platformLayerProxy->mutex());
+    LockHolder locker(m_platformLayerProxy->lock());
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
     TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
-    m_platformLayerProxy->requestUpdate(locker);
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
+    m_platformLayerProxy->requestUpdate();
 
     m_context->markLayerComposited();
 }
 #elif USE(TEXTURE_MAPPER) && !USE(COORDINATED_GRAPHICS_THREADED)
-void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
+void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (!m_glContext)
         return;
@@ -137,10 +137,10 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
             previousActiveContext->makeContextCurrent();
     }
 
-    TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+    TextureMapperGL& texmapGL = static_cast<TextureMapperGL&>(textureMapper);
     TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
-    texmapGL->drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
+    texmapGL.drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
 #endif // USE(TEXTURE_MAPPER_GL)
 }
 #endif // USE(TEXTURE_MAPPER)

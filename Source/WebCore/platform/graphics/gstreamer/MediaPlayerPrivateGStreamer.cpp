@@ -158,7 +158,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_maxTimeLoadedAtLastDidLoadingProgress(0)
     , m_hasVideo(false)
     , m_hasAudio(false)
-    , m_readyTimerHandler("[WebKit] mediaPlayerPrivateReadyStateTimeoutCallback", [this] { changePipelineState(GST_STATE_NULL); })
+    , m_readyTimerHandler(RunLoop::main(), this, &MediaPlayerPrivateGStreamer::readyTimerFired)
     , m_totalBytes(0)
     , m_preservesPitch(false)
     , m_lastQuery(-1)
@@ -167,6 +167,9 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
 #endif
     , m_pendingAsyncOperations(nullptr)
 {
+#if USE(GLIB) && !PLATFORM(EFL)
+    m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
+#endif
 }
 
 MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
@@ -193,7 +196,7 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         g_signal_handlers_disconnect_by_func(G_OBJECT(m_autoAudioSink.get()),
             reinterpret_cast<gpointer>(setAudioStreamPropertiesCallback), this);
 
-    m_readyTimerHandler.cancel();
+    m_readyTimerHandler.stop();
     if (m_missingPluginsCallback) {
         m_missingPluginsCallback->invalidate();
         m_missingPluginsCallback = nullptr;
@@ -337,6 +340,11 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     return result;
 }
 
+void MediaPlayerPrivateGStreamer::readyTimerFired()
+{
+    changePipelineState(GST_STATE_NULL);
+}
+
 bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
 {
     ASSERT(m_pipeline);
@@ -364,13 +372,13 @@ bool MediaPlayerPrivateGStreamer::changePipelineState(GstState newState)
     // if we stay for too long on READY.
     // Also lets remove the timer if we request a state change for any state other than READY.
     // See also https://bugs.webkit.org/show_bug.cgi?id=117354
-    if (newState == GST_STATE_READY && !m_readyTimerHandler.isScheduled()) {
+    if (newState == GST_STATE_READY && !m_readyTimerHandler.isActive()) {
         // Max interval in seconds to stay in the READY state on manual
         // state change requests.
-        static const unsigned readyStateTimerDelay = 60;
-        m_readyTimerHandler.schedule(std::chrono::seconds(readyStateTimerDelay));
+        static const double readyStateTimerDelay = 60;
+        m_readyTimerHandler.startOneShot(readyStateTimerDelay);
     } else if (newState != GST_STATE_READY)
-        m_readyTimerHandler.cancel();
+        m_readyTimerHandler.stop();
 
     return true;
 }
@@ -1753,7 +1761,7 @@ void MediaPlayerPrivateGStreamer::loadingFailed(MediaPlayer::NetworkState error)
     }
 
     // Loading failed, remove ready timer.
-    m_readyTimerHandler.cancel();
+    m_readyTimerHandler.stop();
 }
 
 static HashSet<String> mimeTypeCache()

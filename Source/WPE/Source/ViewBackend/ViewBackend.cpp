@@ -29,12 +29,17 @@
 
 #include "ViewBackendBCMNexus.h"
 #include "ViewBackendBCMRPi.h"
-#include "ViewBackendDRM.h"
-#include "ViewBackendWayland.h"
 #include "ViewBackendIntelCE.h"
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+
+#if WPE_BACKEND(DRM)
+#include "ViewBackendDRM.h"
+#endif
+#if WPE_BACKEND(WAYLAND)
+#include "ViewBackendWayland.h"
+#endif
 
 namespace WPE {
 

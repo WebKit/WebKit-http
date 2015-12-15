@@ -410,9 +410,6 @@ void GraphicsLayerTextureMapper::setDebugBorder(const Color& color, float width)
 
 void GraphicsLayerTextureMapper::commitLayerChanges()
 {
-    if (m_animations.hasRunningAnimations())
-        client().notifyFlushBeforeDisplayRefresh(this);
-
     if (m_changeMask == NoChanges)
         return;
 
@@ -497,7 +494,6 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & CommittedScrollOffsetChange)
         m_layer.didCommitScrollOffset(m_committedScrollOffset);
 
-    client().didCommitChangesForLayer(this);
     m_changeMask = NoChanges;
 }
 
@@ -509,11 +505,11 @@ void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect, bo
     flushCompositingStateForThisLayerOnly(viewportIsStable);
 
     if (maskLayer())
-        downcast<GraphicsLayerTextureMapper>(maskLayer())->flushCompositingState(rect, viewportIsStable);
+        maskLayer()->flushCompositingState(rect, viewportIsStable);
     if (replicaLayer())
-        downcast<GraphicsLayerTextureMapper>(replicaLayer())->flushCompositingState(rect, viewportIsStable);
+        replicaLayer()->flushCompositingState(rect, viewportIsStable);
     for (auto* child : children())
-        downcast<GraphicsLayerTextureMapper>(child)->flushCompositingState(rect, viewportIsStable);
+        child->flushCompositingState(rect, viewportIsStable);
 }
 
 void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers()
@@ -553,7 +549,7 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
     backingStore->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
 
     dirtyRect.scale(pageScaleFactor() * deviceScaleFactor());
-    backingStore->updateContents(textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
+    backingStore->updateContents(*textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
 
     m_needsDisplay = false;
     m_needsDisplayRect = IntRect();
@@ -608,9 +604,6 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
-    if (m_filters == filters)
-        return true;
-
     TextureMapper* textureMapper = m_layer.textureMapper();
     if (!textureMapper)
         return false;

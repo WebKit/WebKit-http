@@ -40,7 +40,7 @@
 #include "FTLCompileBinaryOp.h"
 #include "FTLExceptionHandlerManager.h"
 #include "FTLExitThunkGenerator.h"
-#include "FTLInlineCacheDescriptorInlines.h"
+#include "FTLInlineCacheDescriptor.h"
 #include "FTLInlineCacheSize.h"
 #include "FTLJITCode.h"
 #include "FTLThunks.h"
@@ -215,7 +215,7 @@ static void generateInlineIfPossibleOutOfLineIfNot(State& state, VM& vm, CodeBlo
 template<typename DescriptorType>
 void generateICFastPath(
     State& state, CodeBlock* codeBlock, GeneratedFunction generatedFunction,
-    StackMaps::RecordMap& recordMap, DescriptorType& ic, size_t sizeOfIC)
+    StackMaps::RecordMap& recordMap, DescriptorType& ic, size_t sizeOfIC, const char* icName)
 {
     VM& vm = state.graph.m_vm;
 
@@ -239,7 +239,7 @@ void generateICFastPath(
         char* startOfIC =
             bitwise_cast<char*>(generatedFunction) + record.instructionOffset;
 
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "inline cache fast path", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, icName, [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             state.finalizer->sideCodeLinkBuffer->link(ic.m_slowPathDone[i],
                 CodeLocationLabel(startOfIC + sizeOfIC));
 
@@ -304,7 +304,7 @@ static void generateCheckInICFastPath(
                 callReturnLocation, slowPathBeginLoc);
         };
 
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "CheckIn inline cache", postLink);
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "CheckIn", postLink);
     }
 }
 
@@ -339,8 +339,7 @@ static void generateBinaryOpICFastPath(
         generateBinaryOpFastPath(ic, fastPathJIT, result, left, right, usedRegisters, done, slowPathStart);
 
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + record.instructionOffset;
-        const char* fastPathICName = ic.fastPathICName();
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, fastPathICName, [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, ic.name(), [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             linkBuffer.link(done, CodeLocationLabel(startOfIC + sizeOfIC));
             state.finalizer->sideCodeLinkBuffer->link(ic.m_slowPathDone[i], CodeLocationLabel(startOfIC + sizeOfIC));
             
@@ -427,7 +426,8 @@ static void fixFunctionBasedOnStackMaps(
     
     int localsOffset = offsetOfStackRegion(recordMap, state.capturedStackmapID) + graph.m_nextMachineLocal;
     int varargsSpillSlotsOffset = offsetOfStackRegion(recordMap, state.varargsSpillSlotsStackmapID);
-    int jsCallThatMightThrowSpillOffset = offsetOfStackRegion(recordMap, state.exceptionHandlingSpillSlotStackmapID);
+    int osrExitFromGenericUnwindStackSpillSlot  = offsetOfStackRegion(recordMap, state.exceptionHandlingSpillSlotStackmapID);
+    jitCode->osrExitFromGenericUnwindStackSpillSlot = osrExitFromGenericUnwindStackSpillSlot;
     
     for (unsigned i = graph.m_inlineVariableData.size(); i--;) {
         InlineCallFrame* inlineCallFrame = graph.m_inlineVariableData[i].inlineCallFrame;
@@ -571,7 +571,7 @@ static void fixFunctionBasedOnStackMaps(
         }
     }
     ExitThunkGenerator exitThunkGenerator(state);
-    exitThunkGenerator.emitThunks(jsCallThatMightThrowSpillOffset);
+    exitThunkGenerator.emitThunks();
     if (exitThunkGenerator.didThings()) {
         RELEASE_ASSERT(state.finalizer->osrExit.size());
         
@@ -675,7 +675,7 @@ static void fixFunctionBasedOnStackMaps(
                     // taking place by ensuring we spill the original base value and then recover it from
                     // the spill slot as the first step in OSR exit.
                     if (OSRExit* exit = exceptionHandlerManager.callOperationOSRExit(iter->value[i].index))
-                        exit->spillRegistersToSpillSlot(slowPathJIT, jsCallThatMightThrowSpillOffset);
+                        exit->spillRegistersToSpillSlot(slowPathJIT, osrExitFromGenericUnwindStackSpillSlot);
                 }
                 MacroAssembler::Call call = callOperation(
                     state, usedRegisters, slowPathJIT, codeOrigin, addedUniqueExceptionJump ? &exceptionJumpsToLink.last().first : &exceptionTarget,
@@ -794,7 +794,7 @@ static void fixFunctionBasedOnStackMaps(
                     // This situation has a really interesting register preservation story.
                     // See comment above for GetByIds.
                     if (OSRExit* exit = exceptionHandlerManager.callOperationOSRExit(iter->value[i].index))
-                        exit->spillRegistersToSpillSlot(slowPathJIT, jsCallThatMightThrowSpillOffset);
+                        exit->spillRegistersToSpillSlot(slowPathJIT, osrExitFromGenericUnwindStackSpillSlot);
                 }
 
                 callOperation(state, usedRegisters, slowPathJIT, codeOrigin, addedUniqueExceptionJump ? &exceptionJumpsToLink.last().first : &exceptionTarget,
@@ -876,12 +876,12 @@ static void fixFunctionBasedOnStackMaps(
         for (unsigned i = state.getByIds.size(); i--;) {
             generateICFastPath(
                 state, codeBlock, generatedFunction, recordMap, state.getByIds[i],
-                sizeOfGetById());
+                sizeOfGetById(), "GetById");
         }
         for (unsigned i = state.putByIds.size(); i--;) {
             generateICFastPath(
                 state, codeBlock, generatedFunction, recordMap, state.putByIds[i],
-                sizeOfPutById());
+                sizeOfPutById(), "PutById");
         }
         for (unsigned i = state.checkIns.size(); i--;) {
             generateCheckInICFastPath(
@@ -916,11 +916,11 @@ static void fixFunctionBasedOnStackMaps(
         JSCall& call = state.jsCalls[i];
 
         CCallHelpers fastPathJIT(&vm, codeBlock);
-        call.emit(fastPathJIT, state, jsCallThatMightThrowSpillOffset);
+        call.emit(fastPathJIT, state, osrExitFromGenericUnwindStackSpillSlot);
 
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + call.m_instructionOffset;
 
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfCall(), "JSCall inline cache", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfCall(), "JSCall", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             call.link(vm, linkBuffer);
         });
     }
@@ -931,12 +931,12 @@ static void fixFunctionBasedOnStackMaps(
         JSCallVarargs& call = state.jsCallVarargses[i];
         
         CCallHelpers fastPathJIT(&vm, codeBlock);
-        call.emit(fastPathJIT, state, varargsSpillSlotsOffset, jsCallThatMightThrowSpillOffset);
+        call.emit(fastPathJIT, state, varargsSpillSlotsOffset, osrExitFromGenericUnwindStackSpillSlot);
 
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + call.m_instructionOffset;
         size_t sizeOfIC = sizeOfICFor(call.node());
 
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "varargs call inline cache", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "varargs call", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             call.link(vm, linkBuffer, state.finalizer->handleExceptionsLinkBuffer->entrypoint());
         });
     }
@@ -952,7 +952,7 @@ static void fixFunctionBasedOnStackMaps(
         char* startOfIC = bitwise_cast<char*>(generatedFunction) + call.m_instructionOffset;
         size_t sizeOfIC = call.estimatedSize();
 
-        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "tail call inline cache", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
+        generateInlineIfPossibleOutOfLineIfNot(state, vm, codeBlock, fastPathJIT, startOfIC, sizeOfIC, "tail call", [&] (LinkBuffer& linkBuffer, CCallHelpers&, bool) {
             call.link(vm, linkBuffer);
         });
     }

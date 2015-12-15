@@ -28,9 +28,10 @@
 
 namespace WebCore {
 
-    TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&& texture, TextureMapperGL::Flags extraFlags)
+TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&& texture, TextureMapperGL::Flags flags)
     : m_texture(WTF::move(texture))
-    , m_flags(extraFlags)
+    , m_textureID(0)
+    , m_extraFlags(flags)
     , m_hasManagedTexture(true)
 {
 }
@@ -38,38 +39,31 @@ namespace WebCore {
 TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize& size, TextureMapperGL::Flags flags)
     : m_textureID(textureID)
     , m_size(size)
-    , m_flags(flags)
+    , m_extraFlags(flags)
     , m_hasManagedTexture(false)
-{
-}
-
-TextureMapperPlatformLayerBuffer::~TextureMapperPlatformLayerBuffer()
 {
 }
 
 bool TextureMapperPlatformLayerBuffer::canReuseWithoutReset(const IntSize& size, GC3Dint internalFormat)
 {
-    return m_texture && (static_cast<BitmapTextureGL*>(m_texture.get())->internalFormat() == internalFormat || internalFormat == GraphicsContext3D::DONT_CARE);
+    return m_texture && (m_texture->size() == size) && (static_cast<BitmapTextureGL*>(m_texture.get())->internalFormat() == internalFormat || internalFormat == GraphicsContext3D::DONT_CARE);
 }
 
-void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity)
+void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity)
 {
     if (m_hasManagedTexture) {
         ASSERT(m_texture);
-        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-        BitmapTextureGL* textureGL = static_cast<BitmapTextureGL*>(m_texture.get());
-        texmapGL->drawTexture(textureGL->id(), m_flags | (textureGL->isOpaque() ? 0 : TextureMapperGL::ShouldBlend), textureGL->size(), targetRect, modelViewMatrix, opacity);
+        BitmapTextureGL& texture = static_cast<BitmapTextureGL&>(*m_texture);
+        static_cast<TextureMapperGL&>(textureMapper).drawTexture(texture.id(), m_extraFlags | (texture.isOpaque() ? 0 : TextureMapperGL::ShouldBlend), texture.size(), targetRect, modelViewMatrix, opacity);
         return;
     }
 
-    if (m_flags & TextureMapperGL::ShouldOverwriteRect) {
-        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-        texmapGL->drawSolidColor(targetRect, modelViewMatrix, Color(0, 0, 0, 0), false);
-    } else {
-        ASSERT(m_textureID);
-        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-        texmapGL->drawTexture(m_textureID, m_flags, m_size, targetRect, modelViewMatrix, opacity);
-    }
+    ASSERT(m_textureID);
+    TextureMapperGL& texmapGL = static_cast<TextureMapperGL&>(textureMapper);
+    if (m_extraFlags & TextureMapperGL::ShouldOverwriteRect)
+        texmapGL.drawSolidColor(targetRect, modelViewMatrix, Color(0, 0, 0, 0), false);
+    else
+        texmapGL.drawTexture(m_textureID, m_extraFlags, m_size, targetRect, modelViewMatrix, opacity);
 }
 
-}; // namespace WebCore
+} // namespace WebCore

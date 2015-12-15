@@ -143,6 +143,7 @@ static void uriChangedCallback(WebKitWebPage* webPage, GParamSpec* pspec, WebKit
 
 static gboolean sendRequestCallback(WebKitWebPage*, WebKitURIRequest* request, WebKitURIResponse* redirectResponse, gpointer)
 {
+    gboolean returnValue = FALSE;
     const char* requestURI = webkit_uri_request_get_uri(request);
     g_assert(requestURI);
 
@@ -165,10 +166,17 @@ static gboolean sendRequestCallback(WebKitWebPage*, WebKitURIRequest* request, W
         SoupMessageHeaders* headers = webkit_uri_request_get_http_headers(request);
         g_assert(headers);
         soup_message_headers_append(headers, "DNT", "1");
+    } else if (g_str_has_suffix(requestURI, "/http-get-method")) {
+        g_assert_cmpstr(webkit_uri_request_get_http_method(request), ==, "GET");
+        g_assert(webkit_uri_request_get_http_method(request) == SOUP_METHOD_GET);
+    } else if (g_str_has_suffix(requestURI, "/http-post-method")) {
+        g_assert_cmpstr(webkit_uri_request_get_http_method(request), ==, "POST");
+        g_assert(webkit_uri_request_get_http_method(request) == SOUP_METHOD_POST);
+        returnValue = TRUE;
     } else if (g_str_has_suffix(requestURI, "/cancel-this.js"))
-        return TRUE;
+        returnValue = TRUE;
 
-    return FALSE;
+    return returnValue;
 }
 
 static GVariant* serializeContextMenu(WebKitContextMenu* menu)
@@ -226,12 +234,25 @@ static gboolean contextMenuCallback(WebKitWebPage* page, WebKitContextMenu* menu
     return FALSE;
 }
 
+static void consoleMessageSentCallback(WebKitWebPage* webPage, WebKitConsoleMessage* consoleMessage)
+{
+    g_assert(consoleMessage);
+    GRefPtr<GVariant> variant = g_variant_new("(uusus)", webkit_console_message_get_source(consoleMessage),
+        webkit_console_message_get_level(consoleMessage), webkit_console_message_get_text(consoleMessage),
+        webkit_console_message_get_line(consoleMessage), webkit_console_message_get_source_id(consoleMessage));
+    GUniquePtr<char> messageString(g_variant_print(variant.get(), FALSE));
+    GRefPtr<WebKitDOMDOMWindow> window = adoptGRef(webkit_dom_document_get_default_view(webkit_web_page_get_dom_document(webPage)));
+    g_assert(WEBKIT_DOM_IS_DOM_WINDOW(window.get()));
+    webkit_dom_dom_window_webkit_message_handlers_post_message(window.get(), "console", messageString.get());
+}
+
 static void pageCreatedCallback(WebKitWebExtension* extension, WebKitWebPage* webPage, gpointer)
 {
     g_signal_connect(webPage, "document-loaded", G_CALLBACK(documentLoadedCallback), extension);
     g_signal_connect(webPage, "notify::uri", G_CALLBACK(uriChangedCallback), extension);
     g_signal_connect(webPage, "send-request", G_CALLBACK(sendRequestCallback), nullptr);
     g_signal_connect(webPage, "context-menu", G_CALLBACK(contextMenuCallback), nullptr);
+    g_signal_connect(webPage, "console-message-sent", G_CALLBACK(consoleMessageSentCallback), nullptr);
 }
 
 static JSValueRef echoCallback(JSContextRef jsContext, JSObjectRef, JSObjectRef, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)

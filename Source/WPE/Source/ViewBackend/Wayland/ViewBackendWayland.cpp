@@ -29,7 +29,9 @@
 
 #if WPE_BACKEND(WAYLAND)
 
+#if WPE_BUFFER_MANAGEMENT(GBM)
 #include "BufferDataGBM.h"
+#endif
 #include "WaylandDisplay.h"
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -151,6 +153,7 @@ uint32_t ViewBackendWayland::constructRenderingTarget(uint32_t, uint32_t)
 
 void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)
 {
+#if WPE_BUFFER_MANAGEMENT(GBM)
     if (!data || size != sizeof(Graphics::BufferDataGBM)) {
         fprintf(stderr, "ViewBackendWayland: failed to validate the committed buffer\n");
         return;
@@ -192,6 +195,7 @@ void ViewBackendWayland::commitBuffer(int fd, const uint8_t* data, size_t size)
     wl_surface_damage(m_surface, 0, 0, INT32_MAX, INT32_MAX);
     wl_surface_commit(m_surface);
     wl_display_flush(m_display.display());
+#endif
 }
 
 void ViewBackendWayland::destroyBuffer(uint32_t handle)

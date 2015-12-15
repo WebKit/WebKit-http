@@ -750,6 +750,15 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
+
+- (BOOL)_isBackground
+{
+    if ([self _isDisplayingPDF])
+        return [(WKPDFView *)_customContentView isBackground];
+
+    return [_contentView isBackground];
+}
+
 - (void)setFrame:(CGRect)frame
 {
     CGRect oldFrame = self.frame;
@@ -2762,7 +2771,8 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (id)_web_immediateActionAnimationControllerForHitTestResultInternal:(API::HitTestResult*)hitTestResult withType:(uint32_t)type userData:(API::Object*)userData
 {
-    return [self _immediateActionAnimationControllerForHitTestResult:wrapper(*hitTestResult) withType:(_WKImmediateActionType)type userData:(id)userData];
+    id<NSSecureCoding> data = userData ? static_cast<id<NSSecureCoding>>(userData->wrapper()) : nil;
+    return [self _immediateActionAnimationControllerForHitTestResult:wrapper(*hitTestResult) withType:(_WKImmediateActionType)type userData:data];
 }
 
 // We don't expose these various bits of SPI like WKView does,

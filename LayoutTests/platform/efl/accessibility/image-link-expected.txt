@@ -4,7 +4,7 @@ This test checks that the right accessibility tree is generated for a link insid
 
 
 AXRole: AXLink
-AXParent: AXGroup
+AXParent: AXSection
 AXChildren: 1
 AXPosition: { 0.000000, 0.000000 }
 AXSize: { 280.000000, 213.000000 }
@@ -21,7 +21,7 @@ AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
 AXURL: http://www.wowhead.com/?item=33924
-AXPlatformAttributes: html-id:test, toolkit:WebKitEfl
+AXPlatformAttributes: computed-role:link, html-id:test, tag:a, toolkit:WebKitEfl
 
 Child 0:
 AXRole: AXImage
@@ -41,6 +41,6 @@ AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
 AXURL: LayoutTests/accessibility/resources/cake.png
-AXPlatformAttributes: toolkit:WebKitEfl
+AXPlatformAttributes: computed-role:img, tag:img, toolkit:WebKitEfl
 
 

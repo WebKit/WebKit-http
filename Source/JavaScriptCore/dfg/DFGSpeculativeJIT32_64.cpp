@@ -2059,55 +2059,13 @@ void SpeculativeJIT::compile(Node* node)
     case BitAnd:
     case BitOr:
     case BitXor:
-        if (node->child1()->isInt32Constant()) {
-            SpeculateInt32Operand op2(this, node->child2());
-            GPRTemporary result(this, Reuse, op2);
-
-            bitOp(op, node->child1()->asInt32(), op2.gpr(), result.gpr());
-
-            int32Result(result.gpr(), node);
-        } else if (node->child2()->isInt32Constant()) {
-            SpeculateInt32Operand op1(this, node->child1());
-            GPRTemporary result(this, Reuse, op1);
-
-            bitOp(op, node->child2()->asInt32(), op1.gpr(), result.gpr());
-
-            int32Result(result.gpr(), node);
-        } else {
-            SpeculateInt32Operand op1(this, node->child1());
-            SpeculateInt32Operand op2(this, node->child2());
-            GPRTemporary result(this, Reuse, op1, op2);
-
-            GPRReg reg1 = op1.gpr();
-            GPRReg reg2 = op2.gpr();
-            bitOp(op, reg1, reg2, result.gpr());
-
-            int32Result(result.gpr(), node);
-        }
+        compileBitwiseOp(node);
         break;
 
     case BitRShift:
     case BitLShift:
     case BitURShift:
-        if (node->child2()->isInt32Constant()) {
-            SpeculateInt32Operand op1(this, node->child1());
-            GPRTemporary result(this, Reuse, op1);
-
-            shiftOp(op, op1.gpr(), node->child2()->asInt32() & 0x1f, result.gpr());
-
-            int32Result(result.gpr(), node);
-        } else {
-            // Do not allow shift amount to be used as the result, MacroAssembler does not permit this.
-            SpeculateInt32Operand op1(this, node->child1());
-            SpeculateInt32Operand op2(this, node->child2());
-            GPRTemporary result(this, Reuse, op1);
-
-            GPRReg reg1 = op1.gpr();
-            GPRReg reg2 = op2.gpr();
-            shiftOp(op, reg1, reg2, result.gpr());
-
-            int32Result(result.gpr(), node);
-        }
+        compileShiftOp(node);
         break;
 
     case UInt32ToNumber: {
@@ -2328,6 +2286,10 @@ void SpeculativeJIT::compile(Node* node)
         doubleResult(result.fpr(), node);
         break;
     }
+
+    case ArithRandom:
+        compileArithRandom(node);
+        break;
 
     case ArithRound:
         compileArithRound(node);
@@ -3799,10 +3761,6 @@ void SpeculativeJIT::compile(Node* node)
     case GetScope:
         compileGetScope(node);
         break;
-
-    case LoadArrowFunctionThis:
-        compileLoadArrowFunctionThis(node);
-        break;
             
     case SkipScope:
         compileSkipScope(node);
@@ -4790,12 +4748,12 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case CheckWatchdogTimer: {
-        ASSERT(m_jit.vm()->watchdog);
+        ASSERT(m_jit.vm()->watchdog());
         GPRTemporary unused(this);
         GPRReg unusedGPR = unused.gpr();
         
         JITCompiler::Jump timerDidFire = m_jit.branchTest8(JITCompiler::NonZero,
-            JITCompiler::AbsoluteAddress(m_jit.vm()->watchdog->timerDidFireAddress()));
+            JITCompiler::AbsoluteAddress(m_jit.vm()->watchdog()->timerDidFireAddress()));
         
         addSlowPathGenerator(slowPathCall(timerDidFire, this, operationHandleWatchdogTimer, unusedGPR));
         break;
@@ -4890,6 +4848,18 @@ void SpeculativeJIT::moveFalseTo(GPRReg gpr)
 
 void SpeculativeJIT::blessBoolean(GPRReg)
 {
+}
+
+void SpeculativeJIT::compileArithRandom(Node* node)
+{
+    JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
+
+    flushRegisters();
+
+    FPRResult result(this);
+    callOperation(operationRandom, result.fpr(), globalObject);
+    // operationRandom does not raise any exception.
+    doubleResult(result.fpr(), node);
 }
 
 #endif

@@ -27,10 +27,6 @@
 #ifndef BitmapTexture_h
 #define BitmapTexture_h
 
-#if USE(OPENGL_ES_2)
-#define TEXMAP_OPENGL_ES_2
-#endif
-
 #include "IntPoint.h"
 #include "IntRect.h"
 #include "IntSize.h"
@@ -47,13 +43,20 @@ class TextureMapper;
 // A 2D texture that can be the target of software or GL rendering.
 class BitmapTexture : public RefCounted<BitmapTexture> {
 public:
+    enum Flag {
+        NoFlag = 0,
+        SupportsAlpha = 0x01
+    };
+
     enum UpdateContentsFlag {
         UpdateCanModifyOriginalImageData,
         UpdateCannotModifyOriginalImageData
     };
 
+    typedef unsigned Flags;
+
     BitmapTexture()
-        : m_hasAlpha(false)
+        : m_flags(0)
     {
     }
 
@@ -62,14 +65,15 @@ public:
 
     virtual IntSize size() const = 0;
     virtual void updateContents(Image*, const IntRect&, const IntPoint& offset, UpdateContentsFlag) = 0;
-    virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag, float scale = 1);
+    virtual void updateContents(TextureMapper&, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag, float scale = 1);
     virtual void updateContents(const void*, const IntRect& target, const IntPoint& offset, int bytesPerLine, UpdateContentsFlag) = 0;
     virtual bool isValid() const = 0;
+    inline Flags flags() const { return m_flags; }
 
     virtual int bpp() const { return 32; }
-    void reset(const IntSize& size, bool hasAlpha = false)
+    void reset(const IntSize& size, Flags flags = 0)
     {
-        m_hasAlpha = hasAlpha;
+        m_flags = flags;
         m_contentSize = size;
         didReset();
     }
@@ -77,15 +81,15 @@ public:
 
     inline IntSize contentSize() const { return m_contentSize; }
     inline int numberOfBytes() const { return size().width() * size().height() * bpp() >> 3; }
-    inline bool isOpaque() const { return !m_hasAlpha; }
+    inline bool isOpaque() const { return !(m_flags & SupportsAlpha); }
 
-    virtual PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&) { return this; }
+    virtual PassRefPtr<BitmapTexture> applyFilters(TextureMapper&, const FilterOperations&) { return this; }
 
 protected:
     IntSize m_contentSize;
 
 private:
-    bool m_hasAlpha;
+    Flags m_flags;
 };
 
 }

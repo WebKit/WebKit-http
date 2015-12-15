@@ -35,7 +35,6 @@
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
 #include "TextureMapperPlatformLayer.h"
 #endif
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
@@ -63,6 +62,7 @@ namespace WebCore {
 
 class BitmapTextureGL;
 class GraphicsContext;
+class GraphicsContext3D;
 class IntSize;
 class IntRect;
 
@@ -141,7 +141,7 @@ public:
 #else
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float);
+    virtual void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -226,8 +226,6 @@ public:
     GRefPtr<GstSample> m_sample;
 #if USE(GSTREAMER_GL)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
-    Condition m_drawCondition;
-    Lock m_drawMutex;
 #endif
     unsigned long m_repaintHandler;
     unsigned long m_drainHandler;
@@ -237,19 +235,22 @@ public:
     guint m_orientation;
     void updateTexture(BitmapTextureGL&, GstVideoInfo&);
 #endif
+#if USE(GSTREAMER_GL)
+    GRefPtr<GstGLContext> m_glContext;
+    GRefPtr<GstGLDisplay> m_glDisplay;
+#endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
     virtual void swapBuffersIfNeeded() override { };
-    void updateOnCompositorThread();
-    GCond m_updateCondition;
-    GMutex m_updateMutex;
+    void pushTextureToCompositor();
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
-    RefPtr<GraphicsContext3D> m_context3D;
 #endif
-#if USE(GSTREAMER_GL)
-    GRefPtr<GstGLContext> m_glContext;
-    GRefPtr<GstGLDisplay> m_glDisplay;
+
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    RefPtr<GraphicsContext3D> m_context3D;
+    Condition m_drawCondition;
+    Lock m_drawMutex;
 #endif
 
 private:

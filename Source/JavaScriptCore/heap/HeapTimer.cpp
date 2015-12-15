@@ -143,36 +143,6 @@ bool HeapTimer::timerEvent(void* info)
     return ECORE_CALLBACK_CANCEL;
 }
 
-#elif PLATFORM(WPE)
-
-HeapTimer::HeapTimer(VM* vm)
-    : m_vm(vm)
-{
-    RefPtr<JSLock> lockProtector(&m_vm->apiLock());
-    m_timer.initialize("[JSC] HeapTimer",
-        [this, lockProtector] {
-            auto& apiLock = *lockProtector;
-            apiLock.lock();
-
-            VM* vm = apiLock.vm();
-            if (!vm) {
-                apiLock.unlock();
-                return;
-            }
-
-            {
-                JSLockHolder lockHolder(vm);
-                doWork();
-            }
-
-            apiLock.unlock();
-        });
-}
-
-HeapTimer::~HeapTimer()
-{
-}
-
 #elif USE(GLIB)
 
 static GSourceFuncs heapTimerSourceFunctions = {

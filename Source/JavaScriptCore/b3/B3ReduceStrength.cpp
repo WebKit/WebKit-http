@@ -30,15 +30,19 @@
 
 #include "B3BasicBlockInlines.h"
 #include "B3ControlValue.h"
+#include "B3Dominators.h"
 #include "B3IndexSet.h"
 #include "B3InsertionSetInlines.h"
 #include "B3MemoryValue.h"
 #include "B3PhaseScope.h"
+#include "B3PhiChildren.h"
 #include "B3ProcedureInlines.h"
 #include "B3UpsilonValue.h"
 #include "B3UseCounts.h"
+#include "B3ValueKey.h"
 #include "B3ValueInlines.h"
 #include <wtf/GraphNodeWorklist.h>
+#include <wtf/HashMap.h>
 
 namespace JSC { namespace B3 {
 
@@ -105,11 +109,20 @@ public:
                 dataLog(m_proc);
             }
 
+            m_proc.resetValueOwners();
+            m_dominators = &m_proc.dominators(); // Recompute if necessary.
+            m_pureValues.clear();
+
             for (BasicBlock* block : m_proc.blocksInPreOrder()) {
                 m_block = block;
                 
-                for (m_index = 0; m_index < block->size(); ++m_index)
-                    process();
+                for (m_index = 0; m_index < block->size(); ++m_index) {
+                    m_value = m_block->at(m_index);
+                    m_value->performSubstitution();
+                    
+                    reduceValueStrength();
+                    replaceIfRedundant();
+                }
                 m_insertionSet.execute(m_block);
             }
 
@@ -117,10 +130,12 @@ public:
 
             if (m_changedCFG) {
                 m_proc.resetReachability();
+                m_proc.invalidateCFG();
                 m_changed = true;
             }
 
             killDeadCode();
+            simplifySSA();
             
             result |= m_changed;
         } while (m_changed);
@@ -128,11 +143,8 @@ public:
     }
     
 private:
-    void process()
+    void reduceValueStrength()
     {
-        m_value = m_block->at(m_index);
-        m_value->performSubstitution();
-        
         switch (m_value->opcode()) {
         case Add:
             handleCommutativity();
@@ -290,6 +302,14 @@ private:
             replaceWithNewValue(m_value->child(0)->divConstant(m_proc, m_value->child(1)));
             break;
 
+        case Mod:
+        case ChillMod:
+            // Turn this: Mod(constant1, constant2)
+            // Into this: constant1 / constant2
+            // Note that this uses ChillMod semantics.
+            replaceWithNewValue(m_value->child(0)->modConstant(m_proc, m_value->child(1)));
+            break;
+
         case BitAnd:
             handleCommutativity();
 
@@ -346,6 +366,32 @@ private:
                 m_value->replaceWithIdentity(newValue);
                 m_changed = true;
                 break;
+            }
+
+            // Turn this: BitAnd(SExt8(value), mask) where (mask & 0xffffff00) == 0
+            // Into this: BitAnd(value, mask)
+            if (m_value->child(0)->opcode() == SExt8 && m_value->child(1)->hasInt32()
+                && !(m_value->child(1)->asInt32() & 0xffffff00)) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+            }
+
+            // Turn this: BitAnd(SExt16(value), mask) where (mask & 0xffff0000) == 0
+            // Into this: BitAnd(value, mask)
+            if (m_value->child(0)->opcode() == SExt16 && m_value->child(1)->hasInt32()
+                && !(m_value->child(1)->asInt32() & 0xffff0000)) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+            }
+
+            // Turn this: BitAnd(SExt32(value), mask) where (mask & 0xffffffff00000000) == 0
+            // Into this: BitAnd(ZExt32(value), mask)
+            if (m_value->child(0)->opcode() == SExt32 && m_value->child(1)->hasInt32()
+                && !(m_value->child(1)->asInt32() & 0xffffffff00000000llu)) {
+                m_value->child(0) = m_insertionSet.insert<Value>(
+                    m_index, ZExt32, m_value->origin(),
+                    m_value->child(0)->child(0), m_value->child(0)->child(1));
+                m_changed = true;
             }
             break;
 
@@ -485,6 +531,74 @@ private:
 
             break;
 
+        case Abs:
+            // Turn this: Abs(constant)
+            // Into this: fabs<value->type()>(constant)
+            if (Value* constant = m_value->child(0)->absConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            // Turn this: Abs(Abs(value))
+            // Into this: Abs(value)
+            if (m_value->child(0)->opcode() == Abs) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                break;
+            }
+
+            // Turn this: Abs(BitwiseCast(value))
+            // Into this: BitwiseCast(And(value, mask-top-bit))
+            if (m_value->child(0)->opcode() == BitwiseCast) {
+                Value* mask;
+                if (m_value->type() == Double)
+                    mask = m_insertionSet.insert<Const64Value>(m_index, m_value->origin(), ~(1l << 63));
+                else
+                    mask = m_insertionSet.insert<Const32Value>(m_index, m_value->origin(), ~(1l << 31));
+
+                Value* bitAnd = m_insertionSet.insert<Value>(m_index, BitAnd, m_value->origin(),
+                    m_value->child(0)->child(0),
+                    mask);
+                Value* cast = m_insertionSet.insert<Value>(m_index, BitwiseCast, m_value->origin(), bitAnd);
+                m_value->replaceWithIdentity(cast);
+                break;
+            }
+            break;
+
+        case Ceil:
+            // Turn this: Ceil(constant)
+            // Into this: ceil<value->type()>(constant)
+            if (Value* constant = m_value->child(0)->ceilConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            // Turn this: Ceil(Ceil(value))
+            // Into this: Ceil(value)
+            if (m_value->child(0)->opcode() == Ceil) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                break;
+            }
+
+            // Turn this: Ceil(IToD(value))
+            // Into this: IToD(value)
+            //
+            // That works for Int64 because both ARM64 and x86_64
+            // perform rounding when converting a 64bit integer to double.
+            if (m_value->child(0)->opcode() == IToD) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                break;
+            }
+            break;
+
+        case Sqrt:
+            // Turn this: Sqrt(constant)
+            // Into this: sqrt<value->type()>(constant)
+            if (Value* constant = m_value->child(0)->sqrtConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+            break;
+
         case BitwiseCast:
             // Turn this: BitwiseCast(constant)
             // Into this: bitwise_cast<value->type()>(constant)
@@ -502,11 +616,112 @@ private:
             }
             break;
 
+        case SExt8:
+            // Turn this: SExt8(constant)
+            // Into this: static_cast<int8_t>(constant)
+            if (m_value->child(0)->hasInt32()) {
+                int32_t result = static_cast<int8_t>(m_value->child(0)->asInt32());
+                replaceWithNewValue(m_proc.addIntConstant(m_value, result));
+                break;
+            }
+
+            // Turn this: SExt8(SExt8(value))
+            //   or this: SExt8(SExt16(value))
+            // Into this: SExt8(value)
+            if (m_value->child(0)->opcode() == SExt8 || m_value->child(0)->opcode() == SExt16) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+            }
+
+            if (m_value->child(0)->opcode() == BitAnd && m_value->child(0)->child(1)->hasInt32()) {
+                Value* input = m_value->child(0)->child(0);
+                int32_t mask = m_value->child(0)->child(1)->asInt32();
+                
+                // Turn this: SExt8(BitAnd(input, mask)) where (mask & 0xff) == 0xff
+                // Into this: SExt8(input)
+                if ((mask & 0xff) == 0xff) {
+                    m_value->child(0) = input;
+                    m_changed = true;
+                    break;
+                }
+                
+                // Turn this: SExt8(BitAnd(input, mask)) where (mask & 0x80) == 0
+                // Into this: BitAnd(input, const & 0x7f)
+                if (!(mask & 0x80)) {
+                    replaceWithNewValue(
+                        m_proc.add<Value>(
+                            BitAnd, m_value->origin(), input,
+                            m_insertionSet.insert<Const32Value>(
+                                m_index, m_value->origin(), mask & 0x7f)));
+                    break;
+                }
+            }
+            break;
+
+        case SExt16:
+            // Turn this: SExt16(constant)
+            // Into this: static_cast<int16_t>(constant)
+            if (m_value->child(0)->hasInt32()) {
+                int32_t result = static_cast<int16_t>(m_value->child(0)->asInt32());
+                replaceWithNewValue(m_proc.addIntConstant(m_value, result));
+                break;
+            }
+
+            // Turn this: SExt16(SExt16(value))
+            // Into this: SExt16(value)
+            if (m_value->child(0)->opcode() == SExt16) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+            }
+
+            // Turn this: SExt16(SExt8(value))
+            // Into this: SExt8(value)
+            if (m_value->child(0)->opcode() == SExt8) {
+                m_value->replaceWithIdentity(m_value->child(0));
+                m_changed = true;
+                break;
+            }
+
+            if (m_value->child(0)->opcode() == BitAnd && m_value->child(0)->child(1)->hasInt32()) {
+                Value* input = m_value->child(0)->child(0);
+                int32_t mask = m_value->child(0)->child(1)->asInt32();
+                
+                // Turn this: SExt16(BitAnd(input, mask)) where (mask & 0xffff) == 0xffff
+                // Into this: SExt16(input)
+                if ((mask & 0xffff) == 0xffff) {
+                    m_value->child(0) = input;
+                    m_changed = true;
+                    break;
+                }
+                
+                // Turn this: SExt16(BitAnd(input, mask)) where (mask & 0x8000) == 0
+                // Into this: BitAnd(input, const & 0x7fff)
+                if (!(mask & 0x8000)) {
+                    replaceWithNewValue(
+                        m_proc.add<Value>(
+                            BitAnd, m_value->origin(), input,
+                            m_insertionSet.insert<Const32Value>(
+                                m_index, m_value->origin(), mask & 0x7fff)));
+                    break;
+                }
+            }
+            break;
+
         case SExt32:
             // Turn this: SExt32(constant)
             // Into this: static_cast<int64_t>(constant)
             if (m_value->child(0)->hasInt32()) {
                 replaceWithNewValue(m_proc.addIntConstant(m_value, m_value->child(0)->asInt32()));
+                break;
+            }
+
+            // Turn this: SExt32(BitAnd(input, mask)) where (mask & 0x80000000) == 0
+            // Into this: ZExt32(BitAnd(input, mask))
+            if (m_value->child(0)->opcode() == BitAnd && m_value->child(0)->child(1)->hasInt32()
+                && !(m_value->child(0)->child(1)->asInt32() & 0x80000000)) {
+                replaceWithNewValue(
+                    m_proc.add<Value>(
+                        ZExt32, m_value->origin(), m_value->child(0)));
                 break;
             }
             break;
@@ -541,6 +756,32 @@ private:
             }
             break;
 
+        case FloatToDouble:
+            // Turn this: FloatToDouble(constant)
+            // Into this: ConstDouble(constant)
+            if (Value* constant = m_value->child(0)->floatToDoubleConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+            break;
+
+        case DoubleToFloat:
+            // Turn this: DoubleToFloat(FloatToDouble(value))
+            // Into this: value
+            if (m_value->child(0)->opcode() == FloatToDouble) {
+                m_value->replaceWithIdentity(m_value->child(0)->child(0));
+                m_changed = true;
+                break;
+            }
+
+            // Turn this: DoubleToFloat(constant)
+            // Into this: ConstFloat(constant)
+            if (Value* constant = m_value->child(0)->doubleToFloatConstant(m_proc)) {
+                replaceWithNewValue(constant);
+                break;
+            }
+            break;
+
         case Select:
             // Turn this: Select(constant, a, b)
             // Into this: constant ? a : b
@@ -571,6 +812,17 @@ private:
                 break;
             }
 
+            // Turn this: Select(BitAnd(bool, xyz1), a, b)
+            // Into this: Select(bool, a, b)
+            if (m_value->child(0)->opcode() == BitAnd
+                && m_value->child(0)->child(1)->hasInt()
+                && m_value->child(0)->child(1)->asInt() & 1
+                && m_value->child(0)->child(0)->returnsBool()) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+                break;
+            }
+
             // Turn this: Select(stuff, x, x)
             // Into this: x
             if (m_value->child(1) == m_value->child(2)) {
@@ -584,11 +836,9 @@ private:
         case Load8S:
         case Load16Z:
         case Load16S:
-        case LoadFloat:
         case Load:
         case Store8:
         case Store16:
-        case StoreFloat:
         case Store: {
             Value* address = m_value->lastChild();
             MemoryValue* memory = m_value->as<MemoryValue>();
@@ -613,7 +863,7 @@ private:
             }
 
             // Turn this: Load(constant1, offset = constant2)
-            // Into this: Laod(constant1 + constant2)
+            // Into this: Load(constant1 + constant2)
             //
             // This is a fun canonicalization. It purely regresses naively generated code. We rely
             // on constant materialization to be smart enough to materialize this constant the smart
@@ -631,6 +881,18 @@ private:
             
             break;
         }
+
+        case CCall:
+            // Turn this: Call(fmod, constant1, constant2)
+            // Into this: fcall-constant(constant1, constant2)
+            if (m_value->type() == Double
+                && m_value->numChildren() == 3
+                && m_value->child(0)->isIntPtr(reinterpret_cast<intptr_t>(fmod))
+                && m_value->child(1)->type() == Double
+                && m_value->child(2)->type() == Double) {
+                replaceWithNewValue(m_value->child(1)->modConstant(m_proc, m_value->child(2)));
+            }
+            break;
 
         case Equal:
             handleCommutativity();
@@ -816,6 +1078,12 @@ private:
                 m_changed = true;
                 break;
             }
+
+            if (m_value->child(0)->opcode() == NotEqual && m_value->child(0)->child(1)->isInt(0)) {
+                m_value->child(0) = m_value->child(0)->child(0);
+                m_changed = true;
+                break;
+            }
             break;
 
         case Branch: {
@@ -845,7 +1113,17 @@ private:
                 std::swap(branch->taken(), branch->notTaken());
                 m_changed = true;
             }
-            
+
+            // Turn this: Branch(BitAnd(bool, xyb1), then, else)
+            // Into this: Branch(bool, then, else)
+            if (branch->child(0)->opcode() == BitAnd
+                && branch->child(0)->child(1)->hasInt()
+                && branch->child(0)->child(1)->asInt() & 1
+                && branch->child(0)->child(0)->returnsBool()) {
+                branch->child(0) = branch->child(0)->child(0);
+                m_changed = true;
+            }
+
             TriState triState = branch->child(0)->asTriState();
 
             // Turn this: Branch(0, then, else)
@@ -931,6 +1209,35 @@ private:
             return true;
         }
         return false;
+    }
+
+    void replaceIfRedundant()
+    {
+        // This does a very simple pure dominator-based CSE. In the future we could add load elimination.
+        // Note that if we add load elimination, we should do it by directly matching load and store
+        // instructions instead of using the ValueKey functionality or doing DFG HeapLocation-like
+        // things.
+
+        // Don't bother with identities. We kill those anyway.
+        if (m_value->opcode() == Identity)
+            return;
+
+        ValueKey key = m_value->key();
+        if (!key)
+            return;
+        
+        Vector<Value*, 1>& matches = m_pureValues.add(key, Vector<Value*, 1>()).iterator->value;
+
+        // Replace this value with whichever value dominates us.
+        for (Value* match : matches) {
+            if (m_dominators->dominates(match->owner, m_value->owner)) {
+                m_value->replaceWithIdentity(match);
+                m_changed = true;
+                return;
+            }
+        }
+
+        matches.append(m_value);
     }
 
     void simplifyCFG()
@@ -1129,13 +1436,76 @@ private:
         }
     }
 
+    void simplifySSA()
+    {
+        // This runs Aycock and Horspool's algorithm on our Phi functions [1]. For most CFG patterns,
+        // this can take a suboptimal arrangement of Phi functions and make it optimal, as if you had
+        // run Cytron, Ferrante, Rosen, Wegman, and Zadeck. It's only suboptimal for irreducible
+        // CFGs. In practice, that doesn't matter, since we expect clients of B3 to run their own SSA
+        // conversion before lowering to B3, and in the case of the DFG, that conversion uses Cytron
+        // et al. In that context, this algorithm is intended to simplify Phi functions that were
+        // made redundant by prior CFG simplification. But according to Aycock and Horspool's paper,
+        // this algorithm is good enough that a B3 client could just give us maximal Phi's (i.e. Phi
+        // for each variable at each basic block) and we will make them optimal.
+        // [1] http://pages.cpsc.ucalgary.ca/~aycock/papers/ssa.ps
+
+        // Aycock and Horspool prescribe two rules that are to be run to fixpoint:
+        //
+        // 1) If all of the Phi's children are the same (i.e. it's one child referenced from one or
+        //    more Upsilons), then replace all uses of the Phi with the one child.
+        //
+        // 2) If all of the Phi's children are either the Phi itself or exactly one other child, then
+        //    replace all uses of the Phi with the one other child.
+        //
+        // Rule (2) subsumes rule (1), so we can just run (2). We only run one fixpoint iteration
+        // here. This premise is that in common cases, this will only find optimization opportunities
+        // as a result of CFG simplification and usually CFG simplification will only do one round
+        // of block merging per ReduceStrength fixpoint iteration, so it's OK for this to only do one
+        // round of Phi merging - since Phis are the value analogue of blocks.
+
+        PhiChildren phiChildren(m_proc);
+
+        for (Value* phi : phiChildren.phis()) {
+            Value* otherChild = nullptr;
+            bool ok = true;
+            for (Value* child : phiChildren[phi].values()) {
+                if (child == phi)
+                    continue;
+                if (child == otherChild)
+                    continue;
+                if (!otherChild) {
+                    otherChild = child;
+                    continue;
+                }
+                ok = false;
+                break;
+            }
+            if (!ok)
+                continue;
+            if (!otherChild) {
+                // Wow, this would be super weird. It probably won't happen, except that things could
+                // get weird as a consequence of stepwise simplifications in the strength reduction
+                // fixpoint.
+                continue;
+            }
+            
+            // Turn the Phi into an Identity and turn the Upsilons into Nops.
+            m_changed = true;
+            for (Value* upsilon : phiChildren[phi])
+                upsilon->replaceWithNop();
+            phi->replaceWithIdentity(otherChild);
+        }
+    }
+
     Procedure& m_proc;
     InsertionSet m_insertionSet;
-    BasicBlock* m_block;
-    unsigned m_index;
-    Value* m_value;
-    bool m_changed;
-    bool m_changedCFG;
+    BasicBlock* m_block { nullptr };
+    unsigned m_index { 0 };
+    Value* m_value { nullptr };
+    Dominators* m_dominators { nullptr };
+    HashMap<ValueKey, Vector<Value*, 1>> m_pureValues;
+    bool m_changed { false };
+    bool m_changedCFG { false };
 };
 
 } // anonymous namespace

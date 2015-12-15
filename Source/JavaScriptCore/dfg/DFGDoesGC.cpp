@@ -85,6 +85,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithMax:
     case ArithPow:
     case ArithSqrt:
+    case ArithRandom:
     case ArithRound:
     case ArithFRound:
     case ArithSin:
@@ -107,7 +108,6 @@ bool doesGC(Graph& graph, Node* node)
     case GetButterflyReadOnly:
     case CheckArray:
     case GetScope:
-    case LoadArrowFunctionThis:
     case SkipScope:
     case GetClosureVar:
     case PutClosureVar:

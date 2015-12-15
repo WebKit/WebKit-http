@@ -37,7 +37,7 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WTFThreadData.h>
 
-#if PLATFORM(EFL) || PLATFORM(WPE)
+#if PLATFORM(EFL)
 #include <wtf/MainThread.h>
 #elif USE(GLIB)
 #include <glib.h>
@@ -61,7 +61,7 @@ GCActivityCallback::GCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
     : GCActivityCallback(heap->vm(), runLoop)
 {
 }
-#elif PLATFORM(EFL) || PLATFORM(WPE)
+#elif PLATFORM(EFL)
 GCActivityCallback::GCActivityCallback(Heap* heap)
     : GCActivityCallback(heap->vm(), WTF::isMainThread())
 {
@@ -95,12 +95,14 @@ void GCActivityCallback::scheduleTimer(double newDelay)
         return;
     double delta = m_delay - newDelay;
     m_delay = newDelay;
+    m_nextFireTime = WTF::currentTime() + newDelay;
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFRunLoopTimerGetNextFireDate(m_timer.get()) - delta);
 }
 
 void GCActivityCallback::cancelTimer()
 {
     m_delay = s_decade;
+    m_nextFireTime = 0;
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + s_decade);
 }
 #elif PLATFORM(EFL)
@@ -120,26 +122,6 @@ void GCActivityCallback::cancelTimer()
 {
     m_delay = s_hour;
     stop();
-}
-#elif PLATFORM(WPE)
-void GCActivityCallback::scheduleTimer(double newDelay)
-{
-    if (newDelay * timerSlop > m_delay)
-        return;
-
-    m_delay = newDelay;
-
-    auto delayDuration = std::chrono::duration<double>(m_delay);
-    auto delay = std::chrono::microseconds::max();
-    if (delayDuration < delay)
-        delay = std::chrono::duration_cast<std::chrono::microseconds>(delayDuration);
-    m_timer.schedule(delay);
-}
-
-void GCActivityCallback::cancelTimer()
-{
-    m_delay = s_hour;
-    m_timer.cancel();
 }
 #elif USE(GLIB)
 void GCActivityCallback::scheduleTimer(double newDelay)
@@ -173,7 +155,7 @@ void GCActivityCallback::cancelTimer()
 
 void GCActivityCallback::didAllocate(size_t bytes)
 {
-#if PLATFORM(EFL) || PLATFORM(WPE)
+#if PLATFORM(EFL)
     if (!isEnabled())
         return;
 

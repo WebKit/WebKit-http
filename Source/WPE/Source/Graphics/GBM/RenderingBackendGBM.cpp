@@ -41,6 +41,7 @@ namespace Graphics {
 
 RenderingBackendGBM::RenderingBackendGBM()
 {
+    // FIXME: This path should be retrieved with udev.
     m_gbm.fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
     if (m_gbm.fd < 0) {
         fprintf(stderr, "RenderingBackendGBM: cannot open the render node.\n");

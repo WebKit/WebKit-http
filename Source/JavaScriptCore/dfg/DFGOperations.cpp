@@ -200,6 +200,19 @@ EncodedJSValue JIT_OPERATION operationValueAddNotNumber(ExecState* exec, Encoded
     return JSValue::encode(jsAddSlowCase(exec, op1, op2));
 }
 
+EncodedJSValue JIT_OPERATION operationValueDiv(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    double a = op1.toNumber(exec);
+    double b = op2.toNumber(exec);
+    return JSValue::encode(jsNumber(a / b));
+}
+
 EncodedJSValue JIT_OPERATION operationValueMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
 {
     VM* vm = &exec->vm();
@@ -1214,6 +1227,13 @@ double JIT_OPERATION operationFModOnInts(int32_t a, int32_t b)
 {
     return fmod(a, b);
 }
+
+#if USE(JSVALUE32_64)
+double JIT_OPERATION operationRandom(JSGlobalObject* globalObject)
+{
+    return globalObject->weakRandomNumber();
+}
+#endif
 
 JSCell* JIT_OPERATION operationStringFromCharCode(ExecState* exec, int32_t op1)
 {

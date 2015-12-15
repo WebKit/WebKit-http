@@ -2214,6 +2214,14 @@ bool ByteCodeParser::handleIntrinsicCall(int resultOperand, Intrinsic intrinsic,
         set(VirtualRegister(resultOperand), addToGraph(ArithIMul, left, right));
         return true;
     }
+
+    case RandomIntrinsic: {
+        if (argumentCountIncludingThis != 1)
+            return false;
+        insertChecks();
+        set(VirtualRegister(resultOperand), addToGraph(ArithRandom));
+        return true;
+    }
         
     case FRoundIntrinsic: {
         if (argumentCountIncludingThis != 2)
@@ -2417,13 +2425,6 @@ bool ByteCodeParser::handleConstantInternalFunction(
 {
     if (verbose)
         dataLog("    Handling constant internal function ", JSValue(function), "\n");
-    
-    // If we ever find that we have a lot of internal functions that we specialize for,
-    // then we should probably have some sort of hashtable dispatch, or maybe even
-    // dispatch straight through the MethodTable of the InternalFunction. But for now,
-    // it seems that this case is hit infrequently enough, and the number of functions
-    // we know about is small enough, that having just a linear cascade of if statements
-    // is good enough.
     
     if (function->classInfo() == ArrayConstructor::info()) {
         if (function->globalObject() != m_inlineStackTop->m_codeBlock->globalObject())
@@ -4473,11 +4474,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 m_currentBlock->isOSRTarget = true;
 
             addToGraph(LoopHint);
-            
-            if (m_vm->watchdog)
-                addToGraph(CheckWatchdogTimer);
-            
             NEXT_OPCODE(op_loop_hint);
+        }
+        
+        case op_watchdog: {
+            addToGraph(CheckWatchdogTimer);
+            NEXT_OPCODE(op_watchdog); 
         }
             
         case op_create_lexical_environment: {
@@ -4513,17 +4515,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 result = addToGraph(GetScope, callee);
             set(VirtualRegister(currentInstruction[1].u.operand), result);
             NEXT_OPCODE(op_get_scope);
-        }
-
-        case op_load_arrowfunction_this: {
-            Node* callee = get(VirtualRegister(JSStack::Callee));
-            Node* result;
-            if (JSArrowFunction* function = callee->dynamicCastConstant<JSArrowFunction*>())
-                result = jsConstant(function->boundThis());
-            else
-                result = addToGraph(LoadArrowFunctionThis, callee);
-            set(VirtualRegister(currentInstruction[1].u.operand), result);
-            NEXT_OPCODE(op_load_arrowfunction_this);
         }
             
         case op_create_direct_arguments: {
@@ -4574,24 +4565,20 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_new_func);
         }
 
-        case op_new_func_exp: {
+        case op_new_func_exp:
+        case op_new_arrow_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
             set(VirtualRegister(currentInstruction[1].u.operand),
                 addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
-            NEXT_OPCODE(op_new_func_exp);
-        }
-
-        case op_new_arrow_func_exp: {
-            FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
-            FrozenValue* frozen = m_graph.freezeStrong(expr);
-
-            set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewArrowFunction, OpInfo(frozen),
-                    get(VirtualRegister(currentInstruction[2].u.operand)),
-                    get(VirtualRegister(currentInstruction[4].u.operand))));
             
-            NEXT_OPCODE(op_new_arrow_func_exp);
+            if (opcodeID == op_new_func_exp) {
+                // Curly braces are necessary
+                NEXT_OPCODE(op_new_func_exp);
+            } else {
+                // Curly braces are necessary
+                NEXT_OPCODE(op_new_arrow_func_exp);
+            }
         }
 
         case op_typeof: {

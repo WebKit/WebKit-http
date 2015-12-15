@@ -58,11 +58,10 @@ public:
 
 class CoordinatedGraphicsLayer : public GraphicsLayer
     , public TiledBackingStoreClient
-    , public CoordinatedImageBacking::Host
 #if USE(COORDINATED_GRAPHICS_THREADED)
     , public TextureMapperPlatformLayer::Client
 #endif
-    {
+    , public CoordinatedImageBacking::Host {
 public:
     explicit CoordinatedGraphicsLayer(Type, GraphicsLayerClient&);
     virtual ~CoordinatedGraphicsLayer();
@@ -165,8 +164,8 @@ private:
 #endif
     void syncPlatformLayer();
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    virtual void platformLayerWillBeDestroyed() override;
-    virtual void setPlatformLayerNeedsDisplay() override;
+    void platformLayerWillBeDestroyed();
+    void setPlatformLayerNeedsDisplay();
 #endif
 
     virtual void setDebugBorder(const Color&, float width) override;

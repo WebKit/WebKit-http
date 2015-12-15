@@ -39,8 +39,6 @@ class IncrementalSweeper : public HeapTimer {
 public:
 #if USE(CF)
     JS_EXPORT_PRIVATE IncrementalSweeper(Heap*, CFRunLoopRef);
-#elif PLATFORM(WPE)
-    explicit IncrementalSweeper(Heap*);
 #else
     explicit IncrementalSweeper(Heap*);
 #endif
@@ -51,7 +49,7 @@ public:
     bool sweepNextBlock();
     void willFinishSweeping();
 
-#if USE(CF) || (USE(GLIB) && !PLATFORM(EFL))
+#if USE(CF) || PLATFORM(EFL) || USE(GLIB)
 private:
     void doSweep(double startTime);
     void scheduleTimer();

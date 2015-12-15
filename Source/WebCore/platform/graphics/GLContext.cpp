@@ -33,10 +33,6 @@
 #include "GLContextGLX.h"
 #endif
 
-#if PLATFORM(WAYLAND)
-#include "PlatformDisplayWayland.h"
-#endif
-
 #if PLATFORM(WPE)
 #include "PlatformDisplayWPE.h"
 #endif
@@ -154,10 +150,6 @@ GLContext::GLContext()
 
 std::unique_ptr<GLContext> GLContext::createOffscreenContext(GLContext* sharingContext)
 {
-#if PLATFORM(WAYLAND)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
-        return downcast<PlatformDisplayWayland>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);
-#endif
 #if PLATFORM(WPE)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::WPE)
         return downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createOffscreenContext(sharingContext);

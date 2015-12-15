@@ -828,11 +828,11 @@ MacroAssemblerCodeRef ceilThunkGenerator(VM* vm)
     jit.returnInt32(SpecializedThunkJIT::regT0);
     nonIntJump.link(&jit);
     jit.loadDoubleArgument(0, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0);
-#if CPU(ARM64)
-    jit.ceilDouble(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT0);
-#else
-    jit.callDoubleToDoublePreservingReturn(UnaryDoubleOpWrapper(ceil));
-#endif // CPU(ARM64)
+    if (jit.supportsFloatingPointCeil())
+        jit.ceilDouble(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT0);
+    else
+        jit.callDoubleToDoublePreservingReturn(UnaryDoubleOpWrapper(ceil));
+
     SpecializedThunkJIT::JumpList doubleResult;
     jit.branchConvertDoubleToInt32(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0, doubleResult, SpecializedThunkJIT::fpRegT1);
     jit.returnInt32(SpecializedThunkJIT::regT0);
@@ -1002,6 +1002,22 @@ MacroAssemblerCodeRef imulThunkGenerator(VM* vm)
         jit.appendFailure(nonIntArg1Jump);
 
     return jit.finalize(vm->jitStubs->ctiNativeTailCall(vm), "imul");
+}
+
+MacroAssemblerCodeRef randomThunkGenerator(VM* vm)
+{
+    SpecializedThunkJIT jit(vm, 0);
+    if (!jit.supportsFloatingPoint())
+        return MacroAssemblerCodeRef::createSelfManagedCodeRef(vm->jitStubs->ctiNativeCall(vm));
+
+#if USE(JSVALUE64)
+    jit.emitRandomThunk(SpecializedThunkJIT::regT0, SpecializedThunkJIT::regT1, SpecializedThunkJIT::regT2, SpecializedThunkJIT::regT3, SpecializedThunkJIT::fpRegT0);
+    jit.returnDouble(SpecializedThunkJIT::fpRegT0);
+
+    return jit.finalize(vm->jitStubs->ctiNativeTailCall(vm), "random");
+#else
+    return MacroAssemblerCodeRef::createSelfManagedCodeRef(vm->jitStubs->ctiNativeCall(vm));
+#endif
 }
 
 }

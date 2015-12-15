@@ -177,6 +177,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithMin:
     case ArithMax:
     case ArithPow:
+    case ArithRandom:
     case ArithSqrt:
     case ArithFRound:
     case ArithRound:
@@ -202,7 +203,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Arrayify:
     case ArrayifyToStructure:
     case GetScope:
-    case LoadArrowFunctionThis:
     case SkipScope:
     case GetClosureVar:
     case PutClosureVar:

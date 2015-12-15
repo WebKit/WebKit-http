@@ -140,6 +140,7 @@ ViewBackendDRM::ViewBackendDRM()
         });
 
 
+    // FIXME: This path should be retrieved via udev.
     drm.fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if (drm.fd < 0) {
         fprintf(stderr, "ViewBackendDRM: couldn't connect DRM.\n");
@@ -161,6 +162,7 @@ ViewBackendDRM::ViewBackendDRM()
 
     int gbmFd = drm.fd;
 #if WPE_BACKEND(DRM_TEGRA)
+    // FIXME: This path should be retrieved via udev.
     gbm.fd = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
     if (gbm.fd < 0) {
         fprintf(stderr, "ViewBackendDRM: couldn't open the GBM rendering node.\n");

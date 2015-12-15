@@ -31,6 +31,7 @@
 #include "AirCode.h"
 #include "AirGenerationContext.h"
 #include "AirInstInlines.h"
+#include "B3StackmapGenerationParams.h"
 #include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
@@ -142,9 +143,6 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
     ASSERT(value);
 
     Vector<ValueRep> reps;
-    for (unsigned i = numB3Args(value); i--;)
-        reps.append(ValueRep());
-
     appendRepsImpl(context, m_numCheckArgs + 1, inst, reps);
 
     // Set aside the args that are relevant to undoing the operation. This is because we don't want to
@@ -208,13 +206,7 @@ CCallHelpers::Jump CheckSpecial::generate(Inst& inst, CCallHelpers& jit, Generat
                     break;
                 }
                 
-                StackmapGenerationParams params;
-                params.value = value;
-                params.reps = reps;
-                params.usedRegisters = value->m_usedRegisters;
-                params.context = &context;
-
-                value->m_generator->run(jit, params);
+                value->m_generator->run(jit, StackmapGenerationParams(value, reps, context));
             }));
 
     return CCallHelpers::Jump(); // As far as Air thinks, we are not a terminal.

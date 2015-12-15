@@ -106,7 +106,7 @@ private:
     
     void handleOpenDatabaseOperations();
     void addOpenDatabaseConnection(Ref<UniqueIDBDatabaseConnection>&&);
-    bool maybeDeleteDatabase();
+    bool maybeDeleteDatabase(IDBServerOperation*);
     bool hasAnyOpenConnections() const;
 
     void startVersionChangeTransaction();
@@ -181,6 +181,7 @@ private:
     RefPtr<UniqueIDBDatabaseConnection> m_versionChangeDatabaseConnection;
     UniqueIDBDatabaseTransaction* m_versionChangeTransaction { nullptr };
 
+    bool m_isOpeningBackingStore { false };
     std::unique_ptr<IDBBackingStore> m_backingStore;
     std::unique_ptr<IDBDatabaseInfo> m_databaseInfo;
 

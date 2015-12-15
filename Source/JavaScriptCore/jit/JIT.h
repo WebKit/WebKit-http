@@ -502,7 +502,6 @@ namespace JSC {
         void emit_op_end(Instruction*);
         void emit_op_enter(Instruction*);
         void emit_op_get_scope(Instruction*);
-        void emit_op_load_arrowfunction_this(Instruction*);
         void emit_op_eq(Instruction*);
         void emit_op_eq_null(Instruction*);
         void emit_op_get_by_id(Instruction*);
@@ -532,6 +531,7 @@ namespace JSC {
         void emit_op_jngreatereq(Instruction*);
         void emit_op_jtrue(Instruction*);
         void emit_op_loop_hint(Instruction*);
+        void emit_op_watchdog(Instruction*);
         void emit_op_lshift(Instruction*);
         void emit_op_mod(Instruction*);
         void emit_op_mov(Instruction*);
@@ -629,6 +629,7 @@ namespace JSC {
         void emitSlow_op_jngreatereq(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jtrue(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_watchdog(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_lshift(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_mod(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_mul(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -825,6 +826,11 @@ namespace JSC {
         MacroAssembler::Call callOperation(V_JITOperation_EZJ, int32_t, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(J_JITOperation_EJscCJ, int, GPRReg, JSCell*, GPRReg, GPRReg);
 #endif
+
+        template<typename SnippetGenerator>
+        void emitBitBinaryOpFastPath(Instruction* currentInstruction);
+
+        void emitRightShiftFastPath(Instruction* currentInstruction, OpcodeID);
 
         Jump checkStructure(RegisterID reg, Structure* structure);
 

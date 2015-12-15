@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-
     var latest = [], updating = false;
     function inView(element) {
         var box = element.getBoundingClientRect();
@@ -77,11 +76,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function onMovement() {
         if (!updating)
-            requestAnimationFrame(update);
+            requestAnimationFrame(updateImages);
         updating = true;
     }
 
-    function update() {
+    function updateImages() {
         updating = false;
 
         for (var i = 0; i < imgs.length; i++) {
@@ -90,10 +89,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
     }
+    
+    function enableScrollableTables () {
+        var tables = document.querySelectorAll('.bodycopy > table');
+        var tableCount = tables.length;
+
+        for (var i = 0; i < tableCount; i++) {
+            var scrollableDiv = document.createElement('div');
+            var paddingDiv = document.createElement('div');
+
+            scrollableDiv.classList.add('scrollable');
+            paddingDiv.classList.add('scrollable-padding');
+
+            scrollableDiv.appendChild(paddingDiv);
+            tables[i].parentNode.insertBefore(scrollableDiv, tables[i]);
+
+            paddingDiv.appendChild(tables[i]);
+        }
+    }
 
     var imgs = document.querySelectorAll('div[data-url]');
     document.addEventListener('scroll', onMovement);
     document.addEventListener('resize', onMovement);
-    update();
+    
+    updateImages();
+    enableScrollableTables();
 
 });

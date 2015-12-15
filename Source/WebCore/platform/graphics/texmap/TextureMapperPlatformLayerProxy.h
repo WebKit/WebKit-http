@@ -26,8 +26,8 @@
 #ifndef TextureMapperPlatformLayerProxy_h
 #define TextureMapperPlatformLayerProxy_h
 
+#include "GraphicsContext3D.h"
 #include "TextureMapper.h"
-#include "TextureMapperPlatformLayerBuffer.h"
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
@@ -43,6 +43,7 @@ namespace WebCore {
 
 class TextureMapperLayer;
 class TextureMapperPlatformLayerProxy;
+class TextureMapperPlatformLayerBuffer;
 
 class TextureMapperPlatformLayerProxyProvider {
 public:
@@ -61,14 +62,17 @@ public:
     TextureMapperPlatformLayerProxy();
     virtual ~TextureMapperPlatformLayerProxy();
 
-    Lock& mutex() { return m_mutex; }
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(LockHolder&, const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
-    void pushNextBuffer(LockHolder&, std::unique_ptr<TextureMapperPlatformLayerBuffer>);
-    void requestUpdate(LockHolder&);
+    // To avoid multiple lock/release situation to update a single frame,
+    // the implementation of TextureMapperPlatformLayerProxyProvider should
+    // aquire / release the lock explicitly to use below methods.
+    Lock& lock() { return m_lock; }
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> getAvailableBuffer(const IntSize&, GC3Dint internalFormat = GraphicsContext3D::DONT_CARE);
+    void pushNextBuffer(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
+    void requestUpdate();
+    bool isActive();
 
-    void setCompositor(LockHolder&, Compositor*);
-    void setTargetLayer(LockHolder&, TextureMapperLayer*);
-    bool hasTargetLayer(LockHolder&);
+    void activateOnCompositingThread(Compositor*, TextureMapperLayer*);
+    void invalidate();
 
     void swapBuffer();
 
@@ -84,15 +88,13 @@ private:
     std::unique_ptr<TextureMapperPlatformLayerBuffer> m_currentBuffer;
     std::unique_ptr<TextureMapperPlatformLayerBuffer> m_pendingBuffer;
 
-    Lock m_mutex;
-    Condition m_condition;
+    Lock m_lock;
 
     Vector<std::unique_ptr<TextureMapperPlatformLayerBuffer>> m_usedBuffers;
 
-    RunLoop& m_runLoop;
     RunLoop::Timer<TextureMapperPlatformLayerProxy> m_releaseUnusedBuffersTimer;
 #ifndef NDEBUG
-    ThreadIdentifier m_compositorThreadID;
+    ThreadIdentifier m_compositorThreadID { 0 };
 #endif
 
     void compositorThreadUpdateTimerFired();
@@ -100,6 +102,6 @@ private:
     std::function<void()> m_compositorThreadUpdateFunction;
 };
 
-};
+} // namespace WebCore
 
 #endif // TextureMapperPlatformLayerProxy_h

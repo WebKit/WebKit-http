@@ -39,7 +39,7 @@ class MediaPlayerPrivateAVFoundationObjC;
 
 class CDMSessionAVFoundationObjC : public CDMSession {
 public:
-    CDMSessionAVFoundationObjC(MediaPlayerPrivateAVFoundationObjC* parent);
+    CDMSessionAVFoundationObjC(MediaPlayerPrivateAVFoundationObjC* parent, CDMSessionClient*);
     virtual ~CDMSessionAVFoundationObjC() { }
 
     virtual CDMSessionType type() override { return CDMSessionTypeAVFoundationObjC; }

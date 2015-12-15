@@ -30,6 +30,7 @@
 
 #import "APIFindClient.h"
 #import "APIUIClient.h"
+#import "ApplicationStateTracker.h"
 #import "CorePDFSPI.h"
 #import "SessionState.h"
 #import "UIKitSPI.h"
@@ -46,6 +47,7 @@
 #import <wtf/Vector.h>
 
 using namespace WebCore;
+using namespace WebKit;
 
 const CGFloat pdfPageMargin = 8;
 const CGFloat pdfMinimumZoomScale = 1;
@@ -108,6 +110,8 @@ typedef struct {
     dispatch_queue_t _findQueue;
 
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
+
+    std::unique_ptr<ApplicationStateTracker> _applicationStateTracker;
 }
 
 - (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
@@ -215,16 +219,11 @@ typedef struct {
 
     [self _computePageAndDocumentFrames];
 
-    // FIXME: This dispatch_async is unnecessary except to work around rdar://problem/15035620.
-    // Once that is resolved, we should do the setContentOffset without the dispatch_async.
-    RetainPtr<WKPDFView> retainedSelf = self;
-    dispatch_async(dispatch_get_main_queue(), [retainedSelf, oldDocumentLeftFraction, oldDocumentTopFraction] {
-        CGSize contentSize = retainedSelf->_scrollView.contentSize;
-        UIEdgeInsets contentInset = retainedSelf->_scrollView.contentInset;
-        [retainedSelf->_scrollView setContentOffset:CGPointMake((oldDocumentLeftFraction * contentSize.width) - contentInset.left, (oldDocumentTopFraction * contentSize.height) - contentInset.top) animated:NO];
+    CGSize newContentSize = _scrollView.contentSize;
+    UIEdgeInsets contentInset = _scrollView.contentInset;
+    [_scrollView setContentOffset:CGPointMake((oldDocumentLeftFraction * newContentSize.width) - contentInset.left, (oldDocumentTopFraction * newContentSize.height) - contentInset.top) animated:NO];
 
-        [retainedSelf _revalidateViews];
-    });
+    [self _revalidateViews];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -842,6 +841,47 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 
     [self _didFailToUnlock];
     return NO;
+}
+
+- (void)willMoveToWindow:(UIWindow *)newWindow
+{
+    if (newWindow)
+        return;
+    
+    ASSERT(self.window);
+    ASSERT(_applicationStateTracker);
+    _applicationStateTracker = nullptr;
+}
+
+- (void)didMoveToWindow
+{
+    if (!self.window)
+        return;
+
+    ASSERT(!_applicationStateTracker);
+    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationWillEnterForeground));
+}
+
+- (BOOL)isBackground
+{
+    if (!_applicationStateTracker)
+        return YES;
+
+    return _applicationStateTracker->isInBackground();
+}
+
+- (void)_applicationDidEnterBackground
+{
+    _webView->_page->applicationDidEnterBackground();
+    _webView->_page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
+}
+
+- (void)_applicationWillEnterForeground
+{
+    _webView->_page->applicationWillEnterForeground();
+    if (auto drawingArea = _webView->_page->drawingArea())
+        drawingArea->hideContentUntilAnyUpdate();
+    _webView->_page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
 }
 
 @end

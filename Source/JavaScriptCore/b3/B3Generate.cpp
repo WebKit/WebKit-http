@@ -33,9 +33,11 @@
 #include "AirInstInlines.h"
 #include "B3Common.h"
 #include "B3LowerMacros.h"
+#include "B3LowerMacrosAfterOptimizations.h"
 #include "B3LowerToAir.h"
 #include "B3MoveConstants.h"
 #include "B3Procedure.h"
+#include "B3ReduceDoubleToFloat.h"
 #include "B3ReduceStrength.h"
 #include "B3TimingScope.h"
 #include "B3Validate.h"
@@ -73,11 +75,15 @@ void generateToAir(Procedure& procedure, unsigned optLevel)
     lowerMacros(procedure);
 
     if (optLevel >= 1) {
+        reduceDoubleToFloat(procedure);
+
         reduceStrength(procedure);
         
         // FIXME: Add more optimizations here.
         // https://bugs.webkit.org/show_bug.cgi?id=150507
     }
+
+    lowerMacrosAfterOptimizations(procedure);
 
     moveConstants(procedure);
 
