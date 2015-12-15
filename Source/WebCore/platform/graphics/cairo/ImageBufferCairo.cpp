@@ -175,7 +175,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_data.m_platformLayerProxy->mutex());
+    LockHolder locker(m_data.m_platformLayerProxy->lock());
 #endif
 
     if (renderingMode == Accelerated) {
@@ -184,8 +184,8 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
             renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
 #if USE(COORDINATED_GRAPHICS_THREADED)
         else {
-            m_data.m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
-            m_data.m_platformLayerProxy->requestUpdate(locker);
+            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend));
+            m_data.m_platformLayerProxy->requestUpdate();
         }
 #endif
 

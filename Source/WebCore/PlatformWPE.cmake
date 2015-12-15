@@ -63,7 +63,7 @@ list(APPEND WebCore_SOURCES
     platform/PlatformStrategies.cpp
     platform/Theme.cpp
 
-    platform/audio/glib/AudioBusGlib.cpp
+    platform/audio/glib/AudioBusGLib.cpp
 
     platform/audio/gstreamer/AudioDestinationGStreamer.cpp
     platform/audio/gstreamer/AudioFileReaderGStreamer.cpp

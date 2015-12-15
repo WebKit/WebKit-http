@@ -26,7 +26,7 @@
 #ifndef TextureMapperPlatformLayerProxy_h
 #define TextureMapperPlatformLayerProxy_h
 
-#include "GraphicsTypes3D.h"
+#include "GraphicsContext3D.h"
 #include "TextureMapper.h"
 #include "TransformationMatrix.h"
 #include <wtf/Condition.h>

@@ -71,7 +71,7 @@ public:
     virtual FloatSize naturalSize() const override;
 
     virtual void setVolume(float) override;
-    virtual float volume() const;
+    virtual float volume() const override;
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
@@ -115,11 +115,6 @@ public:
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
     virtual void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
-#endif
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    virtual PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
-    virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)

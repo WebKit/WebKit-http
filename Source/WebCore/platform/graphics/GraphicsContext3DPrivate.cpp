@@ -104,13 +104,13 @@ void GraphicsContext3DPrivate::swapBuffersIfNeeded()
 void GraphicsContext3DPrivate::swapPlatformTexture()
 {
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
-    LockHolder locker(m_platformLayerProxy->mutex());
+    LockHolder locker(m_platformLayerProxy->lock());
 
     m_context->prepareTexture();
     IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
     TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
-    m_platformLayerProxy->requestUpdate(locker);
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_context->m_compositorTexture, textureSize, flags));
+    m_platformLayerProxy->requestUpdate();
 
     m_context->markLayerComposited();
 }

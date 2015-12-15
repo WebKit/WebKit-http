@@ -521,36 +521,6 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     m_platformLayerProxy->pushNextBuffer(WTF::move(buffer));
 #endif
 }
-
-void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, GstVideoInfo& videoInfo)
-{
-    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
-
-#if GST_CHECK_VERSION(1, 1, 0)
-    GstVideoGLTextureUploadMeta* meta;
-    if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
-        if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
-            guint ids[4] = { texture.id(), 0, 0, 0 };
-
-            if (gst_video_gl_texture_upload_meta_upload(meta, ids))
-                return;
-        }
-    }
-#endif
-
-    // Right now the TextureMapper only supports chromas with one plane
-    ASSERT(GST_VIDEO_INFO_N_PLANES(&videoInfo) == 1);
-
-    GstVideoFrame videoFrame;
-    if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, GST_MAP_READ))
-        return;
-
-    int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&videoFrame, 0);
-    const void* srcData = GST_VIDEO_FRAME_PLANE_DATA(&videoFrame, 0);
-    texture.updateContents(srcData, WebCore::IntRect(WebCore::IntPoint(0, 0), size), WebCore::IntPoint(0, 0), stride, BitmapTexture::UpdateCannotModifyOriginalImageData);
-    gst_video_frame_unmap(&videoFrame);
-}
 #endif
 
 void MediaPlayerPrivateGStreamerBase::repaint()
