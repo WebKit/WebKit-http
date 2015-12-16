@@ -121,11 +121,19 @@ public:
     {
         LockHolder locker(m_sampleMutex);
         m_sample = nullptr;
+        m_previousSample = nullptr;
         m_unlocked = true;
 #if !USE(COORDINATED_GRAPHICS_THREADED)
         m_timer.stop();
         m_dataCondition.notifyOne();
 #endif
+    }
+
+    void drain()
+    {
+        LockHolder locker(m_sampleMutex);
+        m_sample = nullptr;
+        m_previousSample = nullptr;
     }
 
     bool requestRender(WebKitVideoSink* sink, GstBuffer* buffer)
@@ -141,6 +149,7 @@ public:
 #if USE(COORDINATED_GRAPHICS_THREADED)
         if (LIKELY(GST_IS_SAMPLE(m_sample.get())))
             webkitVideoSinkRepaintRequested(sink, m_sample.get());
+        m_previousSample = m_sample;
         m_sample = nullptr;
 #else
         m_sink = sink;
@@ -166,6 +175,7 @@ private:
 
     Lock m_sampleMutex;
     GRefPtr<GstSample> m_sample;
+    GRefPtr<GstSample> m_previousSample;
 
 #if !USE(COORDINATED_GRAPHICS_THREADED)
     RunLoop::Timer<VideoRenderRequestScheduler> m_timer;
@@ -483,16 +493,7 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     case GST_QUERY_DRAIN:
     {
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
-        {
-            WTF::GMutexLocker<GMutex> lock(priv->sampleMutex);
-            if (priv->sample)
-                gst_sample_unref(priv->sample);
-            priv->sample = nullptr;
-
-            if (priv->previousSample)
-                gst_sample_unref(priv->previousSample);
-            priv->previousSample = nullptr;
-        }
+        priv->scheduler.drain();
 
         LOG_MEDIA_MESSAGE("Drain query, emitting DRAIN signal and releasing EGL samples");
 
