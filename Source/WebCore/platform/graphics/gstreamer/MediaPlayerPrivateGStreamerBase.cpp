@@ -276,8 +276,8 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 #if USE(HOLE_PUNCH_GSTREAMER)
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_platformLayerProxy->mutex());
-    m_platformLayerProxy->pushNextBuffer(locker, std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
+    LockHolder locker(m_platformLayerProxy->lock());
+    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect));
 #endif
 #endif
 
