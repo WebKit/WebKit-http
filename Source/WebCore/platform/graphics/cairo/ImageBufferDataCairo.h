@@ -67,11 +67,6 @@ public:
 #if USE(COORDINATED_GRAPHICS_THREADED)
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
     virtual void swapBuffersIfNeeded() override;
-<<<<<<< HEAD
-    RefPtr<cairo_surface_t> m_compositorSurface;
-    uint32_t m_compositorTexture;
-    void createCompositorBuffer();
-=======
     void markBufferChanged();
     void createCompositorBuffer();
 
@@ -79,7 +74,6 @@ public:
     bool m_bufferChanged;
     RefPtr<cairo_surface_t> m_compositorSurface;
     uint32_t m_compositorTexture;
->>>>>>> 84a0ca26738ff8e7dfb9e2dc050b63f3e9601669
     RefPtr<cairo_t> m_compositorCr;
 #else
     virtual void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity);
