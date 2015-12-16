@@ -130,6 +130,8 @@ private:
     // (m_mediaType, m_id) is unique.
     gint m_id;
 
+    MediaTime m_initialDuration;
+
     GstFlowReturn m_flowReturn;
 
     GstElement* m_pipeline;
@@ -1777,6 +1779,14 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
     // Only one Stream per demuxer is supported.
     ASSERT(!gst_pad_is_linked(sinkSinkPad.get()));
 
+    gint64 timeLength = 0;
+    if (gst_element_query_duration(m_qtdemux, GST_FORMAT_TIME, &timeLength) &&
+        static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE) {
+        m_initialDuration = MediaTime(timeLength, GST_SECOND);
+    } else {
+        m_initialDuration = MediaTime::positiveInfiniteTime();
+    }
+
     if (WTF::isMainThread()) {
         connectToAppSink(demuxerSrcPad);
     } else {
@@ -1823,13 +1833,6 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
             //gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
         }
         gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
-
-
-        gint64 timeLength = 0;
-
-        // Duration should be available after the pipeline pre-rolled.
-        if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &timeLength) && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
-            m_mediaSourceClient->durationChanged(MediaTime(timeLength, GST_SECOND));
     }
 }
 
@@ -1858,6 +1861,8 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
         g_free(strcaps);
     }
 #endif
+
+    m_mediaSourceClient->durationChanged(m_initialDuration);
 
     m_oldTrack = m_track;
 
