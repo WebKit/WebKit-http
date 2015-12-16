@@ -97,12 +97,13 @@ private:
     MediaTime totalFrameDelay() override { return MediaTime::zeroTime(); }
     bool timeIsBuffered(float);
 
+    bool isMediaSource() const override { return true; }
+
     void setMediaSourceClient(PassRefPtr<MediaSourceClientGStreamerMSE>);
     RefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient();
 
     RefPtr<AppendPipeline> appendPipelineByTrackId(const AtomicString& trackId);
 
-    GRefPtr<GstElement> m_webKitMediaSrc;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     bool m_seekCompleted;
 

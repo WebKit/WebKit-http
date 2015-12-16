@@ -255,7 +255,7 @@ protected:
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
     HashMap<AtomicString, RefPtr<InbandMetadataTextTrackPrivateGStreamer>> m_metadataTracks;
 #endif
-    bool isMediaSource() const { return false; }
+    virtual bool isMediaSource() const { return false; }
 
     Mutex m_pendingAsyncOperationsLock;
     GList* m_pendingAsyncOperations;

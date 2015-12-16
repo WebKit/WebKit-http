@@ -473,15 +473,9 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
 
     GRefPtr<GstCaps> caps;
-    // We may not have enough data available for the video sink yet,
-    // but the demuxer might haver it already.
-    if (!GST_IS_SAMPLE(m_sample.get())) {
-#if ENABLE(MEDIA_SOURCE)
-        caps = currentDemuxerCaps();
-#else
+    // We may not have enough data available for the video sink yet.
+    if (!GST_IS_SAMPLE(m_sample.get()))
         return FloatSize();
-#endif
-    }
 
     if (GST_IS_SAMPLE(m_sample.get()) && !caps)
         caps = gst_sample_get_caps(m_sample.get());
@@ -726,13 +720,8 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
     GRefPtr<GstCaps> caps;
-    if (!GST_IS_SAMPLE(m_sample.get())) {
-#if ENABLE(MEDIA_SOURCE)
-        caps = currentDemuxerCaps();
-#else
+    if (!GST_IS_SAMPLE(m_sample.get()))
         return;
-#endif
-    }
 
     LockHolder holder(m_platformLayerProxy->lock());
 

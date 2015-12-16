@@ -656,6 +656,8 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 
     LOG_MEDIA_MESSAGE("Stream has %d video tracks", numTracks);
     m_hasVideo = numTracks > 0;
+    if (m_hasVideo)
+        m_player->sizeChanged();
 
     if (useMediaSource) {
         LOG_MEDIA_MESSAGE("Tracks managed by source element. Bailing out now.");
