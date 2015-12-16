@@ -725,8 +725,14 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 #endif
 
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    if (!GST_IS_SAMPLE(m_sample.get()))
+    GRefPtr<GstCaps> caps;
+    if (!GST_IS_SAMPLE(m_sample.get())) {
+#if ENABLE(MEDIA_SOURCE)
+        caps = currentDemuxerCaps();
+#else
         return;
+#endif
+    }
 
     LockHolder holder(m_platformLayerProxy->lock());
 
@@ -743,13 +749,15 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     m_platformLayerProxy->pushNextBuffer(WTF::move(layerBuffer));
     m_platformLayerProxy->requestUpdate();
 #else
-    GstCaps* caps = gst_sample_get_caps(m_sample.get());
+    if (!caps && m_sample)
+        caps = gst_sample_get_caps(m_sample.get());
+
     if (UNLIKELY(!caps))
         return;
 
     GstVideoInfo videoInfo;
     gst_video_info_init(&videoInfo);
-    if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps)))
+    if (UNLIKELY(!gst_video_info_from_caps(&videoInfo, caps.get())))
         return;
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
