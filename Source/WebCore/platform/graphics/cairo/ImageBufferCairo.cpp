@@ -536,7 +536,9 @@ PlatformLayer* ImageBuffer::platformLayer() const
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void ImageBuffer::markBufferChanged()
 {
+#if ENABLE(ACCELERATED_2D_CANVAS)
     m_data.markBufferChanged();
+#endif
 }
 #endif
 

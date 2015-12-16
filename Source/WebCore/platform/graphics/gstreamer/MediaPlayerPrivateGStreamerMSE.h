@@ -31,6 +31,7 @@
 #include "MediaSample.h"
 #include "MediaSourceGStreamer.h"
 #include "WebKitMediaSourceGStreamer.h"
+#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 

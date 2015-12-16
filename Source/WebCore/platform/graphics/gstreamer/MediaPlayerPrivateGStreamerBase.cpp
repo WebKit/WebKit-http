@@ -272,8 +272,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
     m_platformLayerProxy = adoptRef(new TextureMapperPlatformLayerProxy());
-    g_cond_init(&m_updateCondition);
-    g_mutex_init(&m_updateMutex);
 #endif
 
 #if USE(HOLE_PUNCH_GSTREAMER)
@@ -296,11 +294,6 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     m_player = nullptr;
 
     g_signal_handlers_disconnect_matched(m_volumeElement.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    g_cond_clear(&m_updateCondition);
-    g_mutex_clear(&m_updateMutex);
-#endif
 
 #if USE(DXDRM)
 #if ENABLE(ENCRYPTED_MEDIA)

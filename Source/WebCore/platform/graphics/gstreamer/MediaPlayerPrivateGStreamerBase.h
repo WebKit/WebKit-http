@@ -27,6 +27,7 @@
 #include "GRefPtrGStreamer.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
+#include "TextureMapperGL.h"
 #include <glib.h>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
