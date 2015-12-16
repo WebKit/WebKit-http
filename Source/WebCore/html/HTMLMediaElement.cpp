@@ -2724,7 +2724,7 @@ MediaTime HTMLMediaElement::currentMediaTime() const
         return m_lastSeekTime;
     }
 
-    if (m_cachedTime.isValid() && m_paused) {
+    if (m_cachedTime.isValid() && m_cachedTime > MediaTime::zeroTime() && m_paused) {
 #if LOG_CACHED_TIME_WARNINGS
         MediaTime delta = m_cachedTime - m_player->currentTime();
         if (delta > minCachedDeltaForWarning)

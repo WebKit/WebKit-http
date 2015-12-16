@@ -66,6 +66,8 @@ public:
     void seekCompleted();
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
 
+    void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     void dispatchDecryptionKey(GstBuffer*) override;
 #endif
@@ -103,7 +105,6 @@ private:
     GRefPtr<GstElement> m_webKitMediaSrc;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     bool m_seekCompleted;
-    GSourceWrap::Static m_durationTimerHandler;
 
     HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> > m_appendPipelinesMap;
     RefPtr<PlaybackPipeline> m_playbackPipeline;

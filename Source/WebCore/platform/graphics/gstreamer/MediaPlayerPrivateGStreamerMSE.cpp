@@ -86,7 +86,6 @@ public:
     virtual ~AppendPipeline();
 
     void handleElementMessage(GstMessage*);
-    void handleAsyncDoneMessage();
 
     gint id();
     AppendStage appendStage() { return m_appendStage; }
@@ -214,8 +213,6 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
     : MediaPlayerPrivateGStreamer(player)
     , m_webKitMediaSrc(0)
     , m_seekCompleted(true)
-    , m_durationTimerHandler("[WebKit] mediaPlayerPrivateDurationTimeoutCallback", [this] { m_mediaSource->durationChanged(m_mediaTimeDuration); })
-
 {
     LOG_MEDIA_MESSAGE("%p", this);
 }
@@ -223,8 +220,6 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
 MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 {
     LOG_MEDIA_MESSAGE("destroying the player");
-
-    m_durationTimerHandler.cancel();
 
     for (HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> >::iterator it = m_appendPipelinesMap.begin(); it != m_appendPipelinesMap.end(); ++it)
         it->value->clearPlayerPrivate();
@@ -660,13 +655,7 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
         LOG_MEDIA_MESSAGE("Notifying player and WebKitMediaSrc");
         m_player->durationChanged();
         m_playbackPipeline->notifyDurationChanged();
-
-        // FIXME: Delay duration notification by 3 seconds to work-around a
-        // behaviour difference with Chrome which isn't able to figure out the
-        // media duration as quickly as us...
-        static const unsigned durationTimerDelay = 3;
-        m_durationTimerHandler.schedule(std::chrono::seconds(durationTimerDelay));
-
+        m_mediaSource->durationChanged(m_mediaTimeDuration);
     }
 }
 
@@ -759,6 +748,23 @@ void MediaPlayerPrivateGStreamerMSE::emitSession()
     }
 }
 #endif
+
+void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
+{
+    if (status != MediaSourcePrivate::EosNoError)
+        return;
+
+    if (m_networkState != MediaPlayer::Loaded) {
+        m_networkState = MediaPlayer::Loaded;
+        m_player->networkStateChanged();
+    }
+    m_playbackPipeline->markEndOfStream(status);
+
+    m_isEndReached = true;
+    m_cachedPosition = m_mediaTimeDuration.toFloat();
+    m_mediaDuration = m_mediaTimeDuration.toFloat();
+    timeChanged();
+}
 
 class GStreamerMediaDescription : public MediaDescription {
 private:
@@ -984,11 +990,6 @@ static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, A
     ap->handleElementMessage(message);
 }
 
-static void appendPipelineAsyncDoneMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
-{
-    ap->handleAsyncDoneMessage();
-}
-
 AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate)
     : m_mediaSourceClient(mediaSourceClient)
     , m_sourceBufferPrivate(sourceBufferPrivate)
@@ -1015,7 +1016,6 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     gst_bus_enable_sync_message_emission(bus.get());
 
     g_signal_connect(bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
-    g_signal_connect(bus.get(), "message::async-done", G_CALLBACK(appendPipelineAsyncDoneMessageCallback), this);
 
     g_mutex_init(&m_newSampleMutex);
     g_cond_init(&m_newSampleCondition);
@@ -1092,7 +1092,6 @@ AppendPipeline::~AppendPipeline()
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
         ASSERT(bus);
         g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(appendPipelineElementMessageCallback), this);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(appendPipelineAsyncDoneMessageCallback), this);
         gst_bus_disable_sync_message_emission(bus.get());
 
         gst_element_set_state (m_pipeline, GST_STATE_NULL);
@@ -1185,15 +1184,6 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
         m_playerPrivate->handleSyncMessage(message);
-}
-
-void AppendPipeline::handleAsyncDoneMessage()
-{
-    gint64 timeLength = 0;
-
-    // Duration should be available after the pipeline emitted the async-done message.
-    if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &timeLength) && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
-        m_mediaSourceClient->durationChanged(MediaTime(timeLength, GST_SECOND));
 }
 
 gint AppendPipeline::id()
@@ -1819,6 +1809,13 @@ void AppendPipeline::connectToAppSinkFromAnyThread(GstPad* demuxerSrcPad)
             //gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
         }
         gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
+
+
+        gint64 timeLength = 0;
+
+        // Duration should be available after the pipeline pre-rolled.
+        if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &timeLength) && static_cast<guint64>(timeLength) != GST_CLOCK_TIME_NONE)
+            m_mediaSourceClient->durationChanged(MediaTime(timeLength, GST_SECOND));
     }
 }
 
@@ -2105,11 +2102,11 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
     return GST_FLOW_OK == ap->pushNewBuffer(buffer);
 }
 
-void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus)
+void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     ASSERT(WTF::isMainThread());
 
-    // TODO
+    m_playerPrivate->markEndOfStream(status);
 }
 
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)

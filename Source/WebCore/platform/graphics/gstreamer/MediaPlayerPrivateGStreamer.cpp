@@ -216,6 +216,11 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         ASSERT(bus);
         gst_bus_set_sync_handler(bus.get(), nullptr, nullptr, nullptr);
         g_signal_handlers_disconnect_matched(m_pipeline.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
+#if PLATFORM(BCM_NEXUS)
+        // Flush to unlock aud/vid filters
+        gst_element_send_event(m_pipeline.get(), gst_event_new_flush_start());
+        gst_element_send_event(m_pipeline.get(), gst_event_new_flush_stop(FALSE));
+#endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 
