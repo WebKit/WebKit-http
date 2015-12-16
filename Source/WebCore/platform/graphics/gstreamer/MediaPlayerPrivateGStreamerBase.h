@@ -194,6 +194,8 @@ public:
     void setPipeline(GstElement*);
     void clearSamples();
 
+    virtual GRefPtr<GstCaps> currentDemuxerCaps() const { return nullptr; }
+
     virtual bool handleSyncMessage(GstMessage*);
 
     void notifyPlayerOfVolumeChange();
