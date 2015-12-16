@@ -104,7 +104,6 @@ private:
     GRefPtr<GstElement> m_webKitMediaSrc;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
     bool m_seekCompleted;
-    GSourceWrap::Static m_durationTimerHandler;
 
     HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> > m_appendPipelinesMap;
     RefPtr<PlaybackPipeline> m_playbackPipeline;
