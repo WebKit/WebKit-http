@@ -63,7 +63,11 @@ void TextureMapperPlatformLayerProxy::activateOnCompositingThread(Compositor* co
     LockHolder locker(m_lock);
     m_compositor = compositor;
     m_targetLayer = targetLayer;
+
     m_compositorThreadUpdateTimer = std::make_unique<RunLoop::Timer<TextureMapperPlatformLayerProxy>>(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired);
+#if PLATFORM(WPE)
+    m_compositorThreadUpdateTimer->setPriority(G_PRIORITY_HIGH + 30);
+#endif
 }
 
 void TextureMapperPlatformLayerProxy::invalidate()
