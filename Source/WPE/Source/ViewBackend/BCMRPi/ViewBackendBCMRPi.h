@@ -33,6 +33,8 @@
 #include <memory>
 #include <utility>
 
+typedef struct _GSource GSource;
+
 namespace WPE {
 
 namespace ViewBackend {
@@ -49,11 +51,17 @@ public:
 
     void setInputClient(Input::Client*) override;
 
+    void handleUpdate();
+
 private:
     Client* m_client;
 
     DISPMANX_DISPLAY_HANDLE_T m_displayHandle;
     DISPMANX_ELEMENT_HANDLE_T m_elementHandle;
+
+    int m_updateFd;
+    GSource* m_updateSource;
+
     uint32_t m_width;
     uint32_t m_height;
 

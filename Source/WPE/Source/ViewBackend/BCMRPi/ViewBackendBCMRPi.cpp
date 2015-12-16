@@ -31,11 +31,56 @@
 
 #include "BufferDataBCMRPi.h"
 #include "LibinputServer.h"
+#include <cassert>
 #include <cstdio>
+#include <glib.h>
+#include <sys/eventfd.h>
+#include <sys/time.h>
 
 namespace WPE {
 
 namespace ViewBackend {
+
+class UpdateSource {
+public:
+    static GSourceFuncs sourceFuncs;
+
+    GSource source;
+    GPollFD pfd;
+    ViewBackendBCMRPi* backend;
+};
+
+GSourceFuncs UpdateSource::sourceFuncs = {
+    // prepare
+    [](GSource*, gint* timeout) -> gboolean
+    {
+        *timeout = -1;
+        return FALSE;
+    },
+    // check
+    [](GSource* base) -> gboolean
+    {
+        auto* source = reinterpret_cast<UpdateSource*>(base);
+        return !!source->pfd.revents;
+    },
+    // dispatch
+    [](GSource* base, GSourceFunc, gpointer) -> gboolean
+    {
+        auto* source = reinterpret_cast<UpdateSource*>(base);
+
+        if (source->pfd.revents & (G_IO_ERR | G_IO_HUP))
+            return FALSE;
+
+        if (source->pfd.revents & G_IO_IN)
+            source->backend->handleUpdate();
+
+        source->pfd.revents = 0;
+        return TRUE;
+    },
+    nullptr, // finalize
+    nullptr, // closure_callback
+    nullptr, // closure_marshall
+};
 
 ViewBackendBCMRPi::ViewBackendBCMRPi()
     : m_elementHandle(DISPMANX_NO_HANDLE)
@@ -45,11 +90,36 @@ ViewBackendBCMRPi::ViewBackendBCMRPi()
     bcm_host_init();
     m_displayHandle = vc_dispmanx_display_open(0);
     graphics_get_display_size(DISPMANX_ID_HDMI, &m_width, &m_height);
+
+    m_updateFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (m_updateFd == -1) {
+        fprintf(stderr, "ViewBackendBCMRPi: failed to create the update eventfd\n");
+        return;
+    }
+
+    m_updateSource = g_source_new(&UpdateSource::sourceFuncs, sizeof(UpdateSource));
+    auto* source = reinterpret_cast<UpdateSource*>(m_updateSource);
+    source->backend = this;
+
+    source->pfd.fd = m_updateFd;
+    source->pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
+    source->pfd.revents = 0;
+    g_source_add_poll(m_updateSource, &source->pfd);
+
+    g_source_set_name(m_updateSource, "[WPE] BCMRPi update");
+    g_source_set_priority(m_updateSource, G_PRIORITY_HIGH + 30);
+    g_source_set_can_recurse(m_updateSource, TRUE);
+    g_source_attach(m_updateSource, g_main_context_get_thread_default());
 }
 
 ViewBackendBCMRPi::~ViewBackendBCMRPi()
 {
     LibinputServer::singleton().setClient(nullptr);
+
+    if (m_updateSource)
+        g_source_destroy(m_updateSource);
+    if (m_updateFd)
+        close(m_updateFd);
 }
 
 void ViewBackendBCMRPi::setClient(Client* client)
@@ -110,10 +180,20 @@ void ViewBackendBCMRPi::commitBuffer(int fd, const uint8_t* data, size_t size)
 
     vc_dispmanx_element_change_attributes(updateHandle, m_elementHandle, 1 << 3 | 1 << 2, 0, 0, &destRect, &srcRect, 0, DISPMANX_NO_ROTATE);
 
-    vc_dispmanx_update_submit_sync(updateHandle);
+    vc_dispmanx_update_submit(updateHandle,
+        [](DISPMANX_UPDATE_HANDLE_T, void* data)
+        {
+            auto& backend = *static_cast<ViewBackendBCMRPi*>(data);
 
-    if (m_client)
-        m_client->frameComplete();
+            struct timeval tv;
+            gettimeofday(&tv, nullptr);
+            uint64_t time = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+            ssize_t ret = write(backend.m_updateFd, &time, sizeof(time));
+            if (ret != sizeof(time))
+                fprintf(stderr, "ViewBackendBCMRPi: failed to write to the update eventfd\n");
+        },
+        this);
 }
 
 void ViewBackendBCMRPi::destroyBuffer(uint32_t)
@@ -130,6 +210,17 @@ void ViewBackendBCMRPi::setInputClient(Input::Client* client)
     }
 
     LibinputServer::singleton().setClient(client);
+}
+
+void ViewBackendBCMRPi::handleUpdate()
+{
+    uint64_t time;
+    ssize_t ret = read(m_updateFd, &time, sizeof(time));
+    if (ret != sizeof(time))
+        return;
+
+    if (m_client)
+        m_client->frameComplete();
 }
 
 ViewBackendBCMRPi::Cursor::Cursor(Input::Client* targetClient, DISPMANX_DISPLAY_HANDLE_T displayHandle, uint32_t displayWidth, uint32_t displayHeight)
