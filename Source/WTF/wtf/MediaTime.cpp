@@ -401,8 +401,7 @@ MediaTime::ComparisonFlags MediaTime::compare(const MediaTime& rhs, bool fuzzy) 
         return LessThan;
 
     if (hasDoubleValue() && rhs.hasDoubleValue()) {
-        double epsilon = 0.001;
-        if (std::abs(m_timeValueAsDouble - rhs.m_timeValueAsDouble) < epsilon)
+        if (m_timeValueAsDouble == rhs.m_timeValueAsDouble)
             return EqualTo;
         if (fuzzy && fabs(m_timeValueAsDouble - rhs.m_timeValueAsDouble) <= fuzzinessThreshold().toDouble())
             return EqualTo;
