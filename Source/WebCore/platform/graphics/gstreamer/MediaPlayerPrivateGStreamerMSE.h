@@ -52,6 +52,8 @@ public:
     void load(const String &url) override;
     void load(const String& url, MediaSourcePrivateClient*) override;
 
+    bool isLiveStream() const override { return false; }
+
     bool seeking() const override;
     void durationChanged() override;
     MediaTime durationMediaTime() const override { return m_mediaTimeDuration; }
