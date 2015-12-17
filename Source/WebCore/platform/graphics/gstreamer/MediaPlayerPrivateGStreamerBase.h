@@ -107,8 +107,6 @@ public:
     virtual MediaPlayer::NetworkState networkState() const override;
     virtual MediaPlayer::ReadyState readyState() const override;
 
-    virtual bool ended() const override { return m_isEndReached; }
-
     virtual void setVisible(bool) override { }
     virtual void setSize(const IntSize&) override;
     void sizeChanged();
