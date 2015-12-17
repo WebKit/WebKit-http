@@ -47,6 +47,7 @@ extern "C" {
 WK_EXPORT WKTypeID WKStringGetTypeID();
 
 WK_EXPORT WKStringRef WKStringCreateWithUTF8CString(const char* string);
+WK_EXPORT WKStringRef WKStringCreateWithJSString(JSStringRef jsString);
 
 WK_EXPORT bool WKStringIsEmpty(WKStringRef string);
 
