@@ -213,7 +213,6 @@ bool MediaPlayerPrivateGStreamerMSE::isAvailable()
 
 MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* player)
     : MediaPlayerPrivateGStreamer(player)
-    , m_webKitMediaSrc(0)
     , m_seekCompleted(true)
 {
     LOG_MEDIA_MESSAGE("%p", this);
@@ -228,9 +227,9 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 
     clearSamples();
 
-    if (m_webKitMediaSrc) {
-        webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), 0);
-        g_signal_handlers_disconnect_matched(m_webKitMediaSrc.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
+    if (m_source) {
+        webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_source.get()), 0);
+        g_signal_handlers_disconnect_matched(m_source.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
     }
 
     if (m_playbackPipeline)
@@ -328,7 +327,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeek
     }
 
     // This will call notifySeekNeedsData() after some time to tell that the pipeline is ready for sample enqueuing.
-    webkit_media_src_prepare_seek(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), time);
+    webkit_media_src_prepare_seek(WEBKIT_MEDIA_SRC(m_source.get()), time);
 
     // DEBUG
     dumpPipeline(m_pipeline.get());
@@ -419,18 +418,18 @@ std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamerMSE::buffered() c
 
 void MediaPlayerPrivateGStreamerMSE::sourceChanged()
 {
-    m_webKitMediaSrc.clear();
-    g_object_get(m_pipeline.get(), "source", &m_webKitMediaSrc.outPtr(), nullptr);
+    m_source.clear();
+    g_object_get(m_pipeline.get(), "source", &m_source.outPtr(), nullptr);
 
-    ASSERT(WEBKIT_IS_MEDIA_SRC(m_webKitMediaSrc.get()));
+    ASSERT(WEBKIT_IS_MEDIA_SRC(m_source.get()));
 
-    m_playbackPipeline->setWebKitMediaSrc(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()));
+    m_playbackPipeline->setWebKitMediaSrc(WEBKIT_MEDIA_SRC(m_source.get()));
 
     MediaSourceGStreamer::open(m_mediaSource.get(), this);
-    g_signal_connect_swapped(m_webKitMediaSrc.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
-    g_signal_connect_swapped(m_webKitMediaSrc.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
-    g_signal_connect_swapped(m_webKitMediaSrc.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
-    webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_webKitMediaSrc.get()), this);
+    g_signal_connect_swapped(m_source.get(), "video-changed", G_CALLBACK(videoChangedCallback), this);
+    g_signal_connect_swapped(m_source.get(), "audio-changed", G_CALLBACK(audioChangedCallback), this);
+    g_signal_connect_swapped(m_source.get(), "text-changed", G_CALLBACK(textChangedCallback), this);
+    webkit_media_src_set_mediaplayerprivate(WEBKIT_MEDIA_SRC(m_source.get()), this);
 }
 
 void MediaPlayerPrivateGStreamerMSE::updateStates()
@@ -692,14 +691,29 @@ void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String>& types)
 
 void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> ap, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack)
 {
-    ASSERT (ap->track() == newTrack);
+    ASSERT(ap->track() == newTrack);
 
-    LOG_MEDIA_MESSAGE("%s", newTrack->id().string().latin1().data());
+    GstCaps* caps = ap->appSinkCaps();
+    ASSERT(caps);
+    LOG_MEDIA_MESSAGE("track ID: %s, caps: %" GST_PTR_FORMAT, newTrack->id().string().latin1().data(), caps);
+
+    GstStructure* s = gst_caps_get_structure(caps, 0);
+    const gchar* mediaType = gst_structure_get_name(s);
+    GstVideoInfo info;
+
+    if (g_str_has_prefix(mediaType, "video/") && gst_video_info_from_caps(&info, caps)) {
+        float width, height;
+
+        width = info.width;
+        height = info.height * ((float) info.par_d / (float) info.par_n);
+        m_videoSize.setWidth(width);
+        m_videoSize.setHeight(height);
+    }
 
     if (!oldTrack)
-        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, ap->appSinkCaps());
+        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, s);
     else
-        m_playbackPipeline->reattachTrack(ap->sourceBufferPrivate(), newTrack, ap->appSinkCaps());
+        m_playbackPipeline->reattachTrack(ap->sourceBufferPrivate(), newTrack);
 }
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const MediaEngineSupportParameters& parameters)
@@ -2173,7 +2187,7 @@ GRefPtr<WebKitMediaSrc> MediaSourceClientGStreamerMSE::webKitMediaSrc()
     if (!m_playerPrivate)
         return GRefPtr<WebKitMediaSrc>(NULL);
 
-    WebKitMediaSrc* source = WEBKIT_MEDIA_SRC(m_playerPrivate->m_webKitMediaSrc.get());
+    WebKitMediaSrc* source = WEBKIT_MEDIA_SRC(m_playerPrivate->m_source.get());
 
     ASSERT(WEBKIT_IS_MEDIA_SRC(source));
 

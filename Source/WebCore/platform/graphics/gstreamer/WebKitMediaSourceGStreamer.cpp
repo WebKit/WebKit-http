@@ -896,29 +896,20 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
     }
 }
 
-void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstCaps* caps)
+void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstStructure* s)
 {
     WebKitMediaSrc* webKitMediaSrc = m_webKitMediaSrc.get();
     Stream* stream = 0;
-    //GstCaps* appsrccaps = 0;
-    GstStructure* s = 0;
-    const gchar* appsrctypename = 0;
-    const gchar* mediaType = 0;
-    gchar *parserBinName;
+    gchar* parserBinName;
     bool capsNotifyHandlerConnected = false;
     unsigned padId = 0;
+    const gchar* mediaType = gst_structure_get_name(s);
 
     GST_OBJECT_LOCK(webKitMediaSrc);
     stream = getStreamBySourceBufferPrivate(webKitMediaSrc, sourceBufferPrivate.get());
     GST_OBJECT_UNLOCK(webKitMediaSrc);
 
     ASSERT(stream != 0);
-
-    //gst_app_src_set_caps(GST_APP_SRC(stream->appsrc), caps);
-    //appsrccaps = gst_app_src_get_caps(GST_APP_SRC(stream->appsrc));
-    s = gst_caps_get_structure(caps, 0);
-    appsrctypename = gst_structure_get_name(s);
-    mediaType = appsrctypename;
 
     GST_OBJECT_LOCK(webKitMediaSrc);
     padId = stream->parent->priv->numberOfPads;
@@ -927,12 +918,10 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
     parserBinName = g_strdup_printf("streamparser%u", padId);
 
-    ASSERT(caps != 0);
-
     stream->parser = gst_bin_new(parserBinName);
     g_free(parserBinName);
 
-    GST_DEBUG_OBJECT(webKitMediaSrc, "Configured track %s: appsrc=%s, padId=%u, mediaType=%s, caps=%" GST_PTR_FORMAT, trackPrivate->id().string().utf8().data(), GST_ELEMENT_NAME(stream->appsrc), padId, mediaType, caps);
+    GST_DEBUG_OBJECT(webKitMediaSrc, "Configured track %s: appsrc=%s, padId=%u, mediaType=%s", trackPrivate->id().string().utf8().data(), GST_ELEMENT_NAME(stream->appsrc), padId, mediaType);
 
     if (!g_strcmp0(mediaType, "video/x-h264")) {
         GstElement* parser;
@@ -1005,12 +994,10 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("src", pad));
         gst_object_unref(pad);
     } else {
-        GST_ERROR_OBJECT(stream->parent, "Unsupported caps: %" GST_PTR_FORMAT, caps);
+        GST_ERROR_OBJECT(stream->parent, "Unsupported media format: %s", mediaType);
         gst_object_unref(GST_OBJECT(stream->parser));
         return;
     }
-
-    //gst_caps_unref(appsrccaps);
 
     GST_OBJECT_LOCK(webKitMediaSrc);
     stream->type = Unknown;
@@ -1070,11 +1057,9 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     srcpad = 0;
 }
 
-void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstCaps* caps)
+void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate)
 {
     LOG_MEDIA_MESSAGE("Re-attaching track");
-
-    UNUSED_PARAM(caps);
 
     // TODO: Maybe remove this method.
     // Now the caps change is managed by gst_appsrc_push_sample()
