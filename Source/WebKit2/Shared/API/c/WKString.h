@@ -26,6 +26,7 @@
 #ifndef WKString_h
 #define WKString_h
 
+#include <JavaScriptCore/JSStringRef.h>
 #include <WebKit/WKBase.h>
 #include <stddef.h>
 
