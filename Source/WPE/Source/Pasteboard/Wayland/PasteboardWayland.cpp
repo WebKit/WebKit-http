@@ -54,7 +54,7 @@ const struct wl_data_offer_listener g_dataOfferListener = {
 };
 
 const struct wl_data_device_listener g_dataDeviceListener = {
-    // data offer
+    // data_offer
     [] (void* data, struct wl_data_device*, struct wl_data_offer* offer)
     {
         auto& dataDeviceData = *static_cast<PasteboardWayland::DataDeviceData*>(data);
