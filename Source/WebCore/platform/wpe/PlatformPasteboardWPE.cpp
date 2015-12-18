@@ -29,6 +29,7 @@
 #include "PlatformPasteboard.h"
 #include <WPE/Pasteboard/Pasteboard.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/Assertions.h>
 
 #include <map>
 
@@ -37,11 +38,13 @@ namespace WebCore {
 PlatformPasteboard::PlatformPasteboard(const String&)
     : m_pasteboard(WPE::Pasteboard::Pasteboard::singleton())
 {
+    ASSERT(m_pasteboard);
 }
 
 PlatformPasteboard::PlatformPasteboard()
     : m_pasteboard(WPE::Pasteboard::Pasteboard::singleton())
 {
+    ASSERT(m_pasteboard);
 }
 
 void PlatformPasteboard::getTypes(Vector<String>& types)
