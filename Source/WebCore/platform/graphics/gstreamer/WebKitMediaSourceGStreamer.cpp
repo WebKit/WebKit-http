@@ -971,7 +971,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_object_unref(pad);
     } else if (!g_strcmp0(mediaType, "audio/mpeg")) {
         gint mpegversion = -1;
-        GstElement* parser;
+        GstElement* parser = nullptr;
         GstPad* pad = nullptr;
 
         gst_structure_get_int(s, "mpegversion", &mpegversion);
