@@ -177,7 +177,7 @@ void PasteboardWayland::write(const std::map<std::string, void*> dataMap)
     ViewBackend::WaylandDisplay* display = &ViewBackend::WaylandDisplay::singleton();
     m_dataSourceData.data_source = wl_data_device_manager_create_data_source(display->interfaces().data_device_manager);
 
-    for (auto dataPair: dataMap)
+    for (auto dataPair : dataMap)
         wl_data_source_offer(m_dataSourceData.data_source, dataPair.first.c_str());
 
     wl_data_source_add_listener(m_dataSourceData.data_source, &g_dataSourceListener, &m_dataSourceData);
