@@ -107,28 +107,29 @@ std::vector<std::string> PasteboardWayland::getTypes()
 
 std::string PasteboardWayland::getString(const std::string pasteboardType)
 {
-    for (auto dataType: m_dataDeviceData.dataTypes)
-    {
-        if (dataType == pasteboardType) {
-            int pipefd[2];
-            // FIXME: Should probably handle this error somehow.
-            if (pipe2(pipefd, O_CLOEXEC) == -1)
-                return std::string();
-            wl_data_offer_receive(m_dataDeviceData.data_offer, dataType.c_str(), pipefd[1]);
-            close(pipefd[1]);
-            wl_display_roundtrip(ViewBackend::WaylandDisplay::singleton().display());
-            char buf[1024];
-            std::string readString;
-            ssize_t length;
-            do {
-                length = read(pipefd[0], buf, 1024);
-                readString.append(buf, length);
-            } while (length > 0);
-            close(pipefd[0]);
-            return readString;
-        }
-    }
-    return std::string();
+    if (!std::any_of(m_dataDeviceData.dataTypes.cbegin(), m_dataDeviceData.dataTypes.cend(),
+                     [pasteboardType](std::string str){ return str == pasteboardType;}))
+        return std::string();
+
+    int pipefd[2];
+    // FIXME: Should probably handle this error somehow.
+    if (pipe2(pipefd, O_CLOEXEC) == -1)
+        return std::string();
+    wl_data_offer_receive(m_dataDeviceData.data_offer, pasteboardType.c_str(), pipefd[1]);
+    close(pipefd[1]);
+
+    wl_display_roundtrip(ViewBackend::WaylandDisplay::singleton().display());
+
+    char buf[1024];
+    std::string readString;
+    ssize_t length;
+    do {
+        length = read(pipefd[0], buf, 1024);
+        readString.append(buf, length);
+    } while (length > 0);
+    close(pipefd[0]);
+
+    return readString;
 }
 
 const struct wl_data_source_listener g_dataSourceListener = {
