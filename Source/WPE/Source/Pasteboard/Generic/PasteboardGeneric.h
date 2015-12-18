@@ -37,7 +37,7 @@ class PasteboardGeneric final : public Pasteboard {
 public:
     std::vector<std::string> getTypes() override;
     std::string getString(const std::string) override;
-    void write(const std::map<std::string, void*>) override;
+    void write(const std::map<std::string, std::string>) override;
     void write(const std::string, const std::string) override;
 
     PasteboardGeneric();
@@ -45,7 +45,7 @@ public:
 
 private:
 
-    std::map<std::string, void*> m_dataMap;
+    std::map<std::string, std::string> m_dataMap;
 };
 
 } // namespace Pasteboard

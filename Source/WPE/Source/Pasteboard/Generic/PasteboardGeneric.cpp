@@ -47,13 +47,10 @@ std::string PasteboardGeneric::getString(const std::string pasteboardType)
     if (m_dataMap.count(pasteboardType) == 0)
         return std::string();
 
-    if (pasteboardType == "text/plain;charset=utf-8")
-        return std::string(*static_cast<std::string*>(m_dataMap[pasteboardType]));
-
-    return std::string();
+    return m_dataMap[pasteboardType];
 }
 
-void PasteboardGeneric::write(const std::map<std::string, void*> dataMap)
+void PasteboardGeneric::write(const std::map<std::string, std::string> dataMap)
 {
     m_dataMap = dataMap;
 
@@ -62,7 +59,7 @@ void PasteboardGeneric::write(const std::map<std::string, void*> dataMap)
 void PasteboardGeneric::write(const std::string pasteboardType, const std::string stringToWrite)
 {
     m_dataMap.clear();
-    m_dataMap[pasteboardType] = static_cast<void*>(new std::string(stringToWrite));
+    m_dataMap[pasteboardType] = stringToWrite;
 }
 
 } // namespace Pasteboard

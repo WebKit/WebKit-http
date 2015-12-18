@@ -61,9 +61,9 @@ String PlatformPasteboard::readString(int, const String& pasteboardType)
 
 void PlatformPasteboard::write(const PasteboardWebContent& content)
 {
-    std::map<std::string, void*> contentMap;
-    contentMap["text/plain;charset=utf-8"] = static_cast<void*>(new std::string(content.text.utf8().data()));
-    contentMap["text/html;charset=utf-8"] = static_cast<void*>(new std::string(content.markup.utf8().data()));
+    std::map<std::string, std::string> contentMap;
+    contentMap["text/plain;charset=utf-8"] = std::string(content.text.utf8().data());
+    contentMap["text/html;charset=utf-8"] = std::string(content.markup.utf8().data());
     m_pasteboard->write(contentMap);
 }
 

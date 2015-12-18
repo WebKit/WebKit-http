@@ -142,7 +142,7 @@ const struct wl_data_source_listener g_dataSourceListener = {
         assert(!dataSourceData.dataMap.count(mime_type));
 
         if (strncmp(mime_type, "text/", 5) == 0) {
-            std::string stringToSend(*static_cast<std::string*>(dataSourceData->dataMap[mime_type]));
+            std::string stringToSend = dataSourceData.dataMap[mime_type];
             const char* p = stringToSend.data();
             ssize_t length = stringToSend.size();
             ssize_t written = 0;
@@ -167,7 +167,7 @@ const struct wl_data_source_listener g_dataSourceListener = {
     }
 };
 
-void PasteboardWayland::write(const std::map<std::string, void*> dataMap)
+void PasteboardWayland::write(const std::map<std::string, std::string> dataMap)
 {
     if (m_dataSourceData.data_source)
         wl_data_source_destroy(m_dataSourceData.data_source);
@@ -186,8 +186,8 @@ void PasteboardWayland::write(const std::map<std::string, void*> dataMap)
 
 void PasteboardWayland::write(const std::string pasteboardType, const std::string stringToWrite)
 {
-    std::map<std::string, void*> dataMap;
-    dataMap[pasteboardType] = static_cast<void*>(new std::string(stringToWrite));
+    std::map<std::string, std::string> dataMap;
+    dataMap[pasteboardType] = stringToWrite;
     write(dataMap);
 }
 

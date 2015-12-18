@@ -46,7 +46,7 @@ class PasteboardWayland final : public Pasteboard {
 public:
     std::vector<std::string> getTypes() override;
     std::string getString(const std::string) override;
-    void write(const std::map<std::string, void*>) override;
+    void write(const std::map<std::string, std::string>) override;
     void write(const std::string, const std::string) override;
 
     PasteboardWayland();
@@ -61,7 +61,7 @@ public:
     struct DataSourceData {
         DataSourceData() : data_source(nullptr) {}
         wl_data_source* data_source;
-        std::map<std::string, void*> dataMap;
+        std::map<std::string, std::string> dataMap;
     };
 
 private:
