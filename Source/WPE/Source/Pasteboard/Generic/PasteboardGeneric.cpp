@@ -30,13 +30,9 @@ namespace WPE {
 
 namespace Pasteboard {
 
-PasteboardGeneric::PasteboardGeneric()
-{
-}
+PasteboardGeneric::PasteboardGeneric() = default;
 
-PasteboardGeneric::~PasteboardGeneric()
-{
-}
+PasteboardGeneric::~PasteboardGeneric() = default;
 
 std::vector<std::string> PasteboardGeneric::getTypes()
 {
