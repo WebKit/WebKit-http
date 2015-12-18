@@ -115,6 +115,7 @@ ViewBackendWayland::ViewBackendWayland()
         ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, &m_resizingData);
     }
 
+    // Ensure the Pasteboard singleton is constructed early.
     Pasteboard::Pasteboard::singleton();
 }
 
