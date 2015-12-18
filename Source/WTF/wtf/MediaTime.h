@@ -102,7 +102,6 @@ public:
     static const MediaTime& positiveInfiniteTime();
     static const MediaTime& negativeInfiniteTime();
     static const MediaTime& indefiniteTime();
-    static const MediaTime& fuzzinessThreshold();
 
     const int64_t& timeValue() const { return m_timeValue; }
     const int32_t& timeScale() const { return m_timeScale; }
