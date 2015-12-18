@@ -26,7 +26,7 @@
 #include "Config.h"
 #include <WPE/Pasteboard/Pasteboard.h>
 
-#include "PasteboardPrivate.h"
+#include "PasteboardGeneric.h"
 #if WPE_BACKEND(WAYLAND)
 #include "PasteboardWayland.h"
 #endif
@@ -54,7 +54,7 @@ std::shared_ptr<Pasteboard> Pasteboard::singleton()
     }
 #endif
 
-    pasteboard = std::shared_ptr<PasteboardPrivate>(new PasteboardPrivate);
+    pasteboard = std::shared_ptr<PasteboardGeneric>(new PasteboardGeneric);
     return pasteboard;
 }
 

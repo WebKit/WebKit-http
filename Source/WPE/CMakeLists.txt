@@ -30,7 +30,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
-    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Private"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Generic"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Wayland"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
@@ -59,7 +59,8 @@ set(WPE_SOURCES
 
     Source/Pasteboard/Pasteboard.cpp
 
-    Source/Pasteboard/Private/PasteboardPrivate.cpp
+    Source/Pasteboard/Generic/PasteboardGeneric.cpp
+
     Source/ViewBackend/ViewBackend.cpp
 )
 

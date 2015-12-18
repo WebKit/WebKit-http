@@ -23,8 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPE_Pasteboard_PasteboardPrivate_h
-#define WPE_Pasteboard_PasteboardPrivate_h
+#ifndef WPE_Pasteboard_PasteboardGeneric_h
+#define WPE_Pasteboard_PasteboardGeneric_h
 
 #include <WPE/Pasteboard/Pasteboard.h>
 #include <map>
@@ -33,15 +33,15 @@ namespace WPE {
 
 namespace Pasteboard {
 
-class PasteboardPrivate final : public Pasteboard {
+class PasteboardGeneric final : public Pasteboard {
 public:
     std::vector<std::string> getTypes() override;
     std::string getString(const std::string) override;
     void write(const std::map<std::string, void*>) override;
     void write(const std::string, const std::string) override;
 
-    PasteboardPrivate();
-    ~PasteboardPrivate();
+    PasteboardGeneric();
+    ~PasteboardGeneric();
 
 private:
 
@@ -52,4 +52,4 @@ private:
 
 } // namespace WPE
 
-#endif // WPE_ViewBackend_PasteboardPrivate_h
+#endif // WPE_ViewBackend_PasteboardGeneric_h

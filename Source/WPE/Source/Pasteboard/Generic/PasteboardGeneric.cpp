@@ -24,21 +24,21 @@
  */
 
 #include "Config.h"
-#include "PasteboardPrivate.h"
+#include "PasteboardGeneric.h"
 
 namespace WPE {
 
 namespace Pasteboard {
 
-PasteboardPrivate::PasteboardPrivate()
+PasteboardGeneric::PasteboardGeneric()
 {
 }
 
-PasteboardPrivate::~PasteboardPrivate()
+PasteboardGeneric::~PasteboardGeneric()
 {
 }
 
-std::vector<std::string> PasteboardPrivate::getTypes()
+std::vector<std::string> PasteboardGeneric::getTypes()
 {
     std::vector<std::string> types;
     for (auto dataType: m_dataMap)
@@ -46,7 +46,7 @@ std::vector<std::string> PasteboardPrivate::getTypes()
     return types;
 }
 
-std::string PasteboardPrivate::getString(const std::string pasteboardType)
+std::string PasteboardGeneric::getString(const std::string pasteboardType)
 {
     if (m_dataMap.count(pasteboardType) == 0)
         return std::string();
@@ -57,13 +57,13 @@ std::string PasteboardPrivate::getString(const std::string pasteboardType)
     return std::string();
 }
 
-void PasteboardPrivate::write(const std::map<std::string, void*> dataMap)
+void PasteboardGeneric::write(const std::map<std::string, void*> dataMap)
 {
     m_dataMap = dataMap;
 
 }
 
-void PasteboardPrivate::write(const std::string pasteboardType, const std::string stringToWrite)
+void PasteboardGeneric::write(const std::string pasteboardType, const std::string stringToWrite)
 {
     m_dataMap.clear();
     m_dataMap[pasteboardType] = static_cast<void*>(new std::string(stringToWrite));
@@ -72,5 +72,3 @@ void PasteboardPrivate::write(const std::string pasteboardType, const std::strin
 } // namespace Pasteboard
 
 } // namespace WPE
-
-//#endif // WPE_BACKEND(WAYLAND)
