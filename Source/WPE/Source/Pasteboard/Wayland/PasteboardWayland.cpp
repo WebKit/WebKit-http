@@ -47,9 +47,9 @@ const struct wl_data_offer_listener g_dataOfferListener = {
     // offer
     [] (void* data, struct wl_data_offer* offer, const char* type)
     {
-        auto* dataDeviceData = static_cast<PasteboardWayland::DataDeviceData*>(data);
-        assert(offer == dataDeviceData->data_offer);
-        dataDeviceData->dataTypes.push_back(type);
+        auto& dataDeviceData = *static_cast<PasteboardWayland::DataDeviceData*>(data);
+        assert(offer == dataDeviceData.data_offer);
+        dataDeviceData.dataTypes.push_back(type);
     },
 };
 
@@ -79,12 +79,12 @@ const struct wl_data_device_listener g_dataDeviceListener = {
 
 PasteboardWayland::PasteboardWayland()
 {
-    ViewBackend::WaylandDisplay* display = &ViewBackend::WaylandDisplay::singleton();
+    ViewBackend::WaylandDisplay& display = ViewBackend::WaylandDisplay::singleton();
 
-    if (!display->interfaces().data_device_manager)
+    if (!display.interfaces().data_device_manager)
         return;
 
-    m_dataDevice = wl_data_device_manager_get_data_device(display->interfaces().data_device_manager, display->interfaces().seat);
+    m_dataDevice = wl_data_device_manager_get_data_device(display.interfaces().data_device_manager, display.interfaces().seat);
     wl_data_device_add_listener(m_dataDevice, &g_dataDeviceListener, &m_dataDeviceData);
 }
 
@@ -137,9 +137,9 @@ const struct wl_data_source_listener g_dataSourceListener = {
     // send
     [] (void* data, struct wl_data_source* source, const char* mime_type, int32_t fd)
     {
-        auto* dataSourceData = static_cast<PasteboardWayland::DataSourceData*>(data);
-        assert(dataSourceData->data_source == source);
-        assert(!dataSourceData->dataMap.count(mime_type));
+        auto& dataSourceData = *static_cast<PasteboardWayland::DataSourceData*>(data);
+        assert(dataSourceData.data_source == source);
+        assert(!dataSourceData.dataMap.count(mime_type));
 
         if (strncmp(mime_type, "text/", 5) == 0) {
             std::string stringToSend(*static_cast<std::string*>(dataSourceData->dataMap[mime_type]));
@@ -159,11 +159,11 @@ const struct wl_data_source_listener g_dataSourceListener = {
     // cancelled
     [] (void* data, struct wl_data_source* source)
     {
-        auto* dataSourceData = static_cast<PasteboardWayland::DataSourceData*>(data);
-        assert(dataSourceData->data_source == source);
+        auto& dataSourceData = *static_cast<PasteboardWayland::DataSourceData*>(data);
+        assert(dataSourceData.data_source == source);
         wl_data_source_destroy(source);
-        dataSourceData->data_source = nullptr;
-        dataSourceData->dataMap.clear();
+        dataSourceData.data_source = nullptr;
+        dataSourceData.dataMap.clear();
     }
 };
 
@@ -174,14 +174,14 @@ void PasteboardWayland::write(const std::map<std::string, void*> dataMap)
 
     m_dataSourceData.dataMap = dataMap;
 
-    ViewBackend::WaylandDisplay* display = &ViewBackend::WaylandDisplay::singleton();
-    m_dataSourceData.data_source = wl_data_device_manager_create_data_source(display->interfaces().data_device_manager);
+    ViewBackend::WaylandDisplay& display = ViewBackend::WaylandDisplay::singleton();
+    m_dataSourceData.data_source = wl_data_device_manager_create_data_source(display.interfaces().data_device_manager);
 
     for (auto dataPair : dataMap)
         wl_data_source_offer(m_dataSourceData.data_source, dataPair.first.c_str());
 
     wl_data_source_add_listener(m_dataSourceData.data_source, &g_dataSourceListener, &m_dataSourceData);
-    wl_data_device_set_selection(m_dataDevice, m_dataSourceData.data_source, display->singleton().serial());
+    wl_data_device_set_selection(m_dataDevice, m_dataSourceData.data_source, display.singleton().serial());
 }
 
 void PasteboardWayland::write(const std::string pasteboardType, const std::string stringToWrite)
