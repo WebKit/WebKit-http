@@ -3322,6 +3322,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/MallocStatistics.idl
     testing/MemoryInfo.idl
     testing/MockContentFilterSettings.idl
+    testing/MockPageOverlay.idl
     testing/TypeConversions.idl
 )
 
@@ -3336,6 +3337,7 @@ list(APPEND WebCoreTestSupport_SOURCES
 
     testing/InternalSettings.cpp
     testing/Internals.cpp
+    testing/MockPageOverlay.cpp
     testing/MockPageOverlayClient.cpp
 
     testing/js/WebCoreTestSupport.cpp

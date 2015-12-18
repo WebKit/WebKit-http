@@ -242,8 +242,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ProfileDidCall:
     case ProfileType:
     case ProfileControlFlow:
-    case CheckHasInstance:
+    case CheckTypeInfoFlags:
+    case OverridesHasInstance:
     case InstanceOf:
+    case InstanceOfCustom:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -268,6 +270,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutToArguments:
     case NewArrowFunction:
     case NewFunction:
+    case NewGeneratorFunction:
     case Jump:
     case Branch:
     case Switch:
@@ -314,6 +317,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ToIndexString:
     case PhantomNewObject:
     case PhantomNewFunction:
+    case PhantomNewGeneratorFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:

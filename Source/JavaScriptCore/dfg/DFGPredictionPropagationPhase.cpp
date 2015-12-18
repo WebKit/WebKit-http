@@ -209,7 +209,8 @@ private:
         case GetSetter:
         case GetCallee:
         case NewArrowFunction:
-        case NewFunction: {
+        case NewFunction:
+        case NewGeneratorFunction: {
             changed |= setPrediction(SpecFunction);
             break;
         }
@@ -407,7 +408,9 @@ private:
         case CompareGreaterEq:
         case CompareEq:
         case CompareStrictEq:
+        case OverridesHasInstance:
         case InstanceOf:
+        case InstanceOfCustom:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
@@ -574,6 +577,7 @@ private:
         case DoubleAsInt32:
         case GetLocalUnlinked:
         case CheckArray:
+        case CheckTypeInfoFlags:
         case Arrayify:
         case ArrayifyToStructure:
         case CheckTierUpInLoop:
@@ -591,6 +595,7 @@ private:
         case BooleanToNumber:
         case PhantomNewObject:
         case PhantomNewFunction:
+        case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
@@ -685,7 +690,6 @@ private:
         case ProfileDidCall:
         case ProfileType:
         case ProfileControlFlow:
-        case CheckHasInstance:
         case ThrowReferenceError:
         case ForceOSRExit:
         case SetArgument:

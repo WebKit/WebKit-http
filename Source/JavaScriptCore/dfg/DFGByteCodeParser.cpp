@@ -3505,9 +3505,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_check_tdz);
         }
 
-        case op_check_has_instance:
-            addToGraph(CheckHasInstance, get(VirtualRegister(currentInstruction[3].u.operand)));
-            NEXT_OPCODE(op_check_has_instance);
+        case op_overrides_has_instance: {
+            JSFunction* defaultHasInstanceSymbolFunction = m_inlineStackTop->m_codeBlock->globalObjectFor(currentCodeOrigin())->functionProtoHasInstanceSymbolFunction();
+
+            Node* constructor = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* hasInstanceValue = get(VirtualRegister(currentInstruction[3].u.operand));
+
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(OverridesHasInstance, OpInfo(m_graph.freeze(defaultHasInstanceSymbolFunction)), constructor, hasInstanceValue));
+            NEXT_OPCODE(op_overrides_has_instance);
+        }
 
         case op_instanceof: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
@@ -3515,7 +3521,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(InstanceOf, value, prototype));
             NEXT_OPCODE(op_instanceof);
         }
-            
+
+        case op_instanceof_custom: {
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* constructor = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* hasInstanceValue = get(VirtualRegister(currentInstruction[4].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(InstanceOfCustom, value, constructor, hasInstanceValue));
+            NEXT_OPCODE(op_instanceof_custom);
+        }
+
         case op_is_undefined: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsUndefined, value));
@@ -4557,23 +4571,27 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_to_arguments);
         }
             
-        case op_new_func: {
+        case op_new_func:
+        case op_new_generator_func: {
             FunctionExecutable* decl = m_inlineStackTop->m_profiledBlock->functionDecl(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(decl);
-            set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction : NewFunction;
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_generator_func), "The length of op_new_func should eqaual to one of op_new_generator_func");
             NEXT_OPCODE(op_new_func);
         }
 
         case op_new_func_exp:
+        case op_new_generator_func_exp:
         case op_new_arrow_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
-            set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             
-            if (opcodeID == op_new_func_exp) {
+            if (opcodeID == op_new_func_exp || opcodeID == op_new_generator_func_exp) {
                 // Curly braces are necessary
+                static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
                 NEXT_OPCODE(op_new_func_exp);
             } else {
                 // Curly braces are necessary

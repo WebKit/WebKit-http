@@ -809,7 +809,7 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
         }
         
         // This implements step 25 of section 9.2.12.
-        pushLexicalScopeInternal(environment, true, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
+        pushLexicalScopeInternal(environment, true, false, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
 
         RefPtr<RegisterID> temp = newTemporary();
         for (unsigned i = 0; i < parameters.size(); i++) {
@@ -927,7 +927,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
     }
 
     size_t size = m_symbolTableStack.size();
-    pushLexicalScopeInternal(environment, true, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
+    pushLexicalScopeInternal(environment, true, false, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
 
     ASSERT_UNUSED(size, m_symbolTableStack.size() == size + 1);
 
@@ -1797,13 +1797,13 @@ void BytecodeGenerator::emitPrefillStackTDZVariables(const VariableEnvironment& 
     }
 }
 
-void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult)
+void BytecodeGenerator::pushLexicalScope(VariableEnvironmentNode* node, bool canOptimizeTDZChecks, bool isNestedLexicalScope, RegisterID** constantSymbolTableResult)
 {
     VariableEnvironment& environment = node->lexicalVariables();
-    pushLexicalScopeInternal(environment, canOptimizeTDZChecks, constantSymbolTableResult, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
+    pushLexicalScopeInternal(environment, canOptimizeTDZChecks, isNestedLexicalScope, constantSymbolTableResult, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
 }
 
-void BytecodeGenerator::pushLexicalScopeInternal(VariableEnvironment& environment, bool canOptimizeTDZChecks, 
+void BytecodeGenerator::pushLexicalScopeInternal(VariableEnvironment& environment, bool canOptimizeTDZChecks, bool isNestedLexicalScope,
     RegisterID** constantSymbolTableResult, TDZRequirement tdzRequirement, ScopeType scopeType, ScopeRegisterType scopeRegisterType)
 {
     if (!environment.size())
@@ -1824,6 +1824,9 @@ void BytecodeGenerator::pushLexicalScopeInternal(VariableEnvironment& environmen
         symbolTable->setScopeType(SymbolTable::ScopeType::FunctionNameScope);
         break;
     }
+
+    if (isNestedLexicalScope)
+        symbolTable->markIsNestedLexicalScope();
 
     auto lookUpVarKind = [] (UniquedStringImpl*, const VariableEnvironmentEntry& entry) -> VarKind {
         return entry.isCaptured() ? VarKind::Scope : VarKind::Stack;
@@ -2099,14 +2102,13 @@ void BytecodeGenerator::createVariable(
     }
 }
 
-void BytecodeGenerator::emitCheckHasInstance(RegisterID* dst, RegisterID* value, RegisterID* base, Label* target)
+RegisterID* BytecodeGenerator::emitOverridesHasInstance(RegisterID* dst, RegisterID* constructor, RegisterID* hasInstanceValue)
 {
-    size_t begin = instructions().size();
-    emitOpcode(op_check_has_instance);
+    emitOpcode(op_overrides_has_instance);
     instructions().append(dst->index());
-    instructions().append(value->index());
-    instructions().append(base->index());
-    instructions().append(target->bind(begin, instructions().size()));
+    instructions().append(constructor->index());
+    instructions().append(hasInstanceValue->index());
+    return dst;
 }
 
 // Indicates the least upper bound of resolve type based on local scope. The bytecode linker
@@ -2270,6 +2272,16 @@ RegisterID* BytecodeGenerator::emitInstanceOf(RegisterID* dst, RegisterID* value
     instructions().append(dst->index());
     instructions().append(value->index());
     instructions().append(basePrototype->index());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitInstanceOfCustom(RegisterID* dst, RegisterID* value, RegisterID* constructor, RegisterID* hasInstanceValue)
+{
+    emitOpcode(op_instanceof_custom);
+    instructions().append(dst->index());
+    instructions().append(value->index());
+    instructions().append(constructor->index());
+    instructions().append(hasInstanceValue->index());
     return dst;
 }
 
@@ -3554,7 +3566,7 @@ void BytecodeGenerator::emitPushFunctionNameScope(const Identifier& property, Re
         addResult.iterator->value.setIsCaptured();
     addResult.iterator->value.setIsConst(); // The function name scope name acts like a const variable.
     unsigned numVars = m_codeBlock->m_numVars;
-    pushLexicalScopeInternal(nameScopeEnvironment, true, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::FunctionNameScope, ScopeRegisterType::Var);
+    pushLexicalScopeInternal(nameScopeEnvironment, true, false, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::FunctionNameScope, ScopeRegisterType::Var);
     ASSERT_UNUSED(numVars, m_codeBlock->m_numVars == static_cast<int>(numVars + 1)); // Should have only created one new "var" for the function name scope.
     bool shouldTreatAsLexicalVariable = isStrictMode();
     Variable functionVar = variableForLocalEntry(property, m_symbolTableStack.last().m_symbolTable->get(property.impl()), m_symbolTableStack.last().m_symbolTableConstantIndex, shouldTreatAsLexicalVariable);
@@ -3580,7 +3592,7 @@ void BytecodeGenerator::popScopedControlFlowContext()
 void BytecodeGenerator::emitPushCatchScope(const Identifier& property, RegisterID* exceptionValue, VariableEnvironment& environment)
 {
     RELEASE_ASSERT(environment.contains(property.impl()));
-    pushLexicalScopeInternal(environment, true, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::CatchScope, ScopeRegisterType::Block);
+    pushLexicalScopeInternal(environment, true, false, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::CatchScope, ScopeRegisterType::Block);
     Variable exceptionVar = variable(property);
     RELEASE_ASSERT(exceptionVar.isResolved());
     RefPtr<RegisterID> scope = emitResolveScope(nullptr, exceptionVar);

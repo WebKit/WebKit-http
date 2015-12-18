@@ -1,3 +1,42 @@
+2015-12-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove temporary flakiness expectations for WPT tests introduced for bug 152257
+        https://bugs.webkit.org/show_bug.cgi?id=152377
+
+        Unreviewed.
+
+        * web-platform-tests/dom/interfaces-expected.txt: Rebased according latest testharness.js.
+        * web-platform-tests/html/dom/interfaces-expected.txt: Ditto.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Mark additional wpt tests as flaky due to WK/WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152335
+
+        Unreviewed.
+
+        Rebasing according WPT testharness.js current version.
+
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        * web-platform-tests/XMLHttpRequest/responsetype-expected.txt:
+        * web-platform-tests/XMLHttpRequest/timeout-sync-expected.txt:
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Mac EWS bots frequently fail several wpt tests
+        https://bugs.webkit.org/show_bug.cgi?id=152257
+
+        Unreviewed.
+
+        Rebasing according WPT testharness.js current version.
+
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_datauri_01-expected.txt:
+        * web-platform-tests/dom/nodes/Document-contentType/contentType/contenttype_datauri_02-expected.txt:
+        * web-platform-tests/dom/nodes/Node-isEqualNode-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
 2015-12-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
 
         [Streams API] Expose ReadableStream and relatives to Worker

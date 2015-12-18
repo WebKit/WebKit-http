@@ -1,3 +1,117 @@
+2015-12-17  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests shouldn't start multiple iOS simulators while only running one test
+        https://bugs.webkit.org/show_bug.cgi?id=152157
+        <rdar://problem/23851817>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.get_worker_count): Calculate required number of workers.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._get_test_inputs): Common method to calculate test_inputs.
+        (Manager._update_worker_count): Calculate and update required number of workers.
+
+2015-12-16  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests fails to delete Simulator device during cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=152363
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.delete_device): Ensure that device is Shutdown before deleting it.
+
+2015-12-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac-wk2] fast/events force click tests crashing
+        https://bugs.webkit.org/show_bug.cgi?id=152339
+
+        Reviewed by Beth Dakin.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (-[EventSenderSyntheticEvent initPressureEventAtLocation:globalLocation:stage:pressure:stageTransition:phase:time:eventNumber:window:]):
+        Set the NSEvent's _type member in addition to overriding -type,
+        because there are assertions in touch event handling code that depend on it.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Enforce temporarily bots to sync WebKit and WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152334
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Temporarily overwrite wpt testharness.js with WebKit testharness.js.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added files that have impact in building Streams API to the watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added imported tests to Streams API watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove default copy of wpt testharness.js when launching wpt server
+        https://bugs.webkit.org/show_bug.cgi?id=152298
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Deleted default copy of WebKit testharness.js to WPT.
+
+2015-12-15  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r192375): DumpRenderTree.app exits immediately with no error
+        <http://webkit.org/b/152314>
+
+        Reviewed by Daniel Bates.
+
+        The change to DumpRenderTreeMain.mm in r192375 caused the iOS
+        code path to exit immediately when calling main().
+        Unfortunately, DumpRenderTreeMain.mm was used for both
+        DumpRenderTree command-line binary and DumpRenderTree.app, which
+        meant that the app would exit immediately with no error code
+        when run!
+
+        The workaround is to introduce a separate source file called
+        DumpRenderTreeAppMain.mm, similar to what WebKitTestRunner
+        already does.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Add
+        DumpRenderTreeAppMain.mm to the project.  Make it the only
+        compiled source for the DumpRenderTree.app target.
+        * DumpRenderTree/ios/DumpRenderTreeAppMain.mm: Copied from Tools/DumpRenderTree/mac/DumpRenderTreeMain.mm.
+        (main): Call DumpRenderTreeMain() on iOS.  Assert on OS X in
+        case someone tries mistakenly to use the app.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        Link to JavaScriptCore.framework on iOS for the assert.
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        Link to JavaScriptCore.framework on OS X for the assert.  Remove
+        unneeded EXCLUDED_SOURCE_FILE_NAMES setting.
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        (main): Add assert for iOS so that a crash occurs if someone
+        tries to run the wrong command.
+
 2015-12-14  Tim Horton  <timothy_horton@apple.com>
 
         Frequent crash under -[WKPDFView web_setMinimumSize:]_block_invoke

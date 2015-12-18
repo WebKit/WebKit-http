@@ -222,6 +222,7 @@ namespace JSC { namespace DFG {
     macro(CheckBadCell, NodeMustGenerate) \
     macro(CheckInBounds, NodeMustGenerate) \
     macro(CheckIdent, NodeMustGenerate) \
+    macro(CheckTypeInfoFlags, NodeMustGenerate) /* Takes an OpInfo with the flags you want to test are set */\
     \
     /* Optimizations for array mutation. */\
     macro(ArrayPush, NodeResultJS | NodeMustGenerate) \
@@ -272,6 +273,7 @@ namespace JSC { namespace DFG {
     macro(CheckStructureImmediate, NodeMustGenerate) \
     macro(MaterializeNewObject, NodeResultJS | NodeHasVarArgs) \
     macro(PhantomNewFunction, NodeResultJS | NodeMustGenerate) \
+    macro(PhantomNewGeneratorFunction, NodeResultJS | NodeMustGenerate) \
     macro(PhantomCreateActivation, NodeResultJS | NodeMustGenerate) \
     macro(MaterializeCreateActivation, NodeResultJS | NodeHasVarArgs) \
     \
@@ -279,8 +281,9 @@ namespace JSC { namespace DFG {
     macro(Breakpoint, NodeMustGenerate) \
     macro(ProfileWillCall, NodeMustGenerate) \
     macro(ProfileDidCall, NodeMustGenerate) \
-    macro(CheckHasInstance, NodeMustGenerate) \
+    macro(OverridesHasInstance, NodeMustGenerate | NodeResultBoolean) \
     macro(InstanceOf, NodeResultBoolean) \
+    macro(InstanceOfCustom, NodeMustGenerate | NodeResultBoolean) \
     macro(IsUndefined, NodeResultBoolean) \
     macro(IsBoolean, NodeResultBoolean) \
     macro(IsNumber, NodeResultBoolean) \
@@ -312,6 +315,7 @@ namespace JSC { namespace DFG {
     macro(NewFunction, NodeResultJS) \
     \
     macro(NewArrowFunction, NodeResultJS) \
+    macro(NewGeneratorFunction, NodeResultJS) \
     \
     /* These aren't terminals but always exit */ \
     macro(Throw, NodeMustGenerate) \

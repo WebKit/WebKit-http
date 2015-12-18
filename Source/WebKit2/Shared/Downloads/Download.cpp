@@ -43,12 +43,19 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Download::Download(DownloadManager& downloadManager, uint64_t downloadID, const ResourceRequest& request)
+#if USE(NETWORK_SESSION)
+Download::Download(DownloadManager& downloadManager, const NetworkSession& session, DownloadID downloadID, const ResourceRequest& request)
+#else
+Download::Download(DownloadManager& downloadManager, DownloadID downloadID, const ResourceRequest& request)
+#endif
     : m_downloadManager(downloadManager)
     , m_downloadID(downloadID)
     , m_request(request)
+#if USE(NETWORK_SESSION)
+    , m_session(session)
+#endif
 {
-    ASSERT(m_downloadID);
+    ASSERT(m_downloadID.downloadID());
 
     m_downloadManager.didCreateDownload();
 }
@@ -70,7 +77,7 @@ void Download::didReceiveAuthenticationChallenge(const AuthenticationChallenge& 
 #if USE(NETWORK_SESSION)
     notImplemented();
 #else
-    m_downloadManager.downloadsAuthenticationManager().didReceiveAuthenticationChallenge(this, authenticationChallenge);
+    m_downloadManager.downloadsAuthenticationManager().didReceiveAuthenticationChallenge(*this, authenticationChallenge);
 #endif
 }
 
@@ -155,7 +162,7 @@ IPC::Connection* Download::messageSenderConnection()
 
 uint64_t Download::messageSenderDestinationID()
 {
-    return m_downloadID;
+    return m_downloadID.downloadID();
 }
 
 } // namespace WebKit

@@ -1,3 +1,501 @@
+2015-12-18  Alex Christensen  <achristensen@webkit.org>
+
+        Add types for DownloadID and TaskIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=152401
+
+        Reviewed by Brady Eidson.
+
+        DownloadID and TaskIdentifier used to both be just uint64_t's.
+        It is confusing to distinguish between them, so now they both have names.
+        We need a HashMap<TaskIdentifier, DownloadID> instead of a HashMap<uint64_t, uint64_t>.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::storageSession):
+        (WebKit::NetworkConnectionToWebProcess::startDownload):
+        (WebKit::NetworkConnectionToWebProcess::convertMainResourceLoadToDownload):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+        (WebKit::NetworkProcess::downloadRequest):
+        (WebKit::NetworkProcess::resumeDownload):
+        (WebKit::NetworkProcess::cancelDownload):
+        (WebKit::NetworkProcess::getNetworkProcessStatistics):
+        (WebKit::NetworkProcess::logDiagnosticMessage):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithResult):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithValue):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/NetworkSession.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSession::createDataTaskWithRequest):
+        (WebKit::NetworkSession::dataTaskForIdentifier):
+        (WebKit::NetworkDataTask::resume):
+        (WebKit::NetworkDataTask::taskIdentifier): Deleted.
+        * Shared/Downloads/Download.cpp:
+        (WebKit::Download::Download):
+        (WebKit::Download::messageSenderDestinationID):
+        * Shared/Downloads/Download.h:
+        (WebKit::Download::downloadID):
+        * Shared/Downloads/DownloadID.h: Added.
+        (WebKit::DownloadID::DownloadID):
+        (WebKit::DownloadID::operator==):
+        (WebKit::DownloadID::downloadID):
+        (IPC::ArgumentCoder<WebKit::DownloadID>::encode):
+        (IPC::ArgumentCoder<WebKit::DownloadID>::decode):
+        (WTF::DownloadIDHash::hash):
+        (WTF::DownloadIDHash::equal):
+        (WTF::HashTraits<WebKit::DownloadID>::emptyValue):
+        (WTF::HashTraits<WebKit::DownloadID>::constructDeletedValue):
+        (WTF::HashTraits<WebKit::DownloadID>::isDeletedValue):
+        * Shared/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::DownloadManager):
+        (WebKit::DownloadManager::startDownload):
+        (WebKit::DownloadManager::convertHandleToDownload):
+        (WebKit::DownloadManager::resumeDownload):
+        (WebKit::DownloadManager::cancelDownload):
+        * Shared/Downloads/DownloadManager.h:
+        (WebKit::DownloadManager::isDownloading):
+        * UIProcess/API/C/WKDownload.cpp:
+        (WKDownloadGetID):
+        (WKDownloadCopyRequest):
+        * UIProcess/Downloads/DownloadProxy.h:
+        (WebKit::DownloadProxy::downloadID):
+        (WebKit::DownloadProxy::request):
+        (WebKit::DownloadProxy::resumeData):
+        * UIProcess/Downloads/DownloadProxyMap.cpp:
+        (WebKit::DownloadProxyMap::createDownloadProxy):
+        (WebKit::DownloadProxyMap::downloadFinished):
+        (WebKit::DownloadProxyMap::processDidClose):
+        * UIProcess/Downloads/DownloadProxyMap.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        (WebKit::WebPageProxy::frameDidBecomeFrameSet):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForResponse):
+        (WebKit::WebPageProxy::decidePolicyForResponseSync):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::invalidatePolicyListener):
+        (WebKit::WebFrame::didReceivePolicyDecision):
+        (WebKit::WebFrame::startDownload):
+        (WebKit::WebFrame::convertMainResourceLoadToDownload):
+        * WebProcess/WebPage/WebFrame.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setSessionID):
+        (WebKit::WebPage::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2015-12-17  Dan Bernstein  <mitz@apple.com>
+
+        Fixed a typo from r194022.
+
+        * Configurations/WebKit.xcconfig: Changed PlugInProcessShim.dylib to PluginProcessShim.dylib.
+
+2015-12-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194250 and r194254.
+        https://bugs.webkit.org/show_bug.cgi?id=152414
+
+        broke api tests (Requested by alexchristensen on #webkit).
+
+        Reverted changesets:
+
+        "Add types for DownloadID and TaskIdentifier"
+        https://bugs.webkit.org/show_bug.cgi?id=152401
+        http://trac.webkit.org/changeset/194250
+
+        "Build fix after r194250"
+        http://trac.webkit.org/changeset/194254
+
+2015-12-17  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r194250
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Change target membership from all to WebKit.
+
+2015-12-17  Alex Christensen  <achristensen@webkit.org>
+
+        Add types for DownloadID and TaskIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=152401
+
+        Reviewed by Brady Eidson.
+
+        DownloadID and TaskIdentifier used to both be just uint64_t's.
+        It is confusing to distinguish between them, so now they both have names.
+        We need a HashMap<TaskIdentifier, DownloadID> instead of a HashMap<uint64_t, uint64_t>.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::storageSession):
+        (WebKit::NetworkConnectionToWebProcess::startDownload):
+        (WebKit::NetworkConnectionToWebProcess::convertMainResourceLoadToDownload):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+        (WebKit::NetworkProcess::downloadRequest):
+        (WebKit::NetworkProcess::resumeDownload):
+        (WebKit::NetworkProcess::cancelDownload):
+        (WebKit::NetworkProcess::getNetworkProcessStatistics):
+        (WebKit::NetworkProcess::logDiagnosticMessage):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithResult):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithValue):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/NetworkSession.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSession::createDataTaskWithRequest):
+        (WebKit::NetworkSession::dataTaskForIdentifier):
+        (WebKit::NetworkDataTask::resume):
+        (WebKit::NetworkDataTask::taskIdentifier): Deleted.
+        * Shared/Downloads/Download.cpp:
+        (WebKit::Download::Download):
+        (WebKit::Download::messageSenderDestinationID):
+        * Shared/Downloads/Download.h:
+        (WebKit::Download::downloadID):
+        * Shared/Downloads/DownloadID.h: Added.
+        (WebKit::DownloadID::DownloadID):
+        (WebKit::DownloadID::operator==):
+        (WebKit::DownloadID::downloadID):
+        (IPC::ArgumentCoder<WebKit::DownloadID>::encode):
+        (IPC::ArgumentCoder<WebKit::DownloadID>::decode):
+        (WTF::DownloadIDHash::hash):
+        (WTF::DownloadIDHash::equal):
+        (WTF::HashTraits<WebKit::DownloadID>::emptyValue):
+        (WTF::HashTraits<WebKit::DownloadID>::constructDeletedValue):
+        (WTF::HashTraits<WebKit::DownloadID>::isDeletedValue):
+        * Shared/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::DownloadManager):
+        (WebKit::DownloadManager::startDownload):
+        (WebKit::DownloadManager::convertHandleToDownload):
+        (WebKit::DownloadManager::resumeDownload):
+        (WebKit::DownloadManager::cancelDownload):
+        * Shared/Downloads/DownloadManager.h:
+        (WebKit::DownloadManager::isDownloading):
+        * UIProcess/API/C/WKDownload.cpp:
+        (WKDownloadGetID):
+        (WKDownloadCopyRequest):
+        * UIProcess/Downloads/DownloadProxy.h:
+        (WebKit::DownloadProxy::downloadID):
+        (WebKit::DownloadProxy::request):
+        (WebKit::DownloadProxy::resumeData):
+        * UIProcess/Downloads/DownloadProxyMap.cpp:
+        (WebKit::DownloadProxyMap::createDownloadProxy):
+        (WebKit::DownloadProxyMap::downloadFinished):
+        (WebKit::DownloadProxyMap::processDidClose):
+        * UIProcess/Downloads/DownloadProxyMap.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        (WebKit::WebPageProxy::frameDidBecomeFrameSet):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForResponse):
+        (WebKit::WebPageProxy::decidePolicyForResponseSync):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::invalidatePolicyListener):
+        (WebKit::WebFrame::didReceivePolicyDecision):
+        (WebKit::WebFrame::startDownload):
+        (WebKit::WebFrame::convertMainResourceLoadToDownload):
+        * WebProcess/WebPage/WebFrame.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setSessionID):
+        (WebKit::WebPage::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2015-12-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Disable viewport "shrink to fit" outside of multitasking mode
+        https://bugs.webkit.org/show_bug.cgi?id=152403
+        rdar://problem/23818102
+
+        Reviewed by Tim Horton.
+        
+        Plumb through a value that indicates whether the WKWebView is in split screen,
+        and use it to conditionally enable shrink-to-fit mode only in split screen.
+        
+        * Shared/VisibleContentRectUpdateInfo.cpp: Added m_allowShrinkToFit, and sort
+        the member variables, and encoding order, to optimize packing, with some initializers.
+        (WebKit::VisibleContentRectUpdateInfo::encode):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::allowShrinkToFit):
+        (WebKit::operator==):
+        * UIProcess/API/Cocoa/WKWebView.mm: Add _allowsViewportShrinkToFit member variable,
+        with getter and setter.
+        (-[WKWebView _updateVisibleContentRects]): Unwrap the line.
+        (-[WKWebView _setAllowsViewportShrinkToFit:]):
+        (-[WKWebView _allowsViewportShrinkToFit]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h: _allowsViewportShrinkToFit SPI.
+        * UIProcess/WebPageProxy.h: Pass allowShrinkToFit through.
+        * UIProcess/ios/WKContentView.mm: Ditto.
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::updateVisibleContentRects): Padd allowShrinkToFit to the web process via the VisibleContentRectUpdateInfo.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Store m_ignoreViewportScalingConstraints in a member variable since we can't
+        get back to the prefs later.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects): This is the behavior change: call setCanIgnoreScalingConstraints()
+        on the viewport configuration, consulting the pref (via m_ignoreViewportScalingConstraints) and the new
+        visibleContentRectUpdateInfo.allowShrinkToFit().
+
+2015-12-16  Simon Fraser  <simon.fraser@apple.com>
+
+        ViewportConfiguration functions should return a bool to say if anything changed
+        https://bugs.webkit.org/show_bug.cgi?id=152353
+
+        Reviewed by Tim Horton.
+
+        Rather than callers all checking whether setting ViewportConfiguration values
+        changes state, have its functions return a bool if the values change.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::mainFrameDidLayout):
+        (WebKit::WebPage::didCommitLoad):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportPropertiesDidChange):
+        (WebKit::WebPage::setViewportConfigurationMinimumLayoutSize):
+
+2015-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards implementing downloads with NetworkSession
+        https://bugs.webkit.org/show_bug.cgi?id=152371
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::downloadRequest):
+        (WebKit::NetworkProcess::resumeDownload):
+        (WebKit::NetworkProcess::cancelDownload):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * Shared/Authentication/AuthenticationManager.cpp:
+        (WebKit::AuthenticationManager::didReceiveAuthenticationChallenge):
+        * Shared/Authentication/AuthenticationManager.h:
+        * Shared/Downloads/Download.cpp:
+        (WebKit::Download::Download):
+        (WebKit::Download::didReceiveAuthenticationChallenge):
+        * Shared/Downloads/Download.h:
+        * Shared/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        (WebKit::DownloadManager::convertHandleToDownload):
+        (WebKit::DownloadManager::resumeDownload):
+        (WebKit::DownloadManager::cancelDownload):
+        (WebKit::DownloadManager::downloadFinished):
+        (WebKit::DownloadManager::didCreateDownload):
+        * Shared/Downloads/DownloadManager.h:
+        * Shared/Downloads/cocoa: Added.
+        * Shared/Downloads/cocoa/DownloadCocoa.mm: Added.
+        (WebKit::Download::start):
+        (WebKit::Download::resume):
+        (WebKit::Download::cancel):
+        (WebKit::Download::platformInvalidate):
+        * Shared/Downloads/ios/DownloadIOS.mm:
+        * Shared/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::start):
+        (WebKit::Download::startWithHandle):
+        (WebKit::Download::resume):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::resumeDownload):
+        * UIProcess/WebProcessPool.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-12-16  Simon Fraser  <simon.fraser@apple.com>
+
+        ViewportConfiguration functions should return a bool to say if anything changed
+        https://bugs.webkit.org/show_bug.cgi?id=152353
+
+        Reviewed by Tim Horton.
+
+        Rather than callers all checking whether setting ViewportConfiguration values
+        changes state, have its functions return a bool if the values change.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::mainFrameDidLayout):
+        (WebKit::WebPage::didCommitLoad):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportPropertiesDidChange):
+        (WebKit::WebPage::setViewportConfigurationMinimumLayoutSize):
+
+2015-12-16  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r191299): Zoom gestures are enabled even if allowsMagnification=NO
+        https://bugs.webkit.org/show_bug.cgi?id=152373
+        <rdar://problem/23931998>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::gestureEventWasNotHandledByWebCoreFromViewOnly):
+        Don't pass the event on to ViewGestureController if we shouldn't handle it,
+        just like we would have done in magnifyWithEvent before.
+
+2015-12-16  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r194125): Crashes in touchesEndedWithEvent on occasion when interacting with the page
+        https://bugs.webkit.org/show_bug.cgi?id=152366
+        <rdar://problem/23929672>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::touchesEndedWithEvent):
+        (WebKit::WebViewImpl::touchesCancelledWithEvent):
+        NSTouch identifiers aren't pointer-comparable. We need to use isEqual to
+        compare them and find the ones to remove.
+
+2015-12-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Simplify isOverlayScrollbar() logic
+        https://bugs.webkit.org/show_bug.cgi?id=152357
+
+        Reviewed by Beth Dakin.
+
+        Replace code that checks for isOverlayScrollbar() explicitly with calls to new
+        occupiedWidth()/occupiedHeight() functions on Scrollbar, which do the overlay
+        scrollbar check internally.
+        
+        Add ScrollableArea::scrollbarIntrusion() which returns an IntSize with the occupiedWidth
+        and occupiedHeight of any scrollbars, and use it in a few places.
+
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::updateScrollbars):
+        (WebKit::PDFPlugin::maximumScrollPosition):
+
+2015-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix when using NETWORK_SESSION after r193972.
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        Renamed NetworkSessionDelegate to WKNetworkSessionDelegate to conform to the 
+        newly-enforced style rule in check-for-inappropriate-objc-class-names.
+
+        * NetworkProcess/NetworkSession.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (toNSURLSessionAuthChallengeDisposition):
+        (-[WKNetworkSessionDelegate initWithNetworkSession:]):
+        (WebKit::NetworkSession::NetworkSession):
+        (-[NetworkSessionDelegate initWithNetworkSession:]): Deleted.
+
+2015-12-16  Alex Christensen  <achristensen@webkit.org>
+
+        Implement Web Timing when using NETWORK_SESSION
+        https://bugs.webkit.org/show_bug.cgi?id=152285
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[NetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        (WebKit::NetworkSession::NetworkSession):
+        Use functions moved to ResourceLoadTiming.h.  setCollectsTimingData is for Mavericks, _timingDataOptions is post-Mavericks.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-12-15  Tim Horton  <timothy_horton@apple.com>
+
+        [Mac] Gesture Events should not have negative scale
+        https://bugs.webkit.org/show_bug.cgi?id=151065
+        <rdar://problem/23474123>
+
+        Reviewed by Anders Carlsson.
+
+        * Shared/NativeWebGestureEvent.h:
+        * Shared/mac/NativeWebGestureEventMac.mm:
+        (WebKit::distanceForTouches):
+        (WebKit::NativeWebGestureEvent::NativeWebGestureEvent):
+        Compute the distance between the two oldest touches, and use that as
+        the scale (really the gesture diameter) on the event, instead of
+        passing through AppKit's magnification (which is computed differently).
+        This matches the documented behavior of the existing gesture events on iOS.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView touchesBeganWithEvent:]):
+        (-[WKWebView touchesMovedWithEvent:]):
+        (-[WKWebView touchesEndedWithEvent:]):
+        (-[WKWebView touchesCancelledWithEvent:]):
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView touchesBeganWithEvent:]):
+        (-[WKView touchesMovedWithEvent:]):
+        (-[WKView touchesEndedWithEvent:]):
+        (-[WKView touchesCancelledWithEvent:]):
+        Plumb touch events through to WebViewImpl.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::magnifyWithEvent):
+        (WebKit::WebViewImpl::touchesOrderedByAge):
+        (WebKit::WebViewImpl::touchesBeganWithEvent):
+        (WebKit::WebViewImpl::touchesMovedWithEvent):
+        (WebKit::WebViewImpl::touchesEndedWithEvent):
+        (WebKit::WebViewImpl::touchesCancelledWithEvent):
+        (WebKit::WebViewImpl::rotateWithEvent):
+        Keep track of the most recent incoming touches, by identifier, in age order.
+        Pass them through to NativeWebGestureEvent so it can determine the gesture diameter.
+
+2015-12-15  Anders Carlsson  <andersca@apple.com>
+
+        Call DatabaseManager directly from WKBundle.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=152317
+
+        Reviewed by Tim Horton.
+
+        This is in preparation for getting rid of some old database manager code.
+
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleClearAllDatabases):
+        (WKBundleSetDatabaseQuota):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::clearAllDatabases): Deleted.
+        (WebKit::InjectedBundle::setDatabaseQuota): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+
+2015-12-15  Daniel Bates  <dabates@apple.com>
+
+        Guard code that uses class LayerTreeHost with USE(COORDINATED_GRAPHICS) or USE(TEXTURE_MAPPER)
+        https://bugs.webkit.org/show_bug.cgi?id=152265
+
+        Reviewed by Tim Horton.
+
+        We neither make use of LayerTreeHost on Mac nor on iOS. We should guard code that makes
+        use of this class as applicable. This also fixes the iOS Simulator build when using
+        Apple Internal software.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp: Guard code that used LayerTreeHost.
+        * WebProcess/WebPage/LayerTreeHost.cpp: Guard contents of file with USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER).
+        * WebProcess/WebPage/LayerTreeHost.h: Ditto.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scalePage): Ditto.
+        (WebKit::WebPage::setDeviceScaleFactor): Ditto.
+        * WebProcess/WebPage/WebPage.h: Substitute header LayerTreeContext.h for LayerTreeHost.h since we make use
+        of the enum class LayerHostingMode.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects): Remove unnecessary code; DrawingArea::layerTreeHost() always
+        returns nullptr on iOS.
+
 2015-12-15  Zan Dobersek  <zdobersek@igalia.com>
 
         [TexMap] Operate with a reference to the TextureMapper wherever possible

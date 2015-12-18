@@ -534,8 +534,9 @@ namespace JSC {
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
 
-        void emitCheckHasInstance(RegisterID* dst, RegisterID* value, RegisterID* base, Label* target);
+        RegisterID* emitOverridesHasInstance(RegisterID* dst, RegisterID* constructor, RegisterID* hasInstanceValue);
         RegisterID* emitInstanceOf(RegisterID* dst, RegisterID* value, RegisterID* basePrototype);
+        RegisterID* emitInstanceOfCustom(RegisterID* dst, RegisterID* value, RegisterID* constructor, RegisterID* hasInstanceValue);
         RegisterID* emitTypeOf(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_typeof, dst, src); }
         RegisterID* emitIn(RegisterID* dst, RegisterID* property, RegisterID* base) { return emitBinaryOp(op_in, dst, property, base, OperandTypes()); }
 
@@ -703,7 +704,7 @@ namespace JSC {
         enum class TDZRequirement { UnderTDZ, NotUnderTDZ };
         enum class ScopeType { CatchScope, LetConstScope, FunctionNameScope };
         enum class ScopeRegisterType { Var, Block };
-        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
+        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, bool isNestedLexicalScope, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
         void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
         template<typename LookUpVarKindFunctor>
         bool instantiateLexicalVariables(const VariableEnvironment&, SymbolTable*, ScopeRegisterType, LookUpVarKindFunctor);
@@ -714,7 +715,7 @@ namespace JSC {
         void emitNewFunctionExpressionCommon(RegisterID*, BaseFuncExprNode*);
 
     public:
-        void pushLexicalScope(VariableEnvironmentNode*, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult = nullptr);
+        void pushLexicalScope(VariableEnvironmentNode*, bool canOptimizeTDZChecks, bool isNestedLexicalScope = false, RegisterID** constantSymbolTableResult = nullptr);
         void popLexicalScope(VariableEnvironmentNode*);
         void prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode*, RegisterID* loopSymbolTable);
         int labelScopeDepth() const;

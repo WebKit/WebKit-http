@@ -26,6 +26,7 @@
 #ifndef Download_h
 #define Download_h
 
+#include "DownloadID.h"
 #include "MessageSender.h"
 #include "SandboxExtension.h"
 #include <WebCore/ResourceRequest.h>
@@ -53,15 +54,15 @@ OBJC_CLASS WKDownloadAsDelegate;
 #endif
 
 namespace IPC {
-    class DataReference;
+class DataReference;
 }
 
 namespace WebCore {
-    class AuthenticationChallenge;
-    class Credential;
-    class ResourceError;
-    class ResourceHandle;
-    class ResourceResponse;
+class AuthenticationChallenge;
+class Credential;
+class ResourceError;
+class ResourceHandle;
+class ResourceResponse;
 }
 
 namespace WebKit {
@@ -69,22 +70,29 @@ namespace WebKit {
 class DownloadAuthenticationClient;
 class DownloadManager;
 class NetworkDataTask;
+class NetworkSession;
 class WebPage;
 
 class Download : public IPC::MessageSender {
     WTF_MAKE_NONCOPYABLE(Download);
 public:
-    Download(DownloadManager&, uint64_t downloadID, const WebCore::ResourceRequest&);
+#if USE(NETWORK_SESSION)
+    Download(DownloadManager&, const NetworkSession&, DownloadID, const WebCore::ResourceRequest&);
+#else
+    Download(DownloadManager&, DownloadID, const WebCore::ResourceRequest&);
+#endif
     ~Download();
 
     void start();
-#if !USE(NETWORK_SESSION)
+#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+    void dataTaskDidBecomeDownloadTask(const NetworkSession&, RetainPtr<NSURLSessionDownloadTask>&&);
+#else
     void startWithHandle(WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
 #endif
     void resume(const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancel();
 
-    uint64_t downloadID() const { return m_downloadID; }
+    DownloadID downloadID() const { return m_downloadID; }
 
     void didStart();
     void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
@@ -121,13 +129,14 @@ private:
     void platformInvalidate();
 
     DownloadManager& m_downloadManager;
-    uint64_t m_downloadID;
+    DownloadID m_downloadID;
     WebCore::ResourceRequest m_request;
 
     RefPtr<SandboxExtension> m_sandboxExtension;
 
 #if PLATFORM(COCOA)
 #if USE(NETWORK_SESSION)
+    const NetworkSession& m_session;
     RetainPtr<NSURLSessionDownloadTask> m_download;
 #else
     RetainPtr<NSURLDownload> m_nsURLDownload;

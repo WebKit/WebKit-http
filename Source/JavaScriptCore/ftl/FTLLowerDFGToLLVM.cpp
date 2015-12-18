@@ -52,6 +52,7 @@
 #include "FTLWeightedTarget.h"
 #include "JSArrowFunction.h"
 #include "JSCInlines.h"
+#include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "OperandsInlines.h"
 #include "ScopedArguments.h"
@@ -80,7 +81,7 @@ NO_RETURN_DUE_TO_CRASH static void ftlUnreachable()
 {
     CRASH();
 }
-#elif !FTL_USES_B3
+#else
 NO_RETURN_DUE_TO_CRASH static void ftlUnreachable(
     CodeBlock* codeBlock, BlockIndex blockIndex, unsigned nodeIndex)
 {
@@ -754,6 +755,7 @@ private:
             break;
         case NewFunction:
         case NewArrowFunction:
+        case NewGeneratorFunction:
             compileNewFunction();
             break;
         case CreateDirectArguments:
@@ -946,11 +948,17 @@ private:
         case TypeOf:
             compileTypeOf();
             break;
-        case CheckHasInstance:
-            compileCheckHasInstance();
+        case CheckTypeInfoFlags:
+            compileCheckTypeInfoFlags();
+            break;
+        case OverridesHasInstance:
+            compileOverridesHasInstance();
             break;
         case InstanceOf:
             compileInstanceOf();
+            break;
+        case InstanceOfCustom:
+            compileInstanceOfCustom();
             break;
         case CountExecution:
             compileCountExecution();
@@ -1011,6 +1019,7 @@ private:
         case ExitOK:
         case PhantomNewObject:
         case PhantomNewFunction:
+        case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
         case PhantomClonedArguments:
@@ -2263,21 +2272,37 @@ private:
     
     void compileBitAnd()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitAndDescriptor>();
+            return;
+        }
         setInt32(m_out.bitAnd(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
     }
     
     void compileBitOr()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitOrDescriptor>();
+            return;
+        }
         setInt32(m_out.bitOr(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
     }
     
     void compileBitXor()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitXorDescriptor>();
+            return;
+        }
         setInt32(m_out.bitXor(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
     }
     
     void compileBitRShift()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitRShiftDescriptor>();
+            return;
+        }
         setInt32(m_out.aShr(
             lowInt32(m_node->child1()),
             m_out.bitAnd(lowInt32(m_node->child2()), m_out.constInt32(31))));
@@ -2285,6 +2310,10 @@ private:
     
     void compileBitLShift()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitLShiftDescriptor>();
+            return;
+        }
         setInt32(m_out.shl(
             lowInt32(m_node->child1()),
             m_out.bitAnd(lowInt32(m_node->child2()), m_out.constInt32(31))));
@@ -2292,6 +2321,10 @@ private:
     
     void compileBitURShift()
     {
+        if (m_node->child1().useKind() == UntypedUse || m_node->child2().useKind() == UntypedUse) {
+            compileUntypedBinaryOp<BitURShiftDescriptor>();
+            return;
+        }
         setInt32(m_out.lShr(
             lowInt32(m_node->child1()),
             m_out.bitAnd(lowInt32(m_node->child2()), m_out.constInt32(31))));
@@ -3536,34 +3569,37 @@ private:
     
     void compileNewFunction()
     {
-        ASSERT(m_node->op() == NewFunction || m_node->op() == NewArrowFunction);
-        
+        ASSERT(m_node->op() == NewFunction || m_node->op() == NewArrowFunction || m_node->op() == NewGeneratorFunction);
         bool isArrowFunction = m_node->op() == NewArrowFunction;
+        bool isGeneratorFunction = m_node->op() == NewGeneratorFunction;
         
         LValue scope = lowCell(m_node->child1());
         LValue thisValue = isArrowFunction ? lowCell(m_node->child2()) : nullptr;
         
         FunctionExecutable* executable = m_node->castOperand<FunctionExecutable*>();
         if (executable->singletonFunction()->isStillValid()) {
-            LValue callResult = isArrowFunction
-                ? vmCall(m_out.int64, m_out.operation(operationNewArrowFunction), m_callFrame, scope, weakPointer(executable), thisValue)
-                : vmCall(m_out.int64, m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
+            LValue callResult =
+                isArrowFunction ? vmCall(m_out.int64, m_out.operation(operationNewArrowFunction), m_callFrame, scope, weakPointer(executable), thisValue) :
+                isGeneratorFunction ? vmCall(m_out.int64, m_out.operation(operationNewGeneratorFunction), m_callFrame, scope, weakPointer(executable)) :
+                vmCall(m_out.int64, m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
             setJSValue(callResult);
             return;
         }
         
-        Structure* structure = isArrowFunction
-            ? m_graph.globalObjectFor(m_node->origin.semantic)->arrowFunctionStructure()
-            : m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
+        Structure* structure =
+            isArrowFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->arrowFunctionStructure() :
+            isGeneratorFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->generatorFunctionStructure() :
+            m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
         
         LBasicBlock slowPath = FTL_NEW_BLOCK(m_out, ("NewFunction slow path"));
         LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("NewFunction continuation"));
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
-        LValue fastObject = isArrowFunction
-            ? allocateObject<JSArrowFunction>(structure, m_out.intPtrZero, slowPath)
-            : allocateObject<JSFunction>(structure, m_out.intPtrZero, slowPath);
+        LValue fastObject =
+            isArrowFunction ? allocateObject<JSArrowFunction>(structure, m_out.intPtrZero, slowPath) :
+            isGeneratorFunction ? allocateObject<JSGeneratorFunction>(structure, m_out.intPtrZero, slowPath) :
+            allocateObject<JSFunction>(structure, m_out.intPtrZero, slowPath);
         
         
         // We don't need memory barriers since we just fast-created the function, so it
@@ -3592,6 +3628,12 @@ private:
                         operationNewArrowFunctionWithInvalidatedReallocationWatchpoint,
                         locations[0].directGPR(), locations[1].directGPR(),
                         CCallHelpers::TrustedImmPtr(executable), locations[2].directGPR());
+                }
+                if (isGeneratorFunction) {
+                    return createLazyCallGenerator(
+                        operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint,
+                        locations[0].directGPR(), locations[1].directGPR(),
+                        CCallHelpers::TrustedImmPtr(executable));
                 }
                 return createLazyCallGenerator(
                     operationNewFunctionWithInvalidatedReallocationWatchpoint,
@@ -5709,13 +5751,40 @@ private:
 #endif
     }
 
-    void compileCheckHasInstance()
+    void compileOverridesHasInstance()
+    {
+        JSFunction* defaultHasInstanceFunction = jsCast<JSFunction*>(m_node->cellOperand()->value());
+
+        LValue constructor = lowCell(m_node->child1());
+        LValue hasInstance = lowJSValue(m_node->child2());
+
+        LBasicBlock defaultHasInstance = FTL_NEW_BLOCK(m_out, ("OverridesHasInstance Symbol.hasInstance is default"));
+        LBasicBlock continuation = FTL_NEW_BLOCK(m_out, ("OverridesHasInstance continuation"));
+
+        // Unlike in the DFG, we don't worry about cleaning this code up for the case where we have proven the hasInstanceValue is a constant as LLVM should fix it for us.
+
+        ASSERT(!m_node->child2().node()->isCellConstant() || defaultHasInstanceFunction == m_node->child2().node()->asCell());
+
+        ValueFromBlock notDefaultHasInstanceResult = m_out.anchor(m_out.booleanTrue);
+        m_out.branch(m_out.notEqual(hasInstance, m_out.constIntPtr(defaultHasInstanceFunction)), unsure(continuation), unsure(defaultHasInstance));
+
+        LBasicBlock lastNext = m_out.appendTo(defaultHasInstance, continuation);
+        ValueFromBlock implementsDefaultHasInstanceResult = m_out.anchor(m_out.testIsZero32(
+            m_out.load8ZeroExt32(constructor, m_heaps.JSCell_typeInfoFlags),
+            m_out.constInt32(ImplementsDefaultHasInstance)));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, implementsDefaultHasInstanceResult, notDefaultHasInstanceResult));
+    }
+
+    void compileCheckTypeInfoFlags()
     {
         speculate(
-            Uncountable, noValue(), 0,
+            BadTypeInfoFlags, noValue(), 0,
             m_out.testIsZero32(
                 m_out.load8ZeroExt32(lowCell(m_node->child1()), m_heaps.JSCell_typeInfoFlags),
-                m_out.constInt32(ImplementsDefaultHasInstance)));
+                m_out.constInt32(m_node->typeInfoOperand())));
     }
     
     void compileInstanceOf()
@@ -5767,6 +5836,15 @@ private:
         m_out.appendTo(continuation, lastNext);
         setBoolean(
             m_out.phi(m_out.boolean, notCellResult, isInstanceResult, notInstanceResult));
+    }
+
+    void compileInstanceOfCustom()
+    {
+        LValue value = lowJSValue(m_node->child1());
+        LValue constructor = lowCell(m_node->child2());
+        LValue hasInstance = lowJSValue(m_node->child3());
+
+        setBoolean(m_out.bitNot(m_out.equal(m_out.constInt32(0), vmCall(m_out.int32, m_out.operation(operationInstanceOfCustom), m_callFrame, value, constructor, hasInstance))));
     }
     
     void compileCountExecution()
@@ -9318,7 +9396,7 @@ private:
                         GPRReg scratch1 = scratchRegisterAllocator.allocateScratchGPR();
                         GPRReg scratch2 = scratchRegisterAllocator.allocateScratchGPR();
 
-                        unsigned bytesPushed =
+                        ScratchRegisterAllocator::PreservedState preservedState =
                             scratchRegisterAllocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
 
                         // We've already saved these, so when we make a slow path call, we don't have
@@ -9341,7 +9419,7 @@ private:
                                 scratch1, scratch2, CCallHelpers::ScalePtr,
                                 static_cast<int32_t>(-sizeof(void*))));
 
-                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, preservedState);
 
                         params.doneJumps.append(jit.jump());
 
@@ -9350,7 +9428,7 @@ private:
                             usedRegisters, jit, params.lazySlowPath->callSiteIndex(),
                             params.exceptionJumps, operationFlushWriteBarrierBuffer, InvalidGPRReg,
                             baseGPR);
-                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, bytesPushed, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+                        scratchRegisterAllocator.restoreReusedRegistersByPopping(jit, preservedState);
                         params.doneJumps.append(jit.jump());
                     });
             },
@@ -10041,22 +10119,19 @@ private:
         UNUSED_PARAM(blockIndex);
         UNUSED_PARAM(nodeIndex);
 #else
-#if FTL_USES_B3
-        UNUSED_PARAM(blockIndex);
-        UNUSED_PARAM(nodeIndex);
-        if (verboseCompilationEnabled() || !verboseCompilationEnabled())
-            CRASH();
-#else
         m_out.call(
             m_out.voidType,
+#if FTL_USES_B3
+            m_out.constIntPtr(ftlUnreachable),
+#else // FTL_USES_B3
             m_out.intToPtr(
                 m_out.constIntPtr(ftlUnreachable),
                 pointerType(
                     functionType(
                         m_out.voidType, m_out.intPtr, m_out.int32, m_out.int32))),
+#endif // FTL_USES_B3
             m_out.constIntPtr(codeBlock()), m_out.constInt32(blockIndex),
             m_out.constInt32(nodeIndex));
-#endif
 #endif
         m_out.unreachable();
     }

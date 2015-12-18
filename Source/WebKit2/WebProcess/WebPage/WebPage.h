@@ -30,6 +30,7 @@
 #include "APIInjectedBundlePageContextMenuClient.h"
 #include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
+#include "Download.h"
 #include "FindController.h"
 #include "GeolocationPermissionRequestManager.h"
 #include "ImageOptions.h"
@@ -39,7 +40,7 @@
 #include "InjectedBundlePageLoaderClient.h"
 #include "InjectedBundlePagePolicyClient.h"
 #include "InjectedBundlePageResourceLoadClient.h"
-#include "LayerTreeHost.h"
+#include "LayerTreeContext.h"
 #include "MessageReceiver.h"
 #include "MessageSender.h"
 #include "Plugin.h"
@@ -1044,7 +1045,7 @@ private:
     void platformPreferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
 
-    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, uint64_t downloadID);
+    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, DownloadID);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
     void suspendActiveDOMObjectsAndAnimations();
@@ -1202,6 +1203,10 @@ private:
     bool m_scrollingPerformanceLoggingEnabled;
 
     bool m_mainFrameIsScrollable;
+
+#if PLATFORM(IOS)
+    bool m_ignoreViewportScalingConstraints { false };
+#endif
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     bool m_readyToFindPrimarySnapshottedPlugin;

@@ -27,6 +27,7 @@
 #include "DownloadManager.h"
 
 #include "Download.h"
+#include "SessionTracker.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SessionID.h>
 #include <wtf/StdLibExtras.h>
@@ -40,21 +41,24 @@ DownloadManager::DownloadManager(Client* client)
 {
 }
 
-void DownloadManager::startDownload(SessionID sessionID, uint64_t downloadID, const ResourceRequest& request)
+void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request)
 {
 #if USE(NETWORK_SESSION)
-    notImplemented();
+    auto* networkSession = SessionTracker::networkSession(sessionID);
+    if (!networkSession)
+        return;
+    auto download = std::make_unique<Download>(*this, *networkSession, downloadID, request);
 #else
     auto download = std::make_unique<Download>(*this, downloadID, request);
+#endif
     download->start();
 
     ASSERT(!m_downloads.contains(downloadID));
     m_downloads.add(downloadID, WTF::move(download));
-#endif
 }
 
 #if !USE(NETWORK_SESSION)
-void DownloadManager::convertHandleToDownload(uint64_t downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
+void DownloadManager::convertHandleToDownload(DownloadID downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
 {
     auto download = std::make_unique<Download>(*this, downloadID, request);
 
@@ -64,7 +68,7 @@ void DownloadManager::convertHandleToDownload(uint64_t downloadID, ResourceHandl
 }
 #endif
 
-void DownloadManager::resumeDownload(uint64_t downloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle& sandboxExtensionHandle)
+void DownloadManager::resumeDownload(SessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle& sandboxExtensionHandle)
 {
 #if USE(NETWORK_SESSION)
     notImplemented();
@@ -78,27 +82,19 @@ void DownloadManager::resumeDownload(uint64_t downloadID, const IPC::DataReferen
 #endif
 }
 
-void DownloadManager::cancelDownload(uint64_t downloadID)
+void DownloadManager::cancelDownload(DownloadID downloadID)
 {
-#if USE(NETWORK_SESSION)
-    notImplemented();
-#else
     Download* download = m_downloads.get(downloadID);
     if (!download)
         return;
 
     download->cancel();
-#endif
 }
 
 void DownloadManager::downloadFinished(Download* download)
 {
-#if USE(NETWORK_SESSION)
-    notImplemented();
-#else
     ASSERT(m_downloads.contains(download->downloadID()));
     m_downloads.remove(download->downloadID());
-#endif
 }
 
 void DownloadManager::didCreateDownload()

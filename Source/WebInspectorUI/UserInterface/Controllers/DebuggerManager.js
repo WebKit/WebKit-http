@@ -489,9 +489,9 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
             // Exclude the case where the call frame is in the inspector code.
             if (sourceCodeLocation.sourceCode.url && sourceCodeLocation.sourceCode.url.startsWith("__WebInspector"))
                 continue;
-            var thisObject = WebInspector.RemoteObject.fromPayload(callFramePayload.this);
-            var scopeChain = this._scopeChainFromPayload(callFramePayload.scopeChain);
-            var callFrame = new WebInspector.CallFrame(callFramePayload.callFrameId, sourceCodeLocation, callFramePayload.functionName, thisObject, scopeChain);
+
+            let scopeChain = this._scopeChainFromPayload(callFramePayload.scopeChain);
+            let callFrame = WebInspector.CallFrame.fromDebuggerPayload(callFramePayload, scopeChain, sourceCodeLocation);
             this._callFrames.push(callFrame);
         }
 
@@ -585,27 +585,34 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
     {
         var type = null;
         switch (payload.type) {
-        case "local":
-            type = WebInspector.ScopeChainNode.Type.Local;
-            break;
-        case "global":
+        case DebuggerAgent.ScopeType.Global:
             type = WebInspector.ScopeChainNode.Type.Global;
             break;
-        case "with":
+        case DebuggerAgent.ScopeType.With:
             type = WebInspector.ScopeChainNode.Type.With;
             break;
-        case "closure":
+        case DebuggerAgent.ScopeType.Closure:
             type = WebInspector.ScopeChainNode.Type.Closure;
             break;
-        case "catch":
+        case DebuggerAgent.ScopeType.Catch:
             type = WebInspector.ScopeChainNode.Type.Catch;
             break;
-        case "functionName":
+        case DebuggerAgent.ScopeType.FunctionName:
             type = WebInspector.ScopeChainNode.Type.FunctionName;
             break;
-        case "globalLexicalEnvironment":
+        case DebuggerAgent.ScopeType.NestedLexical:
+            type = WebInspector.ScopeChainNode.Type.Block;
+            break;
+        case DebuggerAgent.ScopeType.GlobalLexicalEnvironment:
             type = WebInspector.ScopeChainNode.Type.GlobalLexicalEnvironment;
             break;
+
+        // COMPATIBILITY (iOS 9): Debugger.ScopeType.Local used to be provided by the backend.
+        // Newer backends no longer send this enum value, it should be computed by the frontend.
+        case DebuggerAgent.ScopeType.Local:
+            type = WebInspector.ScopeChainNode.Type.Local;
+            break;
+
         default:
             console.error("Unknown type: " + payload.type);
         }

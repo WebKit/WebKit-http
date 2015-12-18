@@ -71,6 +71,8 @@ public:
         return adoptRef(*new UniqueIDBDatabase(server, identifier));
     }
 
+    ~UniqueIDBDatabase();
+
     void openDatabaseConnection(IDBConnectionToClient&, const IDBRequestData&);
 
     const IDBDatabaseInfo& info() const;
@@ -104,14 +106,17 @@ public:
 private:
     UniqueIDBDatabase(IDBServer&, const IDBDatabaseIdentifier&);
     
-    void handleOpenDatabaseOperations();
+    void handleDatabaseOperations();
+    void handleCurrentOperation();
+    void performCurrentOpenOperation();
+    void performCurrentDeleteOperation();
     void addOpenDatabaseConnection(Ref<UniqueIDBDatabaseConnection>&&);
-    bool maybeDeleteDatabase(IDBServerOperation*);
     bool hasAnyOpenConnections() const;
 
     void startVersionChangeTransaction();
     void notifyConnectionsOfVersionChangeForUpgrade();
     void notifyConnectionsOfVersionChange(uint64_t requestedVersion);
+    bool isVersionChangeInProgress();
 
     void activateTransactionInBackingStore(UniqueIDBDatabaseTransaction&);
     void inProgressTransactionCompleted(const IDBResourceIdentifier&);
@@ -164,20 +169,19 @@ private:
 
     bool hasAnyPendingCallbacks() const;
 
-    void invokeDeleteOrRunTransactionTimer();
-    void deleteOrRunTransactionsTimerFired();
+    void invokeOperationAndTransactionTimer();
+    void operationAndTransactionTimerFired();
     RefPtr<UniqueIDBDatabaseTransaction> takeNextRunnableTransaction(bool& hadDeferredTransactions);
 
     IDBServer& m_server;
     IDBDatabaseIdentifier m_identifier;
     
-    Deque<Ref<IDBServerOperation>> m_pendingOpenDatabaseOperations;
-    Deque<Ref<IDBServerOperation>> m_pendingDeleteDatabaseOperations;
+    Deque<Ref<IDBServerOperation>> m_pendingDatabaseOperations;
+    RefPtr<IDBServerOperation> m_currentOperation;
 
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_closePendingDatabaseConnections;
 
-    RefPtr<IDBServerOperation> m_versionChangeOperation;
     RefPtr<UniqueIDBDatabaseConnection> m_versionChangeDatabaseConnection;
     UniqueIDBDatabaseTransaction* m_versionChangeTransaction { nullptr };
 
@@ -190,8 +194,7 @@ private:
     HashMap<uint64_t, GetResultCallback> m_getResultCallbacks;
     HashMap<uint64_t, CountCallback> m_countCallbacks;
 
-    Timer m_deleteOrRunTransactionsTimer;
-    Timer m_handleOpenDatabaseOperationsTimer;
+    Timer m_operationAndTransactionTimer;
 
     Deque<RefPtr<UniqueIDBDatabaseTransaction>> m_pendingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<UniqueIDBDatabaseTransaction>> m_inProgressTransactions;

@@ -1,3 +1,542 @@
+2015-12-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194241 and r194252.
+        https://bugs.webkit.org/show_bug.cgi?id=152415
+
+        Caused crashes on GuardMalloc (Requested by ap on #webkit).
+
+        Reverted changesets:
+
+        "Modern IDB: Refactor open/delete requests to exist in the
+        same queue."
+        https://bugs.webkit.org/show_bug.cgi?id=152397
+        http://trac.webkit.org/changeset/194241
+
+        "Modern IDB: Refactor when opening the backing store takes
+        place."
+        https://bugs.webkit.org/show_bug.cgi?id=152405
+        http://trac.webkit.org/changeset/194252
+
+2015-12-17  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        [INTL] Implement Collator Compare Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147604
+
+        Reviewed by Darin Adler.
+
+        * js/intl-collator-expected.txt:
+        * js/intl-collator.html:
+        * js/script-tests/intl-collator.js:
+        (testCollator):
+
+2015-12-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Refactor when opening the backing store takes place.
+        https://bugs.webkit.org/show_bug.cgi?id=152405
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Provide a way to distinguish a nested lexical block from a function's lexical block
+        https://bugs.webkit.org/show_bug.cgi?id=152361
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/breakpoint-scope-expected.txt:
+        We will soon remove the backend sending a "Local" scope.
+        The backend was just marking the first closure scope as local.
+        The frontend can do this itself and do a better job of it.
+
+        * inspector/model/resources/all-scopes.js: Added.
+        (testAllScopes.innerScope):
+        (testAllScopes):
+        * inspector/model/resources/block-scopes.js: Added.
+        (testBlockScopes):
+        (testBlockScopes.method):
+        * inspector/model/resources/function-name-scopes.js: Added.
+        (testFunctionNameScope1):
+        * inspector/model/scope-chain-node-expected.txt: Added.
+        * inspector/model/scope-chain-node.html: Added.
+        Tests for ways to get all the different scope types and
+        specific cases of certain scope types.
+
+2015-12-17  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Add support for Symbol.hasInstance
+        https://bugs.webkit.org/show_bug.cgi?id=151839
+
+        Reviewed by Saam Barati.
+
+        Fix tests to reflect the changes to instanceof in ES6.
+
+        Added a new regression test for bound functions in instanceof
+        as the perfomance on bound functions should, to some degree,
+        reflect the performance on C-API users.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/exception-for-nonobject-expected.txt:
+        * js/exception-instanceof-expected.txt:
+        * js/instance-of-immediates-expected.txt:
+        * js/regress/instanceof-bound-expected.txt: Added.
+        * js/regress/instanceof-bound.html: Added.
+        * js/regress/script-tests/instanceof-bound.js: Added.
+        (Constructor):
+        (test):
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2015-12-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Disable viewport "shrink to fit" outside of multitasking mode
+        https://bugs.webkit.org/show_bug.cgi?id=152403
+        rdar://problem/23818102
+
+        Reviewed by Tim Horton.
+        
+        This test no longer does shrink-to-fit, so starts with a min and initial scale of 1.
+
+        * fast/viewport/ios/width-is-device-width-overflowing-expected.txt:
+
+2015-12-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add JSContext Script Profiling
+        https://bugs.webkit.org/show_bug.cgi?id=151899
+
+        Reviewed by Brian Burg.
+
+        * inspector/script-profiler/event-type-API-expected.txt: Added.
+        * inspector/script-profiler/event-type-API.html: Added.
+        * inspector/script-profiler/event-type-Microtask-expected.txt: Added.
+        * inspector/script-profiler/event-type-Microtask.html: Added.
+        * inspector/script-profiler/tracking-expected.txt: Added.
+        * inspector/script-profiler/tracking.html: Added.
+        Tests for the new ScriptProfiler domain.
+
+2015-12-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/media/mq-* tests as failing on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152137
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-12-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-* tests on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152390
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-12-17  Lorenzo Tilve  <ltilve@igalia.com>
+
+        [GTK] Unreviewed gardening
+        
+        Remove failure expectations for tests that have been passing after
+        r185157, r186191, r189670, r191658 and r191727.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove temporary flakiness expectations for WPT tests introduced for bug 152257
+        https://bugs.webkit.org/show_bug.cgi?id=152377
+
+        Unreviewed.
+
+        * TestExpectations: removing some flakiness expectations.
+
+2015-12-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Handle new_generator_func / new_generator_func_exp in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=152227
+
+        Reviewed by Saam Barati.
+
+        Make the test taking longer time.
+
+        * js/regress/script-tests/generator-function-create.js:
+        (test):
+
+2015-12-16  Andy Estes  <aestes@apple.com>
+
+        [iOS] Block loading external stylesheets in the Content-Disposition: attachment sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=152375
+        <rdar://problem/22020902>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/contentdispositionattachmentsandbox/at-import-stylesheets-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/at-import-stylesheets-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt:
+        * http/tests/contentdispositionattachmentsandbox/external-stylesheets-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/external-stylesheets-disabled.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/at-import-stylesheets-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/external-stylesheets-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/xml-stylesheet-processing-instructions-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/xml-stylesheet-processing-instructions-disabled-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/xml-stylesheet-processing-instructions-disabled.html: Added.
+
+2015-12-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding timout expectation to one more wpt test that I missed in the last commit.
+        https://bugs.webkit.org/show_bug.cgi?id=152335
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2015-12-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Adding timeout to wpt TestExpectations due to WK/WPT testharness.js issues.
+        https://bugs.webkit.org/show_bug.cgi?id=152335
+
+        Unreviewed test gadening.
+
+        * TestExpectations:
+
+2015-12-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Re-baseline pageoverlay/overlay* tests for mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=152338
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/pageoverlay/overlay-large-document-expected.txt:
+        * platform/mac-wk1/pageoverlay/overlay-large-document-scrolled-expected.txt:
+        * platform/mac-wk1/pageoverlay/overlay-small-frame-mouse-events-expected.txt:
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Mark additional wpt tests as flaky due to WK/WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152335
+
+        Unreviewed.
+
+        * TestExpectations: marking some more tests as flaky.
+
+2015-12-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Typing object literal in the console causes a parse error
+        https://bugs.webkit.org/show_bug.cgi?id=141737
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/controller/runtime-controller-expected.txt: Added.
+        * inspector/controller/runtime-controller.html: Added.
+
+2015-12-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        Fix computation of min|max-content contribution of non-replaced blocks
+        https://bugs.webkit.org/show_bug.cgi?id=152004
+
+        Reviewed by Darin Adler.
+
+        * fast/css-intrinsic-dimensions/auto-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/auto-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/auto-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/auto-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/fillavailable-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fillavailable-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/fillavailable-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fillavailable-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/fitcontent-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fitcontent-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/fitcontent-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fitcontent-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/fixed-inlinesize-contribution-nonreplaced-blocks-1-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fixed-inlinesize-contribution-nonreplaced-blocks-1.html: Added.
+        * fast/css-intrinsic-dimensions/fixed-inlinesize-contribution-nonreplaced-blocks-2-expected.html: Added.
+        * fast/css-intrinsic-dimensions/fixed-inlinesize-contribution-nonreplaced-blocks-2.html: Added.
+        * fast/css-intrinsic-dimensions/indefinite-percent-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/indefinite-percent-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/indefinite-percent-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/indefinite-percent-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/maxcontent-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/maxcontent-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/maxcontent-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/maxcontent-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/mincontent-maxcontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/mincontent-maxcontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/mincontent-mincontent-inlinesize-contribution-nonreplaced-blocks-expected.html: Added.
+        * fast/css-intrinsic-dimensions/mincontent-mincontent-inlinesize-contribution-nonreplaced-blocks.html: Added.
+        * fast/css-intrinsic-dimensions/resources/intrinsic-size-contribution.css: Added.
+        (.container):
+        (.item):
+        (.border):
+        (.padding):
+        (.margin):
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Mac EWS bots frequently fail several wpt tests
+        https://bugs.webkit.org/show_bug.cgi?id=152257
+
+        Unreviewed.
+
+        * TestExpectations: marking some tests as flaky.
+
+2015-12-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194135.
+        https://bugs.webkit.org/show_bug.cgi?id=152333
+
+        due to missing OSR exit materialization support in FTL
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[ES6] Handle new_generator_func / new_generator_func_exp in
+        DFG / FTL"
+        https://bugs.webkit.org/show_bug.cgi?id=152227
+        http://trac.webkit.org/changeset/194135
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Align WebKit testharness.js with WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152297
+
+        Reviewed by Darin Adler.
+
+        Cosmetic changes (output:true is overriden by WK testharnessreport.js)
+        To remove the warning "WPT tests are not using the same testharness.js file as other WebKit Layout tests."
+
+        * media/track/getCueAsHTMLCrash.html: Adding testharnessreport.js and removing call to dumpAsText.
+        * media/track/getCueAsHTMLCrash-expected.txt: Rebasing as tests are now outputting results.
+        * resources/testharness.js:
+
+2015-12-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Handle new_generator_func / new_generator_func_exp in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=152227
+
+        Reviewed by Saam Barati.
+
+        Make the test taking longer time.
+
+        * js/regress/script-tests/generator-function-create.js:
+        (test):
+
+2015-12-16  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Correct the wrong expectation introduced in r194106
+        https://bugs.webkit.org/show_bug.cgi?id=152325
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/http/tests/plugins/plugin-javascript-access-expected.txt:
+
+2015-12-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/viewport/ios tests for ios-simulator, remove failure expectation and re-enable test directory.
+        https://bugs.webkit.org/show_bug.cgi?id=152135
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-expected.txt:
+        * platform/ios-simulator/fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall-expected.txt:
+        * platform/ios-simulator/fast/viewport/ios/width-is-device-width-overflowing-expected.txt:
+        * platform/ios-simulator/fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit-expected.txt:
+
+2015-12-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Verify that Referer Policy within Content-Disposition:attachment sandbox is always ReferrerPolicyNever
+        https://bugs.webkit.org/show_bug.cgi?id=152260
+        <rdar://problem/23884579>
+
+        Reviewed by Andy Estes.
+
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url-expected.txt: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/referer-header-stripped-frame.php: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/referer-header-stripped.js: Added.
+        * http/tests/contentdispositionattachmentsandbox/resources/subresource-request-not-include-referer-header-frame.php: Removed.
+        * http/tests/contentdispositionattachmentsandbox/subresource-request-not-include-referer-header-expected.txt: Removed.
+        * http/tests/contentdispositionattachmentsandbox/subresource-request-not-include-referer-header.html: Removed.
+
+2015-12-15  Timothy Horton  <timothy_horton@apple.com>
+
+        Rebaseline some page overlay tests for WK1
+
+        * platform/mac-wk1/pageoverlay/overlay-installation-expected.txt:
+        * platform/mac-wk1/pageoverlay/overlay-large-document-expected.txt:
+        * platform/mac-wk1/pageoverlay/overlay-large-document-scrolled-expected.txt:
+        * platform/mac-wk1/pageoverlay/overlay-small-frame-mouse-events-expected.txt: Added.
+
+2015-12-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Localize "global code" and "eval code" strings
+        https://bugs.webkit.org/show_bug.cgi?id=152313
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/js-stacktrace-expected.txt:
+        * inspector/debugger/js-stacktrace.html:
+        * inspector/model/stack-trace-expected.txt: Added.
+        * inspector/model/stack-trace.html: Added.
+
+2015-12-15  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r191849): There's no yellow bouncy highlight when using Find on Page on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=152241
+        <rdar://problem/23642574>
+
+        Reviewed by Simon Fraser.
+
+        * pageoverlay/overlay-small-frame-mouse-events-expected.txt: Added.
+        * pageoverlay/overlay-small-frame-mouse-events.html: Added.
+        Add a test ensuring that small-frame overlays get mouse events.
+
+        * pageoverlay/overlay-small-frame-paints-expected.txt: Added.
+        * pageoverlay/overlay-small-frame-paints.html: Added.
+        Add a test ensuring that small-frame overlays get paint callbacks.
+
+2015-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Features] TrueType fonts trigger real features even when synthesis is applied
+        https://bugs.webkit.org/show_bug.cgi?id=152287
+
+        Reviewed by Darin Adler.
+
+        Adding tests.
+
+        * css3/font-variant-petite-caps-synthesis-expected.html:
+        * css3/font-variant-petite-caps-synthesis.html:
+        * css3/font-variant-small-caps-synthesis-expected.html:
+        * css3/font-variant-small-caps-synthesis.html:
+        * css3/font-variant-petite-caps-synthesis-coverage-expected.html:
+        * css3/font-variant-petite-caps-synthesis-coverage.html:
+        * css3/font-variant-small-caps-synthesis-coverage-expected.html:
+        * css3/font-variant-small-caps-synthesis-coverage.html:
+
+2015-12-15  Mark Lam  <mark.lam@apple.com>
+
+        Polymorphic operand types for DFG and FTL bit operators.
+        https://bugs.webkit.org/show_bug.cgi?id=152191
+
+        Reviewed by Saam Barati.
+
+        * js/regress/ftl-polymorphic-bitand-expected.txt: Added.
+        * js/regress/ftl-polymorphic-bitand.html: Added.
+        * js/regress/ftl-polymorphic-bitor-expected.txt: Added.
+        * js/regress/ftl-polymorphic-bitor.html: Added.
+        * js/regress/ftl-polymorphic-bitxor-expected.txt: Added.
+        * js/regress/ftl-polymorphic-bitxor.html: Added.
+        * js/regress/ftl-polymorphic-lshift-expected.txt: Added.
+        * js/regress/ftl-polymorphic-lshift.html: Added.
+        * js/regress/ftl-polymorphic-rshift-expected.txt: Added.
+        * js/regress/ftl-polymorphic-rshift.html: Added.
+        * js/regress/ftl-polymorphic-urshift-expected.txt: Added.
+        * js/regress/ftl-polymorphic-urshift.html: Added.
+        * js/regress/script-tests/ftl-polymorphic-bitand.js: Added.
+        (o1.valueOf):
+        (foo):
+        * js/regress/script-tests/ftl-polymorphic-bitor.js: Added.
+        (o1.valueOf):
+        (foo):
+        * js/regress/script-tests/ftl-polymorphic-bitxor.js: Added.
+        (o1.valueOf):
+        (foo):
+        * js/regress/script-tests/ftl-polymorphic-lshift.js: Added.
+        (o1.valueOf):
+        (foo):
+        * js/regress/script-tests/ftl-polymorphic-rshift.js: Added.
+        (o1.valueOf):
+        (foo):
+        * js/regress/script-tests/ftl-polymorphic-urshift.js: Added.
+        (o1.valueOf):
+        (foo):
+
+2015-12-15  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Test that RTCPeerConnection promise functions reject on closed state
+        https://bugs.webkit.org/show_bug.cgi?id=152295
+
+        Reviewed by Eric Carlson.
+
+        Add test that verifies RTCPeerConnection's behavior in the closed state
+        (signalingState). Promise functions should reject, and (some) others
+        should throw. Remove old test that tests incorrect behavior.
+
+        * fast/mediastream/RTCPeerConnection-closed-state-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-closed-state.html: Added.
+        * fast/mediastream/RTCPeerConnection-state-expected.txt: Removed.
+        * fast/mediastream/RTCPeerConnection-state.html: Removed.
+
+2015-12-15  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Gardening: Rebaseline tests
+        https://bugs.webkit.org/show_bug.cgi?id=152301
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/fast/dom/Window/window-lookup-precedence-expected.txt:
+        Correct the expectations after r189202 when RangeException was
+        removed.
+        * platform/gtk/fast/dom/adopt-attribute-crash-expected.txt: Added.
+        Add a new test expectations after r187148.
+        * platform/gtk/http/tests/plugins/plugin-javascript-access-expected.txt: Added.
+        Add a new test expectations after r193363.
+
+2015-12-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Changing expectation for storage/indexeddb/deleted-objects.html to [ Failure Crash ]
+        https://bugs.webkit.org/show_bug.cgi?id=152264
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-15  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align][css-grid] Overflow alignment value 'true' renamed to 'unsafe'
+        https://bugs.webkit.org/show_bug.cgi?id=152251
+
+        The 'True' Overflow Alignment keyword is known now as 'Unsafe', so adapting
+        layout tests using such keyword.
+
+        Reviewed by Darin Adler.
+
+        * css3/overwrite-content-alignment-expected.txt:
+        * css3/overwrite-content-alignment.html:
+        * css3/overwrite-self-alignment-expected.txt:
+        * css3/overwrite-self-alignment.html:
+        * css3/parse-align-content-expected.txt:
+        * css3/parse-align-content.html:
+        * css3/parse-align-items-expected.txt:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self-expected.txt:
+        * css3/parse-align-self.html:
+        * css3/parse-justify-content-expected.txt:
+        * css3/parse-justify-content.html:
+        * fast/css-grid-layout/grid-align-justify-overflow.html:
+        * fast/css-grid-layout/grid-content-alignment-overflow.html:
+        * fast/css/parse-justify-items-expected.txt:
+        * fast/css/parse-justify-items.html:
+        * fast/css/parse-justify-self-expected.txt:
+        * fast/css/parse-justify-self.html:
+
 2015-12-14  Ryan Haddad  <ryanhaddad@apple.com>
 
         Re-enabling passing test fast/viewport/ios/width-is-device-width.html, which was accidentally skipped with r194058.
