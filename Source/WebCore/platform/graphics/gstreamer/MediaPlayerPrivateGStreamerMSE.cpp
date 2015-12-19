@@ -303,18 +303,6 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeek
 
     MediaTime time(MediaTime::createWithDouble(double(static_cast<double>(position) / GST_SECOND)));
 
-    // DEBUG
-    {
-        float currentTime = 0.0f;
-        gint64 pos = GST_CLOCK_TIME_NONE;
-        GstQuery* query= gst_query_new_position(GST_FORMAT_TIME);
-        if (gst_element_query(m_pipeline.get(), query))
-            gst_query_parse_position(query, 0, &pos);
-        gst_query_unref(query);
-        currentTime = static_cast<double>(pos) / GST_SECOND;
-        LOG_MEDIA_MESSAGE("seekTime=%f, currentTime=%f", time.toFloat(), currentTime);
-    }
-
     // This will call notifySeekNeedsData() after some time to tell that the pipeline is ready for sample enqueuing.
     webkit_media_src_prepare_seek(WEBKIT_MEDIA_SRC(m_source.get()), time);
 
