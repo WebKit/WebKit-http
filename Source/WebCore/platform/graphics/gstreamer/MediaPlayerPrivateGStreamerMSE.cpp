@@ -271,17 +271,6 @@ float MediaPlayerPrivateGStreamerMSE::duration() const
     return m_mediaTimeDuration.toFloat();
 }
 
-static gboolean dumpPipeline(gpointer data)
-{
-    GstElement* pipeline = reinterpret_cast<GstElement*>(data);
-
-    g_printerr("Dumping pipeline\n");
-    CString dotFileName = "pipeline-dump";
-    GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
-
-    return G_SOURCE_REMOVE;
-}
-
 void MediaPlayerPrivateGStreamerMSE::notifySeekNeedsData(const MediaTime& seekTime)
 {
     // Reenqueue samples needed to resume playback in the new position
@@ -328,9 +317,6 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64 position, float rate, GstSeek
 
     // This will call notifySeekNeedsData() after some time to tell that the pipeline is ready for sample enqueuing.
     webkit_media_src_prepare_seek(WEBKIT_MEDIA_SRC(m_source.get()), time);
-
-    // DEBUG
-    dumpPipeline(m_pipeline.get());
 
     if (!gst_element_seek(m_pipeline.get(), rate, GST_FORMAT_TIME, seekType,
         GST_SEEK_TYPE_SET, startTime, GST_SEEK_TYPE_SET, endTime)) {
