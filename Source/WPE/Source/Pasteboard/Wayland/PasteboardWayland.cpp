@@ -168,7 +168,7 @@ const struct wl_data_source_listener g_dataSourceListener = {
     }
 };
 
-void PasteboardWayland::write(const std::map<std::string, std::string> dataMap)
+void PasteboardWayland::write(std::map<std::string, std::string>&& dataMap)
 {
     if (m_dataSourceData.data_source)
         wl_data_source_destroy(m_dataSourceData.data_source);
@@ -178,18 +178,18 @@ void PasteboardWayland::write(const std::map<std::string, std::string> dataMap)
     ViewBackend::WaylandDisplay& display = ViewBackend::WaylandDisplay::singleton();
     m_dataSourceData.data_source = wl_data_device_manager_create_data_source(display.interfaces().data_device_manager);
 
-    for (auto dataPair : dataMap)
+    for (auto dataPair : m_dataSourceData.dataMap)
         wl_data_source_offer(m_dataSourceData.data_source, dataPair.first.c_str());
 
     wl_data_source_add_listener(m_dataSourceData.data_source, &g_dataSourceListener, &m_dataSourceData);
     wl_data_device_set_selection(m_dataDevice, m_dataSourceData.data_source, display.singleton().serial());
 }
 
-void PasteboardWayland::write(const std::string pasteboardType, const std::string stringToWrite)
+void PasteboardWayland::write(std::string&& pasteboardType, std::string&& stringToWrite)
 {
     std::map<std::string, std::string> dataMap;
     dataMap[pasteboardType] = stringToWrite;
-    write(dataMap);
+    write(std::move(dataMap));
 }
 
 } // namespace Pasteboard

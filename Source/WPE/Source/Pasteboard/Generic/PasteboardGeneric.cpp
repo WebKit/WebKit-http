@@ -50,13 +50,12 @@ std::string PasteboardGeneric::getString(const std::string pasteboardType)
     return m_dataMap[pasteboardType];
 }
 
-void PasteboardGeneric::write(const std::map<std::string, std::string> dataMap)
+void PasteboardGeneric::write(std::map<std::string, std::string>&& dataMap)
 {
     m_dataMap = dataMap;
-
 }
 
-void PasteboardGeneric::write(const std::string pasteboardType, const std::string stringToWrite)
+void PasteboardGeneric::write(std::string&& pasteboardType, std::string&& stringToWrite)
 {
     m_dataMap.clear();
     m_dataMap[pasteboardType] = stringToWrite;

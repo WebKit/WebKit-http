@@ -41,8 +41,8 @@ public:
 
     virtual std::vector<std::string> getTypes() = 0;
     virtual std::string getString(const std::string) = 0;
-    virtual void write(const std::map<std::string, std::string>) = 0;
-    virtual void write(const std::string, const std::string) = 0;
+    virtual void write(std::map<std::string, std::string>&&) = 0;
+    virtual void write(std::string&&, std::string&&) = 0;
 };
 
 } // namespace Pasteboard
