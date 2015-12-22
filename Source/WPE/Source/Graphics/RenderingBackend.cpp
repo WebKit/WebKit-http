@@ -25,7 +25,6 @@
  */
 
 #include "Config.h"
-#include <WPE/Graphics/RenderingBackend.h>
 
 #if WPE_BUFFER_MANAGEMENT(GBM)
 #include "RenderingBackendGBM.h"
