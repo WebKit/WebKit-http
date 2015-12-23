@@ -55,6 +55,7 @@ SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer*
     , m_mediaSource(mediaSource)
     , m_type(contentType)
     , m_client(client)
+    , m_isReadyForMoreSamples(true)
 {
 }
 
@@ -117,7 +118,12 @@ void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> prpSamp
 
 bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(AtomicString)
 {
-    return true;
+    return m_isReadyForMoreSamples;
+}
+
+void SourceBufferPrivateGStreamer::setReadyForMoreSamples(bool isReady)
+{
+    m_isReadyForMoreSamples = isReady;
 }
 
 void SourceBufferPrivateGStreamer::setActive(bool isActive)

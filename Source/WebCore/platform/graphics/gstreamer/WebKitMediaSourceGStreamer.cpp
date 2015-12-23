@@ -680,6 +680,15 @@ static gboolean seekNeedsDataMainThread (gpointer user_data)
     MediaTime seekTime = webKitMediaSrc->priv->seekTime;
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate = webKitMediaSrc->priv->mediaPlayerPrivate;
     GST_OBJECT_UNLOCK(webKitMediaSrc);
+
+
+    for (GList* streams = webKitMediaSrc->priv->streams; streams; streams = streams->next) {
+        Stream* stream = static_cast<Stream*>(streams->data);
+        if (stream->type != WebCore::Invalid) {
+            stream->sourceBuffer->setReadyForMoreSamples(true);
+        }
+    }
+
     mediaPlayerPrivate->notifySeekNeedsData(seekTime);
 
     return G_SOURCE_REMOVE;
@@ -1179,13 +1188,21 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
         return;
     }
 
+    if (!stream->sourceBuffer->isReadyForMoreSamples(trackId)) {
+        LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
+        GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+        return;
+    }
+
     GstElement* appsrc = stream->appsrc;
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     double timestampOffset = stream->sourceBuffer->timestampOffset();
 
-    // Actually no need to flush. The seek preparations have done it for us.
+    if (!m_webKitMediaSrc->priv->mediaPlayerPrivate->seeking()) {
+        LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: trackId=%s pipeline needs flushing.", trackId.string().utf8().data());
+    }
 
     for (Vector<RefPtr<MediaSample> >::iterator it = samples.begin(); it != samples.end(); ++it) {
         GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(it->get());
@@ -1223,6 +1240,12 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
 
     if (!stream) {
         WARN_MEDIA_MESSAGE("No stream!");
+        GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
+        return;
+    }
+
+    if (!stream->sourceBuffer->isReadyForMoreSamples(trackId)) {
+        LOG_MEDIA_MESSAGE("enqueueSample: skip adding new sample for trackId=%s, SB is not ready yet", trackId.string().utf8().data());
         GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
         return;
     }
@@ -1267,6 +1290,18 @@ void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::Media
     // Set to 0 on MediaPlayerPrivateGStreamer destruction, never a dangling pointer
     src->priv->mediaPlayerPrivate = mediaPlayerPrivate;
     GST_OBJECT_UNLOCK(src);
+}
+
+void webkit_media_src_set_readyforsamples(WebKitMediaSrc* src, bool isReady)
+{
+    if (src) {
+        GST_OBJECT_LOCK(src);
+        for (GList* streams = src->priv->streams; streams; streams = streams->next) {
+            Stream* stream = static_cast<Stream*>(streams->data);
+            stream->sourceBuffer->setReadyForMoreSamples(isReady);
+        }
+        GST_OBJECT_UNLOCK(src);
+    }
 }
 
 void webkit_media_src_prepare_seek(WebKitMediaSrc* src, const MediaTime& time)

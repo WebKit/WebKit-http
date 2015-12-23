@@ -55,9 +55,13 @@ public:
     bool isLiveStream() const override { return false; }
 
     bool seeking() const override;
+    void seek(float) override;
+    bool changePipelineState(GstState) override;
+
     void durationChanged() override;
     MediaTime durationMediaTime() const override { return m_mediaTimeDuration; }
     float duration() const override;
+    float mediaTimeForTimeValue(float timeValue) const;
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     virtual float maxTimeSeekable() const override;
@@ -89,14 +93,17 @@ private:
     void updateStates() override;
 
     bool doSeek(gint64 position, float rate, GstSeekFlags seekType) override;
+    bool doSeek();
+    void maybeFinishSeek();
     void updatePlaybackRate() override;
+    void asyncStateChangeDone() override;
 
     // TODO: Implement
     unsigned long totalVideoFrames() override { return 0; }
     unsigned long droppedVideoFrames() override { return 0; }
     unsigned long corruptedVideoFrames() override { return 0; }
     MediaTime totalFrameDelay() override { return MediaTime::zeroTime(); }
-    bool timeIsBuffered(float);
+    bool timeIsBuffered(const MediaTime &time) const;
 
     bool isMediaSource() const override { return true; }
 
@@ -106,7 +113,8 @@ private:
     RefPtr<AppendPipeline> appendPipelineByTrackId(const AtomicString& trackId);
 
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
-    bool m_seekCompleted;
+    bool m_mseSeekCompleted;
+    bool m_gstSeekCompleted;
 
     HashMap<RefPtr<SourceBufferPrivateGStreamer>, RefPtr<AppendPipeline> > m_appendPipelinesMap;
     RefPtr<PlaybackPipeline> m_playbackPipeline;

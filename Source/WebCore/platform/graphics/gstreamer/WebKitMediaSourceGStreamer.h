@@ -72,6 +72,7 @@ GType webkit_media_src_get_type(void);
 void webkit_media_src_set_mediaplayerprivate(WebKitMediaSrc* src, WebCore::MediaPlayerPrivateGStreamerMSE* player);
 
 void webkit_media_src_prepare_seek(WebKitMediaSrc*, const MediaTime&);
+void webkit_media_src_set_readyforsamples(WebKitMediaSrc*, bool);
 
 G_END_DECLS
 

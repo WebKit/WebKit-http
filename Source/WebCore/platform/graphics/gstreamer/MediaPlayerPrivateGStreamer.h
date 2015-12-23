@@ -94,7 +94,7 @@ public:
 
     float duration() const override;
     float currentTime() const override;
-    void seek(float) override;
+    virtual void seek(float) override;
 
     void setRate(float) override;
     double rate() const override;
@@ -123,7 +123,7 @@ public:
 
     void simulateAudioInterruption() override;
 
-    bool changePipelineState(GstState);
+    virtual bool changePipelineState(GstState);
 
 #if ENABLE(WEB_AUDIO)
     AudioSourceProvider* audioSourceProvider() override { return reinterpret_cast<AudioSourceProvider*>(m_audioSourceProvider.get()); }
@@ -146,7 +146,7 @@ private:
     float playbackPosition() const;
 
     virtual void updateStates();
-    void asyncStateChangeDone();
+    virtual void asyncStateChangeDone();
 
     void createGSTPlayBin();
 

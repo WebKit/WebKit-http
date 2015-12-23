@@ -3429,7 +3429,7 @@ void HTMLMediaElement::playbackProgressTimerFired()
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-    if (m_mediaSource)
+    if (m_mediaSource && !m_player->seeking())
         m_mediaSource->monitorSourceBuffers();
 #endif
 }

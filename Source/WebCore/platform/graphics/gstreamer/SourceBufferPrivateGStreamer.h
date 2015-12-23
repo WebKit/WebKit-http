@@ -68,6 +68,8 @@ public:
     virtual void notifyClientWhenReadyForMoreSamples(AtomicString) override;
     virtual double timestampOffset() const;
 
+    void setReadyForMoreSamples(bool isReady);
+
 #if ENABLE(VIDEO_TRACK)
     void didReceiveInitializationSegment(const SourceBufferPrivateClient::InitializationSegment&);
     void didReceiveSample(PassRefPtr<MediaSample>);
@@ -82,6 +84,7 @@ private:
     ContentType m_type;
     RefPtr<MediaSourceClientGStreamerMSE> m_client;
     SourceBufferPrivateClient* m_sourceBufferPrivateClient;
+    bool m_isReadyForMoreSamples;
 };
 
 }
