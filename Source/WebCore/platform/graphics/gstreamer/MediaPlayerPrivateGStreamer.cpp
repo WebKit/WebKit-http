@@ -39,6 +39,7 @@
 #include "WebKitWebSourceGStreamer.h"
 #include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
+#include <gst/video/gstvideodecoder.h>
 #include <limits>
 #include <wtf/CurrentTime.h>
 #include <wtf/HexNumber.h>
@@ -226,6 +227,7 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         m_pendingAsyncOperations = g_list_remove(m_pendingAsyncOperations, m_pendingAsyncOperations->data);
     }
     m_pendingAsyncOperationsLock.unlock();
+
 }
 
 #if ENABLE(MEDIA_SOURCE)
@@ -301,8 +303,45 @@ void MediaPlayerPrivateGStreamer::commitLoad()
     updateStates();
 }
 
+#if PLATFORM(BCM_NEXUS)
+// utility function for bcm nexus seek functionality
+static GstElement* findVideoDecoder(GstElement *element)
+{
+    GstElement *re = NULL;
+    if (GST_IS_BIN(element)) {
+        GstIterator* it = gst_bin_iterate_elements(GST_BIN(element));
+        GValue item = G_VALUE_INIT;
+        bool done = false;
+        while(!done) {
+            switch (gst_iterator_next(it, &item)) {
+                case GST_ITERATOR_OK:
+                {
+                    GstElement *next = GST_ELEMENT(g_value_get_object(&item));
+                    done = (re = findVideoDecoder(next)) != NULL;
+                    g_value_reset (&item);
+                    break;
+                }
+                case GST_ITERATOR_RESYNC:
+                    gst_iterator_resync (it);
+                    break;
+                case GST_ITERATOR_ERROR:
+                case GST_ITERATOR_DONE:
+                    done = true;
+                    break;
+            }
+        }
+        g_value_unset (&item);
+        gst_iterator_free(it);
+    } else if (GST_IS_VIDEO_DECODER(element))
+        re = element;
+    return re;
+}
+#endif
+
+
 float MediaPlayerPrivateGStreamer::playbackPosition() const
 {
+
     if (m_isEndReached) {
         // Position queries on a null pipeline return 0. If we're at
         // the end of the stream the pipeline is null but we want to
@@ -333,9 +372,25 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     else if (m_canFallBackToLastFinishedSeekPosition)
         result = m_seekTime;
 
+    gst_query_unref(query);
+
+#if PLATFORM(BCM_NEXUS)
+// implement getting pts time from broadcom decoder directly for seek functionality
+    gint64 currentPts = -1;
+    GstElement* videoDec = findVideoDecoder(m_pipeline.get());
+    if (videoDec) {
+        g_object_get(videoDec, "video_pts", &currentPts, NULL);
+    }
+    if (currentPts > 0) {
+        result = (static_cast<double>(currentPts * GST_MSECOND) / 45) / GST_SECOND;
+    }
+    if (result == 0 && m_seekTime != 0) {
+        result = m_seekTime;
+    }
+#endif
+
     LOG_MEDIA_MESSAGE("Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
-    gst_query_unref(query);
     m_cachedPosition = result;
     return result;
 }
