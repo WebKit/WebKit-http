@@ -104,7 +104,7 @@ public:
     void fillTimerFired();
 
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
-    float maxTimeSeekable() const override;
+    virtual float maxTimeSeekable() const override;
     bool didLoadingProgress() const override;
     unsigned long long totalBytes() const override;
     float maxTimeLoaded() const override;

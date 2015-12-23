@@ -2158,6 +2158,23 @@ void MediaSourceClientGStreamerMSE::clearPlayerPrivate()
     m_playerPrivate = nullptr;
 }
 
+float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
+{
+    if (m_errorOccured)
+        return 0.0f;
+
+    LOG_MEDIA_MESSAGE("maxTimeSeekable");
+    float result = duration();
+    // infinite duration means live stream
+    if (isinf(result)) {
+        MediaTime maxBufferedTime = buffered()->maximumBufferedTime();
+        // Return the highest end time reported by the buffered attribute.
+        result = maxBufferedTime.isValid() ? maxBufferedTime.toFloat() : 0;
+    }
+
+    return result;
+}
+
 } // namespace WebCore
 
 #endif // USE(GSTREAMER)

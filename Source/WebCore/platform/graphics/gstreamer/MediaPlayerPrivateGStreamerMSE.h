@@ -60,6 +60,7 @@ public:
     float duration() const override;
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
+    virtual float maxTimeSeekable() const override;
 
     void sourceChanged() override;
 
