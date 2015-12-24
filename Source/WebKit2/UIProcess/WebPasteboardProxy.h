@@ -81,6 +81,13 @@ private:
     void setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String&, uint64_t& newChangeCount);
     void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size, uint64_t& newChangeCount);
 #endif
+
+#if PLATFORM(WPE)
+    void getPasteboardTypes(Vector<String>& pasteboardTypes);
+    void readStringFromPasteboard(uint64_t index, const String& pasteboardType, WTF::String&);
+    void writeWebContentToPasteboard(const WebCore::PasteboardWebContent&);
+    void writeStringToPasteboard(const String& pasteboardType, const String&);
+#endif
 };
 
 } // namespace WebKit

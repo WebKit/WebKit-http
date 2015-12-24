@@ -26,13 +26,46 @@
 #include "config.h"
 #include "Editor.h"
 
+#include "DocumentFragment.h"
+#include "Frame.h"
 #include "NotImplemented.h"
+#include "Pasteboard.h"
+#include "markup.h"
 
 namespace WebCore {
 
-void Editor::writeSelectionToPasteboard(Pasteboard&)
+static PassRefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pasteboard, Frame& frame, Range& range, bool allowPlainText, bool& chosePlainText)
 {
-    notImplemented();
+    chosePlainText = false;
+
+    Vector<String> types = pasteboard.types();
+    if (types.isEmpty())
+        return nullptr;
+
+    if (types.contains("text/html;charset=utf-8") && frame.document()) {
+        String markup = pasteboard.readString("text/html;charset=utf-8");
+        if (RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), markup, emptyString(), DisallowScriptingAndPluginContent))
+            return fragment.release();
+    }
+
+    if (!allowPlainText)
+        return nullptr;
+
+    if (types.contains("text/plain;charset=utf-8")) {
+        chosePlainText = true;
+        if (RefPtr<DocumentFragment> fragment = createFragmentFromText(range, pasteboard.readString("text/plain;charset=utf-8")))
+            return fragment.release();
+    }
+
+    return nullptr;
+}
+
+void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
+{
+    PasteboardWebContent pasteboardContent;
+    pasteboardContent.text = selectedTextForDataTransfer();
+    pasteboardContent.markup = createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
+    pasteboard.write(pasteboardContent);
 }
 
 void Editor::writeImageToPasteboard(Pasteboard&, Element&, const URL&, const String&)
@@ -40,9 +73,16 @@ void Editor::writeImageToPasteboard(Pasteboard&, Element&, const URL&, const Str
     notImplemented();
 }
 
-void Editor::pasteWithPasteboard(Pasteboard*, bool, MailBlockquoteHandling)
+void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, MailBlockquoteHandling mailBlockquoteHandling)
 {
-    notImplemented();
+    RefPtr<Range> range = selectedRange();
+    if (!range)
+        return;
+
+    bool chosePlainText;
+    RefPtr<DocumentFragment> fragment = createFragmentFromPasteboardData(*pasteboard, m_frame, *range, allowPlainText, chosePlainText);
+    if (fragment && shouldInsertFragment(fragment, range, EditorInsertActionPasted))
+        pasteAsFragment(fragment, canSmartReplaceWithPasteboard(*pasteboard), chosePlainText, mailBlockquoteHandling);
 }
 
 } // namespace WebCore

@@ -38,6 +38,7 @@
 
 struct ivi_application;
 struct wl_compositor;
+struct wl_data_device_manager;
 struct wl_display;
 struct wl_drm;
 struct wl_keyboard;
@@ -64,8 +65,11 @@ public:
 
     struct wl_display* display() const { return m_display; }
 
+    uint32_t serial() const { return m_seatData.serial; }
+
     struct Interfaces {
         struct wl_compositor* compositor;
+        struct wl_data_device_manager* data_device_manager;
         struct wl_drm* drm;
         struct wl_seat* seat;
         struct xdg_shell* xdg;
@@ -116,6 +120,8 @@ public:
             uint32_t state;
             uint32_t eventSource;
         } repeatData { 0, 0, 0, 0 };
+
+        uint32_t serial;
     };
 
     void registerInputClient(struct wl_surface*, Input::Client*);

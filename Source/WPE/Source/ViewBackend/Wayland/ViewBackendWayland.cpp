@@ -36,6 +36,7 @@
 #include "ivi-application-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 #include "wayland-drm-client-protocol.h"
+#include <WPE/Pasteboard/Pasteboard.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -113,6 +114,9 @@ ViewBackendWayland::ViewBackendWayland()
             m_surface);
         ivi_surface_add_listener(m_iviSurface, &g_iviSurfaceListener, &m_resizingData);
     }
+
+    // Ensure the Pasteboard singleton is constructed early.
+    Pasteboard::Pasteboard::singleton();
 }
 
 ViewBackendWayland::~ViewBackendWayland()
