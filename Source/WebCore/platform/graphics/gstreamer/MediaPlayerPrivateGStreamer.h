@@ -153,7 +153,7 @@ private:
     bool loadNextLocation();
     void mediaLocationChanged(GstMessage*);
 
-    void setDownloadBuffering();
+    virtual void setDownloadBuffering();
     void processBufferingStats(GstMessage*);
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
     void processMpegTsSection(GstMpegtsSection*);

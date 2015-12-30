@@ -52,6 +52,8 @@ public:
     void load(const String &url) override;
     void load(const String& url, MediaSourcePrivateClient*) override;
 
+    void setDownloadBuffering() override { };
+
     bool isLiveStream() const override { return false; }
 
     bool seeking() const override;
