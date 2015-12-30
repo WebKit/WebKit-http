@@ -55,6 +55,7 @@ public:
     void setDownloadBuffering() override { };
 
     bool isLiveStream() const override { return false; }
+    float currentTime() const override;
 
     bool seeking() const override;
     void seek(float) override;
@@ -74,6 +75,8 @@ public:
     void waitForSeekCompleted();
     void seekCompleted();
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
+
+    void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     void dispatchDecryptionKey(GstBuffer*) override;
@@ -122,6 +125,7 @@ private:
     RefPtr<PlaybackPipeline> m_playbackPipeline;
     RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     MediaTime m_mediaTimeDuration;
+    mutable bool m_eosPending;
 };
 
 class GStreamerMediaSample : public MediaSample

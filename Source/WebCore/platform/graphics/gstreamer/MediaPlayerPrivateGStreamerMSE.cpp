@@ -216,6 +216,7 @@ MediaPlayerPrivateGStreamerMSE::MediaPlayerPrivateGStreamerMSE(MediaPlayer* play
     , m_mseSeekCompleted(true)
     , m_gstSeekCompleted(true)
 {
+    m_eosPending = false;
     LOG_MEDIA_MESSAGE("%p", this);
 }
 
@@ -927,6 +928,15 @@ void MediaPlayerPrivateGStreamerMSE::emitSession()
     }
 }
 #endif
+
+void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
+{
+    if (status != MediaSourcePrivate::EosNoError)
+        return;
+
+    LOG_MEDIA_MESSAGE("Marking end of stream");
+    m_eosPending = true;
+}
 
 class GStreamerMediaDescription : public MediaDescription {
 private:
@@ -2215,6 +2225,25 @@ MediaSourcePrivate::AddStatus MediaSourceClientGStreamerMSE::addSourceBuffer(Ref
     return m_playerPrivate->m_playbackPipeline->addSourceBuffer(sourceBufferPrivate);
 }
 
+float MediaPlayerPrivateGStreamerMSE::currentTime() const
+{
+    float position = MediaPlayerPrivateGStreamer::currentTime();
+
+    if (m_eosPending && (paused() || (position >= duration()))) {
+        if (m_networkState != MediaPlayer::Loaded) {
+            m_networkState = MediaPlayer::Loaded;
+            m_player->networkStateChanged();
+        }
+
+        m_eosPending = false;
+        m_isEndReached = true;
+        m_cachedPosition = m_mediaTimeDuration.toFloat();
+        m_mediaDuration = m_mediaTimeDuration.toFloat();
+        m_player->timeChanged();
+    }
+    return position;
+}
+
 MediaTime MediaSourceClientGStreamerMSE::duration()
 {
     ASSERT(WTF::isMainThread());
@@ -2267,11 +2296,11 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
     return GST_FLOW_OK == ap->pushNewBuffer(buffer);
 }
 
-void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus)
+void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
     ASSERT(WTF::isMainThread());
 
-    // TODO
+    m_playerPrivate->markEndOfStream(status);
 }
 
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)

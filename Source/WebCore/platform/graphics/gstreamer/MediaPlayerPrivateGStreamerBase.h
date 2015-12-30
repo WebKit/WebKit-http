@@ -107,6 +107,8 @@ public:
     virtual MediaPlayer::NetworkState networkState() const override;
     virtual MediaPlayer::ReadyState readyState() const override;
 
+    virtual bool ended() const override { return m_isEndReached; }
+
     virtual void setVisible(bool) override { }
     virtual void setSize(const IntSize&) override;
     void sizeChanged();
@@ -218,8 +220,8 @@ public:
     GRefPtr<GstElement> m_videoSink;
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
-    MediaPlayer::NetworkState m_networkState;
-    bool m_isEndReached;
+    mutable MediaPlayer::NetworkState m_networkState;
+    mutable bool m_isEndReached;
     IntSize m_size;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
