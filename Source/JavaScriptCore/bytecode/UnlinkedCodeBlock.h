@@ -31,7 +31,6 @@
 #include "CodeType.h"
 #include "ConstructAbility.h"
 #include "ExpressionRangeInfo.h"
-#include "GeneratorThisMode.h"
 #include "HandlerInfo.h"
 #include "Identifier.h"
 #include "JSCell.h"
@@ -120,8 +119,9 @@ public:
     bool usesEval() const { return m_usesEval; }
     SourceParseMode parseMode() const { return m_parseMode; }
     bool isArrowFunction() const { return m_parseMode == SourceParseMode::ArrowFunctionMode; }
-    bool isDerivedConstructorContext() const { return m_isDerivedConstructorContext; }
+    DerivedContextType derivedContextType() const { return static_cast<DerivedContextType>(m_derivedContextType); }
     bool isArrowFunctionContext() const { return m_isArrowFunctionContext; }
+    bool isClassContext() const { return m_isClassContext; }
 
     bool needsFullScopeChain() const { return m_needsFullScopeChain; }
 
@@ -207,7 +207,6 @@ public:
     bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
-    GeneratorThisMode generatorThisMode() const { return static_cast<GeneratorThisMode>(m_generatorThisMode); }
     SuperBinding superBinding() const { return static_cast<SuperBinding>(m_superBinding); }
 
     void shrinkToFit()
@@ -394,11 +393,10 @@ private:
     unsigned m_hasCapturedVariables : 1;
     unsigned m_isBuiltinFunction : 1;
     unsigned m_constructorKind : 2;
-    unsigned m_generatorThisMode : 1;
     unsigned m_superBinding : 1;
-    unsigned m_isDerivedConstructorContext : 1;
+    unsigned m_derivedContextType : 2;
     unsigned m_isArrowFunctionContext : 1;
-
+    unsigned m_isClassContext : 1;
     unsigned m_firstLine;
     unsigned m_lineCount;
     unsigned m_endColumn;

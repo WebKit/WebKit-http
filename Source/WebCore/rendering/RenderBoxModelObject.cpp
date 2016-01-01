@@ -166,12 +166,12 @@ bool RenderBoxModelObject::shouldPaintAtLowQuality(GraphicsContext& context, Ima
     return view().imageQualityController().shouldPaintAtLowQuality(context, this, image, layer, size);
 }
 
-RenderBoxModelObject::RenderBoxModelObject(Element& element, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
+RenderBoxModelObject::RenderBoxModelObject(Element& element, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
     : RenderLayerModelObject(element, WTF::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
 {
 }
 
-RenderBoxModelObject::RenderBoxModelObject(Document& document, Ref<RenderStyle>&& style, unsigned baseTypeFlags)
+RenderBoxModelObject::RenderBoxModelObject(Document& document, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
     : RenderLayerModelObject(document, WTF::move(style), baseTypeFlags | RenderBoxModelObjectFlag)
 {
 }
@@ -1111,14 +1111,14 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
                     viewportRect.setLocation(LayoutPoint(0, -topContentInset));
                 }
             } else if (useFixedLayout || frameView.frameScaleFactor() != 1) {
-                // scrollOffsetForFixedPosition() is adjusted for page scale and it does not include
+                // scrollPositionForFixedPosition() is adjusted for page scale and it does not include
                 // topContentInset so do not add it to the calculation below.
-                viewportRect.setLocation(toLayoutPoint(frameView.scrollOffsetForFixedPosition()));
+                viewportRect.setLocation(frameView.scrollPositionForFixedPosition());
             } else {
-                // documentScrollOffsetRelativeToViewOrigin() includes -topContentInset in its height
+                // documentScrollPositionRelativeToViewOrigin() includes -topContentInset in its height
                 // so we need to account for that in calculating the phase size
                 topContentInset = frameView.topContentInset(ScrollView::TopContentInsetType::WebCoreOrPlatformContentInset);
-                viewportRect.setLocation(toLayoutPoint(frameView.documentScrollOffsetRelativeToViewOrigin()));
+                viewportRect.setLocation(frameView.documentScrollPositionRelativeToViewOrigin());
             }
 
             top += topContentInset;

@@ -84,7 +84,7 @@ RefPtr<DOMStringList> IDBDatabase::objectStoreNames() const
     for (auto& name : m_info.objectStoreNames())
         objectStoreNames->append(name);
     objectStoreNames->sort();
-    return WTF::move(objectStoreNames);
+    return objectStoreNames;
 }
 
 RefPtr<WebCore::IDBObjectStore> IDBDatabase::createObjectStore(const String&, const Dictionary&, ExceptionCodeWithMessage&)
@@ -156,7 +156,7 @@ RefPtr<WebCore::IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext*
 
     IndexedDB::TransactionMode mode = IDBTransaction::stringToMode(modeString, ec.code);
     if (ec.code) {
-        ec.message = ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('invalid-mode') is not one of 'readonly' or 'readwrite'.");
+        ec.message = makeString(ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('"), modeString, ASCIILiteral("') is not one of 'readonly' or 'readwrite'."));
         return nullptr;
     }
 
@@ -266,7 +266,7 @@ Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransact
 
     m_activeTransactions.set(transaction->info().identifier(), &transaction.get());
 
-    return WTF::move(transaction);
+    return transaction;
 }
 
 void IDBDatabase::didStartTransaction(IDBTransaction& transaction)
@@ -357,17 +357,31 @@ void IDBDatabase::didCommitOrAbortTransaction(IDBTransaction& transaction)
         maybeCloseInServer();
 }
 
-void IDBDatabase::fireVersionChangeEvent(uint64_t requestedVersion)
+void IDBDatabase::fireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion)
 {
     uint64_t currentVersion = m_info.version();
-    LOG(IndexedDB, "IDBDatabase::fireVersionChangeEvent - current version %" PRIu64 ", requested version %" PRIu64, currentVersion, requestedVersion);
+    LOG(IndexedDB, "IDBDatabase::fireVersionChangeEvent - current version %" PRIu64 ", requested version %" PRIu64 ", connection %" PRIu64, currentVersion, requestedVersion, m_databaseConnectionIdentifier);
 
-    if (!scriptExecutionContext() || m_closePending)
+    if (!scriptExecutionContext() || m_closePending) {
+        serverConnection().didFireVersionChangeEvent(m_databaseConnectionIdentifier, requestIdentifier);
         return;
+    }
 
-    Ref<Event> event = IDBVersionChangeEvent::create(currentVersion, requestedVersion, eventNames().versionchangeEvent);
+    Ref<Event> event = IDBVersionChangeEvent::create(requestIdentifier, currentVersion, requestedVersion, eventNames().versionchangeEvent);
     event->setTarget(this);
     scriptExecutionContext()->eventQueue().enqueueEvent(WTF::move(event));
+}
+
+bool IDBDatabase::dispatchEvent(Event& event)
+{
+    LOG(IndexedDB, "IDBDatabase::dispatchEvent (%" PRIu64 ")", m_databaseConnectionIdentifier);
+
+    bool result = WebCore::IDBDatabase::dispatchEvent(event);
+
+    if (event.isVersionChangeEvent() && event.type() == eventNames().versionchangeEvent)
+        serverConnection().didFireVersionChangeEvent(m_databaseConnectionIdentifier, downcast<IDBVersionChangeEvent>(event).requestIdentifier());
+
+    return result;
 }
 
 void IDBDatabase::didCreateIndexInfo(const IDBIndexInfo& info)

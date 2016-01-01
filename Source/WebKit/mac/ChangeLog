@@ -1,3 +1,102 @@
+2015-12-31  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using USE(CFNETWORK) path on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142540
+
+        Step 1/2: Do everything but turn off USE(CFNETWORK) internally.
+
+        Original patch by Antti Koivisto <antti@apple.com> on 2015-03-10
+        Reviewed by Daniel Bates.
+
+        * Misc/WebDownload.h: Add header guard to make
+        NSURLDownloadSPI.h work when pre-declaring NSURLDownload object.
+        * Misc/WebKitVersionChecks.h: Define
+        WEBKIT_FIRST_VERSION_WITH_LOADING_DURING_COMMON_RUNLOOP_MODES
+        for iOS.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Use
+        the correct runloop on iOS.
+        * WebView/WebViewPrivate.h:
+        (-[WebView(WebPendingPublic) scheduleInRunLoop:forMode:]):
+        (-[WebView(WebPendingPublic) unscheduleFromRunLoop:forMode:]):
+        - These are available on iOS now.
+
+2015-12-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Clarify that scrollPositionChangedViaPlatformWidget takes offsets
+        https://bugs.webkit.org/show_bug.cgi?id=152606
+
+        Reviewed by Zalan Bujtas.
+
+        scrollPositionChangedViaPlatformWidget actually gets scroll offsets, since the
+        values we get from AppKit are zero-based, so rename to scrollOffsetChangedViaPlatformWidget().
+        
+        Change ScrollableArea's setScrollPosition() and requestScrollPositionUpdate() to take
+        ScrollPositions.
+        
+        Add a FIXME noting that willRevealEdge events are probably broken in RTL documents.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _frameOrBoundsChanged]):
+
+2015-12-22  Andy Estes  <aestes@apple.com>
+
+        [CF] Replace CFNetwork-related WebKitSystemInterface calls with SPI
+        https://bugs.webkit.org/show_bug.cgi?id=152463
+
+        Reviewed by Alexey Proskuryakov.
+
+        Replaced WebkitSystemInterface calls that wrapped CFNetwork SPI with direct calls to SPI that is now forward
+        declared in CFNetworkSPI.h.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::didReceiveResponse):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::didReceiveResponse):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]):
+
+2015-12-20  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused setToolbarHeight
+        https://bugs.webkit.org/show_bug.cgi?id=152466
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm::
+        (WebInspectorFrontendClient::setToolbarHeight): Deleted.
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        - Removed build setting definitions for OS X 10.9 and earlier, and simplified defintions
+          that became uniform across all OS X versions as a result:
+
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+        - Simplified expressions involving __MAC_OS_X_VERSION_MIN_REQUIRED and removed code that was
+          never getting compiled:
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebView/WebDynamicScrollBarsView.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        * WebView/WebView.mm:
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        * WebView/WebViewInternal.h:
+
 2015-12-17  Tim Horton  <timothy_horton@apple.com>
 
         Data detector yellow highlight location is vertically mirrored in WebKit1

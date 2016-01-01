@@ -30,6 +30,7 @@
 
 #include "B3ArgumentRegValue.h"
 #include "B3BasicBlockInlines.h"
+#include "B3Dominators.h"
 #include "B3MemoryValue.h"
 #include "B3Procedure.h"
 #include "B3StackSlotValue.h"
@@ -62,11 +63,17 @@ public:
         HashSet<BasicBlock*> blocks;
         HashSet<Value*> valueInProc;
         HashMap<Value*, unsigned> valueInBlock;
+        HashMap<Value*, BasicBlock*> valueOwner;
+        HashMap<Value*, unsigned> valueIndex;
 
         for (BasicBlock* block : m_procedure) {
             blocks.add(block);
-            for (Value* value : *block)
+            for (unsigned i = 0; i < block->size(); ++i) {
+                Value* value = block->at(i);
                 valueInBlock.add(value, 0).iterator->value++;
+                valueOwner.add(value, block);
+                valueIndex.add(value, i);
+            }
         }
 
         for (Value* value : m_procedure.values())
@@ -79,10 +86,17 @@ public:
             VALIDATE(entry.value == 1, ("At ", *entry.key));
         }
 
+        // Compute dominators ourselves to avoid perturbing Procedure.
+        Dominators dominators(m_procedure);
+
         for (Value* value : valueInProc) {
             for (Value* child : value->children()) {
                 VALIDATE(child, ("At ", *value));
                 VALIDATE(valueInProc.contains(child), ("At ", *value, "->", pointerDump(child)));
+                if (valueOwner.get(child) == valueOwner.get(value))
+                    VALIDATE(valueIndex.get(value) > valueIndex.get(child), ("At ", *value, "->", pointerDump(child)));
+                else
+                    VALIDATE(dominators.dominates(valueOwner.get(child), valueOwner.get(value)), ("at ", *value, "->", pointerDump(child)));
             }
         }
 
@@ -221,11 +235,6 @@ public:
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
                 VALIDATE(value->type() == Double, ("At ", *value));
                 break;
-            case DToI32:
-                VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(value->child(0)->type() == Double, ("At ", *value));
-                VALIDATE(value->type() == Int32, ("At ", *value));
-                break;
             case FloatToDouble:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == Float, ("At ", *value));
@@ -253,6 +262,12 @@ public:
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
                 VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->type() == Int32, ("At ", *value));
+                break;
+            case EqualOrUnordered:
+                VALIDATE(value->numChildren() == 2, ("At ", *value));
+                VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
+                VALIDATE(isFloat(value->child(0)->type()), ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 break;
             case Select:

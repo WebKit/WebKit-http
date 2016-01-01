@@ -165,11 +165,6 @@ JSCell* JIT_OPERATION operationCreateThis(ExecState* exec, JSObject* constructor
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-#if !ASSERT_DISABLED
-    ConstructData constructData;
-    ASSERT(jsCast<JSFunction*>(constructor)->methodTable(vm)->getConstructData(jsCast<JSFunction*>(constructor), constructData) == ConstructTypeJS);
-#endif
-    
     return constructEmptyObject(exec, jsCast<JSFunction*>(constructor)->rareData(exec, inlineCapacity)->allocationProfile()->structure());
 }
 
@@ -1251,8 +1246,6 @@ char* JIT_OPERATION operationGetButterfly(ExecState* exec, JSCell* cell)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-
-    dataLog("Ran the barrier.\n");
 
     return bitwise_cast<char*>(jsCast<JSObject*>(cell)->butterfly());
 }

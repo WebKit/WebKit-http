@@ -1748,7 +1748,7 @@ RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToSh
         ec = TypeError;
         return nullptr;
     }
-    return TreeWalker::create(root, whatToShow, WTF::move(filter));
+    return TreeWalker::create(*root, whatToShow, WTF::move(filter));
 }
 
 RefPtr<TreeWalker> Document::createTreeWalker(Node* root, unsigned long whatToShow, ExceptionCode& ec)
@@ -6098,7 +6098,7 @@ void Document::sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, con
     // that this is the first moment that we know we crossed the magic line).
     
 #if ENABLE(WILL_REVEAL_EDGE_EVENTS)
-    
+    // FIXME: broken in RTL documents.
     int willRevealBottomNotificationPoint = std::max(0, contentsSize.height() - 2 *  visibleRect.height());
     int willRevealTopNotificationPoint = visibleRect.height();
 

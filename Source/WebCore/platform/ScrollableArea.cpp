@@ -145,7 +145,7 @@ void ScrollableArea::scrollToOffsetWithoutAnimation(ScrollbarOrientation orienta
         scrollToOffsetWithoutAnimation(FloatPoint(scrollAnimator().currentPosition().x(), offset));
 }
 
-void ScrollableArea::notifyScrollPositionChanged(const IntPoint& position)
+void ScrollableArea::notifyScrollPositionChanged(const ScrollPosition& position)
 {
     scrollPositionChanged(position);
     scrollAnimator().setCurrentPosition(position);
@@ -518,26 +518,43 @@ bool ScrollableArea::isPinnedVerticallyInDirection(int verticalScrollDelta) cons
 
 IntSize ScrollableArea::scrollbarIntrusion() const
 {
-    return IntSize(
+    return {
         verticalScrollbar() ? verticalScrollbar()->occupiedWidth() : 0,
-        horizontalScrollbar() ? horizontalScrollbar()->occupiedHeight() : 0);
+        horizontalScrollbar() ? horizontalScrollbar()->occupiedHeight() : 0
+    };
 }
 
-IntPoint ScrollableArea::scrollPosition() const
+ScrollPosition ScrollableArea::scrollPosition() const
 {
+    // FIXME: This relationship seems to be inverted. Scrollbars should be 'view', not 'model', and should get their values from us.
     int x = horizontalScrollbar() ? horizontalScrollbar()->value() : 0;
     int y = verticalScrollbar() ? verticalScrollbar()->value() : 0;
     return IntPoint(x, y);
 }
 
-IntPoint ScrollableArea::minimumScrollPosition() const
+ScrollPosition ScrollableArea::minimumScrollPosition() const
 {
-    return IntPoint();
+    return scrollPositionFromOffset(ScrollPosition());
 }
 
-IntPoint ScrollableArea::maximumScrollPosition() const
+ScrollPosition ScrollableArea::maximumScrollPosition() const
 {
-    return IntPoint(totalContentsSize().width() - visibleWidth(), totalContentsSize().height() - visibleHeight());
+    return scrollPositionFromOffset(ScrollPosition(totalContentsSize() - visibleSize()));
+}
+
+ScrollOffset ScrollableArea::maximumScrollOffset() const
+{
+    return ScrollOffset(totalContentsSize() - visibleSize());
+}
+
+ScrollPosition ScrollableArea::scrollPositionFromOffset(ScrollOffset offset) const
+{
+    return IntPoint(toIntSize(offset) - toIntSize(m_scrollOrigin));
+}
+
+ScrollOffset ScrollableArea::scrollOffsetFromPosition(ScrollPosition position) const
+{
+    return IntPoint(toIntSize(position) + toIntSize(m_scrollOrigin));
 }
 
 bool ScrollableArea::scrolledToTop() const

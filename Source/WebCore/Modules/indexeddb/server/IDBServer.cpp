@@ -317,6 +317,17 @@ void IDBServer::commitTransaction(const IDBResourceIdentifier& transactionIdenti
     transaction->commit();
 }
 
+void IDBServer::didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier& transactionIdentifier)
+{
+    LOG(IndexedDB, "IDBServer::didFinishHandlingVersionChangeTransaction");
+
+    auto transaction = m_transactions.get(transactionIdentifier);
+    if (!transaction)
+        return;
+
+    transaction->didFinishHandlingVersionChange();
+}
+
 void IDBServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)
 {
     LOG(IndexedDB, "IDBServer::databaseConnectionClosed");
@@ -326,6 +337,14 @@ void IDBServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)
         return;
 
     databaseConnection->connectionClosedFromClient();
+}
+
+void IDBServer::didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier)
+{
+    LOG(IndexedDB, "IDBServer::didFireVersionChangeEvent");
+
+    if (auto databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier))
+        databaseConnection->didFireVersionChangeEvent(requestIdentifier);
 }
 
 void IDBServer::postDatabaseTask(std::unique_ptr<CrossThreadTask>&& task)

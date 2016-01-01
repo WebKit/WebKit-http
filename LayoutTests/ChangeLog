@@ -1,3 +1,601 @@
+2015-12-31  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Fix incorrect scrollPosition handling
+        https://bugs.webkit.org/show_bug.cgi?id=152630
+
+        Reviewed by Zalan Bujtas.
+        
+        These tests now load with a 0,0 scroll position, so don't dump out the "scrolled to" text,
+        which matches Mac behavior.
+
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/BottomToTop-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-bt-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-lr-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-dynamic-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-rl-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/pagination/RightToLeft-tb-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-break-with-balancing-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/column-rules-expected.txt:
+        * platform/ios-simulator-wk2/fast/multicol/vertical-rl/float-paginate-complex-expected.txt:
+
+2015-12-31  Zalan Bujtas  <zalan@apple.com>
+
+        text-decoration: line-through is mispositioned when text has overline/underline too.
+        https://bugs.webkit.org/show_bug.cgi?id=152619
+
+        Reviewed by Simon Fraser.
+
+        Line-through painting was mistakenly calling drawLineForText with overline/underline positioning.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-line-through-mispositioned-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-line-through-mispositioned.html: Added.
+
+2015-12-31  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Text with stroke width is not positioned correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=152614
+
+        Reviewed by Simon Fraser.
+
+        Visual overflow should not affect text position.
+
+        * fast/text/simple-line-layout-text-position-with-stroke-expected.html: Added.
+        * fast/text/simple-line-layout-text-position-with-stroke.html: Added.
+
+2015-12-31  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Nested block with pseudo first-line parent should bail out of simple line layout.
+        https://bugs.webkit.org/show_bug.cgi?id=152599
+
+        Reviewed by Simon Fraser.
+
+        We should bail out of simple line layout if any of the ancestors have pseudo first-line style.
+        (see RenderBlock::firstLineBlock()) 
+
+        * fast/block/line-layout/first-line-should-bail-out-of-simple-line-layout-expected.html: Added.
+        * fast/block/line-layout/first-line-should-bail-out-of-simple-line-layout.html: Added.
+
+2015-12-31  Martin Robinson  <mrobinson@igalia.com>
+
+        Mark some tests as failing on WebKitGTK+.
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-31  Martin Robinson  <mrobinson@igalia.com>
+
+        Mark WOFF2 test as failing on WebKitGTK+
+
+        Unreviewed. Gardening.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-31  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Unreviewed gardening at 2015-12-31
+
+        Mark fast/text/text-combine-placement.html as crashing.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-30  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Only fire blocked events after all open connections have handled their versionchange events.
+        https://bugs.webkit.org/show_bug.cgi?id=152593
+
+        Reviewed by Andy Estes.
+
+        - Unskip two timeout tests that now pass.
+        - Reclassify a text-failure test to be skipped for new reasons.
+        
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-30  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, EFL gardening.
+
+        Mark navigation policy tests to failure and unskip some passing test.
+        Update media failure tests.
+
+        * platform/efl/TestExpectations:
+
+2015-12-30  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Arrow function specific features. Lexical bind "super"
+        https://bugs.webkit.org/show_bug.cgi?id=149615
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-superproperty-expected.txt: Added.
+        * js/arrowfunction-superproperty.html: Added.
+        * js/script-tests/arrowfunction-superproperty.js: Added.
+
+2015-12-29  Andy VanWagoner  <andy@instructure.com>
+
+        Remove tests for sometimes unsupported calendars, numbering systems, and time zone backward links
+        https://bugs.webkit.org/show_bug.cgi?id=152550
+
+        Reviewed by Alexey Proskuryakov.
+
+        Time zones change often, so only test a few probable backward links.
+        Remove hanidays numbering system tests, since GTK and EFL don't support it.
+        Remove islamic-umalqura calendar tests, since GTK and EFL don't support it.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2015-12-27  Zalan Bujtas  <zalan@apple.com>
+
+        Should never be reached failure in WebCore::RenderElement::clearLayoutRootIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=151590
+
+        Reviewed by Simon Fraser.
+
+        We should always set the layoutroot when a new subtree layout is requested (and convert it
+        to a full layout when needed). It ensures that renderers are detached cleanly even when
+        they are set as layoutroot.
+
+        * fast/block/assert-when-layout-root-is-not-cleared-expected.txt: Added.
+        * fast/block/assert-when-layout-root-is-not-cleared.html: Added.
+
+2015-12-25  Zalan Bujtas  <zalan@apple.com>
+
+        Subpixel rendering: Add subpixel support for outline.
+        https://bugs.webkit.org/show_bug.cgi?id=152560
+
+        Unable to ref-test other outline types.
+
+        Reviewed by Simon Fraser.
+
+        * fast/borders/hidpi-outline-hairline-painting-expected.html: Added.
+        * fast/borders/hidpi-outline-hairline-painting.html: Added.
+
+2015-12-24  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: x2 >= x1 in WebCore::RenderElement::drawLineForBoxSide
+        https://bugs.webkit.org/show_bug.cgi?id=151210
+
+        Reviewed by Simon Fraser.
+
+        "IntRect outer = snappedIntRect(inner)" explicitly converts inner to LayoutRect and
+        returns a snapped IntRect. When inner (after the inflate) overflows LayoutUnit,
+        the snapped outer rect becomes smaller than the inner rect.
+
+        This patch also enables outline painting on subpixel positions.
+
+        * fast/borders/hidpi-outline-on-subpixel-position-expected.html: Added.
+        * fast/borders/hidpi-outline-on-subpixel-position.html: Added.
+        * fast/borders/outline-offset-overflow-expected.txt: Added.
+        * fast/borders/outline-offset-overflow.html: Added.
+
+2015-12-23  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Don't open any new connections until after version change transactions are completely handled.
+        https://bugs.webkit.org/show_bug.cgi?id=152441
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations: Enable 4 now-passing tests.
+
+2015-12-23  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/transaction-basics.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152481
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-expected.txt:
+        * storage/indexeddb/transaction-basics-expected.txt:
+
+2015-12-23  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Mark shadow dom to Pass with incorrect result. Additionally remove
+        disappeared storage tests in TestExpectations.
+
+        Unskip MSE tests because MSE functionalities have been supported by gstreamer.
+
+        * platform/efl/TestExpectations:
+
+2015-12-23  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r187593): Scroll position jumps when selecting text in an iframe
+        https://bugs.webkit.org/show_bug.cgi?id=152541
+        rdar://problem/23886181
+
+        Reviewed by Tim Horton.
+        
+        New test for autoscrolling iframe contents (an existing test scrolled an overflow:scroll
+        inside an iframe, and didn't catch the bug).
+
+        * fast/events/autoscroll-in-iframe-body-expected.txt: Added.
+        * fast/events/autoscroll-in-iframe-body.html: Added.
+        * fast/forms/input-readonly-autoscroll.html: Fix a missing double quote.
+
+2015-12-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor cleanup in RenderBox::canBeProgramaticallyScrolled()
+        https://bugs.webkit.org/show_bug.cgi?id=152515
+
+        Reviewed by Tim Horton.
+
+        Test that programmatic scrolling works inside overflow:hidden.
+
+        * fast/overflow/overflow-hidden-scroll-into-view-expected.html: Added.
+        * fast/overflow/overflow-hidden-scroll-into-view.html: Added.
+
+2015-12-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining storage/domstorage/localstorage/delete-defineproperty-removal.html
+        https://bugs.webkit.org/show_bug.cgi?id=149179
+
+        Unreviewed test gardening.
+
+        * storage/domstorage/localstorage/delete-defineproperty-removal-expected.txt:
+
+2015-12-23  Pranjal Jumde  <pjumde@apple.com>
+
+        Test to check for stack recursion when indexed propertyNames defined using Object.defineProperty are deleted.
+        https://bugs.webkit.org/show_bug.cgi?id=149179
+        <rdar://problem/22708019>.
+
+        Reviewed by Filip Pizlo.
+
+        * storage/domstorage/localstorage/delete-defineproperty-removal-expected.txt: Added.
+        * storage/domstorage/localstorage/delete-defineproperty-removal.html: Added.
+
+2015-12-23  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo.label must be empty in some situations
+        https://bugs.webkit.org/show_bug.cgi?id=152000
+
+        Reviewed by Brent Fulgham.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt:
+        * fast/mediastream/MediaDevices-enumerateDevices.html:
+
+2015-12-23  Andy VanWagoner  <andy@instructure.com>
+
+        [INTL] Implement DateTime Format Functions
+        https://bugs.webkit.org/show_bug.cgi?id=147606
+
+        Reviewed by Benjamin Poulain.
+
+        * js/intl-datetimeformat-expected.txt: Added format tests.
+        * js/intl-datetimeformat.html: Used utf-8.
+        * js/script-tests/intl-datetimeformat.js: Added format tests.
+
+2015-12-23  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement String.prototype.localeCompare in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147607
+
+        Reviewed by Benjamin Poulain.
+
+        * js/script-tests/string-localeCompare.js:
+        * js/script-tests/string-prototype-properties.js: Update error message.
+        * js/string-localeCompare-expected.txt:
+        * js/string-prototype-properties-expected.txt: Update error message.
+        * js/string-localeCompare.html:
+
+2015-12-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaselining fast/text/emoji.html for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=152147
+
+        Unreviewed test gardening.
+
+        * platform/win/fast/text/emoji-expected.txt:
+
+2015-12-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-* as failing on Win
+        https://bugs.webkit.org/show_bug.cgi?id=152411
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2015-12-23  ChangSeok Oh  <changseok.oh@collabora.com>
+
+        [GTK] Unreviewed gardening
+
+        RTCPeerConnection-state.html is removed after r194112. Remove failure expectations
+        for tests which have been passing. Add new expectations for text-combine-shrink-on-color-change.html
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/text/text-combine-shrink-on-color-change-expected.png: Added.
+        * platform/gtk/fast/text/text-combine-shrink-on-color-change-expected.txt: Added.
+
+2015-12-23  Andy VanWagoner  <andy@instructure.com>
+
+        [INTL] Implement Intl.DateTimeFormat.prototype.resolvedOptions ()
+        https://bugs.webkit.org/show_bug.cgi?id=147603
+
+        Reviewed by Benjamin Poulain.
+
+        * js/intl-datetimeformat-expected.txt: Added resolvedOptions tests.
+        * js/script-tests/intl-datetimeformat.js: Added resolvedOptions tests.
+        (string_appeared_here):
+
+2015-12-23  Chris Aljoudi <chris@chrismatic.io> and Alex Christensen <achristensen@webkit.org>
+
+        Content blockers should be able to promote http to https
+        https://bugs.webkit.org/show_bug.cgi?id=148966
+
+        Reviewed by Benjamin Poulain.
+
+        * http/tests/contentextensions/make-https-expected.txt: Added.
+        * http/tests/contentextensions/make-https.html: Added.
+        * http/tests/contentextensions/make-https.html.json: Added.
+
+2015-12-22  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [Streams API] Fix cosmetic things after importing spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=152479
+
+        Reviewed by Youenn Fablet.
+
+        Spec version are mainly updated in this patch as it wasn't done when importing tests from the spec. Some other
+        minor changes were done, as renumbering some tests, removing some orphan expectations and other styling issues.
+
+        * streams/brand-checks.html:
+        * streams/pipe-to.html:
+        * streams/readable-stream-controller-error.html:
+        * streams/readable-stream-pipeThrough.html:
+        * streams/readable-stream-reader-read.html:
+        * streams/reference-implementation/abstract-ops.html:
+        * streams/reference-implementation/bad-strategies.html:
+        * streams/reference-implementation/bad-underlying-sinks.html:
+        * streams/reference-implementation/bad-underlying-sources-expected.txt: Removed.
+        * streams/reference-implementation/brand-checks.html:
+        * streams/reference-implementation/byte-length-queuing-strategy.html:
+        * streams/reference-implementation/count-queuing-strategy.html:
+        * streams/reference-implementation/pipe-through.html:
+        * streams/reference-implementation/pipe-to-options.html:
+        * streams/reference-implementation/pipe-to.html:
+        * streams/reference-implementation/readable-stream-templated.html:
+        * streams/reference-implementation/transform-stream-errors.html:
+        * streams/reference-implementation/transform-stream.html:
+        * streams/reference-implementation/writable-stream-abort.html:
+        * streams/reference-implementation/writable-stream-expected.txt:
+        * streams/reference-implementation/writable-stream.html:
+
+2015-12-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking webgl/1.0.2/conformance/extensions/get-extension.html as flaky on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=152506
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-22  Chris Fleizach  <cfleizach@apple.com>
+
+        [WK2] Looping in testcase: fast/dom/Window/property-access-on-cached-window-after-frame-removed.html
+        https://bugs.webkit.org/show_bug.cgi?id=152482
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping unsupported test on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152491
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/break-on-exception-catch.html as a flaky timeout on mac-wk2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=152492
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-21  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Unexpected exception assigning to this._property inside arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=152028
+
+        Reviewed by Saam Barati.
+
+        Added new test cases for arrow function, to force create lexical env in body of function.
+
+        * js/arrowfunction-lexical-bind-this-expected.txt:
+        * js/script-tests/arrowfunction-lexical-bind-this.js:
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/debugger/command-line-api-exception-nested-catch.html as a flaky timeout on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=152487
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-21  Antti Koivisto  <antti@apple.com>
+
+        Limit cached redirect chain length
+        https://bugs.webkit.org/show_bug.cgi?id=152477
+
+        Reviewed by Andreas Kling.
+
+        * http/tests/cache/disk-cache/redirect-chain-limits-expected.txt: Added.
+        * http/tests/cache/disk-cache/redirect-chain-limits.html: Added.
+        * http/tests/cache/disk-cache/resources/redirect-chain.phpl: Added.
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking webaudio/audiocontext-state-interrupted.html  as a flaky crasher on mac-wk1
+        https://bugs.webkit.org/show_bug.cgi?id=152485
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html on ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152449
+
+        Unreviewed teset gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-12-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r194328.
+
+        This change appears to have caused failures in JSC tests
+
+        Reverted changeset:
+
+        "[INTL] Implement String.prototype.localeCompare in ECMA-402"
+        https://bugs.webkit.org/show_bug.cgi?id=147607
+        http://trac.webkit.org/changeset/194328
+
+2015-12-21  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement String.prototype.localeCompare in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147607
+
+        Reviewed by Darin Adler.
+
+        * js/script-tests/string-localeCompare.js:
+        * js/script-tests/string-prototype-properties.js: Update error message.
+        * js/string-localeCompare-expected.txt:
+        * js/string-prototype-properties-expected.txt: Update error message.
+        * js/string-localeCompare.html:
+
+2015-12-20  Jeremy Zerfas  <WebKit@JeremyZerfas.com>
+
+        Don't allocate a NSImage and skip unneeded call to TIFFRepresentation when copying image to clipboard.
+        https://bugs.webkit.org/show_bug.cgi?id=152374
+
+        Reviewed by Darin Adler.
+
+        Added test to make sure that when copying a 50 frame 500x500 animation
+        (50 MB uncompressed) to the clipboard, the additional memory usage is
+        kept to less than 200 MB.
+
+        * fast/images/image-copy-memory-usage-expected.txt: Added.
+        * fast/images/image-copy-memory-usage.html: Added.
+        * fast/images/resources/dot-moving-in-a-circle-animation.gif: Added.
+
+2015-12-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r194033 and r194267.
+        https://bugs.webkit.org/show_bug.cgi?id=152465
+
+        Caused crashes on Mac WK1 bots (Requested by youenn on
+        #webkit).
+
+        Reverted changesets:
+
+        "[Streams API] Expose ReadableStream and relatives to Worker"
+        https://bugs.webkit.org/show_bug.cgi?id=152066
+        http://trac.webkit.org/changeset/194033
+
+        "[Streams API] imported/w3c/web-platform-tests/streams-api
+        /readable-streams/cancel.html has a flaky test"
+        https://bugs.webkit.org/show_bug.cgi?id=152065
+        http://trac.webkit.org/changeset/194267
+
+2015-12-18  Antti Koivisto  <antti@apple.com>
+
+        Cache redirects as separate entries
+        https://bugs.webkit.org/show_bug.cgi?id=152424
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/cache/disk-cache/disk-cache-redirect-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-redirect.html: Added.
+        * http/tests/cache/disk-cache/resources/generate-response.cgi:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Mark fast/regions/overflow/overflow-region-float.html as passing
+
+        Unreviewed test gardening. This test has been passing since r191658.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping fast/scrolling/rtl-point-in-iframe.html on ios-simulator since it tests wheel events.
+        https://bugs.webkit.org/show_bug.cgi?id=152442
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2015-12-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/dom/interfaces.html for ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152437
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2015-12-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/console/messagesCleared.html as a flaky timeout on mac-wk2 debug
+        https://bugs.webkit.org/show_bug.cgi?id=152025
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-12-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Refactor when opening the backing store takes place.
+        https://bugs.webkit.org/show_bug.cgi?id=152405
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed gardening
+
+        css3/flexbox/multiline-reverse-wrap-baseline.html consistently passes for GTK since
+        r191623, but fails on Apple ports, so add a GTK-specific Pass expectation.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed gardening
+        https://bugs.webkit.org/show_bug.cgi?id=142292
+
+        fast/images/animated-gif-body-outside-viewport.html and
+        fast/images/animated-gif-window-resizing.html are flaky; mark them
+        accordingly.
+
+        * platform/gtk/TestExpectations:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed gardening
+
+        Remove failure expectation for fast/events/drag-and-drop-autoscroll-inner-frame.html which
+        has been consistently passing since r192511.
+
+        * platform/gtk/TestExpectations:
+
 2015-12-17  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r194241 and r194252.

@@ -1,3 +1,806 @@
+2015-12-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename documentScrollOffsetRelativeTo* functions
+        https://bugs.webkit.org/show_bug.cgi?id=152632
+
+        Reviewed by Zalan Bujtas.
+
+        ScrollView::documentScrollOffsetRelativeTo* functions return scroll positions,
+        not offsets, so rename them and fix their return types, and fix callers. Make
+        their code more similar.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+        (WebKit::WebPage::plugInIntersectsSearchRect):
+
+2015-12-31  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Fix incorrect scrollPosition handling
+        https://bugs.webkit.org/show_bug.cgi?id=152630
+
+        Reviewed by Zalan Bujtas.
+        
+        WebPage::updateVisibleContentRects() was setting the ScrollView's scroll position
+        to a scrollOffset, which was counteracted by ScrollView::unobscuredContentRect()
+        adding the scrollOrigin to the scrollPosition, which resulted in the correct
+        rects, but an incorrect scrollPosition. Fix.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2015-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix a log message
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponse):
+
+2015-12-31  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using USE(CFNETWORK) path on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=142540
+
+        Step 1/2: Do everything but turn off USE(CFNETWORK) internally.
+
+        Original patch by Antti Koivisto <antti@apple.com> on 2015-03-10
+        Reviewed by Daniel Bates.
+
+        * NetworkProcess/Downloads/ios/DownloadIOS.mm: This is now the
+        USE(CFNETWORK) && !USE(NETWORK_SESSION) code path.
+        * NetworkProcess/Downloads/mac/DownloadMac.mm: This is now the
+        !USE(CFNETWORK) && !USE(NETWORK_SESSION) code path.  Make use of
+        NSURLDownloadSPI.h.  Ignore a deprecated delcaration warning now
+        that we're using actual header declarations internally.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess): Update for
+        iOS to use NSURLConnection loader.
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Fix warnings uncovered by migrating to WTF_MOVE
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Daniel Bates.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::actionsForElement): Moving a return value passed to the function by value is redundant, since it
+        will be implicitly moved in this case.
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::UIClient::actionsForElement): Ditto.
+
+2015-12-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Add explicit conversions between scrollOffset and scrollPostion, and use them in a few places
+        https://bugs.webkit.org/show_bug.cgi?id=152594
+
+        Reviewed by Sam Weinig.
+
+        Add functions to ScrollableArea to convert between scrollPosition and scrollOffset,
+        and use them in places where code did the math with scrollOrigin.
+
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::updateScrolledExposedRect):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::updateScrolledExposedRect):
+
+2015-12-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TexMap] Clean up TextureMapperAnimation, TextureMapperAnimations
+        https://bugs.webkit.org/show_bug.cgi?id=152112
+
+        Reviewed by Darin Adler.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (IPC::ArgumentCoder<TextureMapperAnimation>::decode):
+
+2015-12-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ScrollView::scrollOffset() in preparation for scrollOffset vs. scrollPosition clarification
+        https://bugs.webkit.org/show_bug.cgi?id=152589
+
+        Reviewed by Sam Weinig.
+
+        Current code uses scrollOffset vs. scrollPosition interchangeably, and confusingly.
+        Longer term, I plan to make "scrollPosition" be the value that is relative to the 
+        contents, i.e. affected by scrollOrigin, and "scrollOffset" be the zero-based value
+        that's used to set scrollbar values.
+        
+        To prepare for this, remove ScrollView::scrollOffset(), which is just the
+        scrollPosition as an IntSize.
+        
+        Add some typedefs in ScrollableArea, which will slowly propagate through the
+        code as position vs. offset is clarified.
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage):
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.h:
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (WebKit::PDFPlugin::scrollPosition):
+        (WebKit::PDFPlugin::minimumScrollPosition):
+        (WebKit::PDFPlugin::maximumScrollPosition):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::scrollOffset):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scrollMainFrameIfNotAtMaxScrollPosition):
+        (WebKit::WebPage::updateMainFrameScrollOffsetPinning):
+
+2015-12-25  Andy Estes  <aestes@apple.com>
+
+        Stop moving local objects in return statements
+        https://bugs.webkit.org/show_bug.cgi?id=152557
+
+        Reviewed by Brady Eidson.
+
+        Calling std::move() on a local object in a return statement prevents the compiler from applying the return value optimization.
+
+        Clang can warn about these mistakes with -Wpessimizing-move, although only when std::move() is called directly.
+        I found these issues by temporarily replacing WTF::move with std::move and recompiling.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::ExceededDatabaseQuotaRecords::createRecord):
+
+2015-12-26  Joonghun Park  <jh718.park@samsung.com>
+
+        [WK2][EFL] Use eina_file_path_join at platformDefaultIconDatabasePath in WebProcessPoolEfl
+        https://bugs.webkit.org/show_bug.cgi?id=152565
+
+        Reviewed by Gyuyoung Kim.
+
+        Use eina_file_path_join and EINA_PATH_SEP_S at platformDefaultIconDatabasePath
+        instead of operator+ and separator "/" respectively
+        to concatenate paths.
+
+        * UIProcess/API/efl/APIWebsiteDataStoreEfl.cpp:
+        * UIProcess/efl/WebProcessPoolEfl.cpp:
+        (WebKit::WebProcessPool::platformDefaultIconDatabasePath):
+
+2015-12-25  David Kilzer  <ddkilzer@apple.com>
+
+        ResourceError should store failingURL as URL instead of String to avoid reparsing and to address FIXME comments in ResourceErrorCF.cpp and ResourceErrorMac.mm
+        <http://webkit.org/b/146391>
+
+        Reviewed by Antti Koivisto.
+
+        * NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp:
+        (WebKit::platformDownloadNetworkError):
+        * NetworkProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp:
+        (WebKit::platformDownloadNetworkError):
+        * NetworkProcess/Downloads/soup/DownloadSoup.cpp:
+        (WebKit::DownloadClient::didReceiveResponse):
+        * NetworkProcess/Downloads/soup/DownloadSoupErrors.h:
+        * Shared/soup/WebCoreArgumentCodersSoup.cpp:
+        (IPC::ArgumentCoder<ResourceError>::encodePlatformData):
+        (IPC::ArgumentCoder<ResourceError>::decodePlatformData):
+        * UIProcess/API/gtk/WebKitLoaderClient.cpp:
+        (LoaderClient::didFailProvisionalLoadWithErrorForFrame):
+        (LoaderClient::didFailLoadWithErrorForFrame):
+        * UIProcess/API/gtk/WebKitURISchemeRequest.cpp:
+        (webkit_uri_scheme_request_finish_error):
+        * WebProcess/WebCoreSupport/efl/WebErrorsEfl.cpp:
+        (WebKit::internalError):
+        * WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp:
+        (WebKit::internalError):
+        - Update for type change of 'failingURL' argument to
+          ResourceError().
+
+2015-12-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Use "constrainedBetween" in more places
+        https://bugs.webkit.org/show_bug.cgi?id=152543
+
+        Reviewed by Zalan Bujtas.
+
+        Replace code that contrains points via shrunkTo/expandedTo() with calls
+        to constrainedBetween(), and implement constrainedBetween() on IntPoint,
+        FloatPoint and LayoutPoint.
+
+        Convert some functions that return points to more modern syntax.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (constrainContentOffset):
+
+2015-12-22  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] ewk_application_cache_manager test failed after r193812
+        https://bugs.webkit.org/show_bug.cgi?id=152498
+
+        Reviewed by Gyuyoung Kim.
+
+        Need to enable the offline_web_application_cache for the ewk_application_cache_manager test.
+
+        * UIProcess/API/efl/tests/test_ewk2_application_cache_manager.cpp:
+        (TEST_F):
+
+2015-12-22  Andy Estes  <aestes@apple.com>
+
+        [CF] Replace CFNetwork-related WebKitSystemInterface calls with SPI
+        https://bugs.webkit.org/show_bug.cgi?id=152463
+
+        Reviewed by Alexey Proskuryakov.
+
+        Replaced WebkitSystemInterface calls that wrapped CFNetwork SPI with direct calls to SPI that is now forward
+        declared in CFNetworkSPI.h.
+
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::initializeNetworkSettings):
+        * NetworkProcess/mac/NetworkProcessMac.mm:
+        (WebKit::overrideSystemProxies):
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2015-12-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Allow JavaScript to iterate over plugins for local SecurityOrigins
+        https://bugs.webkit.org/show_bug.cgi?id=152489
+
+        Reviewed by Alexey Proskuryakov.
+
+        The 'getWebVisiblePluginInfo' is filtering plugins, even when we want to list
+        all plugins. To avoid this, we check the Document's SecurityOrigin. If no such
+        origin exists, we construct a SecurityOrigin from the URL.
+        
+        If the relevant SecurityOrigin satsifies 'isLocal', we show all plugins.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getWebVisiblePluginInfo):
+
+2015-12-21  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] test_ewk2_context failed after r192808
+        https://bugs.webkit.org/show_bug.cgi?id=151846
+
+        Reviewed by Gyuyoung Kim.
+
+        As we can make the single WebProcess behavior by setting the miximum number
+        of WebProcess to 1 after r192808, I remove the ewk_context_process_model_{set|get}
+        apis and add the ewk_context_web_process_count_limit_{set|get} apis and tests.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        (EwkContext::setProcessCountLimit):
+        (EwkContext::processCountLimit):
+        (ewk_context_web_process_count_limit_set):
+        (ewk_context_web_process_count_limit_get):
+        (EwkContext::setProcessModel): Deleted.
+        (EwkContext::processModel): Deleted.
+        (ewk_context_process_model_set): Deleted.
+        (ewk_context_process_model_get): Deleted.
+        * UIProcess/API/efl/ewk_context.h:
+        * UIProcess/API/efl/ewk_context_private.h:
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp:
+        (EWK2UnitTest::EWK2UnitTestBase::SetUp):
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp:
+        (TEST_F): Changed the ewk_context_{web|network}_process_model tests to
+        ewk_context_{web|network}_process_count_limit tests.
+
+2015-12-21  Joonghun Park  <jh718.park@samsung.com>
+
+        [WK2][EFL] Use cacheDirectoryFileSystemRepresentation and websiteDataDirectoryFileSystemRepresentation
+        to refactor APIWebsiteDataStoreEfl
+        https://bugs.webkit.org/show_bug.cgi?id=152475
+
+        Reviewed by Gyuyoung Kim.
+
+        Use cacheDirectoryFileSystemRepresentation and websiteDataDirectoryFileSystemRepresentation
+        instead of to use efreet_cache_home_get
+        and efreet_data_home_get directly.
+        And also use EINA_PATH_SEP_S instead of "/" as directory separator,
+        and WebCore::pathByAppendingComponent instead of operator+.
+
+        * UIProcess/API/efl/APIWebsiteDataStoreEfl.cpp:
+        (API::WebsiteDataStore::defaultApplicationCacheDirectory):
+        (API::WebsiteDataStore::defaultNetworkCacheDirectory):
+        (API::WebsiteDataStore::defaultIndexedDBDatabaseDirectory):
+        (API::WebsiteDataStore::defaultLocalStorageDirectory):
+        (API::WebsiteDataStore::defaultMediaKeysStorageDirectory):
+        (API::WebsiteDataStore::defaultWebSQLDatabaseDirectory):
+        (API::WebsiteDataStore::cacheDirectoryFileSystemRepresentation):
+        (API::WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation):
+
+2015-12-21  Antti Koivisto  <antti@apple.com>
+
+        Factor NetworkResourceLoader code for storing a cache entry into a function
+        https://bugs.webkit.org/show_bug.cgi?id=152467
+
+        Reviewed by Andreas Kling.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didFinishLoading):
+
+            Having m_cacheEntryForValidation already implies canUseCache() so remove the test from this path.
+            Move storing to the end of the function so we don't delay DidFinishResourceLoad message on it.
+
+        (WebKit::NetworkResourceLoader::sendBufferMaybeAborting):
+        (WebKit::NetworkResourceLoader::tryStoreAsCacheEntry):
+
+            Factor to a function.
+            Remove m_response.isHTTP() test as it is covered by NetworkCache::store().
+            Remove !isPrivateSession test as it is covered by NetworkResourceLoader::canUseCache().
+
+        (WebKit::NetworkResourceLoader::didRetrieveCacheEntry):
+        * NetworkProcess/NetworkResourceLoader.h:
+
+2015-12-21  Antti Koivisto  <antti@apple.com>
+
+        Limit cached redirect chain length
+        https://bugs.webkit.org/show_bug.cgi?id=152477
+
+        Reviewed by Andreas Kling.
+
+        Networking layer prevents cycles and limits the redirect chain length so creating cache cycles is difficult.
+        For robustness the network cache should still limit the maximum redirect chain length.
+
+        This patch adds a limit of five redirects both when storing and retrieving cache entries.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::canUseCache):
+        (WebKit::NetworkResourceLoader::canUseCachedRedirect):
+        (WebKit::NetworkResourceLoader::willSendRedirectedRequest):
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+        (WebKit::NetworkResourceLoader::dispatchWillSendRequestForCacheEntry):
+        * NetworkProcess/NetworkResourceLoader.h:
+
+2015-12-21  Dan Bernstein  <mitz@apple.com>
+
+        Different and incorrect flags are passed to sendSync when accessibility is enabled, SpinRunLoopWhileWaitingForReply
+        https://bugs.webkit.org/show_bug.cgi?id=126021
+
+        Reviewed by Darin Adler.
+
+        Get rid of SpinRunLoopWhileWaitingForReply because it’s not used anymore.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::waitForSyncReply): Removed the SpinRunLoopWhileWaitingForReply branch.
+
+        * Platform/IPC/Connection.h: Removed SpinRunLoopWhileWaitingForReply.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runBeforeUnloadConfirmPanel): Don’t check
+          WebPage::synchronousMessagesShouldSpinRunLoop() and don’t specify
+          SpinRunLoopWhileWaitingForReply.
+        (WebKit::WebChromeClient::runJavaScriptAlert): Ditto.
+        (WebKit::WebChromeClient::runJavaScriptConfirm): Ditto.
+        (WebKit::WebChromeClient::runJavaScriptPrompt): Ditto.
+        (WebKit::WebChromeClient::print): Ditto.
+        (WebKit::WebChromeClient::exceededDatabaseQuota): Ditto.
+        (WebKit::WebChromeClient::reachedApplicationCacheOriginQuota): Ditto.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse): Ditto.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::synchronousMessagesShouldSpinRunLoop): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2015-12-20  Joonghun Park  <jh718.park@samsung.com>
+
+        [WK2][EFL] Use WebsiteDataStore instead of WebDatabaseManager which has been deleted in r194295
+        https://bugs.webkit.org/show_bug.cgi?id=152460
+
+        Reviewed by Gyuyoung Kim.
+
+        Use WebsiteDataStore to support EFL WebDatabase API and to fix build break.
+
+        * PlatformEfl.cmake:
+        * UIProcess/API/APIWebsiteDataStore.cpp:
+        * UIProcess/API/efl/APIWebsiteDataStoreEfl.cpp: Copied from Source/WebKit2/UIProcess/API/APIWebsiteDataStore.cpp.
+        (API::WebsiteDataStore::defaultApplicationCacheDirectory):
+        (API::WebsiteDataStore::defaultNetworkCacheDirectory):
+        (API::WebsiteDataStore::defaultIndexedDBDatabaseDirectory):
+        (API::WebsiteDataStore::defaultLocalStorageDirectory):
+        (API::WebsiteDataStore::defaultMediaKeysStorageDirectory):
+        (API::WebsiteDataStore::defaultWebSQLDatabaseDirectory):
+        (API::WebsiteDataStore::cacheDirectoryFileSystemRepresentation):
+        (API::WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation):
+        (API::WebsiteDataStore::defaultDataStoreConfiguration):
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        * UIProcess/API/efl/ewk_database_manager.cpp:
+        (EwkDatabaseManager::EwkDatabaseManager):
+        (EwkDatabaseManager::getDatabaseOrigins):
+        * UIProcess/API/efl/ewk_database_manager_private.h:
+        * UIProcess/efl/WebProcessPoolEfl.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory):
+
+2015-12-20  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused setToolbarHeight
+        https://bugs.webkit.org/show_bug.cgi?id=152466
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/WebInspectorProxy.cpp:
+        (WebKit::WebInspectorProxy::platformSetToolbarHeight): Deleted.
+        * UIProcess/WebInspectorProxy.h:
+        (WebKit::WebInspectorProxy::setToolbarHeight): Deleted.
+        * UIProcess/WebInspectorProxy.messages.in:
+        * UIProcess/efl/WebInspectorProxyEfl.cpp:
+        (WebKit::WebInspectorProxy::platformSetToolbarHeight): Deleted.
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::platformSetToolbarHeight): Deleted.
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::WebInspectorProxy::platformSetToolbarHeight): Deleted.
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        (WebKit::WebInspectorUI::setToolbarHeight): Deleted.
+        * WebProcess/WebPage/WebInspectorUI.h:
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        - Removed build setting definitions for OS X 10.9 and earlier, and simplified defintions
+          that became uniform across all OS X versions as a result:
+
+        * Configurations/BaseTarget.xcconfig:
+        * Configurations/BaseXPCService.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKit.xcconfig:
+
+        - Removed the definition of BUNDLE_LOCALIZATION_KEY:
+
+        * Configurations/WebContentService.Development.xcconfig:
+        * Configurations/WebContentService.xcconfig:
+
+        - Added CFBundleFollowParentLocalization set to true:
+
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info-OSX.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info-iOS.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX-10.9-10.10.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-iOS.plist:
+
+        * WebKit2.xcodeproj/project.pbxproj: Removed the “Add CFBundle Localization Info.plist Key”
+          script build phases from the Web Content Service targets.
+
+        - Simplified expressions involving __MAC_OS_X_VERSION_MIN_REQUIRED and removed code that was
+          never getting compiled:
+
+        * DatabaseProcess/mac/com.apple.WebKit.Databases.sb.in:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * Platform/IPC/mac/ConnectionMac.mm:
+        * Platform/IPC/mac/ImportanceAssertion.h:
+        * Platform/mac/MenuUtilities.h:
+        * Platform/mac/MenuUtilities.mm:
+        * Platform/mac/StringUtilities.h:
+        * Platform/mac/StringUtilities.mm:
+        * Shared/API/Cocoa/WKFoundation.h:
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm:
+        * UIProcess/API/Cocoa/WKViewPrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        * UIProcess/mac/PageClientImpl.mm:
+        * UIProcess/mac/WKImmediateActionController.h:
+        * UIProcess/mac/WKImmediateActionController.mm:
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        * WebProcess/WebPage/FindController.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/com.apple.WebProcess.sb.in:
+        * config.h:
+
+2015-12-18  Antti Koivisto  <antti@apple.com>
+
+        Cache redirects as separate entries
+        https://bugs.webkit.org/show_bug.cgi?id=152424
+
+        Reviewed by Alex Christensen.
+
+        We are currently caching redirect chains. This has correctness issues and can be inefficient in cases
+        where multiple URLs redirect to the same destination.
+
+        After this patch we write a cache entry for each redirect individually.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::sharedWillSendRedirectedRequest):
+        * NetworkProcess/NetworkLoad.h:
+        (WebKit::NetworkLoad::currentRequest):
+        (WebKit::NetworkLoad::clearCurrentRequest):
+        * NetworkProcess/NetworkLoadClient.h:
+
+            Add original request as a parameter for willSendRedirectedRequest.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::~NetworkResourceLoader):
+        (WebKit::NetworkResourceLoader::canUseCache):
+
+            Factor to a function.
+
+        (WebKit::NetworkResourceLoader::isSynchronous):
+        (WebKit::NetworkResourceLoader::start):
+        (WebKit::NetworkResourceLoader::retrieveCacheEntry):
+
+            Factor to a function.
+            Call dispatchWillSendRequestForCacheEntry for cached redirects.
+
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+
+            Make this take request as argument instead of always loading originalRequest().
+
+        (WebKit::NetworkResourceLoader::abort):
+        (WebKit::NetworkResourceLoader::didFinishLoading):
+
+            Remove redirect chain code.
+            Store cache entry for current request instead of the original request.
+
+        (WebKit::NetworkResourceLoader::didFailLoading):
+        (WebKit::NetworkResourceLoader::willSendRedirectedRequest):
+
+            Write cache entry for redirect.
+
+        (WebKit::NetworkResourceLoader::continueWillSendRequest):
+
+            If we are playing back cached redirect continue with another cache lookup.
+
+        (WebKit::NetworkResourceLoader::didRetrieveCacheEntry):
+
+            No need to synthesize fake willSendRequest anymore.
+
+        (WebKit::NetworkResourceLoader::validateCacheEntry):
+        (WebKit::NetworkResourceLoader::dispatchWillSendRequestForCacheEntry):
+
+            Route via web process willSendRequest so cached redirects looks exactly like network ones.
+
+        (WebKit::NetworkResourceLoader::messageSenderConnection):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::makeUseDecision):
+
+            Ignore validation headers for cached redirects.
+
+        (WebKit::NetworkCache::makeRetrieveDecision):
+        (WebKit::NetworkCache::makeStoreDecision):
+        (WebKit::NetworkCache::Cache::retrieve):
+        (WebKit::NetworkCache::Cache::store):
+
+            Rename originalRequest -> request since it is not really the original request anymore in all cases.
+
+        (WebKit::NetworkCache::Cache::storeRedirect):
+
+            Stored redirects include the network layer generated ResourceRequest instead of body data.
+
+        (WebKit::NetworkCache::Cache::update):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::Entry):
+
+            New constructor for making redirect entries.
+
+        (WebKit::NetworkCache::Entry::encodeAsStorageRecord):
+        (WebKit::NetworkCache::Entry::decodeStorageRecord):
+
+            Encoding support.
+
+        * NetworkProcess/cache/NetworkCacheEntry.h:
+        (WebKit::NetworkCache::Entry::varyingRequestHeaders):
+        (WebKit::NetworkCache::Entry::redirectRequest):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::~SpeculativeLoad):
+        (WebKit::NetworkCache::SpeculativeLoad::willSendRedirectedRequest):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.cpp:
+        (WebKit::NetworkCache::cachedEntryReuseFailureToDiagnosticKey):
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Avoid triggering clang's -Wundefined-bool-conversion
+        https://bugs.webkit.org/show_bug.cgi?id=152408
+
+        Reviewed by Mark Lam.
+
+        Use ASSERT_THIS_GC_OBJECT_INHERITS where needed.
+
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        (WebKit::JSNPObject::callMethod):
+        (WebKit::JSNPObject::callObject):
+        (WebKit::JSNPObject::callConstructor):
+        (WebKit::JSNPObject::deleteProperty):
+
+2015-12-15  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WebDatabaseManager, it's been replaced by WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=152318
+
+        Reviewed by Tim Horton.
+
+        Build fixes by Ossy.
+
+        * DerivedSources.make:
+        * Shared/API/APIObject.h:
+        * Shared/API/c/WKBase.h:
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetDatabaseManager): Deleted.
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/C/WKDatabaseManager.cpp: Removed.
+        (WKDatabaseManagerGetTypeID): Deleted.
+        (WKDatabaseManagerGetOriginKey): Deleted.
+        (WKDatabaseManagerGetOriginQuotaKey): Deleted.
+        (WKDatabaseManagerGetOriginUsageKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsNameKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsDisplayNameKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsExpectedUsageKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsCurrentUsageKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsCreationTimeKey): Deleted.
+        (WKDatabaseManagerGetDatabaseDetailsModificationTimeKey): Deleted.
+        (WKDatabaseManagerSetClient): Deleted.
+        (WKDatabaseManagerGetDatabasesByOrigin): Deleted.
+        (WKDatabaseManagerGetDatabaseOrigins): Deleted.
+        (WKDatabaseManagerDeleteDatabasesWithNameForOrigin): Deleted.
+        (WKDatabaseManagerDeleteDatabasesForOrigin): Deleted.
+        (WKDatabaseManagerDeleteAllDatabases): Deleted.
+        (WKDatabaseManagerSetQuotaForOrigin): Deleted.
+        * UIProcess/API/C/WKDatabaseManager.h: Removed.
+        * UIProcess/WebDatabaseManagerProxy.cpp: Removed.
+        (WebKit::WebDatabaseManagerProxy::supplementName): Deleted.
+        (WebKit::WebDatabaseManagerProxy::originKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::originQuotaKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::originUsageKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsNameKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsDisplayNameKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsExpectedUsageKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsCurrentUsageKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsCreationTimeKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::databaseDetailsModificationTimeKey): Deleted.
+        (WebKit::WebDatabaseManagerProxy::create): Deleted.
+        (WebKit::WebDatabaseManagerProxy::WebDatabaseManagerProxy): Deleted.
+        (WebKit::WebDatabaseManagerProxy::~WebDatabaseManagerProxy): Deleted.
+        (WebKit::WebDatabaseManagerProxy::initializeClient): Deleted.
+        (WebKit::WebDatabaseManagerProxy::processPoolDestroyed): Deleted.
+        (WebKit::WebDatabaseManagerProxy::processDidClose): Deleted.
+        (WebKit::WebDatabaseManagerProxy::shouldTerminate): Deleted.
+        (WebKit::WebDatabaseManagerProxy::refWebContextSupplement): Deleted.
+        (WebKit::WebDatabaseManagerProxy::derefWebContextSupplement): Deleted.
+        (WebKit::WebDatabaseManagerProxy::getDatabasesByOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::didGetDatabasesByOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::getDatabaseOrigins): Deleted.
+        (WebKit::WebDatabaseManagerProxy::didGetDatabaseOrigins): Deleted.
+        (WebKit::WebDatabaseManagerProxy::deleteDatabaseWithNameForOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::deleteDatabasesForOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::deleteAllDatabases): Deleted.
+        (WebKit::WebDatabaseManagerProxy::setQuotaForOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::didModifyOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxy::didModifyDatabase): Deleted.
+        * UIProcess/WebDatabaseManagerProxy.h: Removed.
+        * UIProcess/WebDatabaseManagerProxy.messages.in: Removed.
+        * UIProcess/WebDatabaseManagerProxyClient.cpp: Removed.
+        (WebKit::WebDatabaseManagerProxyClient::didModifyOrigin): Deleted.
+        (WebKit::WebDatabaseManagerProxyClient::didModifyDatabase): Deleted.
+        * UIProcess/WebDatabaseManagerProxyClient.h: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        * WebProcess/WebCoreSupport/WebDatabaseManager.cpp: Removed.
+        (WebKit::WebDatabaseManager::supplementName): Deleted.
+        (WebKit::WebDatabaseManager::WebDatabaseManager): Deleted.
+        (WebKit::WebDatabaseManager::initialize): Deleted.
+        (WebKit::WebDatabaseManager::getDatabasesByOrigin): Deleted.
+        (WebKit::WebDatabaseManager::getDatabaseOrigins): Deleted.
+        (WebKit::WebDatabaseManager::deleteDatabaseWithNameForOrigin): Deleted.
+        (WebKit::WebDatabaseManager::deleteDatabasesForOrigin): Deleted.
+        (WebKit::WebDatabaseManager::deleteAllDatabases): Deleted.
+        (WebKit::WebDatabaseManager::closeAllDatabases): Deleted.
+        (WebKit::WebDatabaseManager::setQuotaForOrigin): Deleted.
+        (WebKit::WebDatabaseManager::dispatchDidModifyOrigin): Deleted.
+        (WebKit::WebDatabaseManager::dispatchDidModifyDatabase): Deleted.
+        * WebProcess/WebCoreSupport/WebDatabaseManager.h: Removed.
+        * WebProcess/WebCoreSupport/WebDatabaseManager.messages.in: Removed.
+        * WebProcess/WebCoreSupport/ios/WebDatabaseManagerIOS.mm: Removed.
+        (WebKit::WebDatabaseManager::dispatchDidAddNewOrigin): Deleted.
+        (WebKit::WebDatabaseManager::dispatchDidDeleteDatabase): Deleted.
+        (WebKit::WebDatabaseManager::dispatchDidDeleteDatabaseOrigin): Deleted.
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::processWillSuspendImminently):
+        (WebKit::m_webSQLiteDatabaseTracker): Deleted.
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed, fix GtkDoc after r193620
+
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+
+2015-12-18  Dan Bernstein  <mitz@apple.com>
+
+        WebPage::didCompleteUserMediaPermissionCheck and WebPage::didReceiveUserMediaPermissionDecision are exported
+        https://bugs.webkit.org/show_bug.cgi?id=152429
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/WebPage.h: Removed WK_EXPORT specifiers from these two declarations.
+
+2015-12-18  Alex Christensen  <achristensen@webkit.org>
+
+        Move networking code from Shared to NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=152421
+
+        Reviewed by Antti Koivisto.
+
+        Since recently removing the non-NetworkProcess configurations, this code is no longer shared with the WebProcess.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * NetworkProcess/CustomProtocols: Copied from Source/WebKit2/Shared/Network/CustomProtocols.
+        * NetworkProcess/Downloads: Copied from Source/WebKit2/Shared/Downloads.
+        * NetworkProcess/Downloads/Download.cpp: Copied from Source/WebKit2/Shared/Downloads/Download.cpp.
+        * NetworkProcess/Downloads/Download.h: Copied from Source/WebKit2/Shared/Downloads/Download.h.
+        * NetworkProcess/Downloads/DownloadID.h: Copied from Source/WebKit2/Shared/Downloads/DownloadID.h.
+        * NetworkProcess/Downloads/DownloadManager.cpp: Copied from Source/WebKit2/Shared/Downloads/DownloadManager.cpp.
+        * NetworkProcess/Downloads/DownloadManager.h: Copied from Source/WebKit2/Shared/Downloads/DownloadManager.h.
+        * NetworkProcess/NetworkProcessCreationParameters.cpp: Copied from Source/WebKit2/Shared/Network/NetworkProcessCreationParameters.cpp.
+        * NetworkProcess/NetworkProcessCreationParameters.h: Copied from Source/WebKit2/Shared/Network/NetworkProcessCreationParameters.h.
+        * NetworkProcess/NetworkProcessSupplement.h: Copied from Source/WebKit2/Shared/Network/NetworkProcessSupplement.h.
+        * NetworkProcess/NetworkResourceLoadParameters.cpp: Copied from Source/WebKit2/Shared/Network/NetworkResourceLoadParameters.cpp.
+        * NetworkProcess/NetworkResourceLoadParameters.h: Copied from Source/WebKit2/Shared/Network/NetworkResourceLoadParameters.h.
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * Shared/Downloads: Removed.
+        * Shared/Downloads/Download.cpp: Removed.
+        * Shared/Downloads/Download.h: Removed.
+        * Shared/Downloads/DownloadAuthenticationClient.cpp: Removed.
+        * Shared/Downloads/DownloadAuthenticationClient.h: Removed.
+        * Shared/Downloads/DownloadID.h: Removed.
+        * Shared/Downloads/DownloadManager.cpp: Removed.
+        * Shared/Downloads/DownloadManager.h: Removed.
+        * Shared/Downloads/cocoa: Removed.
+        * Shared/Downloads/cocoa/DownloadCocoa.mm: Removed.
+        * Shared/Downloads/efl: Removed.
+        * Shared/Downloads/efl/DownloadSoupErrorsEfl.cpp: Removed.
+        * Shared/Downloads/gtk: Removed.
+        * Shared/Downloads/gtk/DownloadSoupErrorsGtk.cpp: Removed.
+        * Shared/Downloads/ios: Removed.
+        * Shared/Downloads/ios/DownloadIOS.mm: Removed.
+        * Shared/Downloads/mac: Removed.
+        * Shared/Downloads/mac/DownloadMac.mm: Removed.
+        * Shared/Downloads/soup: Removed.
+        * Shared/Downloads/soup/DownloadSoup.cpp: Removed.
+        * Shared/Downloads/soup/DownloadSoupErrors.h: Removed.
+        * Shared/Network: Removed.
+        * Shared/Network/CustomProtocols: Removed.
+        * Shared/Network/CustomProtocols/Cocoa: Removed.
+        * Shared/Network/CustomProtocols/Cocoa/CustomProtocolManagerCocoa.mm: Removed.
+        * Shared/Network/CustomProtocols/CustomProtocolManager.h: Removed.
+        * Shared/Network/CustomProtocols/CustomProtocolManager.messages.in: Removed.
+        * Shared/Network/CustomProtocols/soup: Removed.
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.cpp: Removed.
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerImpl.h: Removed.
+        * Shared/Network/CustomProtocols/soup/CustomProtocolManagerSoup.cpp: Removed.
+        * Shared/Network/NetworkProcessCreationParameters.cpp: Removed.
+        * Shared/Network/NetworkProcessCreationParameters.h: Removed.
+        * Shared/Network/NetworkProcessSupplement.h: Removed.
+        * Shared/Network/NetworkResourceLoadParameters.cpp: Removed.
+        * Shared/Network/NetworkResourceLoadParameters.h: Removed.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        LayerTreeHostGtk triggers -Wunused-private-field
+        https://bugs.webkit.org/show_bug.cgi?id=152410
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the unused member variable.
+
+        * WebProcess/WebPage/gtk/LayerTreeHostGtk.h:
+
 2015-12-18  Alex Christensen  <achristensen@webkit.org>
 
         Add types for DownloadID and TaskIdentifier

@@ -3570,6 +3570,23 @@ void testBitwiseCastOnDoubleInMemory(double value)
     CHECK(isIdentical(compileAndRun<int64_t>(proc, &value), bitwise_cast<int64_t>(value)));
 }
 
+void testBitwiseCastOnDoubleInMemoryIndexed(double value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* scaledOffset = root->appendNew<Value>(proc, Shl, Origin(),
+        offset,
+        root->appendNew<Const32Value>(proc, Origin(), 3));
+    Value* address = root->appendNew<Value>(proc, Add, Origin(), base, scaledOffset);
+    MemoryValue* loadDouble = root->appendNew<MemoryValue>(proc, Load, Double, Origin(), address);
+    Value* cast = root->appendNew<Value>(proc, BitwiseCast, Origin(), loadDouble);
+    root->appendNew<ControlValue>(proc, Return, Origin(), cast);
+
+    CHECK(isIdentical(compileAndRun<int64_t>(proc, &value, 0), bitwise_cast<int64_t>(value)));
+}
+
 void testInt64BArgToDoubleBitwiseCast(int64_t value)
 {
     Procedure proc;
@@ -3620,6 +3637,23 @@ void testBitwiseCastOnInt64InMemory(int64_t value)
     root->appendNew<ControlValue>(proc, Return, Origin(), cast);
 
     CHECK(isIdentical(compileAndRun<double>(proc, &value), bitwise_cast<double>(value)));
+}
+
+void testBitwiseCastOnInt64InMemoryIndexed(int64_t value)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* scaledOffset = root->appendNew<Value>(proc, Shl, Origin(),
+        offset,
+        root->appendNew<Const32Value>(proc, Origin(), 3));
+    Value* address = root->appendNew<Value>(proc, Add, Origin(), base, scaledOffset);
+    MemoryValue* loadDouble = root->appendNew<MemoryValue>(proc, Load, Int64, Origin(), address);
+    Value* cast = root->appendNew<Value>(proc, BitwiseCast, Origin(), loadDouble);
+    root->appendNew<ControlValue>(proc, Return, Origin(), cast);
+
+    CHECK(isIdentical(compileAndRun<double>(proc, &value, 0), bitwise_cast<double>(value)));
 }
 
 void testFloatImmToInt32BitwiseCast(float value)
@@ -4008,6 +4042,84 @@ void testStorePartial8BitRegisterOnX86()
     int8_t storage = 0xff;
     CHECK(compileAndRun<int64_t>(proc, 0x12345678abcdef12, &storage) == 0x12345678abcdef12);
     CHECK(!storage);
+}
+
+void testStore16Arg()
+{
+    { // Direct addressing.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        Value* value = root->appendNew<Value>(proc, Trunc, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+
+        root->appendNew<MemoryValue>(proc, Store16, Origin(), value, address);
+        root->appendNew<ControlValue>(proc, Return, Origin(), value);
+
+        int16_t storage = -1;
+        CHECK(compileAndRun<int64_t>(proc, 42, &storage) == 42);
+        CHECK(storage == 42);
+    }
+
+    { // Indexed addressing.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        Value* value = root->appendNew<Value>(proc, Trunc, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+        Value* displacement = root->appendNew<Const64Value>(proc, Origin(), -1);
+
+        Value* baseDisplacement = root->appendNew<Value>(proc, Add, Origin(), displacement, base);
+        Value* address = root->appendNew<Value>(proc, Add, Origin(), baseDisplacement, offset);
+
+        root->appendNew<MemoryValue>(proc, Store16, Origin(), value, address);
+        root->appendNew<ControlValue>(proc, Return, Origin(), value);
+
+        int16_t storage = -1;
+        CHECK(compileAndRun<int64_t>(proc, 42, &storage, 1) == 42);
+        CHECK(storage == 42);
+    }
+}
+
+void testStore16Imm()
+{
+    { // Direct addressing.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        Value* value = root->appendNew<Const32Value>(proc, Origin(), 42);
+        Value* address = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+
+        root->appendNew<MemoryValue>(proc, Store16, Origin(), value, address);
+        root->appendNew<ControlValue>(proc, Return, Origin(), value);
+
+        int16_t storage = -1;
+        CHECK(compileAndRun<int64_t>(proc, &storage) == 42);
+        CHECK(storage == 42);
+    }
+
+    { // Indexed addressing.
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+
+        Value* value = root->appendNew<Const32Value>(proc, Origin(), 42);
+        Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* offset = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* displacement = root->appendNew<Const64Value>(proc, Origin(), -1);
+
+        Value* baseDisplacement = root->appendNew<Value>(proc, Add, Origin(), displacement, base);
+        Value* address = root->appendNew<Value>(proc, Add, Origin(), baseDisplacement, offset);
+
+        root->appendNew<MemoryValue>(proc, Store16, Origin(), value, address);
+        root->appendNew<ControlValue>(proc, Return, Origin(), value);
+
+        int16_t storage = -1;
+        CHECK(compileAndRun<int64_t>(proc, &storage, 1) == 42);
+        CHECK(storage == 42);
+    }
 }
 
 void testTrunc(int64_t value)
@@ -5062,6 +5174,290 @@ void testBranchEqualEqual1()
     CHECK(invoke<int>(*code, 0) == 0);
 }
 
+void testBranchEqualOrUnorderedArgs(double a, double b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+    Value* argumentB = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, a, b) == expected);
+}
+
+void testBranchEqualOrUnorderedArgs(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* argumentB = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, &a, &b) == expected);
+}
+
+void testBranchNotEqualAndOrderedArgs(double a, double b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+    Value* argumentB = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
+    Value* equalOrUnordered = root->appendNew<Value>(
+        proc, EqualOrUnordered, Origin(),
+        argumentA,
+        argumentB);
+    Value* notEqualAndOrdered = root->appendNew<Value>(
+        proc, Equal, Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), 0),
+        equalOrUnordered);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        notEqualAndOrdered,
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (!std::isunordered(a, b) && a != b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, a, b) == expected);
+}
+
+void testBranchNotEqualAndOrderedArgs(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* argumentB = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* equalOrUnordered = root->appendNew<Value>(
+        proc, EqualOrUnordered, Origin(),
+        argumentA,
+        argumentB);
+    Value* notEqualAndOrdered = root->appendNew<Value>(
+        proc, Equal, Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), 0),
+        equalOrUnordered);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        notEqualAndOrdered,
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (!std::isunordered(a, b) && a != b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, &a, &b) == expected);
+}
+
+void testBranchEqualOrUnorderedDoubleArgImm(double a, double b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
+    Value* argumentB = root->appendNew<ConstDoubleValue>(proc, Origin(), b);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, a) == expected);
+}
+
+void testBranchEqualOrUnorderedFloatArgImm(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* argumentB = root->appendNew<ConstFloatValue>(proc, Origin(), b);
+
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, &a) == expected);
+}
+
+void testBranchEqualOrUnorderedDoubleImms(double a, double b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<ConstDoubleValue>(proc, Origin(), a);
+    Value* argumentB = root->appendNew<ConstDoubleValue>(proc, Origin(), b);
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc) == expected);
+}
+
+void testBranchEqualOrUnorderedFloatImms(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argumentA = root->appendNew<ConstFloatValue>(proc, Origin(), a);
+    Value* argumentB = root->appendNew<ConstFloatValue>(proc, Origin(), b);
+
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argumentA,
+            argumentB),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc) == expected);
+}
+
+void testBranchEqualOrUnorderedFloatWithUselessDoubleConversion(float a, float b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* argument1 = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* argument2 = root->appendNew<MemoryValue>(proc, Load, Float, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* argument1AsDouble = root->appendNew<Value>(proc, FloatToDouble, Origin(), argument1);
+    Value* argument2AsDouble = root->appendNew<Value>(proc, FloatToDouble, Origin(), argument2);
+
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, EqualOrUnordered, Origin(),
+            argument1AsDouble,
+            argument2AsDouble),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -13));
+
+    int64_t expected = (std::isunordered(a, b) || a == b) ? 42 : -13;
+    CHECK(compileAndRun<int64_t>(proc, &a, &b) == expected);
+}
+
 void testBranchFold(int value)
 {
     Procedure proc;
@@ -6048,6 +6444,61 @@ void testCheckMegaCombo()
     CHECK(invoke<int>(*code, &value - 2, 1) == 42);
     value = -1;
     CHECK(invoke<int>(*code, &value - 2, 1) == 42);
+}
+
+void testCheckTrickyMegaCombo()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* index = root->appendNew<Value>(
+        proc, ZExt32, Origin(),
+        root->appendNew<Value>(
+            proc, Add, Origin(),
+            root->appendNew<Value>(
+                proc, Trunc, Origin(),
+                root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1)),
+            root->appendNew<Const32Value>(proc, Origin(), 1)));
+
+    Value* ptr = root->appendNew<Value>(
+        proc, Add, Origin(), base,
+        root->appendNew<Value>(
+            proc, Shl, Origin(), index,
+            root->appendNew<Const32Value>(proc, Origin(), 1)));
+    
+    CheckValue* check = root->appendNew<CheckValue>(
+        proc, Check, Origin(),
+        root->appendNew<Value>(
+            proc, LessThan, Origin(),
+            root->appendNew<MemoryValue>(proc, Load8S, Origin(), ptr),
+            root->appendNew<Const32Value>(proc, Origin(), 42)));
+    check->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            CHECK(!params.size());
+
+            // This should always work because a function this simple should never have callee
+            // saves.
+            jit.move(CCallHelpers::TrustedImm32(42), GPRInfo::returnValueGPR);
+            jit.emitFunctionEpilogue();
+            jit.ret();
+        });
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+
+    auto code = compile(proc);
+
+    int8_t value;
+    value = 42;
+    CHECK(invoke<int>(*code, &value - 2, 0) == 0);
+    value = 127;
+    CHECK(invoke<int>(*code, &value - 2, 0) == 0);
+    value = 41;
+    CHECK(invoke<int>(*code, &value - 2, 0) == 42);
+    value = 0;
+    CHECK(invoke<int>(*code, &value - 2, 0) == 42);
+    value = -1;
+    CHECK(invoke<int>(*code, &value - 2, 0) == 42);
 }
 
 void testCheckTwoMegaCombos()
@@ -7135,6 +7586,20 @@ void testCompare(B3::Opcode opcode, int left, int right)
     variants(-left, right);
     variants(left, -right);
     variants(-left, -right);
+}
+
+void testEqualDouble(double left, double right, bool result)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    root->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, Equal, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1)));
+
+    CHECK(compileAndRun<bool>(proc, left, right) == result);
 }
 
 int simpleFunction(int a, int b)
@@ -9019,10 +9484,12 @@ void run(const char* filter)
     RUN_UNARY(testDoubleImmToInt64BitwiseCast, floatingPointOperands<double>());
     RUN_UNARY(testTwoBitwiseCastOnDouble, floatingPointOperands<double>());
     RUN_UNARY(testBitwiseCastOnDoubleInMemory, floatingPointOperands<double>());
+    RUN_UNARY(testBitwiseCastOnDoubleInMemoryIndexed, floatingPointOperands<double>());
     RUN_UNARY(testInt64BArgToDoubleBitwiseCast, int64Operands());
     RUN_UNARY(testInt64BImmToDoubleBitwiseCast, int64Operands());
     RUN_UNARY(testTwoBitwiseCastOnInt64, int64Operands());
     RUN_UNARY(testBitwiseCastOnInt64InMemory, int64Operands());
+    RUN_UNARY(testBitwiseCastOnInt64InMemoryIndexed, int64Operands());
     RUN_UNARY(testFloatImmToInt32BitwiseCast, floatingPointOperands<float>());
     RUN_UNARY(testBitwiseCastOnFloatInMemory, floatingPointOperands<float>());
     RUN_UNARY(testInt32BArgToFloatBitwiseCast, int32Operands());
@@ -9048,6 +9515,8 @@ void run(const char* filter)
     RUN(testStore8Arg());
     RUN(testStore8Imm());
     RUN(testStorePartial8BitRegisterOnX86());
+    RUN(testStore16Arg());
+    RUN(testStore16Imm());
     RUN(testTrunc((static_cast<int64_t>(1) << 40) + 42));
     RUN(testAdd1(45));
     RUN(testAdd1Ptr(51));
@@ -9086,6 +9555,17 @@ void run(const char* filter)
     RUN(testBranchEqualEqual());
     RUN(testBranchEqualCommute());
     RUN(testBranchEqualEqual1());
+    RUN_BINARY(testBranchEqualOrUnorderedArgs, floatingPointOperands<double>(), floatingPointOperands<double>());
+    RUN_BINARY(testBranchEqualOrUnorderedArgs, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBranchNotEqualAndOrderedArgs, floatingPointOperands<double>(), floatingPointOperands<double>());
+    RUN_BINARY(testBranchNotEqualAndOrderedArgs, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBranchEqualOrUnorderedDoubleArgImm, floatingPointOperands<double>(), floatingPointOperands<double>());
+    RUN_BINARY(testBranchEqualOrUnorderedFloatArgImm, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBranchEqualOrUnorderedDoubleImms, floatingPointOperands<double>(), floatingPointOperands<double>());
+    RUN_BINARY(testBranchEqualOrUnorderedFloatImms, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBranchEqualOrUnorderedFloatWithUselessDoubleConversion, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBranchNotEqualAndOrderedArgs, floatingPointOperands<double>(), floatingPointOperands<double>());
+    RUN_BINARY(testBranchNotEqualAndOrderedArgs, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN(testBranchFold(42));
     RUN(testBranchFold(0));
     RUN(testDiamondFold(42));
@@ -9129,6 +9609,7 @@ void run(const char* filter)
     RUN(testSimpleCheck());
     RUN(testCheckLessThan());
     RUN(testCheckMegaCombo());
+    RUN(testCheckTrickyMegaCombo());
     RUN(testCheckTwoMegaCombos());
     RUN(testCheckTwoNonRedundantMegaCombos());
     RUN(testCheckAddImm());
@@ -9166,6 +9647,13 @@ void run(const char* filter)
 
     RUN(testCompare(BitAnd, 42, 42));
     RUN(testCompare(BitAnd, 42, 0));
+
+    RUN(testEqualDouble(42, 42, true));
+    RUN(testEqualDouble(0, -0, true));
+    RUN(testEqualDouble(42, 43, false));
+    RUN(testEqualDouble(PNaN, 42, false));
+    RUN(testEqualDouble(42, PNaN, false));
+    RUN(testEqualDouble(PNaN, PNaN, false));
 
     RUN(testLoad<Int32>(60));
     RUN(testLoad<Int32>(-60));

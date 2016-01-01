@@ -1,3 +1,250 @@
+2015-12-31  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: "No Filter Results" message overlaps Debugger sidebar sections
+        https://bugs.webkit.org/show_bug.cgi?id=150608
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.showResourcesWithIssuesOnlyFilterFunction):
+        Style cleanup.
+        (WebInspector.DebuggerSidebarPanel):
+        Add breakpoints tree to the details section before adding Global Breakpoint
+        elements, since adding them will trigger filtering.
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        Simplified selection management between the various tree outlines.
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        Style cleanup.
+        (WebInspector.DebuggerSidebarPanel.prototype.get hasSelectedElement): Deleted.
+        Defer to the base class implementation.
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange.deselectCallStackContentTreeElements): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange.deselectBreakpointContentTreeElements): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange.deselectPauseReasonContentTreeElements): Deleted.
+        These are no longer needed, since the list of visible tree elements list can be used
+        to manage tree element selection is a more general way.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        Empty content placeholders are now inserted into the DOM as a sibling of the
+        tree that was filtered. As such, they can be a child of a details section, or
+        the sidebar's content element.
+        (.sidebar > .panel.navigation > .content .empty-content-placeholder):
+        Styles for all empty content placeholders.
+        (.sidebar > .panel.navigation > .content > .empty-content-placeholder):
+        Styles for empty content placeholders that fill the sidebar's content element.
+        (.sidebar > .panel.navigation > .content .message):
+        Styles for all empty content placeholders.
+        (.sidebar > .panel.navigation > .empty-content-placeholder): Deleted.
+        (.sidebar > .panel.navigation > .empty-content-placeholder > .message): Deleted.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        Track the tree outline which currently has a selection.
+        Manage a map of content placeholders
+        (WebInspector.NavigationSidebarPanel.prototype.set contentTreeOutline):
+        (WebInspector.NavigationSidebarPanel.prototype.get hasSelectedElement):
+        Check all visible content trees for a selected element.
+        (WebInspector.NavigationSidebarPanel.prototype.createContentTreeOutline):
+        (WebInspector.NavigationSidebarPanel.prototype.treeElementForRepresentedObject):
+        Check all visible content trees for the represented object.
+        (WebInspector.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        (WebInspector.NavigationSidebarPanel.prototype.hideEmptyContentPlaceholder):
+        (WebInspector.NavigationSidebarPanel.prototype.updateEmptyContentPlaceholder):
+        No sidebars currently have more than one filterable content tree outline, but in
+        the future we will want to support this. Empty content placeholder visibility
+        is now done per tree outline.
+        (WebInspector.NavigationSidebarPanel.prototype.show):
+        Focus the tree outline that most recently had the selection, or the
+        first tree outline in the visible tree list, if it exists.
+        (WebInspector.NavigationSidebarPanel.prototype._checkForEmptyFilterResults.checkTreeOutlineForEmptyFilterResults):
+        Tree is considered filtered if no visible filterable tree elements are found.
+        (WebInspector.NavigationSidebarPanel.prototype._checkForEmptyFilterResults):
+        Check all visible trees that support filtering.
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        Support for filtering multiple content trees.
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        Check if the element's tree outline supports filtering, before applying filters.
+        (WebInspector.NavigationSidebarPanel.prototype._treeSelectionDidChange):
+        Update the selected tree outline.
+        (WebInspector.NavigationSidebarPanel.prototype._createEmptyContentPlaceholderIfNeeded):
+        Create a new empty content placeholder element for the tree.
+        (WebInspector.NavigationSidebarPanel.prototype.get contentTreeOutlineElement): Deleted.
+        No longer used.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.get hasSelectedElement): Deleted.
+        Defer to the base class implementation.
+
+2015-12-29  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Styling of invalid selector persists when changing the selected node
+        https://bugs.webkit.org/show_bug.cgi?id=152456
+
+        Reviewed by Brian Burg.
+
+        If the user changes the selector of a CSS rule to be invalid (e.g. having
+        a { or ; character), it is expected that the invalid indicator will be removed
+        once the user changes nodes or reverts the selector to its previous value.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header > .icon.toggle-able:hover):
+        (.style-declaration-section > .header > .icon.toggle-able:active):
+        (.style-declaration-section:not(.invalid-selector) > .header > .icon.toggle-able:hover): Deleted.
+        Added better :hover and :active styles.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleIconElementClicked):
+        If the selector is invalid, simply refresh the section to regenerate the
+        original selector with correct content, specificity, and highlighting.
+
+        (WebInspector.CSSStyleDeclarationSection.prototype.get _hasInvalidSelector): Deleted.
+        Moved the state of the invalid selector to a member
+        variable instead of a DOM class.
+
+        (WebInspector.CSSStyleDeclarationSection.prototype._updateSelectorIcon):
+        Renamed from _markSelector for clarity.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item.selector-invalid > .icon:hover):
+        (.item.visual-style-selector-item.selector-invalid > .icon:active):
+        (.item.visual-style-selector-item.selector-invalid > .icon):
+        Added :hover and :active styles.
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.onattach):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._commitSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._updateSelectorIcon):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleIconElementClicked):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._selectorChanged): Deleted.
+        Changed the names of a few functions to provide better
+        consistency across the classes in the Style sidebar.
+
+2015-12-27  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: improve pre-filled bugzilla link on Uncaught Exception reporter sheet
+        https://bugs.webkit.org/show_bug.cgi?id=152402
+
+        Reviewed by Joseph Pecoraro.
+
+        Include the UA string, inspected page URL, and a template that includes
+        steps to reproduce and notes. Other common headings (regression, expected,
+        results, summary) are omitted because they are unlikely to be known when
+        an uncaught exception occurs, or are obvious ("shouldn't throw exception").
+
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+
+2015-12-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        WebInspector: Can't open a new tab: Uncaught Exception: TypeError: this.isNewTabWithTypeAllowed is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=152471
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._updateNewTabButtonState):
+        Don't use arrow functions because of https://webkit.org/b/152497 "Arrow functions: 'this' isn't lexically bound"
+
+2015-12-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Remove unused WebInspector.Object.removeAllListeners
+        https://bugs.webkit.org/show_bug.cgi?id=152474
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Object.js:
+        (WebInspector.Object.removeAllListeners): Deleted.
+        (WebInspector.Object.prototype.removeAllListeners): Deleted.
+
+2015-12-20  Dan Bernstein  <mitz@apple.com>
+
+        Remove unused setToolbarHeight
+        https://bugs.webkit.org/show_bug.cgi?id=152466
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Protocol/InspectorFrontendHostStub.js:
+        (window.InspectorFrontendHost.WebInspector.InspectorFrontendHostStub.prototype.setToolbarHeight): Deleted.
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        - Removed build setting definitions for OS X 10.9 and earlier, and simplified defintions
+          that became uniform across all OS X versions as a result:
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
+        * Scripts/copy-user-interface-resources.pl: Removed code to delete Images/Legacy.
+
+        * UserInterface/Images/Legacy: Removed this empty directory.
+
+2015-12-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Make it possible to debug injected scripts when the Debug UI is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=152445
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        Added function to check for debug UI.
+
+        * UserInterface/Base/Object.js:
+        Added notification for debug UI enabled state change.
+
+        * UserInterface/Base/Utilities.js:
+        (isWebInspectorInternalScript):
+        (isWebInspectorDebugScript):
+        Added functions to check for internal and debug inspector scripts.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager):
+        Maintain a list of inspector debug scripts, so that the manager can
+        add and remove them when the debug UI is enabled/disabled.
+        (WebInspector.DebuggerManager.prototype.get knownNonResourceScripts):
+        (WebInspector.DebuggerManager.prototype.reset):
+        Clear the list of inspector debug scripts.
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        Skip internal inspector scripts. Debug inspector scripts are tracked,
+        and an added event is dispatched if the debug UI is enabled.
+        (WebInspector.DebuggerManager.prototype._debugUIEnabledDidChange):
+        Dispatch added/removed events for inspector debug scripts.
+
+        * UserInterface/Debug/Bootstrap.js:
+        (WebInspector.runBootstrapOperations):
+        Expose changes to the debug UI setting to the reset of the UI, by dispatching
+        a WebInspector.Notification.DebugUIEnabledDidChange event.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.findFunctionSourceCodeLocation):
+        Only resolve inspector debug source locations when the debug UI is enabled.
+
+        * UserInterface/Test/Test.js:
+        Reimplemented debug UI check for tests. Always returns false.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addScript):
+        Removed check for inspector debug scripts. DebuggerManager filters scripts as needed.
+        (WebInspector.DebuggerSidebarPanel.prototype._scriptRemoved):
+        Handle DebuggerManager ScriptRemoved events. Only applies to debug scripts.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasRemoved):
+        Handle DebuggerManager ScriptRemoved events. Only applies to debug scripts.
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        Removed check for inspector debug scripts. DebuggerManager filters scripts as needed.
+
 2015-12-17  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Remove "local" scope type from the protocol

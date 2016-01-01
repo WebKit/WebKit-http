@@ -47,6 +47,7 @@ public:
 
     const void* data() const { return m_data; }
 
+    // You should avoid using this. Use OriginDump instead.
     void dump(PrintStream&) const;
     
 private:

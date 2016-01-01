@@ -124,6 +124,9 @@ webkit.org/b/76173 fast/css3-text/css3-text-align-last
 webkit.org/b/99945 fast/css3-text/css3-text-justify
 webkit.org/b/112755 fast/css3-text/css3-text-indent
 
+# Unsupported on certain OS versions
+webkit.org/b/152491 fast/text/woff2.html [ Skip ]
+
 # Needs testRunner.enableAutoResizeMode()
 fast/autoresize
 
@@ -2855,3 +2858,7 @@ webkit.org/b/152137 fast/media/mq-hover-styling.html [ Failure ]
 webkit.org/b/152137 fast/media/mq-pointer-matchMedia.html [ Failure ]
 webkit.org/b/152137 fast/media/mq-pointer-styling.html [ Failure ]
 webkit.org/b/152137 fast/media/mq-pointer.html [ Failure ]
+
+webkit.org/b/152442 fast/scrolling/rtl-point-in-iframe.html [ Skip ]
+
+webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-class-and-search-field.html [ Skip ]

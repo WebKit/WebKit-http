@@ -2686,7 +2686,7 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
             if (auto* controller = page->userContentController()) {
                 if (m_documentLoader && controller->processContentExtensionRulesForLoad(newRequest, ResourceType::Raw, *m_documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
                     newRequest = { };
-                    error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url().string(), emptyString());
+                    error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url(), emptyString());
                     response = { };
                     data = nullptr;
                 }
@@ -3523,7 +3523,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
                 if (Page* page = frame->page())
                     page->chrome().focus();
             }
-            return WTF::move(frame);
+            return frame;
         }
     }
 
@@ -3615,7 +3615,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
     page->chrome().show();
 
     created = true;
-    return WTF::move(frame);
+    return frame;
 }
 
 } // namespace WebCore

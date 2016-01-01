@@ -234,7 +234,6 @@ public:
 protected:
     virtual void setAttachedWindowHeight(unsigned) override { }
     virtual void setAttachedWindowWidth(unsigned) override { }
-    virtual void setToolbarHeight(unsigned) override { }
 
 public:
     // Inspector::FrontendChannel API
@@ -1802,7 +1801,7 @@ RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
     RefPtr<DOMWindow> frontendWindow = window->open(url, "", "", *window, *window);
     m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(inspectedPage, frontendWindow.copyRef());
 
-    return WTF::move(frontendWindow);
+    return frontendWindow;
 }
 
 void Internals::closeDummyInspectorFrontend()

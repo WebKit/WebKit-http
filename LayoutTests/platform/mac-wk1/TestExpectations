@@ -52,6 +52,12 @@ webkit.org/b/150564 svg/repaint/add-background-property-on-root.html [ Pass Time
 
 webkit.org/b/152272 [ Debug ] js/regress/generator-with-several-types.html [ Pass Timeout ]
 
+webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
+
+webkit.org/b/152487 inspector/debugger/command-line-api-exception-nested-catch.html [ Pass Timeout ]
+
+webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass Timeout ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -85,27 +91,19 @@ webkit.org/b/152264 storage/indexeddb/deleted-objects.html [ Failure Crash ]
 # IDB tests that timeout                                                               
 storage/indexeddb/database-quota.html [ Skip ]
 storage/indexeddb/dont-wedge.html [ Skip ]
-storage/indexeddb/intversion-pending-version-changes-ascending.html [ Skip ]
 storage/indexeddb/transaction-starvation.html [ Skip ]
-storage/indexeddb/unblocked-version-changes.html [ Skip ]
 
 # IDB tests with text failures                                                             
 storage/indexeddb/database-deletepending-flag.html [ Failure ]
-storage/indexeddb/delete-closed-database-object.html [ Failure ]
 storage/indexeddb/intversion-gated-on-delete.html [ Failure ]
-storage/indexeddb/intversion-open-in-upgradeneeded.html [ Failure ]
-storage/indexeddb/intversion-pending-version-changes-descending.html [ Failure ]
-storage/indexeddb/intversion-pending-version-changes-same.html [ Failure ]
-storage/indexeddb/intversion-two-opens-no-versions.html [ Failure ]
 storage/indexeddb/odd-strings.html [ Failure ]
 storage/indexeddb/open-db-private-browsing.html [ Failure ]
-storage/indexeddb/open-ordering.html [ Failure ]
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 storage/indexeddb/setversion-blocked-by-versionchange-close.html [ Failure ]
-storage/indexeddb/transaction-basics.html [ Failure ]
 storage/indexeddb/transaction-scope-sequencing.html [ Failure ]
 
 # Relies on internals.observeGC
+storage/indexeddb/delete-closed-database-object.html [ Skip ]
 storage/indexeddb/cursor-leak.html [ Failure ]
 storage/indexeddb/cursor-request-cycle.html [ Failure ]
 storage/indexeddb/request-leak.html [ Failure ]
