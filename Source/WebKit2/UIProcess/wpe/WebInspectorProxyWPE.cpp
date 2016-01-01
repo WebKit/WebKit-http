@@ -129,11 +129,6 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
     notImplemented();
 }
 
-void WebInspectorProxy::platformSetToolbarHeight(unsigned)
-{
-    notImplemented();
-}
-
 void WebInspectorProxy::platformStartWindowDrag()
 {
     notImplemented();
