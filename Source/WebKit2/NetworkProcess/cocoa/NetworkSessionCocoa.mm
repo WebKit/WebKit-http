@@ -37,6 +37,7 @@
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/ResourceError.h>
+#import <WebCore/ResourceLoadTiming.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
 #import <WebCore/SharedBuffer.h>
@@ -69,7 +70,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
     }
 }
 
-@interface NetworkSessionDelegate : NSObject <NSURLSessionDataDelegate> {
+@interface WKNetworkSessionDelegate : NSObject <NSURLSessionDataDelegate> {
     WebKit::NetworkSession* _session;
 }
 
@@ -77,7 +78,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
 
 @end
 
-@implementation NetworkSessionDelegate
+@implementation WKNetworkSessionDelegate
 
 - (id)initWithNetworkSession:(WebKit::NetworkSession&)session
 {
@@ -142,6 +143,7 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
         if (auto* client = networkingTask->client()) {
             ASSERT(isMainThread());
             WebCore::ResourceResponse resourceResponse(response);
+            copyTimingData([dataTask _timingData], resourceResponse.resourceLoadTiming());
             auto completionHandlerCopy = Block_copy(completionHandler);
             client->didReceiveResponse(resourceResponse, [completionHandlerCopy](WebCore::PolicyAction policyAction)
                 {
@@ -211,9 +213,16 @@ NetworkSession& NetworkSession::defaultSession()
 NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID)
     : m_sessionID(sessionID)
 {
-    m_sessionDelegate = adoptNS([[NetworkSessionDelegate alloc] initWithNetworkSession:*this]);
+    m_sessionDelegate = adoptNS([[WKNetworkSessionDelegate alloc] initWithNetworkSession:*this]);
 
     NSURLSessionConfiguration *configuration = configurationForType(type);
+
+#if HAVE(TIMINGDATAOPTIONS)
+    configuration._timingDataOptions = _TimingDataOptionsEnableW3CNavigationTiming;
+#else
+    setCollectsTimingData();
+#endif
+
     if (auto* storageSession = SessionTracker::storageSession(sessionID)) {
         if (CFHTTPCookieStorageRef storage = storageSession->cookieStorage().get())
             configuration.HTTPCookieStorage = [[[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:storage] autorelease];
@@ -231,7 +240,7 @@ Ref<NetworkDataTask> NetworkSession::createDataTaskWithRequest(const WebCore::Re
     return adoptRef(*new NetworkDataTask(*this, client, [m_session dataTaskWithRequest:request.nsURLRequest(WebCore::UpdateHTTPBody)]));
 }
 
-NetworkDataTask* NetworkSession::dataTaskForIdentifier(uint64_t taskIdentifier)
+NetworkDataTask* NetworkSession::dataTaskForIdentifier(NetworkDataTask::TaskIdentifier taskIdentifier)
 {
     ASSERT(isMainThread());
     return m_dataTaskMap.get(taskIdentifier);
@@ -265,7 +274,7 @@ void NetworkDataTask::resume()
     [m_task resume];
 }
 
-uint64_t NetworkDataTask::taskIdentifier()
+auto NetworkDataTask::taskIdentifier() -> TaskIdentifier
 {
     return [m_task taskIdentifier];
 }

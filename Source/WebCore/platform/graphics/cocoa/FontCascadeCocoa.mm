@@ -591,17 +591,8 @@ DashArray FontCascade::dashesForIntersectionsWithRect(const TextRun& run, const 
 
 bool FontCascade::primaryFontIsSystemFont() const
 {
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED > 1090
     const auto& fontData = primaryFont();
     return !fontData.isSVGFont() && CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(fontData.platformData().ctFont())).get());
-#else
-    const String& firstFamily = this->firstFamily();
-    return equalIgnoringASCIICase(firstFamily, "-webkit-system-font")
-        || equalIgnoringASCIICase(firstFamily, "-apple-system-font")
-        || equalIgnoringASCIICase(firstFamily, "-apple-system")
-        || equalIgnoringASCIICase(firstFamily, "-apple-menu")
-        || equalIgnoringASCIICase(firstFamily, "-apple-status-bar");
-#endif
 }
 
 void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, int from, int to) const
@@ -640,24 +631,6 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, int fr
         initialAdvance = beforeWidth;
 
     return initialAdvance;
-}
-
-float FontCascade::drawComplexText(GraphicsContext& context, const TextRun& run, const FloatPoint& point, int from, int to) const
-{
-    // This glyph buffer holds our glyphs + advances + font data for each glyph.
-    GlyphBuffer glyphBuffer;
-
-    float startX = point.x() + getGlyphsAndAdvancesForComplexText(run, from, to, glyphBuffer);
-
-    // We couldn't generate any glyphs for the run. Give up.
-    if (glyphBuffer.isEmpty())
-        return 0;
-
-    // Draw the glyph buffer now at the starting point returned in startX.
-    FloatPoint startPoint(startX, point.y());
-    drawGlyphBuffer(context, run, glyphBuffer, startPoint);
-
-    return startPoint.x() - startX;
 }
 
 void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& context, const TextRun& run, const AtomicString& mark, const FloatPoint& point, int from, int to) const

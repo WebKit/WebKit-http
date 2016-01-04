@@ -108,35 +108,58 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
 
     // Static
 
+    static functionNameFromPayload(payload)
+    {
+        let functionName = payload.functionName;
+        if (functionName === "global code")
+            return WebInspector.UIString("Global Code");
+        if (functionName === "eval code")
+            return WebInspector.UIString("Eval Code");
+        if (functionName === "module code")
+            return WebInspector.UIString("Module Code");
+        return functionName;
+    }
+
+    static programCodeFromPayload(payload)
+    {
+        return payload.functionName.endsWith(" code");
+    }
+
+    static fromDebuggerPayload(payload, scopeChain, sourceCodeLocation)
+    {
+        let id = payload.callFrameId;
+        let thisObject = WebInspector.RemoteObject.fromPayload(payload.this);
+        let functionName = WebInspector.CallFrame.functionNameFromPayload(payload);
+        let nativeCode = false;
+        let programCode = WebInspector.CallFrame.programCodeFromPayload(payload);
+
+        return new WebInspector.CallFrame(id, sourceCodeLocation, functionName, thisObject, scopeChain, nativeCode, programCode);
+    }
+
     static fromPayload(payload)
     {
         console.assert(payload);
 
-        var url = payload.url;
-        var nativeCode = false;
-        var programCode = false;
-        var sourceCodeLocation = null;
+        let url = payload.url;
+        let nativeCode = false;
+        let sourceCodeLocation = null;
+        let functionName = WebInspector.CallFrame.functionNameFromPayload(payload);
+        let programCode = WebInspector.CallFrame.programCodeFromPayload(payload);
 
         if (!url || url === "[native code]") {
             nativeCode = true;
             url = null;
         } else {
-            var sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
+            let sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
             if (!sourceCode)
                 sourceCode = WebInspector.debuggerManager.scriptsForURL(url)[0];
 
             if (sourceCode) {
                 // The lineNumber is 1-based, but we expect 0-based.
-                var lineNumber = payload.lineNumber - 1;
+                let lineNumber = payload.lineNumber - 1;
                 sourceCodeLocation = sourceCode.createLazySourceCodeLocation(lineNumber, payload.columnNumber);
             }
         }
-
-        var functionName = payload.functionName;
-        if (payload.functionName === "global code"
-            || payload.functionName === "eval code"
-            || payload.functionName === "module code")
-            programCode = true;
 
         return new WebInspector.CallFrame(null, sourceCodeLocation, functionName, null, null, nativeCode, programCode);
     }

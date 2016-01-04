@@ -32,7 +32,6 @@
 #define BytecodeGenerator_h
 
 #include "CodeBlock.h"
-#include "GeneratorThisMode.h"
 #include <wtf/HashTraits.h>
 #include "Instruction.h"
 #include "Label.h"
@@ -282,13 +281,12 @@ namespace JSC {
         const CommonIdentifiers& propertyNames() const { return *m_vm->propertyNames; }
 
         bool isConstructor() const { return m_codeBlock->isConstructor(); }
-        bool isDerivedConstructorContext() const { return m_codeBlock->isDerivedConstructorContext(); }
+        DerivedContextType derivedContextType() const { return m_derivedContextType; }
         bool usesArrowFunction() const { return m_scopeNode->usesArrowFunction(); }
         bool needsToUpdateArrowFunctionContext() const { return m_needsToUpdateArrowFunctionContext; }
         bool usesEval() const { return m_scopeNode->usesEval(); }
         bool usesThis() const { return m_scopeNode->usesThis(); }
         ConstructorKind constructorKind() const { return m_codeBlock->constructorKind(); }
-        GeneratorThisMode generatorThisMode() const { return m_codeBlock->generatorThisMode(); }
         SuperBinding superBinding() const { return m_codeBlock->superBinding(); }
 
         ParserError generate();
@@ -534,8 +532,9 @@ namespace JSC {
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
 
-        void emitCheckHasInstance(RegisterID* dst, RegisterID* value, RegisterID* base, Label* target);
+        RegisterID* emitOverridesHasInstance(RegisterID* dst, RegisterID* constructor, RegisterID* hasInstanceValue);
         RegisterID* emitInstanceOf(RegisterID* dst, RegisterID* value, RegisterID* basePrototype);
+        RegisterID* emitInstanceOfCustom(RegisterID* dst, RegisterID* value, RegisterID* constructor, RegisterID* hasInstanceValue);
         RegisterID* emitTypeOf(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_typeof, dst, src); }
         RegisterID* emitIn(RegisterID* dst, RegisterID* property, RegisterID* base) { return emitBinaryOp(op_in, dst, property, base, OperandTypes()); }
 
@@ -698,12 +697,18 @@ namespace JSC {
         bool isBuiltinFunction() const { return m_isBuiltinFunction; }
 
         OpcodeID lastOpcodeID() const { return m_lastOpcodeID; }
+        
+        bool isDerivedConstructorContext() { return m_derivedContextType == DerivedContextType::DerivedConstructorContext; }
+        bool isDerivedClassContext() { return m_derivedContextType == DerivedContextType::DerivedMethodContext; }
+        bool isArrowFunction() { return m_codeBlock->isArrowFunction(); }
 
+        enum class TDZCheckOptimization { Optimize, DoNotOptimize };
+        enum class NestedScopeType { IsNested, IsNotNested };
     private:
         enum class TDZRequirement { UnderTDZ, NotUnderTDZ };
         enum class ScopeType { CatchScope, LetConstScope, FunctionNameScope };
         enum class ScopeRegisterType { Var, Block };
-        void pushLexicalScopeInternal(VariableEnvironment&, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
+        void pushLexicalScopeInternal(VariableEnvironment&, TDZCheckOptimization, NestedScopeType, RegisterID** constantSymbolTableResult, TDZRequirement, ScopeType, ScopeRegisterType);
         void popLexicalScopeInternal(VariableEnvironment&, TDZRequirement);
         template<typename LookUpVarKindFunctor>
         bool instantiateLexicalVariables(const VariableEnvironment&, SymbolTable*, ScopeRegisterType, LookUpVarKindFunctor);
@@ -714,7 +719,7 @@ namespace JSC {
         void emitNewFunctionExpressionCommon(RegisterID*, BaseFuncExprNode*);
 
     public:
-        void pushLexicalScope(VariableEnvironmentNode*, bool canOptimizeTDZChecks, RegisterID** constantSymbolTableResult = nullptr);
+        void pushLexicalScope(VariableEnvironmentNode*, TDZCheckOptimization, NestedScopeType = NestedScopeType::IsNotNested, RegisterID** constantSymbolTableResult = nullptr);
         void popLexicalScope(VariableEnvironmentNode*);
         void prepareLexicalScopeForNextForLoopIteration(VariableEnvironmentNode*, RegisterID* loopSymbolTable);
         int labelScopeDepth() const;
@@ -793,7 +798,14 @@ namespace JSC {
         
         UnlinkedFunctionExecutable* makeFunction(FunctionMetadataNode* metadata)
         {
-            bool newisDerivedConstructorContext = constructorKind() == ConstructorKind::Derived || (m_isDerivedConstructorContext && metadata->parseMode() == SourceParseMode::ArrowFunctionMode);
+            DerivedContextType newDerivedContextType = DerivedContextType::None;
+
+            if (metadata->parseMode() == SourceParseMode::ArrowFunctionMode) {
+                if (constructorKind() == ConstructorKind::Derived || isDerivedConstructorContext())
+                    newDerivedContextType = DerivedContextType::DerivedConstructorContext;
+                else if (m_codeBlock->isClassContext() || isDerivedClassContext())
+                    newDerivedContextType = DerivedContextType::DerivedMethodContext;
+            }
 
             VariableEnvironment variablesUnderTDZ;
             getVariablesUnderTDZ(variablesUnderTDZ);
@@ -802,18 +814,12 @@ namespace JSC {
             // https://bugs.webkit.org/show_bug.cgi?id=151547
             SourceParseMode parseMode = metadata->parseMode();
             ConstructAbility constructAbility = ConstructAbility::CanConstruct;
-            if (parseMode == SourceParseMode::GetterMode || parseMode == SourceParseMode::SetterMode || parseMode == SourceParseMode::ArrowFunctionMode)
+            if (parseMode == SourceParseMode::GetterMode || parseMode == SourceParseMode::SetterMode || parseMode == SourceParseMode::ArrowFunctionMode || parseMode == SourceParseMode::GeneratorWrapperFunctionMode)
                 constructAbility = ConstructAbility::CannotConstruct;
             else if (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() == ConstructorKind::None)
                 constructAbility = ConstructAbility::CannotConstruct;
-            else if (parseMode == SourceParseMode::GeneratorWrapperFunctionMode && metadata->superBinding() == SuperBinding::Needed)
-                constructAbility = ConstructAbility::CannotConstruct;
 
-            GeneratorThisMode generatorThisMode = GeneratorThisMode::NonEmpty;
-            if (parseMode == SourceParseMode::GeneratorBodyMode && isConstructor())
-                generatorThisMode = GeneratorThisMode::Empty;
-
-            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, generatorThisMode, variablesUnderTDZ, newisDerivedConstructorContext);
+            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, variablesUnderTDZ, newDerivedContextType);
         }
 
         void getVariablesUnderTDZ(VariableEnvironment&);
@@ -923,9 +929,9 @@ namespace JSC {
         bool m_isBuiltinFunction { false };
         bool m_usesNonStrictEval { false };
         bool m_inTailPosition { false };
-        bool m_isDerivedConstructorContext { false };
         bool m_needsToUpdateArrowFunctionContext;
         bool m_isNewTargetLoadedInArrowFunction { false };
+        DerivedContextType m_derivedContextType { DerivedContextType::None };
     };
 
 }

@@ -33,7 +33,7 @@
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
 #include "IDBGetResult.h"
-#include "IDBServerOperation.h"
+#include "ServerOpenDBRequest.h"
 #include "ThreadSafeDataBuffer.h"
 #include "Timer.h"
 #include "UniqueIDBDatabaseConnection.h"
@@ -71,6 +71,8 @@ public:
         return adoptRef(*new UniqueIDBDatabase(server, identifier));
     }
 
+    ~UniqueIDBDatabase();
+
     void openDatabaseConnection(IDBConnectionToClient&, const IDBRequestData&);
 
     const IDBDatabaseInfo& info() const;
@@ -90,8 +92,10 @@ public:
     void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count, GetResultCallback);
     void commitTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
     void abortTransaction(UniqueIDBDatabaseTransaction&, ErrorCallback);
+    void didFinishHandlingVersionChange(UniqueIDBDatabaseTransaction&);
     void transactionDestroyed(UniqueIDBDatabaseTransaction&);
     void connectionClosedFromClient(UniqueIDBDatabaseConnection&);
+    void didFireVersionChangeEvent(UniqueIDBDatabaseConnection&, const IDBResourceIdentifier& requestIdentifier);
 
     void enqueueTransaction(Ref<UniqueIDBDatabaseTransaction>&&);
 
@@ -104,14 +108,17 @@ public:
 private:
     UniqueIDBDatabase(IDBServer&, const IDBDatabaseIdentifier&);
     
-    void handleOpenDatabaseOperations();
+    void handleDatabaseOperations();
+    void handleCurrentOperation();
+    void performCurrentOpenOperation();
+    void performCurrentDeleteOperation();
     void addOpenDatabaseConnection(Ref<UniqueIDBDatabaseConnection>&&);
-    bool maybeDeleteDatabase(IDBServerOperation*);
     bool hasAnyOpenConnections() const;
 
     void startVersionChangeTransaction();
-    void notifyConnectionsOfVersionChangeForUpgrade();
-    void notifyConnectionsOfVersionChange(uint64_t requestedVersion);
+    void maybeNotifyConnectionsOfVersionChange();
+    void notifyCurrentRequestConnectionClosedOrFiredVersionChangeEvent(uint64_t connectionIdentifier);
+    bool isVersionChangeInProgress();
 
     void activateTransactionInBackingStore(UniqueIDBDatabaseTransaction&);
     void inProgressTransactionCompleted(const IDBResourceIdentifier&);
@@ -164,22 +171,21 @@ private:
 
     bool hasAnyPendingCallbacks() const;
 
-    void invokeDeleteOrRunTransactionTimer();
-    void deleteOrRunTransactionsTimerFired();
+    void invokeOperationAndTransactionTimer();
+    void operationAndTransactionTimerFired();
     RefPtr<UniqueIDBDatabaseTransaction> takeNextRunnableTransaction(bool& hadDeferredTransactions);
 
     IDBServer& m_server;
     IDBDatabaseIdentifier m_identifier;
     
-    Deque<Ref<IDBServerOperation>> m_pendingOpenDatabaseOperations;
-    Deque<Ref<IDBServerOperation>> m_pendingDeleteDatabaseOperations;
+    Deque<Ref<ServerOpenDBRequest>> m_pendingOpenDBRequests;
+    RefPtr<ServerOpenDBRequest> m_currentOpenDBRequest;
 
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_openDatabaseConnections;
     HashSet<RefPtr<UniqueIDBDatabaseConnection>> m_closePendingDatabaseConnections;
 
-    RefPtr<IDBServerOperation> m_versionChangeOperation;
     RefPtr<UniqueIDBDatabaseConnection> m_versionChangeDatabaseConnection;
-    UniqueIDBDatabaseTransaction* m_versionChangeTransaction { nullptr };
+    RefPtr<UniqueIDBDatabaseTransaction> m_versionChangeTransaction;
 
     bool m_isOpeningBackingStore { false };
     std::unique_ptr<IDBBackingStore> m_backingStore;
@@ -190,8 +196,7 @@ private:
     HashMap<uint64_t, GetResultCallback> m_getResultCallbacks;
     HashMap<uint64_t, CountCallback> m_countCallbacks;
 
-    Timer m_deleteOrRunTransactionsTimer;
-    Timer m_handleOpenDatabaseOperationsTimer;
+    Timer m_operationAndTransactionTimer;
 
     Deque<RefPtr<UniqueIDBDatabaseTransaction>> m_pendingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<UniqueIDBDatabaseTransaction>> m_inProgressTransactions;
@@ -203,7 +208,6 @@ private:
     HashCountedSet<uint64_t> m_objectStoreTransactionCounts;
 
     bool m_deletePending { false };
-    bool m_hasNotifiedConnectionsOfDelete { false };
 };
 
 } // namespace IDBServer

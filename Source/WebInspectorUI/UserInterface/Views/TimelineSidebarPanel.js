@@ -264,11 +264,6 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
             this.showTimelineOverview();
     }
 
-    get hasSelectedElement()
-    {
-        return !!this._contentTreeOutline.selectedTreeElement || !!this._recordingsTreeOutline.selectedTreeElement;
-    }
-
     treeElementForRepresentedObject(representedObject)
     {
         if (representedObject instanceof WebInspector.TimelineRecording)
@@ -873,7 +868,7 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         }
 
         this._timelineEventsTitleBarContainer.style.top = (overviewHeight + eventTitleBarOffset) + "px";
-        this.contentElement.style.top = (overviewHeight + contentElementOffset) + "px";
+        this.contentView.element.style.top = (overviewHeight + contentElementOffset) + "px";
     }
 
     _recordGlyphMousedOver(event)

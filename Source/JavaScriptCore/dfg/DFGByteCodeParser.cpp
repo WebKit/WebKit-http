@@ -882,7 +882,7 @@ private:
     Node* makeSafe(Node* node)
     {
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
-            node->mergeFlags(NodeMayOverflowInDFG);
+            node->mergeFlags(NodeMayOverflowInt32InDFG);
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
             node->mergeFlags(NodeMayNegZeroInDFG);
         
@@ -898,14 +898,14 @@ private:
         case ArithSub:
         case ValueAdd:
         case ArithMod: // for ArithMod "MayOverflow" means we tried to divide by zero, or we saw double.
-            node->mergeFlags(NodeMayOverflowInBaseline);
+            node->mergeFlags(NodeMayOverflowInt32InBaseline);
             break;
             
         case ArithNegate:
             // Currently we can't tell the difference between a negation overflowing
             // (i.e. -(1 << 31)) or generating negative zero (i.e. -0). If it took slow
             // path then we assume that it did both of those things.
-            node->mergeFlags(NodeMayOverflowInBaseline);
+            node->mergeFlags(NodeMayOverflowInt32InBaseline);
             node->mergeFlags(NodeMayNegZeroInBaseline);
             break;
 
@@ -915,7 +915,7 @@ private:
             // https://bugs.webkit.org/show_bug.cgi?id=132470
             if (m_inlineStackTop->m_profiledBlock->likelyToTakeDeepestSlowCase(m_currentIndex)
                 || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
-                node->mergeFlags(NodeMayOverflowInBaseline | NodeMayNegZeroInBaseline);
+                node->mergeFlags(NodeMayOverflowInt32InBaseline | NodeMayNegZeroInBaseline);
             else if (m_inlineStackTop->m_profiledBlock->likelyToTakeSlowCase(m_currentIndex)
                 || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
                 node->mergeFlags(NodeMayNegZeroInBaseline);
@@ -934,7 +934,7 @@ private:
         ASSERT(node->op() == ArithDiv);
         
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
-            node->mergeFlags(NodeMayOverflowInDFG);
+            node->mergeFlags(NodeMayOverflowInt32InDFG);
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
             node->mergeFlags(NodeMayNegZeroInDFG);
         
@@ -948,7 +948,7 @@ private:
             return node;
         
         // FIXME: It might be possible to make this more granular.
-        node->mergeFlags(NodeMayOverflowInBaseline | NodeMayNegZeroInBaseline);
+        node->mergeFlags(NodeMayOverflowInt32InBaseline | NodeMayNegZeroInBaseline);
         
         return node;
     }
@@ -2010,7 +2010,7 @@ bool ByteCodeParser::handleIntrinsicCall(int resultOperand, Intrinsic intrinsic,
         insertChecks();
         Node* node = addToGraph(ArithAbs, get(virtualRegisterForArgument(1, registerOffset)));
         if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, Overflow))
-            node->mergeFlags(NodeMayOverflowInDFG);
+            node->mergeFlags(NodeMayOverflowInt32InDFG);
         set(VirtualRegister(resultOperand), node);
         return true;
     }
@@ -3202,7 +3202,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         OpcodeID opcodeID = interpreter->getOpcodeID(currentInstruction->u.opcode);
         
         if (Options::verboseDFGByteCodeParsing())
-            dataLog("    parsing ", currentCodeOrigin(), "\n");
+            dataLog("    parsing ", currentCodeOrigin(), ": ", opcodeID, "\n");
         
         if (m_graph.compilation()) {
             addToGraph(CountExecution, OpInfo(m_graph.compilation()->executionCounterFor(
@@ -3505,9 +3505,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_check_tdz);
         }
 
-        case op_check_has_instance:
-            addToGraph(CheckHasInstance, get(VirtualRegister(currentInstruction[3].u.operand)));
-            NEXT_OPCODE(op_check_has_instance);
+        case op_overrides_has_instance: {
+            JSFunction* defaultHasInstanceSymbolFunction = m_inlineStackTop->m_codeBlock->globalObjectFor(currentCodeOrigin())->functionProtoHasInstanceSymbolFunction();
+
+            Node* constructor = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* hasInstanceValue = get(VirtualRegister(currentInstruction[3].u.operand));
+
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(OverridesHasInstance, OpInfo(m_graph.freeze(defaultHasInstanceSymbolFunction)), constructor, hasInstanceValue));
+            NEXT_OPCODE(op_overrides_has_instance);
+        }
 
         case op_instanceof: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
@@ -3515,7 +3521,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(InstanceOf, value, prototype));
             NEXT_OPCODE(op_instanceof);
         }
-            
+
+        case op_instanceof_custom: {
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* constructor = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* hasInstanceValue = get(VirtualRegister(currentInstruction[4].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(InstanceOfCustom, value, constructor, hasInstanceValue));
+            NEXT_OPCODE(op_instanceof_custom);
+        }
+
         case op_is_undefined: {
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsUndefined, value));
@@ -4557,23 +4571,27 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_to_arguments);
         }
             
-        case op_new_func: {
+        case op_new_func:
+        case op_new_generator_func: {
             FunctionExecutable* decl = m_inlineStackTop->m_profiledBlock->functionDecl(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(decl);
-            set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction : NewFunction;
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_generator_func), "The length of op_new_func should eqaual to one of op_new_generator_func");
             NEXT_OPCODE(op_new_func);
         }
 
         case op_new_func_exp:
+        case op_new_generator_func_exp:
         case op_new_arrow_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
-            set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(NewFunction, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
+            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             
-            if (opcodeID == op_new_func_exp) {
+            if (opcodeID == op_new_func_exp || opcodeID == op_new_generator_func_exp) {
                 // Curly braces are necessary
+                static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
                 NEXT_OPCODE(op_new_func_exp);
             } else {
                 // Curly braces are necessary

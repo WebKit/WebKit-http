@@ -104,7 +104,7 @@ void allocateStack(Code& code)
     for (BasicBlock* block : code) {
         for (Inst& inst : *block) {
             inst.forEachArg(
-                [&] (Arg& arg, Arg::Role role, Arg::Type) {
+                [&] (Arg& arg, Arg::Role role, Arg::Type, Arg::Width) {
                     if (role == Arg::UseAddr && arg.isStack())
                         escapingStackSlots.add(arg.stackSlot());
                 });
@@ -148,7 +148,7 @@ void allocateStack(Code& code)
                 dataLog("Interfering: ", WTF::pointerListDump(localCalc.live()), "\n");
 
             inst.forEachArg(
-                [&] (Arg& arg, Arg::Role role, Arg::Type) {
+                [&] (Arg& arg, Arg::Role role, Arg::Type, Arg::Width) {
                     if (!Arg::isDef(role))
                         return;
                     if (!arg.isStack())
@@ -231,6 +231,11 @@ void allocateStack(Code& code)
     // transformation since we can search the StackSlots array to figure out which StackSlot any
     // offset-from-FP refers to.
 
+    // FIXME: This may produce addresses that aren't valid if we end up with a ginormous stack frame.
+    // We would have to scavenge for temporaries if this happened. Fortunately, this case will be
+    // extremely rare so we can do crazy things when it arises.
+    // https://bugs.webkit.org/show_bug.cgi?id=152530
+    
     for (BasicBlock* block : code) {
         for (Inst& inst : *block) {
             for (Arg& arg : inst.args) {

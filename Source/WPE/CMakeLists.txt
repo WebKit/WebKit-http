@@ -44,6 +44,10 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/GBM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Input"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Generic"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Wayland"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMNexus"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/BCMRPi"
@@ -81,6 +85,10 @@ set(WPE_SOURCES
 
     Source/Input/XKB/KeyMappingXKB.cpp
     Source/Input/XKB/KeyboardEventHandlerXKB.cpp
+
+    Source/Pasteboard/Pasteboard.cpp
+
+    Source/Pasteboard/Generic/PasteboardGeneric.cpp
 
     Source/ViewBackend/ViewBackend.cpp
 )
@@ -141,6 +149,7 @@ endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
     list(APPEND WPE_SOURCES
+        Source/Pasteboard/Wayland/PasteboardWayland.cpp
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
         Source/ViewBackend/Wayland/ivi-application-protocol.c

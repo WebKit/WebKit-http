@@ -195,6 +195,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     UIInterfaceOrientation _interfaceOrientationOverride;
     BOOL _overridesInterfaceOrientation;
+    
+    BOOL _allowsViewportShrinkToFit;
 
     BOOL _hasCommittedLoadForMainFrame;
     BOOL _needsResetViewStateAfterCommitLoadForMainFrame;
@@ -409,9 +411,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     _impl = std::make_unique<WebKit::WebViewImpl>(self, self, processPool, WTF::move(pageConfiguration));
     _page = &_impl->page();
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     _impl->setAutomaticallyAdjustsContentInsets(true);
-#endif
 #endif
 
     _page->setBackgroundExtendsBeyondPage(true);
@@ -1259,9 +1259,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOffset, WebCore::FloatSize contentSize, WebCore::FloatSize unobscuredContentSize)
 {
     WebCore::FloatSize maximumContentOffset = contentSize - unobscuredContentSize;
-    contentOffset = contentOffset.shrunkTo(WebCore::FloatPoint(maximumContentOffset.width(), maximumContentOffset.height()));
-    contentOffset = contentOffset.expandedTo(WebCore::FloatPoint());
-    return contentOffset;
+    return contentOffset.constrainedBetween(WebCore::FloatPoint(), WebCore::FloatPoint(maximumContentOffset));
 }
 
 - (void)_scrollToContentOffset:(WebCore::FloatPoint)contentOffsetInPageCoordinates scrollOrigin:(WebCore::IntPoint)scrollOrigin
@@ -1773,7 +1771,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
         scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
-        inStableState:isStableState isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
+        inStableState:isStableState
+        isChangingObscuredInsetsInteractively:_isChangingObscuredInsetsInteractively];
 }
 
 - (void)_didFinishLoadForMainFrame
@@ -2709,6 +2708,26 @@ WEBCORE_COMMAND(yankAndSelect)
 - (void)selectFindMatch:(id <NSTextFinderAsynchronousDocumentFindMatch>)findMatch completionHandler:(void (^)(void))completionHandler
 {
     [[self _ensureTextFinderClient] selectFindMatch:findMatch completionHandler:completionHandler];
+}
+
+- (void)touchesBeganWithEvent:(NSEvent *)event
+{
+    _impl->touchesBeganWithEvent(event);
+}
+
+- (void)touchesMovedWithEvent:(NSEvent *)event
+{
+    _impl->touchesMovedWithEvent(event);
+}
+
+- (void)touchesEndedWithEvent:(NSEvent *)event
+{
+    _impl->touchesEndedWithEvent(event);
+}
+
+- (void)touchesCancelledWithEvent:(NSEvent *)event
+{
+    _impl->touchesCancelledWithEvent(event);
 }
 
 - (NSTextInputContext *)_web_superInputContext
@@ -3670,6 +3689,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _page->backgroundExtendsBeyondPage();
 }
 
+- (void)_setAllowsViewportShrinkToFit:(BOOL)allowShrinkToFit
+{
+    _allowsViewportShrinkToFit = allowShrinkToFit;
+}
+
+- (BOOL)_allowsViewportShrinkToFit
+{
+    return _allowsViewportShrinkToFit;
+}
+
 - (void)_beginInteractiveObscuredInsetsChange
 {
     ASSERT(!_isChangingObscuredInsetsInteractively);
@@ -4057,7 +4086,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return nil;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (void)_setAutomaticallyAdjustsContentInsets:(BOOL)automaticallyAdjustsContentInsets
 {
     _impl->setAutomaticallyAdjustsContentInsets(automaticallyAdjustsContentInsets);
@@ -4067,7 +4095,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 {
     return _impl->automaticallyAdjustsContentInsets();
 }
-#endif
 
 - (CGFloat)_minimumLayoutWidth
 {

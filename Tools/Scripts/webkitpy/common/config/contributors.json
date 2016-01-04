@@ -1,5 +1,13 @@
 {
    "Committers" : {
+      "Aakash Jain" : {
+         "emails" : [
+            "aakash_jain@apple.com"
+         ],
+         "nicks" : [
+            "aakash_jain"
+         ]
+      },
       "Aaron Boodman" : {
          "emails" : [
             "aa@chromium.org"
@@ -1494,6 +1502,14 @@
             "jknotten"
          ]
       },
+      "John Wilander" : {
+         "emails" : [
+            "wilander@apple.com"
+         ],
+         "nicks" : [
+            "johnwilander"
+         ]
+      },
       "Johnny Ding" : {
          "emails" : [
             "jnd@chromium.org",
@@ -2071,16 +2087,6 @@
          "expertise" : "The QtWebKit Port",
          "nicks" : [
             "mibrunin"
-         ]
-      },
-      "Michael Catanzaro" : {
-         "emails" : [
-            "mcatanzaro@igalia.com",
-            "mcatanzaro@gnome.org"
-         ],
-         "expertise" : "The WebKitGTK+ Port, Epiphany, TLS",
-         "nicks" : [
-            "mcatanzaro"
          ]
       },
       "Michael Nordman" : {
@@ -2972,15 +2978,6 @@
             "wms"
          ]
       },
-      "Xabier Rodriguez-Calvar" : {
-         "emails" : [
-            "calvaris@igalia.com",
-            "xrcalvar@igalia.com"
-         ],
-         "nicks" : [
-            "calvaris"
-         ]
-      },
       "Xianzhu Wang" : {
          "emails" : [
             "wangxianzhu@chromium.org",
@@ -3539,6 +3536,18 @@
             "rmondello"
          ]
       },
+      "Sebastian Dr\u00f6ge" : {
+         "emails" : [
+            "slomo@coaxion.net",
+            "sebastian@centricular.com",
+            "sebastian.droege@collabora.co.uk",
+            "sebastian.droege@collabora.com"
+         ],
+         "expertise" : "WebKitGTK+, Media support (focused on the GStreamer implementation)",
+         "nicks" : [
+            "slomo"
+         ]
+      },
       "Sungmann Cho" : {
          "emails" : [
             "sungmann.cho@navercorp.com",
@@ -3593,6 +3602,11 @@
       "Web Components Team" : {
          "emails" : [
             "webcomponents-bugzilla@chromium.org"
+         ]
+      },
+      "WebKitGTK+ Bugs" : {
+         "emails" : [
+            "bugs-noreply@webkitgtk.org"
          ]
       },
       "WebKit Review Bot" : {
@@ -4612,6 +4626,16 @@
             "mrobinson"
          ]
       },
+      "Michael Catanzaro" : {
+         "emails" : [
+            "mcatanzaro@igalia.com",
+            "mcatanzaro@gnome.org"
+         ],
+         "expertise" : "The WebKitGTK+ Port, Epiphany, Soup HTTP Backend",
+         "nicks" : [
+            "mcatanzaro"
+         ]
+      },
       "Michael Saboff" : {
          "emails" : [
             "msaboff@apple.com"
@@ -4807,18 +4831,6 @@
             "saamyjoon"
          ]
       },
-      "Sebastian Dr\u00f6ge" : {
-         "emails" : [
-            "slomo@coaxion.net",
-            "sebastian@centricular.com",
-            "sebastian.droege@collabora.co.uk",
-            "sebastian.droege@collabora.com"
-         ],
-         "expertise" : "WebKitGTK+, Media support (focused on the GStreamer implementation)",
-         "nicks" : [
-            "slomo"
-         ]
-      },
       "Sergio Villar Senin" : {
          "emails" : [
             "svillar@igalia.com",
@@ -4970,6 +4982,16 @@
          "expertise" : "Developer Tools, Web Inspector",
          "nicks" : [
             "vsevik"
+         ]
+      },
+      "Xabier Rodriguez-Calvar" : {
+         "emails" : [
+            "calvaris@igalia.com",
+            "xrcalvar@igalia.com"
+         ],
+         "expertise" : "WebKitGTK+, GStreamer, Streams API",
+         "nicks" : [
+            "calvaris"
          ]
       },
       "Xan Lopez" : {

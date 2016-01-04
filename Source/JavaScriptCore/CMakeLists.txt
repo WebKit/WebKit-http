@@ -90,6 +90,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirSpillEverything.cpp
     b3/air/AirStackSlot.cpp
     b3/air/AirTmp.cpp
+    b3/air/AirTmpWidth.cpp
     b3/air/AirValidate.cpp
 
     b3/B3ArgumentRegValue.cpp
@@ -203,6 +204,7 @@ set(JavaScriptCore_SOURCES
     bytecode/UnlinkedCodeBlock.cpp
     bytecode/UnlinkedFunctionExecutable.cpp
     bytecode/UnlinkedInstructionStream.cpp
+    bytecode/ValueProfile.cpp
     bytecode/ValueRecovery.cpp
     bytecode/VariableWriteFireDetail.cpp
     bytecode/VirtualRegister.cpp
@@ -429,6 +431,7 @@ set(JavaScriptCore_SOURCES
     inspector/agents/InspectorDebuggerAgent.cpp
     inspector/agents/InspectorHeapAgent.cpp
     inspector/agents/InspectorRuntimeAgent.cpp
+    inspector/agents/InspectorScriptProfilerAgent.cpp
     inspector/agents/JSGlobalObjectConsoleAgent.cpp
     inspector/agents/JSGlobalObjectDebuggerAgent.cpp
     inspector/agents/JSGlobalObjectRuntimeAgent.cpp
@@ -470,6 +473,7 @@ set(JavaScriptCore_SOURCES
     jit/JITInlineCacheGenerator.cpp
     jit/JITLeftShiftGenerator.cpp
     jit/JITMulGenerator.cpp
+    jit/JITNegGenerator.cpp
     jit/JITOpcodes.cpp
     jit/JITOpcodes32_64.cpp
     jit/JITOperations.cpp
@@ -1174,6 +1178,7 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/OverlayTypes.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Page.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/ScriptProfiler.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Timeline.json
 )
 
@@ -1246,6 +1251,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/ReflectObject.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/StringIteratorPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/StringPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayPrototype.js
 )

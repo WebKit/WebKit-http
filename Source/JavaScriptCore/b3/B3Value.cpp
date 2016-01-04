@@ -32,6 +32,7 @@
 #include "B3CCallValue.h"
 #include "B3ControlValue.h"
 #include "B3MemoryValue.h"
+#include "B3OriginDump.h"
 #include "B3ProcedureInlines.h"
 #include "B3StackSlotValue.h"
 #include "B3UpsilonValue.h"
@@ -99,7 +100,7 @@ void Value::dumpChildren(CommaPrinter& comma, PrintStream& out) const
         out.print(comma, pointerDump(child));
 }
 
-void Value::deepDump(PrintStream& out) const
+void Value::deepDump(const Procedure& proc, PrintStream& out) const
 {
     out.print(m_type, " ", *this, " = ", m_opcode);
 
@@ -108,7 +109,7 @@ void Value::deepDump(PrintStream& out) const
     dumpChildren(comma, out);
 
     if (m_origin)
-        out.print(comma, m_origin);
+        out.print(comma, OriginDump(proc, m_origin));
 
     dumpMeta(comma, out);
 
@@ -286,6 +287,11 @@ TriState Value::belowEqualConstant(const Value*) const
     return MixedTriState;
 }
 
+TriState Value::equalOrUnorderedConstant(const Value*) const
+{
+    return MixedTriState;
+}
+
 Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
@@ -315,6 +321,7 @@ bool Value::returnsBool() const
     case Below:
     case AboveEqual:
     case BelowEqual:
+    case EqualOrUnordered:
         return true;
     case Phi:
         // FIXME: We should have a story here.
@@ -377,7 +384,6 @@ Effects Value::effects() const
     case ZExt32:
     case Trunc:
     case IToD:
-    case DToI32:
     case FloatToDouble:
     case DoubleToFloat:
     case Equal:
@@ -390,6 +396,7 @@ Effects Value::effects() const
     case Below:
     case AboveEqual:
     case BelowEqual:
+    case EqualOrUnordered:
     case Select:
         break;
     case Div:
@@ -457,7 +464,6 @@ ValueKey Value::key() const
     case Clz:
     case Trunc:
     case IToD:
-    case DToI32:
     case FloatToDouble:
     case DoubleToFloat:
     case Check:
@@ -484,6 +490,7 @@ ValueKey Value::key() const
     case Below:
     case AboveEqual:
     case BelowEqual:
+    case EqualOrUnordered:
     case CheckAdd:
     case CheckSub:
     case CheckMul:
@@ -567,7 +574,6 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case SExt8:
     case SExt16:
     case Trunc:
-    case DToI32:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -578,6 +584,7 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case Below:
     case AboveEqual:
     case BelowEqual:
+    case EqualOrUnordered:
         return Int32;
     case SExt32:
     case ZExt32:

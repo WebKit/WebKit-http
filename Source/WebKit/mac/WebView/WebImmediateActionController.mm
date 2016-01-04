@@ -25,7 +25,7 @@
 
 #import "WebImmediateActionController.h"
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+#if PLATFORM(MAC)
 
 #import "DOMElementInternal.h"
 #import "DOMNodeInternal.h"
@@ -272,7 +272,7 @@ using namespace WebCore;
             _type = WebImmediateActionLinkPreview;
 
             RefPtr<Range> linkRange = rangeOfContents(*_hitTestResult.URLElement());
-            RefPtr<TextIndicator> indicator = TextIndicator::createWithRange(*linkRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
+            auto indicator = TextIndicator::createWithRange(*linkRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
             if (indicator)
                 [_webView _setTextIndicator:*indicator withLifetime:TextIndicatorWindowLifetime::Permanent];
 
@@ -429,12 +429,13 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
             return nil;
     }
 
-    RefPtr<TextIndicator> detectedDataTextIndicator = TextIndicator::createWithRange(*detectedDataRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
+    auto indicator = TextIndicator::createWithRange(*detectedDataRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
+    indicator->data().textBoundingRectInRootViewCoordinates = [_webView _convertRectFromRootView:indicator->textBoundingRectInRootViewCoordinates()];
 
     _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
     } interactionChangedHandler:^() {
-        if (detectedDataTextIndicator)
-            [_webView _setTextIndicator:*detectedDataTextIndicator withLifetime:TextIndicatorWindowLifetime::Permanent];
+        if (indicator)
+            [_webView _setTextIndicator:*indicator withLifetime:TextIndicatorWindowLifetime::Permanent];
     } interactionStoppedHandler:^() {
         [_webView _clearTextIndicatorWithAnimation:TextIndicatorWindowDismissalAnimation::FadeOut];
     }];
@@ -461,7 +462,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     RefPtr<Range> linkRange = rangeOfContents(*_hitTestResult.URLElement());
     if (!linkRange)
         return nullptr;
-    RefPtr<TextIndicator> indicator = TextIndicator::createWithRange(*linkRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
+    auto indicator = TextIndicator::createWithRange(*linkRange, TextIndicatorOptionDefault, TextIndicatorPresentationTransition::FadeIn);
     indicator->data().textBoundingRectInRootViewCoordinates = [_webView _convertRectFromRootView:indicator->textBoundingRectInRootViewCoordinates()];
 
     _currentActionContext = [actionContext contextForView:_webView altMode:YES interactionStartedHandler:^() {
@@ -553,4 +554,4 @@ static DictionaryPopupInfo dictionaryPopupInfoForRange(Frame* frame, Range& rang
 
 @end
 
-#endif // PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+#endif // PLATFORM(MAC)

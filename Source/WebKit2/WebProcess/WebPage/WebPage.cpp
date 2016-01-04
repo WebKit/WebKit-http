@@ -40,7 +40,6 @@
 #include "EventDispatcher.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleBackForwardList.h"
-#include "LayerTreeHost.h"
 #include "Logging.h"
 #include "NetscapePlugin.h"
 #include "NotificationPermissionRequestManager.h"
@@ -210,6 +209,10 @@
 
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+#include "LayerTreeHost.h"
 #endif
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -1313,8 +1316,8 @@ void WebPage::scrollMainFrameIfNotAtMaxScrollPosition(const IntSize& scrollOffse
 {
     FrameView* frameView = m_page->mainFrame().view();
 
-    IntPoint scrollPosition = frameView->scrollPosition();
-    IntPoint maximumScrollPosition = frameView->maximumScrollPosition();
+    ScrollPosition scrollPosition = frameView->scrollPosition();
+    ScrollPosition maximumScrollPosition = frameView->maximumScrollPosition();
 
     // If the current scroll position in a direction is the max scroll position 
     // we don't want to scroll at all.
@@ -1459,8 +1462,10 @@ void WebPage::scalePage(double scale, const IntPoint& origin)
     for (auto* pluginView : m_pluginViews)
         pluginView->pageScaleFactorDidChange();
 
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     if (m_drawingArea->layerTreeHost())
         m_drawingArea->layerTreeHost()->deviceOrPageScaleFactorChanged();
+#endif
 
     send(Messages::WebPageProxy::PageScaleFactorDidChange(scale));
 }
@@ -1535,8 +1540,10 @@ void WebPage::setDeviceScaleFactor(float scaleFactor)
         m_findController.deviceScaleFactorDidChange();
     }
 
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     if (m_drawingArea->layerTreeHost())
         m_drawingArea->layerTreeHost()->deviceOrPageScaleFactorChanged();
+#endif
 }
 
 float WebPage::deviceScaleFactor() const
@@ -2411,7 +2418,7 @@ void WebPage::setSessionID(SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, uint64_t downloadID)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, DownloadID downloadID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
@@ -2957,7 +2964,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
         m_drawingArea->updatePreferences(store);
 
 #if PLATFORM(IOS)
-    m_viewportConfiguration.setCanIgnoreScalingConstraints(store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey()));
+    m_ignoreViewportScalingConstraints = store.getBoolValueForKey(WebPreferencesKey::ignoreViewportScalingConstraintsKey());
+    m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints);
     m_viewportConfiguration.setForceAlwaysUserScalable(store.getBoolValueForKey(WebPreferencesKey::forceAlwaysUserScalableKey()));
 #endif
 }
@@ -3506,9 +3514,9 @@ void WebPage::addMIMETypeWithCustomContentProvider(const String& mimeType)
 void WebPage::updateMainFrameScrollOffsetPinning()
 {
     Frame& frame = m_page->mainFrame();
-    IntPoint scrollPosition = frame.view()->scrollPosition();
-    IntPoint maximumScrollPosition = frame.view()->maximumScrollPosition();
-    IntPoint minimumScrollPosition = frame.view()->minimumScrollPosition();
+    ScrollPosition scrollPosition = frame.view()->scrollPosition();
+    ScrollPosition maximumScrollPosition = frame.view()->maximumScrollPosition();
+    ScrollPosition minimumScrollPosition = frame.view()->minimumScrollPosition();
 
     bool isPinnedToLeftSide = (scrollPosition.x() <= minimumScrollPosition.x());
     bool isPinnedToRightSide = (scrollPosition.x() >= maximumScrollPosition.x());
@@ -3539,10 +3547,8 @@ void WebPage::mainFrameDidLayout()
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
         IntSize newContentSize = frameView->contentsSizeRespectingOverflow();
-        if (m_viewportConfiguration.contentsSize() != newContentSize) {
-            m_viewportConfiguration.setContentsSize(newContentSize);
+        if (m_viewportConfiguration.setContentsSize(newContentSize))
             viewportConfigurationChanged();
-        }
     }
     m_findController.redraw();
 #endif
@@ -4688,9 +4694,16 @@ void WebPage::didCommitLoad(WebFrame* frame)
 
     resetViewportDefaultConfiguration(frame);
     const Frame* coreFrame = frame->coreFrame();
-    m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize());
-    m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments());
-    viewportConfigurationChanged();
+    
+    bool viewportChanged = false;
+    if (m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize()))
+        viewportChanged = true;
+
+    if (m_viewportConfiguration.setViewportArguments(coreFrame->document()->viewportArguments()))
+        viewportChanged = true;
+
+    if (viewportChanged)
+        viewportConfigurationChanged();
 #endif
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
@@ -4796,8 +4809,8 @@ void WebPage::determinePrimarySnapshottedPlugIn()
                 continue;
 
             IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
-            IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
-            IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
+            ScrollPosition scrollPosition = mainFrame.view()->documentScrollPositionRelativeToViewOrigin();
+            IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollPosition, plugInRectRelativeToView.size());
             HitTestResult hitTestResult(plugInRectRelativeToTopDocument.center());
             mainRenderView.hitTest(request, hitTestResult);
 
@@ -4806,7 +4819,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
                 continue;
 
             IntRect elementRectRelativeToView = element->clientRect();
-            IntRect elementRectRelativeToTopDocument(elementRectRelativeToView.location() + scrollOffset, elementRectRelativeToView.size());
+            IntRect elementRectRelativeToTopDocument(elementRectRelativeToView.location() + scrollPosition, elementRectRelativeToView.size());
             LayoutRect inflatedPluginRect = plugInRectRelativeToTopDocument;
             LayoutUnit xOffset = (inflatedPluginRect.width() * overlappingImageBoundsScale - inflatedPluginRect.width()) / 2;
             LayoutUnit yOffset = (inflatedPluginRect.height() * overlappingImageBoundsScale - inflatedPluginRect.height()) / 2;
@@ -4875,8 +4888,8 @@ bool WebPage::plugInIntersectsSearchRect(HTMLPlugInImageElement& plugInImageElem
     IntRect plugInRectRelativeToView = plugInImageElement.clientRect();
     if (plugInRectRelativeToView.isEmpty())
         return false;
-    IntSize scrollOffset = mainFrame.view()->documentScrollOffsetRelativeToViewOrigin();
-    IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + scrollOffset, plugInRectRelativeToView.size());
+    ScrollPosition scrollPosition = mainFrame.view()->documentScrollPositionRelativeToViewOrigin();
+    IntRect plugInRectRelativeToTopDocument(plugInRectRelativeToView.location() + toIntSize(scrollPosition), plugInRectRelativeToView.size());
 
     return plugInRectRelativeToTopDocument.intersects(searchRect);
 }
@@ -5004,14 +5017,6 @@ PassRefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame,
     return TextIterator::rangeFromLocationAndLength(frame.selection().rootEditableElementOrDocumentElement(), static_cast<int>(range.location), length);
 }
     
-bool WebPage::synchronousMessagesShouldSpinRunLoop()
-{
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
-    return WebCore::AXObjectCache::accessibilityEnabled();
-#endif
-    return false;
-}
-
 void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
 {
     if (!frame->isMainFrame())

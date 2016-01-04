@@ -30,6 +30,8 @@ var verboseTestGeneration = false;
 function stringifyIfNeeded(x) {
     if (typeof x == "string")
         return '"' + x + '"';
+    if (typeof x == "object")
+        return 'objWithVal:' + x;
     return x;
 }
 
@@ -76,6 +78,8 @@ function generateBinaryTests(tests, opName, op, operandTypes, leftValues, rightV
 var errorReport = "";
 
 function isIdentical(x, y) {
+    if (typeof x == "undefined" && typeof y == "undefined")
+        return true;
     if (typeof x != typeof y)
         return false;
     if (x == y) {
@@ -122,8 +126,6 @@ function run() {
 
     for (var test of tests)
         runTest(test);
-    // for (var i = 0; i < tests.length; i++)
-    //     runTest(tests[i]);
 
     if (errorReport !== "")
         throw "Found failures:\n" + errorReport;

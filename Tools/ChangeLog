@@ -1,3 +1,405 @@
+2015-12-31  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r194470): Fix warnings uncovered by migrating to WTF_MOVE
+        <https://bugs.webkit.org/show_bug.cgi?id=152601>
+
+        Ignore unknown pragmas on older clangs.  Fixes the following
+        build failure:
+
+            Tools/TestWebKitAPI/Tests/WTF/NakedPtr.cpp:184:34: error: unknown warning group '-Wself-move', ignored [-Werror,-Wunknown-pragmas]
+            #pragma clang diagnostic ignored "-Wself-move"
+                                             ^
+            1 error generated.
+
+        * TestWebKitAPI/Tests/WTF/NakedPtr.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Update the style checker to advise using WTFMove() instead of WTF::move()
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_wtf_move):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_wtf_move):
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Fix warnings uncovered by migrating to WTF_MOVE
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Daniel Bates.
+
+        Ignored -Wself-move warnings in these two API tests. It's useful to test that these classes properly handle
+        self-move, even if doing so would trigger a warning.
+
+        * TestWebKitAPI/Tests/WTF/NakedPtr.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-12-31  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] The install-dependencies script has a syntax error
+        https://bugs.webkit.org/show_bug.cgi?id=152613
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/install-dependencies: Add the missing 'then.'
+
+2015-12-30  Philippe Normand  <pnormand@igalia.com>
+
+        [Mac][GTK] Jhbuild support for OSX
+        https://bugs.webkit.org/show_bug.cgi?id=150799
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/install-dependencies: Install dependencies on OSX with Homebrew.
+        * gtk/jhbuild.modules: Moved platform-specific build settings in condition tags.
+        * gtk/patches/foxbntconfig-fix-osx-cache.diff: Added.
+        * gtk/jhbuildrc: GTK+ makeargs clean-up, the 3.0.12 hack is no longer needed.
+
+2015-12-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, move Sebastian Dröge to committers list
+
+        He accidentally added himself to the reviewers list because the file is confusing.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-12-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the unused #define _USE_MATH_DEFINES
+        https://bugs.webkit.org/show_bug.cgi?id=152034
+
+        Reviewed by Tim Horton.
+        
+        Update this test to use piDouble from MathExtras.h, and
+        std::numeric_limits<>.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+
+2015-12-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Python SCM should be able to retrieve untracked files - Generic changes
+        https://bugs.webkit.org/show_bug.cgi?id=152536
+
+        Reviewed by Brent Fulgham.
+
+        This patch introduces SCM.untracked_files to retrieve a list of untracked files.
+        No support is yet added to GIT and SVN specific implementations.
+
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.untracked_files):
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_untracked_files):
+
+2015-12-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        SVN checkout used by RunBenchmark should be non-interactive
+        https://bugs.webkit.org/show_bug.cgi?id=152542
+
+        Reviewed by Ryosuke Niwa.
+
+        RunBenchmark should not require user interaction while running.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder.py:
+        (BenchmarkBuilder._checkout_with_subversion):
+
+2015-12-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Web Inspector: add support for running protocol-test.js tests on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=148037
+        <rdar://problem/22292237>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::inspectorTestStubURL): Provide implementation.
+
+2015-12-23  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaDeviceInfo.label must be empty in some situations
+        https://bugs.webkit.org/show_bug.cgi?id=152000
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::setUserMediaPermission):
+        (WTR::InjectedBundle::setUserMediaPermissionForOrigin): New.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setUserMediaPermissionForOrigin): New.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setUserMediaPermissionForOrigin):
+        (WTR::TestController::handleCheckOfUserMediaPermissionForOrigin): Add NULL check.
+        (WTR::TestController::decidePolicyForUserMediaPermissionRequestIfPossible): Don't add 
+          persistent permission for origin, that can be done from script now.
+        * WebKitTestRunner/TestController.h:
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle): Add support for
+          SetUserMediaPermissionForOrigin.
+
+2015-12-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix: Recognize Windows 10 variants.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._determine_win_version):
+
+2015-12-23  Chris Aljoudi <chris@chrismatic.io> and Alex Christensen <achristensen@webkit.org>
+
+        Content blockers should be able to promote http to https
+        https://bugs.webkit.org/show_bug.cgi?id=148966
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (WebCore::ContentExtensions::operator<<):
+        (TestWebKitAPI::TEST_F):
+
+2015-12-22  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] MiniBrowser should be able to choose the offline-web-application-cache option
+        https://bugs.webkit.org/show_bug.cgi?id=152516
+
+        Reviewed by Gyuyoung Kim.
+
+        * MiniBrowser/efl/main.c:
+
+2015-12-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed: Add John Wilander as a contributor.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-12-22  Chris Fleizach  <cfleizach@apple.com>
+
+        [WK2] Looping in testcase: fast/dom/Window/property-access-on-cached-window-after-frame-removed.html
+        https://bugs.webkit.org/show_bug.cgi?id=152482
+
+        Reviewed by Brent Fulgham.
+
+        vertical/horizontalScrollbar returns an accessibility element. That element can also be queried
+        for the same property. On WK2, the element returned will not be valid, but is still present and
+        that can lead to looping.
+
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::horizontalScrollbar):
+        (AccessibilityUIElement::verticalScrollbar):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::horizontalScrollbar):
+        (WTR::AccessibilityUIElement::verticalScrollbar):
+
+2015-12-22  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json: Marking myself as reviewer.
+
+2015-12-21  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] test_ewk2_context failed after r192808
+        https://bugs.webkit.org/show_bug.cgi?id=151846
+
+        Reviewed by Gyuyoung Kim.
+
+        Used the added ewk_context_web_process_count_limit_set api
+        instead of the deprecated ewk_context_process_model_set.
+
+        * MiniBrowser/efl/main.c:
+        (elm_main):
+
+2015-12-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, move myself to reviewer list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-12-21  Aakash Jain  <aakash_jain@apple.com>
+
+        Unreviewed, add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-12-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] jquery.min.js violates DFSG
+        https://bugs.webkit.org/show_bug.cgi?id=152428
+
+        Reviewed by Joseph Pecoraro.
+
+        Stop distributing Source/WebInspectorUI/Tools. It is not needed in tarballs. This brings us
+        into compliance with DFSG by removing a bundled, minified copy of jQuery from our tarball.
+
+        * gtk/manifest.txt.in:
+
+2015-12-19  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] WebKit contains dead source code for OS X Mavericks and earlier
+        https://bugs.webkit.org/show_bug.cgi?id=152462
+
+        Reviewed by Alexey Proskuryakov.
+
+        - Removed definitions of MACOSX_DEPLOYMENT_TARGET and WEBKIT_SYSTEM_INTERFACE_LIBRARY for
+          OS X 10.9:
+
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * LayoutTestRelay/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+        - Simplified expressions involving __MAC_OS_X_VERSION_MIN_REQUIRED and removed code that was
+          never getting compiled:
+
+        * DumpRenderTree/mac/TextInputController.m:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        * TestWebKitAPI/Tests/mac/AttributedString.mm:
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+
+2015-12-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, add WebKitGTK+ Bugzilla email to committers list
+
+        This is to make it easy to CC it on Bugzilla.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-12-18  Aakash Jain  <aakash_jain@apple.com>
+
+        Pasteboard get messed up after running kill-old-processes
+        https://bugs.webkit.org/show_bug.cgi?id=152426
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main): Do not kill pasteboard anymore.
+
+2015-12-17  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests shouldn't start multiple iOS simulators while only running one test
+        https://bugs.webkit.org/show_bug.cgi?id=152157
+        <rdar://problem/23851817>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.get_worker_count): Calculate required number of workers.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._get_test_inputs): Common method to calculate test_inputs.
+        (Manager._update_worker_count): Calculate and update required number of workers.
+
+2015-12-16  Aakash Jain  <aakash_jain@apple.com>
+
+        run-webkit-tests fails to delete Simulator device during cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=152363
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.delete_device): Ensure that device is Shutdown before deleting it.
+
+2015-12-16  Tim Horton  <timothy_horton@apple.com>
+
+        [mac-wk2] fast/events force click tests crashing
+        https://bugs.webkit.org/show_bug.cgi?id=152339
+
+        Reviewed by Beth Dakin.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (-[EventSenderSyntheticEvent initPressureEventAtLocation:globalLocation:stage:pressure:stageTransition:phase:time:eventNumber:window:]):
+        Set the NSEvent's _type member in addition to overriding -type,
+        because there are assertions in touch event handling code that depend on it.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Enforce temporarily bots to sync WebKit and WPT testharness.js
+        https://bugs.webkit.org/show_bug.cgi?id=152334
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Temporarily overwrite wpt testharness.js with WebKit testharness.js.
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add fetch API compile time flag
+        https://bugs.webkit.org/show_bug.cgi?id=152254
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added files that have impact in building Streams API to the watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed.
+
+        Added imported tests to Streams API watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2015-12-16  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove default copy of wpt testharness.js when launching wpt server
+        https://bugs.webkit.org/show_bug.cgi?id=152298
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._copy_webkit_test_files): Deleted default copy of WebKit testharness.js to WPT.
+
+2015-12-15  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r192375): DumpRenderTree.app exits immediately with no error
+        <http://webkit.org/b/152314>
+
+        Reviewed by Daniel Bates.
+
+        The change to DumpRenderTreeMain.mm in r192375 caused the iOS
+        code path to exit immediately when calling main().
+        Unfortunately, DumpRenderTreeMain.mm was used for both
+        DumpRenderTree command-line binary and DumpRenderTree.app, which
+        meant that the app would exit immediately with no error code
+        when run!
+
+        The workaround is to introduce a separate source file called
+        DumpRenderTreeAppMain.mm, similar to what WebKitTestRunner
+        already does.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Add
+        DumpRenderTreeAppMain.mm to the project.  Make it the only
+        compiled source for the DumpRenderTree.app target.
+        * DumpRenderTree/ios/DumpRenderTreeAppMain.mm: Copied from Tools/DumpRenderTree/mac/DumpRenderTreeMain.mm.
+        (main): Call DumpRenderTreeMain() on iOS.  Assert on OS X in
+        case someone tries mistakenly to use the app.
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        Link to JavaScriptCore.framework on iOS for the assert.
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        Link to JavaScriptCore.framework on OS X for the assert.  Remove
+        unneeded EXCLUDED_SOURCE_FILE_NAMES setting.
+        * DumpRenderTree/mac/DumpRenderTreeMain.mm:
+        (main): Add assert for iOS so that a crash occurs if someone
+        tries to run the wrong command.
+
 2015-12-14  Tim Horton  <timothy_horton@apple.com>
 
         Frequent crash under -[WKPDFView web_setMinimumSize:]_block_invoke

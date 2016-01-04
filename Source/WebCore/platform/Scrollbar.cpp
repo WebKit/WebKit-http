@@ -97,6 +97,16 @@ Scrollbar::~Scrollbar()
     theme().unregisterScrollbar(*this);
 }
 
+int Scrollbar::occupiedWidth() const
+{
+    return isOverlayScrollbar() ? 0 : width();
+}
+
+int Scrollbar::occupiedHeight() const
+{
+    return isOverlayScrollbar() ? 0 : height();
+}
+
 void Scrollbar::offsetDidChange()
 {
     float position = static_cast<float>(m_scrollableArea.scrollPosition(this));
@@ -468,7 +478,7 @@ bool Scrollbar::supportsUpdateOnSecondaryThread() const
 {
     // It's unfortunate that this needs to be done with an ifdef. Ideally there would be a way to feature-detect
     // the necessary support within AppKit.
-#if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
     return !m_scrollableArea.forceUpdateScrollbarsOnMainThreadForPerformanceTesting()
         && (m_scrollableArea.hasLayerForVerticalScrollbar() || m_scrollableArea.hasLayerForHorizontalScrollbar())
         && m_scrollableArea.usesAsyncScrolling();

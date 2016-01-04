@@ -178,6 +178,8 @@ static const Ecore_Getopt options = {
         ECORE_GETOPT_STORE_DEF_BOOL
             ('l', "local-storage", "Enable/disable HTML5 local storage.", EINA_TRUE),
         ECORE_GETOPT_STORE_DEF_BOOL
+            ('o', "offline-web-application-cache", "Enable/disable offline web application cache.", EINA_TRUE),
+        ECORE_GETOPT_STORE_DEF_BOOL
             ('F', "full-screen", "Start in full-screen.", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('t', "text-checking", "Enable/disable text spell checking.", EINA_FALSE),
@@ -2464,7 +2466,7 @@ elm_main(int argc, char *argv[])
     Ewk_Context *context = ewk_context_default_get();
 
     if (separated_process_enabled)
-        ewk_context_process_model_set(context, EWK_PROCESS_MODEL_MULTIPLE_SECONDARY);
+        ewk_context_web_process_count_limit_set(context, 0);
 
     // Enable favicon database.
     ewk_context_favicon_database_directory_set(context, NULL);

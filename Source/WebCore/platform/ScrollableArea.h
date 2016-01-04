@@ -41,6 +41,11 @@ class ScrollAnimator;
 class GraphicsLayer;
 class TiledBacking;
 
+// scrollPosition is in content coordinates (0,0 is at scrollOrigin), so may have negative components.
+typedef IntPoint ScrollPosition;
+// scrollOffset() is the value used by scrollbars (min is 0,0), and should never have negative components.
+typedef IntPoint ScrollOffset;
+
 class ScrollableArea {
 public:
     WEBCORE_EXPORT bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
@@ -49,12 +54,12 @@ public:
 
     // Should be called when the scroll position changes externally, for example if the scroll layer position
     // is updated on the scrolling thread and we need to notify the main thread.
-    WEBCORE_EXPORT void notifyScrollPositionChanged(const IntPoint&);
+    WEBCORE_EXPORT void notifyScrollPositionChanged(const ScrollPosition&);
 
     // Allows subclasses to handle scroll position updates themselves. If this member function
     // returns true, the scrollable area won't actually update the scroll position and instead
     // expect it to happen sometime in the future.
-    virtual bool requestScrollPositionUpdate(const IntPoint&) { return false; }
+    virtual bool requestScrollPositionUpdate(const ScrollPosition&) { return false; }
 
     WEBCORE_EXPORT bool handleWheelEvent(const PlatformWheelEvent&);
 
@@ -139,9 +144,6 @@ public:
     // This getter will return null if the ScrollAnimator hasn't been created yet.
     ScrollAnimator* existingScrollAnimator() const { return m_scrollAnimator.get(); }
 
-    const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
-    bool scrollOriginChanged() const { return m_scrollOriginChanged; }
-
     virtual bool isActive() const = 0;
     virtual int scrollSize(ScrollbarOrientation) const = 0;
     virtual int scrollPosition(Scrollbar*) const = 0;
@@ -173,13 +175,24 @@ public:
     {
         return scrollbar->Widget::convertFromContainingView(parentPoint);
     }
+    
+    WEBCORE_EXPORT IntSize scrollbarIntrusion() const;
 
     virtual Scrollbar* horizontalScrollbar() const { return 0; }
     virtual Scrollbar* verticalScrollbar() const { return 0; }
 
-    virtual IntPoint scrollPosition() const;
-    virtual IntPoint minimumScrollPosition() const;
-    virtual IntPoint maximumScrollPosition() const;
+    const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
+    bool scrollOriginChanged() const { return m_scrollOriginChanged; }
+
+    virtual ScrollPosition scrollPosition() const;
+    virtual ScrollPosition minimumScrollPosition() const;
+    virtual ScrollPosition maximumScrollPosition() const;
+
+    ScrollOffset maximumScrollOffset() const;
+
+    WEBCORE_EXPORT ScrollPosition scrollPositionFromOffset(ScrollOffset) const;
+    WEBCORE_EXPORT ScrollOffset scrollOffsetFromPosition(ScrollPosition) const;
+
     WEBCORE_EXPORT virtual bool scrolledToTop() const;
     WEBCORE_EXPORT virtual bool scrolledToBottom() const;
     WEBCORE_EXPORT virtual bool scrolledToLeft() const;

@@ -39,6 +39,14 @@ OBJC_CLASS NSPasteboard;
 OBJC_CLASS UIPasteboard;
 #endif
 
+#if PLATFORM(WPE)
+namespace WPE {
+namespace Pasteboard {
+class Pasteboard;
+}
+}
+#endif
+
 namespace WebCore {
 
 class Color;
@@ -51,7 +59,7 @@ class PlatformPasteboard {
 public:
     // FIXME: probably we don't need a constructor that takes a pasteboard name for iOS.
     WEBCORE_EXPORT explicit PlatformPasteboard(const String& pasteboardName);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(WPE)
     WEBCORE_EXPORT PlatformPasteboard();
 #endif
     WEBCORE_EXPORT static String uniqueName();
@@ -87,6 +95,9 @@ private:
 #endif
 #if PLATFORM(IOS)
     RetainPtr<UIPasteboard> m_pasteboard;
+#endif
+#if PLATFORM(WPE)
+    std::shared_ptr<WPE::Pasteboard::Pasteboard> m_pasteboard;
 #endif
 };
 

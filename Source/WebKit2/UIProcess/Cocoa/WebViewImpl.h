@@ -408,6 +408,11 @@ public:
     void rotateWithEvent(NSEvent *);
     void smartMagnifyWithEvent(NSEvent *);
 
+    void touchesBeganWithEvent(NSEvent *);
+    void touchesMovedWithEvent(NSEvent *);
+    void touchesEndedWithEvent(NSEvent *);
+    void touchesCancelledWithEvent(NSEvent *);
+
     void setLastMouseDownEvent(NSEvent *);
 
     void gestureEventWasNotHandledByWebCore(NSEvent *);
@@ -491,6 +496,8 @@ private:
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
 
+    Vector<NSTouch *> touchesOrderedByAge();
+
     NSView <WebViewImplDelegate> *m_view;
     std::unique_ptr<PageClient> m_pageClient;
     Ref<WebPageProxy> m_page;
@@ -556,10 +563,8 @@ private:
     bool m_ignoresAllEvents { false };
     bool m_ignoresMouseDraggedEvents { false };
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     RetainPtr<WKImmediateActionController> m_immediateActionController;
     RetainPtr<NSImmediateActionGestureRecognizer> m_immediateActionGestureRecognizer;
-#endif
 
     bool m_allowsLinkPreview { true };
     bool m_didRegisterForLookupPopoverCloseNotifications { false };
@@ -602,6 +607,9 @@ private:
     // that has been already sent to WebCore.
     RetainPtr<NSEvent> m_keyDownEventBeingResent;
     Vector<WebCore::KeypressCommand>* m_collectedKeypressCommands { nullptr };
+
+    Vector<RetainPtr<id <NSObject, NSCopying>>> m_activeTouchIdentities;
+    RetainPtr<NSArray> m_lastTouches;
 };
     
 } // namespace WebKit

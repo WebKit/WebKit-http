@@ -48,6 +48,7 @@
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
 #include <WebCore/Color.h>
+#include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/IDBFactoryBackendInterface.h>
 #include <WebCore/LoaderStrategy.h>
@@ -189,6 +190,13 @@ void WebPlatformStrategies::getWebVisiblePluginInfo(const Page* page, Vector<Plu
     getPluginInfo(page, plugins);
 
 #if PLATFORM(MAC)
+    if (Document* document = page->mainFrame().document()) {
+        if (SecurityOrigin* securityOrigin = document->securityOrigin()) {
+            if (securityOrigin->isLocal())
+                return;
+        }
+    }
+    
     for (int32_t i = plugins.size() - 1; i >= 0; --i) {
         PluginInfo& info = plugins.at(i);
         PluginLoadClientPolicy clientPolicy = info.clientLoadPolicy;
@@ -465,5 +473,31 @@ long WebPlatformStrategies::changeCount()
 #endif // PLATFORM(IOS)
 
 #endif // PLATFORM(COCOA)
+
+#if PLATFORM(WPE)
+
+void WebPlatformStrategies::getTypes(Vector<String>& types)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardTypes(), Messages::WebPasteboardProxy::GetPasteboardTypes::Reply(types), 0);
+}
+
+String WebPlatformStrategies::readStringFromPasteboard(int index, const String& pasteboardType)
+{
+    String value;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadStringFromPasteboard(index, pasteboardType), Messages::WebPasteboardProxy::ReadStringFromPasteboard::Reply(value), 0);
+    return value;
+}
+
+void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteWebContentToPasteboard(content), 0);
+}
+
+void WebPlatformStrategies::writeToPasteboard(const String& pasteboardType, const String& text)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteStringToPasteboard(pasteboardType, text), 0);
+}
+
+#endif // PLATFORM(WPE)
 
 } // namespace WebKit

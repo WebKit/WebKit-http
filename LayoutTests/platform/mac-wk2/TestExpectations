@@ -289,6 +289,11 @@ webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
 webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
 
 webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
+
+webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
+
+webkit.org/b/152492 [ Debug ] inspector/debugger/break-on-exception-catch.html [ Pass Timeout ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -358,9 +363,6 @@ webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnl
 webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
-
-# Test for WK1 only
-fast/dom/Window/property-access-on-cached-window-after-frame-removed.html [ Skip ]
 
 ### END OF (3) Unclassified failures
 ########################################

@@ -39,12 +39,18 @@
 #include "DFGSlowPathGenerator.h"
 #include "DirectArguments.h"
 #include "JITAddGenerator.h"
+#include "JITBitAndGenerator.h"
+#include "JITBitOrGenerator.h"
+#include "JITBitXorGenerator.h"
 #include "JITDivGenerator.h"
+#include "JITLeftShiftGenerator.h"
 #include "JITMulGenerator.h"
+#include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
 #include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSEnvironmentRecord.h"
+#include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "LinkBuffer.h"
 #include "ScopedArguments.h"
@@ -2738,6 +2744,17 @@ void SpeculativeJIT::compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg p
     putResult.link(&m_jit);
 }
 
+void SpeculativeJIT::compileCheckTypeInfoFlags(Node* node)
+{
+    SpeculateCellOperand base(this, node->child1());
+
+    GPRReg baseGPR = base.gpr();
+
+    speculationCheck(BadTypeInfoFlags, JSValueRegs(), 0, m_jit.branchTest8(MacroAssembler::Zero, MacroAssembler::Address(baseGPR, JSCell::typeInfoFlagsOffset()), MacroAssembler::TrustedImm32(node->typeInfoOperand())));
+
+    noResult(node);
+}
+
 void SpeculativeJIT::compileInstanceOf(Node* node)
 {
     if (node->child1().useKind() == UntypedUse) {
@@ -2786,11 +2803,119 @@ void SpeculativeJIT::compileInstanceOf(Node* node)
     blessedBooleanResult(scratchReg, node);
 }
 
+template<typename SnippetGenerator, J_JITOperation_EJJ snippetSlowPathFunction>
+void SpeculativeJIT::emitUntypedBitOp(Node* node)
+{
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
+        JSValueRegs leftRegs = left.jsValueRegs();
+        JSValueRegs rightRegs = right.jsValueRegs();
+#if USE(JSVALUE64)
+        GPRTemporary result(this);
+        JSValueRegs resultRegs = JSValueRegs(result.gpr());
+#else
+        GPRTemporary resultTag(this);
+        GPRTemporary resultPayload(this);
+        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+#endif
+        flushRegisters();
+        callOperation(snippetSlowPathFunction, resultRegs, leftRegs, rightRegs);
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
+
+    JSValueRegs leftRegs;
+    JSValueRegs rightRegs;
+
+#if USE(JSVALUE64)
+    GPRTemporary result(this);
+    JSValueRegs resultRegs = JSValueRegs(result.gpr());
+    GPRTemporary scratch(this);
+    GPRReg scratchGPR = scratch.gpr();
+#else
+    GPRTemporary resultTag(this);
+    GPRTemporary resultPayload(this);
+    JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+    GPRReg scratchGPR = resultTag.gpr();
+#endif
+
+    SnippetOperand leftOperand;
+    SnippetOperand rightOperand;
+
+    // The snippet generator does not support both operands being constant. If the left
+    // operand is already const, we'll ignore the right operand's constness.
+    if (leftChild->isInt32Constant())
+        leftOperand.setConstInt32(leftChild->asInt32());
+    else if (rightChild->isInt32Constant())
+        rightOperand.setConstInt32(rightChild->asInt32());
+
+    RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+
+    if (!leftOperand.isConst()) {
+        left = JSValueOperand(this, leftChild);
+        leftRegs = left->jsValueRegs();
+    }
+    if (!rightOperand.isConst()) {
+        right = JSValueOperand(this, rightChild);
+        rightRegs = right->jsValueRegs();
+    }
+
+    SnippetGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs, scratchGPR);
+    gen.generateFastPath(m_jit);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().append(m_jit.jump());
+
+    gen.slowPathJumpList().link(&m_jit);
+    silentSpillAllRegisters(resultRegs);
+
+    if (leftOperand.isConst()) {
+        leftRegs = resultRegs;
+        m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+    } else if (rightOperand.isConst()) {
+        rightRegs = resultRegs;
+        m_jit.moveValue(rightChild->asJSValue(), rightRegs);
+    }
+
+    callOperation(snippetSlowPathFunction, resultRegs, leftRegs, rightRegs);
+
+    silentFillAllRegisters(resultRegs);
+    m_jit.exceptionCheck();
+
+    gen.endJumpList().link(&m_jit);
+    jsValueResult(resultRegs, node);
+}
+
 void SpeculativeJIT::compileBitwiseOp(Node* node)
 {
     NodeType op = node->op();
     Edge& leftChild = node->child1();
     Edge& rightChild = node->child2();
+
+    if (leftChild.useKind() == UntypedUse || rightChild.useKind() == UntypedUse) {
+        switch (op) {
+        case BitAnd:
+            emitUntypedBitOp<JITBitAndGenerator, operationValueBitAnd>(node);
+            return;
+        case BitOr:
+            emitUntypedBitOp<JITBitOrGenerator, operationValueBitOr>(node);
+            return;
+        case BitXor:
+            emitUntypedBitOp<JITBitXorGenerator, operationValueBitXor>(node);
+            return;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
 
     if (leftChild->isInt32Constant()) {
         SpeculateInt32Operand op2(this, rightChild);
@@ -2821,11 +2946,129 @@ void SpeculativeJIT::compileBitwiseOp(Node* node)
     }
 }
 
+void SpeculativeJIT::emitUntypedRightShiftBitOp(Node* node)
+{
+    J_JITOperation_EJJ snippetSlowPathFunction = node->op() == BitRShift
+        ? operationValueBitRShift : operationValueBitURShift;
+    JITRightShiftGenerator::ShiftType shiftType = node->op() == BitRShift
+        ? JITRightShiftGenerator::SignedShift : JITRightShiftGenerator::UnsignedShift;
+
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (isKnownNotNumber(leftChild.node()) || isKnownNotNumber(rightChild.node())) {
+        JSValueOperand left(this, leftChild);
+        JSValueOperand right(this, rightChild);
+        JSValueRegs leftRegs = left.jsValueRegs();
+        JSValueRegs rightRegs = right.jsValueRegs();
+#if USE(JSVALUE64)
+        GPRTemporary result(this);
+        JSValueRegs resultRegs = JSValueRegs(result.gpr());
+#else
+        GPRTemporary resultTag(this);
+        GPRTemporary resultPayload(this);
+        JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+#endif
+        flushRegisters();
+        callOperation(snippetSlowPathFunction, resultRegs, leftRegs, rightRegs);
+        m_jit.exceptionCheck();
+
+        jsValueResult(resultRegs, node);
+        return;
+    }
+
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
+
+    JSValueRegs leftRegs;
+    JSValueRegs rightRegs;
+
+    FPRTemporary leftNumber(this);
+    FPRReg leftFPR = leftNumber.fpr();
+
+#if USE(JSVALUE64)
+    GPRTemporary result(this);
+    JSValueRegs resultRegs = JSValueRegs(result.gpr());
+    GPRTemporary scratch(this);
+    GPRReg scratchGPR = scratch.gpr();
+    FPRReg scratchFPR = InvalidFPRReg;
+#else
+    GPRTemporary resultTag(this);
+    GPRTemporary resultPayload(this);
+    JSValueRegs resultRegs = JSValueRegs(resultPayload.gpr(), resultTag.gpr());
+    GPRReg scratchGPR = resultTag.gpr();
+    FPRTemporary fprScratch(this);
+    FPRReg scratchFPR = fprScratch.fpr();
+#endif
+
+    SnippetOperand leftOperand;
+    SnippetOperand rightOperand;
+
+    // The snippet generator does not support both operands being constant. If the left
+    // operand is already const, we'll ignore the right operand's constness.
+    if (leftChild->isInt32Constant())
+        leftOperand.setConstInt32(leftChild->asInt32());
+    else if (rightChild->isInt32Constant())
+        rightOperand.setConstInt32(rightChild->asInt32());
+
+    RELEASE_ASSERT(!leftOperand.isConst() || !rightOperand.isConst());
+
+    if (!leftOperand.isConst()) {
+        left = JSValueOperand(this, leftChild);
+        leftRegs = left->jsValueRegs();
+    }
+    if (!rightOperand.isConst()) {
+        right = JSValueOperand(this, rightChild);
+        rightRegs = right->jsValueRegs();
+    }
+
+    JITRightShiftGenerator gen(leftOperand, rightOperand, resultRegs, leftRegs, rightRegs,
+        leftFPR, scratchGPR, scratchFPR, shiftType);
+    gen.generateFastPath(m_jit);
+
+    ASSERT(gen.didEmitFastPath());
+    gen.endJumpList().append(m_jit.jump());
+
+    gen.slowPathJumpList().link(&m_jit);
+    silentSpillAllRegisters(resultRegs);
+
+    if (leftOperand.isConst()) {
+        leftRegs = resultRegs;
+        m_jit.moveValue(leftChild->asJSValue(), leftRegs);
+    } else if (rightOperand.isConst()) {
+        rightRegs = resultRegs;
+        m_jit.moveValue(rightChild->asJSValue(), rightRegs);
+    }
+
+    callOperation(snippetSlowPathFunction, resultRegs, leftRegs, rightRegs);
+
+    silentFillAllRegisters(resultRegs);
+    m_jit.exceptionCheck();
+
+    gen.endJumpList().link(&m_jit);
+    jsValueResult(resultRegs, node);
+    return;
+}
+
 void SpeculativeJIT::compileShiftOp(Node* node)
 {
     NodeType op = node->op();
     Edge& leftChild = node->child1();
     Edge& rightChild = node->child2();
+
+    if (leftChild.useKind() == UntypedUse || rightChild.useKind() == UntypedUse) {
+        switch (op) {
+        case BitLShift:
+            emitUntypedBitOp<JITLeftShiftGenerator, operationValueBitLShift>(node);
+            return;
+        case BitRShift:
+        case BitURShift:
+            emitUntypedRightShiftBitOp(node);
+            return;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
 
     if (rightChild->isInt32Constant()) {
         SpeculateInt32Operand op1(this, leftChild);
@@ -2948,6 +3191,28 @@ void SpeculativeJIT::compileValueAdd(Node* node)
     gen.endJumpList().link(&m_jit);
     jsValueResult(resultRegs, node);
     return;
+}
+
+void SpeculativeJIT::compileInstanceOfCustom(Node* node)
+{
+    // We could do something smarter here but this case is currently super rare and unless
+    // Symbol.hasInstance becomes popular will likely remain that way.
+
+    JSValueOperand value(this, node->child1());
+    SpeculateCellOperand constructor(this, node->child2());
+    JSValueOperand hasInstanceValue(this, node->child3());
+    GPRTemporary result(this);
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg constructorGPR = constructor.gpr();
+    JSValueRegs hasInstanceRegs = hasInstanceValue.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    MacroAssembler::Jump slowCase = m_jit.jump();
+
+    addSlowPathGenerator(slowPathCall(slowCase, this, operationInstanceOfCustom, resultGPR, valueRegs, constructorGPR, hasInstanceRegs));
+
+    unblessedBooleanResult(resultGPR, node);
 }
 
 void SpeculativeJIT::compileArithAdd(Node* node)
@@ -5141,7 +5406,7 @@ template <typename ClassType> void SpeculativeJIT::compileNewFunctionCommon(GPRR
 void SpeculativeJIT::compileNewFunction(Node* node)
 {
     NodeType nodeType = node->op();
-    ASSERT(nodeType == NewFunction || nodeType == NewArrowFunction);
+    ASSERT(nodeType == NewFunction || nodeType == NewArrowFunction || nodeType == NewGeneratorFunction);
     
     SpeculateCellOperand scope(this, node->child1());
 #if USE(JSVALUE64)
@@ -5179,6 +5444,8 @@ void SpeculativeJIT::compileNewFunction(Node* node)
 #else
             callOperation(operationNewArrowFunction, resultGPR, scopeGPR, executable, thisValueTagGPR, thisValuePayloadGPR);
 #endif
+        else if (nodeType == NewGeneratorFunction)
+            callOperation(operationNewGeneratorFunction, resultGPR, scopeGPR, executable);
         else
             callOperation(operationNewFunction, resultGPR, scopeGPR, executable);
         m_jit.exceptionCheck();
@@ -5186,9 +5453,10 @@ void SpeculativeJIT::compileNewFunction(Node* node)
         return;
     }
 
-    Structure* structure = nodeType == NewArrowFunction
-        ? m_jit.graph().globalObjectFor(node->origin.semantic)->arrowFunctionStructure()
-        : m_jit.graph().globalObjectFor(node->origin.semantic)->functionStructure();
+    Structure* structure =
+        nodeType == NewArrowFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->arrowFunctionStructure() :
+        nodeType == NewGeneratorFunction ? m_jit.graph().globalObjectFor(node->origin.semantic)->generatorFunctionStructure() :
+        m_jit.graph().globalObjectFor(node->origin.semantic)->functionStructure();
     
     GPRTemporary result(this);
     GPRTemporary scratch1(this);
@@ -5204,6 +5472,12 @@ void SpeculativeJIT::compileNewFunction(Node* node)
         compileNewFunctionCommon<JSFunction>(resultGPR, structure, scratch1GPR, scratch2GPR, scopeGPR, slowPath, JSFunction::allocationSize(0), executable, JSFunction::offsetOfScopeChain(), JSFunction::offsetOfExecutable(), JSFunction::offsetOfRareData());
             
         addSlowPathGenerator(slowPathCall(slowPath, this, operationNewFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
+    }
+
+    if (nodeType == NewGeneratorFunction) {
+        compileNewFunctionCommon<JSGeneratorFunction>(resultGPR, structure, scratch1GPR, scratch2GPR, scopeGPR, slowPath, JSGeneratorFunction::allocationSize(0), executable, JSGeneratorFunction::offsetOfScopeChain(), JSGeneratorFunction::offsetOfExecutable(), JSGeneratorFunction::offsetOfRareData());
+
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint, resultGPR, scopeGPR, executable));
     }
     
     if (nodeType == NewArrowFunction) {

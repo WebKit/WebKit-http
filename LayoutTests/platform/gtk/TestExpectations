@@ -349,7 +349,6 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-localDescription.html [ Sk
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-onnegotiationneeded.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remoteDescription.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stable.html [ Skip ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-state.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-statsSelector.html [ Skip ]
 webkit.org/b/79203 fast/events/constructors/media-stream-event-constructor.html [ Skip ]
@@ -489,7 +488,6 @@ Bug(GTK) css3/filters/backdrop [ Skip ]
 webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
 
 webkit.org/b/141423 css3/calc/line-height.html [ Failure ]
-webkit.org/b/141423 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-from-longhands.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-line-height.html [ Failure ]
 webkit.org/b/141423 fast/css/getComputedStyle/computed-style-font.html [ Failure ]
@@ -554,9 +552,7 @@ webkit.org/b/142268 editing/pasteboard/copy-paste-attachment.html [ Failure ]
 webkit.org/b/142269 fast/attachment/attachment-dom.html [ Failure ]
 webkit.org/b/142270 fast/canvas/canvas-ellipse-zero-lineto.html [ Failure ]
 
-webkit.org/b/127109 media/video-object-fit.html [ ImageOnlyFailure ]
 webkit.org/b/142283 fast/regions/overflow/overflow-first-and-last-regions.html [ ImageOnlyFailure ]
-webkit.org/b/142287 svg/clip-path/clip-path-line-use-before-defined.svg [ ImageOnlyFailure ]
 webkit.org/b/142289 mathml/presentation/scripts-subsup.html [ ImageOnlyFailure ]
 
 webkit.org/b/142819 fast/text/baseline-inline-block.html [ ImageOnlyFailure ]
@@ -614,6 +610,25 @@ webkit.org/b/149016 accessibility/aria-current.html [ Skip ]
 # ARIA 1.1 table related attributes are not supported
 webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 
+# WebKitGTK+ needs WOFF2 support.
+webkit.org/b/152616 fast/text/woff2.html [ ImageOnlyFailure ]
+
+# WebKitGTK+ doesn't have killring support.
+webkit.org/b/152379 editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
+webkit.org/b/152379 editing/pasteboard/emacs-killring-backward-delete-prepend.html [ Failure ]
+
+# The GTK+ test harness doesn't have support for overriding preferred languages.
+webkit.org/b/152618 fast/text/international/system-language/declarative-language.html [ Failure ]
+
+# This port doesn't support small-caps synthesis.
+webkit.org/b/152620 css3/font-variant-all.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-font-face-all.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-font-face-override.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-petite-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+webkit.org/b/152620 css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -652,6 +667,8 @@ webkit.org/b/118422 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-
 webkit.org/b/118423 http/tests/misc/iframe-reparenting-id-collision.html [ Crash Pass ]
 
 webkit.org/b/118902 svg/animations/svgenum-animation-6.html [ Crash Pass ]
+
+webkit.org/b/152610 fast/text/text-combine-placement.html [ Crash ]
 
 # Crashing after the FTL merge
 webkit.org/b/119255 [ Debug ] fast/workers/stress-js-execution.html [ Crash Pass ]
@@ -1337,8 +1354,8 @@ webkit.org/b/139362 inspector/css/pseudo-element-matches.html [ Timeout ]
 webkit.org/b/139362 inspector/css/selector-specificity.html [ Timeout Pass ]
 webkit.org/b/147229 inspector/css/modify-rule-selector.html [ Skip ] # Timeout
 
-webkit.org/b/142292 fast/images/animated-gif-window-resizing.html [ Timeout ]
-webkit.org/b/142292 fast/images/animated-gif-zooming.html [ Timeout ]
+webkit.org/b/142292 fast/images/animated-gif-window-resizing.html [ Timeout Pass ]
+webkit.org/b/142292 fast/images/animated-gif-zooming.html [ Timeout Pass ]
 
 webkit.org/b/142488 http/tests/appcache/404-resource-with-slow-main-resource.php [ Timeout ]
 webkit.org/b/141959 [ Release ] http/tests/media/clearkey/clear-key-hls-aes128.html [ Timeout ]
@@ -1493,7 +1510,6 @@ webkit.org/b/63706 plugins/mouse-events.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/cleanup-on-move.html [ Failure ]
 webkit.org/b/63706 editing/pasteboard/drag-list-item.html [ Failure ]
 webkit.org/b/63706 fast/events/ondragenter.html [ Failure ]
-webkit.org/b/63706 fast/events/drag-and-drop-autoscroll-inner-frame.html [ Timeout ]
 webkit.org/b/63706 fast/events/drag-customData.html  [ Timeout ]
 
 # Need support for internals.settings.setDeviceSupportsMouse
@@ -1970,7 +1986,6 @@ webkit.org/b/125348 accessibility/document-attributes.html [ Failure ]
 webkit.org/b/125406 fast/regions/relative-in-absolute-borders-overflow.html [ ImageOnlyFailure ]
 
 # Subpixel rendering: borders are reporting float values.
-webkit.org/b/128061 fast/css/bidi-override-in-anonymous-block.html [ Failure ]
 webkit.org/b/128061 fast/repaint/repaint-during-scroll-with-zoom.html [ Failure ]
 webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-initial-value-001.htm [ Failure ]
 webkit.org/b/128061 ietestcenter/css3/bordersbackgrounds/border-radius-style-001.htm [ Failure ]
@@ -2274,8 +2289,6 @@ webkit.org/b/135348 compositing/iframes/page-cache-layer-tree.html [ Skip ]
 
 webkit.org/b/136255 fast/block/float/overhanging-tall-block.html [ Failure ]
 
-webkit.org/b/136159 fast/borders/border-painting-dashed-at-all.html [ ImageOnlyFailure ]
-webkit.org/b/136159 fast/borders/border-painting-dotted-at-all.html [ ImageOnlyFailure ]
 webkit.org/b/136159 fast/borders/hidpi-border-painting-groove.html [ ImageOnlyFailure ]
 webkit.org/b/136159 fast/borders/hidpi-border-painting-ridge.html [ ImageOnlyFailure ]
 
@@ -2352,9 +2365,6 @@ webkit.org/b/142482 http/tests/security/mixedContent/insecure-audio-video-in-mai
 
 webkit.org/b/142667 fast/forms/search-vertical-alignment.html [ Failure ]
 webkit.org/b/142667 fast/forms/textfield-overflow-by-value-update.html [ Failure ]
-
-webkit.org/b/142668 fast/backgrounds/background-opaque-clipped-gradients.html [ ImageOnlyFailure ]
-webkit.org/b/142669 fast/regions/overflow/overflow-region-float.html [ ImageOnlyFailure ]
 
 webkit.org/b/143230 imported/mozilla/svg/filters/feImage-1.svg [ ImageOnlyFailure ]
 
@@ -2583,6 +2593,7 @@ webkit.org/b/152057 accessibility/textarea-selected-text-range.html [ Failure Ti
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # This tests are passing on GTK+ but they do not in the Apple ports
+css3/flexbox/multiline-reverse-wrap-baseline.html [ Pass ]
 imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
 mathml/presentation/style-changed.html [ Pass ]
@@ -2613,7 +2624,6 @@ css3/line-break-language-sensitive [ Pass ImageOnlyFailure ]
 # Media controls tests are OS X only
 media/controls [ Skip ]
 
-# Mocking the system language is not implemented in GTK.
-fast/text/international/system-language [ Failure ]
-
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
+
+webkit.org/b/142548 editing/selection/extend-by-character-007.html [ Pass ]

@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "AirCode.h"
+#include "AirFixSpillSlotZDef.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
 #include "AirLiveness.h"
@@ -67,7 +68,7 @@ void spillEverything(Code& code)
             // code is suboptimal.
             inst.forEachTmpWithExtraClobberedRegs(
                 index < block->size() ? &block->at(index) : nullptr,
-                [&registerSet] (const Tmp& tmp, Arg::Role role, Arg::Type) {
+                [&registerSet] (const Tmp& tmp, Arg::Role role, Arg::Type, Arg::Width) {
                     if (tmp.isReg() && Arg::isDef(role))
                         registerSet.set(tmp.reg());
                 });
@@ -86,6 +87,7 @@ void spillEverything(Code& code)
 
     // Allocate a stack slot for each tmp.
     Vector<StackSlot*> allStackSlots[Arg::numTypes];
+    unsigned newStackSlotThreshold = code.stackSlots().size();
     for (unsigned typeIndex = 0; typeIndex < Arg::numTypes; ++typeIndex) {
         Vector<StackSlot*>& stackSlots = allStackSlots[typeIndex];
         Arg::Type type = static_cast<Arg::Type>(typeIndex);
@@ -109,7 +111,7 @@ void spillEverything(Code& code)
                     if (arg.isReg())
                         continue;
 
-                    if (inst.admitsStack(i)) { 
+                    if (inst.admitsStack(i)) {
                         StackSlot* stackSlot = allStackSlots[arg.type()][arg.tmpIndex()];
                         arg = Arg::stack(stackSlot);
                         continue;
@@ -119,7 +121,7 @@ void spillEverything(Code& code)
 
             // Now fall back on spilling using separate Move's to load/store the tmp.
             inst.forEachTmp(
-                [&] (Tmp& tmp, Arg::Role role, Arg::Type type) {
+                [&] (Tmp& tmp, Arg::Role role, Arg::Type type, Arg::Width) {
                     if (tmp.isReg())
                         return;
                     
@@ -140,6 +142,7 @@ void spillEverything(Code& code)
                         }
                         break;
                     case Arg::Def:
+                    case Arg::ZDef:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setAfter.get(reg)) {
                                 setAfter.set(reg);
@@ -149,6 +152,7 @@ void spillEverything(Code& code)
                         }
                         break;
                     case Arg::UseDef:
+                    case Arg::UseZDef:
                     case Arg::LateUse:
                         for (Reg reg : regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg) && !setAfter.get(reg)) {
@@ -182,6 +186,12 @@ void spillEverything(Code& code)
         }
         insertionSet.execute(block);
     }
+
+    fixSpillSlotZDef(
+        code,
+        [&] (StackSlot* stackSlot) -> bool {
+            return stackSlot->index() >= newStackSlotThreshold;
+        });
 }
 
 } } } // namespace JSC::B3::Air

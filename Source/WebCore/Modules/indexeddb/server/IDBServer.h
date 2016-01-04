@@ -60,6 +60,7 @@ public:
     void deleteDatabase(const IDBRequestData&);
     void abortTransaction(const IDBResourceIdentifier&);
     void commitTransaction(const IDBResourceIdentifier&);
+    void didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier&);
     void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
     void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
@@ -74,6 +75,7 @@ public:
 
     void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&);
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);
+    void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier);
 
     void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);
     void postDatabaseTaskReply(std::unique_ptr<CrossThreadTask>&&);

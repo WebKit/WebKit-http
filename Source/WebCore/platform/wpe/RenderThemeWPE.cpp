@@ -44,6 +44,11 @@ void RenderThemeWPE::updateCachedSystemFontDescription(CSSValueID, FontCascadeDe
     notImplemented();
 }
 
+String RenderThemeWPE::extraDefaultStyleSheet()
+{
+    return String();
+}
+
 #if ENABLE(VIDEO)
 String RenderThemeWPE::mediaControlsStyleSheet()
 {

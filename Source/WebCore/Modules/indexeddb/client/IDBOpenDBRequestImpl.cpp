@@ -41,20 +41,21 @@ namespace IDBClient {
 Ref<IDBOpenDBRequest> IDBOpenDBRequest::createDeleteRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier)
 {
     ASSERT(databaseIdentifier.isValid());
-    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, 0));
+    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, 0, IndexedDB::RequestType::Delete));
 }
 
 Ref<IDBOpenDBRequest> IDBOpenDBRequest::createOpenRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
 {
     ASSERT(databaseIdentifier.isValid());
-    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, version));
+    return adoptRef(*new IDBOpenDBRequest(connection, context, databaseIdentifier, version, IndexedDB::RequestType::Open));
 }
     
-IDBOpenDBRequest::IDBOpenDBRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
+IDBOpenDBRequest::IDBOpenDBRequest(IDBConnectionToServer& connection, ScriptExecutionContext* context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version, IndexedDB::RequestType requestType)
     : IDBRequest(connection, context)
     , m_databaseIdentifier(databaseIdentifier)
     , m_version(version)
 {
+    m_requestType = requestType;
 }
 
 IDBOpenDBRequest::~IDBOpenDBRequest()
@@ -98,6 +99,16 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
 
     m_transaction->addRequest(*this);
     enqueueEvent(Event::create(eventNames().errorEvent, true, true));
+}
+
+bool IDBOpenDBRequest::dispatchEvent(Event& event)
+{
+    bool result = IDBRequest::dispatchEvent(event);
+
+    if (m_transaction && m_transaction->isVersionChange() && (event.type() == eventNames().errorEvent || event.type() == eventNames().successEvent))
+        m_transaction->database().serverConnection().didFinishHandlingVersionChangeTransaction(*m_transaction);
+
+    return result;
 }
 
 void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
