@@ -1950,6 +1950,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (parameters.type.isNull() || parameters.type.isEmpty())
         return result;
 
+    // Disable Flash video (Youtube TV requirement).
+    if (parameters.type == "video/x-flv")
+        return result;
+
     // spec says we should not return "probably" if the codecs string is empty
     if (mimeTypeCache().contains(parameters.type))
         result = parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
