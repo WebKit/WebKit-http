@@ -218,7 +218,7 @@ function instantiation(result, source, entry)
 
     "use strict";
 
-    return this.parseModule(entry.key, source);
+    return result || this.parseModule(entry.key, source);
 }
 
 // Loader.
@@ -411,7 +411,7 @@ function requestLink(key)
     var entry = this.ensureRegistered(key);
     if (entry.state > this.Link) {
         var deferred = @newPromiseCapability(@InternalPromise);
-        deferred.@resolve.@call(undefined, entry.module);
+        deferred.@resolve.@call(undefined, entry);
         return deferred.@promise;
     }
 
