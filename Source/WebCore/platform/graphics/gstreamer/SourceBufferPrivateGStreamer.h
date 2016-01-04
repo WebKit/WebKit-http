@@ -69,6 +69,7 @@ public:
     virtual double timestampOffset() const;
 
     void setReadyForMoreSamples(bool isReady);
+    void notifyReadyForMoreSamples();
 
 #if ENABLE(VIDEO_TRACK)
     void didReceiveInitializationSegment(const SourceBufferPrivateClient::InitializationSegment&);
@@ -85,6 +86,8 @@ private:
     RefPtr<MediaSourceClientGStreamerMSE> m_client;
     SourceBufferPrivateClient* m_sourceBufferPrivateClient;
     bool m_isReadyForMoreSamples;
+    bool m_notifyWhenReadyForMoreSamples;
+    AtomicString m_trackId;
 };
 
 }

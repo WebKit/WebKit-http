@@ -56,6 +56,7 @@ SourceBufferPrivateGStreamer::SourceBufferPrivateGStreamer(MediaSourceGStreamer*
     , m_type(contentType)
     , m_client(client)
     , m_isReadyForMoreSamples(true)
+    , m_notifyWhenReadyForMoreSamples(false)
 {
 }
 
@@ -110,6 +111,8 @@ void SourceBufferPrivateGStreamer::flushAndEnqueueNonDisplayingSamples(Vector<Re
 
 void SourceBufferPrivateGStreamer::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString trackIDString)
 {
+    m_notifyWhenReadyForMoreSamples = false;
+
     RefPtr<MediaSample> sample = prpSample;
     UNUSED_PARAM(trackIDString);
     if (m_client)
@@ -123,7 +126,17 @@ bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(AtomicString)
 
 void SourceBufferPrivateGStreamer::setReadyForMoreSamples(bool isReady)
 {
+    ASSERT(WTF::isMainThread());
     m_isReadyForMoreSamples = isReady;
+}
+
+void SourceBufferPrivateGStreamer::notifyReadyForMoreSamples()
+{
+    ASSERT(WTF::isMainThread());
+    setReadyForMoreSamples(true);
+    if (m_notifyWhenReadyForMoreSamples) {
+        m_sourceBufferPrivateClient->sourceBufferPrivateDidBecomeReadyForMoreSamples(this, m_trackId);
+    }
 }
 
 void SourceBufferPrivateGStreamer::setActive(bool isActive)
@@ -137,9 +150,11 @@ void SourceBufferPrivateGStreamer::stopAskingForMoreSamples(AtomicString)
     notImplemented();
 }
 
-void SourceBufferPrivateGStreamer::notifyClientWhenReadyForMoreSamples(AtomicString)
+void SourceBufferPrivateGStreamer::notifyClientWhenReadyForMoreSamples(AtomicString trackId)
 {
-    notImplemented();
+    ASSERT(WTF::isMainThread());
+    m_notifyWhenReadyForMoreSamples = true;
+    m_trackId = trackId;
 }
 
 #if ENABLE(VIDEO_TRACK)
