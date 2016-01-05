@@ -47,9 +47,32 @@
 
 #if USE(GSTREAMER_GL)
 #define GST_USE_UNSTABLE_API
-#include <gst/gl/gstglmemory.h>
+#include <gst/gl/gl.h>
 #undef GST_USE_UNSTABLE_API
+
+#include "GLContext.h"
+#if USE(GLX)
+#include "GLContextGLX.h"
+#include <gst/gl/x11/gstgldisplay_x11.h>
+#elif USE(EGL)
+#include "GLContextEGL.h"
+#include <gst/gl/egl/gstgldisplay_egl.h>
 #endif
+
+#if PLATFORM(X11)
+#include "PlatformDisplayX11.h"
+#elif PLATFORM(WAYLAND)
+#include "PlatformDisplayWayland.h"
+#elif PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
+#endif
+
+// gstglapi.h may include eglplatform.h and it includes X.h, which
+// defines None, breaking MediaPlayer::None enum
+#if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
+#undef None
+#endif
+#endif // USE(GSTREAMER_GL)
 
 #if GST_CHECK_VERSION(1, 1, 0) && USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
@@ -82,36 +105,6 @@ struct _EGLDetails {
     EGLSurface draw;
     EGLSurface read;
 };
-
-#if USE(GSTREAMER_GL)
-#include "GLContext.h"
-
-#define GST_USE_UNSTABLE_API
-#include <gst/gl/gl.h>
-#undef GST_USE_UNSTABLE_API
-
-#if USE(GLX)
-#include "GLContextGLX.h"
-#include <gst/gl/x11/gstgldisplay_x11.h>
-#elif USE(EGL)
-#include "GLContextEGL.h"
-#include <gst/gl/egl/gstgldisplay_egl.h>
-#endif
-
-#if PLATFORM(X11)
-#include "PlatformDisplayX11.h"
-#elif PLATFORM(WAYLAND)
-#include "PlatformDisplayWayland.h"
-#elif PLATFORM(WPE)
-#include "PlatformDisplayWPE.h"
-#endif
-
-// gstglapi.h may include eglplatform.h and it includes X.h, which
-// defines None, breaking MediaPlayer::None enum
-#if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
-#undef None
-#endif
-#endif // USE(GSTREAMER_GL)
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
