@@ -855,6 +855,12 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 
     size_t maximumBufferSize = this->maximumBufferSize();
 
+    // Check if app has removed enough already
+    if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+        m_bufferFull = false;
+        return;
+    }
+
     // 3. Let removal ranges equal a list of presentation time ranges that can be evicted from
     // the presentation to make room for the new data.
 
@@ -894,25 +900,27 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     // currenTime whichever we hit first.
     auto buffered = m_buffered->ranges();
     size_t currentTimeRange = buffered.find(currentTime);
-    if (currentTimeRange == notFound || currentTimeRange == buffered.length() - 1) {
+    if (currentTimeRange != notFound && currentTimeRange == buffered.length() - 1) {
         LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes but FAILED to free enough", this, initialBufferedSize - extraMemoryCost());
         return;
     }
 
     MediaTime minimumRangeStart = currentTime + thirtySeconds;
 
-    rangeEnd = m_source->duration();
+    rangeEnd = m_source->duration().isPositiveInfinite()?buffered.maximumBufferedTime():m_source->duration();
     rangeStart = rangeEnd - thirtySeconds;
     while (rangeStart > minimumRangeStart) {
 
-        // Do not evict data from the time range that contains currentTime.
-        size_t startTimeRange = buffered.find(rangeStart);
-        if (startTimeRange == currentTimeRange) {
-            size_t endTimeRange = buffered.find(rangeEnd);
-            if (endTimeRange == currentTimeRange)
-                break;
+        if (currentTimeRange != notFound) {
+            // Do not evict data from the time range that contains currentTime.
+            size_t startTimeRange = buffered.find(rangeStart);
+            if (startTimeRange == currentTimeRange) {
+                size_t endTimeRange = buffered.find(rangeEnd);
+                if (endTimeRange == currentTimeRange)
+                    break;
 
-            rangeEnd = buffered.start(endTimeRange);
+                rangeEnd = buffered.start(endTimeRange);
+            }
         }
 
         // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
