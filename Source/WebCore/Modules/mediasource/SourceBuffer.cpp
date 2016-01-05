@@ -595,6 +595,30 @@ void SourceBuffer::sourceBufferPrivateAppendComplete(SourceBufferPrivate*, Appen
     if (isRemoved())
         return;
 
+#if USE(GSTREAMER)
+    // METRO FIXME: Remove some small gaps (less than lastFrameDuration) from reported buffered region.
+    for (HashMap<AtomicString, TrackBuffer>::iterator
+             it = m_trackBufferMap.begin(),
+             itEnd = m_trackBufferMap.end();
+         it != itEnd; ++it) {
+        TrackBuffer& trackBuffer = it->value;
+        const MediaTime& lastFrameDuration = trackBuffer.lastFrameDuration;
+        if (!lastFrameDuration.isValid())
+            continue;
+        PlatformTimeRanges& trackRanges = trackBuffer.m_buffered->ranges();
+        MediaTime microsecond(1, 1000000);
+        for (int i = trackRanges.length() - 1;  i > 0; --i) {
+            const MediaTime priorEnd = trackRanges.end(i - 1);
+            const MediaTime currStart = trackRanges.start(i);
+            const MediaTime delta = currStart - priorEnd;
+            if (delta > MediaTime::zeroTime() && delta <= lastFrameDuration) {
+                trackBuffer.m_buffered->add(priorEnd.toDouble(), (currStart + microsecond).toDouble());
+            }
+        }
+    }
+    invalidateBuffered();
+#endif
+
     // Update buffered cached value
     buffered();
 
@@ -1584,6 +1608,12 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
         // Add spliced timed text frame to the track buffer.
         // FIXME: Add support for sample splicing.
 
+#if USE(GSTREAMER)
+        // METRO FIXME: Apply timestampOffset at buffering time. Can this be done in SourceBufferPrivate?
+        if (m_timestampOffset)
+            sample->offsetTimestampsBy(m_timestampOffset);
+#endif
+
         // Otherwise:
         // Add the coded frame with the presentation timestamp, decode timestamp, and frame duration to the track buffer.
         trackBuffer.samples.addSample(sample);
@@ -1812,6 +1842,12 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
 {
     // Find the sample which contains the current presentation time.
     auto currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time);
+
+#if USE(GSTREAMER)
+    // METRO FIXME: Skip small gaps. If there's no sample with the target PTS but there's PTS+lastFrameDuration, use the latter.
+    if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end() && trackBuffer.lastFrameDuration.isValid())
+        currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time + trackBuffer.lastFrameDuration);
+#endif
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()) {
         trackBuffer.decodeQueue.clear();

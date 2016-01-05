@@ -1071,6 +1071,18 @@ void GStreamerMediaSample::applyPtsOffset(MediaTime timestampOffset)
     }
 }
 
+void GStreamerMediaSample::offsetTimestampsBy(const MediaTime& timestampOffset) {
+    if (!timestampOffset)
+        return;
+    m_pts += timestampOffset;
+    m_dts += timestampOffset;
+    GstBuffer* buffer = gst_sample_get_buffer(m_sample);
+    if (buffer) {
+        GST_BUFFER_PTS(buffer) = toGstClockTime(m_pts.toFloat());
+        GST_BUFFER_DTS(buffer) = toGstClockTime(m_dts.toFloat());
+    }
+}
+
 GStreamerMediaSample::~GStreamerMediaSample()
 {
     if (m_sample)
@@ -1733,7 +1745,7 @@ void AppendPipeline::appSinkNewSample(GstSample* sample)
 
     // Ignore samples if we're not expecting them. Refuse processing if we're in Invalid state.
     if (!(m_appendStage == Ongoing || m_appendStage == Sampling)) {
-        LOG_MEDIA_MESSAGE("Unexpected sample, stage=%s", dumpAppendStage(m_appendStage));
+        WARN_MEDIA_MESSAGE("Unexpected sample, stage=%s", dumpAppendStage(m_appendStage));
         // TODO: Return ERROR and find a more robust way to detect that all the
         // data has been processed, so we don't need to resort to these hacks.
         // All in all, return OK, even if it's not the proper thing to do. We don't want to break the demuxer.
@@ -1758,13 +1770,12 @@ void AppendPipeline::appSinkNewSample(GstSample* sample)
         return;
     }
 
-    MediaTime timestampOffset(MediaTime::createWithDouble(m_sourceBufferPrivate->timestampOffset()));
-
     // Add a fake sample if a gap is detected before the first sample
-    if (mediaSample->presentationTime() >= timestampOffset &&
-        mediaSample->presentationTime() <= timestampOffset + MediaTime::createWithDouble(0.1)) {
-        LOG_MEDIA_MESSAGE("Adding fake offset");
-        mediaSample->applyPtsOffset(timestampOffset);
+    if (mediaSample->decodeTime() == MediaTime::zeroTime() &&
+        mediaSample->presentationTime() > MediaTime::zeroTime() &&
+        mediaSample->presentationTime() <= MediaTime::createWithDouble(0.1)) {
+         LOG_MEDIA_MESSAGE("Adding fake offset");
+        mediaSample->applyPtsOffset(MediaTime::zeroTime());
     }
 
     m_sourceBufferPrivate->didReceiveSample(mediaSample);

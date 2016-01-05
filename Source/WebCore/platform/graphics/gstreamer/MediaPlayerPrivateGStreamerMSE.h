@@ -154,7 +154,7 @@ public:
     size_t sizeInBytes() const { return m_size; }
     GstSample* sample() const { return m_sample; }
     FloatSize presentationSize() const { return m_presentationSize; }
-    void offsetTimestampsBy(const MediaTime&) { }
+    void offsetTimestampsBy(const MediaTime&);
     void setTimestamps(const MediaTime&, const MediaTime&) { }
     SampleFlags flags() const { return m_flags; }
     PlatformSample platformSample() { return PlatformSample(); }
