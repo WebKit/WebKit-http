@@ -28,7 +28,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "config.h"
 
 #if ENABLE(WEB_TIMING)
@@ -233,6 +232,11 @@ double Performance::now() const
     double nowSeconds = monotonicallyIncreasingTime() - m_referenceTime;
     const double resolutionSeconds = 0.000005;
     return 1000.0 * floor(nowSeconds / resolutionSeconds) * resolutionSeconds;
+}
+
+PassRefPtr<MemoryInfo> Performance::memory() const
+{
+    return MemoryInfo::create(m_frame);
 }
 
 } // namespace WebCore

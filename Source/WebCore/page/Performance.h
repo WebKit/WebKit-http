@@ -45,6 +45,8 @@
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
+#include "MemoryInfo.h"
+
 namespace WebCore {
 
 class Document;
@@ -63,6 +65,8 @@ public:
     PerformanceNavigation* navigation() const;
     PerformanceTiming* timing() const;
     double now() const;
+
+    PassRefPtr<MemoryInfo> memory() const;
 
 #if ENABLE(PERFORMANCE_TIMELINE)
     PassRefPtr<PerformanceEntryList> webkitGetEntries() const;

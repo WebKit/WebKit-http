@@ -599,6 +599,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/Location.idl
     page/Navigator.idl
     page/Performance.idl
+    page/MemoryInfo.idl
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
     page/PerformanceMark.idl
@@ -2014,6 +2015,7 @@ set(WebCore_SOURCES
     page/PageThrottler.cpp
     page/PageVisibilityState.cpp
     page/Performance.cpp
+    page/MemoryInfo.cpp
     page/PerformanceEntry.cpp
     page/PerformanceEntryList.cpp
     page/PerformanceNavigation.cpp

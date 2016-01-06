@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2012 Intel Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,38 +28,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// See: https://dvcs.w3.org/hg/webperf/raw-file/tip/specs/NavigationTiming/Overview.html
-[
-    Conditional=WEB_TIMING,
-    EventTarget,
-] interface Performance {
-    readonly attribute PerformanceNavigation navigation;
-    readonly attribute PerformanceTiming timing;
-    readonly attribute MemoryInfo memory;
+#ifndef MemoryInfo_h
+#define MemoryInfo_h
 
-#if defined(ENABLE_PERFORMANCE_TIMELINE) && ENABLE_PERFORMANCE_TIMELINE
-    PerformanceEntryList webkitGetEntries();
-    PerformanceEntryList webkitGetEntriesByType(DOMString entryType);
-    PerformanceEntryList webkitGetEntriesByName(DOMString name, [Default=NullString] optional DOMString entryType);
-#endif
+#include "DOMWindowProperty.h"
 
-#if defined(ENABLE_RESOURCE_TIMING) && ENABLE_RESOURCE_TIMING
-    void webkitClearResourceTimings();
-    void webkitSetResourceTimingBufferSize(unsigned long maxSize);
+#include <wtf/PassRefPtr.h>
+#include <wtf/RefCounted.h>
 
-    attribute EventHandler onwebkitresourcetimingbufferfull;
-#endif
+namespace WebCore {
 
-    // See http://www.w3.org/TR/2012/CR-user-timing-20120726/
-#if defined(ENABLE_USER_TIMING) && ENABLE_USER_TIMING
-    [RaisesException] void webkitMark(DOMString markName);
-    void webkitClearMarks([Default=NullString] optional  DOMString markName);
+class Frame;
 
-    [RaisesException] void webkitMeasure(DOMString measureName, [Default=NullString] optional DOMString startMark, [Default=NullString] optional DOMString endMark);
-    void webkitClearMeasures([Default=NullString] optional DOMString measureName);
-#endif
+class MemoryInfo : public RefCounted<MemoryInfo>, public DOMWindowProperty {
+public:
+    static Ref<MemoryInfo> create(Frame* frame) { return adoptRef(*new MemoryInfo(frame)); }
 
-    // See http://www.w3.org/TR/hr-time/ for details.
-    unrestricted double now();
+    size_t totalJSHeapSize() const { return m_totalJSHeapSize; }
+    size_t usedJSHeapSize() const { return m_usedJSHeapSize; }
+    size_t jsHeapSizeLimit() const { return m_jsHeapSizeLimit; }
+
+private:
+    explicit MemoryInfo(Frame*);
+
+    size_t m_totalJSHeapSize;
+    size_t m_usedJSHeapSize;
+    size_t m_jsHeapSizeLimit;
 };
+
+} // namespace WebCore
+
+#endif // MemoryInfo_h
 
