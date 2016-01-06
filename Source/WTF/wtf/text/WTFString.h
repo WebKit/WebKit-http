@@ -32,6 +32,12 @@
 #include <objc/objc.h>
 #endif
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QString;
+QT_END_NAMESPACE
+#endif
+
 namespace WTF {
 
 // Declarations of string operations
@@ -350,7 +356,11 @@ public:
     // Use convertToASCIILowercase instead if ASCII case insensitive comparison is desired.
     WTF_EXPORT_STRING_API String foldCase() const;
 
+#if !PLATFORM(QT)
     WTF_EXPORT_STRING_API static String format(const char *, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
+#else
+    WTF_EXPORT_STRING_API static String format(const char *, ...);
+#endif
 
     // Returns an uninitialized string. The characters needs to be written
     // into the buffer returned in data before the returned string is used.
@@ -417,6 +427,12 @@ public:
     // Given Cocoa idioms, this is a more useful default. Clients that need to preserve the
     // null string can check isNull explicitly.
     operator NSString *() const;
+#endif
+
+#if PLATFORM(QT)
+    WTF_EXPORT_STRING_API String(const QString&);
+    WTF_EXPORT_STRING_API String(const QStringRef&);
+    WTF_EXPORT_STRING_API operator QString() const;
 #endif
 
     WTF_EXPORT_STRING_API static String make8BitFrom16BitSource(const UChar*, size_t);

@@ -171,6 +171,10 @@ public:
     AtomicString(NSString*);
     operator NSString*() const { return m_string; }
 #endif
+#if PLATFORM(QT)
+    AtomicString(const QString& s) : m_string(add(String(s).impl())) { }
+    operator QString() const { return m_string; }
+#endif
 
     // AtomicString::fromUTF8 will return a null string if
     // the input data contains invalid UTF-8 sequences.

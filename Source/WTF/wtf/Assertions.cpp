@@ -260,7 +260,7 @@ void WTFReportBacktrace()
 }
 
 #if OS(DARWIN) || OS(LINUX)
-#  if PLATFORM(GTK)
+#  if PLATFORM(QT) || PLATFORM(GTK)
 #    if defined(__GLIBC__) && !defined(__UCLIBC__)
 #      define USE_BACKTRACE_SYMBOLS 1
 #    endif
