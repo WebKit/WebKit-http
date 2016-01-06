@@ -811,13 +811,12 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
     }
     m_mediaTimeDuration = m_mediaSourceClient->duration();
 
-    LOG_MEDIA_MESSAGE("previous=%f, new=%f", previousDuration.toFloat(), m_mediaTimeDuration.toFloat());
+    TRACE_MEDIA_MESSAGE("previous=%f, new=%f", previousDuration.toFloat(), m_mediaTimeDuration.toFloat());
 
     // Avoid emiting durationchanged in the case where the previous
     // duration was 0 because that case is already handled by the
     // HTMLMediaElement.
     if (m_mediaTimeDuration != previousDuration && m_mediaTimeDuration.isValid() && previousDuration.isValid()) {
-        LOG_MEDIA_MESSAGE("Notifying player and WebKitMediaSrc");
         m_player->durationChanged();
         m_playbackPipeline->notifyDurationChanged();
         m_mediaSource->durationChanged(m_mediaTimeDuration);
@@ -2266,8 +2265,7 @@ void MediaSourceClientGStreamerMSE::durationChanged(const MediaTime& duration)
 {
     ASSERT(WTF::isMainThread());
 
-    LOG_MEDIA_MESSAGE("duration=%f", duration.toFloat());
-
+    TRACE_MEDIA_MESSAGE("duration: %f", duration.toFloat());
     if (!duration.isValid() || duration.isPositiveInfinite() || duration.isNegativeInfinite())
         return;
 
@@ -2294,7 +2292,7 @@ bool MediaSourceClientGStreamerMSE::append(PassRefPtr<SourceBufferPrivateGStream
 {
     ASSERT(WTF::isMainThread());
 
-    TRACE_MEDIA_MESSAGE("%u bytes", length);
+    LOG_MEDIA_MESSAGE("Appending %u bytes", length);
 
     if (!m_playerPrivate)
         return false;
@@ -2362,7 +2360,7 @@ void MediaSourceClientGStreamerMSE::didReceiveAllPendingSamples(SourceBufferPriv
 {
     ASSERT(WTF::isMainThread());
 
-    TRACE_MEDIA_MESSAGE("received all pending samples");
+    LOG_MEDIA_MESSAGE("received all pending samples");
     sourceBuffer->didReceiveAllPendingSamples();
 }
 

@@ -833,6 +833,9 @@ void MediaPlayerPrivateGStreamerBase::triggerDrain()
 
 void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 {
+    if (size == m_size)
+        return;
+
     INFO_MEDIA_MESSAGE("Setting size to %dx%d", size.width(), size.height());
     m_size = size;
 }
