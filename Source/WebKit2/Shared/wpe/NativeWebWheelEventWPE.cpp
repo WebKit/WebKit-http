@@ -33,7 +33,7 @@
 namespace WebKit {
 
 NativeWebWheelEvent::NativeWebWheelEvent(WPE::Input::AxisEvent&& event)
-    : WebWheelEvent(WebEventFactory::createWebWheelEvent(WTF::move(event)))
+    : WebWheelEvent(WebEventFactory::createWebWheelEvent(WTFMove(event)))
 {
 }
 

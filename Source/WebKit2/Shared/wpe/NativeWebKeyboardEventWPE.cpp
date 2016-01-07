@@ -31,7 +31,7 @@
 namespace WebKit {
 
 NativeWebKeyboardEvent::NativeWebKeyboardEvent(WPE::Input::KeyboardEvent&& event)
-    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(WTF::move(event)))
+    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(WTFMove(event)))
 {
 }
 

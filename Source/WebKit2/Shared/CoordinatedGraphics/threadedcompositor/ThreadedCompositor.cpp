@@ -55,7 +55,7 @@ public:
     CompositingRunLoop(std::function<void()> updateFunction)
         : m_runLoop(RunLoop::current())
         , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
-        , m_updateFunction(WTF::move(updateFunction))
+        , m_updateFunction(WTFMove(updateFunction))
     {
         m_updateState.store(UpdateState::Completed);
     }

@@ -62,7 +62,7 @@ View::View(const API::PageConfiguration& baseConfiguration)
     }
 
     auto* pool = configuration->processPool();
-    m_pageProxy = pool->createWebPage(*m_pageClient, WTF::move(configuration));
+    m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
     m_pageProxy->initializeWebPage();
 }
 
@@ -75,22 +75,22 @@ void View::setSize(const WebCore::IntSize& size)
 
 void View::handleKeyboardEvent(WPE::Input::KeyboardEvent&& event)
 {
-    page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(WTF::move(event)));
+    page().handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(WTFMove(event)));
 }
 
 void View::handlePointerEvent(WPE::Input::PointerEvent&& event)
 {
-    page().handleMouseEvent(WebKit::NativeWebMouseEvent(WTF::move(event)));
+    page().handleMouseEvent(WebKit::NativeWebMouseEvent(WTFMove(event)));
 }
 
 void View::handleAxisEvent(WPE::Input::AxisEvent&& event)
 {
-    page().handleWheelEvent(WebKit::NativeWebWheelEvent(WTF::move(event)));
+    page().handleWheelEvent(WebKit::NativeWebWheelEvent(WTFMove(event)));
 }
 
 void View::handleTouchEvent(WPE::Input::TouchEvent&& event)
 {
-    page().handleTouchEvent(WebKit::NativeWebTouchEvent(WTF::move(event)));
+    page().handleTouchEvent(WebKit::NativeWebTouchEvent(WTFMove(event)));
 }
 
 } // namespace WKWPE

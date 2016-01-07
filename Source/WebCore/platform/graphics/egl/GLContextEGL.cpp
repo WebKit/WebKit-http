@@ -210,7 +210,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType wi
         context = createPbufferContext(eglSharingContext);
 
     if (context)
-        context->m_contextData = WTF::move(contextData);
+        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
