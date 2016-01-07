@@ -249,15 +249,15 @@ public:
 
     const GraphicsContextState& state() const { return m_state; }
 
+#if USE(CG) || USE(CAIRO)
+    WEBCORE_EXPORT void drawNativeImage(PassNativeImagePtr, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal, ImageOrientation = DefaultImageOrientation);
+#endif
+
 #if USE(CG)
     void applyStrokePattern();
     void applyFillPattern();
     void drawPath(const Path&);
 
-    WEBCORE_EXPORT void drawNativeImage(PassNativeImagePtr, const FloatSize& selfSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal, ImageOrientation = DefaultImageOrientation);
-
-    void clipToNativeImage(PassNativeImagePtr, const FloatRect& destRect, const FloatSize& bufferSize);
-    
     WEBCORE_EXPORT void setIsCALayerContext(bool);
     bool isCALayerContext() const;
 
@@ -275,10 +275,6 @@ public:
     // stroke color).
     void drawRect(const FloatRect&, float borderThickness = 1);
     void drawLine(const FloatPoint&, const FloatPoint&);
-
-#if PLATFORM(IOS)
-    void drawJoinedLines(CGPoint points[], unsigned count, bool antialias, CGLineCap = kCGLineCapButt);
-#endif
 
     void drawEllipse(const FloatRect&);
     void drawRaisedEllipse(const FloatRect&, const Color& ellipseColor, const Color& shadowColor);

@@ -189,14 +189,14 @@ private:
     virtual bool isScrollableOrRubberbandable() override { return true; }
     virtual bool hasScrollableOrRubberbandableAncestor() override { return true; }
     virtual WebCore::IntRect scrollableAreaBoundingBox(bool* = nullptr) const override;
-    virtual void setScrollOffset(const WebCore::IntPoint&) override;
+    virtual void setScrollOffset(const WebCore::ScrollOffset&) override;
     virtual void invalidateScrollbarRect(WebCore::Scrollbar*, const WebCore::IntRect&) override;
     virtual void invalidateScrollCornerRect(const WebCore::IntRect&) override;
     virtual WebCore::IntPoint lastKnownMousePosition() const override { return m_lastMousePositionInPluginCoordinates; }
     virtual int scrollSize(WebCore::ScrollbarOrientation) const override;
     virtual bool isActive() const override;
     virtual bool isScrollCornerVisible() const override { return false; }
-    virtual int scrollPosition(WebCore::Scrollbar*) const override;
+    virtual int scrollOffset(WebCore::ScrollbarOrientation) const override;
     virtual WebCore::ScrollPosition scrollPosition() const override;
     virtual WebCore::ScrollPosition minimumScrollPosition() const override;
     virtual WebCore::ScrollPosition maximumScrollPosition() const override;

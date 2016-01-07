@@ -12,13 +12,16 @@ if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif ()
 
 set(USE_SOUP 1)
-set(USE_UDIS86 1)
 
 set(WTF_LIBRARY_TYPE STATIC)
 set(WTF_OUTPUT_NAME wtf_efl)
 set(JavaScriptCore_OUTPUT_NAME javascriptcore_efl)
 set(WebCore_OUTPUT_NAME webcore_efl)
 set(WebKit2_OUTPUT_NAME ewebkit2)
+set(WebKit2_WebProcess_OUTPUT_NAME WebKitWebProcess)
+set(WebKit2_NetworkProcess_OUTPUT_NAME WebKitNetworkProcess)
+set(WebKit2_PluginProcess_OUTPUT_NAME WebKitPluginProcess)
+set(WebKit2_DatabaseProcess_OUTPUT_NAME WebKitDatabaseProcess)
 
 set(CPACK_SOURCE_GENERATOR TBZ2)
 set(GLIB_COMPONENTS gio gobject gthread)

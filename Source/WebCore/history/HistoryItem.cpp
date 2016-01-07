@@ -123,7 +123,7 @@ inline HistoryItem::HistoryItem(const HistoryItem& item)
     , m_target(item.m_target)
     , m_title(item.m_title)
     , m_displayTitle(item.m_displayTitle)
-    , m_scrollPoint(item.m_scrollPoint)
+    , m_scrollPosition(item.m_scrollPosition)
     , m_pageScaleFactor(item.m_pageScaleFactor)
     , m_lastVisitWasFailure(item.m_lastVisitWasFailure)
     , m_isTargetItem(item.m_isTargetItem)
@@ -277,20 +277,19 @@ void HistoryItem::setTarget(const String& target)
     notifyHistoryItemChanged(this);
 }
 
-const IntPoint& HistoryItem::scrollPoint() const
+const IntPoint& HistoryItem::scrollPosition() const
 {
-    return m_scrollPoint;
+    return m_scrollPosition;
 }
 
-void HistoryItem::setScrollPoint(const IntPoint& point)
+void HistoryItem::setScrollPosition(const IntPoint& position)
 {
-    m_scrollPoint = point;
+    m_scrollPosition = position;
 }
 
-void HistoryItem::clearScrollPoint()
+void HistoryItem::clearScrollPosition()
 {
-    m_scrollPoint.setX(0);
-    m_scrollPoint.setY(0);
+    m_scrollPosition = IntPoint();
 }
 
 float HistoryItem::pageScaleFactor() const
@@ -340,13 +339,13 @@ void HistoryItem::setIsTargetItem(bool flag)
 
 void HistoryItem::setStateObject(RefPtr<SerializedScriptValue>&& object)
 {
-    m_stateObject = WTF::move(object);
+    m_stateObject = WTFMove(object);
 }
 
 void HistoryItem::addChildItem(Ref<HistoryItem>&& child)
 {
     ASSERT(!childItemWithTarget(child->target()));
-    m_children.append(WTF::move(child));
+    m_children.append(WTFMove(child));
 }
 
 void HistoryItem::setChildItem(Ref<HistoryItem>&& child)
@@ -356,11 +355,11 @@ void HistoryItem::setChildItem(Ref<HistoryItem>&& child)
     for (unsigned i = 0; i < size; ++i)  {
         if (m_children[i]->target() == child->target()) {
             child->setIsTargetItem(m_children[i]->isTargetItem());
-            m_children[i] = WTF::move(child);
+            m_children[i] = WTFMove(child);
             return;
         }
     }
-    m_children.append(WTF::move(child));
+    m_children.append(WTFMove(child));
 }
 
 HistoryItem* HistoryItem::childItemWithTarget(const String& target)
@@ -487,7 +486,7 @@ void HistoryItem::setFormInfoFromRequest(const ResourceRequest& request)
 
 void HistoryItem::setFormData(RefPtr<FormData>&& formData)
 {
-    m_formData = WTF::move(formData);
+    m_formData = WTFMove(formData);
 }
 
 void HistoryItem::setFormContentType(const String& formContentType)
@@ -524,7 +523,7 @@ Vector<String>* HistoryItem::redirectURLs() const
 
 void HistoryItem::setRedirectURLs(std::unique_ptr<Vector<String>> redirectURLs)
 {
-    m_redirectURLs = WTF::move(redirectURLs);
+    m_redirectURLs = WTFMove(redirectURLs);
 }
 
 void HistoryItem::notifyChanged()

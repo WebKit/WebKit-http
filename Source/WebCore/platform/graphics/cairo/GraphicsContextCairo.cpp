@@ -43,6 +43,7 @@
 #include "FloatRoundedRect.h"
 #include "Font.h"
 #include "GraphicsContextPlatformPrivateCairo.h"
+#include "ImageBuffer.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
 #include "Path.h"
@@ -250,6 +251,38 @@ void GraphicsContext::drawRect(const FloatRect& rect, float)
     }
 
     cairo_restore(cr);
+}
+
+void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
+{
+    UNUSED_PARAM(imageSize);
+
+    NativeImagePtr image = imagePtr;
+
+    platformContext()->save();
+
+    // Set the compositing operation.
+    if (op == CompositeSourceOver && blendMode == BlendModeNormal)
+        setCompositeOperation(CompositeCopy);
+    else
+        setCompositeOperation(op, blendMode);
+
+    FloatRect dst = destRect;
+
+    if (orientation != DefaultImageOrientation) {
+        // ImageOrientation expects the origin to be at (0, 0).
+        translate(dst.x(), dst.y());
+        dst.setLocation(FloatPoint());
+        concatCTM(orientation.transformFromDefault(dst.size()));
+        if (orientation.usesWidthAsHeight()) {
+            // The destination rectangle will have its width and height already reversed for the orientation of
+            // the image, as it was needed for page layout, so we need to reverse it back here.
+            dst = FloatRect(dst.x(), dst.y(), dst.height(), dst.width());
+        }
+    }
+
+    platformContext()->drawSurfaceToContext(image.get(), dst, srcRect, *this);
+    platformContext()->restore();
 }
 
 // This is only used to draw borders, so we should not draw shadows.
@@ -503,6 +536,17 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     cairo_set_fill_rule(cr, savedFillRule);
 
     m_data->clip(path);
+}
+
+void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
+{
+    if (paintingDisabled())
+        return;
+
+    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
+    RefPtr<cairo_surface_t> surface = image->nativeImageForCurrentFrame();
+    if (surface)
+        platformContext()->pushImageMask(surface.get(), destRect);
 }
 
 IntRect GraphicsContext::clipBounds() const

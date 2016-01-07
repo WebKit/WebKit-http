@@ -26,6 +26,7 @@
 #ifndef StyleResolveTree_h
 #define StyleResolveTree_h
 
+#include "StyleChange.h"
 #include <functional>
 
 namespace WebCore {
@@ -38,16 +39,12 @@ class Text;
 
 namespace Style {
 
-enum Change { NoChange, NoInherit, Inherit, Detach, Force };
-
 void resolveTree(Document&, Change);
 
 void detachRenderTree(Element&);
 void detachTextRenderer(Text&);
 
 void updateTextRendererAfterContentChange(Text&, unsigned offsetOfReplacedData, unsigned lengthOfReplacedData);
-
-Change determineChange(const RenderStyle&, const RenderStyle&);
 
 void queuePostResolutionCallback(std::function<void ()>);
 bool postResolutionCallbacksAreSuspended();

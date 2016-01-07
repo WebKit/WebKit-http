@@ -527,7 +527,7 @@ PDFPlugin::PDFPlugin(WebFrame* frame)
         Ref<Element> annotationStyleElement = document->createElement(styleTag, false);
         annotationStyleElement->setTextContent(annotationStyle, ASSERT_NO_EXCEPTION);
 
-        m_annotationContainer->appendChild(WTF::move(annotationStyleElement));
+        m_annotationContainer->appendChild(WTFMove(annotationStyleElement));
         document->bodyOrFrameset()->appendChild(*m_annotationContainer);
     }
 
@@ -773,12 +773,14 @@ bool PDFPlugin::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
     return false;
 }
 
-int PDFPlugin::scrollPosition(Scrollbar* scrollbar) const
+int PDFPlugin::scrollOffset(ScrollbarOrientation orientation) const
 {
-    if (scrollbar->orientation() == HorizontalScrollbar)
+    if (orientation == HorizontalScrollbar)
         return m_scrollOffset.width();
-    if (scrollbar->orientation() == VerticalScrollbar)
+
+    if (orientation == VerticalScrollbar)
         return m_scrollOffset.height();
+
     ASSERT_NOT_REACHED();
     return 0;
 }
@@ -1538,7 +1540,7 @@ bool PDFPlugin::isEditingCommandEnabled(const String& commandName)
     return false;
 }
 
-void PDFPlugin::setScrollOffset(const IntPoint& offset)
+void PDFPlugin::setScrollOffset(const ScrollOffset& offset)
 {
     m_scrollOffset = IntSize(offset.x(), offset.y());
 

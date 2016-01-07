@@ -2314,6 +2314,18 @@ void RenderLayer::scrollByRecursively(const IntSize& delta, ScrollOffsetClamping
     }
 }
 
+void RenderLayer::scrollToXPosition(int x, ScrollOffsetClamping clamp)
+{
+    ScrollPosition position(x, m_scrollPosition.y());
+    scrollToOffset(scrollOffsetFromPosition(position), clamp);
+}
+
+void RenderLayer::scrollToYPosition(int y, ScrollOffsetClamping clamp)
+{
+    ScrollPosition position(m_scrollPosition.x(), y);
+    scrollToOffset(scrollOffsetFromPosition(position), clamp);
+}
+
 ScrollOffset RenderLayer::clampScrollOffset(const ScrollOffset& scrollOffset) const
 {
     return scrollOffset.constrainedBetween(IntPoint(), maximumScrollOffset());
@@ -2723,20 +2735,15 @@ void RenderLayer::setScrollOffset(const ScrollOffset& offset)
     scrollTo(scrollPositionFromOffset(offset));
 }
 
-int RenderLayer::scrollPosition(Scrollbar* scrollbar) const
+int RenderLayer::scrollOffset(ScrollbarOrientation orientation) const
 {
-    if (scrollbar->orientation() == HorizontalScrollbar)
+    if (orientation == HorizontalScrollbar)
         return scrollOffset().x();
-    if (scrollbar->orientation() == VerticalScrollbar)
-        return scrollOffset().y();
-    return 0;
-}
 
-ScrollPosition RenderLayer::maximumScrollPosition() const
-{
-    // FIXME: m_scrollSize may not be up-to-date if m_scrollDimensionsDirty is true.
-    // FIXME: should be able to use the ScrollableArea implementation.
-    return scrollPositionFromOffset(roundedIntPoint(m_scrollSize) - visibleContentRectIncludingScrollbars(ContentsVisibleRect).size());
+    if (orientation == VerticalScrollbar)
+        return scrollOffset().y();
+
+    return 0;
 }
 
 IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion, VisibleContentRectBehavior) const
@@ -2745,6 +2752,7 @@ IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScroll
     if (showsOverflowControls() && scrollbarInclusion == IncludeScrollbars)
         scrollbarSpace = scrollbarIntrusion();
     
+    // FIXME: This seems wrong: m_layerSize includes borders. Can we just use the ScrollableArea implementation?
     return IntRect(scrollPosition(), IntSize(std::max(0, m_layerSize.width() - scrollbarSpace.width()), std::max(0, m_layerSize.height() - scrollbarSpace.height())));
 }
 
@@ -2756,8 +2764,8 @@ IntSize RenderLayer::overhangAmount() const
 
     IntSize stretch;
 
-    // FIXME: use maximumScrollOffset()
-    ScrollOffset scrollOffset = scrollOffsetFromPosition(scrollOrigin());
+    // FIXME: use maximumScrollOffset(), or just move this to ScrollableArea.
+    ScrollOffset scrollOffset = scrollOffsetFromPosition(scrollPosition());
     if (scrollOffset.y() < 0)
         stretch.setHeight(scrollOffset.y());
     else if (scrollableContentsSize().height() && scrollOffset.y() > scrollableContentsSize().height() - visibleHeight())
@@ -6902,7 +6910,7 @@ void RenderLayer::updateOrRemoveFilterEffectRenderer()
         RefPtr<FilterEffectRenderer> filterRenderer = FilterEffectRenderer::create();
         filterRenderer->setFilterScale(frame.page()->deviceScaleFactor());
         filterRenderer->setRenderingMode(frame.settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated);
-        filterInfo.setRenderer(WTF::move(filterRenderer));
+        filterInfo.setRenderer(WTFMove(filterRenderer));
         
         // We can optimize away code paths in other places if we know that there are no software filters.
         renderer().view().setHasSoftwareFilters(true);

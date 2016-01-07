@@ -30,7 +30,7 @@ function test()
                 if (scope.type === WebInspector.ScopeChainNode.Type.Global)
                     resolve({scope, propertyDescriptors: []});
                 else {
-                    scope.object.getDisplayablePropertyDescriptors((propertyDescriptors) => {
+                    scope.objects[0].getDisplayablePropertyDescriptors((propertyDescriptors) => {
                         resolve({scope, propertyDescriptors});
                     });
                 }
@@ -55,9 +55,6 @@ function test()
 
 
     let suite = InspectorTest.createAsyncSuite("WebInspector.ScopeChainNode");
-
-    InspectorTest.dumpActivityToSystemConsole = true;
-    InspectorBackend.dumpInspectorProtocolMessages = true;
 
     suite.addTestCase({
         name: "WebInspector.ScopeChainNode.AllTypes",

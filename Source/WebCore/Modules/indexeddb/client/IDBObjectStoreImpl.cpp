@@ -117,6 +117,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* c
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'openCursor' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -132,7 +133,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* c
 
     auto info = IDBCursorInfo::objectStoreCursor(m_transaction.get(), m_info.identifier(), range, direction);
     Ref<IDBRequest> request = m_transaction->requestOpenCursor(*context, *this, info);
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, const String& direction, ExceptionCodeWithMessage& ec)
@@ -163,6 +164,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context,
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -175,7 +177,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context,
     }
 
     Ref<IDBRequest> request = m_transaction->requestGetRecord(*context, *this, idbKey.get());
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context, IDBKeyRange* keyRange, ExceptionCodeWithMessage& ec)
@@ -194,6 +196,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context,
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -204,7 +207,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context,
     }
 
     Ref<IDBRequest> request = m_transaction->requestGetRecord(*context, *this, keyRangeData);
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBObjectStore::add(JSC::ExecState& state, JSC::JSValue value, ExceptionCodeWithMessage& ec)
@@ -256,11 +259,15 @@ RefPtr<IDBRequest> IDBObjectStore::putOrAdd(JSC::ExecState& state, JSC::JSValue 
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to store record in an IDBObjectStore: The object store has been deleted.");
         return nullptr;
     }
 
     RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::create(&state, value, nullptr, nullptr);
     if (state.hadException()) {
+        // Clear the DOM exception from the serializer so we can give a more targeted exception.
+        state.clearException();
+
         ec.code = IDBDatabaseException::DataCloneError;
         ec.message = ASCIILiteral("Failed to store record in an IDBObjectStore: An object could not be cloned.");
         return nullptr;
@@ -347,6 +354,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContex
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'delete' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -358,7 +366,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContex
     }
 
     Ref<IDBRequest> request = m_transaction->requestDeleteRecord(*context, *this, keyRangeData);
-    return WTF::move(request);
+    return WTFMove(request);
 }
 
 RefPtr<WebCore::IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* context, const Deprecated::ScriptValue& key, ExceptionCodeWithMessage& ec)
@@ -397,6 +405,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::clear(ScriptExecutionContext* contex
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'clear' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -415,6 +424,7 @@ RefPtr<WebCore::IDBIndex> IDBObjectStore::createIndex(ScriptExecutionContext* co
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'createIndex' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -460,7 +470,7 @@ RefPtr<WebCore::IDBIndex> IDBObjectStore::createIndex(ScriptExecutionContext* co
     Ref<IDBIndex> index = m_transaction->createIndex(*this, info);
     m_referencedIndexes.set(name, &index.get());
 
-    return WTF::move(index);
+    return WTFMove(index);
 }
 
 RefPtr<WebCore::IDBIndex> IDBObjectStore::index(const String& indexName, ExceptionCodeWithMessage& ec)
@@ -469,6 +479,7 @@ RefPtr<WebCore::IDBIndex> IDBObjectStore::index(const String& indexName, Excepti
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'index' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 
@@ -492,7 +503,7 @@ RefPtr<WebCore::IDBIndex> IDBObjectStore::index(const String& indexName, Excepti
     auto index = IDBIndex::create(*info, *this);
     m_referencedIndexes.set(indexName, &index.get());
 
-    return WTF::move(index);
+    return WTFMove(index);
 }
 
 void IDBObjectStore::deleteIndex(const String& name, ExceptionCodeWithMessage& ec)
@@ -501,6 +512,7 @@ void IDBObjectStore::deleteIndex(const String& name, ExceptionCodeWithMessage& e
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'deleteIndex' on 'IDBObjectStore': The object store has been deleted.");
         return;
     }
 
@@ -588,6 +600,7 @@ RefPtr<WebCore::IDBRequest> IDBObjectStore::doCount(ScriptExecutionContext& cont
 
     if (m_deleted) {
         ec.code = IDBDatabaseException::InvalidStateError;
+        ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBObjectStore': The object store has been deleted.");
         return nullptr;
     }
 

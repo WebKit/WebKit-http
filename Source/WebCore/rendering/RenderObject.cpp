@@ -57,6 +57,7 @@
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h" 
+#include "RenderRuby.h"
 #include "RenderSVGResourceContainer.h"
 #include "RenderScrollbarPart.h"
 #include "RenderTableRow.h"
@@ -1035,7 +1036,7 @@ FloatRect RenderObject::computeFloatRectForRepaint(const FloatRect&, const Rende
 
 static void showRenderTreeLegend()
 {
-    fprintf(stderr, "\n(R)elative/A(B)solute/Fi(X)ed/Stick(Y) positioned, (O)verflow clipping, (A)nonymous, (G)enerated, (F)loating, has(L)ayer, (C)omposited, (D)irty layout, Dirty (S)tyle\n");
+    fprintf(stderr, "\n(B)lock/(I)nline/I(N)line-block, (R)elative/A(B)solute/Fi(X)ed/Stick(Y) positioned, (O)verflow clipping, (A)nonymous, (G)enerated, (F)loating, has(L)ayer, (C)omposited, (D)irty layout, Dirty (S)tyle\n");
 }
 
 void RenderObject::showNodeTreeForThis() const
@@ -1103,6 +1104,13 @@ void RenderObject::showRegionsInformation() const
 
 void RenderObject::showRenderObject(bool mark, int depth) const
 {
+    if (isInlineBlockOrInlineTable())
+        fputc('N', stderr);
+    else if (isInline())
+        fputc('I', stderr);
+    else
+        fputc('B', stderr);
+    
     if (isPositioned()) {
         if (isRelPositioned())
             fputc('R', stderr);
@@ -1122,7 +1130,7 @@ void RenderObject::showRenderObject(bool mark, int depth) const
     else
         fputc('-', stderr);
 
-    if (isAnonymousBlock())
+    if (isAnonymous())
         fputc('A', stderr);
     else
         fputc('-', stderr);
@@ -1725,6 +1733,11 @@ void RenderObject::updateDragState(bool dragOn)
 bool RenderObject::isComposited() const
 {
     return hasLayer() && downcast<RenderLayerModelObject>(*this).layer()->isComposited();
+}
+
+bool RenderObject::isAnonymousInlineBlock() const
+{
+    return isAnonymous() && style().display() == INLINE_BLOCK && style().styleType() == NOPSEUDO && isRenderBlockFlow() && !isRubyRun() && !isRubyBase() && !isRuby(parent());
 }
 
 bool RenderObject::hitTest(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter hitTestFilter)

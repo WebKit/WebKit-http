@@ -1,3 +1,178 @@
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a setting and preferences to enable display-list drawing. Does nothing yet.
+        https://bugs.webkit.org/show_bug.cgi?id=152807
+
+        Reviewed by Zalan Bujtas.
+        
+        Add an item to the Settings menu to toggle display-list drawing.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController toggleDisplayListDrawingEnabled:]):
+        (-[SettingsController displayListDrawingEnabled]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]):
+
+2016-01-06  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Python SCM should be able to retrieve untracked files - Add GIT support
+        https://bugs.webkit.org/show_bug.cgi?id=143135
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.untracked_files): Adding support for git.
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (GitTest.setUp):
+        (GitTest.test_untracked_files): Adding test.
+
+2016-01-05  Mark Lam  <mark.lam@apple.com>
+
+        Rename badly named JSC_timeout env var to JSCTEST_timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=152748
+
+        Reviewed by Geoffrey Garen.
+
+        Now that we validate JSC options, the badly named JSC_timeout env var causes the
+        bots to have a bad time.
+
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+
+2016-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Allow to save and restore session
+        https://bugs.webkit.org/show_bug.cgi?id=115600
+
+        Reviewed by Michael Catanzaro.
+
+        Add test case to check the new session API.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestBackForwardList.cpp:
+        (testWebKitWebViewSessionState):
+        (testWebKitWebViewSessionStateWithFormData):
+        (beforeAll):
+
+2016-01-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump EFL version to 1.16.1
+        https://bugs.webkit.org/show_bug.cgi?id=152688
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+
+2016-01-04  Aakash Jain  <aakash_jain@apple.com>
+
+        error running layout tests on iOS simulator on latest build
+        https://bugs.webkit.org/show_bug.cgi?id=152719
+        <rdar://problem/24009549>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.wait_until_device_is_booted): Ensure that simulator device is in booted state
+          before running simctl spawn command.
+
+2016-01-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, move Frédéric Wang to committers list
+
+        He seems to be on the contributors list by accident. He has been landing his own commits for
+        about two years now.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-01-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, move Sebastian Dröge to committers list harder
+
+        He accidentally added himself to the reviewers list because the file is confusing. Then I
+        accidentially moved him to the contributors list because the file is confusing, even though
+        I knew the contributors list existed in this file and was attempting to add him to the
+        committers list. Really move him to the committers list now.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-01-02  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Python SCM should be able to retrieve untracked files - Add SVN support
+        https://bugs.webkit.org/show_bug.cgi?id=152546
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (test_untracked_files): Activating test for SVN.
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.untracked_files): Implementing untracked files retrieval for SVN.
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::setAllowedHosts):
+        * DumpRenderTree/win/DRTDataObject.cpp:
+        (DRTDataObject::SetData):
+        * TestWebKitAPI/Tests/WTF/Deque.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/NakedPtr.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/Ref.cpp:
+        (TestWebKitAPI::passWithRef):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/ns/RetainPtr.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/CalculationValue.cpp:
+        (TestWebKitAPI::createTestValue):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::InMemoryCompiledContentExtension):
+        (TestWebKitAPI::createNFAs):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/DFACombiner.cpp:
+        (TestWebKitAPI::combine):
+        * TestWebKitAPI/Tests/WebCore/DFAHelpers.h:
+        (TestWebKitAPI::createNFAs):
+        * TestWebKitAPI/Tests/WebKit2/cocoa/WeakObjCPtr.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebProcessTest.cpp:
+        (WebProcessTest::add):
+
+2016-01-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] REGRESSION(r192761): Broke resource URIs for applications that use g_resource_load in a web extension
+        https://bugs.webkit.org/show_bug.cgi?id=152634
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestLoaderClient.cpp:
+        (testLoadFromGResource): Added test.
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (registerGResource): Added.
+        (webkit_web_extension_initialize_with_user_data): Load the test gresource.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/boring.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/webkit2gtk-tests.gresource.xml: Add an HTML file.
+
 2015-12-31  David Kilzer  <ddkilzer@apple.com>
 
         REGRESSION (r194470): Fix warnings uncovered by migrating to WTF_MOVE

@@ -1,3 +1,3475 @@
+2016-01-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Fix up IDBDatabaseIdentifier hash issues.
+        https://bugs.webkit.org/show_bug.cgi?id=152822
+
+        Reviewed by Alex Christensen.
+
+        No new tests (No explicitly testable behavior change, existing tests pass, flakiness will be reduced).
+
+        * Modules/indexeddb/IDBDatabaseIdentifier.h:
+        (WebCore::IDBDatabaseIdentifier::IDBDatabaseIdentifier):
+        (WebCore::IDBDatabaseIdentifier::isEmpty):
+        (WebCore::IDBDatabaseIdentifierHashTraits::isEmptyValue):
+        * page/SecurityOriginData.h:
+
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the project file.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a setting and preferences to enable display-list drawing. Does nothing yet.
+        https://bugs.webkit.org/show_bug.cgi?id=152807
+
+        Reviewed by Zalan Bujtas.
+
+        Setting for display-list drawing.
+
+        * page/Settings.in:
+
+2016-01-06  Eric Carlson  <eric.carlson@apple.com>
+
+        AirPlay route availability event not always sent
+        https://bugs.webkit.org/show_bug.cgi?id=152802
+
+        Reviewed by Jer Noble.
+
+        Test: media/airplay-target-availability.html
+
+        * Modules/mediasession/WebMediaSessionManager.cpp:
+        (WebCore::mediaProducerStateString): Log the new flags.
+        (WebCore::WebMediaSessionManager::clientStateDidChange): Schedule a client reconfiguration if
+          the 'requires monitoring', 'has listener', or 'has audio or video' flags have changed.
+        (WebCore::WebMediaSessionManager::configurePlaybackTargetMonitoring): Start monitoring if
+          at least one client has a listener and at least one has audio/video.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaState): Set new flags.
+        * html/HTMLMediaElement.h:
+
+        * page/MediaProducer.h: Define new flags. Add new state enum.
+
+        * platform/graphics/MediaPlaybackTargetContext.h: Initial state is "Unknown".
+
+        * platform/mock/MediaPlaybackTargetMock.h:
+        * platform/mock/MediaPlaybackTargetPickerMock.cpp:
+        (WebCore::MediaPlaybackTargetPickerMock::externalOutputDeviceAvailable): Enums not bitfields.
+        (WebCore::MediaPlaybackTargetPickerMock::startingMonitoringPlaybackTargets): Ditto. Don't make
+          device change callback if the device state is "Unknown".
+        (WebCore::MediaPlaybackTargetPickerMock::setState): Ditto.
+        * platform/mock/MediaPlaybackTargetPickerMock.h:
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::setMockMediaPlaybackTargetPickerState): Support new state.
+
+2016-01-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/odd-strings.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=152800
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Existing flaky test is now rock solid and unskipped).
+
+        * Modules/indexeddb/client/IDBDatabaseImpl.cpp:
+        (WebCore::IDBClient::IDBDatabase::IDBDatabase):
+        (WebCore::IDBClient::IDBDatabase::maybeCloseInServer): Only refuse to close in the server if there
+          are active transactions. In the case of page navigation where stop() has been called on active DOM objects,
+          there will never be any active transactions.
+        
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::commitTransaction):
+
+2016-01-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/intversion-gated-on-delete.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=152795
+
+        Reviewed by Alex Christensen.
+
+        No new tests (At least one failing test now passes).
+
+        Change the HashSet of open connection into a ListHashSet.
+        
+        This enforces a reliable order of event delivery, which this test relies on, 
+        and which seems better in general.
+
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::connectionClosedFromClient):
+        * Modules/indexeddb/server/UniqueIDBDatabase.h:
+
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Revert overflow:hidden on the body affecting viewport scale (r186786)
+        https://bugs.webkit.org/show_bug.cgi?id=152803
+        rdar://problem/22242515
+
+        Reviewed by Tim Horton.
+
+        You can't assume that if an author uses overflow:hidden on the body, they have no
+        content outside the body that is important. Sites like Google Translate put
+        abspos elements outside the body.
+        
+        So revert the change.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::contentsSizeRespectingOverflow): Deleted.
+        * page/FrameView.h:
+
+2016-01-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Port blocking bypass issue using 307 redirect
+        https://bugs.webkit.org/show_bug.cgi?id=152801
+        <rdar://problem/24048554>
+
+        Reviewed by Anders Carlsson.
+
+        Tested by http/tests/security/blocked-on-redirect.html.
+
+        Make sure that 307 redirects check the requested URL via 'portAllowed'. 
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::willSendRequest): Confirm that the requested port
+        is valid, and block load if it is not.
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::reportBlockedPortFailed): Added.
+        (WebCore::FrameLoader::blockedError): Added.
+        * loader/FrameLoader.h:
+
+2016-01-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Tiny cleanup in FontPlatformData::ctFont()
+        https://bugs.webkit.org/show_bug.cgi?id=152793
+
+        Reviewed by Zalan Bujtas.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::ctFont):
+
+2016-01-06  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/transaction-scope-sequencing.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=152775
+
+        Reviewed by Alex Christensen.
+
+        No new tests (At least one failing test now passes, plus changes to another existing test).
+        
+        Any transaction enqueued after a read-write transaction whose scope overlaps with
+        that read-write transaction cannot run until after that read-write transaction runs.
+        
+        Additionally, read-only transactions were actually sometimes running even though their scopes
+        overlapped with a running read-write transaction.
+        
+        This patch fixes both of those issues.
+    
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::operationAndTransactionTimerFired):
+        (WebCore::IDBServer::UniqueIDBDatabase::takeNextRunnableTransaction):
+        (WebCore::IDBServer::UniqueIDBDatabase::inProgressTransactionCompleted):
+        * Modules/indexeddb/server/UniqueIDBDatabase.h:
+
+2016-01-06  Zalan Bujtas  <zalan@apple.com>
+
+        Float with media query positioned incorrectly after window resize.
+        https://bugs.webkit.org/show_bug.cgi?id=152558
+
+        Reviewed by Simon Fraser and David Hyatt.
+
+        This patch ensures that when a renderer becomes floated, it is moved
+        to the right containing block.
+        When this floated renderer's previous sibling is an anonymous block, it needs
+        to be reparented so that the float is positioned as if there was no anonymous block at all.
+
+        Test: fast/block/float/float-with-anonymous-previous-sibling.html
+
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::styleDidChange):
+
+2016-01-06  Zalan Bujtas  <zalan@apple.com>
+
+        isAnonymousInlineBlock() should exclude any ruby content.
+        https://bugs.webkit.org/show_bug.cgi?id=152648
+        <rdar://problem/23872549>
+
+        Reviewed by David Hyatt.
+
+        isAnonymousInlineBlock is designed for the new Block-Inside-Inline Model
+        and all other anonymous inline-block renderers (including Ruby) should bail out of it.
+        (see webkit.org/b/143145)
+
+        Test: fast/ruby/ruby-inline-margin-collapse-crash.html
+
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::isAnonymousInlineBlock):
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::isAnonymousInlineBlock): Deleted.
+
+2016-01-05  Zalan Bujtas  <zalan@apple.com>
+
+        showRenderTree: add inline-block/inline/block column.
+        https://bugs.webkit.org/show_bug.cgi?id=152771
+
+        Reviewed by Simon Fraser.
+
+        The name of the renderer (RenderBlock etc) does not always reflect the associated display type.
+
+        No change in functionality.
+
+        * rendering/RenderObject.cpp:
+        (WebCore::showRenderTreeLegend):
+        (WebCore::RenderObject::showRenderObject):
+
+2016-01-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Move ImageBuffer::clip() code into GraphicsContext
+        https://bugs.webkit.org/show_bug.cgi?id=152769
+
+        Reviewed by Zalan Bujtas.
+
+        For CG, GraphicsContext had clipToNativeImage(PassNativeImagePtr...), which
+        was ugly and platform-specific.
+        
+        Fix by moving code from ImageBuffer::clip() for CG and Cairo into the platform-specific
+        GraphicsContext implementations. This required some minor refactoring of scaleSizeToUserSpace()
+        in ImageBufferCG.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer): Deleted.
+        * platform/graphics/ImageBuffer.cpp:
+        (WebCore::ImageBuffer::sizeForDestinationSize):
+        * platform/graphics/ImageBuffer.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer):
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        (WebCore::ImageBuffer::clip): Deleted.
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer):
+        (WebCore::GraphicsContext::clipToNativeImage): Deleted.
+        * platform/graphics/cg/ImageBufferCG.cpp:
+        (WebCore::ImageBuffer::ImageBuffer):
+        (WebCore::ImageBuffer::sizeForDestinationSize):
+        (WebCore::ImageBuffer::putByteArray):
+        (WebCore::ImageBuffer::toDataURL):
+        (WebCore::ImageBuffer::clip): Deleted.
+
+2016-01-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove GraphicsContext::drawJoinedLines()
+        https://bugs.webkit.org/show_bug.cgi?id=152764
+
+        Reviewed by Zalan Bujtas.
+
+        GraphicsContext::drawJoinedLines() was only used by iOS form-control drawing
+        and polluted GraphicsContext with platform-specific types.
+
+        Rewrite RenderThemeIOS::paintCheckboxDecorations() to use the CGContextRef directly.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::drawJoinedLines): Deleted.
+        * rendering/RenderThemeIOS.mm:
+        (WebCore::drawJoinedLines):
+        (WebCore::RenderThemeIOS::paintCheckboxDecorations):
+
+2016-01-05  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/structured-clone.html crashes.
+        https://bugs.webkit.org/show_bug.cgi?id=152763
+
+        Reviewed by Alex Christensen.
+
+        No new tests (At least one failing test now passes).
+        
+        A lot of SerializedScriptValue code incorrectly assumed the global object is a JSDOMGlobalObject,
+        which doesn't have to be true for native Javascript types like typed arrays.
+        
+        Fixing that fixes the test.
+
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::putOrAdd): If serializing the script value caused an exception,
+          clear that exception and return a better IDB specific exception.
+
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::toJS): Add a ArrayBufferView specialization for toJS that skips the need for a JSDOMGlobalObject.
+        
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneDeserializer::readArrayBufferView): Call toJS directly instead of getJSValue, which 
+          incorrectly assumes the existence of a JSDOMGlobalObject (vs a JSGlobalObject)
+        (WebCore::CloneDeserializer::readTerminal): Instead of getJSValue, call JSArrayBuffer::create directly.
+
+2016-01-05  Pranjal Jumde  <pjumde@apple.com>
+
+        Image should not be re-registered if m_form already exists. This leads to an assertion failure.
+        https://bugs.webkit.org/show_bug.cgi?id=152741
+        <rdar://problem/24030778>
+
+        Reviewed by Brent Fulgham.
+
+        * Source/WebCore/html/HTMLImageElement.cpp:
+          Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode& insertionPoint)
+
+2016-01-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Adjust tile coverage with margin tiles, and tidy up the indicator
+        https://bugs.webkit.org/show_bug.cgi?id=152742
+
+        Reviewed by Beth Dakin.
+
+        The tile coverage rect was unfeasibly large when margin tiles are present, and
+        could be bigger than the layer itself, making the indicator look odd.
+
+        Fix by improving the logic in TileController::adjustTileCoverageRect(): this
+        now first extends the visible rect for scrolling, and then constrains it
+        within the bounds with margin padding. It also unites with the passed-in
+        coverageRect, ensuring that we don't lose information about overhang for
+        margin tile coverage.
+
+        Second, update the tiled scrolling indicator when the visible rect changes,
+        and coalesce the map updates on a timer.
+
+        * platform/graphics/TiledBacking.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::adjustCoverageRect):
+        * platform/graphics/ca/TileController.cpp:
+        (WebCore::TileController::setVisibleRect):
+        (WebCore::TileController::setTiledScrollingIndicatorPosition):
+        (WebCore::expandRectWithinRect):
+        (WebCore::TileController::adjustTileCoverageRect):
+        (WebCore::TileController::updateTileCoverageMap):
+        (WebCore::TileController::computeTileCoverageRect): Deleted.
+        * platform/graphics/ca/TileController.h:
+        * platform/graphics/ca/TileCoverageMap.cpp:
+        (WebCore::TileCoverageMap::TileCoverageMap):
+        (WebCore::TileCoverageMap::setNeedsUpdate):
+        (WebCore::TileCoverageMap::updateTimerFired):
+        * platform/graphics/ca/TileCoverageMap.h:
+
+2016-01-05  Antti Koivisto  <antti@apple.com>
+
+        Remove selector filter update calls from Element child parsing callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=152749
+
+        Reviewed by Andreas Kling.
+
+        We haven't done style resolve during parsing for a while now. These calls do nothing useful.
+
+        * dom/Element.cpp:
+        (WebCore::Element::beginParsingChildren):
+        (WebCore::Element::finishParsingChildren):
+
+2016-01-05  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Error message updates for two failing tests.
+        https://bugs.webkit.org/show_bug.cgi?id=152735
+
+        Reviewed by Alex Christensen.
+
+        No new tests (Covered by existing tests).
+
+        Add error messages for various operations on deleted objects.
+        
+        * Modules/indexeddb/client/IDBCursorImpl.cpp:
+        (WebCore::IDBClient::IDBCursor::update):
+        (WebCore::IDBClient::IDBCursor::advance):
+        (WebCore::IDBClient::IDBCursor::continueFunction):
+        (WebCore::IDBClient::IDBCursor::deleteFunction):
+        
+        * Modules/indexeddb/client/IDBIndexImpl.cpp:
+        (WebCore::IDBClient::IDBIndex::openCursor):
+        (WebCore::IDBClient::IDBIndex::doCount):
+        (WebCore::IDBClient::IDBIndex::openKeyCursor):
+        (WebCore::IDBClient::IDBIndex::doGet):
+        (WebCore::IDBClient::IDBIndex::doGetKey):
+        
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::openCursor):
+        (WebCore::IDBClient::IDBObjectStore::get):
+        (WebCore::IDBClient::IDBObjectStore::putOrAdd):
+        (WebCore::IDBClient::IDBObjectStore::deleteFunction):
+        (WebCore::IDBClient::IDBObjectStore::clear):
+        (WebCore::IDBClient::IDBObjectStore::createIndex):
+        (WebCore::IDBClient::IDBObjectStore::index):
+        (WebCore::IDBClient::IDBObjectStore::deleteIndex):
+        (WebCore::IDBClient::IDBObjectStore::doCount):
+
+        * bindings/js/JSIDBObjectStoreCustom.cpp:
+        (WebCore::JSIDBObjectStore::createIndex):
+
+2016-01-05  Eric Carlson  <eric.carlson@apple.com>
+
+        Avoid NULL deference in Page::updateIsPlayingMedia
+        https://bugs.webkit.org/show_bug.cgi?id=152732
+
+        No new tests, this fixes a rare crash that I am unable to reproduce.
+
+        Reviewed by David Kilzer.
+
+        * page/Page.cpp:
+        (WebCore::Page::updateIsPlayingMedia): frame->document() can return NULL.
+
+2016-01-05  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Transactions from a previous page can leak forward to the next.
+        https://bugs.webkit.org/show_bug.cgi?id=152698
+
+        Reviewed by Alex Christensen.
+
+        Test: storage/indexeddb/modern/transactions-stop-on-navigation.html
+
+        This patch is mostly about actually implementing IDBDatabase::stop and IDBTransaction::stop.
+        Most of the rest of the scattered changes are about cleaning up now-incorrect ASSERTs.
+
+        * Modules/indexeddb/client/IDBDatabaseImpl.cpp:
+        (WebCore::IDBClient::IDBDatabase::close):
+        (WebCore::IDBClient::IDBDatabase::maybeCloseInServer):
+        (WebCore::IDBClient::IDBDatabase::stop):
+        (WebCore::IDBClient::IDBDatabase::startVersionChangeTransaction):
+        (WebCore::IDBClient::IDBDatabase::didAbortTransaction):
+        * Modules/indexeddb/client/IDBDatabaseImpl.h:
+        
+        * Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp:
+        (WebCore::IDBClient::IDBOpenDBRequest::requestCompleted):
+        
+        * Modules/indexeddb/client/IDBRequestImpl.h:
+        
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::IDBTransaction):
+        (WebCore::IDBClient::IDBTransaction::stop):
+        (WebCore::IDBClient::IDBTransaction::abortOnServerAndCancelRequests):
+        
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::performCurrentDeleteOperation):
+        (WebCore::IDBServer::UniqueIDBDatabase::didPerformAbortTransaction):
+
+2016-01-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Attempting to fix the AppleWin build after r194577.
+
+        Add the ClipStack.cpp build target alongside the TextureMapperGL.cpp
+        one, since both include GraphicsContext3D.h and ANGLEWebKitBridge.h
+        indirectly, the latter requiring specific include flags.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformWinCairo.cmake:
+
+2016-01-05  Antti Koivisto  <antti@apple.com>
+
+        Move StyleChange enum into a separate file
+        https://bugs.webkit.org/show_bug.cgi?id=152730
+
+        Reviewed by Andreas Kling.
+
+        Fewer whole-world rebuilds.
+
+        * CMakeLists.txt:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/CharacterData.cpp:
+        * dom/ContainerNode.cpp:
+        * dom/Document.cpp:
+        * dom/Document.h:
+        * dom/Element.cpp:
+        * dom/Element.h:
+        * style/StyleChange.h: Added.
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::shouldCreateRenderer):
+        (WebCore::Style::determineChange): Deleted.
+        * style/StyleResolveTree.h:
+
+2016-01-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [PerformanceTiming] Don't expose the restrictedKeyMap() HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=147366
+
+        Reviewed by Sam Weinig.
+
+        Instead of the callers looking up in the HashMap that's returned by restrictedKeyMap(),
+        keep the HashMap local in the static restrictedMarkFunction(). This function accepts
+        a String reference and performs the lookup, returning the pointer to a PerformanceTiming
+        method that corresponds to the passed-in mark or returns nullptr otherwise.
+
+        The HashMap is now wrapped in a NeverDestroyed object and is populated when the first
+        mark function is looked for.
+
+        * page/PerformanceUserTiming.cpp:
+        (WebCore::UserTiming::mark):
+        (WebCore::UserTiming::findExistingMarkStartTime):
+
+2016-01-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TextureMapper] Move ClipStack into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=152661
+
+        Reviewed by Michael Catanzaro.
+
+        Move TextureMapperGL::ClipStack into its own file and clean it up a bit.
+        Move ClipState under the ClipStack class, and simply name it State.
+
+        Move the ClipState methods into a more sensible order. Remove the inline
+        specifiers, these aren't really needed for the methods defined in the header.
+        apply() and applyIfNeeded() now accept a reference to the GraphicsContext3D
+        object, not a pointer.
+
+        Turn YAxisMode enum into an enum class, update the uses to properly specify
+        the scope of the enum value.
+
+        Reorder the ClipStack member variables into a more efficient order.
+
+        No new tests -- no change in behavior.
+
+        * CMakeLists.txt:
+        * platform/graphics/texmap/BitmapTextureGL.cpp:
+        (WebCore::BitmapTextureGL::clearIfNeeded):
+        (WebCore::BitmapTextureGL::bindAsSurface):
+        * platform/graphics/texmap/BitmapTextureGL.h:
+        (WebCore::BitmapTextureGL::clipStack):
+        * platform/graphics/texmap/ClipStack.cpp: Added.
+        (WebCore::ClipStack::push):
+        (WebCore::ClipStack::pop):
+        (WebCore::ClipStack::reset):
+        (WebCore::ClipStack::intersect):
+        (WebCore::ClipStack::setStencilIndex):
+        (WebCore::ClipStack::apply):
+        (WebCore::ClipStack::applyIfNeeded):
+        * platform/graphics/texmap/ClipStack.h: Added.
+        (WebCore::ClipStack::State::State):
+        (WebCore::ClipStack::current):
+        (WebCore::ClipStack::getStencilIndex):
+        (WebCore::ClipStack::isCurrentScissorBoxEmpty):
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGL::clipStack):
+        (WebCore::TextureMapperGL::beginPainting):
+        (WebCore::TextureMapperGL::bindDefaultSurface):
+        (WebCore::TextureMapperGL::beginScissorClip):
+        (WebCore::TextureMapperGL::beginClip):
+        (WebCore::TextureMapperGL::endClip):
+        (WebCore::TextureMapperGL::ClipStack::reset): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::intersect): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::setStencilIndex): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::push): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::pop): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::apply): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::applyIfNeeded): Deleted.
+        * platform/graphics/texmap/TextureMapperGL.h:
+        (WebCore::TextureMapperGL::ClipState::ClipState): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::ClipStack): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::current): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::getStencilIndex): Deleted.
+        (WebCore::TextureMapperGL::ClipStack::isCurrentScissorBoxEmpty): Deleted.
+
+2016-01-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Shave off a TransformationMatrix copy if RenderLayer's transparencyClipBox()
+        https://bugs.webkit.org/show_bug.cgi?id=152119
+
+        Reviewed by Simon Fraser.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::transparencyClipBox): Multiply the transformation matrix returned by
+        layer.transform() directly into the transform object, instead of first
+        multiplying them and then copying the result back into the transform object.
+
+2016-01-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        TextBreakIterator uses an internal implementation detail of NSLocale
+        https://bugs.webkit.org/show_bug.cgi?id=152715
+        <rdar://problem/23775121>
+
+        Reviewed by Tim Horton.
+
+        Instead of directly querying AppleLanguages, we should use [NSLocale preferredLanguages].
+
+        No new tests because there is no behavior change.
+
+        * platform/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WebCore::topLanguagePreference):
+
+2016-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSCustomXPathNSResolver::lookupNamespaceURI Console Message should render with a column number
+        https://bugs.webkit.org/show_bug.cgi?id=114312
+
+        Reviewed by Brent Fulgham.
+
+        * bindings/js/JSCustomXPathNSResolver.cpp:
+        (WebCore::JSCustomXPathNSResolver::lookupNamespaceURI): Deleted.
+        This now behaves as expected.
+
+2016-01-04  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Memory indexes aren't deleted when their owning memory object stores are deleted.
+        https://bugs.webkit.org/show_bug.cgi?id=152717
+
+        Reviewed by Alex Christensen.
+
+        Test: storage/indexeddb/modern/memory-index-not-deleted-with-objectstore.html
+
+        * Modules/indexeddb/server/MemoryBackingStoreTransaction.cpp:
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::objectStoreDeleted):
+        * Modules/indexeddb/server/MemoryObjectStore.cpp:
+        (WebCore::IDBServer::MemoryObjectStore::deleteAllIndexes):
+        * Modules/indexeddb/server/MemoryObjectStore.h:
+
+2016-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on gesture events when building for Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=152704
+        rdar://problem/24042472
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-01-04  Sergio Villar Senin  <svillar@igalia.com>
+
+        REGRESSION(r194143): Float width incorrectly calculated on Wikipedia
+        https://bugs.webkit.org/show_bug.cgi?id=152644
+
+        Reviewed by Myles C. Maxfield.
+
+        The min/max-content contribution computation for non replaced
+        blocks changed in r194143. The implementation was actually
+        more complex than it should be and actually incomplete as it
+        was not considering the case of out of flow elements (because
+        it was directly calling computeLogicalWidthInRegion()).
+
+        This new implementation simplifies a lot the code and makes it
+        more complete as it relies on min|maxPreferredLogicalWidth()
+        calls which already consider all the different types of boxes.
+
+        Test: fast/css-intrinsic-dimensions/inlinesize-contribution-floats.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::computeBlockPreferredLogicalWidths):
+
+2016-01-04  David Hyatt  <hyatt@apple.com>
+
+        word-wrap: break-word broken inside a flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=152321
+
+        Reviewed by Simon Fraser.
+
+        Added fast/text/word-break-on-flexbox-child.html
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::computePreferredLogicalWidths):
+
+        At some point word-wrap:break-word was mapped to CSS overflow-wrap, but the code
+        in RenderText was never updated to use the breakWords() RenderStyle function that
+        checks overflow-wrap's value.
+
+        This means all uses of word-wrap:break-word were broken when measuring the
+        intrinsic width of a RenderText.
+
+2016-01-04  John Wilander  <wilander@apple.com>
+
+        webkitGetUserMedia built-in should use @then and not then
+        https://bugs.webkit.org/show_bug.cgi?id=152296
+
+        Reviewed by Brent Fulgham.
+
+        Test: streams/webkitGetUserMedia-shadowing-then.html
+
+        * Modules/mediastream/NavigatorUserMedia.js:
+        (webkitGetUserMedia): Modified to use @then syntax.
+
+2016-01-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Post-commit update for r193484.
+        https://bugs.webkit.org/show_bug.cgi?id=151884
+
+        Unreviwed.
+
+        The same null check needs to be applied in fontHasVerticalGlyphs() as well.
+
+        * platform/graphics/cocoa/FontCocoa.mm:
+        (WebCore::fontHasVerticalGlyphs):
+
+2016-01-04  David Hyatt  <hyatt@apple.com>
+
+        Video/audio-related cleanup after changes to the source element for picture support.
+        https://bugs.webkit.org/show_bug.cgi?id=152090
+
+        Reviewed by Darin Adler.
+
+         * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::selectNextSourceChild):
+        Use the parsed MediaQueryList for video/audio, since we now cache that on the source elements for picture.
+
+        * html/HTMLSourceElement.cpp:
+        (WebCore::HTMLSourceElement::insertedInto):
+        (WebCore::HTMLSourceElement::removedFrom):
+        Add guards to fix the build when video is not enabled.
+
+2016-01-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Clean up some Windows WebCore files
+        https://bugs.webkit.org/show_bug.cgi?id=148275
+
+        Reviewed by Dean Jackson.
+
+        No new tests because there is no behavior change.
+
+        Update a handful of Windows-specific WebCore files to use
+        the proper method signatures for our updated interfaces,
+        get rid of cruft in the COM bindings, and use proper C++14
+        initializers.
+
+        * accessibility/win/AccessibilityObjectWrapperWin.h:
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+        * platform/win/PopupMenuWin.cpp:
+        * platform/win/PopupMenuWin.h:
+        * platform/win/WCDataObject.cpp:
+        * platform/win/WCDataObject.h:
+
+2016-01-04  Andreas Kling  <akling@apple.com>
+
+        Simplify the CachedScript ASCII optimization.
+        <https://webkit.org/b/152596>
+
+        Reviewed by Antti Koivisto.
+
+        There's actually no need to keep a non-copying StringImpl around for the
+        CachedScript's internal SharedBuffer. Get rid of that so we don't need
+        to fidget with that string when the SharedBuffer changes underneath.
+
+        Renamed CachedScript::ASCIIOptimizationState to DecodingState to better
+        reflect what it's used for. Also added explicit caching of the string
+        hash since we can't rely on a StringImpl to keep that around now.
+
+        Bonus: Implement Darin's suggestion to let TextEncoding answer whether
+        an encoding is byte-based and thus eligible for the ASCII optimization.
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::tryReplaceEncodedData): Deleted.
+        * loader/cache/CachedResource.h:
+        (WebCore::CachedResource::didReplaceSharedBufferContents): Deleted.
+        * loader/cache/CachedScript.cpp:
+        (WebCore::CachedScript::script):
+        (WebCore::CachedScript::scriptHash):
+        (WebCore::encodingMayBeAllASCII): Deleted.
+        (WebCore::CachedScript::didReplaceSharedBufferContents): Deleted.
+        * loader/cache/CachedScript.h:
+        * platform/text/TextEncoding.h:
+        (WebCore::TextEncoding::isByteBasedEncoding):
+
+2016-01-04  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] A video element isn't drawn onto the canvas.
+        https://bugs.webkit.org/show_bug.cgi?id=132671
+
+        Reviewed by Michael Catanzaro.
+
+        When both cairo-gl and gst-gl are available the texture coming
+        from glimagesink can be used to create a cairo-gl surface that can
+        be used for video rendering within a canvas element.
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::drawImage): Use NativeImage
+        drawing if both cairo-gl and gst-gl are available.
+        * platform/graphics/GraphicsContext.h: Implement drawNativeImage
+        for Cairo GraphicsContext.
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage): Ditto.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        Implement nativeImageForCurrentTime(), this method is used by the
+        canvas rendering context.
+        (WebCore::MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+
+2016-01-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix -Wpessimizing-move warnings after switch to WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152677
+
+        Reviewed by Andy Estes.
+
+        * platform/glib/KeyedDecoderGlib.cpp:
+        (WebCore::KeyedDecoderGlib::dictionaryFromGVariant):
+        * platform/graphics/egl/GLContextEGL.cpp:
+        (WebCore::GLContextEGL::createContext):
+        * platform/graphics/glx/GLContextGLX.cpp:
+        (WebCore::GLContextGLX::createContext):
+
+2016-01-03  David Kilzer  <ddkilzer@apple.com>
+
+        -[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveResponse:] is missing an m_handle->client() NULL check
+        <https://webkit.org/b/152673>
+        <rdar://problem/23560530>
+
+        Reviewed by Daniel Bates.
+
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm:
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveResponse:]):
+        Add NULL check for m_handle->client() so we don't crash due to a
+        NULL dereference inside the dispatch_async() block.
+
+2016-01-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, turn off temporary scrolling logging on GTK
+        https://bugs.webkit.org/show_bug.cgi?id=152649
+
+        * platform/Logging.cpp:
+        (WebCore::initializeLoggingChannelsIfNecessary): Deleted.
+
+2016-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix Windows build after r194515.
+
+        * platform/win/PopupMenuWin.cpp:
+        (WebCore::PopupMenuWin::scrollOffset):
+        (WebCore::PopupMenuWin::scrollPosition): Renamed.
+        * platform/win/PopupMenuWin.h:
+
+2016-01-03  Khem Raj  <raj.khem@gmail.com>
+
+        WebKit fails to build with musl libc library
+        https://bugs.webkit.org/show_bug.cgi?id=152625
+
+        Reviewed by Daniel Bates and Alexey Proskuryakov.
+
+        malloc_trim is glibc specific API so guard it with __GLIBC__.
+
+        * platform/linux/MemoryPressureHandlerLinux.cpp:
+        (MemoryPressureHandler::platformReleaseMemory): Guard malloc_trim()
+        call with __GLIBC_.
+
+2016-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor cleanup in ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=152656
+
+        Reviewed by Dan Bernstein.
+
+        Hide the fact that ScrollAnimator's m_currentPosX/m_currentPosY is not a FloatPoint
+        as much as possible.
+        
+        Do offset -> position conversion in ScrollAnimator::scrollToOffsetWithoutAnimation().
+        This is a behavior change, but I could never hit this code on Mac.
+
+        * platform/ScrollAnimator.cpp:
+        (WebCore::ScrollAnimator::scroll):
+        (WebCore::ScrollAnimator::scrollToOffsetWithoutAnimation):
+        (WebCore::ScrollAnimator::setCurrentPosition):
+        (WebCore::ScrollAnimator::updateActiveScrollSnapIndexForOffset):
+        (WebCore::ScrollAnimator::notifyPositionChanged):
+        (WebCore::ScrollAnimator::immediateScrollOnAxis):
+        (WebCore::ScrollAnimator::ScrollAnimator): Deleted.
+        (WebCore::ScrollAnimator::currentPosition): Deleted.
+        * platform/ScrollAnimator.h:
+        (WebCore::ScrollAnimator::ScrollAnimator::currentPosition):
+        (WebCore::ScrollAnimator::ScrollAnimator::setCurrentPositionInternal):
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::ScrollAnimatorMac::scroll):
+        (WebCore::ScrollAnimatorMac::immediateScrollToPosition):
+        (WebCore::ScrollAnimatorMac::immediateScrollBy):
+
+2016-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename scrollPosition(Scrollbar*) to scrollOffset(ScrollbarOrientation)
+        https://bugs.webkit.org/show_bug.cgi?id=152666
+
+        Reviewed by Dan Bernstein.
+
+        Scrollbar values take offsets (zero-based), so rename the accessor used
+        by scrollbars to set their value, and pass in an orientation, rather than
+        a pointer to the scrollbar.
+
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::scrollOffset): Use scrollOffsetFromPosition rather than
+        manually adding scrollOrigin.
+        (WebCore::ScrollView::scrollPosition): Renamed.
+        * platform/ScrollView.h:
+        (WebCore::ScrollView::cachedScrollPosition):
+        * platform/ScrollableArea.h:
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::Scrollbar):
+        (WebCore::Scrollbar::offsetDidChange):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollOffset):
+        (WebCore::RenderLayer::scrollPosition): Renamed.
+        * rendering/RenderLayer.h:
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::scrollOffset):
+        (WebCore::RenderListBox::scrollPosition): Renamed.
+        * rendering/RenderListBox.h:
+
+2016-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        scrollLeft returns different values for viewport and non-viewport scrolling with rtl
+        https://bugs.webkit.org/show_bug.cgi?id=94405
+        rdar://problem/21829754
+
+        Reviewed by Zalan Bujtas.
+        
+        Use scrollPosition for DOM-exposed scroll* values on overflow scroll elements,
+        matching the CSS OM View spec, and Gecko behavior.
+
+        Test: fast/scrolling/programmatic-overflow-rtl-scrollIntoView.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::scrollLeft):
+        (WebCore::RenderBox::scrollTop):
+        (WebCore::RenderBox::setScrollLeft):
+        (WebCore::RenderBox::setScrollTop):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollToXPosition):
+        (WebCore::RenderLayer::scrollToYPosition):
+        * rendering/RenderLayer.h:
+
+2016-01-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Some cleanup in ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=152649
+
+        Try to fix GTK scroll position errors in RTL.
+        
+        ScrollAnimatorNone::scrollToOffsetWithoutAnimation() was failing to map from
+        offset to position.
+        
+        Also add logging in ScrollableArea::scrollToOffsetWithoutAnimation().
+
+        * platform/ScrollAnimatorNone.cpp:
+        (WebCore::ScrollAnimatorNone::scrollToOffsetWithoutAnimation):
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::scrollToOffsetWithoutAnimation):
+
+2016-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Temporarily turn on Scrolling logging on GTK, to investigate
+        GTK failures from https://bugs.webkit.org/show_bug.cgi?id=152649.
+        
+        * platform/Logging.cpp:
+        (WebCore::initializeLoggingChannelsIfNecessary):
+
+2016-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Some cleanup in ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=152649
+
+        Try to fix GTK test failures. ScrollAnimatorNone needs to map correctly between
+        min and max scroll positions.
+
+        * platform/ScrollAnimatorNone.cpp:
+        (WebCore::ScrollAnimatorNone::PerAxisData::updateDataFromParameters):
+        (WebCore::ScrollAnimatorNone::scroll):
+        * platform/ScrollAnimatorNone.h:
+
+2016-01-02  Max Stepin  <maxstepin@gmail.com>
+
+        APNG decoder: only decode the frames up to haltAtFrame
+        https://bugs.webkit.org/show_bug.cgi?id=146205
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests, already covered by existing tests.
+
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageReader::close):
+        (WebCore::PNGImageReader::decode):
+        (WebCore::PNGImageDecoder::isSizeAvailable):
+        (WebCore::PNGImageDecoder::frameBufferAtIndex):
+        (WebCore::PNGImageDecoder::pngComplete):
+        (WebCore::PNGImageDecoder::decode):
+        * platform/image-decoders/png/PNGImageDecoder.h:
+        (WebCore::PNGImageDecoder::isComplete):
+        (WebCore::PNGImageDecoder::isCompleteAtIndex):
+
+2016-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Some cleanup in ScrollAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=152649
+
+        Reviewed by Zalan Bujtas.
+
+        Change ScrollAnimatorMac::adjustScrollPositionIfNecessary() and similar code in
+        ScrollingTreeFrameScrollingNodeMac::adjustScrollPositionToBoundsIfNecessary() to
+        constrain between minimumScrollPosition() and maximumScrollPosition(), rather than
+        rolling their own code.
+        
+        This revealed several issues. First, RenderLayer::maximumScrollPosition() is
+        wrong when the layer has borders, because RenderLayer::visibleContentRectInternal()
+        seems to have incorrect logic. However, we can just remove it, and use the ScrollableArea
+        implementation.
+        
+        Second, ScrollAnimatorMac::scrollToOffsetWithoutAnimation() was failing to do a
+        position/offset conversion, so do one. We're converting too much, and should probably
+        just change ScrollAnimator to do everything in terms of positions.
+        
+        Third, ScrollAnimator::scroll() was clamping a scroll position as an offset
+        (detected by scrollbars/scroll-rtl-or-bt-layer.html), so fix that.
+        
+        Remove ScrollController::absoluteScrollPosition() and overrides, since this was
+        confusingly named, and could just be removed.
+        
+        Remove ScrollController::m_origOrigin which was assigned to, but never read.
+
+        Test: fast/scrolling/arrow-key-scroll-in-rtl-document.html: new
+              fast/dom/horizontal-scrollbar-in-rtl.html: progressed with these changes.
+
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::adjustScrollPositionToBoundsIfNecessary):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::absoluteScrollPosition): Deleted.
+        * platform/ScrollAnimator.cpp:
+        (WebCore::ScrollAnimator::scroll):
+        (WebCore::ScrollAnimator::notifyPositionChanged):
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::constrainScrollPosition):
+        * platform/cocoa/ScrollController.h:
+        * platform/cocoa/ScrollController.mm:
+        (WebCore::ScrollController::snapRubberBandTimerFired): Deleted.
+        (WebCore::ScrollController::snapRubberBand): Deleted.
+        * platform/mac/ScrollAnimatorMac.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (-[WebScrollAnimationHelperDelegate _immediateScrollToPoint:]):
+        (WebCore::ScrollAnimatorMac::scroll):
+        (WebCore::ScrollAnimatorMac::scrollToOffsetWithoutAnimation):
+        (WebCore::ScrollAnimatorMac::adjustScrollPositionIfNecessary):
+        (WebCore::ScrollAnimatorMac::adjustScrollPositionToBoundsIfNecessary):
+        (WebCore::ScrollAnimatorMac::immediateScrollToPosition):
+        (WebCore::ScrollAnimatorMac::immediateScrollToPositionForScrollAnimation):
+        (WebCore::ScrollAnimatorMac::immediateScrollTo): Deleted.
+        (WebCore::ScrollAnimatorMac::immediateScrollToPointForScrollAnimation): Deleted.
+        (WebCore::ScrollAnimatorMac::absoluteScrollPosition): Deleted.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::visibleContentRectInternal):
+        (WebCore::RenderLayer::overhangAmount):
+        (WebCore::RenderLayer::maximumScrollPosition): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::minimumScrollPosition):
+        (WebCore::RenderListBox::maximumScrollPosition): RenderListBox scrolls by lines,
+        so it needs a custom implementation of this.
+        * rendering/RenderListBox.h:
+
+2016-01-02  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout:: Add text-decoration support.
+        https://bugs.webkit.org/show_bug.cgi?id=152623
+
+        Reviewed by Antti Koivisto.
+
+        This patch enables text-decoration for simple line layout.
+        -webkit-text-underline-position: under requires normal line layout context, skip it for now.
+
+        Test: fast/css3-text/css3-text-decoration/simple-line-layout-text-decoration.html
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::canUseForStyle):
+        (WebCore::SimpleLineLayout::printReason):
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::paintFlow): In case of multiple RenderText renderers (long text), it's ok
+        to pass the first text renderer as they all share the same set of decorations. 
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        * Modules/battery/NavigatorBattery.cpp:
+        (WebCore::NavigatorBattery::from):
+        * Modules/encryptedmedia/CDMSessionClearKey.cpp:
+        (WebCore::CDMSessionClearKey::update):
+        * Modules/encryptedmedia/MediaKeys.cpp:
+        (WebCore::MediaKeys::create):
+        (WebCore::MediaKeys::MediaKeys):
+        * Modules/gamepad/NavigatorGamepad.cpp:
+        (WebCore::NavigatorGamepad::from):
+        * Modules/gamepad/deprecated/NavigatorGamepad.cpp:
+        (WebCore::NavigatorGamepad::from):
+        * Modules/geolocation/GeoNotifier.cpp:
+        (WebCore::GeoNotifier::GeoNotifier):
+        (WebCore::GeoNotifier::setFatalError):
+        * Modules/geolocation/GeoNotifier.h:
+        (WebCore::GeoNotifier::create):
+        * Modules/geolocation/Geolocation.cpp:
+        (WebCore::Geolocation::Watchers::add):
+        (WebCore::Geolocation::getCurrentPosition):
+        (WebCore::Geolocation::watchPosition):
+        * Modules/geolocation/GeolocationController.cpp:
+        (WebCore::GeolocationController::viewStateDidChange):
+        * Modules/geolocation/Geoposition.h:
+        (WebCore::Geoposition::create):
+        (WebCore::Geoposition::Geoposition):
+        * Modules/geolocation/NavigatorGeolocation.cpp:
+        (WebCore::NavigatorGeolocation::from):
+        * Modules/indexeddb/DOMWindowIndexedDatabase.cpp:
+        (WebCore::DOMWindowIndexedDatabase::from):
+        * Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp:
+        (WebCore::WorkerGlobalScopeIndexedDatabase::from):
+        * Modules/indexeddb/client/IDBAnyImpl.cpp:
+        (WebCore::IDBClient::IDBAny::IDBAny):
+        * Modules/indexeddb/client/IDBAnyImpl.h:
+        (WebCore::IDBClient::IDBAny::create):
+        * Modules/indexeddb/client/IDBDatabaseImpl.cpp:
+        (WebCore::IDBClient::IDBDatabase::willCommitTransaction):
+        (WebCore::IDBClient::IDBDatabase::willAbortTransaction):
+        (WebCore::IDBClient::IDBDatabase::fireVersionChangeEvent):
+        * Modules/indexeddb/client/IDBIndexImpl.cpp:
+        (WebCore::IDBClient::IDBIndex::openCursor):
+        (WebCore::IDBClient::IDBIndex::openKeyCursor):
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp:
+        (WebCore::IDBClient::IDBObjectStore::openCursor):
+        (WebCore::IDBClient::IDBObjectStore::get):
+        (WebCore::IDBClient::IDBObjectStore::deleteFunction):
+        (WebCore::IDBClient::IDBObjectStore::createIndex):
+        (WebCore::IDBClient::IDBObjectStore::index):
+        * Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp:
+        (WebCore::IDBClient::IDBOpenDBRequest::onSuccess):
+        (WebCore::IDBClient::IDBOpenDBRequest::onUpgradeNeeded):
+        * Modules/indexeddb/client/IDBRequestImpl.cpp:
+        (WebCore::IDBClient::IDBRequest::enqueueEvent):
+        (WebCore::IDBClient::IDBRequest::setResult):
+        (WebCore::IDBClient::IDBRequest::setResultToStructuredClone):
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp:
+        (WebCore::IDBClient::IDBTransaction::abort):
+        (WebCore::IDBClient::IDBTransaction::scheduleOperation):
+        (WebCore::IDBClient::IDBTransaction::commit):
+        (WebCore::IDBClient::IDBTransaction::enqueueEvent):
+        (WebCore::IDBClient::IDBTransaction::createObjectStore):
+        (WebCore::IDBClient::IDBTransaction::createIndex):
+        (WebCore::IDBClient::IDBTransaction::doRequestOpenCursor):
+        (WebCore::IDBClient::IDBTransaction::iterateCursor):
+        (WebCore::IDBClient::IDBTransaction::requestGetRecord):
+        (WebCore::IDBClient::IDBTransaction::requestIndexRecord):
+        (WebCore::IDBClient::IDBTransaction::requestClearObjectStore):
+        (WebCore::IDBClient::IDBTransaction::requestPutOrAdd):
+        (WebCore::IDBClient::IDBTransaction::deleteObjectStore):
+        (WebCore::IDBClient::IDBTransaction::deleteIndex):
+        * Modules/indexeddb/legacy/IDBDatabaseBackend.cpp:
+        (WebCore::IDBDatabaseBackend::processPendingOpenCalls):
+        * Modules/indexeddb/legacy/IDBDatabaseBackend.h:
+        (WebCore::IDBDatabaseBackend::setPendingSecondHalfOpen):
+        * Modules/indexeddb/legacy/LegacyAny.h:
+        (WebCore::LegacyAny::create):
+        * Modules/indexeddb/legacy/LegacyDatabase.cpp:
+        (WebCore::LegacyDatabase::enqueueEvent):
+        * Modules/indexeddb/legacy/LegacyRequest.cpp:
+        (WebCore::LegacyRequest::enqueueEvent):
+        * Modules/indexeddb/legacy/LegacyTransaction.cpp:
+        (WebCore::LegacyTransaction::enqueueEvent):
+        * Modules/indexeddb/server/IDBServer.cpp:
+        (WebCore::IDBServer::IDBServer::postDatabaseTask):
+        (WebCore::IDBServer::IDBServer::postDatabaseTaskReply):
+        * Modules/indexeddb/server/MemoryBackingStoreTransaction.cpp:
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::indexDeleted):
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::objectStoreDeleted):
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::objectStoreCleared):
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::indexCleared):
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::abort):
+        * Modules/indexeddb/server/MemoryIDBBackingStore.cpp:
+        (WebCore::IDBServer::MemoryIDBBackingStore::beginTransaction):
+        (WebCore::IDBServer::MemoryIDBBackingStore::createObjectStore):
+        (WebCore::IDBServer::MemoryIDBBackingStore::deleteObjectStore):
+        (WebCore::IDBServer::MemoryIDBBackingStore::restoreObjectStoreForVersionChangeAbort):
+        (WebCore::IDBServer::MemoryIDBBackingStore::registerObjectStore):
+        * Modules/indexeddb/server/MemoryIndex.cpp:
+        (WebCore::IDBServer::MemoryIndex::objectStoreCleared):
+        (WebCore::IDBServer::MemoryIndex::replaceIndexValueStore):
+        * Modules/indexeddb/server/MemoryObjectStore.cpp:
+        (WebCore::IDBServer::MemoryObjectStore::createIndex):
+        (WebCore::IDBServer::MemoryObjectStore::maybeRestoreDeletedIndex):
+        (WebCore::IDBServer::MemoryObjectStore::deleteIndex):
+        (WebCore::IDBServer::MemoryObjectStore::clear):
+        (WebCore::IDBServer::MemoryObjectStore::replaceKeyValueStore):
+        (WebCore::IDBServer::MemoryObjectStore::registerIndex):
+        * Modules/indexeddb/server/ServerOpenDBRequest.cpp:
+        (WebCore::IDBServer::ServerOpenDBRequest::notifiedConnectionsOfVersionChange):
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::openDatabaseConnection):
+        (WebCore::IDBServer::UniqueIDBDatabase::performCurrentOpenOperation):
+        (WebCore::IDBServer::UniqueIDBDatabase::startVersionChangeTransaction):
+        (WebCore::IDBServer::UniqueIDBDatabase::maybeNotifyConnectionsOfVersionChange):
+        (WebCore::IDBServer::UniqueIDBDatabase::connectionClosedFromClient):
+        (WebCore::IDBServer::UniqueIDBDatabase::enqueueTransaction):
+        (WebCore::IDBServer::UniqueIDBDatabase::takeNextRunnableTransaction):
+        * Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabaseConnection::establishTransaction):
+        * Modules/indexeddb/shared/IndexKey.cpp:
+        (WebCore::IndexKey::isolatedCopy):
+        * Modules/mediasession/WebMediaSessionManager.cpp:
+        (WebCore::WebMediaSessionManager::setPlaybackTarget):
+        * Modules/mediasource/MediaSource.cpp:
+        (WebCore::MediaSource::setPrivateAndOpen):
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::create):
+        (WebCore::SourceBuffer::SourceBuffer):
+        * Modules/mediastream/MediaDevices.cpp:
+        (WebCore::MediaDevices::getUserMedia):
+        (WebCore::MediaDevices::enumerateDevices):
+        * Modules/mediastream/MediaDevicesRequest.cpp:
+        (WebCore::MediaDevicesRequest::create):
+        (WebCore::MediaDevicesRequest::MediaDevicesRequest):
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::create):
+        (WebCore::MediaStream::MediaStream):
+        (WebCore::MediaStream::addTrack):
+        (WebCore::MediaStream::didRemoveTrack):
+        (WebCore::MediaStream::internalAddTrack):
+        (WebCore::MediaStream::internalRemoveTrack):
+        * Modules/mediastream/NavigatorMediaDevices.cpp:
+        (WebCore::NavigatorMediaDevices::from):
+        * Modules/mediastream/RTCConfiguration.cpp:
+        (WebCore::RTCConfiguration::initialize):
+        * Modules/mediastream/RTCDTMFSender.cpp:
+        (WebCore::RTCDTMFSender::create):
+        (WebCore::RTCDTMFSender::RTCDTMFSender):
+        (WebCore::RTCDTMFSender::scheduleDispatchEvent):
+        * Modules/mediastream/RTCDataChannel.cpp:
+        (WebCore::RTCDataChannel::create):
+        (WebCore::RTCDataChannel::RTCDataChannel):
+        (WebCore::RTCDataChannel::scheduleDispatchEvent):
+        * Modules/mediastream/RTCIceCandidateEvent.cpp:
+        (WebCore::RTCIceCandidateEvent::create):
+        (WebCore::RTCIceCandidateEvent::RTCIceCandidateEvent):
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::create):
+        (WebCore::RTCPeerConnection::RTCPeerConnection):
+        (WebCore::RTCPeerConnection::addTrack):
+        (WebCore::RTCPeerConnection::queuedCreateOffer):
+        (WebCore::RTCPeerConnection::queuedCreateAnswer):
+        (WebCore::RTCPeerConnection::queuedSetLocalDescription):
+        (WebCore::RTCPeerConnection::queuedSetRemoteDescription):
+        (WebCore::RTCPeerConnection::queuedAddIceCandidate):
+        (WebCore::RTCPeerConnection::setConfiguration):
+        (WebCore::RTCPeerConnection::privateGetStats):
+        * Modules/mediastream/RTCRtpReceiver.cpp:
+        (WebCore::RTCRtpReceiver::RTCRtpReceiver):
+        * Modules/mediastream/RTCRtpReceiver.h:
+        (WebCore::RTCRtpReceiver::create):
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::RTCRtpSender):
+        * Modules/mediastream/RTCRtpSender.h:
+        (WebCore::RTCRtpSender::create):
+        * Modules/mediastream/RTCTrackEvent.cpp:
+        (WebCore::RTCTrackEvent::create):
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::start):
+        (WebCore::UserMediaRequest::UserMediaRequest):
+        * Modules/navigatorcontentutils/NavigatorContentUtils.cpp:
+        (WebCore::provideNavigatorContentUtilsTo):
+        * Modules/navigatorcontentutils/NavigatorContentUtils.h:
+        * Modules/notifications/DOMWindowNotifications.cpp:
+        (WebCore::DOMWindowNotifications::from):
+        * Modules/notifications/NotificationCenter.cpp:
+        (WebCore::NotificationCenter::timerFired):
+        * Modules/notifications/WorkerGlobalScopeNotifications.cpp:
+        (WebCore::WorkerGlobalScopeNotifications::from):
+        * Modules/plugins/QuickTimePluginReplacement.mm:
+        (WebCore::QuickTimePluginReplacement::createElementRenderer):
+        * Modules/plugins/YouTubePluginReplacement.cpp:
+        (WebCore::YouTubePluginReplacement::createElementRenderer):
+        (WebCore::YouTubePluginReplacement::installReplacement):
+        * Modules/quota/DOMWindowQuota.cpp:
+        (WebCore::DOMWindowQuota::from):
+        * Modules/quota/NavigatorStorageQuota.cpp:
+        (WebCore::NavigatorStorageQuota::from):
+        * Modules/quota/WorkerNavigatorStorageQuota.cpp:
+        (WebCore::WorkerNavigatorStorageQuota::from):
+        * Modules/speech/DOMWindowSpeechSynthesis.cpp:
+        (WebCore::DOMWindowSpeechSynthesis::from):
+        * Modules/speech/SpeechSynthesis.cpp:
+        (WebCore::SpeechSynthesis::setPlatformSynthesizer):
+        * Modules/webaudio/AsyncAudioDecoder.cpp:
+        (WebCore::AsyncAudioDecoder::decodeAsync):
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::addReaction):
+        (WebCore::AudioContext::suspend):
+        (WebCore::AudioContext::resume):
+        (WebCore::AudioContext::close):
+        * Modules/webaudio/AudioNode.cpp:
+        (WebCore::AudioNode::addInput):
+        (WebCore::AudioNode::addOutput):
+        * Modules/webaudio/AudioScheduledSourceNode.cpp:
+        (WebCore::AudioScheduledSourceNode::addEventListener):
+        * Modules/webaudio/ConvolverNode.cpp:
+        (WebCore::ConvolverNode::setBuffer):
+        * Modules/webaudio/MediaStreamAudioDestinationNode.cpp:
+        (WebCore::MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode):
+        * Modules/webaudio/ScriptProcessorNode.cpp:
+        (WebCore::ScriptProcessorNode::addEventListener):
+        * Modules/webdatabase/Database.cpp:
+        (WebCore::Database::openAndVerifyVersion):
+        (WebCore::Database::scheduleTransaction):
+        (WebCore::Database::scheduleTransactionStep):
+        (WebCore::Database::markAsDeletedAndClose):
+        (WebCore::Database::runTransaction):
+        (WebCore::Database::tableNames):
+        * Modules/webdatabase/DatabaseThread.cpp:
+        (WebCore::DatabaseThread::scheduleTask):
+        (WebCore::DatabaseThread::scheduleImmediateTask):
+        * Modules/webdatabase/SQLTransaction.cpp:
+        (WebCore::SQLTransaction::create):
+        (WebCore::SQLTransaction::SQLTransaction):
+        (WebCore::SQLTransaction::executeSQL):
+        * Modules/webdatabase/SQLTransactionBackend.cpp:
+        (WebCore::SQLTransactionBackend::enqueueStatementBackend):
+        (WebCore::SQLTransactionBackend::executeSQL):
+        * Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp:
+        (WebCore::ThreadableWebSocketChannelClientWrapper::didReceiveBinaryData):
+        (WebCore::ThreadableWebSocketChannelClientWrapper::processPendingTasks):
+        * Modules/websockets/WebSocket.cpp:
+        (WebCore::WebSocket::didReceiveBinaryData):
+        (WebCore::WebSocket::dispatchOrQueueEvent):
+        * Modules/websockets/WebSocketChannel.cpp:
+        (WebCore::WebSocketChannel::processFrame):
+        * Modules/websockets/WebSocketExtensionDispatcher.cpp:
+        (WebCore::WebSocketExtensionDispatcher::addProcessor):
+        * Modules/websockets/WebSocketHandshake.cpp:
+        (WebCore::WebSocketHandshake::addExtensionProcessor):
+        * Modules/websockets/WorkerThreadableWebSocketChannel.cpp:
+        (WebCore::WorkerThreadableWebSocketChannel::Peer::didReceiveBinaryData):
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::notificationPostTimerFired):
+        (WebCore::AXObjectCache::passwordNotificationPostTimerFired):
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::ariaLabeledByText):
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::selectText):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityText::AccessibilityText):
+        * bindings/gobject/DOMObjectCache.cpp:
+        * bindings/js/IDBBindingUtilities.cpp:
+        (WebCore::maybeCreateIDBKeyFromScriptValueAndKeyPath):
+        (WebCore::generateIndexKeyForValue):
+        * bindings/js/JSCryptoAlgorithmDictionary.cpp:
+        (WebCore::createAesCbcParams):
+        (WebCore::createAesKeyGenParams):
+        (WebCore::createHmacParams):
+        (WebCore::createHmacKeyParams):
+        (WebCore::createRsaKeyGenParams):
+        (WebCore::createRsaOaepParams):
+        (WebCore::createRsaSsaParams):
+        * bindings/js/JSCryptoKeySerializationJWK.cpp:
+        (WebCore::createHMACParameters):
+        (WebCore::createRSAKeyParametersWithHash):
+        (WebCore::JSCryptoKeySerializationJWK::reconcileAlgorithm):
+        * bindings/js/JSDOMPromise.h:
+        (WebCore::DOMPromise::DOMPromise):
+        * bindings/js/JSDOMWindowBase.cpp:
+        (WebCore::JSDOMWindowBase::queueTaskToEventLoop):
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::setTimeout):
+        (WebCore::JSDOMWindow::setInterval):
+        * bindings/js/JSDOMWrapper.h:
+        (WebCore::JSDOMWrapper::JSDOMWrapper):
+        * bindings/js/JSMessageEventCustom.cpp:
+        (WebCore::handleInitMessageEvent):
+        * bindings/js/JSSubtleCryptoCustom.cpp:
+        (WebCore::JSSubtleCrypto::encrypt):
+        (WebCore::JSSubtleCrypto::decrypt):
+        (WebCore::JSSubtleCrypto::sign):
+        (WebCore::JSSubtleCrypto::verify):
+        (WebCore::JSSubtleCrypto::digest):
+        (WebCore::JSSubtleCrypto::generateKey):
+        (WebCore::importKey):
+        (WebCore::JSSubtleCrypto::importKey):
+        (WebCore::JSSubtleCrypto::exportKey):
+        (WebCore::JSSubtleCrypto::wrapKey):
+        (WebCore::JSSubtleCrypto::unwrapKey):
+        * bindings/js/JSWorkerGlobalScopeCustom.cpp:
+        (WebCore::JSWorkerGlobalScope::setTimeout):
+        (WebCore::JSWorkerGlobalScope::setInterval):
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneDeserializer::readRSAKey):
+        (WebCore::CloneDeserializer::readTerminal):
+        (WebCore::SerializedScriptValue::SerializedScriptValue):
+        (WebCore::SerializedScriptValue::create):
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.cpp:
+        (WebCore::JSTestActiveDOMObject::JSTestActiveDOMObject):
+        * bindings/scripts/test/JS/JSTestActiveDOMObject.h:
+        (WebCore::JSTestActiveDOMObject::create):
+        * bindings/scripts/test/JS/JSTestClassWithJSBuiltinConstructor.cpp:
+        (WebCore::JSTestClassWithJSBuiltinConstructor::JSTestClassWithJSBuiltinConstructor):
+        * bindings/scripts/test/JS/JSTestClassWithJSBuiltinConstructor.h:
+        (WebCore::JSTestClassWithJSBuiltinConstructor::create):
+        * bindings/scripts/test/JS/JSTestCustomConstructorWithNoInterfaceObject.cpp:
+        (WebCore::JSTestCustomConstructorWithNoInterfaceObject::JSTestCustomConstructorWithNoInterfaceObject):
+        * bindings/scripts/test/JS/JSTestCustomConstructorWithNoInterfaceObject.h:
+        (WebCore::JSTestCustomConstructorWithNoInterfaceObject::create):
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.cpp:
+        (WebCore::JSTestCustomNamedGetter::JSTestCustomNamedGetter):
+        * bindings/scripts/test/JS/JSTestCustomNamedGetter.h:
+        (WebCore::JSTestCustomNamedGetter::create):
+        * bindings/scripts/test/JS/JSTestEventConstructor.cpp:
+        (WebCore::JSTestEventConstructor::JSTestEventConstructor):
+        * bindings/scripts/test/JS/JSTestEventConstructor.h:
+        (WebCore::JSTestEventConstructor::create):
+        * bindings/scripts/test/JS/JSTestEventTarget.cpp:
+        (WebCore::JSTestEventTarget::JSTestEventTarget):
+        * bindings/scripts/test/JS/JSTestEventTarget.h:
+        (WebCore::JSTestEventTarget::create):
+        * bindings/scripts/test/JS/JSTestException.cpp:
+        (WebCore::JSTestException::JSTestException):
+        * bindings/scripts/test/JS/JSTestException.h:
+        (WebCore::JSTestException::create):
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.cpp:
+        (WebCore::JSTestGenerateIsReachable::JSTestGenerateIsReachable):
+        * bindings/scripts/test/JS/JSTestGenerateIsReachable.h:
+        (WebCore::JSTestGenerateIsReachable::create):
+        * bindings/scripts/test/JS/JSTestInterface.cpp:
+        (WebCore::JSTestInterface::JSTestInterface):
+        * bindings/scripts/test/JS/JSTestInterface.h:
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.cpp:
+        (WebCore::JSTestMediaQueryListListener::JSTestMediaQueryListListener):
+        * bindings/scripts/test/JS/JSTestMediaQueryListListener.h:
+        (WebCore::JSTestMediaQueryListListener::create):
+        * bindings/scripts/test/JS/JSTestNamedConstructor.cpp:
+        (WebCore::JSTestNamedConstructor::JSTestNamedConstructor):
+        * bindings/scripts/test/JS/JSTestNamedConstructor.h:
+        (WebCore::JSTestNamedConstructor::create):
+        * bindings/scripts/test/JS/JSTestNode.cpp:
+        (WebCore::JSTestNode::JSTestNode):
+        * bindings/scripts/test/JS/JSTestNode.h:
+        * bindings/scripts/test/JS/JSTestNondeterministic.cpp:
+        (WebCore::JSTestNondeterministic::JSTestNondeterministic):
+        * bindings/scripts/test/JS/JSTestNondeterministic.h:
+        (WebCore::JSTestNondeterministic::create):
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        (WebCore::JSTestObj::JSTestObj):
+        * bindings/scripts/test/JS/JSTestObj.h:
+        (WebCore::JSTestObj::create):
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.cpp:
+        (WebCore::JSTestOverloadedConstructors::JSTestOverloadedConstructors):
+        * bindings/scripts/test/JS/JSTestOverloadedConstructors.h:
+        (WebCore::JSTestOverloadedConstructors::create):
+        * bindings/scripts/test/JS/JSTestOverrideBuiltins.cpp:
+        (WebCore::JSTestOverrideBuiltins::JSTestOverrideBuiltins):
+        * bindings/scripts/test/JS/JSTestOverrideBuiltins.h:
+        (WebCore::JSTestOverrideBuiltins::create):
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.cpp:
+        (WebCore::JSTestSerializedScriptValueInterface::JSTestSerializedScriptValueInterface):
+        * bindings/scripts/test/JS/JSTestSerializedScriptValueInterface.h:
+        (WebCore::JSTestSerializedScriptValueInterface::create):
+        * bindings/scripts/test/JS/JSTestTypedefs.cpp:
+        (WebCore::JSTestTypedefs::JSTestTypedefs):
+        * bindings/scripts/test/JS/JSTestTypedefs.h:
+        (WebCore::JSTestTypedefs::create):
+        * bindings/scripts/test/JS/JSattribute.cpp:
+        (WebCore::JSattribute::JSattribute):
+        * bindings/scripts/test/JS/JSattribute.h:
+        (WebCore::JSattribute::create):
+        * bindings/scripts/test/JS/JSreadonly.cpp:
+        (WebCore::JSreadonly::JSreadonly):
+        * bindings/scripts/test/JS/JSreadonly.h:
+        (WebCore::JSreadonly::create):
+        * bridge/c/CRuntimeObject.cpp:
+        (JSC::Bindings::CRuntimeObject::CRuntimeObject):
+        * bridge/c/CRuntimeObject.h:
+        (JSC::Bindings::CRuntimeObject::create):
+        * bridge/c/c_class.cpp:
+        (JSC::Bindings::CClass::methodNamed):
+        (JSC::Bindings::CClass::fieldNamed):
+        * bridge/c/c_instance.cpp:
+        (JSC::Bindings::CInstance::CInstance):
+        * bridge/c/c_instance.h:
+        (JSC::Bindings::CInstance::create):
+        * bridge/jsc/BridgeJSC.cpp:
+        (JSC::Bindings::Array::Array):
+        (JSC::Bindings::Instance::Instance):
+        * bridge/objc/ObjCRuntimeObject.h:
+        (JSC::Bindings::ObjCRuntimeObject::create):
+        * bridge/objc/objc_class.mm:
+        (JSC::Bindings::ObjcClass::methodNamed):
+        (JSC::Bindings::ObjcClass::fieldNamed):
+        * bridge/objc/objc_instance.mm:
+        (ObjcInstance::ObjcInstance):
+        (ObjcInstance::create):
+        * bridge/objc/objc_runtime.mm:
+        (JSC::Bindings::ObjcArray::ObjcArray):
+        * bridge/runtime_object.cpp:
+        (JSC::Bindings::RuntimeObject::RuntimeObject):
+        * bridge/runtime_object.h:
+        * contentextensions/CombinedFiltersAlphabet.cpp:
+        (WebCore::ContentExtensions::TermCreatorTranslator::translate):
+        * contentextensions/CombinedURLFilters.cpp:
+        (WebCore::ContentExtensions::ActiveSubtree::ActiveSubtree):
+        (WebCore::ContentExtensions::generateSuffixWithReverseSuffixTree):
+        (WebCore::ContentExtensions::generateNFAForSubtree):
+        (WebCore::ContentExtensions::CombinedURLFilters::processNFAs):
+        * contentextensions/ContentExtension.cpp:
+        (WebCore::ContentExtensions::ContentExtension::create):
+        (WebCore::ContentExtensions::ContentExtension::ContentExtension):
+        * contentextensions/ContentExtensionCompiler.cpp:
+        (WebCore::ContentExtensions::compileRuleList):
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::loadEncodedRules):
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::addContentExtension):
+        * contentextensions/DFACombiner.cpp:
+        (WebCore::ContentExtensions::DFACombiner::combineDFAs):
+        * contentextensions/DFACombiner.h:
+        (WebCore::ContentExtensions::DFACombiner::addDFA):
+        * contentextensions/ImmutableNFANodeBuilder.h:
+        (WebCore::ContentExtensions::ImmutableNFANodeBuilder::ImmutableNFANodeBuilder):
+        (WebCore::ContentExtensions::ImmutableNFANodeBuilder::operator=):
+        * contentextensions/MutableRange.h:
+        (WebCore::ContentExtensions::MutableRange::MutableRange):
+        (WebCore::ContentExtensions::MutableRange::operator=):
+        * contentextensions/MutableRangeList.h:
+        (WebCore::ContentExtensions::MutableRangeList::extend):
+        (WebCore::ContentExtensions::MutableRangeList::insertBetween):
+        * contentextensions/Term.h:
+        (WebCore::ContentExtensions::Term::Term):
+        (WebCore::ContentExtensions::Term::operator=):
+        (WebCore::ContentExtensions::Term::generateSubgraphForAtom):
+        * crypto/CryptoAlgorithm.cpp:
+        (WebCore::CryptoAlgorithm::encryptForWrapKey):
+        (WebCore::CryptoAlgorithm::decryptForUnwrapKey):
+        * crypto/CryptoKeyPair.cpp:
+        (WebCore::CryptoKeyPair::CryptoKeyPair):
+        * crypto/CryptoKeyPair.h:
+        (WebCore::CryptoKeyPair::create):
+        * crypto/algorithms/CryptoAlgorithmAES_CBC.cpp:
+        (WebCore::CryptoAlgorithmAES_CBC::encrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::decrypt):
+        * crypto/algorithms/CryptoAlgorithmAES_KW.cpp:
+        (WebCore::CryptoAlgorithmAES_KW::encryptForWrapKey):
+        (WebCore::CryptoAlgorithmAES_KW::decryptForUnwrapKey):
+        * crypto/algorithms/CryptoAlgorithmHMAC.cpp:
+        (WebCore::CryptoAlgorithmHMAC::sign):
+        (WebCore::CryptoAlgorithmHMAC::verify):
+        * crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp:
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::encrypt):
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::decrypt):
+        (WebCore::CryptoAlgorithmRSAES_PKCS1_v1_5::generateKey):
+        * crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp:
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::sign):
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::verify):
+        (WebCore::CryptoAlgorithmRSASSA_PKCS1_v1_5::generateKey):
+        * crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp:
+        (WebCore::CryptoAlgorithmRSA_OAEP::encrypt):
+        (WebCore::CryptoAlgorithmRSA_OAEP::decrypt):
+        (WebCore::CryptoAlgorithmRSA_OAEP::generateKey):
+        * crypto/mac/CryptoAlgorithmAES_CBCMac.cpp:
+        (WebCore::CryptoAlgorithmAES_CBC::platformEncrypt):
+        (WebCore::CryptoAlgorithmAES_CBC::platformDecrypt):
+        * crypto/mac/CryptoKeyRSAMac.cpp:
+        (WebCore::CryptoKeyRSA::generatePair):
+        * css/BasicShapeFunctions.cpp:
+        (WebCore::valueForBasicShape):
+        (WebCore::basicShapeForValue):
+        * css/CSSBasicShapes.cpp:
+        (WebCore::CSSBasicShapePath::CSSBasicShapePath):
+        * css/CSSBasicShapes.h:
+        * css/CSSBorderImage.cpp:
+        (WebCore::createBorderImageValue):
+        * css/CSSCalculationValue.cpp:
+        * css/CSSCalculationValue.h:
+        (WebCore::CSSCalcValue::CSSCalcValue):
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::valueForNinePieceImageSlice):
+        (WebCore::valueForNinePieceImageQuad):
+        (WebCore::computedTransform):
+        (WebCore::ComputedStyleExtractor::valueForShadow):
+        (WebCore::ComputedStyleExtractor::valueForFilter):
+        (WebCore::valueForGridTrackList):
+        (WebCore::valueForGridPosition):
+        (WebCore::scrollSnapPoints):
+        (WebCore::scrollSnapCoordinates):
+        (WebCore::getWillChangePropertyValue):
+        (WebCore::fontVariantLigaturesPropertyValue):
+        (WebCore::fontVariantNumericPropertyValue):
+        (WebCore::fontVariantEastAsianPropertyValue):
+        (WebCore::fillRepeatToCSSValue):
+        (WebCore::fillSizeToCSSValue):
+        (WebCore::fontVariantFromStyle):
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        * css/CSSCrossfadeValue.cpp:
+        (WebCore::CSSCrossfadeValue::blend):
+        * css/CSSCursorImageValue.cpp:
+        (WebCore::CSSCursorImageValue::CSSCursorImageValue):
+        * css/CSSCursorImageValue.h:
+        (WebCore::CSSCursorImageValue::create):
+        * css/CSSFilterImageValue.cpp:
+        (WebCore::CSSFilterImageValue::image):
+        * css/CSSFilterImageValue.h:
+        (WebCore::CSSFilterImageValue::create):
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::addSource):
+        * css/CSSFontFace.h:
+        (WebCore::CSSFontFace::create):
+        (WebCore::CSSFontFace::insertFeature):
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::font):
+        * css/CSSFontFeatureValue.cpp:
+        (WebCore::CSSFontFeatureValue::CSSFontFeatureValue):
+        * css/CSSFontFeatureValue.h:
+        (WebCore::CSSFontFeatureValue::create):
+        * css/CSSFontSelector.cpp:
+        (WebCore::createFontFace):
+        (WebCore::constructFamilyFontFaces):
+        * css/CSSGrammar.y.in:
+        * css/CSSImageValue.cpp:
+        (WebCore::CSSImageValue::cloneForCSSOM):
+        * css/CSSKeyframeRule.cpp:
+        (WebCore::StyleKeyframe::StyleKeyframe):
+        * css/CSSKeyframeRule.h:
+        (WebCore::StyleKeyframe::create):
+        * css/CSSParser.cpp:
+        (WebCore::CSSParser::parseFontFaceValue):
+        (WebCore::CSSParser::parseMediaQuery):
+        (WebCore::CSSParser::parseSizesAttribute):
+        (WebCore::CSSParser::SourceSize::SourceSize):
+        (WebCore::CSSParser::sourceSize):
+        (WebCore::CSSParser::addFillValue):
+        (WebCore::CSSParser::addAnimationValue):
+        (WebCore::CSSParser::parse4ValuesFillPosition):
+        (WebCore::CSSParser::parse3ValuesFillPosition):
+        (WebCore::CSSParser::parseFillPosition):
+        (WebCore::CSSParser::parseFillSize):
+        (WebCore::CSSParser::parseDashboardRegions):
+        (WebCore::CSSParser::parseClipShape):
+        (WebCore::CSSParser::parseBasicShapePath):
+        (WebCore::CSSParser::parseSystemFont):
+        (WebCore::CSSParser::parseBorderImageRepeat):
+        (WebCore::BorderImageSliceParseContext::commitBorderImageSlice):
+        (WebCore::BorderImageQuadParseContext::commitBorderImageQuad):
+        (WebCore::CSSParser::parseBuiltinFilterArguments):
+        (WebCore::CSSParser::parseFontFeatureTag):
+        (WebCore::CSSParser::parseFontVariantLigatures):
+        (WebCore::CSSParser::parseFontVariantNumeric):
+        (WebCore::CSSParser::parseFontVariantEastAsian):
+        (WebCore::CSSParser::createKeyframesRule):
+        (WebCore::CSSParser::rewriteSpecifiers):
+        (WebCore::CSSParser::createPageRule):
+        (WebCore::CSSParser::createSelectorVector):
+        (WebCore::CSSParser::recycleSelectorVector):
+        * css/CSSParserValues.cpp:
+        (WebCore::CSSParserSelector::~CSSParserSelector):
+        (WebCore::CSSParserSelector::adoptSelectorVector):
+        (WebCore::CSSParserSelector::setLangArgumentList):
+        (WebCore::CSSParserSelector::insertTagHistory):
+        (WebCore::CSSParserSelector::appendTagHistory):
+        (WebCore::CSSParserSelector::prependTagSelector):
+        * css/CSSParserValues.h:
+        (WebCore::CSSParserSelector::releaseSelector):
+        (WebCore::CSSParserSelector::setTagHistory):
+        * css/CSSPrimitiveValue.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        * css/CSSProperty.cpp:
+        (WebCore::CSSProperty::wrapValueInCommaSeparatedList):
+        * css/CSSSegmentedFontFace.cpp:
+        (WebCore::CSSSegmentedFontFace::appendFontFace):
+        (WebCore::appendFontWithInvalidUnicodeRangeIfLoading):
+        * css/CSSSelector.cpp:
+        (WebCore::CSSSelector::setLangArgumentList):
+        (WebCore::CSSSelector::setSelectorList):
+        * css/CSSStyleSheet.cpp:
+        (WebCore::CSSStyleSheet::create):
+        (WebCore::CSSStyleSheet::CSSStyleSheet):
+        * css/CSSValueList.h:
+        (WebCore::CSSValueList::append):
+        (WebCore::CSSValueList::prepend):
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::initUserStyle):
+        * css/FontLoader.cpp:
+        (WebCore::FontLoader::scheduleEvent):
+        * css/MediaList.cpp:
+        (WebCore::MediaQuerySet::parse):
+        (WebCore::MediaQuerySet::add):
+        (WebCore::MediaQuerySet::addMediaQuery):
+        * css/MediaQuery.cpp:
+        (WebCore::MediaQuery::MediaQuery):
+        * css/Pair.h:
+        (WebCore::Pair::create):
+        (WebCore::Pair::Pair):
+        * css/RuleSet.cpp:
+        (WebCore::RuleSet::addRegionRule):
+        * css/RuleSet.h:
+        (WebCore::RuleSet::RuleSetSelectorPair::RuleSetSelectorPair):
+        * css/SVGCSSComputedStyleDeclaration.cpp:
+        (WebCore::paintOrder):
+        * css/SourceSizeList.cpp:
+        (WebCore::match):
+        (WebCore::parseSizesAttribute):
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyTextOrBoxShadowValue):
+        (WebCore::StyleBuilderCustom::applyValueContent):
+        (WebCore::StyleBuilderCustom::applyValueWillChange):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::State::setStyle):
+        (WebCore::StyleResolver::addToMatchedPropertiesCache):
+        * css/StyleResolver.h:
+        (WebCore::StyleResolver::State::setParentStyle):
+        (WebCore::StyleResolver::State::setAuthorRollback):
+        (WebCore::StyleResolver::State::setUserRollback):
+        * css/StyleRule.cpp:
+        (WebCore::StyleRule::StyleRule):
+        (WebCore::StyleRule::create):
+        (WebCore::StyleRulePage::StyleRulePage):
+        (WebCore::StyleRuleFontFace::StyleRuleFontFace):
+        (WebCore::StyleRuleGroup::wrapperInsertRule):
+        (WebCore::StyleRuleViewport::StyleRuleViewport):
+        * css/StyleRule.h:
+        (WebCore::StyleRule::create):
+        (WebCore::StyleRule::wrapperAdoptSelectorList):
+        (WebCore::StyleRuleFontFace::create):
+        (WebCore::StyleRulePage::create):
+        (WebCore::StyleRulePage::wrapperAdoptSelectorList):
+        (WebCore::StyleRuleViewport::create):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateSelectorChecker):
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementMatchesSelectorList):
+        * dom/ActiveDOMCallbackMicrotask.cpp:
+        (WebCore::ActiveDOMCallbackMicrotask::ActiveDOMCallbackMicrotask):
+        * dom/Attr.cpp:
+        (WebCore::Attr::cloneNodeInternal):
+        * dom/ChildListMutationScope.cpp:
+        (WebCore::ChildListMutationAccumulator::ChildListMutationAccumulator):
+        * dom/ContainerNode.cpp:
+        (WebCore::ContainerNode::insertBefore):
+        (WebCore::ContainerNode::append):
+        (WebCore::ContainerNode::prepend):
+        * dom/DataTransfer.cpp:
+        (WebCore::DataTransfer::DataTransfer):
+        * dom/Document.cpp:
+        (WebCore::Document::createNodeIterator):
+        (WebCore::Document::createTreeWalker):
+        (WebCore::Document::logExceptionToConsole):
+        (WebCore::Document::cloneNodeInternal):
+        (WebCore::Document::enqueueWindowEvent):
+        (WebCore::Document::enqueueDocumentEvent):
+        (WebCore::Document::enqueueOverflowEvent):
+        (WebCore::Document::setTransformSource):
+        (WebCore::Document::addMessage):
+        (WebCore::Document::postTask):
+        (WebCore::Document::pendingTasksTimerFired):
+        (WebCore::Document::sendWillRevealEdgeEventsIfNeeded):
+        * dom/DocumentEventQueue.cpp:
+        (WebCore::DocumentEventQueue::enqueueOrDispatchScrollEvent):
+        * dom/DocumentFragment.cpp:
+        (WebCore::DocumentFragment::cloneNodeInternal):
+        * dom/Element.cpp:
+        (WebCore::Element::createElementRenderer):
+        (WebCore::Element::addShadowRoot):
+        (WebCore::Element::dispatchFocusInEvent):
+        (WebCore::Element::dispatchFocusOutEvent):
+        (WebCore::Element::dispatchFocusEvent):
+        (WebCore::Element::dispatchBlurEvent):
+        (WebCore::Element::resolveComputedStyle):
+        (WebCore::Element::setBeforePseudoElement):
+        (WebCore::Element::setAfterPseudoElement):
+        * dom/ElementRareData.h:
+        (WebCore::ElementRareData::setShadowRoot):
+        (WebCore::ElementRareData::setAttributeMap):
+        (WebCore::ElementRareData::setComputedStyle):
+        (WebCore::ElementRareData::setClassList):
+        (WebCore::ElementRareData::setDataset):
+        (WebCore::ElementRareData::setBeforePseudoElement):
+        (WebCore::ElementRareData::setAfterPseudoElement):
+        * dom/Event.cpp:
+        (WebCore::Event::setTarget):
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::addEventListener):
+        * dom/ExtensionStyleSheets.cpp:
+        (WebCore::ExtensionStyleSheets::addUserStyleSheet):
+        (WebCore::ExtensionStyleSheets::addAuthorStyleSheetForTesting):
+        * dom/FocusEvent.cpp:
+        (WebCore::FocusEvent::FocusEvent):
+        * dom/FocusEvent.h:
+        * dom/MessageEvent.cpp:
+        (WebCore::MessageEvent::MessageEvent):
+        (WebCore::MessageEvent::initMessageEvent):
+        * dom/MessageEvent.h:
+        * dom/MessagePort.cpp:
+        (WebCore::MessagePort::postMessage):
+        (WebCore::MessagePort::disentangle):
+        (WebCore::MessagePort::entangle):
+        (WebCore::MessagePort::dispatchMessages):
+        (WebCore::MessagePort::disentanglePorts):
+        (WebCore::MessagePort::entanglePorts):
+        (WebCore::MessagePort::addEventListener):
+        * dom/Microtasks.cpp:
+        (WebCore::MicrotaskQueue::append):
+        (WebCore::MicrotaskQueue::performMicrotaskCheckpoint):
+        * dom/MutationObserver.cpp:
+        (WebCore::queueMutationObserverCompoundMicrotask):
+        * dom/NativeNodeFilter.h:
+        * dom/Node.cpp:
+        (WebCore::Node::before):
+        (WebCore::Node::after):
+        (WebCore::Node::replaceWith):
+        (WebCore::Document::invalidateNodeListAndCollectionCaches):
+        (WebCore::tryAddEventListener):
+        (WebCore::Node::addEventListener):
+        * dom/NodeIterator.cpp:
+        (WebCore::NodeIterator::NodeIterator):
+        * dom/NodeIterator.h:
+        (WebCore::NodeIterator::create):
+        * dom/ProcessingInstruction.cpp:
+        (WebCore::ProcessingInstruction::setCSSStyleSheet):
+        * dom/PseudoElement.cpp:
+        (WebCore::PseudoElement::didRecalcStyle):
+        * dom/ScopedEventQueue.cpp:
+        (WebCore::ScopedEventQueue::enqueueEvent):
+        (WebCore::ScopedEventQueue::dispatchAllEvents):
+        * dom/ScriptExecutionContext.cpp:
+        (WebCore::ScriptExecutionContext::reportException):
+        * dom/ScriptExecutionContext.h:
+        (WebCore::ScriptExecutionContext::Task::Task):
+        * dom/SecurityContext.cpp:
+        (WebCore::SecurityContext::setSecurityOriginPolicy):
+        (WebCore::SecurityContext::setContentSecurityPolicy):
+        * dom/SecurityOriginPolicy.cpp:
+        (WebCore::SecurityOriginPolicy::create):
+        (WebCore::SecurityOriginPolicy::SecurityOriginPolicy):
+        * dom/SelectorQuery.cpp:
+        (WebCore::SelectorQuery::SelectorQuery):
+        (WebCore::SelectorQueryCache::add):
+        * dom/ShadowRoot.cpp:
+        (WebCore::ShadowRoot::ShadowRoot):
+        * dom/ShadowRoot.h:
+        * dom/SlotAssignment.cpp:
+        (WebCore::SlotAssignment::SlotAssignment):
+        * dom/StyledElement.cpp:
+        (WebCore::StyledElement::rebuildPresentationAttributeStyle):
+        * dom/Text.cpp:
+        (WebCore::Text::splitText):
+        (WebCore::Text::replaceWholeText):
+        * dom/Traversal.cpp:
+        (WebCore::NodeIteratorBase::NodeIteratorBase):
+        * dom/TreeWalker.cpp:
+        (WebCore::TreeWalker::TreeWalker):
+        (WebCore::TreeWalker::traverseSiblings):
+        * dom/TreeWalker.h:
+        (WebCore::TreeWalker::create):
+        * dom/TypedElementDescendantIterator.h:
+        (WebCore::DoubleTypedElementDescendantIteratorAdapter<ElementType>::DoubleTypedElementDescendantIteratorAdapter):
+        (WebCore::DoubleTypedElementDescendantIterator<ElementType>::DoubleTypedElementDescendantIterator):
+        * dom/default/PlatformMessagePortChannel.cpp:
+        (WebCore::PlatformMessagePortChannel::EventData::EventData):
+        (WebCore::MessagePortChannel::createChannel):
+        (WebCore::MessagePortChannel::postMessageToRemote):
+        * dom/default/PlatformMessagePortChannel.h:
+        (WebCore::PlatformMessagePortChannel::EventData::channels):
+        (WebCore::PlatformMessagePortChannel::MessagePortQueue::appendAndCheckEmpty):
+        * editing/AppendNodeCommand.cpp:
+        (WebCore::AppendNodeCommand::AppendNodeCommand):
+        * editing/AppendNodeCommand.h:
+        (WebCore::AppendNodeCommand::create):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::replaceTextInNode):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/DeleteFromTextNodeCommand.h:
+        (WebCore::DeleteFromTextNodeCommand::create):
+        * editing/EditingStyle.cpp:
+        (WebCore::applyTextDecorationChangeToValueList):
+        (WebCore::EditingStyle::overrideTypingStyleAt):
+        (WebCore::EditingStyle::conflictsWithInlineStyleOfElement):
+        (WebCore::mergeTextDecorationValues):
+        (WebCore::StyleChange::StyleChange):
+        * editing/Editor.cpp:
+        (WebCore::Editor::insertDictationPhrases):
+        (WebCore::Editor::setTextAsChildOfElement):
+        (WebCore::Editor::applyStyleToSelection):
+        * editing/EditorCommand.cpp:
+        (WebCore::applyCommandToFrame):
+        (WebCore::executeInsertNode):
+        (WebCore::executeInsertHorizontalRule):
+        (WebCore::executeInsertImage):
+        (WebCore::executeStrikethrough):
+        (WebCore::executeUnderline):
+        * editing/InsertIntoTextNodeCommand.h:
+        (WebCore::InsertIntoTextNodeCommand::create):
+        * editing/InsertNodeBeforeCommand.h:
+        (WebCore::InsertNodeBeforeCommand::create):
+        * editing/MergeIdenticalElementsCommand.cpp:
+        (WebCore::MergeIdenticalElementsCommand::doApply):
+        (WebCore::MergeIdenticalElementsCommand::doUnapply):
+        * editing/MoveSelectionCommand.cpp:
+        (WebCore::MoveSelectionCommand::doApply):
+        * editing/RemoveNodeCommand.cpp:
+        (WebCore::RemoveNodeCommand::RemoveNodeCommand):
+        * editing/RemoveNodeCommand.h:
+        (WebCore::RemoveNodeCommand::create):
+        * editing/ReplaceDeleteFromTextNodeCommand.cpp:
+        (WebCore::ReplaceDeleteFromTextNodeCommand::ReplaceDeleteFromTextNodeCommand):
+        * editing/ReplaceDeleteFromTextNodeCommand.h:
+        * editing/ReplaceInsertIntoTextNodeCommand.cpp:
+        (WebCore::ReplaceInsertIntoTextNodeCommand::ReplaceInsertIntoTextNodeCommand):
+        * editing/ReplaceInsertIntoTextNodeCommand.h:
+        * editing/ReplaceNodeWithSpanCommand.cpp:
+        (WebCore::swapInNodePreservingAttributesAndChildren):
+        * editing/ReplaceSelectionCommand.h:
+        (WebCore::ReplaceSelectionCommand::create):
+        * editing/SplitElementCommand.cpp:
+        (WebCore::SplitElementCommand::executeApply):
+        (WebCore::SplitElementCommand::doUnapply):
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::findGrammaticalErrors):
+        (WebCore::checkTextOfParagraph):
+        * editing/TextIterator.cpp:
+        (WebCore::TextIteratorCopyableText::set):
+        (WebCore::TextIterator::handleReplacedElement):
+        (WebCore::TextIterator::emitText):
+        (WebCore::SimplifiedBackwardsTextIterator::handleTextNode):
+        (WebCore::TextIterator::rangeFromLocationAndLength):
+        * editing/WrapContentsInDummySpanCommand.cpp:
+        (WebCore::WrapContentsInDummySpanCommand::executeApply):
+        (WebCore::WrapContentsInDummySpanCommand::doUnapply):
+        * editing/ios/DictationCommandIOS.cpp:
+        (WebCore::DictationCommandIOS::DictationCommandIOS):
+        * editing/ios/DictationCommandIOS.h:
+        (WebCore::DictationCommandIOS::create):
+        * editing/ios/EditorIOS.mm:
+        (WebCore::Editor::WebContentReader::readURL):
+        (WebCore::Editor::createFragmentForImageResourceAndAddResource):
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::WebContentReader::readFilenames):
+        (WebCore::Editor::WebContentReader::readURL):
+        (WebCore::Editor::createFragmentForImageResourceAndAddResource):
+        * editing/markup.cpp:
+        (WebCore::fillContainerFromString):
+        (WebCore::createFragmentFromText):
+        (WebCore::replaceChildrenWithFragment):
+        (WebCore::replaceChildrenWithText):
+        * fileapi/AsyncFileStream.cpp:
+        (WebCore::callOnFileThread):
+        * fileapi/Blob.cpp:
+        (WebCore::Blob::Blob):
+        * fileapi/Blob.h:
+        (WebCore::Blob::create):
+        * fileapi/FileList.h:
+        (WebCore::FileList::create):
+        (WebCore::FileList::FileList):
+        (WebCore::FileList::append):
+        * fileapi/ThreadableBlobRegistry.cpp:
+        (WebCore::BlobRegistryContext::BlobRegistryContext):
+        (WebCore::ThreadableBlobRegistry::registerBlobURL):
+        * fileapi/WebKitBlobBuilder.cpp:
+        (WebCore::BlobBuilder::append):
+        (WebCore::BlobBuilder::finalize):
+        * history/BackForwardController.cpp:
+        (WebCore::BackForwardController::BackForwardController):
+        (WebCore::BackForwardController::addItem):
+        * history/BackForwardList.cpp:
+        (WebCore::BackForwardList::addItem):
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrame::setCachedFramePlatformData):
+        * history/HistoryItem.cpp:
+        (WebCore::HistoryItem::setStateObject):
+        (WebCore::HistoryItem::addChildItem):
+        (WebCore::HistoryItem::setChildItem):
+        (WebCore::HistoryItem::setFormData):
+        (WebCore::HistoryItem::setRedirectURLs):
+        * history/PageCache.cpp:
+        (WebCore::PageCache::take):
+        * html/BaseButtonInputType.cpp:
+        (WebCore::BaseButtonInputType::createInputRenderer):
+        * html/BaseChooserOnlyDateAndTimeInputType.cpp:
+        (WebCore::BaseChooserOnlyDateAndTimeInputType::createShadowSubtree):
+        * html/ColorInputType.cpp:
+        (WebCore::ColorInputType::createShadowSubtree):
+        * html/FTPDirectoryDocument.cpp:
+        (WebCore::FTPDirectoryDocumentParser::appendEntry):
+        (WebCore::FTPDirectoryDocumentParser::createTDForFilename):
+        (WebCore::FTPDirectoryDocumentParser::createBasicDocument):
+        (WebCore::FTPDirectoryDocumentParser::append):
+        * html/FileInputType.cpp:
+        (WebCore::FileInputType::createInputRenderer):
+        (WebCore::FileInputType::createFileList):
+        * html/FormController.cpp:
+        (WebCore::FormController::formStatesFromStateVector):
+        * html/HTMLAppletElement.cpp:
+        (WebCore::HTMLAppletElement::createElementRenderer):
+        * html/HTMLAttachmentElement.cpp:
+        (WebCore::HTMLAttachmentElement::createElementRenderer):
+        * html/HTMLBRElement.cpp:
+        (WebCore::HTMLBRElement::createElementRenderer):
+        * html/HTMLBodyElement.cpp:
+        (WebCore::HTMLBodyElement::collectStyleForPresentationAttribute):
+        * html/HTMLButtonElement.cpp:
+        (WebCore::HTMLButtonElement::createElementRenderer):
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::createElementRenderer):
+        (WebCore::HTMLCanvasElement::setImageBuffer):
+        * html/HTMLCollection.cpp:
+        (WebCore::HTMLCollection::updateNamedElementCache):
+        * html/HTMLCollection.h:
+        (WebCore::HTMLCollection::setNamedItemCache):
+        * html/HTMLDetailsElement.cpp:
+        (WebCore::HTMLDetailsElement::createElementRenderer):
+        (WebCore::HTMLDetailsElement::didAddUserAgentShadowRoot):
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::populateEventHandlerNameMap):
+        (WebCore::HTMLElement::setInnerText):
+        (WebCore::HTMLElement::createElementRenderer):
+        * html/HTMLFieldSetElement.cpp:
+        (WebCore::HTMLFieldSetElement::createElementRenderer):
+        * html/HTMLFormControlElement.cpp:
+        (WebCore::HTMLFormControlElement::dispatchBlurEvent):
+        * html/HTMLFormControlsCollection.cpp:
+        (WebCore::HTMLFormControlsCollection::updateNamedElementCache):
+        * html/HTMLFrameElement.cpp:
+        (WebCore::HTMLFrameElement::createElementRenderer):
+        * html/HTMLFrameSetElement.cpp:
+        (WebCore::HTMLFrameSetElement::createElementRenderer):
+        * html/HTMLIFrameElement.cpp:
+        (WebCore::HTMLIFrameElement::createElementRenderer):
+        * html/HTMLImageElement.cpp:
+        (WebCore::HTMLImageElement::createElementRenderer):
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::updateType):
+        (WebCore::HTMLInputElement::createElementRenderer):
+        * html/HTMLKeygenElement.cpp:
+        (WebCore::HTMLKeygenElement::HTMLKeygenElement):
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::setCSSStyleSheet):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::createElementRenderer):
+        (WebCore::HTMLMediaElement::addEventListener):
+        (WebCore::HTMLMediaElement::setWirelessPlaybackTarget):
+        (WebCore::HTMLMediaElement::mediaPlayerCreateResourceLoader):
+        * html/HTMLMeterElement.cpp:
+        (WebCore::HTMLMeterElement::createElementRenderer):
+        (WebCore::HTMLMeterElement::didAddUserAgentShadowRoot):
+        * html/HTMLOptionElement.cpp:
+        (WebCore::HTMLOptionElement::createForJSConstructor):
+        * html/HTMLPlugInElement.cpp:
+        (WebCore::HTMLPlugInElement::createElementRenderer):
+        * html/HTMLPlugInImageElement.cpp:
+        (WebCore::HTMLPlugInImageElement::createElementRenderer):
+        * html/HTMLProgressElement.cpp:
+        (WebCore::HTMLProgressElement::createElementRenderer):
+        (WebCore::HTMLProgressElement::didAddUserAgentShadowRoot):
+        * html/HTMLSelectElement.cpp:
+        (WebCore::HTMLSelectElement::createElementRenderer):
+        (WebCore::HTMLSelectElement::dispatchFocusEvent):
+        (WebCore::HTMLSelectElement::dispatchBlurEvent):
+        * html/HTMLSummaryElement.cpp:
+        (WebCore::HTMLSummaryElement::createElementRenderer):
+        * html/HTMLTableElement.cpp:
+        (WebCore::HTMLTableElement::insertRow):
+        * html/HTMLTableRowElement.cpp:
+        (WebCore::HTMLTableRowElement::insertCell):
+        * html/HTMLTextAreaElement.cpp:
+        (WebCore::HTMLTextAreaElement::createElementRenderer):
+        * html/HTMLTextFormControlElement.cpp:
+        (WebCore::HTMLTextFormControlElement::dispatchFocusEvent):
+        (WebCore::HTMLTextFormControlElement::dispatchBlurEvent):
+        * html/HTMLVideoElement.cpp:
+        (WebCore::HTMLVideoElement::createElementRenderer):
+        * html/HTMLWBRElement.cpp:
+        (WebCore::HTMLWBRElement::createElementRenderer):
+        * html/ImageDocument.cpp:
+        (WebCore::ImageDocument::createDocumentStructure):
+        * html/ImageInputType.cpp:
+        (WebCore::ImageInputType::createInputRenderer):
+        * html/InputType.cpp:
+        (WebCore::InputType::createInputRenderer):
+        * html/MediaDocument.cpp:
+        (WebCore::MediaDocumentParser::createDocumentStructure):
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::setPlaybackTarget):
+        * html/PluginDocument.cpp:
+        (WebCore::PluginDocumentParser::createDocumentStructure):
+        * html/RangeInputType.cpp:
+        (WebCore::RangeInputType::createShadowSubtree):
+        (WebCore::RangeInputType::createInputRenderer):
+        * html/RubyElement.cpp:
+        (WebCore::RubyElement::createElementRenderer):
+        * html/RubyTextElement.cpp:
+        (WebCore::RubyTextElement::createElementRenderer):
+        * html/SearchInputType.cpp:
+        (WebCore::SearchInputType::createInputRenderer):
+        (WebCore::SearchInputType::createShadowSubtree):
+        * html/TextFieldInputType.cpp:
+        (WebCore::TextFieldInputType::createInputRenderer):
+        * html/ValidationMessage.cpp:
+        (WebCore::ValidationMessage::buildBubbleTree):
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::createLinearGradient):
+        (WebCore::CanvasRenderingContext2D::createRadialGradient):
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::LRUImageBufferCache::imageBuffer):
+        * html/parser/AtomicHTMLToken.h:
+        (WebCore::AtomicHTMLToken::AtomicHTMLToken):
+        * html/parser/HTMLConstructionSite.cpp:
+        (WebCore::HTMLConstructionSite::executeQueuedTasks):
+        (WebCore::HTMLConstructionSite::insertTextNode):
+        * html/parser/HTMLDocumentParser.cpp:
+        (WebCore::HTMLDocumentParser::append):
+        * html/parser/HTMLElementStack.cpp:
+        (WebCore::HTMLElementStack::ElementRecord::ElementRecord):
+        (WebCore::HTMLElementStack::pushCommon):
+        * html/parser/HTMLElementStack.h:
+        (WebCore::HTMLElementStack::ElementRecord::releaseNext):
+        (WebCore::HTMLElementStack::ElementRecord::setNext):
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::scan):
+        (WebCore::HTMLPreloadScanner::scan):
+        * html/parser/HTMLResourcePreloader.cpp:
+        (WebCore::HTMLResourcePreloader::preload):
+        * html/parser/HTMLStackItem.h:
+        (WebCore::HTMLStackItem::HTMLStackItem):
+        (WebCore::HTMLStackItem::create):
+        * html/parser/HTMLToken.h:
+        (WebCore::HTMLToken::releaseDoctypeData):
+        * html/parser/HTMLTreeBuilder.cpp:
+        (WebCore::HTMLTreeBuilder::takeScriptToProcess):
+        (WebCore::HTMLTreeBuilder::processFakeStartTag):
+        (WebCore::HTMLTreeBuilder::insertPhoneNumberLink):
+        * html/parser/TextDocumentParser.cpp:
+        (WebCore::TextDocumentParser::append):
+        (WebCore::TextDocumentParser::insertFakePreElement):
+        * html/parser/XSSAuditorDelegate.cpp:
+        (WebCore::XSSAuditorDelegate::generateViolationReport):
+        * html/shadow/DetailsMarkerControl.cpp:
+        (WebCore::DetailsMarkerControl::createElementRenderer):
+        * html/shadow/MediaControlElements.cpp:
+        (WebCore::MediaControlTimelineContainerElement::createElementRenderer):
+        (WebCore::MediaControlVolumeSliderContainerElement::createElementRenderer):
+        (WebCore::MediaControlClosedCaptionsTrackListElement::rebuildTrackListMenu):
+        (WebCore::MediaControlTextTrackContainerElement::createElementRenderer):
+        (WebCore::MediaControlTextTrackContainerElement::createTextTrackRepresentationImage):
+        * html/shadow/MediaControls.cpp:
+        (WebCore::MediaControls::createTextTrackDisplay):
+        * html/shadow/MediaControlsApple.cpp:
+        (WebCore::MediaControlsApple::createControls):
+        (WebCore::MediaControlsApple::showClosedCaptionTrackList):
+        * html/shadow/MeterShadowElement.cpp:
+        (WebCore::MeterInnerElement::createElementRenderer):
+        * html/shadow/ProgressShadowElement.cpp:
+        (WebCore::ProgressInnerElement::createElementRenderer):
+        * html/shadow/SliderThumbElement.cpp:
+        (WebCore::RenderSliderThumb::RenderSliderThumb):
+        (WebCore::SliderThumbElement::createElementRenderer):
+        (WebCore::SliderContainerElement::createElementRenderer):
+        * html/shadow/TextControlInnerElements.cpp:
+        (WebCore::TextControlInnerContainer::createElementRenderer):
+        (WebCore::TextControlInnerTextElement::createElementRenderer):
+        * html/shadow/mac/ImageControlsButtonElementMac.cpp:
+        (WebCore::RenderImageControlsButton::RenderImageControlsButton):
+        (WebCore::ImageControlsButtonElementMac::createElementRenderer):
+        * html/shadow/mac/ImageControlsRootElementMac.cpp:
+        (WebCore::RenderImageControls::RenderImageControls):
+        (WebCore::ImageControlsRootElement::maybeCreate):
+        (WebCore::ImageControlsRootElementMac::createElementRenderer):
+        * html/track/VTTCue.cpp:
+        (WebCore::VTTCueBox::createElementRenderer):
+        * html/track/WebVTTElement.cpp:
+        (WebCore::WebVTTElement::cloneElementWithoutAttributesAndChildren):
+        * html/track/WebVTTParser.cpp:
+        (WebCore::WebVTTTreeBuilder::constructTreeFromToken):
+        * inspector/CommandLineAPIHost.cpp:
+        (WebCore::CommandLineAPIHost::inspectImpl):
+        (WebCore::CommandLineAPIHost::addInspectedObject):
+        * inspector/DOMEditor.cpp:
+        (WebCore::DOMEditor::InsertBeforeAction::InsertBeforeAction):
+        (WebCore::DOMEditor::ReplaceChildNodeAction::ReplaceChildNodeAction):
+        (WebCore::DOMEditor::insertBefore):
+        (WebCore::DOMEditor::setOuterHTML):
+        (WebCore::DOMEditor::replaceChild):
+        * inspector/DOMPatchSupport.cpp:
+        (WebCore::DOMPatchSupport::createDigest):
+        (WebCore::DOMPatchSupport::removeChildAndMoveToNew):
+        * inspector/InspectorApplicationCacheAgent.cpp:
+        (WebCore::InspectorApplicationCacheAgent::getFramesWithManifests):
+        * inspector/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::getMatchedStylesForNode):
+        (WebCore::InspectorCSSAgent::addRule):
+        (WebCore::InspectorCSSAgent::getSupportedCSSProperties):
+        (WebCore::InspectorCSSAgent::getSupportedSystemFontFamilyNames):
+        (WebCore::InspectorCSSAgent::getNamedFlowCollection):
+        (WebCore::InspectorCSSAgent::buildArrayForMatchedRuleList):
+        (WebCore::InspectorCSSAgent::buildArrayForRegions):
+        (WebCore::InspectorCSSAgent::buildObjectForNamedFlow):
+        * inspector/InspectorConsoleInstrumentation.h:
+        (WebCore::InspectorInstrumentation::addMessageToConsole):
+        (WebCore::InspectorInstrumentation::consoleCount):
+        (WebCore::InspectorInstrumentation::stopConsoleTiming):
+        (WebCore::InspectorInstrumentation::consoleTimeStamp):
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        * inspector/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::pushNodePathToFrontend):
+        (WebCore::InspectorDOMAgent::highlightRect):
+        (WebCore::InspectorDOMAgent::highlightQuad):
+        (WebCore::InspectorDOMAgent::innerHighlightQuad):
+        (WebCore::InspectorDOMAgent::highlightSelector):
+        (WebCore::InspectorDOMAgent::buildObjectForNode):
+        (WebCore::InspectorDOMAgent::buildArrayForPseudoElements):
+        (WebCore::InspectorDOMAgent::buildObjectForEventListener):
+        (WebCore::InspectorDOMAgent::buildObjectForAccessibilityProperties):
+        (WebCore::InspectorDOMAgent::didCommitLoad):
+        (WebCore::InspectorDOMAgent::didInsertDOMNode):
+        (WebCore::InspectorDOMAgent::styleAttributeInvalidated):
+        * inspector/InspectorDOMDebuggerAgent.cpp:
+        (WebCore::InspectorDOMDebuggerAgent::didInvalidateStyleAttr):
+        (WebCore::InspectorDOMDebuggerAgent::willInsertDOMNode):
+        (WebCore::InspectorDOMDebuggerAgent::willRemoveDOMNode):
+        (WebCore::InspectorDOMDebuggerAgent::willModifyDOMAttr):
+        (WebCore::InspectorDOMDebuggerAgent::pauseOnNativeEventIfNeeded):
+        (WebCore::InspectorDOMDebuggerAgent::willSendXMLHttpRequest):
+        * inspector/InspectorDOMStorageAgent.cpp:
+        (WebCore::InspectorDOMStorageAgent::getDOMStorageItems):
+        * inspector/InspectorDatabaseAgent.cpp:
+        (WebCore::InspectorDatabaseAgent::didOpenDatabase):
+        (WebCore::InspectorDatabaseAgent::executeSQL):
+        * inspector/InspectorDatabaseResource.cpp:
+        (WebCore::InspectorDatabaseResource::create):
+        (WebCore::InspectorDatabaseResource::bind):
+        * inspector/InspectorDatabaseResource.h:
+        (WebCore::InspectorDatabaseResource::setDatabase):
+        * inspector/InspectorFrontendClientLocal.cpp:
+        (WebCore::InspectorFrontendClientLocal::InspectorFrontendClientLocal):
+        * inspector/InspectorHistory.cpp:
+        (WebCore::InspectorHistory::perform):
+        * inspector/InspectorIndexedDBAgent.cpp:
+        (WebCore::InspectorIndexedDBAgent::requestDatabaseNames):
+        (WebCore::InspectorIndexedDBAgent::requestDatabase):
+        (WebCore::InspectorIndexedDBAgent::requestData):
+        (WebCore::ClearObjectStoreListener::create):
+        (WebCore::ClearObjectStoreListener::ClearObjectStoreListener):
+        (WebCore::ClearObjectStore::create):
+        (WebCore::ClearObjectStore::ClearObjectStore):
+        (WebCore::InspectorIndexedDBAgent::clearObjectStore):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::addMessageToConsoleImpl):
+        (WebCore::InspectorInstrumentation::didOpenDatabaseImpl):
+        (WebCore::InspectorInstrumentation::sessionCreatedImpl):
+        (WebCore::InspectorInstrumentation::sessionLoadedImpl):
+        (WebCore::InspectorInstrumentation::sessionModifiedImpl):
+        (WebCore::InspectorInstrumentation::segmentCreatedImpl):
+        (WebCore::InspectorInstrumentation::segmentCompletedImpl):
+        (WebCore::InspectorInstrumentation::segmentLoadedImpl):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didOpenDatabase):
+        (WebCore::InspectorInstrumentation::sessionCreated):
+        (WebCore::InspectorInstrumentation::sessionLoaded):
+        (WebCore::InspectorInstrumentation::sessionModified):
+        (WebCore::InspectorInstrumentation::segmentCreated):
+        (WebCore::InspectorInstrumentation::segmentCompleted):
+        (WebCore::InspectorInstrumentation::segmentLoaded):
+        * inspector/InspectorLayerTreeAgent.cpp:
+        (WebCore::InspectorLayerTreeAgent::reasonsForCompositingLayer):
+        * inspector/InspectorNetworkAgent.cpp:
+        (WebCore::buildObjectForResourceResponse):
+        (WebCore::buildObjectForCachedResource):
+        (WebCore::InspectorNetworkAgent::buildInitiatorObject):
+        (WebCore::InspectorNetworkAgent::willSendWebSocketHandshakeRequest):
+        (WebCore::InspectorNetworkAgent::didReceiveWebSocketHandshakeResponse):
+        (WebCore::InspectorNetworkAgent::didReceiveWebSocketFrame):
+        (WebCore::InspectorNetworkAgent::didSendWebSocketFrame):
+        * inspector/InspectorOverlay.cpp:
+        (WebCore::InspectorOverlay::highlightNodeList):
+        (WebCore::InspectorOverlay::highlightQuad):
+        (WebCore::buildObjectForHighlight):
+        (WebCore::buildObjectForFlowRegions):
+        (WebCore::InspectorOverlay::drawPaintRects):
+        (WebCore::buildArrayForRendererFragments):
+        (WebCore::buildObjectForShapeOutside):
+        (WebCore::buildObjectForElementData):
+        (WebCore::InspectorOverlay::buildHighlightObjectForNode):
+        (WebCore::InspectorOverlay::buildObjectForHighlightedNodes):
+        (WebCore::InspectorOverlay::reset):
+        (WebCore::InspectorOverlay::evaluateInOverlay):
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::buildObjectForFrameTree):
+        * inspector/InspectorReplayAgent.cpp:
+        (WebCore::buildInspectorObjectForSession):
+        (WebCore::SerializeInputToJSONFunctor::operator()):
+        (WebCore::SerializeInputToJSONFunctor::returnValue):
+        (WebCore::buildInspectorObjectForSegment):
+        (WebCore::InspectorReplayAgent::switchSession):
+        (WebCore::InspectorReplayAgent::insertSessionSegment):
+        (WebCore::InspectorReplayAgent::removeSessionSegment):
+        (WebCore::InspectorReplayAgent::getSessionData):
+        (WebCore::InspectorReplayAgent::getSegmentData):
+        * inspector/InspectorStyleSheet.cpp:
+        (WebCore::asCSSRuleList):
+        (WebCore::InspectorStyle::create):
+        (WebCore::InspectorStyle::buildObjectForStyle):
+        (WebCore::InspectorStyle::buildArrayForComputedStyle):
+        (WebCore::InspectorStyle::styleWithProperties):
+        (WebCore::InspectorStyleSheet::create):
+        (WebCore::InspectorStyleSheet::InspectorStyleSheet):
+        (WebCore::InspectorStyleSheet::buildObjectForStyleSheet):
+        (WebCore::buildObjectForSelectorHelper):
+        (WebCore::InspectorStyleSheet::buildObjectForRule):
+        (WebCore::InspectorStyleSheet::ensureSourceData):
+        (WebCore::InspectorStyleSheet::buildArrayForRuleList):
+        (WebCore::InspectorStyleSheet::collectFlatRules):
+        (WebCore::InspectorStyleSheetForInlineStyle::create):
+        (WebCore::InspectorStyleSheetForInlineStyle::InspectorStyleSheetForInlineStyle):
+        * inspector/InspectorTimelineAgent.cpp:
+        (WebCore::startProfiling):
+        (WebCore::InspectorTimelineAgent::addRecordToTimeline):
+        (WebCore::InspectorTimelineAgent::appendRecord):
+        (WebCore::InspectorTimelineAgent::sendEvent):
+        (WebCore::InspectorTimelineAgent::createRecordEntry):
+        (WebCore::InspectorTimelineAgent::pushCurrentRecord):
+        * inspector/InspectorTimelineAgent.h:
+        * inspector/NetworkResourcesData.cpp:
+        (WebCore::NetworkResourcesData::addResourceSharedBuffer):
+        * inspector/NetworkResourcesData.h:
+        (WebCore::NetworkResourcesData::ResourceData::setDecoder):
+        (WebCore::NetworkResourcesData::ResourceData::setBuffer):
+        * inspector/TimelineRecordFactory.cpp:
+        (WebCore::buildInspectorObject):
+        (WebCore::buildProfileInspectorObject):
+        * inspector/WebInjectedScriptManager.cpp:
+        (WebCore::WebInjectedScriptManager::WebInjectedScriptManager):
+        * loader/ContentFilter.cpp:
+        (WebCore::ContentFilter::createIfEnabled):
+        (WebCore::ContentFilter::ContentFilter):
+        * loader/CrossOriginPreflightResultCache.cpp:
+        (WebCore::CrossOriginPreflightResultCache::appendEntry):
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::subresources):
+        (WebCore::DocumentLoader::installContentFilterUnblockHandler):
+        * loader/DocumentLoader.h:
+        (WebCore::DocumentLoader::setQuickLookHandle):
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::makeCrossOriginAccessRequest):
+        (WebCore::DocumentThreadableLoader::didReceiveResponse):
+        * loader/HistoryController.cpp:
+        (WebCore::HistoryController::updateBackForwardListClippedAtTarget):
+        (WebCore::HistoryController::pushState):
+        * loader/MediaResourceLoader.cpp:
+        (WebCore::MediaResourceLoader::MediaResourceLoader):
+        * loader/NavigationScheduler.cpp:
+        (WebCore::NavigationScheduler::timerFired):
+        (WebCore::NavigationScheduler::schedule):
+        (WebCore::NavigationScheduler::cancel):
+        * loader/NetscapePlugInStreamLoader.cpp:
+        (WebCore::NetscapePlugInStreamLoader::willSendRequest):
+        * loader/PolicyCallback.cpp:
+        (WebCore::PolicyCallback::set):
+        * loader/PolicyChecker.cpp:
+        (WebCore::PolicyChecker::checkNavigationPolicy):
+        (WebCore::PolicyChecker::checkNewWindowPolicy):
+        (WebCore::PolicyChecker::checkContentPolicy):
+        * loader/PolicyChecker.h:
+        (WebCore::PolicyChecker::setContentFilterUnblockHandler):
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::willSendRequest):
+        * loader/ThreadableLoader.cpp:
+        (WebCore::ThreadableLoaderOptions::ThreadableLoaderOptions):
+        (WebCore::ThreadableLoaderOptions::isolatedCopy):
+        * loader/appcache/ApplicationCacheGroup.cpp:
+        (WebCore::ApplicationCacheGroup::ApplicationCacheGroup):
+        * loader/archive/cf/LegacyWebArchive.cpp:
+        (WebCore::LegacyWebArchive::create):
+        * loader/cache/CachedCSSStyleSheet.cpp:
+        (WebCore::CachedCSSStyleSheet::saveParsedStyleSheet):
+        * loader/icon/IconDatabase.cpp:
+        (WebCore::IconDatabase::syncThreadMainLoop):
+        * mathml/MathMLInlineContainerElement.cpp:
+        (WebCore::MathMLInlineContainerElement::createElementRenderer):
+        * mathml/MathMLMathElement.cpp:
+        (WebCore::MathMLMathElement::createElementRenderer):
+        * mathml/MathMLMencloseElement.cpp:
+        (WebCore::MathMLMencloseElement::createElementRenderer):
+        * mathml/MathMLSelectElement.cpp:
+        (WebCore::MathMLSelectElement::createElementRenderer):
+        * mathml/MathMLTextElement.cpp:
+        (WebCore::MathMLTextElement::createElementRenderer):
+        * page/CaptionUserPreferences.cpp:
+        (WebCore::CaptionUserPreferences::updateCaptionStyleSheetOveride):
+        * page/DOMTimer.cpp:
+        (WebCore::DOMTimer::DOMTimer):
+        (WebCore::DOMTimer::install):
+        * page/DOMWindow.cpp:
+        (WebCore::PostMessageTimer::PostMessageTimer):
+        (WebCore::PostMessageTimer::event):
+        (WebCore::DOMWindow::postMessage):
+        (WebCore::DOMWindow::setTimeout):
+        (WebCore::DOMWindow::setInterval):
+        (WebCore::DOMWindow::addEventListener):
+        (WebCore::DOMWindow::showModalDialog):
+        * page/DebugPageOverlays.cpp:
+        (WebCore::MouseWheelRegionOverlay::updateRegion):
+        (WebCore::NonFastScrollableRegionOverlay::updateRegion):
+        (WebCore::DebugPageOverlays::ensureRegionOverlayForFrame):
+        * page/DragController.cpp:
+        (WebCore::documentFragmentFromDragData):
+        (WebCore::DragController::concludeEditDrag):
+        * page/Frame.cpp:
+        (WebCore::Frame::setView):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::sendResizeEventIfNeeded):
+        (WebCore::FrameView::updateOverflowStatus):
+        * page/Page.cpp:
+        (WebCore::Page::Page):
+        (WebCore::Page::setSessionStorage):
+        (WebCore::Page::setStorageNamespaceProvider):
+        (WebCore::Page::setVisitedLinkStore):
+        * page/PageConsoleClient.cpp:
+        (WebCore::PageConsoleClient::addMessage):
+        (WebCore::PageConsoleClient::messageWithTypeAndLevel):
+        (WebCore::PageConsoleClient::count):
+        (WebCore::PageConsoleClient::profileEnd):
+        (WebCore::PageConsoleClient::timeEnd):
+        (WebCore::PageConsoleClient::timeStamp):
+        * page/PageOverlayController.cpp:
+        (WebCore::PageOverlayController::installPageOverlay):
+        * page/TextIndicator.cpp:
+        (WebCore::takeSnapshot):
+        * page/UserContentController.cpp:
+        (WebCore::UserContentController::addUserScript):
+        (WebCore::UserContentController::addUserStyleSheet):
+        * page/UserScript.h:
+        (WebCore::UserScript::UserScript):
+        * page/UserStyleSheet.h:
+        (WebCore::UserStyleSheet::UserStyleSheet):
+        * page/WheelEventTestTrigger.cpp:
+        (WebCore::WheelEventTestTrigger::setTestCallbackAndStartNotificationTimer):
+        (WebCore::WheelEventTestTrigger::triggerTestTimerFired):
+        * page/animation/AnimationController.cpp:
+        (WebCore::AnimationControllerPrivate::fireEventsAndUpdateStyle):
+        (WebCore::AnimationControllerPrivate::addElementChangeToDispatch):
+        * page/animation/CSSPropertyAnimation.cpp:
+        (WebCore::blendFilter):
+        (WebCore::crossfadeBlend):
+        (WebCore::PropertyWrapperShadow::blendSimpleOrMatchedShadowLists):
+        (WebCore::PropertyWrapperShadow::blendMismatchedShadowLists):
+        (WebCore::ShorthandPropertyWrapper::ShorthandPropertyWrapper):
+        (WebCore::CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap):
+        * page/cocoa/ResourceUsageOverlayCocoa.mm:
+        (WebCore::RingBuffer::append):
+        (WebCore::MemoryCategoryInfo::MemoryCategoryInfo):
+        * page/mac/TextIndicatorWindow.mm:
+        (WebCore::TextIndicatorWindow::clearTextIndicator):
+        * page/scrolling/AxisScrollSnapOffsets.cpp:
+        (WebCore::updateSnapOffsetsForScrollableArea):
+        * page/scrolling/ScrollingStateTree.cpp:
+        (WebCore::ScrollingStateTree::setRemovedNodes):
+        * page/scrolling/ScrollingThread.cpp:
+        (WebCore::ScrollingThread::dispatchBarrier):
+        (WebCore::ScrollingThread::dispatchFunctionsFromScrollingThread):
+        * page/scrolling/ThreadedScrollingTree.cpp:
+        (WebCore::ThreadedScrollingTree::commitNewTreeState):
+        * page/scrolling/ios/ScrollingTreeIOS.cpp:
+        (WebCore::ScrollingTreeIOS::commitNewTreeState):
+        * page/scrolling/mac/ScrollingCoordinatorMac.mm:
+        (WebCore::ScrollingCoordinatorMac::commitTreeState):
+        * platform/CalculationValue.cpp:
+        (WebCore::CalculationValue::create):
+        * platform/CalculationValue.h:
+        (WebCore::CalculationValue::CalculationValue):
+        (WebCore::CalcExpressionBinaryOperation::CalcExpressionBinaryOperation):
+        * platform/DragImage.cpp:
+        (WebCore::createDragImageFromSnapshot):
+        * platform/KeyedCoding.h:
+        (WebCore::KeyedDecoder::decodeObjects):
+        * platform/Length.cpp:
+        (WebCore::Length::Length):
+        (WebCore::Length::blendMixedTypes):
+        * platform/LengthSize.h:
+        (WebCore::LengthSize::LengthSize):
+        (WebCore::LengthSize::setWidth):
+        (WebCore::LengthSize::setHeight):
+        * platform/MainThreadSharedTimer.cpp:
+        (WebCore::MainThreadSharedTimer::setFiredFunction):
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::setHorizontalSnapOffsets):
+        (WebCore::ScrollableArea::setVerticalSnapOffsets):
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::SharedBuffer):
+        (WebCore::SharedBuffer::createWithContentsOfFile):
+        (WebCore::SharedBuffer::maybeTransferMappedFileData):
+        * platform/Supplementable.h:
+        (WebCore::Supplement::provideTo):
+        (WebCore::Supplementable::provideSupplement):
+        * platform/Timer.h:
+        (WebCore::Timer::Timer):
+        (WebCore::DeferrableOneShotTimer::DeferrableOneShotTimer):
+        * platform/URL.h:
+        (WebCore::URLCapture::releaseURL):
+        * platform/audio/AudioBus.cpp:
+        (WebCore::AudioBus::AudioBus):
+        * platform/audio/HRTFDatabase.cpp:
+        (WebCore::HRTFDatabase::HRTFDatabase):
+        * platform/audio/HRTFElevation.cpp:
+        (WebCore::HRTFElevation::createForSubject):
+        (WebCore::HRTFElevation::createByInterpolatingSlices):
+        * platform/audio/HRTFElevation.h:
+        (WebCore::HRTFElevation::HRTFElevation):
+        * platform/audio/HRTFKernel.cpp:
+        (WebCore::HRTFKernel::createInterpolatedKernel):
+        * platform/audio/HRTFKernel.h:
+        (WebCore::HRTFKernel::create):
+        (WebCore::HRTFKernel::HRTFKernel):
+        * platform/audio/ReverbConvolver.cpp:
+        (WebCore::ReverbConvolver::ReverbConvolver):
+        * platform/audio/ios/MediaSessionManagerIOS.mm:
+        (-[WebMediaSessionHelper dealloc]):
+        * platform/cf/KeyedDecoderCF.cpp:
+        (WebCore::KeyedDecoderCF::KeyedDecoderCF):
+        * platform/cocoa/ContentFilterUnblockHandlerCocoa.mm:
+        (WebCore::ContentFilterUnblockHandler::ContentFilterUnblockHandler):
+        * platform/glib/KeyedDecoderGlib.cpp:
+        (WebCore::KeyedDecoderGlib::dictionaryFromGVariant):
+        * platform/graphics/FloatPolygon.cpp:
+        (WebCore::FloatPolygon::FloatPolygon):
+        * platform/graphics/Font.cpp:
+        (WebCore::Font::Font):
+        (WebCore::createAndFillGlyphPage):
+        (WebCore::Font::systemFallbackFontForCharacter):
+        * platform/graphics/Font.h:
+        (WebCore::Font::create):
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontCache::purgeInactiveFontData):
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascadeCacheEntry::FontCascadeCacheEntry):
+        (WebCore::retrieveOrAddCachedFonts):
+        (WebCore::FontCascade::update):
+        * platform/graphics/FontCascadeFonts.cpp:
+        (WebCore::realizeNextFallback):
+        * platform/graphics/FontCascadeFonts.h:
+        (WebCore::FontCascadeFonts::create):
+        * platform/graphics/FontDescription.h:
+        (WebCore::FontDescription::setFeatureSettings):
+        * platform/graphics/FontFeatureSettings.cpp:
+        (WebCore::FontFeature::FontFeature):
+        (WebCore::FontFeatureSettings::insert):
+        * platform/graphics/FontRanges.h:
+        (WebCore::FontRanges::Range::Range):
+        * platform/graphics/GLContext.cpp:
+        (WebCore::GLContext::createContextForWindow):
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::setStrokePattern):
+        (WebCore::GraphicsContext::setFillPattern):
+        (WebCore::GraphicsContext::setStrokeGradient):
+        (WebCore::GraphicsContext::setFillGradient):
+        (WebCore::GraphicsContext::drawConsumingImageBuffer):
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::KeyframeValueList::insert):
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::MediaPlayer::setWirelessPlaybackTarget):
+        (WebCore::MediaPlayer::createResourceLoader):
+        * platform/graphics/PlatformMediaResourceLoader.h:
+        (WebCore::PlatformMediaResourceLoader::PlatformMediaResourceLoader):
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm:
+        (WebCore::CDMPrivateMediaSourceAVFObjC::createSession):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::setWirelessPlaybackTarget):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::setWirelessPlaybackTarget):
+        * platform/graphics/ca/TileController.cpp:
+        (WebCore::TileController::setContentsScale):
+        * platform/graphics/cg/IOSurfacePool.cpp:
+        (WebCore::IOSurfacePool::takeSurface):
+        (WebCore::IOSurfacePool::addSurface):
+        (WebCore::IOSurfacePool::insertSurfaceIntoPool):
+        (WebCore::IOSurfacePool::collectInUseSurfaces):
+        * platform/graphics/cg/ImageBufferCG.cpp:
+        (WebCore::ImageBuffer::copyImage):
+        (WebCore::ImageBuffer::sinkIntoImage):
+        (WebCore::ImageBuffer::sinkIntoNativeImage):
+        (WebCore::ImageBuffer::drawConsuming):
+        * platform/graphics/cocoa/IOSurface.mm:
+        (IOSurface::moveToPool):
+        (IOSurface::createFromImageBuffer):
+        (IOSurface::convertToFormat):
+        * platform/graphics/efl/CairoUtilitiesEfl.cpp:
+        (WebCore::evasObjectFromCairoImageSurface):
+        * platform/graphics/efl/GraphicsContext3DEfl.cpp:
+        (WebCore::GraphicsContext3D::setContextLostCallback):
+        * platform/graphics/efl/GraphicsContext3DPrivate.cpp:
+        (WebCore::GraphicsContext3DPrivate::setContextLostCallback):
+        * platform/graphics/egl/GLContextEGL.cpp:
+        (WebCore::GLContextEGL::createWindowContext):
+        (WebCore::GLContextEGL::createPixmapContext):
+        (WebCore::GLContextEGL::createContext):
+        (WebCore::GLContextEGL::GLContextEGL):
+        * platform/graphics/filters/FETile.cpp:
+        (WebCore::FETile::platformApplySoftware):
+        * platform/graphics/filters/Filter.h:
+        (WebCore::Filter::setSourceImage):
+        * platform/graphics/filters/FilterOperation.h:
+        * platform/graphics/glx/GLContextGLX.cpp:
+        (WebCore::GLContextGLX::createWindowContext):
+        (WebCore::GLContextGLX::createPbufferContext):
+        (WebCore::GLContextGLX::createPixmapContext):
+        (WebCore::GLContextGLX::createContext):
+        (WebCore::GLContextGLX::GLContextGLX):
+        * platform/graphics/gpu/Texture.cpp:
+        (WebCore::Texture::Texture):
+        (WebCore::Texture::create):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+        * platform/graphics/gstreamer/MediaPlayerRequestInstallMissingPluginsCallback.h:
+        (WebCore::MediaPlayerRequestInstallMissingPluginsCallback::create):
+        (WebCore::MediaPlayerRequestInstallMissingPluginsCallback::MediaPlayerRequestInstallMissingPluginsCallback):
+        * platform/graphics/gstreamer/VideoSinkGStreamer.cpp:
+        (VideoRenderRequestScheduler::render):
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        (WebCore::MediaPlayerPrivateQTKit::setWirelessPlaybackTarget):
+        * platform/graphics/opengl/Extensions3DOpenGLES.cpp:
+        (WebCore::Extensions3DOpenGLES::setEXTContextLostCallback):
+        * platform/graphics/surfaces/GLTransportSurface.cpp:
+        (WebCore::GLTransportSurface::createTransportSurface):
+        (WebCore::GLTransportSurfaceClient::createTransportSurfaceClient):
+        * platform/graphics/surfaces/egl/EGLSurface.cpp:
+        (WebCore::EGLTransportSurface::createTransportSurface):
+        (WebCore::EGLTransportSurface::createTransportSurfaceClient):
+        * platform/graphics/texmap/BitmapTexturePool.cpp:
+        (WebCore::BitmapTexturePool::BitmapTexturePool):
+        * platform/graphics/texmap/BitmapTexturePool.h:
+        (WebCore::BitmapTexturePool::Entry::Entry):
+        * platform/graphics/texmap/TextureMapperLayer.cpp:
+        (WebCore::TextureMapperLayer::removeAllChildren):
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.cpp:
+        (WebCore::TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer):
+        * platform/graphics/texmap/TextureMapperPlatformLayerBuffer.h:
+        (WebCore::TextureMapperPlatformLayerBuffer::setUnmanagedBufferDataHolder):
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.cpp:
+        (WebCore::TextureMapperPlatformLayerProxy::pushNextBuffer):
+        (WebCore::TextureMapperPlatformLayerProxy::getAvailableBuffer):
+        (WebCore::TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired):
+        (WebCore::TextureMapperPlatformLayerProxy::swapBuffer):
+        (WebCore::TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread):
+        (WebCore::TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired):
+        * platform/graphics/texmap/coordinated/CompositingCoordinator.cpp:
+        (WebCore::CompositingCoordinator::releaseInactiveAtlasesTimerFired):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::adjustContentsScale):
+        * platform/graphics/wayland/PlatformDisplayWayland.cpp:
+        (WebCore::PlatformDisplayWayland::createSharingGLContext):
+        * platform/graphics/win/FontCacheWin.cpp:
+        (WebCore::FontCache::createFontPlatformData):
+        * platform/graphics/win/FontCustomPlatformData.cpp:
+        (WebCore::FontCustomPlatformData::fontPlatformData):
+        * platform/graphics/win/FontCustomPlatformDataCairo.cpp:
+        (WebCore::FontCustomPlatformData::fontPlatformData):
+        * platform/graphics/win/FontPlatformDataCGWin.cpp:
+        (WebCore::FontPlatformData::FontPlatformData):
+        * platform/graphics/win/FontPlatformDataCairoWin.cpp:
+        (WebCore::FontPlatformData::FontPlatformData):
+        * platform/graphics/win/FontPlatformDataWin.cpp:
+        (WebCore::FontPlatformData::FontPlatformData):
+        * platform/graphics/win/SharedGDIObject.h:
+        (WebCore::SharedGDIObject::create):
+        (WebCore::SharedGDIObject::SharedGDIObject):
+        * platform/graphics/win/SimpleFontDataWin.cpp:
+        (WebCore::Font::platformCreateScaledFont):
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (WebVideoFullscreenInterfaceAVKit::preparedToReturnToInline):
+        * platform/mac/HIDGamepadProvider.cpp:
+        (WebCore::HIDGamepadProvider::deviceAdded):
+        * platform/mac/ThemeMac.mm:
+        (WebCore::ThemeMac::drawCellOrFocusRingWithViewIntoContext):
+        * platform/mediastream/MediaStreamPrivate.cpp:
+        (WebCore::MediaStreamPrivate::create):
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+        (WebCore::MediaStreamTrackPrivate::create):
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::currentFrameImage):
+        * platform/network/BlobData.h:
+        (WebCore::RawData::create):
+        (WebCore::RawData::RawData):
+        * platform/network/BlobPart.h:
+        (WebCore::BlobPart::BlobPart):
+        (WebCore::BlobPart::moveData):
+        * platform/network/DataURLDecoder.cpp:
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::dispatch):
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::DecodingResultDispatcher):
+        (WebCore::DataURLDecoder::DecodingResultDispatcher::timerFired):
+        (WebCore::DataURLDecoder::createDecodeTask):
+        (WebCore::DataURLDecoder::decode):
+        * platform/network/HTTPHeaderMap.cpp:
+        (WebCore::HTTPHeaderMap::adopt):
+        * platform/network/NetworkStateNotifier.cpp:
+        (WebCore::NetworkStateNotifier::addNetworkStateChangeListener):
+        * platform/network/ResourceHandle.h:
+        (WebCore::ResourceHandle::setQuickLookHandle):
+        * platform/network/ResourceRequestBase.cpp:
+        (WebCore::ResourceRequestBase::adopt):
+        (WebCore::ResourceRequestBase::copyData):
+        (WebCore::ResourceRequestBase::setHTTPHeaderFields):
+        * platform/network/ResourceResponseBase.cpp:
+        (WebCore::ResourceResponseBase::adopt):
+        (WebCore::ResourceResponseBase::copyData):
+        * platform/network/cf/FormDataStreamCFNet.cpp:
+        (WebCore::advanceCurrentStream):
+        * platform/network/cf/ResourceHandleCFNet.cpp:
+        (WebCore::ResourceHandle::releaseConnectionForDownload):
+        * platform/network/curl/CurlCacheManager.cpp:
+        (WebCore::CurlCacheManager::loadIndex):
+        (WebCore::CurlCacheManager::didReceiveResponse):
+        * platform/network/curl/SocketStreamHandle.h:
+        (WebCore::SocketStreamHandle::SocketData::SocketData):
+        * platform/network/curl/SocketStreamHandleCurl.cpp:
+        (WebCore::SocketStreamHandle::platformSend):
+        (WebCore::SocketStreamHandle::readData):
+        (WebCore::SocketStreamHandle::sendData):
+        (WebCore::SocketStreamHandle::didReceiveData):
+        (WebCore::SocketStreamHandle::createCopy):
+        * platform/network/soup/NetworkStorageSessionSoup.cpp:
+        (WebCore::NetworkStorageSession::NetworkStorageSession):
+        (WebCore::NetworkStorageSession::setSoupNetworkSession):
+        * platform/text/LocaleICU.cpp:
+        (WebCore::LocaleICU::createLabelVector):
+        (WebCore::createFallbackMonthLabels):
+        (WebCore::createFallbackAMPMLabels):
+        * platform/win/WCDataObject.cpp:
+        (WebCore::WCDataObject::SetData):
+        * plugins/DOMMimeType.cpp:
+        (WebCore::DOMMimeType::DOMMimeType):
+        * plugins/DOMMimeType.h:
+        (WebCore::DOMMimeType::create):
+        * plugins/DOMPlugin.cpp:
+        (WebCore::DOMPlugin::DOMPlugin):
+        * plugins/DOMPlugin.h:
+        (WebCore::DOMPlugin::create):
+        * plugins/PluginData.cpp:
+        (WebCore::PluginData::publiclyVisiblePlugins):
+        * rendering/ClipPathOperation.h:
+        * rendering/FloatingObjects.cpp:
+        (WebCore::FloatingObjects::moveAllToFloatInfoMap):
+        (WebCore::FloatingObjects::add):
+        * rendering/LayoutState.cpp:
+        (WebCore::LayoutState::LayoutState):
+        * rendering/RenderAttachment.cpp:
+        (WebCore::RenderAttachment::RenderAttachment):
+        * rendering/RenderBlock.cpp:
+        (WebCore::OverflowEventDispatcher::~OverflowEventDispatcher):
+        (WebCore::RenderBlock::RenderBlock):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::RenderBlockFlow):
+        (WebCore::RenderBlockFlow::layoutLineGridBox):
+        (WebCore::RenderBlockFlow::insertFloatingObject):
+        * rendering/RenderBlockFlow.h:
+        (WebCore::RenderBlockFlow::setLineGridBox):
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::createAndAppendRootInlineBox):
+        (WebCore::constructBidiRunsForSegment):
+        (WebCore::RenderBlockFlow::linkToEndLineIfNeeded):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::RenderBox):
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::RenderBoxModelObject):
+        (WebCore::RenderBoxModelObject::paintFillLayerExtended):
+        * rendering/RenderButton.cpp:
+        (WebCore::RenderButton::RenderButton):
+        * rendering/RenderDeprecatedFlexibleBox.cpp:
+        (WebCore::RenderDeprecatedFlexibleBox::RenderDeprecatedFlexibleBox):
+        * rendering/RenderDetailsMarker.cpp:
+        (WebCore::RenderDetailsMarker::RenderDetailsMarker):
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::RenderElement):
+        (WebCore::RenderElement::createFor):
+        (WebCore::RenderElement::setStyle):
+        (WebCore::RenderElement::propagateStyleToAnonymousChildren):
+        * rendering/RenderElement.h:
+        (WebCore::RenderElement::setStyleInternal):
+        (WebCore::RenderElement::setAnimatableStyle):
+        * rendering/RenderEmbeddedObject.cpp:
+        (WebCore::RenderEmbeddedObject::RenderEmbeddedObject):
+        (WebCore::RenderEmbeddedObject::createForApplet):
+        * rendering/RenderFieldset.cpp:
+        (WebCore::RenderFieldset::RenderFieldset):
+        * rendering/RenderFileUploadControl.cpp:
+        (WebCore::RenderFileUploadControl::RenderFileUploadControl):
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::RenderFlexibleBox):
+        * rendering/RenderFlowThread.cpp:
+        (WebCore::RenderFlowThread::RenderFlowThread):
+        * rendering/RenderFrame.cpp:
+        (WebCore::RenderFrame::RenderFrame):
+        * rendering/RenderFrameBase.cpp:
+        (WebCore::RenderFrameBase::RenderFrameBase):
+        * rendering/RenderFrameSet.cpp:
+        (WebCore::RenderFrameSet::RenderFrameSet):
+        * rendering/RenderFullScreen.cpp:
+        (WebCore::RenderFullScreen::RenderFullScreen):
+        (WebCore::RenderFullScreen::createPlaceholder):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::RenderGrid):
+        (WebCore::RenderGrid::computeFlexFactorUnitSize):
+        * rendering/RenderHTMLCanvas.cpp:
+        (WebCore::RenderHTMLCanvas::RenderHTMLCanvas):
+        * rendering/RenderIFrame.cpp:
+        (WebCore::RenderIFrame::RenderIFrame):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::RenderImage):
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::RenderInline):
+        (WebCore::updateStyleOfAnonymousBlockContinuations):
+        (WebCore::RenderInline::addChildIgnoringContinuation):
+        (WebCore::RenderInline::splitInlines):
+        (WebCore::RenderInline::createAndAppendInlineFlowBox):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::registerAllViewportConstrainedLayers):
+        * rendering/RenderLayerModelObject.cpp:
+        (WebCore::RenderLayerModelObject::RenderLayerModelObject):
+        * rendering/RenderLineBreak.cpp:
+        (WebCore::RenderLineBreak::RenderLineBreak):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::RenderListBox):
+        * rendering/RenderListItem.cpp:
+        (WebCore::RenderListItem::RenderListItem):
+        (WebCore::RenderListItem::styleDidChange):
+        * rendering/RenderListMarker.cpp:
+        (WebCore::RenderListMarker::RenderListMarker):
+        * rendering/RenderMedia.cpp:
+        (WebCore::RenderMedia::RenderMedia):
+        * rendering/RenderMediaControlElements.cpp:
+        (WebCore::RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer):
+        (WebCore::RenderMediaControlTimelineContainer::RenderMediaControlTimelineContainer):
+        (WebCore::RenderTextTrackContainerElement::RenderTextTrackContainerElement):
+        * rendering/RenderMenuList.cpp:
+        (WebCore::RenderMenuList::RenderMenuList):
+        * rendering/RenderMeter.cpp:
+        (WebCore::RenderMeter::RenderMeter):
+        * rendering/RenderMultiColumnFlowThread.cpp:
+        (WebCore::RenderMultiColumnFlowThread::RenderMultiColumnFlowThread):
+        * rendering/RenderMultiColumnSet.cpp:
+        (WebCore::RenderMultiColumnSet::RenderMultiColumnSet):
+        * rendering/RenderMultiColumnSpannerPlaceholder.cpp:
+        (WebCore::RenderMultiColumnSpannerPlaceholder::RenderMultiColumnSpannerPlaceholder):
+        * rendering/RenderNamedFlowFragment.cpp:
+        (WebCore::RenderNamedFlowFragment::RenderNamedFlowFragment):
+        * rendering/RenderNamedFlowThread.cpp:
+        (WebCore::RenderNamedFlowThread::RenderNamedFlowThread):
+        (WebCore::RenderNamedFlowThread::updateWritingMode):
+        * rendering/RenderProgress.cpp:
+        (WebCore::RenderProgress::RenderProgress):
+        * rendering/RenderPtr.h:
+        * rendering/RenderQuote.cpp:
+        (WebCore::RenderQuote::RenderQuote):
+        * rendering/RenderRegion.cpp:
+        (WebCore::RenderRegion::RenderRegion):
+        * rendering/RenderRegionSet.cpp:
+        (WebCore::RenderRegionSet::RenderRegionSet):
+        * rendering/RenderReplaced.cpp:
+        (WebCore::RenderReplaced::RenderReplaced):
+        * rendering/RenderReplica.cpp:
+        (WebCore::RenderReplica::RenderReplica):
+        * rendering/RenderRuby.cpp:
+        (WebCore::RenderRubyAsInline::RenderRubyAsInline):
+        (WebCore::RenderRubyAsBlock::RenderRubyAsBlock):
+        * rendering/RenderRubyBase.cpp:
+        (WebCore::RenderRubyBase::RenderRubyBase):
+        * rendering/RenderRubyRun.cpp:
+        (WebCore::RenderRubyRun::RenderRubyRun):
+        (WebCore::RenderRubyRun::createRubyBase):
+        * rendering/RenderRubyText.cpp:
+        (WebCore::RenderRubyText::RenderRubyText):
+        * rendering/RenderScrollbarPart.cpp:
+        (WebCore::RenderScrollbarPart::RenderScrollbarPart):
+        * rendering/RenderSearchField.cpp:
+        (WebCore::RenderSearchField::RenderSearchField):
+        (WebCore::RenderSearchField::updateCancelButtonVisibility):
+        * rendering/RenderSlider.cpp:
+        (WebCore::RenderSlider::RenderSlider):
+        * rendering/RenderSnapshottedPlugIn.cpp:
+        (WebCore::RenderSnapshottedPlugIn::RenderSnapshottedPlugIn):
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::RenderTable):
+        * rendering/RenderTableCaption.cpp:
+        (WebCore::RenderTableCaption::RenderTableCaption):
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::RenderTableCell):
+        * rendering/RenderTableCol.cpp:
+        (WebCore::RenderTableCol::RenderTableCol):
+        * rendering/RenderTableRow.cpp:
+        (WebCore::RenderTableRow::RenderTableRow):
+        * rendering/RenderTableSection.cpp:
+        (WebCore::RenderTableSection::RenderTableSection):
+        * rendering/RenderTextControl.cpp:
+        (WebCore::RenderTextControl::RenderTextControl):
+        * rendering/RenderTextControl.h:
+        * rendering/RenderTextControlMultiLine.cpp:
+        (WebCore::RenderTextControlMultiLine::RenderTextControlMultiLine):
+        * rendering/RenderTextControlSingleLine.cpp:
+        (WebCore::RenderTextControlSingleLine::RenderTextControlSingleLine):
+        * rendering/RenderTextControlSingleLine.h:
+        * rendering/RenderThemeEfl.cpp:
+        (WebCore::RenderThemeEfl::getThemePartFromCache):
+        (WebCore::RenderThemeEfl::loadTheme):
+        * rendering/RenderThemeMac.mm:
+        (WebCore::RenderThemeMac::paintProgressBar):
+        * rendering/RenderVTTCue.cpp:
+        (WebCore::RenderVTTCue::RenderVTTCue):
+        * rendering/RenderVideo.cpp:
+        (WebCore::RenderVideo::RenderVideo):
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::RenderView):
+        (WebCore::RenderView::updateSelectionForSubtrees):
+        (WebCore::RenderView::applySubtreeSelection):
+        * rendering/RenderView.h:
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::RenderWidget):
+        * rendering/RootInlineBox.cpp:
+        (WebCore::RootInlineBox::placeEllipsis):
+        * rendering/mathml/RenderMathMLBlock.cpp:
+        (WebCore::RenderMathMLBlock::RenderMathMLBlock):
+        * rendering/mathml/RenderMathMLBlock.h:
+        * rendering/mathml/RenderMathMLFenced.cpp:
+        (WebCore::RenderMathMLFenced::RenderMathMLFenced):
+        * rendering/mathml/RenderMathMLFraction.cpp:
+        (WebCore::RenderMathMLFraction::RenderMathMLFraction):
+        * rendering/mathml/RenderMathMLMath.cpp:
+        (WebCore::RenderMathMLMath::RenderMathMLMath):
+        * rendering/mathml/RenderMathMLMenclose.cpp:
+        (WebCore::RenderMathMLMenclose::RenderMathMLMenclose):
+        * rendering/mathml/RenderMathMLOperator.cpp:
+        (WebCore::RenderMathMLOperator::RenderMathMLOperator):
+        (WebCore::RenderMathMLOperator::updateStyle):
+        * rendering/mathml/RenderMathMLRadicalOperator.cpp:
+        (WebCore::RenderMathMLRadicalOperator::RenderMathMLRadicalOperator):
+        * rendering/mathml/RenderMathMLRoot.cpp:
+        (WebCore::RenderMathMLRoot::RenderMathMLRoot):
+        (WebCore::RenderMathMLRoot::updateStyle):
+        * rendering/mathml/RenderMathMLRoot.h:
+        * rendering/mathml/RenderMathMLRow.cpp:
+        (WebCore::RenderMathMLRow::RenderMathMLRow):
+        * rendering/mathml/RenderMathMLScripts.cpp:
+        (WebCore::RenderMathMLScripts::RenderMathMLScripts):
+        * rendering/mathml/RenderMathMLScripts.h:
+        * rendering/mathml/RenderMathMLSpace.cpp:
+        (WebCore::RenderMathMLSpace::RenderMathMLSpace):
+        * rendering/mathml/RenderMathMLSquareRoot.cpp:
+        (WebCore::RenderMathMLSquareRoot::RenderMathMLSquareRoot):
+        * rendering/mathml/RenderMathMLToken.cpp:
+        (WebCore::RenderMathMLToken::RenderMathMLToken):
+        (WebCore::RenderMathMLToken::updateStyle):
+        * rendering/mathml/RenderMathMLUnderOver.cpp:
+        (WebCore::RenderMathMLUnderOver::RenderMathMLUnderOver):
+        * rendering/shapes/PolygonShape.h:
+        (WebCore::PolygonShape::PolygonShape):
+        * rendering/shapes/RasterShape.h:
+        * rendering/shapes/Shape.cpp:
+        (WebCore::createPolygonShape):
+        (WebCore::Shape::createShape):
+        (WebCore::Shape::createRasterShape):
+        (WebCore::Shape::createBoxShape):
+        * rendering/style/BasicShapes.cpp:
+        (WebCore::BasicShapeCenterCoordinate::updateComputedLength):
+        (WebCore::BasicShapeCircle::blend):
+        (WebCore::BasicShapeEllipse::blend):
+        (WebCore::BasicShapePolygon::blend):
+        (WebCore::BasicShapePath::BasicShapePath):
+        (WebCore::BasicShapePath::blend):
+        (WebCore::BasicShapeInset::blend):
+        * rendering/style/BasicShapes.h:
+        * rendering/style/ContentData.cpp:
+        (WebCore::ContentData::clone):
+        (WebCore::ImageContentData::createContentRenderer):
+        (WebCore::TextContentData::createContentRenderer):
+        (WebCore::QuoteContentData::createContentRenderer):
+        * rendering/style/ContentData.h:
+        (WebCore::ContentData::setNext):
+        * rendering/style/DataRef.h:
+        (WebCore::DataRef::DataRef):
+        * rendering/style/FillLayer.cpp:
+        (WebCore::FillLayer::~FillLayer):
+        * rendering/style/FillLayer.h:
+        (WebCore::FillLayer::setXPosition):
+        (WebCore::FillLayer::setYPosition):
+        (WebCore::FillLayer::setNext):
+        * rendering/style/NinePieceImage.cpp:
+        (WebCore::NinePieceImage::NinePieceImage):
+        * rendering/style/NinePieceImage.h:
+        (WebCore::NinePieceImage::setImageSlices):
+        (WebCore::NinePieceImage::setBorderSlices):
+        (WebCore::NinePieceImage::setOutset):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::setWillChange):
+        (WebCore::RenderStyle::appendContent):
+        (WebCore::RenderStyle::setContent):
+        (WebCore::RenderStyle::setTextShadow):
+        (WebCore::RenderStyle::setBoxShadow):
+        (WebCore::RenderStyle::setWordSpacing):
+        (WebCore::RenderStyle::setScrollSnapPointsX):
+        (WebCore::RenderStyle::setScrollSnapPointsY):
+        (WebCore::RenderStyle::setScrollSnapDestination):
+        (WebCore::RenderStyle::setScrollSnapCoordinates):
+        * rendering/style/RenderStyle.h:
+        * rendering/style/SVGRenderStyle.h:
+        (WebCore::SVGRenderStyle::setShadow):
+        * rendering/style/ShadowData.h:
+        (WebCore::ShadowData::setNext):
+        * rendering/style/StyleGeneratedImage.cpp:
+        (WebCore::StyleGeneratedImage::StyleGeneratedImage):
+        * rendering/style/StyleGeneratedImage.h:
+        * rendering/style/StyleReflection.h:
+        (WebCore::StyleReflection::setOffset):
+        * rendering/svg/RenderSVGBlock.cpp:
+        (WebCore::RenderSVGBlock::RenderSVGBlock):
+        * rendering/svg/RenderSVGContainer.cpp:
+        (WebCore::RenderSVGContainer::RenderSVGContainer):
+        * rendering/svg/RenderSVGEllipse.cpp:
+        (WebCore::RenderSVGEllipse::RenderSVGEllipse):
+        * rendering/svg/RenderSVGForeignObject.cpp:
+        (WebCore::RenderSVGForeignObject::RenderSVGForeignObject):
+        * rendering/svg/RenderSVGGradientStop.cpp:
+        (WebCore::RenderSVGGradientStop::RenderSVGGradientStop):
+        * rendering/svg/RenderSVGHiddenContainer.cpp:
+        (WebCore::RenderSVGHiddenContainer::RenderSVGHiddenContainer):
+        * rendering/svg/RenderSVGImage.cpp:
+        (WebCore::RenderSVGImage::RenderSVGImage):
+        * rendering/svg/RenderSVGInline.cpp:
+        (WebCore::RenderSVGInline::RenderSVGInline):
+        (WebCore::RenderSVGInline::createInlineFlowBox):
+        * rendering/svg/RenderSVGInlineText.cpp:
+        (WebCore::RenderSVGInlineText::createTextBox):
+        * rendering/svg/RenderSVGModelObject.cpp:
+        (WebCore::RenderSVGModelObject::RenderSVGModelObject):
+        * rendering/svg/RenderSVGPath.cpp:
+        (WebCore::RenderSVGPath::RenderSVGPath):
+        * rendering/svg/RenderSVGRect.cpp:
+        (WebCore::RenderSVGRect::RenderSVGRect):
+        * rendering/svg/RenderSVGResourceClipper.cpp:
+        (WebCore::RenderSVGResourceClipper::RenderSVGResourceClipper):
+        * rendering/svg/RenderSVGResourceContainer.cpp:
+        (WebCore::RenderSVGResourceContainer::RenderSVGResourceContainer):
+        * rendering/svg/RenderSVGResourceFilter.cpp:
+        (WebCore::RenderSVGResourceFilter::RenderSVGResourceFilter):
+        (WebCore::RenderSVGResourceFilter::buildPrimitives):
+        (WebCore::RenderSVGResourceFilter::applyResource):
+        (WebCore::RenderSVGResourceFilter::postApplyResource):
+        * rendering/svg/RenderSVGResourceFilterPrimitive.cpp:
+        (WebCore::RenderSVGResourceFilterPrimitive::RenderSVGResourceFilterPrimitive):
+        * rendering/svg/RenderSVGResourceGradient.cpp:
+        (WebCore::RenderSVGResourceGradient::RenderSVGResourceGradient):
+        (WebCore::createMaskAndSwapContextForTextGradient):
+        * rendering/svg/RenderSVGResourceLinearGradient.cpp:
+        (WebCore::RenderSVGResourceLinearGradient::RenderSVGResourceLinearGradient):
+        * rendering/svg/RenderSVGResourceMarker.cpp:
+        (WebCore::RenderSVGResourceMarker::RenderSVGResourceMarker):
+        * rendering/svg/RenderSVGResourceMasker.cpp:
+        (WebCore::RenderSVGResourceMasker::RenderSVGResourceMasker):
+        * rendering/svg/RenderSVGResourcePattern.cpp:
+        (WebCore::RenderSVGResourcePattern::RenderSVGResourcePattern):
+        (WebCore::RenderSVGResourcePattern::buildPattern):
+        * rendering/svg/RenderSVGResourceRadialGradient.cpp:
+        (WebCore::RenderSVGResourceRadialGradient::RenderSVGResourceRadialGradient):
+        * rendering/svg/RenderSVGRoot.cpp:
+        (WebCore::RenderSVGRoot::RenderSVGRoot):
+        * rendering/svg/RenderSVGShape.cpp:
+        (WebCore::RenderSVGShape::RenderSVGShape):
+        * rendering/svg/RenderSVGTSpan.h:
+        * rendering/svg/RenderSVGText.cpp:
+        (WebCore::RenderSVGText::RenderSVGText):
+        (WebCore::RenderSVGText::createRootInlineBox):
+        * rendering/svg/RenderSVGTextPath.cpp:
+        (WebCore::RenderSVGTextPath::RenderSVGTextPath):
+        * rendering/svg/RenderSVGTransformableContainer.cpp:
+        (WebCore::RenderSVGTransformableContainer::RenderSVGTransformableContainer):
+        * rendering/svg/RenderSVGViewportContainer.cpp:
+        (WebCore::RenderSVGViewportContainer::RenderSVGViewportContainer):
+        * rendering/svg/SVGResourcesCache.cpp:
+        (WebCore::SVGResourcesCache::addResourcesFromRenderer):
+        * replay/CapturingInputCursor.cpp:
+        (WebCore::CapturingInputCursor::CapturingInputCursor):
+        (WebCore::CapturingInputCursor::create):
+        (WebCore::CapturingInputCursor::storeInput):
+        * replay/FunctorInputCursor.h:
+        (WebCore::FunctorInputCursor::FunctorInputCursor):
+        * replay/MemoizedDOMResult.cpp:
+        (JSC::InputTraits<MemoizedDOMResultBase>::decode):
+        * replay/ReplayController.cpp:
+        (WebCore::ReplayController::createSegment):
+        * replay/ReplayInputCreationMethods.cpp:
+        (WebCore::InitialNavigation::createFromPage):
+        * replay/ReplaySession.cpp:
+        (WebCore::ReplaySession::appendSegment):
+        (WebCore::ReplaySession::insertSegment):
+        * replay/ReplayingInputCursor.cpp:
+        (WebCore::ReplayingInputCursor::ReplayingInputCursor):
+        (WebCore::ReplayingInputCursor::create):
+        * replay/SegmentedInputStorage.cpp:
+        (WebCore::SegmentedInputStorage::store):
+        * replay/SerializationMethods.cpp:
+        (JSC::EncodingTraits<NondeterministicInputBase>::decodeValue):
+        * replay/UserInputBridge.cpp:
+        (WebCore::UserInputBridge::handleMousePressEvent):
+        (WebCore::UserInputBridge::handleMouseReleaseEvent):
+        (WebCore::UserInputBridge::handleMouseMoveEvent):
+        (WebCore::UserInputBridge::handleMouseMoveOnScrollbarEvent):
+        (WebCore::UserInputBridge::handleKeyEvent):
+        (WebCore::UserInputBridge::handleWheelEvent):
+        * storage/Storage.cpp:
+        (WebCore::Storage::create):
+        (WebCore::Storage::Storage):
+        * style/StyleResolveForDocument.cpp:
+        (WebCore::Style::resolveForDocument):
+        * style/StyleResolveTree.cpp:
+        (WebCore::Style::createRendererIfNeeded):
+        (WebCore::Style::setBeforeOrAfterPseudoElement):
+        (WebCore::Style::resolveTree):
+        * svg/SVGAElement.cpp:
+        (WebCore::SVGAElement::createElementRenderer):
+        * svg/SVGAltGlyphElement.cpp:
+        (WebCore::SVGAltGlyphElement::createElementRenderer):
+        * svg/SVGAnimatedPath.cpp:
+        (WebCore::SVGAnimatedPathAnimator::constructFromString):
+        (WebCore::SVGAnimatedPathAnimator::startAnimValAnimation):
+        * svg/SVGAnimatedTypeAnimator.cpp:
+        (WebCore::SVGAnimatedTypeAnimator::findAnimatedPropertiesForAttributeName):
+        * svg/SVGCircleElement.cpp:
+        (WebCore::SVGCircleElement::createElementRenderer):
+        * svg/SVGClipPathElement.cpp:
+        (WebCore::SVGClipPathElement::createElementRenderer):
+        * svg/SVGDefsElement.cpp:
+        (WebCore::SVGDefsElement::createElementRenderer):
+        * svg/SVGDocumentExtensions.cpp:
+        (WebCore::SVGDocumentExtensions::markPendingResourcesForRemoval):
+        (WebCore::SVGDocumentExtensions::addElementReferencingTarget):
+        (WebCore::SVGDocumentExtensions::rebuildElements):
+        * svg/SVGEllipseElement.cpp:
+        (WebCore::SVGEllipseElement::createElementRenderer):
+        * svg/SVGFilterElement.cpp:
+        (WebCore::SVGFilterElement::createElementRenderer):
+        * svg/SVGFilterPrimitiveStandardAttributes.cpp:
+        (WebCore::SVGFilterPrimitiveStandardAttributes::createElementRenderer):
+        * svg/SVGFontElement.cpp:
+        (WebCore::SVGKerningMap::insert):
+        * svg/SVGForeignObjectElement.cpp:
+        (WebCore::SVGForeignObjectElement::createElementRenderer):
+        * svg/SVGGElement.cpp:
+        (WebCore::SVGGElement::createElementRenderer):
+        * svg/SVGGraphicsElement.cpp:
+        (WebCore::SVGGraphicsElement::createElementRenderer):
+        * svg/SVGImageElement.cpp:
+        (WebCore::SVGImageElement::createElementRenderer):
+        * svg/SVGLinearGradientElement.cpp:
+        (WebCore::SVGLinearGradientElement::createElementRenderer):
+        * svg/SVGMarkerElement.cpp:
+        (WebCore::SVGMarkerElement::createElementRenderer):
+        * svg/SVGMaskElement.cpp:
+        (WebCore::SVGMaskElement::createElementRenderer):
+        * svg/SVGPathElement.cpp:
+        (WebCore::SVGPathElement::createElementRenderer):
+        * svg/SVGPathUtilities.cpp:
+        (WebCore::appendSVGPathByteStreamFromSVGPathSeg):
+        * svg/SVGPatternElement.cpp:
+        (WebCore::SVGPatternElement::createElementRenderer):
+        * svg/SVGRadialGradientElement.cpp:
+        (WebCore::SVGRadialGradientElement::createElementRenderer):
+        * svg/SVGRectElement.cpp:
+        (WebCore::SVGRectElement::createElementRenderer):
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::createElementRenderer):
+        * svg/SVGStopElement.cpp:
+        (WebCore::SVGStopElement::createElementRenderer):
+        * svg/SVGSwitchElement.cpp:
+        (WebCore::SVGSwitchElement::createElementRenderer):
+        * svg/SVGSymbolElement.cpp:
+        (WebCore::SVGSymbolElement::createElementRenderer):
+        * svg/SVGTRefElement.cpp:
+        (WebCore::SVGTRefTargetEventListener::attach):
+        (WebCore::SVGTRefElement::createElementRenderer):
+        * svg/SVGTSpanElement.cpp:
+        (WebCore::SVGTSpanElement::createElementRenderer):
+        * svg/SVGTextElement.cpp:
+        (WebCore::SVGTextElement::createElementRenderer):
+        * svg/SVGTextPathElement.cpp:
+        (WebCore::SVGTextPathElement::createElementRenderer):
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::releaseResult):
+        (WebCore::SVGToOTFFontConverter::appendKERNSubtable):
+        (WebCore::SVGToOTFFontConverter::processGlyphElement):
+        * svg/SVGUseElement.cpp:
+        (WebCore::SVGUseElement::createElementRenderer):
+        (WebCore::SVGUseElement::cloneTarget):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::~SVGImage):
+        (WebCore::SVGImage::drawPatternForContainer):
+        * testing/Internals.cpp:
+        (WebCore::Internals::insertAuthorCSS):
+        (WebCore::Internals::insertUserCSS):
+        (WebCore::Internals::queueMicroTask):
+        * workers/DedicatedWorkerGlobalScope.cpp:
+        (WebCore::DedicatedWorkerGlobalScope::postMessage):
+        * workers/Worker.cpp:
+        (WebCore::Worker::create):
+        (WebCore::Worker::postMessage):
+        * workers/WorkerEventQueue.cpp:
+        (WebCore::WorkerEventQueue::EventDispatcher::EventDispatcher):
+        * workers/WorkerGlobalScope.cpp:
+        (WebCore::WorkerGlobalScope::postTask):
+        (WebCore::WorkerGlobalScope::setTimeout):
+        (WebCore::WorkerGlobalScope::setInterval):
+        (WebCore::WorkerGlobalScope::importScripts):
+        (WebCore::WorkerGlobalScope::addMessage):
+        (WebCore::WorkerGlobalScope::addMessageToWorkerConsole):
+        * workers/WorkerMessagingProxy.cpp:
+        (WebCore::WorkerMessagingProxy::postMessageToWorkerObject):
+        (WebCore::WorkerMessagingProxy::postMessageToWorkerGlobalScope):
+        (WebCore::WorkerMessagingProxy::postTaskToLoader):
+        (WebCore::WorkerMessagingProxy::postTaskForModeToWorkerGlobalScope):
+        (WebCore::WorkerMessagingProxy::workerThreadCreated):
+        * workers/WorkerRunLoop.cpp:
+        (WebCore::WorkerRunLoop::postTask):
+        (WebCore::WorkerRunLoop::postTaskAndTerminate):
+        (WebCore::WorkerRunLoop::postTaskForMode):
+        (WebCore::WorkerRunLoop::Task::Task):
+        * xml/DOMParser.cpp:
+        (WebCore::DOMParser::parseFromString):
+        * xml/NativeXPathNSResolver.cpp:
+        (WebCore::NativeXPathNSResolver::NativeXPathNSResolver):
+        * xml/NativeXPathNSResolver.h:
+        (WebCore::NativeXPathNSResolver::create):
+        * xml/XMLErrors.cpp:
+        (WebCore::XMLErrors::insertErrorMessageBlock):
+        * xml/XMLHttpRequest.cpp:
+        (WebCore::XMLHttpRequest::responseBlob):
+        * xml/XMLHttpRequestProgressEventThrottle.cpp:
+        (WebCore::XMLHttpRequestProgressEventThrottle::flushProgressEvent):
+        (WebCore::XMLHttpRequestProgressEventThrottle::dispatchDeferredEvents):
+        * xml/XMLTreeViewer.cpp:
+        (WebCore::XMLTreeViewer::transformDocumentToTreeView):
+        * xml/XPathExpression.cpp:
+        (WebCore::XPathExpression::XPathExpression):
+        (WebCore::XPathExpression::createExpression):
+        * xml/XPathExpressionNode.cpp:
+        (WebCore::XPath::Expression::setSubexpressions):
+        * xml/XPathExpressionNode.h:
+        (WebCore::XPath::Expression::addSubexpression):
+        * xml/XPathFunctions.cpp:
+        (WebCore::XPath::Function::setArguments):
+        (WebCore::XPath::FunId::evaluate):
+        (WebCore::XPath::Function::create):
+        * xml/XPathGrammar.y:
+        * xml/XPathNodeSet.cpp:
+        (WebCore::XPath::NodeSet::sort):
+        (WebCore::XPath::NodeSet::traversalSort):
+        * xml/XPathNodeSet.h:
+        (WebCore::XPath::NodeSet::NodeSet):
+        (WebCore::XPath::NodeSet::append):
+        * xml/XPathParser.cpp:
+        (WebCore::XPath::Parser::parseStatement):
+        * xml/XPathParser.h:
+        (WebCore::XPath::Parser::setParseResult):
+        * xml/XPathPath.cpp:
+        (WebCore::XPath::Filter::Filter):
+        (WebCore::XPath::Filter::evaluate):
+        (WebCore::XPath::LocationPath::evaluate):
+        (WebCore::XPath::LocationPath::appendStep):
+        (WebCore::XPath::LocationPath::prependStep):
+        (WebCore::XPath::Path::Path):
+        * xml/XPathPredicate.cpp:
+        (WebCore::XPath::StringExpression::StringExpression):
+        (WebCore::XPath::Negative::Negative):
+        (WebCore::XPath::NumericOp::NumericOp):
+        (WebCore::XPath::EqTestOp::EqTestOp):
+        (WebCore::XPath::LogicalOp::LogicalOp):
+        (WebCore::XPath::Union::Union):
+        * xml/XPathStep.cpp:
+        (WebCore::XPath::Step::Step):
+        (WebCore::XPath::Step::optimize):
+        (WebCore::XPath::optimizeStepPair):
+        (WebCore::XPath::Step::evaluate):
+        * xml/XPathStep.h:
+        (WebCore::XPath::Step::NodeTest::NodeTest):
+        (WebCore::XPath::Step::NodeTest::operator=):
+        * xml/XPathValue.h:
+        (WebCore::XPath::Value::Value):
+        (WebCore::XPath::Value::Data::create):
+        (WebCore::XPath::Value::Data::Data):
+        * xml/XSLTProcessor.h:
+        (WebCore::XSLTProcessor::setXSLStyleSheet):
+        (WebCore::XSLTProcessor::importStylesheet):
+        * xml/parser/XMLDocumentParser.cpp:
+        (WebCore::XMLDocumentParser::append):
+        * xml/parser/XMLDocumentParserLibxml2.cpp:
+        (WebCore::PendingCallbacks::appendStartElementNSCallback):
+        (WebCore::PendingCallbacks::appendCharactersCallback):
+        (WebCore::PendingCallbacks::appendProcessingInstructionCallback):
+        (WebCore::PendingCallbacks::appendCDATABlockCallback):
+        (WebCore::PendingCallbacks::appendCommentCallback):
+        (WebCore::PendingCallbacks::appendInternalSubsetCallback):
+        (WebCore::PendingCallbacks::appendErrorCallback):
+        (WebCore::OffsetBuffer::OffsetBuffer):
+        (WebCore::openFunc):
+        (WebCore::XMLDocumentParser::cdataBlock):
+        (WebCore::XMLDocumentParser::comment):
+        (WebCore::parseAttributes):
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix naming in HistoryItem to refer to scrollPositions
+        https://bugs.webkit.org/show_bug.cgi?id=152646
+
+        Reviewed by Zalan Bujtas.
+
+        HistoryItem stores a scrollPosition, so call it that.
+
+        No behavior change.
+
+        * history/HistoryItem.cpp:
+        (WebCore::HistoryItem::HistoryItem):
+        (WebCore::HistoryItem::scrollPosition):
+        (WebCore::HistoryItem::setScrollPosition):
+        (WebCore::HistoryItem::clearScrollPosition):
+        (WebCore::HistoryItem::scrollPoint): Deleted.
+        (WebCore::HistoryItem::setScrollPoint): Deleted.
+        (WebCore::HistoryItem::clearScrollPoint): Deleted.
+        * history/HistoryItem.h:
+        * loader/HistoryController.cpp:
+        (WebCore::HistoryController::saveScrollPositionAndViewStateToItem):
+        (WebCore::HistoryController::clearScrollPositionAndViewState):
+        (WebCore::HistoryController::restoreScrollPositionAndViewState):
+        (WebCore::HistoryController::updateForClientRedirect):
+
+2016-01-01  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add support for toggling simple line layout from command line.
+        https://bugs.webkit.org/show_bug.cgi?id=152636
+
+        Reviewed by Simon Fraser.
+
+        No change in functionality.
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::canUseForWithReason):
+        (WebCore::SimpleLineLayout::toggleSimpleLineLayout):
+
+2016-01-01  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: storage/indexeddb/database-deletepending-flag.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=152600
+
+        Reviewed by Alex Christensen.
+
+        No new tests (At least one failing test now passes, and at least 2 crashing tests now timeout).
+
+        * Modules/indexeddb/server/IDBBackingStore.h:
+        
+        * Modules/indexeddb/server/MemoryIDBBackingStore.cpp:
+        (WebCore::IDBServer::MemoryIDBBackingStore::deleteBackingStore):
+        * Modules/indexeddb/server/MemoryIDBBackingStore.h:
+        
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::performCurrentDeleteOperation):
+        (WebCore::IDBServer::UniqueIDBDatabase::deleteBackingStore):
+        (WebCore::IDBServer::UniqueIDBDatabase::didDeleteBackingStore):
+        * Modules/indexeddb/server/UniqueIDBDatabase.h:
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix reload and programmatic scrolling in RTL documents
+        https://bugs.webkit.org/show_bug.cgi?id=152639
+
+        Reviewed by Zalan Bujtas.
+        
+        Reloading a left-scrolled RTL document would cause the content to appear
+        at an odd offset, and programmatic sideways scrolls in RTL documents also
+        jumped to the wrong location.
+        
+        Fix by resolving offset/position confusion in ScrollableArea::scrollPositionChanged()
+        and the scrolling tree.
+        
+        ScrollableArea::scrollPositionChanged() was erroneously passing a scrollPosition
+        to setScrollOffset(). 
+        
+        ScrollingTreeFrameScrollingNode* were confused about offsets and positions. It
+        turns out that the layer position is just -scrollPosition, but minimumScrollPosition()
+        and maximumScrollPosition() need fixing to return positions, not offsets.
+        
+        ScrollingTreeFrameScrollingNode::viewToContentsOffset() was also doing incorrect
+        math with scrollOrigin, which was detected by a failing test.
+        
+        Add more logging to the Scrolling channel.
+
+        Tests: fast/scrolling/programmatic-document-rtl-scroll.html
+               fast/scrolling/programmatic-document-rtl-scrollIntoView.html
+               fast/scrolling/scroll-position-on-reload-rtl.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::requestScrollPositionUpdate):
+        * page/scrolling/ScrollingTree.cpp:
+        (WebCore::ScrollingTree::shouldHandleWheelEventSynchronously):
+        * page/scrolling/ScrollingTreeFrameScrollingNode.cpp:
+        (WebCore::ScrollingTreeFrameScrollingNode::scrollBy):
+        (WebCore::ScrollingTreeFrameScrollingNode::viewToContentsOffset):
+        * page/scrolling/ScrollingTreeFrameScrollingNode.h:
+        * page/scrolling/ios/ScrollingTreeFrameScrollingNodeIOS.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::scrollPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::setScrollLayerPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::updateChildNodesAfterScroll):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::minimumScrollPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::maximumScrollPosition):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::immediateScrollBy):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::scrollPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::minimumScrollPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::maximumScrollPosition):
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::setScrollOffset):
+        (WebCore::ScrollView::scrollTo):
+        (WebCore::ScrollView::setScrollPosition):
+        (WebCore::ScrollView::updateScrollbars):
+        * platform/ScrollView.h:
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::scrollPositionChanged):
+        (WebCore::ScrollableArea::setScrollOffsetFromAnimation):
+        (WebCore::ScrollableArea::scrollPositionFromOffset):
+        (WebCore::ScrollableArea::scrollOffsetFromPosition):
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::scrollPositionFromOffset):
+        (WebCore::ScrollableArea::scrollOffsetFromPosition):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::setScrollOffset):
+        * rendering/RenderListBox.h:
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r194448): Scrolling overflow:scroll goes too far
+        https://bugs.webkit.org/show_bug.cgi?id=152645
+
+        Reviewed by Zalan Bujtas.
+        
+        Fix a bug introduced in r194448: use the scrollPosition, not the scrollOrigin
+        to compute the overhang amount.
+
+        Test: fast/scrolling/overflow-scroll-past-max.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::overhangAmount):
+
+2015-12-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebGL] Blacklisted OpenGL contexts are not safe to use
+        https://bugs.webkit.org/show_bug.cgi?id=152513
+        <rdar://problem/23127838>
+
+        Reviewed by Zalan Bujtas.
+
+        When the GPU has blacklisted an OpenGL context, it is not safe to use -- even to
+        attempt to release GL resources. Instead, our only correct behavior is to terminate
+        the WebProcess.
+
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::GraphicsContext3D::checkGPUStatusIfNecessary): If the context was lost
+        because the GPU blacklisted it, terminate the process.
+
+2016-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2016
+        https://bugs.webkit.org/show_bug.cgi?id=152531
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Info.plist:
+
 2015-12-31  Simon Fraser  <simon.fraser@apple.com>
 
         Change RenderLayer::scrollTo() to take a ScrollPosition

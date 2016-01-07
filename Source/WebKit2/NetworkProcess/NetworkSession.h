@@ -77,9 +77,16 @@ public:
     virtual ~NetworkSessionTaskClient() { }
 };
 
-class NetworkDataTask : public RefCounted<NetworkDataTask> {
+class NetworkDataTask {
     friend class NetworkSession;
 public:
+#if PLATFORM(COCOA)
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>&&);
+#else
+    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&);
+#endif
+
+    void suspend();
     void cancel();
     void resume();
 
@@ -88,17 +95,22 @@ public:
 
     ~NetworkDataTask();
 
-    NetworkSessionTaskClient* client() { return m_client; }
-    void clearClient() { m_client = nullptr; }
+    NetworkSessionTaskClient& client() { return m_client; }
 
+    DownloadID downloadID() { return m_downloadID; }
+    void setDownloadID(DownloadID downloadID)
+    {
+        ASSERT(!m_downloadID.downloadID());
+        ASSERT(downloadID.downloadID());
+        m_downloadID = downloadID;
+    }
+    
 private:
     NetworkSession& m_session;
-    NetworkSessionTaskClient* m_client;
+    NetworkSessionTaskClient& m_client;
+    DownloadID m_downloadID;
 #if PLATFORM(COCOA)
-    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, RetainPtr<NSURLSessionDataTask>&&);
     RetainPtr<NSURLSessionDataTask> m_task;
-#else
-    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&);
 #endif
 };
 
@@ -114,12 +126,15 @@ public:
 
     static NetworkSession& defaultSession();
     
-    Ref<NetworkDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
+    std::unique_ptr<NetworkDataTask> createDataTaskWithRequest(const WebCore::ResourceRequest&, NetworkSessionTaskClient&);
 
     NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier);
 
+    void addDownloadID(NetworkDataTask::TaskIdentifier, DownloadID);
+    DownloadID downloadID(NetworkDataTask::TaskIdentifier);
+    DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
+    
 private:
-    WebCore::SessionID m_sessionID;
     HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMap;
     HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
 #if PLATFORM(COCOA)

@@ -257,9 +257,9 @@ const AtomicString& HTMLImageElement::altText() const
 RenderPtr<RenderElement> HTMLImageElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
 {
     if (style.get().hasContent())
-        return RenderElement::createFor(*this, WTF::move(style));
+        return RenderElement::createFor(*this, WTFMove(style));
 
-    return createRenderer<RenderImage>(*this, WTF::move(style), nullptr, m_imageDevicePixelRatio);
+    return createRenderer<RenderImage>(*this, WTFMove(style), nullptr, m_imageDevicePixelRatio);
 }
 
 bool HTMLImageElement::canStartSelection() const
@@ -298,14 +298,14 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
     if (m_formSetByParser) {
         m_form = m_formSetByParser;
         m_formSetByParser = nullptr;
+        m_form->registerImgElement(this);
     }
 
-    if (!m_form)
+    if (!m_form) {
         m_form = HTMLFormElement::findClosestFormAncestor(*this);
-
-    if (m_form)
-        m_form->registerImgElement(this);
-
+        if (m_form)
+            m_form->registerImgElement(this);
+    }
     // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
     // in callbacks back to this node.
     Node::InsertionNotificationRequest insertNotificationRequest = HTMLElement::insertedInto(insertionPoint);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -127,7 +127,7 @@ public:
             // it in reverse.
             for (unsigned i = m_insts.size(); i--;) {
                 for (Inst& inst : m_insts[i])
-                    m_blockToBlock[block]->appendInst(WTF::move(inst));
+                    m_blockToBlock[block]->appendInst(WTFMove(inst));
             }
 
             // Make sure that the successors are set up correctly.
@@ -140,7 +140,7 @@ public:
 
         Air::InsertionSet insertionSet(m_code);
         for (Inst& inst : m_prologue)
-            insertionSet.insertInst(0, WTF::move(inst));
+            insertionSet.insertInst(0, WTFMove(inst));
         insertionSet.execute(m_code[0]);
     }
 
@@ -356,7 +356,7 @@ private:
         // work. We solve this by requiring a just-before-lowering phase that legalizes offsets.
         // FIXME: Implement such a legalization phase.
         // https://bugs.webkit.org/show_bug.cgi?id=152530
-        ASSERT(Arg::isValidAddrForm(offset));
+        ASSERT(Arg::isValidAddrForm(offset, width));
 
         auto fallback = [&] () -> Arg {
             return Arg::addr(tmp(address), offset);
@@ -1267,37 +1267,39 @@ private:
             }
         }
 
-        if (canCommitInternal && value->as<MemoryValue>()) {
-            // Handle things like Branch(Load8Z(value))
+        if (Arg::isValidImmForm(-1)) {
+            if (canCommitInternal && value->as<MemoryValue>()) {
+                // Handle things like Branch(Load8Z(value))
 
-            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
+                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8Z), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
+
+                if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
+                    commitInternal(value);
+                    return result;
+                }
             }
 
-            if (Inst result = tryTest(Arg::Width8, loadPromise(value, Load8S), Arg::imm(-1))) {
-                commitInternal(value);
+            if (Inst result = test(width, resCond, tmpPromise(value), Arg::imm(-1)))
                 return result;
-            }
-
-            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16Z), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
-
-            if (Inst result = tryTest(Arg::Width16, loadPromise(value, Load16S), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
-
-            if (Inst result = tryTest(width, loadPromise(value), Arg::imm(-1))) {
-                commitInternal(value);
-                return result;
-            }
         }
-
-        if (Inst result = test(width, resCond, tmpPromise(value), Arg::imm(-1)))
-            return result;
         
         // Sometimes this is the only form of test available. We prefer not to use this because
         // it's less canonical.
@@ -1710,6 +1712,12 @@ private:
             return;
         }
 
+        case Abs: {
+            RELEASE_ASSERT_WITH_MESSAGE(!isX86(), "Abs is not supported natively on x86. It must be replaced before generation.");
+            appendUnOp<Air::Oops, Air::Oops, AbsDouble, AbsFloat>(m_value->child(0));
+            return;
+        }
+
         case Ceil: {
             appendUnOp<Air::Oops, Air::Oops, CeilDouble, CeilFloat>(m_value->child(0));
             return;
@@ -1954,7 +1962,7 @@ private:
                     inst.args.append(arg);
             }
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
 
             switch (cCall->type()) {
             case Void:
@@ -2007,8 +2015,13 @@ private:
             }
             
             fillStackmap(inst, patchpointValue, 0);
+
+            for (unsigned i = patchpointValue->numGPScratchRegisters; i--;)
+                inst.args.append(m_code.newTmp(Arg::GP));
+            for (unsigned i = patchpointValue->numFPScratchRegisters; i--;)
+                inst.args.append(m_code.newTmp(Arg::FP));
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             m_insts.last().appendVector(after);
             return;
         }
@@ -2037,7 +2050,7 @@ private:
 
                 fillStackmap(inst, checkValue, 2);
 
-                m_insts.last().append(WTF::move(inst));
+                m_insts.last().append(WTFMove(inst));
                 return;
             }
 
@@ -2115,7 +2128,7 @@ private:
 
             fillStackmap(inst, checkValue, 2);
 
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             return;
         }
 
@@ -2131,7 +2144,7 @@ private:
             
             fillStackmap(inst, checkValue, 1);
             
-            m_insts.last().append(WTF::move(inst));
+            m_insts.last().append(WTFMove(inst));
             return;
         }
 
@@ -2170,17 +2183,31 @@ private:
 
         case Return: {
             Value* value = m_value->child(0);
-            Air::Opcode move;
-            Tmp dest;
-            if (isInt(value->type())) {
-                move = Move;
-                dest = Tmp(GPRInfo::returnValueGPR);
-            } else {
-                move = MoveDouble;
-                dest = Tmp(FPRInfo::returnValueFPR);
+            Tmp returnValueGPR = Tmp(GPRInfo::returnValueGPR);
+            Tmp returnValueFPR = Tmp(FPRInfo::returnValueFPR);
+            switch (value->type()) {
+            case Void:
+                // It's impossible for a void value to be used as a child. If we did want to have a
+                // void return, we'd introduce a different opcode, like ReturnVoid.
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            case Int32:
+                append(Move, immOrTmp(value), returnValueGPR);
+                append(Ret32, returnValueGPR);
+                break;
+            case Int64:
+                append(Move, immOrTmp(value), returnValueGPR);
+                append(Ret64, returnValueGPR);
+                break;
+            case Float:
+                append(MoveFloat, tmp(value), returnValueFPR);
+                append(RetFloat, returnValueFPR);
+                break;
+            case Double:
+                append(MoveDouble, tmp(value), returnValueFPR);
+                append(RetDouble, returnValueFPR);
+                break;
             }
-            append(move, immOrTmp(value), dest);
-            append(Ret);
             return;
         }
 

@@ -146,7 +146,7 @@ public:
 
     virtual bool isActive() const = 0;
     virtual int scrollSize(ScrollbarOrientation) const = 0;
-    virtual int scrollPosition(Scrollbar*) const = 0;
+    virtual int scrollOffset(ScrollbarOrientation) const = 0;
     WEBCORE_EXPORT virtual void invalidateScrollbar(Scrollbar*, const IntRect&);
     virtual bool isScrollCornerVisible() const = 0;
     virtual IntRect scrollCornerRect() const = 0;
@@ -188,10 +188,27 @@ public:
     virtual ScrollPosition minimumScrollPosition() const;
     virtual ScrollPosition maximumScrollPosition() const;
 
+    ScrollPosition constrainScrollPosition(const ScrollPosition& position) const
+    {
+        return position.constrainedBetween(minimumScrollPosition(), maximumScrollPosition());
+    }
+
     ScrollOffset maximumScrollOffset() const;
 
     WEBCORE_EXPORT ScrollPosition scrollPositionFromOffset(ScrollOffset) const;
     WEBCORE_EXPORT ScrollOffset scrollOffsetFromPosition(ScrollPosition) const;
+
+    template<typename PositionType, typename SizeType>
+    static PositionType scrollPositionFromOffset(PositionType offset, SizeType scrollOrigin)
+    {
+        return offset - scrollOrigin;
+    }
+
+    template<typename PositionType, typename SizeType>
+    static PositionType scrollOffsetFromPosition(PositionType position, SizeType scrollOrigin)
+    {
+        return position + scrollOrigin;
+    }
 
     WEBCORE_EXPORT virtual bool scrolledToTop() const;
     WEBCORE_EXPORT virtual bool scrolledToBottom() const;
@@ -249,7 +266,7 @@ public:
     virtual bool scrollAnimatorEnabled() const { return false; }
 
     // NOTE: Only called from Internals for testing.
-    WEBCORE_EXPORT void setScrollOffsetFromInternals(const IntPoint&);
+    WEBCORE_EXPORT void setScrollOffsetFromInternals(const ScrollOffset&);
 
     WEBCORE_EXPORT static LayoutPoint constrainScrollPositionForOverhang(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, int headerHeight, int footetHeight);
     LayoutPoint constrainScrollPositionForOverhang(const LayoutPoint& scrollPosition);
@@ -264,10 +281,10 @@ public:
     void serviceScrollAnimations();
 
 #if PLATFORM(IOS)
-    bool isHorizontalScrollerPinnedToMinimumPosition() const { return !horizontalScrollbar() || scrollPosition(horizontalScrollbar()) <= minimumScrollPosition().x(); }
-    bool isHorizontalScrollerPinnedToMaximumPosition() const { return !horizontalScrollbar() || scrollPosition(horizontalScrollbar()) >= maximumScrollPosition().x(); }
-    bool isVerticalScrollerPinnedToMinimumPosition() const { return !verticalScrollbar() || scrollPosition(verticalScrollbar()) <= minimumScrollPosition().y(); }
-    bool isVerticalScrollerPinnedToMaximumPosition() const { return !verticalScrollbar() || scrollPosition(verticalScrollbar()) >= maximumScrollPosition().y(); } 
+    bool isHorizontalScrollerPinnedToMinimumPosition() const { return !horizontalScrollbar() || scrollOffset(HorizontalScrollbar) <= 0; }
+    bool isHorizontalScrollerPinnedToMaximumPosition() const { return !horizontalScrollbar() || scrollOffset(HorizontalScrollbar) >= maximumScrollOffset().x(); }
+    bool isVerticalScrollerPinnedToMinimumPosition() const { return !verticalScrollbar() || scrollOffset(VerticalScrollbar) <= 0; }
+    bool isVerticalScrollerPinnedToMaximumPosition() const { return !verticalScrollbar() || scrollOffset(VerticalScrollbar) >= maximumScrollOffset().y(); }
 
     bool isPinnedInBothDirections(const IntSize&) const; 
     bool isPinnedHorizontallyInDirection(int horizontalScrollDelta) const; 
@@ -312,15 +329,15 @@ protected:
 
 private:
     WEBCORE_EXPORT virtual IntRect visibleContentRectInternal(VisibleContentRectIncludesScrollbars, VisibleContentRectBehavior) const;
-    void scrollPositionChanged(const IntPoint&);
+    void scrollPositionChanged(const ScrollPosition&);
     
     // NOTE: Only called from the ScrollAnimator.
     friend class ScrollAnimator;
-    void setScrollOffsetFromAnimation(const IntPoint&);
+    void setScrollOffsetFromAnimation(const ScrollOffset&);
 
     // This function should be overriden by subclasses to perform the actual
     // scroll of the content.
-    virtual void setScrollOffset(const IntPoint&) = 0;
+    virtual void setScrollOffset(const ScrollOffset&) = 0;
 
     mutable std::unique_ptr<ScrollAnimator> m_scrollAnimator;
 

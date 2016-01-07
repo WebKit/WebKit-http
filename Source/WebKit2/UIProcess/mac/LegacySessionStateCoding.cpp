@@ -186,7 +186,7 @@ public:
     MallocPtr<uint8_t> finishEncoding(size_t& size)
     {
         size = m_bufferSize;
-        return WTF::move(m_buffer);
+        return WTFMove(m_buffer);
     }
 
 private:
@@ -336,8 +336,8 @@ static void encodeFrameStateNode(HistoryEntryDataEncoder& encoder, const FrameSt
 
     encoder << frameState.referrer;
 
-    encoder << frameState.scrollPoint.x();
-    encoder << frameState.scrollPoint.y();
+    encoder << frameState.scrollPosition.x();
+    encoder << frameState.scrollPosition.y();
 
     encoder << frameState.pageScaleFactor;
 
@@ -837,7 +837,7 @@ static void decodeFormData(HistoryEntryDataDecoder& decoder, HTTPBody& formData)
         if (!decoder.isValid())
             return;
 
-        formData.elements.append(WTF::move(formDataElement));
+        formData.elements.append(WTFMove(formDataElement));
     }
 
     bool hasGeneratedFiles;
@@ -862,7 +862,7 @@ static void decodeBackForwardTreeNode(HistoryEntryDataDecoder& decoder, FrameSta
         if (!decoder.isValid())
             return;
 
-        frameState.children.append(WTF::move(childFrameState));
+        frameState.children.append(WTFMove(childFrameState));
     }
 
     decoder >> frameState.documentSequenceNumber;
@@ -877,7 +877,7 @@ static void decodeBackForwardTreeNode(HistoryEntryDataDecoder& decoder, FrameSta
         if (!decoder.isValid())
             return;
 
-        frameState.documentState.append(WTF::move(state));
+        frameState.documentState.append(WTFMove(state));
     }
 
     String formContentType;
@@ -888,24 +888,24 @@ static void decodeBackForwardTreeNode(HistoryEntryDataDecoder& decoder, FrameSta
 
     if (hasFormData) {
         HTTPBody httpBody;
-        httpBody.contentType = WTF::move(formContentType);
+        httpBody.contentType = WTFMove(formContentType);
 
         decodeFormData(decoder, httpBody);
 
-        frameState.httpBody = WTF::move(httpBody);
+        frameState.httpBody = WTFMove(httpBody);
     }
 
     decoder >> frameState.itemSequenceNumber;
 
     decoder >> frameState.referrer;
 
-    int32_t scrollPointX;
-    decoder >> scrollPointX;
+    int32_t scrollPositionX;
+    decoder >> scrollPositionX;
 
-    int32_t scrollPointY;
-    decoder >> scrollPointY;
+    int32_t scrollPositionY;
+    decoder >> scrollPositionY;
 
-    frameState.scrollPoint = WebCore::IntPoint(scrollPointX, scrollPointY);
+    frameState.scrollPosition = WebCore::IntPoint(scrollPositionX, scrollPositionY);
 
     decoder >> frameState.pageScaleFactor;
 
@@ -916,7 +916,7 @@ static void decodeBackForwardTreeNode(HistoryEntryDataDecoder& decoder, FrameSta
         Vector<uint8_t> stateObjectData;
         decoder >> stateObjectData;
 
-        frameState.stateObjectData = WTF::move(stateObjectData);
+        frameState.stateObjectData = WTFMove(stateObjectData);
     }
 
     decoder >> frameState.target;
@@ -1000,7 +1000,7 @@ static bool decodeSessionHistoryEntries(CFArrayRef entriesArray, Vector<BackForw
         if (!decodeSessionHistoryEntry(entryDictionary, entry))
             return false;
 
-        entries.append(WTF::move(entry));
+        entries.append(WTFMove(entry));
     }
 
     return true;

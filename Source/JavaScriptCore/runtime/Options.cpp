@@ -33,11 +33,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wtf/ASCIICType.h>
+#include <wtf/Compiler.h>
 #include <wtf/DataLog.h>
 #include <wtf/NumberOfCores.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
 #include <wtf/text/StringBuilder.h>
+
+#if PLATFORM(COCOA)
+#include <crt_externs.h>
+#endif
 
 #if OS(WINDOWS)
 #include "MacroAssemblerX86.h"
@@ -119,6 +124,21 @@ bool overrideOptionWithHeuristic(T& variable, const char* name)
     if (parse(stringValue, variable))
         return true;
     
+    fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
+    return false;
+}
+
+bool Options::overrideAliasedOptionWithHeuristic(const char* name)
+{
+    const char* stringValue = getenv(name);
+    if (!stringValue)
+        return false;
+
+    String aliasedOption;
+    aliasedOption = String(&name[4]) + "=" + stringValue;
+    if (Options::setOption(aliasedOption.utf8().data()))
+        return true;
+
     fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
     return false;
 }
@@ -361,9 +381,29 @@ void Options::initialize()
             // Allow environment vars to override options if applicable.
             // The evn var should be the name of the option prefixed with
             // "JSC_".
+#if PLATFORM(COCOA)
+            bool hasBadOptions = false;
+            for (char** envp = *_NSGetEnviron(); *envp; envp++) {
+                const char* env = *envp;
+                if (!strncmp("JSC_", env, 4)) {
+                    if (!Options::setOption(&env[4])) {
+                        dataLog("ERROR: invalid option: ", *envp, "\n");
+                        hasBadOptions = true;
+                    }
+                }
+            }
+            if (hasBadOptions && Options::validateOptions())
+                CRASH();
+#else // PLATFORM(COCOA)
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, description_)      \
             overrideOptionWithHeuristic(name_(), "JSC_" #name_);
             JSC_OPTIONS(FOR_EACH_OPTION)
+#undef FOR_EACH_OPTION
+#endif // PLATFORM(COCOA)
+
+#define FOR_EACH_OPTION(aliasedName_, unaliasedName_, equivalence_) \
+            overrideAliasedOptionWithHeuristic("JSC_" #aliasedName_);
+            JSC_ALIASED_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 
 #if 0
@@ -508,7 +548,7 @@ bool Options::setOptions(const char* optionsStr)
 
 // Parses a single command line option in the format "<optionName>=<value>"
 // (no spaces allowed) and set the specified option if appropriate.
-bool Options::setOption(const char* arg)
+bool Options::setOptionWithoutAlias(const char* arg)
 {
     // arg should look like this:
     //   <jscOptionName>=<appropriate value>
@@ -540,6 +580,70 @@ bool Options::setOption(const char* arg)
     return false; // No option matched.
 }
 
+static bool invertBoolOptionValue(const char* valueStr, const char*& invertedValueStr)
+{
+    bool boolValue;
+    if (!parse(valueStr, boolValue))
+        return false;
+    invertedValueStr = boolValue ? "false" : "true";
+    return true;
+}
+
+
+bool Options::setAliasedOption(const char* arg)
+{
+    // arg should look like this:
+    //   <jscOptionName>=<appropriate value>
+    const char* equalStr = strchr(arg, '=');
+    if (!equalStr)
+        return false;
+
+#if COMPILER(CLANG)
+#if __has_warning("-Wtautological-compare")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+#endif
+#endif
+
+    // For each option, check if the specify arg is a match. If so, set the arg
+    // if the value makes sense. Otherwise, move on to checking the next option.
+#define FOR_EACH_OPTION(aliasedName_, unaliasedName_, equivalence) \
+    if (strlen(#aliasedName_) == static_cast<size_t>(equalStr - arg)    \
+        && !strncmp(arg, #aliasedName_, equalStr - arg)) {              \
+        String unaliasedOption(#unaliasedName_);                        \
+        if (equivalence == SameOption)                                  \
+            unaliasedOption = unaliasedOption + equalStr;               \
+        else {                                                          \
+            ASSERT(equivalence == InvertedOption);                      \
+            const char* invertedValueStr = nullptr;                     \
+            if (!invertBoolOptionValue(equalStr + 1, invertedValueStr)) \
+                return false;                                           \
+            unaliasedOption = unaliasedOption + "=" + invertedValueStr; \
+        }                                                               \
+        return setOptionWithoutAlias(unaliasedOption.utf8().data());   \
+    }
+
+    JSC_ALIASED_OPTIONS(FOR_EACH_OPTION)
+#undef FOR_EACH_OPTION
+
+#if COMPILER(CLANG)
+#if __has_warning("-Wtautological-compare")
+#pragma clang diagnostic pop
+#endif
+#endif
+
+    return false; // No option matched.
+}
+
+bool Options::setOption(const char* arg)
+{
+    bool success = setOptionWithoutAlias(arg);
+    if (success)
+        return true;
+    return setAliasedOption(arg);
+}
+
+
 void Options::dumpAllOptions(StringBuilder& builder, DumpLevel level, const char* title,
     const char* separator, const char* optionHeader, const char* optionFooter, DumpDefaultsOption dumpDefaultsOption)
 {
@@ -564,7 +668,7 @@ void Options::dumpAllOptions(FILE* stream, DumpLevel level, const char* title)
 {
     StringBuilder builder;
     dumpAllOptions(builder, level, title, nullptr, "   ", "\n", DumpDefaults);
-    fprintf(stream, "%s", builder.toString().ascii().data());
+    fprintf(stream, "%s", builder.toString().utf8().data());
 }
 
 void Options::dumpOption(StringBuilder& builder, DumpLevel level, OptionID id,
@@ -653,7 +757,7 @@ bool Option::operator==(const Option& other) const
     case Options::Type::unsignedType:
         return m_entry.unsignedVal == other.m_entry.unsignedVal;
     case Options::Type::doubleType:
-        return (m_entry.doubleVal == other.m_entry.doubleVal) || (isnan(m_entry.doubleVal) && isnan(other.m_entry.doubleVal));
+        return (m_entry.doubleVal == other.m_entry.doubleVal) || (std::isnan(m_entry.doubleVal) && std::isnan(other.m_entry.doubleVal));
     case Options::Type::int32Type:
         return m_entry.int32Val == other.m_entry.int32Val;
     case Options::Type::optionRangeType:

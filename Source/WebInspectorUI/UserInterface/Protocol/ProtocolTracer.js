@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,50 +34,36 @@ WebInspector.ProtocolTracer = class ProtocolTracer extends WebInspector.Object
 
     logFrontendException(message, exception)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logProtocolError(message, error)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logFrontendRequest(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logWillHandleResponse(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logDidHandleResponse(message, timings = null)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logWillHandleEvent(message)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 
     logDidHandleEvent(message, timings = null)
     {
-        console.assert(typeof message === "string", "Must stringify messages to avoid leaking all JSON protocol messages.")
-
         // To be overridden by subclasses.
     }
 

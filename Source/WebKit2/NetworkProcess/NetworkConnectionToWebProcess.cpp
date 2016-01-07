@@ -123,7 +123,7 @@ void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLo
 
 void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
 {
-    auto loader = NetworkResourceLoader::create(loadParameters, *this, WTF::move(reply));
+    auto loader = NetworkResourceLoader::create(loadParameters, *this, WTFMove(reply));
     m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
     loader->start();
 }
@@ -197,7 +197,7 @@ void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(SessionID 
     }
 
 #if USE(NETWORK_SESSION)
-    loader->networkLoad()->convertTaskToDownload();
+    loader->networkLoad()->convertTaskToDownload(downloadID);
 #else
     networkProcess.downloadManager().convertHandleToDownload(downloadID, loader->networkLoad()->handle(), request, response);
 
@@ -247,7 +247,7 @@ void NetworkConnectionToWebProcess::registerFileBlobURL(const URL& url, const St
 
 void NetworkConnectionToWebProcess::registerBlobURL(const URL& url, Vector<BlobPart> blobParts, const String& contentType)
 {
-    NetworkBlobRegistry::singleton().registerBlobURL(this, url, WTF::move(blobParts), contentType);
+    NetworkBlobRegistry::singleton().registerBlobURL(this, url, WTFMove(blobParts), contentType);
 }
 
 void NetworkConnectionToWebProcess::registerBlobURLFromURL(const URL& url, const URL& srcURL)

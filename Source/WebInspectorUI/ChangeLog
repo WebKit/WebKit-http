@@ -1,3 +1,512 @@
+2016-01-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOMContentLoaded label in the Timeline tab should be "DOM Content Loaded"
+        https://bugs.webkit.org/show_bug.cgi?id=152746
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.addMarker):
+
+2016-01-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Scope chain shows too many scopes for functions (`let` and `var` in the same function are two scopes)
+        https://bugs.webkit.org/show_bug.cgi?id=152349
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Closure Variables (%s)" string for including the function name alongside
+        the closure scope section.
+
+        * UserInterface/Models/ScopeChainNode.js:
+        (WebInspector.ScopeChainNode):
+        (WebInspector.ScopeChainNode.prototype.get objects):
+        (WebInspector.ScopeChainNode.prototype.get object): Deleted.
+        Allow a ScopeChainNode to hold onto multiple RemoteObjects (for multiple JSScopes).
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._scopeChainNodeFromPayload):
+        Simplify the legacy case and convert "Local" to "Closure". The UI will now
+        determine and display "Local" where appropriate in a backwards compatible way.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+        Associate ScopeChain nodes with CallFrame frames so that we can better combine
+        variable sections and better label closure sections.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css:
+        (.scope-chain .details-section > .content > .group > .row.properties:not(.empty)):
+        (.scope-chain .details-section > .content > .group > .row.properties:not(.empty):last-child):
+        Styles for two object trees property sections next to eachother.
+
+2016-01-06  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add basic Animation section to Visual Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152692
+
+        Reviewed by Timothy Hatcher.
+
+        Adds a non-autocompleting section to the "Effects" section (renamed from
+        "Animations") of the Visual sidebar for setting CSS Animation values.
+
+        * Scripts/copy-user-interface-resources.pl:
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/AnimationPlayStatePaused.svg: Added.
+        * UserInterface/Images/AnimationPlayStateRunning.svg: Added.
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/VisualStyleBasicInput.js: Added.
+        (WebInspector.VisualStyleBasicInput):
+        (WebInspector.VisualStyleBasicInput.prototype.get value):
+        (WebInspector.VisualStyleBasicInput.prototype.set value):
+        (WebInspector.VisualStyleBasicInput.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleBasicInput.prototype._handleInputElementInput):
+        Very basic editor that is just an input box with a given placeholder.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateAnimationSection):
+        Creates the necessary property editors and adds them to their respective rows.
+
+2016-01-06  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add remaining background style properties to Visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152757
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateBackgroundStyleSection):
+        Added background-blend-mode and background-origin property editors.
+
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype._handleMouseOver):
+        Unrelated error that occurred when the user was hovering over a selector item
+        before the tree outline was able to create the selected item.
+
+2016-01-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r187929): Web Inspector: Forced Layout and Style Recalculation records do not show up in Layout & Rendering timeline DataGrid
+        https://bugs.webkit.org/show_bug.cgi?id=152747
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView.prototype._layoutTimelineRecordAdded):
+        We want top-level Layout records. Not necessarily Layout records that are
+        at the top of all records. Layout events such as style recalculation
+        and forced layout may be triggered by script and therefore not be at
+        the top of all records.
+
+2016-01-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Timelines view doesn't remember how I like to sort things
+        https://bugs.webkit.org/show_bug.cgi?id=152626
+
+        Reviewed by Joseph Pecoraro.
+
+        Currently, all instances of DataGrid have their sort column reset with each
+        open/close of Web Inspector. This doesn't really make sense seeing as we save
+        the user's settings in many other cases, so the sort method (which column)
+        should be saved between inspector sessions.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype._createDataGrid):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._rebuildTable):
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype.set sortColumnIdentifier):
+        Moved the logic for classLists and events to _updateSortedColumn.
+
+        (WebInspector.DataGrid.prototype.set sortColumnIdentifierSetting):
+        Instead of just setting the original sort method when instantiating the DataGrid,
+        a WebInspector.Setting object is now able to be passed in via this setter
+        to give the DataGrid access to the stored sort method value.
+
+        (WebInspector.DataGrid.prototype._updateSortedColumn):
+        Updates the classLists and fires events. If a sort column setting object
+        exists, update its value.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype._buildDataGridSection):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WebInspector.LayoutTimelineView):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        * UserInterface/Views/ScriptTimelineView.js:
+        (WebInspector.ScriptTimelineView):
+
+2016-01-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add debounce to URL inputs in the Visual sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152655
+
+        Reviewed by Joseph Pecoraro.
+
+        Adding a debounce to url() based Visual sidebar editors will prevent needless
+        errors from being thrown as the user types, since incomplete URL's will not
+        be able to be located.
+
+        * UserInterface/Base/Utilities.js:
+        (Function.prototype.debounce):
+        Prevents the given function from executing more than once in the specified amount of time.
+
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        (WebInspector.VisualStyleBackgroundPicker):
+
+        * UserInterface/Views/VisualStyleURLInput.js:
+        (WebInspector.VisualStyleURLInput):
+
+2016-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix debug context menu string and reload without cache tooltip string
+        https://bugs.webkit.org/show_bug.cgi?id=152725
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+
+2016-01-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: add context menu items to switch CSS color property value syntax between RGB, HSL, etc
+        https://bugs.webkit.org/show_bug.cgi?id=151918
+
+        Reviewed by Timothy Hatcher.
+
+        Created a ColorSwatch class to hold all functionality for color swatches,
+        allowing all context menu and popover events to be centralized.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/Color.js:
+        Changed all 'var' to 'let' and 'nickname' to 'keyword' as per the spec.
+        Mostly mechanical changes.
+
+        (WebInspector.Color.prototype.isKeyword):
+        Looks at the RGB values of each keyword to see if the current color
+        matches any of them.
+
+        (WebInspector.Color.prototype.canBeSerializedAsShortHEX):
+        Fixed to account for alpha values, since HEXAlpha is now supported.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch): Deleted.
+        (@media (-webkit-max-device-pixel-ratio: 1)): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch > span): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch:hover > span): Deleted.
+        (.css-style-text-editor > .CodeMirror .CodeMirror-lines .color-swatch:active > span): Deleted.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchColorChanged.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchColorChanged):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchClicked.updateCodeMirror.update): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchClicked.updateCodeMirror): Deleted.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._colorSwatchClicked): Deleted.
+
+        * UserInterface/Views/ColorSwatch.css: Copied from Source/WebInspectorUI/UserInterface/Views/VisualStyleColorPicker.css.
+        (.color-swatch):
+        (@media (-webkit-max-device-pixel-ratio: 1)):
+        (.color-swatch > span):
+        (.color-swatch:hover > span):
+        (.color-swatch:active > span):
+
+        * UserInterface/Views/ColorSwatch.js: Added.
+        (WebInspector.ColorSwatch):
+        (WebInspector.ColorSwatch.prototype.get element):
+        (WebInspector.ColorSwatch.prototype.set color):
+        (WebInspector.ColorSwatch.prototype.get color):
+        (WebInspector.ColorSwatch.prototype._colorSwatchClicked):
+        (WebInspector.ColorSwatch.prototype._colorPickerColorDidChange):
+        (WebInspector.ColorSwatch.prototype._handleContextMenuEvent):
+        (WebInspector.ColorSwatch.prototype._getNextValidHEXFormat.hexMatchesCurrentColor):
+        (WebInspector.ColorSwatch.prototype._getNextValidHEXFormat):
+        Loops through the list of HEX formats to find the first format that is valid
+        for the current color in the list after the current format.
+
+        (WebInspector.ColorSwatch.prototype._updateSwatch):
+
+        * UserInterface/Views/VisualStyleColorPicker.css:
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch > span):
+
+        * UserInterface/Views/VisualStyleColorPicker.js:
+        (WebInspector.VisualStyleColorPicker):
+        (WebInspector.VisualStyleColorPicker.prototype._colorSwatchColorChanged):
+        (WebInspector.VisualStyleColorPicker.prototype._updateColorSwatch):
+        (WebInspector.VisualStyleColorPicker.prototype._colorSwatchClicked): Deleted.
+        (WebInspector.VisualStyleColorPicker.prototype._colorPickerColorDidChange): Deleted.
+
+2016-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Mark last parameter of webkitGetUserMedia as non-optional to match updated IDL
+        https://bugs.webkit.org/show_bug.cgi?id=152702
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        New IDL, and tests, show that the error callback is non-optional.
+
+2016-01-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add context menu items to CSS selectors to auto-generate pseudo selectors
+        https://bugs.webkit.org/show_bug.cgi?id=152657
+
+        Reviewed by Timothy Hatcher.
+
+        Instead of having to copy a selector, create a new one, paste it, and then add
+        a pseudo class or element, a context menu item has been added to automate this
+        process for the user for each CSS pseudo-selector.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        Added a static object containing the list of CSS pseudo-element names.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.addRule.completed):
+        (WebInspector.DOMNodeStyles.prototype.addRule.styleChanged):
+        (WebInspector.DOMNodeStyles.prototype.addRule.addedRule):
+        (WebInspector.DOMNodeStyles.prototype.addRule):
+        Now accepts a second argument for setting the starting text value of the new rule.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleSelectorPaste):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+
+2016-01-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add a DebugUI context menu item for saving inspector protocol traffic to file
+        https://bugs.webkit.org/show_bug.cgi?id=152671
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new tracer that captures all messages, and debug context menu
+        items to control whether to capture protocol traffic and export it.
+        In later patches, a reciprocal "Import..." context menu item will
+        allow opening saved protocol traces and viewing them in a debug UI
+        content view for debugging/visualizing protocol traffic.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Debug/CapturingProtocolTracer.js: Copied from Source/WebInspectorUI/UserInterface/Protocol/ProtocolTracer.js.
+
+            This tracer saves everything into a flat array. JSON protocol
+            messages are saved as escaped strings, in case they are not
+            valid JSON. We want to be able to debug such scenarios.
+
+        (WebInspector.CapturingProtocolTracer):
+        (WebInspector.CapturingProtocolTracer.prototype.get trace):
+        (WebInspector.CapturingProtocolTracer.prototype.logFrontendException):
+        (WebInspector.CapturingProtocolTracer.prototype.logProtocolError):
+        (WebInspector.CapturingProtocolTracer.prototype.logFrontendRequest):
+        (WebInspector.CapturingProtocolTracer.prototype.logDidHandleResponse):
+        (WebInspector.CapturingProtocolTracer.prototype.logDidHandleEvent):
+        (WebInspector.CapturingProtocolTracer.prototype._stringifyMessage):
+        (WebInspector.CapturingProtocolTracer.prototype._processEntry):
+
+        * UserInterface/Debug/ProtocolTrace.js: Added.
+
+            This is a dumb container that holds protocol trace data. It will
+            be responsible for deserializing saved trace files in later work.
+
+        (WebInspector.ProtocolTrace):
+        (WebInspector.ProtocolTrace.prototype.addEntry):
+        (WebInspector.ProtocolTrace.prototype.get saveData):
+        * UserInterface/Main.html:
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+
+            Simplify the implementation. Now there are one or two tracers
+            at any given time. The default tracer handles legacy logging
+            behavior and always exists. The custom tracer is installed when
+            the "Capture Protocol Traffic" context menu item is toggled.
+
+            Dispatch to the array of active tracers at each trace point.
+            Tracers now get the actual JSON message instead of a stringified
+            version passed as an argument.
+
+        (InspectorBackendClass.prototype.set dumpInspectorProtocolMessages):
+        (InspectorBackendClass.prototype.get dumpInspectorProtocolMessages):
+        (InspectorBackendClass.prototype.set dumpInspectorTimeStats):
+        (InspectorBackendClass.prototype.set customTracer):
+        (InspectorBackendClass.prototype.get activeTracers):
+        (InspectorBackendClass.prototype._startOrStopAutomaticTracing):
+        (InspectorBackendClass.prototype._sendMessageToBackend):
+        (InspectorBackendClass.prototype._dispatchResponse):
+        (InspectorBackendClass.prototype._dispatchEvent):
+        (InspectorBackendClass.prototype.set activeTracer): Deleted.
+        (InspectorBackendClass.prototype.get activeTracer): Deleted.
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WebInspector.LoggingProtocolTracer.prototype._processEntry):
+        (WebInspector.LoggingProtocolTracer):
+        (WebInspector.LoggingProtocolTracer.prototype.logFrontendRequest):
+        (WebInspector.LoggingProtocolTracer.prototype.logWillHandleResponse):
+        (WebInspector.LoggingProtocolTracer.prototype.logDidHandleResponse):
+        (WebInspector.LoggingProtocolTracer.prototype.logWillHandleEvent):
+        (WebInspector.LoggingProtocolTracer.prototype.logDidHandleEvent):
+        * UserInterface/Protocol/ProtocolTracer.js:
+        (WebInspector.ProtocolTracer.prototype.logFrontendException):
+        (WebInspector.ProtocolTracer.prototype.logProtocolError):
+        (WebInspector.ProtocolTracer.prototype.logFrontendRequest):
+        (WebInspector.ProtocolTracer.prototype.logWillHandleResponse):
+        (WebInspector.ProtocolTracer.prototype.logDidHandleResponse):
+        (WebInspector.ProtocolTracer.prototype.logWillHandleEvent):
+        (WebInspector.ProtocolTracer.prototype.logDidHandleEvent):
+
+2016-01-04  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Comma separated values in the Visual sidebar are appended with )
+        https://bugs.webkit.org/show_bug.cgi?id=152653
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.set value):
+        Modified the RexExp used to split the comma separated value to account for strings
+        with commas inside parenthesis (such as rgba() or hsla()) as well as ones without
+        commas (such as "arial" and "red").
+
+2016-01-03  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Visual sidebar selector section displays inherited section for non-editable rules
+        https://bugs.webkit.org/show_bug.cgi?id=152659
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection.prototype.update):
+        Only add a new inherited section header if it will contain at least one inherited rule.
+
+2016-01-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: List all resources that are initiated by the selected resource in the Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=152647
+
+        Reviewed by Timothy Hatcher.
+
+        Selecting resources in the Network tab will now display a list of all resources
+        that the selected resource loaded, allowing for easier understanding of the
+        relationship between all the resources loaded on a page.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        Added functions to generate link(s) to Resource instead of SourceCodeLocation.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.get initiatedResources):
+        (WebInspector.Resource.prototype.addInitiatedResource):
+        Each time a resource is added, if it has an initiator, it adds itself to the
+        initiator's list of initiated resources.
+
+        * UserInterface/Views/Main.css:
+        (.resource-list > .resource-link):
+        (.resource-list > .resource-link::before):
+        (.resource-list > .resource-link + .resource-link):
+        (.resource-link):
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshURL):
+
+2016-01-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Add list-style properties to Visual Sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=152631
+
+        Reviewed by Timothy Hatcher.
+
+        Seeing as lists are very common in web pages across the internet, adding
+        a section to let users edit the properties unique to lists seems prudent.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/ListStylePositionInside.svg: Added.
+        * UserInterface/Images/ListStylePositionOutside.svg: Added.
+        * UserInterface/Main.html:
+        Re-added UserInterface/Views/VisualStyleURLInput.js
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        (WebInspector.VisualStyleDetailsPanel.prototype._populateListStyleSection):
+
+        * UserInterface/Views/VisualStyleKeywordIconList.css:
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon):
+        Added specified color property to ensure that :active doesn't break the color of the svg.
+
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected)):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected):
+        Changed the background-color and border-color values to match the rest of Web Inspector.
+
+        * UserInterface/Views/VisualStyleKeywordIconList.js:
+        (WebInspector.VisualStyleKeywordIconList):
+        (WebInspector.VisualStyleKeywordIconList.dashToCapital): Deleted.
+        (WebInspector.VisualStyleKeywordIconList.createListItem):
+        The "initial" keyword will also use UserInterface/Images/VisualStyleNone.svg
+
+        * UserInterface/Views/VisualStyleURLInput.js: Added.
+        Previously removed in r192705.
+
+2016-01-02  Alberto Garcia  <berto@igalia.com>
+
+        [GTK] webkit 2.3.5 build failure with python 3.3.4
+        https://bugs.webkit.org/show_bug.cgi?id=128971
+
+        Reviewed by Michael Catanzaro.
+
+        Make sure that the stdin encoding is 'UTF-8' if using Python 3,
+        otherwise the build will break.
+
+        * Scripts/cssmin.py:
+
+2016-01-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: shadow visual sidebar section can be confused with the box shadow section
+        https://bugs.webkit.org/show_bug.cgi?id=148107
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel):
+        Changed title of "Shadow" sub-section in "Background" to "Box Shadow".
+
+2016-01-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: The Computed Styles Properties section shows warning icons and doesn't update if collapsed
+        https://bugs.webkit.org/show_bug.cgi?id=152609
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded):
+        If the CodeMirror instance is read-only, don't add any warning icons.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel):
+        (WebInspector.ComputedStyleDetailsPanel.prototype._handleCollapsedStateChanged):
+        The properties text editor will now refresh whenever the details section
+        becomes un-collapsed.
+
+        * UserInterface/Views/DetailsSection.js:
+        (WebInspector.DetailsSection.prototype.set collapsed):
+        Now fires an event with the current collapsed state as data.
+
 2015-12-31  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: "No Filter Results" message overlaps Debugger sidebar sections

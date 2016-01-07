@@ -122,6 +122,10 @@ public:
     virtual bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+#if USE(GSTREAMER_GL)
+    virtual PassNativeImagePtr nativeImageForCurrentTime();
+#endif
+
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
     virtual GstElement* createVideoSink();

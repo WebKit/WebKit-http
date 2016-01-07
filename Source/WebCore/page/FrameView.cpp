@@ -646,30 +646,6 @@ void FrameView::adjustViewSize()
     setContentsSize(size);
 }
 
-IntSize FrameView::contentsSizeRespectingOverflow() const
-{
-    RenderView* renderView = this->renderView();
-    auto* viewportRenderer = this->viewportRenderer();
-    if (!renderView || !is<RenderBox>(viewportRenderer) || !frame().isMainFrame())
-        return contentsSize();
-
-    ASSERT(frame().view() == this);
-
-    FloatRect contentRect = renderView->unscaledDocumentRect();
-    RenderBox& viewportRendererBox = downcast<RenderBox>(*viewportRenderer);
-
-    if (viewportRendererBox.style().overflowX() == OHIDDEN)
-        contentRect.setWidth(std::min<float>(contentRect.width(), viewportRendererBox.frameRect().width()));
-
-    if (viewportRendererBox.style().overflowY() == OHIDDEN)
-        contentRect.setHeight(std::min<float>(contentRect.height(), viewportRendererBox.frameRect().height()));
-
-    if (renderView->hasTransform())
-        contentRect = renderView->layer()->currentTransform().mapRect(contentRect);
-
-    return IntSize(contentRect.size());
-}
-
 void FrameView::applyOverflowToViewport(const RenderElement& renderer, ScrollbarMode& hMode, ScrollbarMode& vMode)
 {
     // Handle the overflow:hidden/scroll case for the body/html elements.  WinIE treats
@@ -2353,6 +2329,8 @@ bool FrameView::isRubberBandInProgress() const
 
 bool FrameView::requestScrollPositionUpdate(const ScrollPosition& position)
 {
+    LOG_WITH_STREAM(Scrolling, stream << "FrameView::requestScrollPositionUpdate " << position);
+
 #if ENABLE(ASYNC_SCROLLING)
     if (TiledBacking* tiledBacking = this->tiledBacking())
         tiledBacking->prepopulateRect(FloatRect(position, visibleContentRect().size()));
@@ -3192,7 +3170,7 @@ void FrameView::sendResizeEventIfNeeded()
         // FIXME: Queueing this event for an unpredictable time in the future seems
         // intrinsically racy. By the time this resize event fires, the frame might
         // be resized again, so we could end up with two resize events for the same size.
-        frame().document()->enqueueWindowEvent(WTF::move(resizeEvent));
+        frame().document()->enqueueWindowEvent(WTFMove(resizeEvent));
     }
 
     if (InspectorInstrumentation::hasFrontends() && isMainFrame) {
@@ -3380,7 +3358,7 @@ void FrameView::updateOverflowStatus(bool horizontalOverflow, bool verticalOverf
             verticalOverflowChanged, verticalOverflow);
         overflowEvent->setTarget(viewportRenderer->element());
 
-        frame().document()->enqueueOverflowEvent(WTF::move(overflowEvent));
+        frame().document()->enqueueOverflowEvent(WTFMove(overflowEvent));
     }
 }
 
