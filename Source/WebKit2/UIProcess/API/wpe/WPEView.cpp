@@ -55,7 +55,6 @@ View::View(const API::PageConfiguration& baseConfiguration)
         preferences->setForceCompositingMode(true);
         preferences->setAccelerated2dCanvasEnabled(true);
         preferences->setWebGLEnabled(true);
-        preferences->setLogsPageMessagesToSystemConsoleEnabled(true);
         preferences->setWebSecurityEnabled(false);
         preferences->setDeveloperExtrasEnabled(true);
     }
