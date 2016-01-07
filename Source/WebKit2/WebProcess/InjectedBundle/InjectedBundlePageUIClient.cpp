@@ -33,21 +33,120 @@
 #include "WKBundleAPICast.h"
 #include "WebFrame.h"
 #include "WebPage.h"
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
+static void appendURLAndPosition(StringBuilder& builder, const String& url, unsigned lineNumber, unsigned columnNumber)
+{
+    if (url.isEmpty())
+        return;
+
+    builder.append(url);
+
+    if (lineNumber > 0) {
+        builder.append(':');
+        builder.appendNumber(lineNumber);
+    }
+
+    if (columnNumber > 0) {
+        builder.append(':');
+        builder.appendNumber(columnNumber);
+    }
+}
+
+static void appendMessagePrefix(StringBuilder& builder, MessageSource source, MessageLevel level)
+{
+    const char* sourceString;
+    switch (source) {
+    case MessageSource::XML:
+        sourceString = "XML";
+        break;
+    case MessageSource::JS:
+        sourceString = "JS";
+        break;
+    case MessageSource::Network:
+        sourceString = "NETWORK";
+        break;
+    case MessageSource::ConsoleAPI:
+        sourceString = "CONSOLE";
+        break;
+    case MessageSource::Storage:
+        sourceString = "STORAGE";
+        break;
+    case MessageSource::AppCache:
+        sourceString = "APPCACHE";
+        break;
+    case MessageSource::Rendering:
+        sourceString = "RENDERING";
+        break;
+    case MessageSource::CSS:
+        sourceString = "CSS";
+        break;
+    case MessageSource::Security:
+        sourceString = "SECURITY";
+        break;
+    case MessageSource::Other:
+        sourceString = "OTHER";
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        sourceString = "UNKNOWN";
+        break;
+    }
+
+    const char* levelString;
+    switch (level) {
+    case MessageLevel::Debug:
+        levelString = "DEBUG";
+        break;
+    case MessageLevel::Log:
+        levelString = "LOG";
+        break;
+    case MessageLevel::Info:
+        levelString = "INFO";
+        break;
+    case MessageLevel::Warning:
+        levelString = "WARN";
+        break;
+    case MessageLevel::Error:
+        levelString = "ERROR";
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        levelString = "UNKNOWN";
+        break;
+    }
+
+    builder.append(sourceString);
+    builder.append(' ');
+    builder.append(levelString);
+}
+
 InjectedBundlePageUIClient::InjectedBundlePageUIClient(const WKBundlePageUIClientBase* client)
 {
     initialize(client);
 }
 
-void InjectedBundlePageUIClient::willAddMessageToConsole(WebPage* page, MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned /*columnNumber*/, const String& /*sourceID*/)
+void InjectedBundlePageUIClient::willAddMessageToConsole(WebPage* page, MessageSource source, MessageLevel level, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID)
 {
-    if (m_client.willAddMessageToConsole)
-        m_client.willAddMessageToConsole(toAPI(page), toAPI(message.impl()), lineNumber, m_client.base.clientInfo);
+    if (m_client.willAddMessageToConsole) {
+        StringBuilder builder;
+
+        if (!sourceID.isEmpty()) {
+            appendURLAndPosition(builder, sourceID, lineNumber, columnNumber);
+            builder.appendLiteral(": ");
+        }
+
+        appendMessagePrefix(builder, source, level);
+        builder.append(' ');
+        builder.append(message);
+
+        m_client.willAddMessageToConsole(toAPI(page), toAPI(builder.toString().impl()), lineNumber, m_client.base.clientInfo);
+    }
 }
 
 void InjectedBundlePageUIClient::willSetStatusbarText(WebPage* page, const String& statusbarText)
