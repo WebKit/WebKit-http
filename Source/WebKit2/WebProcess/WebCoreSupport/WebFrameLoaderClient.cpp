@@ -693,7 +693,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 
     bool canShowMIMEType = webPage->canShowMIMEType(response.mimeType());
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
     bool receivedPolicyAction;
     uint64_t policyAction;
     DownloadID downloadID;
@@ -729,7 +729,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     }
 
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
 
     NavigationActionData navigationActionData;
     navigationActionData.navigationType = action->navigationType();
@@ -769,7 +769,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         return;
     }
     
-    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
     bool receivedPolicyAction;
     uint64_t newNavigationID;
     uint64_t policyAction;
@@ -876,7 +876,7 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(PassRefPtr<FormState> prpFormS
     webPage->injectedBundleFormClient().willSubmitForm(webPage, form, m_frame, sourceFrame, values, userData);
 
 
-    uint64_t listenerID = m_frame->setUpPolicyListener(WTF::move(function));
+    uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function));
 
     webPage->send(Messages::WebPageProxy::WillSubmitForm(m_frame->frameID(), sourceFrame->frameID(), values, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
@@ -1208,7 +1208,7 @@ void WebFrameLoaderClient::restoreViewState()
         if (m_frame->isMainFrame())
             m_frame->page()->restorePageState(*currentItem);
         else if (!view->wasScrolledByUser())
-            view->setScrollPosition(currentItem->scrollPoint());
+            view->setScrollPosition(currentItem->scrollPosition());
     }
 #else
     // Inform the UI process of the scale factor.
@@ -1704,7 +1704,7 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
 void WebFrameLoaderClient::contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler unblockHandler)
 {
     if (!unblockHandler.needsUIProcess()) {
-        m_frame->coreFrame()->loader().policyChecker().setContentFilterUnblockHandler(WTF::move(unblockHandler));
+        m_frame->coreFrame()->loader().policyChecker().setContentFilterUnblockHandler(WTFMove(unblockHandler));
         return;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -189,7 +189,7 @@ public:
     }
     LValue zeroExtPtr(LValue value) { return zeroExt(value, B3::Int64); }
     LValue intToDouble(LValue value) { return m_block->appendNew<B3::Value>(m_proc, B3::IToD, origin(), value); }
-    LValue unsignedToDouble(LValue value) { CRASH(); }
+    LValue unsignedToDouble(LValue);
     LValue castToInt32(LValue value)
     {
         return value->type() == B3::Int32 ? value :
@@ -389,11 +389,11 @@ public:
 
     // Branches to an already-created handler if true, "falls through" if false. Fall-through is
     // simulated by creating a continuation for you.
-    void check(LValue condition, WeightedTarget taken, Weight notTakenWeight) { CRASH(); }
-
+    void check(LValue condition, WeightedTarget taken, Weight notTakenWeight);
+    
     // Same as check(), but uses Weight::inverse() to compute the notTakenWeight.
-    void check(LValue condition, WeightedTarget taken) { CRASH(); }
-
+    void check(LValue condition, WeightedTarget taken);
+    
     template<typename VectorType>
     void switchInstruction(LValue value, const VectorType& cases, LBasicBlock fallThrough, Weight fallThroughWeight)
     {

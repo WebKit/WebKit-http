@@ -1,3 +1,112 @@
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a setting and preferences to enable display-list drawing. Does nothing yet.
+        https://bugs.webkit.org/show_bug.cgi?id=152807
+
+        Reviewed by Zalan Bujtas.
+        
+        WK1 pref for display-list drawing, defaults to off.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences displayListDrawingEnabled]):
+        (-[WebPreferences setDisplayListDrawingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView _preferencesChanged:]):
+
+2016-01-06  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Revert overflow:hidden on the body affecting viewport scale (r186786)
+        https://bugs.webkit.org/show_bug.cgi?id=152803
+        rdar://problem/22242515
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsSizeRespectingOverflow]): Keep this function which is used
+        by UIKit, but change the implementation to just return the document size.
+
+2016-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Turn on gesture events when building for Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=152704
+        rdar://problem/24042472
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-12-31  Andy Estes  <aestes@apple.com>
+
+        Replace WTF::move with WTFMove
+        https://bugs.webkit.org/show_bug.cgi?id=152601
+
+        Reviewed by Brady Eidson.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::willSendRequest):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        (WebKit::NetscapePluginInstanceProxy::setCurrentReply):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::willSendRequest):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView scheduleTimerWithInterval:repeat:timerFunc:]):
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::createDocumentLoader):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::WebInspectorFrontendClient):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _applyEditingStyleToSelection:withUndoAction:]):
+        * WebView/WebMediaPlaybackTargetPicker.mm:
+        (WebMediaPlaybackTargetPicker::setPlaybackTarget):
+        * WebView/WebView.mm:
+        (-[WebView _loadBackForwardListFromOtherView:]):
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS and EFL builds, after an over-eager commit-queue commit.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+
+2016-01-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix naming in HistoryItem to refer to scrollPositions
+        https://bugs.webkit.org/show_bug.cgi?id=152646
+
+        Reviewed by Zalan Bujtas.
+
+        HistoryItem stores a scrollPosition, so call it that.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem scrollPoint]):
+
+2016-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2016
+        https://bugs.webkit.org/show_bug.cgi?id=152531
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Info.plist:
+
 2015-12-31  David Kilzer  <ddkilzer@apple.com>
 
         Stop using USE(CFNETWORK) path on iOS

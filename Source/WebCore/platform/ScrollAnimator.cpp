@@ -52,8 +52,6 @@ ScrollAnimator::ScrollAnimator(ScrollableArea& scrollableArea)
 #if ENABLE(CSS_SCROLL_SNAP) || ENABLE(RUBBER_BANDING)
     , m_scrollController(*this)
 #endif
-    , m_currentPosX(0)
-    , m_currentPosY(0)
 {
 }
 
@@ -63,23 +61,27 @@ ScrollAnimator::~ScrollAnimator()
 
 bool ScrollAnimator::scroll(ScrollbarOrientation orientation, ScrollGranularity, float step, float multiplier)
 {
-    float* currentPos = (orientation == HorizontalScrollbar) ? &m_currentPosX : &m_currentPosY;
-    float newPos = std::max(std::min(*currentPos + (step * multiplier), static_cast<float>(m_scrollableArea.scrollSize(orientation))), 0.0f);
-    float delta = *currentPos - newPos;
-    if (*currentPos == newPos)
+    FloatPoint currentPosition = this->currentPosition();
+    FloatSize delta;
+    if (orientation == HorizontalScrollbar)
+        delta.setWidth(step * multiplier);
+    else
+        delta.setHeight(step * multiplier);
+
+    FloatPoint newPosition = FloatPoint(currentPosition + delta).constrainedBetween(m_scrollableArea.minimumScrollPosition(), m_scrollableArea.maximumScrollPosition());
+    if (currentPosition == newPosition)
         return false;
-    *currentPos = newPos;
 
-    notifyPositionChanged(orientation == HorizontalScrollbar ? FloatSize(delta, 0) : FloatSize(0, delta));
-
+    setCurrentPositionInternal(newPosition);
+    notifyPositionChanged(newPosition - currentPosition);
     return true;
 }
 
 void ScrollAnimator::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
 {
-    FloatSize delta = FloatSize(offset.x() - m_currentPosX, offset.y() - m_currentPosY);
-    m_currentPosX = offset.x();
-    m_currentPosY = offset.y();
+    FloatPoint newPositon = ScrollableArea::scrollPositionFromOffset(offset, toFloatSize(m_scrollableArea.scrollOrigin()));
+    FloatSize delta = newPositon - currentPosition();
+    setCurrentPositionInternal(newPositon);
     notifyPositionChanged(delta);
     updateActiveScrollSnapIndexForOffset();
 }
@@ -170,19 +172,14 @@ bool ScrollAnimator::handleTouchEvent(const PlatformTouchEvent&)
 
 void ScrollAnimator::setCurrentPosition(const FloatPoint& position)
 {
-    m_currentPosX = position.x();
-    m_currentPosY = position.y();
+    setCurrentPositionInternal(position);
     updateActiveScrollSnapIndexForOffset();
-}
-
-FloatPoint ScrollAnimator::currentPosition() const
-{
-    return FloatPoint(m_currentPosX, m_currentPosY);
 }
 
 void ScrollAnimator::updateActiveScrollSnapIndexForOffset()
 {
 #if ENABLE(CSS_SCROLL_SNAP)
+    // FIXME: Needs offset/position disambiguation.
     m_scrollController.setActiveScrollSnapIndicesForOffset(m_currentPosX, m_currentPosY);
     if (m_scrollController.activeScrollSnapIndexDidChange()) {
         m_scrollableArea.setCurrentHorizontalSnapPointIndex(m_scrollController.activeScrollSnapIndexForAxis(ScrollEventAxis::Horizontal));
@@ -194,7 +191,8 @@ void ScrollAnimator::updateActiveScrollSnapIndexForOffset()
 void ScrollAnimator::notifyPositionChanged(const FloatSize& delta)
 {
     UNUSED_PARAM(delta);
-    m_scrollableArea.setScrollOffsetFromAnimation(IntPoint(m_currentPosX, m_currentPosY));
+    // FIXME: need to not map back and forth all the time.
+    m_scrollableArea.setScrollOffsetFromAnimation(m_scrollableArea.scrollOffsetFromPosition(roundedIntPoint(currentPosition())));
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -210,11 +208,13 @@ LayoutUnit ScrollAnimator::scrollOffsetOnAxis(ScrollEventAxis axis) const
 
 void ScrollAnimator::immediateScrollOnAxis(ScrollEventAxis axis, float delta)
 {
-    FloatPoint currentPosition = this->currentPosition();
+    FloatSize deltaSize;
     if (axis == ScrollEventAxis::Horizontal)
-        scrollToOffsetWithoutAnimation(FloatPoint(currentPosition.x() + delta, currentPosition.y()));
+        deltaSize.setWidth(delta);
     else
-        scrollToOffsetWithoutAnimation(FloatPoint(currentPosition.x(), currentPosition.y() + delta));
+        deltaSize.setHeight(delta);
+
+    scrollToOffsetWithoutAnimation(currentPosition() + deltaSize);
 }
 
 LayoutSize ScrollAnimator::scrollExtent() const

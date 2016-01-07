@@ -166,7 +166,7 @@ void GSourceWrap::DelayBased::cancel()
 
 GSourceWrap::Static::Static(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
 {
-    initialize(name, WTF::move(function), priority, context);
+    initialize(name, WTFMove(function), priority, context);
 }
 
 void GSourceWrap::Static::initialize(const char* name, std::function<void ()>&& function, int priority, GMainContext* context)
@@ -174,7 +174,7 @@ void GSourceWrap::Static::initialize(const char* name, std::function<void ()>&& 
     DelayBased::initialize(name, priority, context);
 
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(staticDelayBasedVoidCallback),
-        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
+        new CallbackContext<void ()>{ WTFMove(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
 }
 
 void GSourceWrap::Static::schedule(std::chrono::microseconds delay)
@@ -195,7 +195,7 @@ GSourceWrap::Dynamic::Dynamic(const char* name, int priority, GMainContext* cont
 void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chrono::microseconds delay)
 {
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicDelayBasedVoidCallback),
-        new CallbackContext<void ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
+        new CallbackContext<void ()>{ WTFMove(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<void ()>>));
 
     DelayBased::schedule(delay);
 }
@@ -203,7 +203,7 @@ void GSourceWrap::Dynamic::schedule(std::function<void ()>&& function, std::chro
 void GSourceWrap::Dynamic::schedule(std::function<bool ()>&& function, std::chrono::microseconds delay)
 {
     g_source_set_callback(m_source.get(), static_cast<GSourceFunc>(dynamicDelayBasedBoolCallback),
-        new CallbackContext<bool ()>{ WTF::move(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<bool ()>>));
+        new CallbackContext<bool ()>{ WTFMove(function), m_context }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext<bool ()>>));
 
     DelayBased::schedule(delay);
 }
@@ -223,7 +223,7 @@ void GSourceWrap::OneShot::construct(const char* name, std::function<void ()>&& 
     g_source_set_priority(source.get(), priority);
 
     g_source_set_callback(source.get(), static_cast<GSourceFunc>(staticOneShotCallback),
-        new CallbackContext{ WTF::move(function), nullptr }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext>));
+        new CallbackContext{ WTFMove(function), nullptr }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext>));
     g_source_set_ready_time(source.get(), targetTimeForDelay(delay));
 
     if (!context)
@@ -242,7 +242,7 @@ void GSourceWrap::Socket::initialize(const char* name, std::function<bool (GIOCo
     g_source_set_priority(m_source.get(), priority);
 
     g_source_set_callback(m_source.get(), reinterpret_cast<GSourceFunc>(staticSocketCallback),
-        new CallbackContext{ WTF::move(function), m_cancellable }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext>));
+        new CallbackContext{ WTFMove(function), m_cancellable }, static_cast<GDestroyNotify>(destroyCallbackContext<CallbackContext>));
 
     if (!context)
         context = g_main_context_get_thread_default();
@@ -272,7 +272,7 @@ void GSourceWrap::Queue::initialize(const char* name, int priority, GMainContext
 void GSourceWrap::Queue::queue(std::function<void ()>&& function)
 {
     WTF::GMutexLocker<GMutex> lock(m_mutex);
-    m_queue.append(WTF::move(function));
+    m_queue.append(WTFMove(function));
 
     m_sourceWrap.schedule();
 }
@@ -283,7 +283,7 @@ void GSourceWrap::Queue::dispatchQueue()
         decltype(m_queue) queue;
         {
             WTF::GMutexLocker<GMutex> lock(m_mutex);
-            queue = WTF::move(m_queue);
+            queue = WTFMove(m_queue);
         }
 
         if (!queue.size())

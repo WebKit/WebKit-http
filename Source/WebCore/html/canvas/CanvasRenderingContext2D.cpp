@@ -1597,7 +1597,7 @@ void CanvasRenderingContext2D::drawImage(HTMLVideoElement* video, const FloatRec
 
     checkOrigin(video);
 
-#if USE(CG)
+#if USE(CG) || (ENABLE(ACCELERATED_2D_CANVAS) && USE(GSTREAMER_GL) && USE(CAIRO))
     if (PassNativeImagePtr image = video->nativeImageForCurrentTime()) {
         c->drawNativeImage(image, FloatSize(video->videoWidth(), video->videoHeight()), dstRect, srcRect);
         if (rectContainsCanvas(dstRect))
@@ -1777,7 +1777,7 @@ RefPtr<CanvasGradient> CanvasRenderingContext2D::createLinearGradient(float x0, 
 
     Ref<CanvasGradient> gradient = CanvasGradient::create(FloatPoint(x0, y0), FloatPoint(x1, y1));
     prepareGradientForDashboard(gradient.get());
-    return WTF::move(gradient);
+    return WTFMove(gradient);
 }
 
 RefPtr<CanvasGradient> CanvasRenderingContext2D::createRadialGradient(float x0, float y0, float r0, float x1, float y1, float r1, ExceptionCode& ec)
@@ -1794,7 +1794,7 @@ RefPtr<CanvasGradient> CanvasRenderingContext2D::createRadialGradient(float x0, 
 
     Ref<CanvasGradient> gradient = CanvasGradient::create(FloatPoint(x0, y0), r0, FloatPoint(x1, y1), r1);
     prepareGradientForDashboard(gradient.get());
-    return WTF::move(gradient);
+    return WTFMove(gradient);
 }
 
 RefPtr<CanvasPattern> CanvasRenderingContext2D::createPattern(HTMLImageElement* imageElement,

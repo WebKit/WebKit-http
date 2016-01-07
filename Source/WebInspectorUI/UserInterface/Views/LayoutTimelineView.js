@@ -72,7 +72,7 @@ WebInspector.LayoutTimelineView = class LayoutTimelineView extends WebInspector.
         this._dataGrid.addEventListener(WebInspector.TimelineDataGrid.Event.FiltersDidChange, this._dataGridFiltersDidChange, this);
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
 
-        this._dataGrid.sortColumnIdentifier = "startTime";
+        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("layout-timeline-view-sort", "startTime");
         this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
 
         this._hoveredTreeElement = null;
@@ -225,7 +225,7 @@ WebInspector.LayoutTimelineView = class LayoutTimelineView extends WebInspector.
         console.assert(layoutTimelineRecord instanceof WebInspector.LayoutTimelineRecord);
 
         // Only add top-level records, to avoid processing child records multiple times.
-        if (!(layoutTimelineRecord.parent instanceof WebInspector.RenderingFrameTimelineRecord))
+        if (layoutTimelineRecord.parent instanceof WebInspector.LayoutTimelineRecord)
             return;
 
         this._pendingRecords.push(layoutTimelineRecord);

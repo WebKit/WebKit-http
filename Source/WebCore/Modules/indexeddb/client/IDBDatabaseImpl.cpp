@@ -52,7 +52,7 @@ IDBDatabase::IDBDatabase(ScriptExecutionContext& context, IDBConnectionToServer&
     , m_info(resultData.databaseInfo())
     , m_databaseConnectionIdentifier(resultData.databaseConnectionIdentifier())
 {
-    LOG(IndexedDB, "IDBDatabase::IDBDatabase - Creating database %s with version %" PRIu64, m_info.name().utf8().data(), m_info.version());
+    LOG(IndexedDB, "IDBDatabase::IDBDatabase - Creating database %s with version %" PRIu64 " connection %" PRIu64, m_info.name().utf8().data(), m_info.version(), m_databaseConnectionIdentifier);
     suspendIfNeeded();
     relaxAdoptionRequirement();
     m_serverConnection->registerDatabaseConnection(*this);
@@ -223,19 +223,23 @@ void IDBDatabase::deleteObjectStore(const String& objectStoreName, ExceptionCode
 
 void IDBDatabase::close()
 {
+    LOG(IndexedDB, "IDBDatabase::close - %" PRIu64, m_databaseConnectionIdentifier);
+
     m_closePending = true;
     maybeCloseInServer();
 }
 
 void IDBDatabase::maybeCloseInServer()
 {
+    LOG(IndexedDB, "IDBDatabase::maybeCloseInServer - %" PRIu64, m_databaseConnectionIdentifier);
+
     if (m_closedInServer)
         return;
 
     // 3.3.9 Database closing steps
     // Wait for all transactions created using this connection to complete.
     // Once they are complete, this connection is closed.
-    if (!m_activeTransactions.isEmpty() || !m_committingTransactions.isEmpty())
+    if (!m_activeTransactions.isEmpty())
         return;
 
     m_closedInServer = true;
@@ -254,12 +258,33 @@ bool IDBDatabase::canSuspendForDocumentSuspension() const
     return true;
 }
 
+void IDBDatabase::stop()
+{
+    LOG(IndexedDB, "IDBDatabase::stop - %" PRIu64, m_databaseConnectionIdentifier);
+
+    Vector<IDBResourceIdentifier> transactionIdentifiers;
+    transactionIdentifiers.reserveInitialCapacity(m_activeTransactions.size());
+
+    for (auto& id : m_activeTransactions.keys())
+        transactionIdentifiers.uncheckedAppend(id);
+
+    for (auto& id : transactionIdentifiers) {
+        IDBTransaction* transaction = m_activeTransactions.get(id);
+        if (transaction)
+            transaction->stop();
+    }
+
+    close();
+}
+
 Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransactionInfo& info, IDBOpenDBRequest& request)
 {
     LOG(IndexedDB, "IDBDatabase::startVersionChangeTransaction %s", info.identifier().loggingString().utf8().data());
 
     ASSERT(!m_versionChangeTransaction);
     ASSERT(info.mode() == IndexedDB::TransactionMode::VersionChange);
+    ASSERT(!m_closePending);
+    ASSERT(scriptExecutionContext());
 
     Ref<IDBTransaction> transaction = IDBTransaction::create(*this, info, request);
     m_versionChangeTransaction = &transaction.get();
@@ -287,7 +312,7 @@ void IDBDatabase::willCommitTransaction(IDBTransaction& transaction)
 
     auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
     ASSERT(refTransaction);
-    m_committingTransactions.set(transaction.info().identifier(), WTF::move(refTransaction));
+    m_committingTransactions.set(transaction.info().identifier(), WTFMove(refTransaction));
 }
 
 void IDBDatabase::didCommitTransaction(IDBTransaction& transaction)
@@ -306,7 +331,7 @@ void IDBDatabase::willAbortTransaction(IDBTransaction& transaction)
 
     auto refTransaction = m_activeTransactions.take(transaction.info().identifier());
     ASSERT(refTransaction);
-    m_abortingTransactions.set(transaction.info().identifier(), WTF::move(refTransaction));
+    m_abortingTransactions.set(transaction.info().identifier(), WTFMove(refTransaction));
 
     if (transaction.isVersionChange()) {
         ASSERT(transaction.originalDatabaseInfo());
@@ -323,8 +348,7 @@ void IDBDatabase::didAbortTransaction(IDBTransaction& transaction)
         ASSERT(transaction.originalDatabaseInfo());
         ASSERT(m_info.version() == transaction.originalDatabaseInfo()->version());
         m_closePending = true;
-        m_closedInServer = true;
-        m_serverConnection->databaseConnectionClosed(*this);
+        maybeCloseInServer();
     }
 
     didCommitOrAbortTransaction(transaction);
@@ -369,7 +393,7 @@ void IDBDatabase::fireVersionChangeEvent(const IDBResourceIdentifier& requestIde
 
     Ref<Event> event = IDBVersionChangeEvent::create(requestIdentifier, currentVersion, requestedVersion, eventNames().versionchangeEvent);
     event->setTarget(this);
-    scriptExecutionContext()->eventQueue().enqueueEvent(WTF::move(event));
+    scriptExecutionContext()->eventQueue().enqueueEvent(WTFMove(event));
 }
 
 bool IDBDatabase::dispatchEvent(Event& event)

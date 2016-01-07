@@ -1,3 +1,39 @@
+2016-01-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Set WebKit2 process output name
+        https://bugs.webkit.org/show_bug.cgi?id=152773
+
+        Reviewed by Benjamin Poulain.
+
+        If we add *WebKit* prefix to each WK2 process, it is more clear when checking what process is running.
+        So this patch sets wk2 process output name.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2016-01-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Remove USE_UDIS86 variable
+        https://bugs.webkit.org/show_bug.cgi?id=152731
+
+        Reviewed by Gyuyoung Kim.
+
+        Remove the USE_UDIS86 variable in CMake files. The specific build guard
+        is now enabled by default in Source/WTF/wtf/Platform.h, so the handling
+        in CMake isn't required anymore. The Udis86-specific files have to be
+        built unconditionally now, though.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+
+2016-01-04  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r194454.
+
+        * Source/cmake/OptionsMac.cmake:
+        _macosx, _iphoneos, and _iphonesimulator are used in FeatureDefines.xcconfig but won't be used in CMake.
+        If we actually switch to CMake, we will need to verify that all the feature enabling is equivalent, and it isn't right now.
+
 2015-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK][CMake] Do not override default values of build options with the default value

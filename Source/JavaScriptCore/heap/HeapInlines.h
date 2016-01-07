@@ -269,7 +269,7 @@ inline void Heap::ascribeOwner(JSCell* intendedOwner, void* storage)
 template <typename T>
 inline void Heap::releaseSoon(RetainPtr<T>&& object)
 {
-    m_delayedReleaseObjects.append(WTF::move(object));
+    m_delayedReleaseObjects.append(WTFMove(object));
 }
 #endif
 
@@ -309,7 +309,7 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
 
 inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
 {
-    m_weakGCMaps.add(weakGCMap, WTF::move(pruningCallback));
+    m_weakGCMaps.add(weakGCMap, WTFMove(pruningCallback));
 }
 
 inline void Heap::unregisterWeakGCMap(void* weakGCMap)

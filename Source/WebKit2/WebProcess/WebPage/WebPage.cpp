@@ -620,7 +620,7 @@ void WebPage::setInjectedBundleContextMenuClient(std::unique_ptr<API::InjectedBu
         return;
     }
 
-    m_contextMenuClient = WTF::move(contextMenuClient);
+    m_contextMenuClient = WTFMove(contextMenuClient);
 }
 #endif
 
@@ -636,7 +636,7 @@ void WebPage::setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::F
         return;
     }
 
-    m_formClient = WTF::move(formClient);
+    m_formClient = WTFMove(formClient);
 }
 
 void WebPage::initializeInjectedBundleLoaderClient(WKBundlePageLoaderClientBase* client)
@@ -675,7 +675,7 @@ void WebPage::setInjectedBundleUIClient(std::unique_ptr<API::InjectedBundle::Pag
         return;
     }
 
-    m_uiClient = WTF::move(uiClient);
+    m_uiClient = WTFMove(uiClient);
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -840,7 +840,7 @@ Ref<API::Array> WebPage::trackedRepaintRects()
     for (const auto& repaintRect : view->trackedRepaintRects())
         repaintRects.uncheckedAppend(API::Rect::create(toAPI(repaintRect)));
 
-    return API::Array::create(WTF::move(repaintRects));
+    return API::Array::create(WTFMove(repaintRects));
 }
 
 PluginView* WebPage::focusedPluginViewForFrame(Frame& frame)
@@ -2776,6 +2776,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAcceleratedCompositingForOverflowScrollEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedCompositingForOverflowScrollEnabledKey()));
     settings.setAcceleratedCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedCompositingEnabledKey()));
     settings.setAcceleratedDrawingEnabled(store.getBoolValueForKey(WebPreferencesKey::acceleratedDrawingEnabledKey()));
+    settings.setDisplayListDrawingEnabled(store.getBoolValueForKey(WebPreferencesKey::displayListDrawingEnabledKey()));
     settings.setCanvasUsesAcceleratedDrawing(store.getBoolValueForKey(WebPreferencesKey::canvasUsesAcceleratedDrawingKey()));
     settings.setShowDebugBorders(store.getBoolValueForKey(WebPreferencesKey::compositingBordersVisibleKey()));
     settings.setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
@@ -3546,7 +3547,7 @@ void WebPage::mainFrameDidLayout()
 #endif
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
-        IntSize newContentSize = frameView->contentsSizeRespectingOverflow();
+        IntSize newContentSize = frameView->contentsSize();
         if (m_viewportConfiguration.setContentsSize(newContentSize))
             viewportConfigurationChanged();
     }
@@ -4972,7 +4973,7 @@ Ref<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRe
         }
     }
 
-    return WTF::move(documentLoader);
+    return WTFMove(documentLoader);
 }
 
 void WebPage::updateCachedDocumentLoader(WebDocumentLoader& documentLoader, Frame& frame)

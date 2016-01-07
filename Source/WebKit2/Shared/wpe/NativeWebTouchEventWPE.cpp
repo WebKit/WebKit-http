@@ -31,7 +31,7 @@
 namespace WebKit {
 
 NativeWebTouchEvent::NativeWebTouchEvent(WPE::Input::TouchEvent&& event)
-    : WebTouchEvent(WebEventFactory::createWebTouchEvent(WTF::move(event)))
+    : WebTouchEvent(WebEventFactory::createWebTouchEvent(WTFMove(event)))
 {
 }
 

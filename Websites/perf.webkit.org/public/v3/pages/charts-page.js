@@ -13,9 +13,20 @@ class ChartsPage extends PageWithCharts {
 
     routeName() { return 'charts'; }
 
-    static createStateForDashboardItem(platformId, metricId)
+    static createStateForDashboardItem(platformId, metricId, startTime)
     {
-        var state = {paneList: [[platformId, metricId]]};
+        var state = {paneList: [[platformId, metricId]], since: startTime};
+        return state;
+    }
+
+    static createStateForAnalysisTask(task)
+    {
+        var diff = (task.endTime() - task.startTime()) * 0.1;
+        var state = {
+            paneList: [[task.platform().id(), task.metric().id()]],
+            since: Math.round(task.startTime() - (Date.now() - task.startTime()) * 0.1),
+            zoom: [task.startTime() - diff, task.endTime() + diff],
+        };
         return state;
     }
 

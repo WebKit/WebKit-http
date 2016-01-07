@@ -195,7 +195,7 @@ WebTouchEvent WebEventFactory::createWebTouchEvent(WPE::Input::TouchEvent&& even
             WebCore::IntPoint(point.x, point.y), WebCore::IntPoint(point.x, point.y)));
     }
 
-    return WebTouchEvent(type, WTF::move(touchPoints), WebEvent::Modifiers(0), event.time);
+    return WebTouchEvent(type, WTFMove(touchPoints), WebEvent::Modifiers(0), event.time);
 }
 
 } // namespace WebKit

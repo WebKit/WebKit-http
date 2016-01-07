@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -125,6 +125,11 @@ LValue Output::doubleToUInt(LValue value)
     return result;
 }
 
+LValue Output::unsignedToDouble(LValue value)
+{
+    return intToDouble(zeroExt(value, Int64));
+}
+
 LValue Output::load8SignExt32(TypedPointer pointer)
 {
     LValue load = m_block->appendNew<MemoryValue>(m_proc, Load8S, Int32, origin(), pointer.value());
@@ -203,6 +208,18 @@ void Output::branch(LValue condition, LBasicBlock taken, Weight takenWeight, LBa
         m_proc, B3::Branch, origin(), condition,
         FrequentedBlock(taken, takenWeight.frequencyClass()),
         FrequentedBlock(notTaken, notTakenWeight.frequencyClass()));
+}
+
+void Output::check(LValue condition, WeightedTarget taken, Weight notTakenWeight)
+{
+    LBasicBlock continuation = FTL_NEW_BLOCK(*this, ("Output::check continuation"));
+    branch(condition, taken, WeightedTarget(continuation, notTakenWeight));
+    appendTo(continuation);
+}
+
+void Output::check(LValue condition, WeightedTarget taken)
+{
+    check(condition, taken, taken.weight().inverse());
 }
 
 } } // namespace JSC::FTL

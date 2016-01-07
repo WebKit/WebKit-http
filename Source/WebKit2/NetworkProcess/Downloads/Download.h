@@ -69,7 +69,6 @@ namespace WebKit {
 
 class DownloadAuthenticationClient;
 class DownloadManager;
-class NetworkDataTask;
 class NetworkSession;
 class WebPage;
 
@@ -77,16 +76,16 @@ class Download : public IPC::MessageSender {
     WTF_MAKE_NONCOPYABLE(Download);
 public:
 #if USE(NETWORK_SESSION)
-    Download(DownloadManager&, const NetworkSession&, DownloadID, const WebCore::ResourceRequest&);
+    Download(DownloadManager&, const NetworkSession&, DownloadID);
 #else
     Download(DownloadManager&, DownloadID, const WebCore::ResourceRequest&);
 #endif
     ~Download();
 
-    void start();
 #if USE(NETWORK_SESSION) && PLATFORM(COCOA)
     void dataTaskDidBecomeDownloadTask(const NetworkSession&, RetainPtr<NSURLSessionDownloadTask>&&);
 #else
+    void start();
     void startWithHandle(WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
 #endif
     void resume(const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
@@ -94,7 +93,11 @@ public:
 
     DownloadID downloadID() const { return m_downloadID; }
 
+#if USE(NETWORK_SESSION)
+    void didStart(const WebCore::ResourceRequest&);
+#else
     void didStart();
+#endif
     void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
     void didReceiveResponse(const WebCore::ResourceResponse&);
     void didReceiveData(uint64_t length);
@@ -130,7 +133,9 @@ private:
 
     DownloadManager& m_downloadManager;
     DownloadID m_downloadID;
+#if !USE(NETWORK_SESSION)
     WebCore::ResourceRequest m_request;
+#endif
 
     RefPtr<SandboxExtension> m_sandboxExtension;
 

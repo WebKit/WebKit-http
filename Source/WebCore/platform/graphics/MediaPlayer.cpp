@@ -941,7 +941,7 @@ bool MediaPlayer::canPlayToWirelessPlaybackTarget() const
 
 void MediaPlayer::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& device)
 {
-    m_private->setWirelessPlaybackTarget(WTF::move(device));
+    m_private->setWirelessPlaybackTarget(WTFMove(device));
 }
 
 void MediaPlayer::setShouldPlayToPlaybackTarget(bool shouldPlay)
@@ -1243,7 +1243,7 @@ CachedResourceLoader* MediaPlayer::cachedResourceLoader()
 
 PassRefPtr<PlatformMediaResourceLoader> MediaPlayer::createResourceLoader(std::unique_ptr<PlatformMediaResourceLoaderClient> client)
 {
-    return m_client.mediaPlayerCreateResourceLoader(WTF::move(client));
+    return m_client.mediaPlayerCreateResourceLoader(WTFMove(client));
 }
 
 #if ENABLE(VIDEO_TRACK)

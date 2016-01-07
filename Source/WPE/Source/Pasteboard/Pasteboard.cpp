@@ -40,14 +40,13 @@ namespace Pasteboard {
 
 std::shared_ptr<Pasteboard> Pasteboard::singleton()
 {
-    auto* backendEnv = std::getenv("WPE_BACKEND");
-
     static std::shared_ptr<Pasteboard> pasteboard = nullptr;
 
     if (pasteboard)
         return pasteboard;
 
 #if WPE_BACKEND(WAYLAND)
+    auto* backendEnv = std::getenv("WPE_BACKEND");
     if (std::getenv("WAYLAND_DISPLAY") || (backendEnv && !std::strcmp(backendEnv, "wayland"))) {
         pasteboard = std::shared_ptr<PasteboardWayland>(new PasteboardWayland);
         return pasteboard;

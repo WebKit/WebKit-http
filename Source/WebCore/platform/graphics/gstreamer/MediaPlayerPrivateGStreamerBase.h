@@ -180,7 +180,11 @@ public:
 
     void setVideoSourceRotation(VideoSourceRotation rotation);
 
- protected:
+#if USE(GSTREAMER_GL)
+    virtual PassNativeImagePtr nativeImageForCurrentTime();
+#endif
+
+protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
 
 #if !USE(HOLE_PUNCH_GSTREAMER)

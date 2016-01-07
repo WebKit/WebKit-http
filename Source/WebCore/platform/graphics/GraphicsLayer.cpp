@@ -58,17 +58,17 @@ void KeyframeValueList::insert(std::unique_ptr<const AnimationValue> value)
         if (curValue->keyTime() == value->keyTime()) {
             ASSERT_NOT_REACHED();
             // insert after
-            m_values.insert(i + 1, WTF::move(value));
+            m_values.insert(i + 1, WTFMove(value));
             return;
         }
         if (curValue->keyTime() > value->keyTime()) {
             // insert before
-            m_values.insert(i, WTF::move(value));
+            m_values.insert(i, WTFMove(value));
             return;
         }
     }
     
-    m_values.append(WTF::move(value));
+    m_values.append(WTFMove(value));
 }
 
 #if !USE(CA)
@@ -276,7 +276,7 @@ bool GraphicsLayer::replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChil
 
 void GraphicsLayer::removeAllChildren()
 {
-    auto oldChildren = WTF::move(m_children);
+    auto oldChildren = WTFMove(m_children);
     for (auto* child : oldChildren)
         child->setParent(nullptr);
 }

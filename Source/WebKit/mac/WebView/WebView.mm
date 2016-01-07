@@ -1229,6 +1229,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->page->settings().setDefaultFixedFontSize(13);
     _private->page->settings().setDownloadableBinaryFontsEnabled(false);
     _private->page->settings().setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
+    _private->page->settings().setDisplayListDrawingEnabled([preferences displayListDrawingEnabled]);
     
     _private->page->settings().setFontFallbackPrefersPictographs(true);
     _private->page->settings().setPictographFontFamily("AppleColorEmoji");
@@ -1567,11 +1568,9 @@ static NSMutableSet *knownPluginMIMETypes()
     return _private->page->renderTreeSize();
 }
 
+// FIXME: This is incorrectly named, and should be removed <rdar://problem/22242515>.
 - (NSSize)_contentsSizeRespectingOverflow
 {
-    if (FrameView* view = [self _mainCoreFrame]->view())
-        return view->contentsSizeRespectingOverflow();
-    
     return [[[[self mainFrame] frameView] documentView] bounds].size;
 }
 
@@ -2038,7 +2037,7 @@ static bool fastDocumentTeardownEnabled()
         Ref<HistoryItem> newItem = otherBackForward.itemAtIndex(i)->copy();
         if (i == 0) 
             newItemToGoTo = newItem.ptr();
-        backForward.client()->addItem(WTF::move(newItem));
+        backForward.client()->addItem(WTFMove(newItem));
     }
 
     ASSERT(newItemToGoTo);
@@ -2283,7 +2282,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     
     settings.setAcceleratedCompositingEnabled([preferences acceleratedCompositingEnabled]);
     settings.setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
-    settings.setCanvasUsesAcceleratedDrawing([preferences canvasUsesAcceleratedDrawing]);    
+    settings.setDisplayListDrawingEnabled([preferences displayListDrawingEnabled]);
+    settings.setCanvasUsesAcceleratedDrawing([preferences canvasUsesAcceleratedDrawing]);
     settings.setShowDebugBorders([preferences showDebugBorders]);
     settings.setSimpleLineLayoutDebugBordersEnabled([preferences simpleLineLayoutDebugBordersEnabled]);
     settings.setShowRepaintCounter([preferences showRepaintCounter]);
@@ -4059,7 +4059,7 @@ static Vector<String> toStringVector(NSArray* patterns)
         return;
 
     auto userScript = std::make_unique<UserScript>(source, url, toStringVector(whitelist), toStringVector(blacklist), injectionTime == WebInjectAtDocumentStart ? InjectAtDocumentStart : InjectAtDocumentEnd, injectedFrames == WebInjectInAllFrames ? InjectInAllFrames : InjectInTopFrameOnly);
-    viewGroup->userContentController().addUserScript(*core(world), WTF::move(userScript));
+    viewGroup->userContentController().addUserScript(*core(world), WTFMove(userScript));
 }
 
 + (void)_addUserStyleSheetToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url
@@ -4084,7 +4084,7 @@ static Vector<String> toStringVector(NSArray* patterns)
         return;
 
     auto styleSheet = std::make_unique<UserStyleSheet>(source, url, toStringVector(whitelist), toStringVector(blacklist), injectedFrames == WebInjectInAllFrames ? InjectInAllFrames : InjectInTopFrameOnly, UserStyleUserLevel);
-    viewGroup->userContentController().addUserStyleSheet(*core(world), WTF::move(styleSheet), InjectInExistingDocuments);
+    viewGroup->userContentController().addUserStyleSheet(*core(world), WTFMove(styleSheet), InjectInExistingDocuments);
 }
 
 + (void)_removeUserScriptFromGroup:(NSString *)groupName world:(WebScriptWorld *)world url:(NSURL *)url

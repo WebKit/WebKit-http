@@ -829,6 +829,9 @@ END
     def test_changed_files(self):
         self._shared_test_changed_files()
 
+    def test_untracked_files(self):
+        self._shared_test_untracked_files(self.scm)
+
     def test_changed_files_for_revision(self):
         self._shared_test_changed_files_for_revision()
 
@@ -944,6 +947,8 @@ class GitTest(SCMTest):
         os.chdir(self.untracking_checkout_path)
         write_into_file_at_path('foo_file', 'foo')
         run_command(['git', 'add', 'foo_file'])
+        write_into_file_at_path('.gitignore', '*.pyc')
+        run_command(['git', 'add', '.gitignore'])
         run_command(['git', 'commit', '-am', 'dummy commit'])
         self.untracking_scm = detect_scm_system(self.untracking_checkout_path)
 
@@ -1051,6 +1056,9 @@ class GitTest(SCMTest):
         patch = scm.create_patch()
         self.assertNotRegexpMatches(patch, r'rename from ')
         self.assertNotRegexpMatches(patch, r'rename to ')
+
+    def test_untracked_files(self):
+        self._shared_test_untracked_files(self.tracking_scm)
 
 
 class GitSVNTest(SCMTest):

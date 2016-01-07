@@ -36,7 +36,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-DownloadManager::DownloadManager(Client* client)
+DownloadManager::DownloadManager(Client& client)
     : m_client(client)
 {
 }
@@ -47,24 +47,30 @@ void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, 
     auto* networkSession = SessionTracker::networkSession(sessionID);
     if (!networkSession)
         return;
-    auto download = std::make_unique<Download>(*this, *networkSession, downloadID, request);
+    auto download = std::make_unique<Download>(*this, *networkSession, downloadID);
+    download->didStart(request);
 #else
     auto download = std::make_unique<Download>(*this, downloadID, request);
-#endif
     download->start();
+#endif
 
     ASSERT(!m_downloads.contains(downloadID));
-    m_downloads.add(downloadID, WTF::move(download));
+    m_downloads.add(downloadID, WTFMove(download));
 }
 
-#if !USE(NETWORK_SESSION)
+#if USE(NETWORK_SESSION)
+void DownloadManager::dataTaskBecameDownloadTask(DownloadID downloadID, std::unique_ptr<Download>&& download)
+{
+    m_downloads.add(downloadID, WTFMove(download));
+}
+#else
 void DownloadManager::convertHandleToDownload(DownloadID downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
 {
     auto download = std::make_unique<Download>(*this, downloadID, request);
 
     download->startWithHandle(handle, response);
     ASSERT(!m_downloads.contains(downloadID));
-    m_downloads.add(downloadID, WTF::move(download));
+    m_downloads.add(downloadID, WTFMove(download));
 }
 #endif
 
@@ -78,7 +84,7 @@ void DownloadManager::resumeDownload(SessionID, DownloadID downloadID, const IPC
 
     download->resume(resumeData, path, sandboxExtensionHandle);
     ASSERT(!m_downloads.contains(downloadID));
-    m_downloads.add(downloadID, WTF::move(download));
+    m_downloads.add(downloadID, WTFMove(download));
 #endif
 }
 
@@ -99,22 +105,22 @@ void DownloadManager::downloadFinished(Download* download)
 
 void DownloadManager::didCreateDownload()
 {
-    m_client->didCreateDownload();
+    m_client.didCreateDownload();
 }
 
 void DownloadManager::didDestroyDownload()
 {
-    m_client->didDestroyDownload();
+    m_client.didDestroyDownload();
 }
 
 IPC::Connection* DownloadManager::downloadProxyConnection()
 {
-    return m_client->downloadProxyConnection();
+    return m_client.downloadProxyConnection();
 }
 
 AuthenticationManager& DownloadManager::downloadsAuthenticationManager()
 {
-    return m_client->downloadsAuthenticationManager();
+    return m_client.downloadsAuthenticationManager();
 }
 
 } // namespace WebKit

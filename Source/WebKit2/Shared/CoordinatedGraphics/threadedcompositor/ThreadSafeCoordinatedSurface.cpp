@@ -44,7 +44,7 @@ Ref<ThreadSafeCoordinatedSurface> ThreadSafeCoordinatedSurface::create(const Int
 
 ThreadSafeCoordinatedSurface::ThreadSafeCoordinatedSurface(const IntSize& size, CoordinatedSurface::Flags flags, std::unique_ptr<ImageBuffer> buffer)
     : CoordinatedSurface(size, flags)
-    , m_imageBuffer(WTF::move(buffer))
+    , m_imageBuffer(WTFMove(buffer))
 {
 }
 
