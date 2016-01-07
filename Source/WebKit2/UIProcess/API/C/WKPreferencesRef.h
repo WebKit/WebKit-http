@@ -270,6 +270,10 @@ WK_EXPORT bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef pr
 WK_EXPORT void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef);
 
+// Defaults to false
+WK_EXPORT void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences);
+
 #ifdef __cplusplus
 }
 #endif
