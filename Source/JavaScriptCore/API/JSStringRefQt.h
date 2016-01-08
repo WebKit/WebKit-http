@@ -39,7 +39,7 @@
 @param string     The JSString to copy into the new QString.
 @result           A QString containing string.
 */
-JS_EXPORT QString JSStringCopyQString(JSStringRef string);
+JS_EXPORT QString JSStringCopyQString(JSStringRef);
 JS_EXPORT JSRetainPtr<JSStringRef> JSStringCreateWithQString(const QString&);
 
 #endif /* JSStringRefQt_h */

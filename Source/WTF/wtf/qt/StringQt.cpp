@@ -25,10 +25,9 @@
 
 #include "config.h"
 
+#include <QString>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
-
-#include <QString>
 
 namespace WTF {
 
