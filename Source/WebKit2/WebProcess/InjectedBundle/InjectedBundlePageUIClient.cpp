@@ -46,7 +46,6 @@ InjectedBundlePageUIClient::InjectedBundlePageUIClient(const WKBundlePageUIClien
 
 void InjectedBundlePageUIClient::willAddMessageToConsole(WebPage* page, MessageSource source, MessageLevel level, const String& message, unsigned lineNumber, unsigned columnNumber, const String& url)
 {
-    fprintf(stderr, "InjectedBundlePageUIClient::willAddMessageToConsole()\n");
     if (m_client.willAddMessageToConsole)
         m_client.willAddMessageToConsole(toAPI(page), toAPI(message.impl()), lineNumber, m_client.base.clientInfo);
 
