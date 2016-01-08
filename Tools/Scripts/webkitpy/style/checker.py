@@ -140,12 +140,38 @@ _PATH_RULES_SPECIFIER = [
       # The API test harnesses have no config.h and use funny macros like
       # TEST_CLASS_NAME.
       os.path.join('Tools', 'WebKitAPITest'),
-      os.path.join('Tools', 'TestWebKitAPI')],
+      os.path.join('Tools', 'TestWebKitAPI'),
+      os.path.join('Source', 'WebKit', 'qt', 'tests', 'qdeclarativewebview')],
      ["-build/include",
       "-readability/naming"]),
     ([# There is no clean way to avoid "yy_*" names used by flex.
-      os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp')],
+      os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
+      # TestWebKitAPI uses funny macros like EXPECT_WK_STREQ.
+      os.path.join('Tools', 'TestWebKitAPI'),
+      # Qt code uses '_' in some places (such as private slots
+      # and on test xxx_data methos on tests)
+      "Source/JavaScriptCore/qt/",
+      "Source/WebKit/qt/tests/",
+      "Source/WebKit/qt/declarative/",
+      "Source/WebKit/qt/examples/"],
      ["-readability/naming"]),
+
+    ([# The Qt APIs use Qt declaration style, it puts the * to
+      # the variable name, not to the class.
+      "Source/WebKit/qt/Api/",
+      "Source/WebKit/qt/WidgetApi/"],
+     ["-readability/naming",
+      "-whitespace/declaration"]),
+
+     ([# Qt's MiniBrowser has no config.h
+       "Tools/MiniBrowser/qt",
+       "Tools/MiniBrowser/qt/raw"],
+      ["-build/include"]),
+
+    ([# The Qt APIs use Qt/QML naming style, which includes
+      # naming parameters in h files.
+      "Source/WebKit2/UIProcess/API/qt"],
+     ["-readability/parameter_name"]),
 
     ([# The GTK+ APIs use GTK+ naming style, which includes
       # lower-cased, underscore-separated values, whitespace before
