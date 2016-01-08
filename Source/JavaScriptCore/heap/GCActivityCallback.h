@@ -85,6 +85,14 @@ protected:
         , m_delay(s_hour)
     {
     }
+#elif PLATFORM(QT)
+    static constexpr double s_hour = 3600;
+    GCActivityCallback(VM* vm)
+        : HeapTimer(vm)
+        , m_enabled(true)
+        , m_delay(s_hour)
+    {
+    }
 #elif USE(GLIB)
     GCActivityCallback(VM* vm)
         : HeapTimer(vm)
@@ -106,7 +114,7 @@ protected:
 protected:
     GCActivityCallback(Heap*, CFRunLoopRef);
 #endif
-#if USE(CF) || USE(GLIB)
+#if USE(CF) || USE(GLIB) || PLATFORM(QT)
 protected:
     void cancelTimer();
     void scheduleTimer(double);

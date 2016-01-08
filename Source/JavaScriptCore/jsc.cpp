@@ -100,6 +100,11 @@
 #include <arm/arch.h>
 #endif
 
+#if PLATFORM(QT)
+#include <QCoreApplication>
+#include <QDateTime>
+#endif
+
 #if PLATFORM(EFL)
 #include <Ecore.h>
 #endif
@@ -1728,6 +1733,10 @@ int main(int argc, char** argv)
 #endif
 
     timeBeginPeriod(1);
+#endif
+
+#if PLATFORM(QT)
+    QCoreApplication app(argc, argv);
 #endif
 
 #if PLATFORM(EFL)
