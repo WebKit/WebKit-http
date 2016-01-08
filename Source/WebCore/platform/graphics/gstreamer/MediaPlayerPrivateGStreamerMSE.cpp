@@ -1901,10 +1901,9 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
 {
-    TRACE_MEDIA_MESSAGE("thread %d", WTF::currentThread());
+    ASSERT(!WTF::isMainThread());
 
     bool invalid;
-
     g_mutex_lock(&m_newSampleMutex);
     invalid = !m_playerPrivate || m_appendStage == Invalid;
     g_mutex_unlock(&m_newSampleMutex);
@@ -1919,20 +1918,16 @@ GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
         return GST_FLOW_ERROR;
     }
 
-    if (WTF::isMainThread()) {
-        appSinkNewSample(sample);
-    } else {
-        g_mutex_lock(&m_newSampleMutex);
-        if (!(!m_playerPrivate || m_appendStage == Invalid)) {
-            NewSampleInfo* info = new NewSampleInfo(sample, this);
-            g_timeout_add(0, GSourceFunc(appendPipelineAppSinkNewSampleMainThread), info);
-            g_cond_wait(&m_newSampleCondition, &m_newSampleMutex);
-            // We've been awaken because the sample was processed or because of
-            // an exceptional condition (entered in Invalid state, destructor, etc.)
-            // We can't reliably delete info here, appendPipelineAppSinkNewSampleMainThread will do it.
-        }
-        g_mutex_unlock(&m_newSampleMutex);
+    g_mutex_lock(&m_newSampleMutex);
+    if (!(!m_playerPrivate || m_appendStage == Invalid)) {
+        NewSampleInfo* info = new NewSampleInfo(sample, this);
+        g_timeout_add(0, GSourceFunc(appendPipelineAppSinkNewSampleMainThread), info);
+        g_cond_wait(&m_newSampleCondition, &m_newSampleMutex);
+        // We've been awaken because the sample was processed or because of
+        // an exceptional condition (entered in Invalid state, destructor, etc.)
+        // We can't reliably delete info here, appendPipelineAppSinkNewSampleMainThread will do it.
     }
+    g_mutex_unlock(&m_newSampleMutex);
     gst_sample_unref(sample);
     return m_flowReturn;
 }
