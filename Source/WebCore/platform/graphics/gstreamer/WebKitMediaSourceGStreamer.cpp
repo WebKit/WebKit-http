@@ -162,7 +162,6 @@ static GstStateChangeReturn webKitMediaSrcChangeState(GstElement*, GstStateChang
 static gboolean webKitMediaSrcQueryWithParent(GstPad*, GstObject*, GstQuery*);
 
 inline static AtomicString getStreamTrackId(Stream*);
-static GstClockTime floatToGstClockTime(float);
 static gboolean freeStreamLater(Stream*);
 static gboolean releaseStreamTrackInfo(WebKitMediaSrc*, Stream*);
 
@@ -391,8 +390,8 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
         GST_OBJECT_LOCK(src);
         float duration;
         if (format == GST_FORMAT_TIME && src->priv && src->priv->mediaPlayerPrivate && ((duration = src->priv->mediaPlayerPrivate->duration()) > 0)) {
-            gst_query_set_duration(query, format, floatToGstClockTime(duration));
-            GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(floatToGstClockTime(duration)));
+            gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
+            GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
             result = TRUE;
         }
         GST_OBJECT_UNLOCK(src);
@@ -1276,8 +1275,7 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     RefPtr<MediaSample> rsample = prsample;
     AtomicString trackId = rsample->trackID();
 
-    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(floatToGstClockTime(rsample->presentationTime().toDouble())));
-
+    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->presentationTime().toDouble())), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->duration().toDouble())));
     ASSERT(WTF::isMainThread());
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
@@ -1366,18 +1364,6 @@ void webkit_media_src_prepare_seek(WebKitMediaSrc* src, const MediaTime& time)
     // The pending action will be performed in app_src_seek_data().
     src->priv->appSrcSeekDataNextAction = MediaSourceSeekToTime;
     GST_OBJECT_UNLOCK(src);
-}
-
-static GstClockTime floatToGstClockTime(float time)
-{
-    // Extract the integer part of the time (seconds) and the fractional part (microseconds). Attempt to
-    // round the microseconds so no floating point precision is lost and we can perform an accurate seek.
-    float seconds;
-    float microSeconds = std::modf(time, &seconds) * 1000000;
-    GTimeVal timeValue;
-    timeValue.tv_sec = static_cast<glong>(seconds);
-    timeValue.tv_usec = static_cast<glong>(roundf(microSeconds / 10000) * 10000);
-    return GST_TIMEVAL_TO_TIME(timeValue);
 }
 
 namespace WTF {
