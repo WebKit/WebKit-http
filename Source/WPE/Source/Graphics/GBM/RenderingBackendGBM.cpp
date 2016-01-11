@@ -92,10 +92,8 @@ RenderingBackendGBM::Surface::Surface(const RenderingBackendGBM& renderingBacken
 
 RenderingBackendGBM::Surface::~Surface()
 {
-    for (auto& it : m_lockedBuffers) {
+    for (auto& it : m_lockedBuffers)
         m_client.destroyBuffer(it.first);
-        gbm_bo_destroy(it.second);
-    }
 
     if (m_surface)
         gbm_surface_destroy(m_surface);
