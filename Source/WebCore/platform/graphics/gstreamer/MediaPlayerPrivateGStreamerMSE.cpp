@@ -378,7 +378,8 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
         m_seeking = false;
         return false;
     }
-    if (getStateResult == GST_STATE_CHANGE_ASYNC
+    if ((getStateResult == GST_STATE_CHANGE_ASYNC
+            && !(state == GST_STATE_PLAYING && newState == GST_STATE_PAUSED))
             || state < GST_STATE_PAUSED
             || m_isEndReached
             || !m_gstSeekCompleted) {
@@ -478,8 +479,12 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
         return;
     }
 
-    GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), NULL, NULL, 0);
-    if (getStateResult == GST_STATE_CHANGE_ASYNC) {
+    GstState state;
+    GstState newState;
+    GstStateChangeReturn getStateResult = gst_element_get_state(m_pipeline.get(), &state, &newState, 0);
+
+    if (getStateResult == GST_STATE_CHANGE_ASYNC
+            && !(state == GST_STATE_PLAYING && newState == GST_STATE_PAUSED)) {
         LOG_MEDIA_MESSAGE("[Seek] Delaying seek finish");
         return;
     }
