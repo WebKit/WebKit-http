@@ -39,6 +39,8 @@ CompositingManager::CompositingManager(Client& client)
 {
 }
 
+CompositingManager::~CompositingManager() = default;
+
 void CompositingManager::establishConnection(WebPage& webPage, WTF::RunLoop& runLoop)
 {
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
