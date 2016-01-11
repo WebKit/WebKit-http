@@ -39,7 +39,6 @@ CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
     : m_view(view)
 {
     m_view.page().process().addMessageReceiver(Messages::CompositingManagerProxy::messageReceiverName(), m_view.page().pageID(), *this);
-    m_view.viewBackend().setClient(this);
 }
 
 CompositingManagerProxy::~CompositingManagerProxy()

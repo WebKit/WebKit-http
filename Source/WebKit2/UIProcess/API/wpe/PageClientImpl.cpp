@@ -40,7 +40,7 @@ PageClientImpl::PageClientImpl(WKWPE::View& view)
 
 std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
 {
-    return std::make_unique<DrawingAreaProxyWPE>(m_view);
+    return std::make_unique<DrawingAreaProxyWPE>(m_view.page());
 }
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::IntRect&)
