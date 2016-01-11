@@ -48,6 +48,7 @@ public:
 class ViewBackend {
 public:
     static WPE_EXPORT std::unique_ptr<ViewBackend> create();
+    virtual ~ViewBackend();
 
     virtual void setClient(Client*);
     virtual uint32_t constructRenderingTarget(uint32_t, uint32_t) = 0;
