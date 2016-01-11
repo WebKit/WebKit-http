@@ -132,7 +132,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     : m_client(client)
     , m_deviceScaleFactor(1)
     , m_threadIdentifier(0)
-    , m_compositingManager(*this)
+    , m_compositingManager(std::make_unique<CompositingManager>(*this))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new DisplayRefreshMonitor(*this)))
 #endif
@@ -140,7 +140,7 @@ ThreadedCompositor::ThreadedCompositor(Client* client, WebPage& webPage)
     m_clientRendersNextFrame.store(false);
     m_coordinateUpdateCompletionWithClient.store(false);
     createCompositingThread();
-    m_compositingManager.establishConnection(webPage, m_compositingRunLoop->runLoop());
+    m_compositingManager->establishConnection(webPage, m_compositingRunLoop->runLoop());
 }
 
 ThreadedCompositor::~ThreadedCompositor()
@@ -236,14 +236,6 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
-#if PLATFORM(WPE)
-void ThreadedCompositor::destroyBuffer(uint32_t handle)
-{
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-    m_compositingManager.destroyBuffer(handle);
-}
-#endif
-
 bool ThreadedCompositor::ensureGLContext()
 {
     if (!glContext())
@@ -271,8 +263,8 @@ GLContext* ThreadedCompositor::glContext()
     RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
 
     IntSize size(viewportController()->visibleContentsRect().size());
-    uint32_t targetHandle = m_compositingManager.constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
-    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(size, targetHandle, *this);
+    uint32_t targetHandle = m_compositingManager->constructRenderingTarget(std::max(0, size.width()), std::max(0, size.height()));
+    m_surface = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createSurface(size, targetHandle, *m_compositingManager);
     if (!m_surface)
         return nullptr;
 
@@ -321,7 +313,7 @@ void ThreadedCompositor::renderLayerTree()
 
 #if PLATFORM(WPE)
     auto bufferExport = m_surface->lockFrontBuffer();
-    m_compositingManager.commitBuffer(bufferExport);
+    m_compositingManager->commitBuffer(bufferExport);
 #endif
 }
 

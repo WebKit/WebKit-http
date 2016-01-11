@@ -41,10 +41,6 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
-#if PLATFORM(WPE)
-#include <WebCore/PlatformDisplayWPE.h>
-#endif
-
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include <WebCore/DisplayRefreshMonitor.h>
 #endif
@@ -60,11 +56,7 @@ class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 class WebPage;
 
-class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, 
-#if PLATFORM(WPE)
-    public WebCore::PlatformDisplayWPE::Surface::Client,
-#endif
-    public CompositingManager::Client {
+class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public CompositingManager::Client {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -102,11 +94,6 @@ private:
     virtual void renderNextFrame() override;
     virtual void updateViewport() override;
     virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
-
-#if PLATFORM(WPE)
-    // PlatformDisplayWPE::Surface::Client
-    virtual void destroyBuffer(uint32_t) override;
-#endif
 
     // CompositingManager::Client
     virtual void releaseBuffer(uint32_t) override;
@@ -147,7 +134,7 @@ private:
     Condition m_terminateRunLoopCondition;
     Lock m_terminateRunLoopConditionLock;
 
-    CompositingManager m_compositingManager;
+    std::unique_ptr<CompositingManager> m_compositingManager;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     class DisplayRefreshMonitor : public WebCore::DisplayRefreshMonitor {
