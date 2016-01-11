@@ -45,6 +45,7 @@ class WebPageProxy;
 class CompositingManagerProxy final : public IPC::Connection::Client, public WPE::ViewBackend::Client {
 public:
     CompositingManagerProxy(WKWPE::View&);
+    ~CompositingManagerProxy();
 
     CompositingManagerProxy(const CompositingManagerProxy&) = delete;
     CompositingManagerProxy& operator=(const CompositingManagerProxy&) = delete;
