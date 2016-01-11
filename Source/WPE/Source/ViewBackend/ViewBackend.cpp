@@ -60,6 +60,10 @@ std::unique_ptr<ViewBackend> ViewBackend::create()
     return nullptr;
 }
 
+ViewBackend::~ViewBackend()
+{
+}
+
 void ViewBackend::setClient(Client*)
 {
 }
