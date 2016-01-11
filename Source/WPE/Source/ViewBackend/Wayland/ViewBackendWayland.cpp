@@ -123,11 +123,11 @@ ViewBackendWayland::~ViewBackendWayland()
 {
     m_display.unregisterInputClient(m_surface);
 
+    m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
+
     if (m_callbackData.frameCallback)
         wl_callback_destroy(m_callbackData.frameCallback);
     m_callbackData = { nullptr, nullptr };
-
-    m_bufferData = { nullptr, decltype(m_bufferData.map){ } };
 
     m_resizingData = { nullptr, 0, 0 };
 
