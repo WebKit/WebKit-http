@@ -95,6 +95,7 @@ Usage: $programName [options] [options to pass to build system]
 
   --efl                             Build the EFL port
   --gtk                             Build the GTK+ port
+  --qt                              Build the Qt port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
