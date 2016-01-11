@@ -42,6 +42,11 @@ CompositingManagerProxy::CompositingManagerProxy(WKWPE::View& view)
     m_view.viewBackend().setClient(this);
 }
 
+CompositingManagerProxy::~CompositingManagerProxy()
+{
+    m_connection->invalidate();
+}
+
 void CompositingManagerProxy::establishConnection(IPC::Attachment encodedConnectionIdentifier)
 {
     IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.releaseFileDescriptor());
