@@ -482,15 +482,13 @@ void ThreadedCompositor::DisplayRefreshMonitor::displayRefreshCallback()
 #if PLATFORM(WPE)
 void ThreadedCompositor::releaseBuffer(uint32_t handle)
 {
-    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
-#if PLATFORM(WPE)
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
     m_surface->releaseBuffer(handle);
-#endif
 }
 
 void ThreadedCompositor::frameComplete()
 {
-    RELEASE_ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
     static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
     if (reportFPS)
         debugThreadedCompositorFPS();
