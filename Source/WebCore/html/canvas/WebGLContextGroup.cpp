@@ -33,6 +33,10 @@
 #include "WebGLRenderingContextBase.h"
 #include "WebGLSharedObject.h"
 
+#if PLATFORM(QT)
+#undef emit
+#endif
+
 namespace WebCore {
 
 Ref<WebGLContextGroup> WebGLContextGroup::create()

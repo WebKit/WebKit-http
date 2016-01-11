@@ -62,6 +62,10 @@
 #include <JavaScriptCore/JSCellInlines.h>
 #include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
 
+#if PLATFORM(QT)
+#undef emit
+#endif
+
 namespace WebCore {
 
 WebGLRenderingContext::WebGLRenderingContext(HTMLCanvasElement* passedCanvas, GraphicsContext3D::Attributes attributes)

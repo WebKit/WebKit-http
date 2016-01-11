@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(QT)
 const float ViewportArguments::deprecatedTargetDPI = 160;
 #endif
 

@@ -168,7 +168,7 @@ void HTMLCanvasElement::setWidth(int value)
 #if ENABLE(WEBGL)
 static bool requiresAcceleratedCompositingForWebGL()
 {
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT)
     return false;
 #else
     return true;

@@ -34,7 +34,9 @@
 #include <memory>
 #include <wtf/Forward.h>
 
-#if USE(CG)
+#if PLATFORM(QT)
+#define DefaultInterpolationQuality InterpolationMedium
+#elif USE(CG)
 #define DefaultInterpolationQuality InterpolationLow
 #else
 #define DefaultInterpolationQuality InterpolationDefault

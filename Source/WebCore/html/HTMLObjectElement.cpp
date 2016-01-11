@@ -271,6 +271,11 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     
 bool HTMLObjectElement::hasValidClassId()
 {
+#if PLATFORM(QT)
+    if (equalIgnoringCase(serviceType(), "application/x-qt-plugin") || equalIgnoringCase(serviceType(), "application/x-qt-styled-widget"))
+        return true;
+#endif
+
     if (MIMETypeRegistry::isJavaAppletMIMEType(serviceType()) && fastGetAttribute(classidAttr).startsWith("java:", false))
         return true;
     
