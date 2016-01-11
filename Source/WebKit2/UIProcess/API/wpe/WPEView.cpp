@@ -27,6 +27,7 @@
 #include "WPEView.h"
 
 #include "APIPageConfiguration.h"
+#include "CompositingManagerProxy.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebTouchEvent.h"
@@ -43,8 +44,6 @@ View::View(const API::PageConfiguration& baseConfiguration)
     , m_viewBackend(WPE::ViewBackend::ViewBackend::create())
     , m_size{ 800, 600 }
 {
-    m_viewBackend->setInputClient(this);
-
     auto configuration = baseConfiguration.copy();
     auto* preferences = configuration->preferences();
     if (!preferences && configuration->pageGroup()) {
@@ -63,6 +62,18 @@ View::View(const API::PageConfiguration& baseConfiguration)
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
     m_pageProxy->initializeWebPage();
+
+    m_compositingManagerProxy = std::make_unique<CompositingManagerProxy>(*this);
+
+    m_viewBackend->setClient(m_compositingManagerProxy.get());
+    m_viewBackend->setInputClient(this);
+
+}
+
+View::~View()
+{
+    m_viewBackend->setClient(nullptr);
+    m_viewBackend->setInputClient(nullptr);
 }
 
 void View::setSize(const WebCore::IntSize& size)

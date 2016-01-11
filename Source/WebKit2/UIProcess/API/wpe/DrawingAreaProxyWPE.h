@@ -28,15 +28,13 @@
 
 #include "DrawingAreaProxy.h"
 
-#include "CompositingManagerProxy.h"
 #include "LayerTreeContext.h"
-#include <WPE/ViewBackend/ViewBackend.h>
 
 namespace WebKit {
 
 class DrawingAreaProxyWPE final : public DrawingAreaProxy {
 public:
-    explicit DrawingAreaProxyWPE(WKWPE::View&);
+    explicit DrawingAreaProxyWPE(WebPageProxy&);
     virtual ~DrawingAreaProxyWPE();
 
 private:
@@ -50,8 +48,6 @@ private:
     void enterAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode(uint64_t backingStoreStateID, const UpdateInfo&) override;
     void updateAcceleratedCompositingMode(uint64_t backingStoreStateID, const LayerTreeContext&) override;
-
-    CompositingManagerProxy m_compositingManagerProxy;
 
     // The current layer tree context.
     LayerTreeContext m_layerTreeContext;

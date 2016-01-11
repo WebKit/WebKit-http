@@ -43,6 +43,7 @@ namespace WebKit {
 class WebPageProxy;
 
 class CompositingManagerProxy final : public IPC::Connection::Client, public WPE::ViewBackend::Client {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     CompositingManagerProxy(WKWPE::View&);
     ~CompositingManagerProxy();

@@ -27,16 +27,14 @@
 #include "DrawingAreaProxyWPE.h"
 
 #include "DrawingAreaMessages.h"
-#include "WPEView.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 #include <WebCore/NotImplemented.h>
 
 namespace WebKit {
 
-DrawingAreaProxyWPE::DrawingAreaProxyWPE(WKWPE::View& view)
-    : DrawingAreaProxy(DrawingAreaTypeWPE, view.page())
-    , m_compositingManagerProxy(view)
+DrawingAreaProxyWPE::DrawingAreaProxyWPE(WebPageProxy& page)
+    : DrawingAreaProxy(DrawingAreaTypeWPE, page)
 {
 }
 

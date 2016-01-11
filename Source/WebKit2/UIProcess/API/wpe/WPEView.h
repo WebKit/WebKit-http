@@ -35,6 +35,7 @@
 #include <wtf/RefPtr.h>
 
 namespace WebKit {
+class CompositingManagerProxy;
 class WebPageGroup;
 class WebProcessPool;
 }
@@ -63,10 +64,12 @@ public:
 
 private:
     View(const API::PageConfiguration&);
+    virtual ~View();
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;
     std::unique_ptr<WPE::ViewBackend::ViewBackend> m_viewBackend;
+    std::unique_ptr<WebKit::CompositingManagerProxy> m_compositingManagerProxy;
     WebCore::IntSize m_size;
 };
 
