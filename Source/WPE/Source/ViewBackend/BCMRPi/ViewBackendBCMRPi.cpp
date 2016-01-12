@@ -120,6 +120,9 @@ ViewBackendBCMRPi::~ViewBackendBCMRPi()
         g_source_destroy(m_updateSource);
     if (m_updateFd)
         close(m_updateFd);
+
+    vc_dispmanx_display_close(m_displayHandle);
+    bcm_host_deinit();
 }
 
 void ViewBackendBCMRPi::setClient(Client* client)
