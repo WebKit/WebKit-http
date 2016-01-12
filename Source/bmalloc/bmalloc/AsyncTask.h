@@ -42,6 +42,7 @@ public:
     ~AsyncTask();
 
     void run();
+    void stop();
 
 private:
     enum State { Exited, ExitRequested, Sleeping, Running, RunRequested };
@@ -100,6 +101,13 @@ inline void AsyncTask<Object, Function>::run()
     if (m_state == RunRequested)
         return;
     runSlowCase();
+}
+
+template<typename Object, typename Function>
+inline void AsyncTask<Object, Function>::stop()
+{
+    if (m_state != Exited && m_thread.joinable())
+        m_thread.join();
 }
 
 template<typename Object, typename Function>

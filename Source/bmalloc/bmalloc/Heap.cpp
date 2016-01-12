@@ -420,4 +420,9 @@ void Heap::deallocateLarge(std::lock_guard<StaticMutex>& lock, void* object)
     deallocateLarge(lock, largeObject);
 }
 
+void Heap::heapDestructor()
+{
+    PerProcess<Heap>::get()->m_scavenger.stop();
+}
+
 } // namespace bmalloc
