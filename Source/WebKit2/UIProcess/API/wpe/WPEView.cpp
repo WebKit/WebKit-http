@@ -61,13 +61,13 @@ View::View(const API::PageConfiguration& baseConfiguration)
 
     auto* pool = configuration->processPool();
     m_pageProxy = pool->createWebPage(*m_pageClient, WTFMove(configuration));
-    m_pageProxy->initializeWebPage();
 
+    // Construct the CompositingManagerProxy before initializing the WebPageProxy.
     m_compositingManagerProxy = std::make_unique<CompositingManagerProxy>(*this);
-
     m_viewBackend->setClient(m_compositingManagerProxy.get());
     m_viewBackend->setInputClient(this);
 
+    m_pageProxy->initializeWebPage();
 }
 
 View::~View()
