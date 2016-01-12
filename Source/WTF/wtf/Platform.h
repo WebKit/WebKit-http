@@ -435,13 +435,16 @@
 #endif
 
 /* FIXME: these are all mixes of OS, operating environment and policy choices. */
+/* PLATFORM(QT) */
 /* PLATFORM(EFL) */
 /* PLATFORM(GTK) */
 /* PLATFORM(MAC) */
 /* PLATFORM(IOS) */
 /* PLATFORM(IOS_SIMULATOR) */
 /* PLATFORM(WIN) */
-#if defined(BUILDING_EFL__)
+#if defined(BUILDING_QT__)
+#define WTF_PLATFORM_QT 1
+#elif defined(BUILDING_EFL__)
 #define WTF_PLATFORM_EFL 1
 #elif defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
@@ -579,6 +582,10 @@
 #endif
 
 #endif /* PLATFORM(IOS) */
+
+#if PLATFORM(QT) && OS(DARWIN)
+#define USE_CF 1
+#endif
 
 #if PLATFORM(WIN) && !USE(WINGDI)
 #define USE_CF 1
@@ -728,7 +735,7 @@
 /* If possible, try to enable a disassembler. This is optional. We proceed in two
    steps: first we try to find some disassembler that we can use, and then we
    decide if the high-level disassembler API can be enabled. */
-#if !defined(USE_UDIS86) && ENABLE(JIT) && ((OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK)) || (OS(LINUX) && (PLATFORM(EFL) || PLATFORM(GTK)))) \
+#if !defined(USE_UDIS86) && ENABLE(JIT) && ((OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK)) || (OS(LINUX) && (PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)))) \
     && (CPU(X86) || CPU(X86_64))
 #define USE_UDIS86 1
 #endif
@@ -755,7 +762,7 @@
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(EFL))
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARM, MIPS and SH4. */
@@ -919,7 +926,7 @@
 #endif
 #endif
 
-#if PLATFORM(WIN_CAIRO)
+#if PLATFORM(WIN_CAIRO) || PLATFORM(QT)
 #define USE_TEXTURE_MAPPER 1
 #endif
 
@@ -928,6 +935,10 @@
 #endif
 
 /* Compositing on the UI-process in WebKit2 */
+#if USE(3D_GRAPHICS) && PLATFORM(QT)
+#define USE_COORDINATED_GRAPHICS 1
+#endif
+
 #if PLATFORM(COCOA)
 #define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
 #endif
@@ -963,7 +974,7 @@
    since most ports try to support sub-project independence, adding new headers
    to WTF causes many ports to break, and so this way we can address the build
    breakages one port at a time. */
-#if !defined(USE_EXPORT_MACROS) && (PLATFORM(COCOA) || PLATFORM(WIN))
+#if !defined(USE_EXPORT_MACROS) && (PLATFORM(COCOA) || PLATFORM(QT) || PLATFORM(WIN))
 #define USE_EXPORT_MACROS 1
 #endif
 
@@ -971,7 +982,7 @@
 #define USE_EXPORT_MACROS_FOR_TESTING 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || (PLATFORM(QT) && !OS(DARWIN) && !OS(WINDOWS))
 #define USE_UNIX_DOMAIN_SOCKETS 1
 #endif
 
@@ -1040,6 +1051,13 @@
 #ifndef HAVE_QOS_CLASSES
 #if PLATFORM(COCOA)
 #define HAVE_QOS_CLASSES 1
+#endif
+#endif
+
+#if PLATFORM(QT)
+#include <qglobal.h>
+#if defined(QT_OPENGL_ES_2) && !defined(USE_OPENGL_ES_2)
+#define USE_OPENGL_ES_2 1
 #endif
 #endif
 
