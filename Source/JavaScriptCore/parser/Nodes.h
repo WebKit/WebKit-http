@@ -37,6 +37,10 @@
 #include "VariableEnvironment.h"
 #include <wtf/MathExtras.h>
 
+#if PLATFORM(QT)
+#undef emit
+#endif
+
 namespace JSC {
 
     class ArgumentListNode;

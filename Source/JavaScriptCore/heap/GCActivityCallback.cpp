@@ -132,9 +132,9 @@ void GCActivityCallback::scheduleTimer(double newDelay)
     m_timer.start(newDelay * 1000, this);
 }
 
-void DefaultGCActivityCallback::cancelTimer()
+void GCActivityCallback::cancelTimer()
 {
-    m_delay = hour;
+    m_delay = s_hour;
     m_timer.stop();
 }
 #elif USE(GLIB)

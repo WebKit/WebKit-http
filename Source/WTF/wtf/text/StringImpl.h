@@ -35,6 +35,10 @@
 #include <wtf/text/ConversionMode.h>
 #include <wtf/text/StringCommon.h>
 
+#if PLATFORM(QT)
+#include <QString>
+#endif
+
 #if USE(CF)
 typedef const struct __CFString * CFStringRef;
 #endif

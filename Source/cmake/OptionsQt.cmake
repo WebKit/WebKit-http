@@ -3,6 +3,8 @@ set(PROJECT_VERSION_MINOR 0)
 set(PROJECT_VERSION_MICRO 0)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 
+add_definitions(-DBUILDING_QT__=1)
+
 WEBKIT_OPTION_BEGIN()
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATABASE_PROCESS PUBLIC OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_INDEXED_DATABASE PUBLIC OFF)
@@ -34,6 +36,13 @@ set(CMAKE_AUTOMOC ON)
 
 # TODO: figure out if we can run automoc only on Qt sources
 
+# From OptionsEfl.cmake
+# Optimize binary size for release builds by removing dead sections on unix/gcc.
+if (CMAKE_COMPILER_IS_GNUCC AND UNIX AND NOT APPLE)
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+endif ()
 
 # From OptionsGTK.cmake
 if (CMAKE_MAJOR_VERSION LESS 3)

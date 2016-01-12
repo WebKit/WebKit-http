@@ -173,7 +173,7 @@ public:
 #endif
 #if PLATFORM(QT)
     AtomicString(const QString& s)
-        : m_string(add(String(s).impl()))
+        : m_string(AtomicStringImpl::add(String(s).impl()))
     { }
     operator QString() const { return m_string; }
 #endif

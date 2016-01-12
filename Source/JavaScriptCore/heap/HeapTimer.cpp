@@ -136,7 +136,7 @@ void HeapTimer::timerEvent(QTimerEvent*)
         return;
     }
 
-    APIEntryShim shim(m_vm);
+    JSLockHolder locker(m_vm);
     doWork();
 }
 
