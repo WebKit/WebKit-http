@@ -376,6 +376,16 @@ static GstStateChangeReturn webKitMediaSrcChangeState(GstElement* element, GstSt
     return ret;
 }
 
+gint64 webKitMediaSrcGetSize(WebKitMediaSrc* webKitMediaSrc)
+{
+    gint64 duration = 0;
+    for (GList* streams = webKitMediaSrc->priv->streams; streams; streams = streams->next) {
+        Stream* s = static_cast<Stream*>(streams->data);
+        duration  = MAX(duration, gst_app_src_get_size(GST_APP_SRC(s->appsrc)));
+    }
+    return duration;
+}
+
 static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQuery* query)
 {
     WebKitMediaSrc* src = WEBKIT_MEDIA_SRC(GST_ELEMENT(parent));
@@ -388,12 +398,31 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
 
         GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
         GST_OBJECT_LOCK(src);
-        float duration;
-        if (format == GST_FORMAT_TIME && src->priv && src->priv->mediaPlayerPrivate && ((duration = src->priv->mediaPlayerPrivate->duration()) > 0)) {
-            gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
-            GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
-            result = TRUE;
+        switch (format) {
+        case GST_FORMAT_TIME: {
+            float duration;
+            if (src->priv && src->priv->mediaPlayerPrivate && ((duration = src->priv->mediaPlayerPrivate->duration()) > 0)) {
+                gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
+                GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
+                result = TRUE;
+            }
+            break;
         }
+        case GST_FORMAT_BYTES: {
+            if (src->priv) {
+                gint64 duration = webKitMediaSrcGetSize(src);
+                if (duration) {
+                    gst_query_set_duration(query, format, duration);
+                    GST_DEBUG_OBJECT(src, "size: %" G_GINT64_FORMAT, duration);
+                    result = TRUE;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
         GST_OBJECT_UNLOCK(src);
         break;
     }
