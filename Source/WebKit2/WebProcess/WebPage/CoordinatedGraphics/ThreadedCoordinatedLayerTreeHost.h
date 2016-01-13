@@ -43,7 +43,6 @@
 #include <WebCore/Timer.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Threading.h>
-#include <wtf/glib/GSourceWrap.h>
 
 namespace WebCore {
 class CoordinatedSurface;
@@ -150,7 +149,7 @@ private:
     float m_lastScaleFactor;
     WebCore::IntPoint m_lastScrollPosition;
 
-    GSourceWrap::Static m_layerFlushTimer;
+    RunLoop::Timer<ThreadedCoordinatedLayerTreeHost> m_layerFlushTimer;
     bool m_layerFlushSchedulingEnabled;
 };
 
