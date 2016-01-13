@@ -11,3 +11,22 @@ list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
 list(APPEND JavaScriptCore_LIBRARIES
     ${Qt5Core_LIBRARIES}
 )
+
+# From PlatformWin.cmake
+if (WIN32)
+    list(REMOVE_ITEM JavaScriptCore_SOURCES
+        inspector/JSGlobalObjectInspectorController.cpp
+    )
+
+    file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore)
+
+    set(JavaScriptCore_POST_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/JavaScriptCore/postBuild.cmd")
+    file(WRITE "${JavaScriptCore_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_DIR}/JavaScriptCore/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore\" >nul 2>nul\n")
+    file(APPEND "${JavaScriptCore_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${DERIVED_SOURCES_DIR}/JavaScriptCore/inspector/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore\" >nul 2>nul\n")
+
+    foreach (_directory ${JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES})
+        file(APPEND "${JavaScriptCore_POST_BUILD_COMMAND}" "@xcopy /y /d /f \"${JAVASCRIPTCORE_DIR}/${_directory}/*.h\" \"${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore\" >nul 2>nul\n")
+    endforeach ()
+
+    set(JavaScriptCore_LIBRARY_TYPE STATIC)
+endif ()

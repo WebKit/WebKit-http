@@ -681,7 +681,7 @@
 /* Include feature macros */
 #include <wtf/FeatureDefines.h>
 
-#if OS(WINDOWS)
+#if OS(WINDOWS) && !PLATFORM(QT)
 #define USE_SYSTEM_MALLOC 1
 #endif
 
