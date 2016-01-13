@@ -40,16 +40,17 @@ JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
 
 void TestRunner::invalidateWaitToDumpWatchdogTimer()
 {
+    m_waitToDumpWatchdogTimer.stop();
 }
 
 void TestRunner::platformInitialize()
 {
-    // FIXME: Properly initialize (and use) this timer.
-    m_waitToDumpWatchdogTimer.initialize("[WTR] waitToDumpWatchdogTimerCallback", [] { });
 }
 
 void TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded()
 {
+    if (!m_waitToDumpWatchdogTimer.isActive())
+        m_waitToDumpWatchdogTimer.startOneShot(m_timeout / 1000.0);
 }
 
 
