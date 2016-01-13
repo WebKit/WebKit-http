@@ -1770,12 +1770,6 @@ public:
         return Jump();
     }
 
-    Jump branchAdd32(ResultCondition cond, Address src, RegisterID dest)
-    {
-        load32(src, addrTempRegister);
-        return branchAdd32(cond, dest, addrTempRegister, dest);
-    }
-
     Jump branchMul32(ResultCondition cond, RegisterID src1, RegisterID src2, RegisterID dest)
     {
         ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
