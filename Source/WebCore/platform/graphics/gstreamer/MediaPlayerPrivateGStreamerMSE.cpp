@@ -877,7 +877,7 @@ void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> ap, Re
     }
 
     if (!oldTrack)
-        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, s);
+        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, s, caps);
     else
         m_playbackPipeline->reattachTrack(ap->sourceBufferPrivate(), newTrack);
 }

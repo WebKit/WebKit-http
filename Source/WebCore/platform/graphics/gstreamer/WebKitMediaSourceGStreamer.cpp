@@ -500,21 +500,17 @@ static void webKitMediaSrcLinkStreamToSrcPad(GstPad* srcpad, Stream* stream)
     }
 }
 
-static void webKitMediaSrcParserNotifyCaps(GObject* object, GParamSpec*, Stream* stream)
+static void webKitMediaSrcLinkParser(GstPad* srcpad, GstCaps* caps, Stream* stream)
 {
-    GstPad* srcpad = GST_PAD(object);
-    GstCaps* caps = gst_pad_get_current_caps(srcpad);
-
+    ASSERT(caps && stream->parent);
     if (!caps || !stream->parent) {
+        GST_ERROR("Unable to link parser");
         return;
     }
 
-    LOG_MEDIA_MESSAGE("Caps changed");
-
     webKitMediaSrcUpdatePresentationSize(caps, stream);
-    gst_caps_unref(caps);
 
-    // TODO
+    // TODO: drop webKitMediaSrcLinkStreamToSrcPad() and move its code here...
     if (!gst_pad_is_linked(srcpad)) {
         GST_DEBUG_OBJECT(stream->parent, "pad not linked yet");
         webKitMediaSrcLinkStreamToSrcPad(srcpad, stream);
@@ -978,12 +974,11 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
     }
 }
 
-void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstStructure* s)
+void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstStructure* s, GstCaps* caps)
 {
     WebKitMediaSrc* webKitMediaSrc = m_webKitMediaSrc.get();
     Stream* stream = 0;
     gchar* parserBinName;
-    bool capsNotifyHandlerConnected = false;
     unsigned padId = 0;
     const gchar* mediaType = gst_structure_get_name(s);
 
@@ -1020,8 +1015,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1043,8 +1037,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1061,14 +1054,14 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
             parser = gst_element_factory_make("mpegaudioparse", 0);
         } else if (mpegversion == 2 || mpegversion == 4) {
             parser = gst_element_factory_make("aacparse", 0);
+            //g_object_set(parser, "disable-passthrough", TRUE, nullptr);
         } else {
             ASSERT_NOT_REACHED();
         }
 
         gst_bin_add(GST_BIN(stream->parser), parser);
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1100,9 +1093,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     srcpad = gst_element_get_static_pad(stream->parser, "src");
     // TODO: Is padId the best way to identify the Stream? What about trackId?
     g_object_set_data(G_OBJECT(srcpad), "id", GINT_TO_POINTER(padId));
-    if (!capsNotifyHandlerConnected)
-        g_signal_connect(srcpad, "notify::caps", G_CALLBACK(webKitMediaSrcParserNotifyCaps), stream);
-    webKitMediaSrcLinkStreamToSrcPad(srcpad, stream);
+    webKitMediaSrcLinkParser(srcpad, caps, stream);
 
     ASSERT(stream->parent->priv->mediaPlayerPrivate);
     int signal = -1;
