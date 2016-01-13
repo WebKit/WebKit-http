@@ -71,7 +71,7 @@ private:
 
     bool m_handleTouchEvents { false };
     std::array<Input::TouchEvent::Raw, 10> m_touchEvents;
-    void handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type)
+    void handleTouchEvent(struct libinput_event *event, Input::TouchEvent::Type type);
 
     class EventSource {
     public:

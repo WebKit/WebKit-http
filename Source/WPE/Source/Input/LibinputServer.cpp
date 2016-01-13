@@ -123,7 +123,6 @@ void LibinputServer::processEvents()
         case LIBINPUT_EVENT_TOUCH_DOWN: 
             if (m_handleTouchEvents)	
                 handleTouchEvent(event, Input::TouchEvent::Type::Down);
-            printf("touch down\n");
             break;
         case LIBINPUT_EVENT_TOUCH_UP:	
             if (m_handleTouchEvents)	
