@@ -81,7 +81,7 @@ LibinputServer::LibinputServer()
 
     g_source_set_name(baseSource, "[WPE] libinput");
     g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
-    g_source_attach(baseSource, nullptr);
+    g_source_attach(baseSource, g_main_context_get_thread_default());
 
     fprintf(stderr, "[LibinputServer] Initialization succeeded.\n");
 }
