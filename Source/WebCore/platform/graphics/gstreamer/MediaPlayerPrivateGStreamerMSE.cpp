@@ -77,9 +77,9 @@ namespace WebCore {
 
 class AppendPipeline : public ThreadSafeRefCounted<AppendPipeline> {
 public:
-    enum AppendStage { Invalid, NotStarted, Ongoing, KeyNegotiation, NoDataToDecode, Sampling, LastSample, Aborting };
+    enum AppendStage { Invalid, NotStarted, Ongoing, KeyNegotiation, DataStarve, Sampling, LastSample, Aborting };
 
-    static const unsigned int s_noDataToDecodeTimeoutMsec = 1000;
+    static const unsigned int s_dataStarvedTimeoutMsec = 1000;
     static const unsigned int s_lastSampleTimeoutMsec = 250;
 
     AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate);
@@ -117,6 +117,9 @@ public:
     void disconnectFromAppSink();
     void connectToAppSinkFromAnyThread(GstPad* demuxersrcpad);
     void connectToAppSink(GstPad* demuxersrcpad);
+
+    void scheduleDataStarveTimer();
+    void cancelDataStarveTimer();
 
 private:
     void resetPipeline();
@@ -157,7 +160,7 @@ private:
     // useful stream data for decoding. This is detected with a
     // timeout and reported to the upper layers, so update/updateend
     // can be generated and the append operation doesn't block.
-    guint m_noDataToDecodeTimeoutTag;
+    guint m_dataStarvedTimeoutTag;
 
     // Used to detect the last sample. Rescheduled each time a new
     // sample arrives.
@@ -166,7 +169,7 @@ private:
     // Keeps track of the stages of append processing, to avoid
     // performing actions inappropriate for the current stage (eg:
     // processing more samples when the last one has been detected
-    // or the noDataToDecodeTimeout has been triggered).
+    // or the dataStarvedTimeout has been triggered).
     // See setAppendStage() for valid transitions.
     AppendStage m_appendStage;
 
@@ -874,7 +877,7 @@ void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> ap, Re
     }
 
     if (!oldTrack)
-        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, s);
+        m_playbackPipeline->attachTrack(ap->sourceBufferPrivate(), newTrack, s, caps);
     else
         m_playbackPipeline->reattachTrack(ap->sourceBufferPrivate(), newTrack);
 }
@@ -1143,8 +1146,8 @@ static const char* dumpAppendStage(AppendPipeline::AppendStage appendStage)
         return "Ongoing";
     case AppendPipeline::AppendStage::KeyNegotiation:
         return "KeyNegotiation";
-    case AppendPipeline::AppendStage::NoDataToDecode:
-        return "NoDataToDecode";
+    case AppendPipeline::AppendStage::DataStarve:
+        return "DataStarve";
     case AppendPipeline::AppendStage::Sampling:
         return "Sampling";
     case AppendPipeline::AppendStage::LastSample:
@@ -1165,7 +1168,7 @@ static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
 static void appendPipelineAppSinkEOS(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap);
-static gboolean appendPipelineNoDataToDecodeTimeout(AppendPipeline* ap);
+static gboolean appendPipelineDataStarveTimeout(AppendPipeline* ap);
 static gboolean appendPipelineLastSampleTimeout(AppendPipeline* ap);
 
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
@@ -1180,7 +1183,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     , m_id(0)
     , m_appSinkCaps(NULL)
     , m_demuxerSrcPadCaps(NULL)
-    , m_noDataToDecodeTimeoutTag(0)
+    , m_dataStarvedTimeoutTag(0)
     , m_lastSampleTimeoutTag(0)
     , m_appendStage(NotStarted)
     , m_abortPending(false)
@@ -1257,11 +1260,11 @@ AppendPipeline::~AppendPipeline()
     g_mutex_unlock(&m_padAddRemoveMutex);
 
     LOG_MEDIA_MESSAGE("%p", this);
-    if (m_noDataToDecodeTimeoutTag) {
-        LOG_MEDIA_MESSAGE("m_noDataToDecodeTimeoutTag=%u", m_noDataToDecodeTimeoutTag);
+    if (m_dataStarvedTimeoutTag) {
+        LOG_MEDIA_MESSAGE("m_dataStarvedTimeoutTag=%u", m_dataStarvedTimeoutTag);
         // TODO: Maybe notify appendComplete here?
-        g_source_remove(m_noDataToDecodeTimeoutTag);
-        m_noDataToDecodeTimeoutTag = 0;
+        g_source_remove(m_dataStarvedTimeoutTag);
+        m_dataStarvedTimeoutTag = 0;
     }
 
     if (m_lastSampleTimeoutTag) {
@@ -1406,12 +1409,28 @@ gint AppendPipeline::id()
     return m_id;
 }
 
+void AppendPipeline::scheduleDataStarveTimer()
+{
+    LOG_MEDIA_MESSAGE("Scheduling data starve timer");
+    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, GSourceFunc(appendPipelineDataStarveTimeout), this);
+}
+
+void AppendPipeline::cancelDataStarveTimer()
+{
+    if (!m_dataStarvedTimeoutTag)
+        return;
+
+    LOG_MEDIA_MESSAGE("Cancelling data starve timer");
+    g_source_remove(m_dataStarvedTimeoutTag);
+    m_dataStarvedTimeoutTag = 0;
+}
+
 void AppendPipeline::setAppendStage(AppendStage newAppendStage)
 {
     ASSERT(WTF::isMainThread());
     // Valid transitions:
-    // NotStarted-->Ongoing-->NoDataToDecode-->NotStarted
-    //           |         |                `->Aborting-->NotStarted
+    // NotStarted-->Ongoing-->DataStarve-->NotStarted
+    //           |         |            `->Aborting-->NotStarted
     //           |         `->Sampling-···->Sampling-->LastSample-->NotStarted
     //           |         |                                     `->Aborting-->NotStarted
     //           |         `->KeyNegotiation-->Ongoing-->[...]
@@ -1426,13 +1445,13 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
 
     switch (oldAppendStage) {
     case NotStarted:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case Ongoing:
             ok = true;
             gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
-            m_noDataToDecodeTimeoutTag = g_timeout_add(s_noDataToDecodeTimeoutMsec, GSourceFunc(appendPipelineNoDataToDecodeTimeout), this);
+            scheduleDataStarveTimer();
             break;
         case NotStarted:
             ok = true;
@@ -1453,19 +1472,16 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case KeyNegotiation:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case Ongoing:
             ok = true;
-            m_noDataToDecodeTimeoutTag = g_timeout_add(s_noDataToDecodeTimeoutMsec, GSourceFunc(appendPipelineNoDataToDecodeTimeout), this);
+            scheduleDataStarveTimer();
             break;
         case Invalid:
             ok = true;
-            if (m_noDataToDecodeTimeoutTag) {
-                g_source_remove(m_noDataToDecodeTimeoutTag);
-                m_noDataToDecodeTimeoutTag = 0;
-            }
+            cancelDataStarveTimer();
             if (m_lastSampleTimeoutTag) {
                 g_source_remove(m_lastSampleTimeoutTag);
                 m_lastSampleTimeoutTag = 0;
@@ -1476,22 +1492,16 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case Ongoing:
-        ASSERT(m_noDataToDecodeTimeoutTag != 0);
+        ASSERT(m_dataStarvedTimeoutTag != 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case KeyNegotiation:
             ok = true;
-            if (m_noDataToDecodeTimeoutTag) {
-                g_source_remove(m_noDataToDecodeTimeoutTag);
-                m_noDataToDecodeTimeoutTag = 0;
-            }
+            cancelDataStarveTimer();
             break;
-        case NoDataToDecode:
+        case DataStarve:
             ok = true;
-            if (m_noDataToDecodeTimeoutTag) {
-                g_source_remove(m_noDataToDecodeTimeoutTag);
-                m_noDataToDecodeTimeoutTag = 0;
-            }
+            cancelDataStarveTimer();
             m_mediaSourceClient->didReceiveAllPendingSamples(m_sourceBufferPrivate.get());
             if (m_abortPending)
                 nextAppendStage = Aborting;
@@ -1500,10 +1510,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             break;
         case Sampling:
             ok = true;
-            if (m_noDataToDecodeTimeoutTag) {
-                g_source_remove(m_noDataToDecodeTimeoutTag);
-                m_noDataToDecodeTimeoutTag = 0;
-            }
+            cancelDataStarveTimer();
 
             if (m_lastSampleTimeoutTag) {
                 TRACE_MEDIA_MESSAGE("lastSampleTimeoutTag already exists while transitioning Ongoing-->Sampling");
@@ -1514,10 +1521,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             break;
         case Invalid:
             ok = true;
-            if (m_noDataToDecodeTimeoutTag) {
-                g_source_remove(m_noDataToDecodeTimeoutTag);
-                m_noDataToDecodeTimeoutTag = 0;
-            }
+            cancelDataStarveTimer();
             if (m_lastSampleTimeoutTag) {
                 g_source_remove(m_lastSampleTimeoutTag);
                 m_lastSampleTimeoutTag = 0;
@@ -1527,8 +1531,8 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             break;
         }
         break;
-    case NoDataToDecode:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+    case DataStarve:
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
@@ -1546,7 +1550,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case Sampling:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag != 0);
         switch (newAppendStage) {
         case Sampling:
@@ -1581,7 +1585,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case LastSample:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
@@ -1599,7 +1603,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case Aborting:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         switch (newAppendStage) {
         case NotStarted:
@@ -1616,7 +1620,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         }
         break;
     case Invalid:
-        ASSERT(m_noDataToDecodeTimeoutTag == 0);
+        ASSERT(m_dataStarvedTimeoutTag == 0);
         ASSERT(m_lastSampleTimeoutTag == 0);
         ok = true;
         break;
@@ -1794,7 +1798,7 @@ void AppendPipeline::appSinkEOS()
         return;
     // Finish Ongoing and Sampling stages.
     case Ongoing:
-        setAppendStage(NoDataToDecode);
+        setAppendStage(DataStarve);
         break;
     case Sampling:
         setAppendStage(LastSample);
@@ -1897,10 +1901,9 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
 {
-    TRACE_MEDIA_MESSAGE("thread %d", WTF::currentThread());
+    ASSERT(!WTF::isMainThread());
 
     bool invalid;
-
     g_mutex_lock(&m_newSampleMutex);
     invalid = !m_playerPrivate || m_appendStage == Invalid;
     g_mutex_unlock(&m_newSampleMutex);
@@ -1915,20 +1918,16 @@ GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
         return GST_FLOW_ERROR;
     }
 
-    if (WTF::isMainThread()) {
-        appSinkNewSample(sample);
-    } else {
-        g_mutex_lock(&m_newSampleMutex);
-        if (!(!m_playerPrivate || m_appendStage == Invalid)) {
-            NewSampleInfo* info = new NewSampleInfo(sample, this);
-            g_timeout_add(0, GSourceFunc(appendPipelineAppSinkNewSampleMainThread), info);
-            g_cond_wait(&m_newSampleCondition, &m_newSampleMutex);
-            // We've been awaken because the sample was processed or because of
-            // an exceptional condition (entered in Invalid state, destructor, etc.)
-            // We can't reliably delete info here, appendPipelineAppSinkNewSampleMainThread will do it.
-        }
-        g_mutex_unlock(&m_newSampleMutex);
+    g_mutex_lock(&m_newSampleMutex);
+    if (!(!m_playerPrivate || m_appendStage == Invalid)) {
+        NewSampleInfo* info = new NewSampleInfo(sample, this);
+        g_timeout_add(0, GSourceFunc(appendPipelineAppSinkNewSampleMainThread), info);
+        g_cond_wait(&m_newSampleCondition, &m_newSampleMutex);
+        // We've been awaken because the sample was processed or because of
+        // an exceptional condition (entered in Invalid state, destructor, etc.)
+        // We can't reliably delete info here, appendPipelineAppSinkNewSampleMainThread will do it.
     }
+    g_mutex_unlock(&m_newSampleMutex);
     gst_sample_unref(sample);
     return m_flowReturn;
 }
@@ -2173,13 +2172,13 @@ static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap)
     return G_SOURCE_REMOVE;
 }
 
-static gboolean appendPipelineNoDataToDecodeTimeout(AppendPipeline* ap)
+static gboolean appendPipelineDataStarveTimeout(AppendPipeline* ap)
 {
-    TRACE_MEDIA_MESSAGE("no data timeout fired");
+    LOG_MEDIA_MESSAGE("data starve timer fired");
     if (ap->appendStage()==AppendPipeline::AppendStage::Invalid)
         return G_SOURCE_REMOVE;
 
-    ap->setAppendStage(AppendPipeline::NoDataToDecode);
+    ap->setAppendStage(AppendPipeline::DataStarve);
     return G_SOURCE_REMOVE;
 }
 
@@ -2216,7 +2215,7 @@ MediaSourceClientGStreamerMSE::~MediaSourceClientGStreamerMSE()
 {
     ASSERT(WTF::isMainThread());
 
-    // TODO: cancel m_noDataToDecodeTimeoutTag if active and perform appendComplete()
+    // TODO: cancel m_dataStarvedTimeoutTag if active and perform appendComplete()
 }
 
 MediaSourcePrivate::AddStatus MediaSourceClientGStreamerMSE::addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, const ContentType&)

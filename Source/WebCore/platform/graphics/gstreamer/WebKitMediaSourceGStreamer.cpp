@@ -172,7 +172,6 @@ static GstStateChangeReturn webKitMediaSrcChangeState(GstElement*, GstStateChang
 static gboolean webKitMediaSrcQueryWithParent(GstPad*, GstObject*, GstQuery*);
 
 inline static AtomicString getStreamTrackId(Stream*);
-static GstClockTime floatToGstClockTime(float);
 static gboolean freeStreamLater(Stream*);
 static gboolean releaseStreamTrackInfo(WebKitMediaSrc*, Stream*);
 
@@ -387,6 +386,16 @@ static GstStateChangeReturn webKitMediaSrcChangeState(GstElement* element, GstSt
     return ret;
 }
 
+gint64 webKitMediaSrcGetSize(WebKitMediaSrc* webKitMediaSrc)
+{
+    gint64 duration = 0;
+    for (GList* streams = webKitMediaSrc->priv->streams; streams; streams = streams->next) {
+        Stream* s = static_cast<Stream*>(streams->data);
+        duration  = MAX(duration, gst_app_src_get_size(GST_APP_SRC(s->appsrc)));
+    }
+    return duration;
+}
+
 static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQuery* query)
 {
     WebKitMediaSrc* src = WEBKIT_MEDIA_SRC(GST_ELEMENT(parent));
@@ -399,12 +408,31 @@ static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, Gs
 
         GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
         GST_OBJECT_LOCK(src);
-        float duration;
-        if (format == GST_FORMAT_TIME && src->priv && src->priv->mediaPlayerPrivate && ((duration = src->priv->mediaPlayerPrivate->duration()) > 0)) {
-            gst_query_set_duration(query, format, floatToGstClockTime(duration));
-            GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(floatToGstClockTime(duration)));
-            result = TRUE;
+        switch (format) {
+        case GST_FORMAT_TIME: {
+            float duration;
+            if (src->priv && src->priv->mediaPlayerPrivate && ((duration = src->priv->mediaPlayerPrivate->duration()) > 0)) {
+                gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
+                GST_DEBUG_OBJECT(src, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
+                result = TRUE;
+            }
+            break;
         }
+        case GST_FORMAT_BYTES: {
+            if (src->priv) {
+                gint64 duration = webKitMediaSrcGetSize(src);
+                if (duration) {
+                    gst_query_set_duration(query, format, duration);
+                    GST_DEBUG_OBJECT(src, "size: %" G_GINT64_FORMAT, duration);
+                    result = TRUE;
+                }
+            }
+            break;
+        }
+        default:
+            break;
+        }
+
         GST_OBJECT_UNLOCK(src);
         break;
     }
@@ -482,21 +510,17 @@ static void webKitMediaSrcLinkStreamToSrcPad(GstPad* srcpad, Stream* stream)
     }
 }
 
-static void webKitMediaSrcParserNotifyCaps(GObject* object, GParamSpec*, Stream* stream)
+static void webKitMediaSrcLinkParser(GstPad* srcpad, GstCaps* caps, Stream* stream)
 {
-    GstPad* srcpad = GST_PAD(object);
-    GstCaps* caps = gst_pad_get_current_caps(srcpad);
-
+    ASSERT(caps && stream->parent);
     if (!caps || !stream->parent) {
+        GST_ERROR("Unable to link parser");
         return;
     }
 
-    LOG_MEDIA_MESSAGE("Caps changed");
-
     webKitMediaSrcUpdatePresentationSize(caps, stream);
-    gst_caps_unref(caps);
 
-    // TODO
+    // TODO: drop webKitMediaSrcLinkStreamToSrcPad() and move its code here...
     if (!gst_pad_is_linked(srcpad)) {
         GST_DEBUG_OBJECT(stream->parent, "pad not linked yet");
         webKitMediaSrcLinkStreamToSrcPad(srcpad, stream);
@@ -961,12 +985,11 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
     }
 }
 
-void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstStructure* s)
+void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, GstStructure* s, GstCaps* caps)
 {
     WebKitMediaSrc* webKitMediaSrc = m_webKitMediaSrc.get();
     Stream* stream = 0;
     gchar* parserBinName;
-    bool capsNotifyHandlerConnected = false;
     unsigned padId = 0;
     const gchar* mediaType = gst_structure_get_name(s);
 
@@ -1003,8 +1026,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1026,8 +1048,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
         gst_bin_add_many(GST_BIN(stream->parser), parser, capsfilter, NULL);
         gst_element_link_pads(parser, "src", capsfilter, "sink");
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1044,14 +1065,14 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
             parser = gst_element_factory_make("mpegaudioparse", 0);
         } else if (mpegversion == 2 || mpegversion == 4) {
             parser = gst_element_factory_make("aacparse", 0);
+            //g_object_set(parser, "disable-passthrough", TRUE, nullptr);
         } else {
             ASSERT_NOT_REACHED();
         }
 
         gst_bin_add(GST_BIN(stream->parser), parser);
 
-        if (!pad)
-            pad = gst_element_get_static_pad(parser, "sink");
+        pad = gst_element_get_static_pad(parser, "sink");
         gst_element_add_pad(stream->parser, gst_ghost_pad_new("sink", pad));
         gst_object_unref(pad);
 
@@ -1083,9 +1104,7 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
     srcpad = gst_element_get_static_pad(stream->parser, "src");
     // TODO: Is padId the best way to identify the Stream? What about trackId?
     g_object_set_data(G_OBJECT(srcpad), "id", GINT_TO_POINTER(padId));
-    if (!capsNotifyHandlerConnected)
-        g_signal_connect(srcpad, "notify::caps", G_CALLBACK(webKitMediaSrcParserNotifyCaps), stream);
-    webKitMediaSrcLinkStreamToSrcPad(srcpad, stream);
+    webKitMediaSrcLinkParser(srcpad, caps, stream);
 
     ASSERT(stream->parent->priv->mediaPlayerPrivate);
     int signal = -1;
@@ -1287,8 +1306,7 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     RefPtr<MediaSample> rsample = prsample;
     AtomicString trackId = rsample->trackID();
 
-    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(floatToGstClockTime(rsample->presentationTime().toDouble())));
-
+    TRACE_MEDIA_MESSAGE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT, trackId.string().utf8().data(), rsample->presentationTime().toFloat(), rsample->presentationSize().width(), rsample->presentationSize().height(), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->presentationTime().toDouble())), GST_TIME_ARGS(WebCore::toGstClockTime(rsample->duration().toDouble())));
     ASSERT(WTF::isMainThread());
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
@@ -1377,18 +1395,6 @@ void webkit_media_src_prepare_seek(WebKitMediaSrc* src, const MediaTime& time)
     // The pending action will be performed in app_src_seek_data().
     src->priv->appSrcSeekDataNextAction = MediaSourceSeekToTime;
     GST_OBJECT_UNLOCK(src);
-}
-
-static GstClockTime floatToGstClockTime(float time)
-{
-    // Extract the integer part of the time (seconds) and the fractional part (microseconds). Attempt to
-    // round the microseconds so no floating point precision is lost and we can perform an accurate seek.
-    float seconds;
-    float microSeconds = std::modf(time, &seconds) * 1000000;
-    GTimeVal timeValue;
-    timeValue.tv_sec = static_cast<glong>(seconds);
-    timeValue.tv_usec = static_cast<glong>(roundf(microSeconds / 10000) * 10000);
-    return GST_TIMEVAL_TO_TIME(timeValue);
 }
 
 namespace WTF {
