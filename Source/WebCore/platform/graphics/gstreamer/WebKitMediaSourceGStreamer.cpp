@@ -89,10 +89,20 @@ enum OnSeekDataAction {
     MediaSourceSeekToTime
 };
 
+struct ReleaseStreamTrackInfoTimer {
+    ReleaseStreamTrackInfoTimer()
+        : timer(RunLoop::main(), this, &ReleaseStreamTrackInfoTimer::fired)
+    { }
+
+    void fired() { std::exchange(callback, nullptr)(); }
+
+    std::function<void ()> callback;
+    RunLoop::Timer<ReleaseStreamTrackInfoTimer> timer;
+};
+
 struct _WebKitMediaSrcPrivate
 {
     _WebKitMediaSrcPrivate()
-        : timeoutSource("[WebKit] releaseStreamTrackInfo")
     {
         g_mutex_init(&streamMutex);
         g_cond_init(&streamCondition);
@@ -107,7 +117,7 @@ struct _WebKitMediaSrcPrivate
     // Used to coordinate the release of Stream track info.
     GMutex streamMutex;
     GCond streamCondition;
-    GSourceWrap::Dynamic timeoutSource;
+    ReleaseStreamTrackInfoTimer timeoutSource;
 
     GList* streams;
     gchar* location;
@@ -940,7 +950,8 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
             else {
                 WTF::GMutexLocker<GMutex> lock(stream->parent->priv->streamMutex);
                 GRefPtr<WebKitMediaSrc> protector(stream->parent);
-                stream->parent->priv->timeoutSource.schedule([protector, stream] { releaseStreamTrackInfo(protector.get(), stream); });
+                stream->parent->priv->timeoutSource.callback = [protector, stream] { releaseStreamTrackInfo(protector.get(), stream); };
+                stream->parent->priv->timeoutSource.timer.startOneShot(0);
 
                 g_cond_wait(&stream->parent->priv->streamCondition, &stream->parent->priv->streamMutex);
             }

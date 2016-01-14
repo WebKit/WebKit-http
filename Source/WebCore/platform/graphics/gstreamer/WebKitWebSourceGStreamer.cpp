@@ -41,7 +41,6 @@
 #include <gst/pbutils/missing-plugins.h>
 #include <wtf/MainThread.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/glib/GSourceWrap.h>
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
