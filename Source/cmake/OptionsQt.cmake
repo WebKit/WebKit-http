@@ -27,7 +27,9 @@ find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(WebP)
 
-find_package(Qt5Core REQUIRED)
+find_package(Qt5Core 5.2 REQUIRED)
+find_package(Qt5Gui 5.2 REQUIRED)
+find_package(Qt5Network 5.2 REQUIRED)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
