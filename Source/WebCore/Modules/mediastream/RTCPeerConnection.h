@@ -41,6 +41,8 @@
 // FIXME: Workaround for bindings bug http://webkit.org/b/150121
 #include "JSMediaStream.h"
 #include "PeerConnectionBackend.h"
+#include "RTCRtpReceiver.h"
+#include "RTCRtpSender.h"
 #include "ScriptWrappable.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
@@ -54,18 +56,16 @@ class RTCConfiguration;
 class RTCDataChannel;
 class RTCIceCandidate;
 class RTCPeerConnectionErrorCallback;
-class RTCRtpReceiver;
-class RTCRtpSender;
 class RTCSessionDescription;
 class RTCStatsCallback;
 
-class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public ScriptWrappable, public PeerConnectionBackendClient, public EventTargetWithInlineData, public ActiveDOMObject {
+class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public ScriptWrappable, public PeerConnectionBackendClient, public RTCRtpSenderClient, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static RefPtr<RTCPeerConnection> create(ScriptExecutionContext&, const Dictionary& rtcConfiguration, ExceptionCode&);
     ~RTCPeerConnection();
 
-    Vector<RefPtr<RTCRtpSender>> getSenders() const override;
-    Vector<RefPtr<RTCRtpReceiver>> getReceivers() const;
+    Vector<RefPtr<RTCRtpSender>> getSenders() const override { return m_senderSet; }
+    Vector<RefPtr<RTCRtpReceiver>> getReceivers() const { return m_receiverSet; }
 
     RefPtr<RTCRtpSender> addTrack(RefPtr<MediaStreamTrack>&&, Vector<MediaStream*>, ExceptionCode&);
     void removeTrack(RTCRtpSender*, ExceptionCode&);
@@ -131,12 +131,15 @@ private:
     PeerConnectionStates::IceGatheringState internalIceGatheringState() const override { return m_iceGatheringState; }
     PeerConnectionStates::IceConnectionState internalIceConnectionState() const override { return m_iceConnectionState; }
 
+    // RTCRtpSenderClient
+    void replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&&) override;
+
     PeerConnectionStates::SignalingState m_signalingState;
     PeerConnectionStates::IceGatheringState m_iceGatheringState;
     PeerConnectionStates::IceConnectionState m_iceConnectionState;
 
-    HashMap<String, RefPtr<RTCRtpSender>> m_senderSet;
-    HashMap<String, RefPtr<RTCRtpReceiver>> m_receiverSet;
+    Vector<RefPtr<RTCRtpSender>> m_senderSet;
+    Vector<RefPtr<RTCRtpReceiver>> m_receiverSet;
 
     Vector<RefPtr<RTCDataChannel>> m_dataChannels;
 

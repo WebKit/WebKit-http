@@ -663,7 +663,7 @@ public:
     static const GPRReg returnValueGPR2 = ARM64Registers::x1; // regT1
     static const GPRReg nonPreservedNonReturnGPR = ARM64Registers::x2;
     static const GPRReg nonPreservedNonArgumentGPR = ARM64Registers::x8;
-    static const GPRReg patchpointScratchRegister = ARM64Registers::ip0;
+    static const GPRReg patchpointScratchRegister;
 
     // GPRReg mapping is direct, the machine register numbers can
     // be used directly as indices into the GPR RegisterBank.
@@ -767,6 +767,13 @@ public:
     {
         ASSERT(index < numberOfRegisters);
         static const GPRReg registerForIndex[numberOfRegisters] = { regT0, regT1, regT2, regT3, regT4, regT5, regT6, regT7 };
+        return registerForIndex[index];
+    }
+
+    static GPRReg toArgumentRegister(unsigned index)
+    {
+        ASSERT(index < numberOfArgumentRegisters);
+        static const GPRReg registerForIndex[numberOfArgumentRegisters] = { argumentGPR0, argumentGPR1, argumentGPR2, argumentGPR3 };
         return registerForIndex[index];
     }
 

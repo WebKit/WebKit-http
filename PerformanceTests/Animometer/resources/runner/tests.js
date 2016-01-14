@@ -24,6 +24,10 @@ Suites.push(new Suite("Animometer",
             url: "master/canvas-stage.html?pathType=line&lineCap=square",
             name: "Canvas line segments"
         },
+        {
+            url: "master/particles.html",
+            name: "DOM particles, SVG masks"
+        },
     ]
 ));
 

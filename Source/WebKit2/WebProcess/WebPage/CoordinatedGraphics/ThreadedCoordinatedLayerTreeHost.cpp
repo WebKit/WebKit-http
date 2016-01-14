@@ -68,11 +68,12 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage* webP
     , m_isSuspended(false)
     , m_isWaitingForRenderer(false)
     , m_scheduledWhileWaitingForRenderer(false)
-    , m_layerFlushTimer("[WebKit2] ThreadedCoordinatedLayerTreeHost layerFlushTimer", std::bind(&ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush, this), G_PRIORITY_HIGH + 30)
+    , m_layerFlushTimer(RunLoop::main(), this, &ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush)
     , m_layerFlushSchedulingEnabled(true)
 {
-    m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
+    m_layerFlushTimer.setPriority(G_PRIORITY_HIGH + 30);
 
+    m_coordinator = std::make_unique<CompositingCoordinator>(m_webPage->corePage(), this);
     m_coordinator->createRootLayer(m_webPage->size());
 
     CoordinatedSurface::setFactory(createCoordinatedSurface);
@@ -97,7 +98,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleLayerFlush()
     }
 
     if (!m_layerFlushTimer.isActive())
-        m_layerFlushTimer.schedule();
+        m_layerFlushTimer.startOneShot(0);
 }
 
 void ThreadedCoordinatedLayerTreeHost::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
@@ -221,7 +222,7 @@ void ThreadedCoordinatedLayerTreeHost::scheduleAnimation()
     if (m_layerFlushTimer.isActive())
         return;
 
-    m_layerFlushTimer.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(m_coordinator->nextAnimationServiceTime())));
+    m_layerFlushTimer.startOneShot(m_coordinator->nextAnimationServiceTime());
 }
 #endif
 
@@ -245,7 +246,7 @@ void ThreadedCoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& r
 
 void ThreadedCoordinatedLayerTreeHost::cancelPendingLayerFlush()
 {
-    m_layerFlushTimer.cancel();
+    m_layerFlushTimer.stop();
 }
 
 void ThreadedCoordinatedLayerTreeHost::performScheduledLayerFlush()
@@ -273,8 +274,8 @@ void ThreadedCoordinatedLayerTreeHost::renderNextFrame()
     bool scheduledWhileWaitingForRenderer = std::exchange(m_scheduledWhileWaitingForRenderer, false);
     m_coordinator->renderNextFrame();
 
-    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isScheduled()) {
-        m_layerFlushTimer.cancel();
+    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isActive()) {
+        m_layerFlushTimer.stop();
         performScheduledLayerFlush();
     }
 }

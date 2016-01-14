@@ -28,7 +28,6 @@
 
 #include <glib.h>
 #include <wtf/RunLoop.h>
-#include <wtf/glib/GSourceWrap.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WTR {
@@ -68,16 +67,22 @@ static GMainContext* threadDefaultContext()
 
 void TestController::platformRunUntil(bool& condition, double timeout)
 {
-    GMainContext* threadContext = threadDefaultContext();
+    struct TimeoutTimer {
+        TimeoutTimer()
+            : timer(RunLoop::main(), this, &TimeoutTimer::fired)
+        { }
 
-    GSourceWrap::Static timeoutSource("[WebKit] WTR::TestController::runUntil",
-        [] { RunLoop::main().stop(); }, G_PRIORITY_DEFAULT_IDLE, threadContext);
+        void fired() { RunLoop::main().stop(); }
+        RunLoop::Timer<TimeoutTimer> timer;
+    } timeoutTimer;
+
+    timeoutTimer.timer.setPriority(G_PRIORITY_DEFAULT_IDLE);
     if (timeout >= 0)
-        timeoutSource.schedule(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(timeout)));
+        timeoutTimer.timer.startOneShot(timeout);
 
     RunLoop::main().run();
 
-    timeoutSource.cancel();
+    timeoutTimer.timer.stop();
 }
 
 void TestController::platformDidCommitLoadForFrame(WKPageRef, WKFrameRef)

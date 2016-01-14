@@ -62,6 +62,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
             else
                 this._possibleUnits = possibleUnits;
         }
+        this._dependencies = new Map;
 
         this._element = document.createElement("div");
         this._element.classList.add("visual-style-property-container", className);
@@ -323,6 +324,8 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
 
         this._lastValue = this.synthesizedValue;
         this.disabled = false;
+
+        this._checkDependencies();
     }
 
     resetEditorValues(value)
@@ -379,7 +382,6 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         if (!this._possibleValues)
             return false;
 
-        value = value || this.value;
         if (Object.keys(this._possibleValues.basic).includes(value))
             return true;
 
@@ -391,11 +393,27 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         if (!this._possibleUnits)
             return false;
 
-        unit = unit || this.units;
         if (this._possibleUnits.basic.includes(unit))
             return true;
 
         return this._valueIsSupportedAdvancedUnit(unit);
+    }
+
+    addDependency(propertyNames, propertyValues)
+    {
+        if (!propertyNames || !propertyNames.length || !propertyValues || !propertyValues.length)
+            return;
+
+        if (!Array.isArray(propertyNames))
+            propertyNames = [propertyNames];
+
+        for (let property of propertyNames)
+            this._dependencies.set(property, propertyValues);
+
+        if (!this._warningElement) {
+            this._warningElement = this._element.appendChild(document.createElement("div"));
+            this._warningElement.classList.add("visual-style-property-editor-warning");
+        }
     }
 
     // Protected
@@ -419,12 +437,12 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
 
     _valueIsSupportedAdvancedKeyword(value)
     {
-        return this._possibleValues.advanced && Object.keys(this._possibleValues.advanced).includes(value || this.value);
+        return this._possibleValues.advanced && Object.keys(this._possibleValues.advanced).includes(value);
     }
 
     _valueIsSupportedAdvancedUnit(unit)
     {
-        return this._possibleUnits.advanced && this._possibleUnits.advanced.includes(unit || this.units);
+        return this._possibleUnits.advanced && this._possibleUnits.advanced.includes(unit);
     }
 
     _canonicalizedKeywordForKey(value)
@@ -476,6 +494,8 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         this._ignoreNextUpdate = true;
         this._specialPropertyPlaceholderElement.hidden = true;
 
+        this._checkDependencies();
+
         this.dispatchEventToListeners(WebInspector.VisualStylePropertyEditor.Event.ValueDidChange);
         return true;
     }
@@ -495,6 +515,37 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
                 longhandText += longhandProperty.synthesizedText;
         }
         return longhandText ? text.replace(shorthand.text, longhandText) : text;
+    }
+
+    _hasMultipleConflictingValues()
+    {
+        return this._hasMultipleProperties && !this._specialPropertyPlaceholderElement.hidden;
+    }
+
+    _checkDependencies()
+    {
+        if (!this._dependencies.size || !this._style || !this.synthesizedValue) {
+            if (this._warningElement)
+                this._warningElement.classList.remove("missing-dependency");
+
+            return;
+        }
+
+        let title = "";
+
+        // FIXME: <https://webkit.org/b/152497> Arrow functions: "this" isn't lexically bound
+        let dependencies = this._style.nodeStyles.computedStyle.properties.filter(function(property) {
+            return this._dependencies.has(property.name) || this._dependencies.has(property.canonicalName);
+        }.bind(this));
+
+        for (let property of dependencies) {
+            let dependencyValues = this._dependencies.get(property.name);
+            if (!dependencyValues.includes(property.value))
+                title += "\n " + property.name + ": " + dependencyValues.join("/");
+        }
+
+        this._warningElement.classList.toggle("missing-dependency", !!title.length);
+        this._warningElement.title = !!title.length ? WebInspector.UIString("Missing Dependencies:%s").format(title) : null;
     }
 
     _titleElementPrepareForClick(event)
@@ -526,11 +577,6 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
     {
         if (event.altKey)
             this._showPropertyInfoPopover();
-    }
-
-    _hasMultipleConflictingValues()
-    {
-        return this._hasMultipleProperties && !this._specialPropertyPlaceholderElement.hidden;
     }
 
     _showPropertyInfoPopover()

@@ -799,7 +799,6 @@
     <ClCompile Include="..\runtime\JSArrayBufferPrototype.cpp" />
     <ClCompile Include="..\runtime\JSArrayBufferView.cpp" />
     <ClCompile Include="..\runtime\JSBoundFunction.cpp" />
-    <ClCompile Include="..\runtime\JSArrowFunction.cpp" />
     <ClCompile Include="..\runtime\JSCJSValue.cpp" />
     <ClCompile Include="..\runtime\JSCallee.cpp" />
     <ClCompile Include="..\runtime\JSCell.cpp" />
@@ -888,6 +887,7 @@
     <ClCompile Include="..\runtime\RegExpPrototype.cpp" />
     <ClCompile Include="..\runtime\RuntimeType.cpp" />
     <ClCompile Include="..\runtime\SamplingCounter.cpp" />
+    <ClCompile Include="..\runtime\SamplingProfiler.cpp" />
     <ClCompile Include="..\runtime\SetConstructor.cpp" />
     <ClCompile Include="..\runtime\SetIteratorPrototype.cpp" />
     <ClCompile Include="..\runtime\SetPrototype.cpp" />
@@ -974,6 +974,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSPromisePrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\KeywordLookup.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\Lexer.lut.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\MapPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\NumberPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\ObjectConstructor.lut.h" />
@@ -982,6 +983,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpJitTables.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\RegExpPrototype.lut.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SetPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\StringConstructor.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\SymbolPrototype.lut.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSCBuiltins.h" />
@@ -1522,6 +1524,7 @@
     <ClInclude Include="..\llint\LLIntExceptions.h" />
     <ClInclude Include="..\llint\LLIntOfflineAsmConfig.h" />
     <ClInclude Include="..\llint\LLIntOpcode.h" />
+    <ClInclude Include="..\llint\LLIntPCRanges.h" />
     <ClInclude Include="..\llint\LLIntSlowPaths.h" />
     <ClInclude Include="..\llint\LLIntThunks.h" />
     <ClInclude Include="..\llint\LowLevelInterpreter.h" />
@@ -1675,7 +1678,6 @@
     <ClInclude Include="..\runtime\JSArrayBufferViewInlines.h" />
     <ClInclude Include="..\runtime\JSArrayIterator.h" />
     <ClInclude Include="..\runtime\JSBoundFunction.h" />
-    <ClInclude Include="..\runtime\JSArrowFunction.h" />
     <ClInclude Include="..\runtime\JSCInlines.h" />
     <ClInclude Include="..\runtime\JSCJSValue.h" />
     <ClInclude Include="..\runtime\JSCJSValueInlines.h" />
@@ -1803,6 +1805,7 @@
     <ClInclude Include="..\runtime\RuntimeFlags.h" />
     <ClInclude Include="..\runtime\RuntimeType.h" />
     <ClInclude Include="..\runtime\SamplingCounter.h" />
+    <ClInclude Include="..\runtime\SamplingProfiler.h" />
     <ClInclude Include="..\runtime\ScopeOffset.h" />
     <ClInclude Include="..\runtime\ScopedArguments.h" />
     <ClInclude Include="..\runtime\ScopedArgumentsTable.h" />

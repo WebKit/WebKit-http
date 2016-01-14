@@ -30,20 +30,18 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         super(delegate, "visual", "visual", WebInspector.UIString("Styles \u2014 Visual"));
 
         this._currentStyle = null;
-        this._forceNextStyleUpdate = false;
 
         this._sections = {};
         this._groups = {};
         this._keywords = {};
         this._units = {};
-        this._autocompletionPropertyEditors = {};
 
         // These keywords, as well as the values below, are not localized as they must match the CSS spec.
         this._keywords.defaults = ["Inherit", "Initial", "Unset", "Revert"];
         this._keywords.boxModel = this._keywords.defaults.concat(["Auto"]);
         this._keywords.borderStyle = {
             basic: this._keywords.defaults.concat(["None", "Hidden", "Solid"]),
-            advanced: ["Dashed", "Dotted", "Double", "Groove", "Hidden", "Inset", "None", "Outset", "Ridge"]
+            advanced: ["Dashed", "Dotted", "Double", "Groove", "Inset", "Outset", "Ridge"]
         };
         this._keywords.borderWidth = this._keywords.defaults.concat(["Medium", "Thick", "Thin"]);
 
@@ -59,7 +57,6 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         // Selector Section
         this._selectorSection = new WebInspector.VisualStyleSelectorSection(this);
         this._selectorSection.addEventListener(WebInspector.VisualStyleSelectorSection.Event.SelectorChanged, this._updateSections, this);
-        this._selectorSection.addEventListener(WebInspector.VisualStyleSelectorSection.Event.StyleTextChanged, this._prepareForChange, this);
         this.element.appendChild(this._selectorSection.element);
 
         // Layout Section
@@ -76,12 +73,13 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         this.element.appendChild(this._sections.layout.element);
 
         // Text Section
+        this._generateSection("content", WebInspector.UIString("Content"));
         this._generateSection("text-style", WebInspector.UIString("Style"));
         this._generateSection("font", WebInspector.UIString("Font"));
         this._generateSection("text-spacing", WebInspector.UIString("Spacing"));
         this._generateSection("text-shadow", WebInspector.UIString("Shadow"));
 
-        this._sections.text = new WebInspector.DetailsSection("text", WebInspector.UIString("Text"), [this._groups.textStyle.section, this._groups.font.section, this._groups.textSpacing.section, this._groups.textShadow.section]);
+        this._sections.text = new WebInspector.DetailsSection("text", WebInspector.UIString("Text"), [this._groups.content.section, this._groups.textStyle.section, this._groups.font.section, this._groups.textSpacing.section, this._groups.textShadow.section]);
         this.element.appendChild(this._sections.text.element);
 
         // Background Section
@@ -106,11 +104,10 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
     refresh(significantChange)
     {
-        if (significantChange || this._forceNextStyleUpdate) {
+        if (significantChange)
             this._selectorSection.update(this._nodeStyles);
+        else
             this._updateSections();
-            this._forceNextStyleUpdate = false;
-        }
 
         super.refresh();
     }
@@ -143,11 +140,6 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let populateFunction = this["_populate" + camelCaseId.capitalize() + "Section"];
         populateFunction.call(this);
-    }
-
-    _prepareForChange(event)
-    {
-        this._forceNextStyleUpdate = true;
     }
 
     _updateSections(event)
@@ -183,7 +175,7 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         if (!group.section)
             return;
 
-        if (group.links) {
+        if (forceStyleUpdate && group.links) {
             for (let key in group.links)
                 group.links[key].linked = false;
         }
@@ -440,6 +432,13 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let positionGroup = new WebInspector.DetailsSectionGroup(rows);
         this._populateSection(group, [positionGroup]);
+
+        let allowedPositionValues = ["relative", "absolute", "fixed", "-webkit-sticky"];
+        properties.zIndex.addDependency("position", allowedPositionValues);
+        properties.top.addDependency("position", allowedPositionValues);
+        properties.right.addDependency("position", allowedPositionValues);
+        properties.bottom.addDependency("position", allowedPositionValues);
+        properties.left.addDependency("position", allowedPositionValues);
     }
 
     _populateFloatSection()
@@ -577,6 +576,14 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let flexboxGroup = new WebInspector.DetailsSectionGroup([flexOrderRow, flexSizeRow, flexFlowRow]);
         this._populateSection(group, [flexboxGroup]);
+
+        let allowedDisplayValues = ["flex", "inline-flex", "-webkit-box", "-webkit-inline-box"];
+        properties.order.addDependency("display", allowedDisplayValues);
+        properties.flexBasis.addDependency("display", allowedDisplayValues);
+        properties.flexGrow.addDependency("display", allowedDisplayValues);
+        properties.flexShrink.addDependency("display", allowedDisplayValues);
+        properties.flexDirection.addDependency("display", allowedDisplayValues);
+        properties.flexWrap.addDependency("display", allowedDisplayValues);
     }
 
     _populateAlignmentSection()
@@ -612,6 +619,27 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let alignmentGroup = new WebInspector.DetailsSectionGroup([contentRow, itemsRow]);
         this._populateSection(group, [alignmentGroup]);
+
+        let allowedDisplayValues = ["flex", "inline-flex", "-webkit-box", "-webkit-inline-box"];
+        properties.justifyContent.addDependency("display", allowedDisplayValues);
+        properties.alignContent.addDependency("display", allowedDisplayValues);
+        properties.alignItems.addDependency("display", allowedDisplayValues);
+        properties.alignSelf.addDependency("display", allowedDisplayValues);
+    }
+
+    _populateContentSection()
+    {
+        let group = this._groups.content;
+        let properties = group.properties;
+
+        let contentRow = new WebInspector.DetailsSectionRow;
+
+        properties.content = new WebInspector.VisualStyleBasicInput("content", null, WebInspector.UIString("Enter a value"));
+
+        contentRow.element.appendChild(properties.content.element);
+
+        let contentGroup = new WebInspector.DetailsSectionGroup([contentRow]);
+        this._populateSection(group, [contentGroup]);
     }
 
     _populateTextStyleSection()
@@ -962,10 +990,86 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         this._addMetricsMouseListeners(group.properties.borderLeftWidth, highlightMode);
         this._addMetricsMouseListeners(group.properties.borderRightWidth, highlightMode);
 
+        let borderGroup = new WebInspector.DetailsSectionGroup([borderTabController, borderAllGroup, borderTopGroup, borderRightGroup, borderBottomGroup, borderLeftGroup]);
+
+        let borderImageSourceRow = new WebInspector.DetailsSectionRow;
+
+        properties.borderImageSource = new WebInspector.VisualStyleURLInput("border-image-source", WebInspector.UIString("Image"), this._keywords.defaults.concat(["None"]));
+
+        borderImageSourceRow.element.appendChild(properties.borderImageSource.element);
+
+        let borderImageRepeatRow = new WebInspector.DetailsSectionRow;
+
+        let borderImageSliceFill = new WebInspector.VisualStyleKeywordCheckbox("border-image-slice", WebInspector.UIString("Fill"), "Fill");
+        borderImageSliceFill.optionalProperty = true;
+        properties.borderImageRepeat = new WebInspector.VisualStyleKeywordPicker("border-image-repeat", WebInspector.UIString("Repeat"), this._keywords.defaults.concat(["Stretch", "Repeat", "Round", "Space"]));
+
+        borderImageRepeatRow.element.appendChild(borderImageSliceFill.element);
+        borderImageRepeatRow.element.appendChild(properties.borderImageRepeat.element);
+
+        function generateBorderImagePropertyEditors(propertyName, keywords, units) {
+            let vertical = new WebInspector.DetailsSectionRow;
+
+            let top = new WebInspector.VisualStyleNumberInputBox(propertyName, WebInspector.UIString("Top"), keywords, units);
+            top.masterProperty = true;
+            let bottom = new WebInspector.VisualStyleNumberInputBox(propertyName, WebInspector.UIString("Bottom"), keywords, units);
+            bottom.masterProperty = true;
+
+            vertical.element.appendChild(top.element);
+            vertical.element.appendChild(bottom.element);
+
+            let horizontal = new WebInspector.DetailsSectionRow;
+
+            let left = new WebInspector.VisualStyleNumberInputBox(propertyName, WebInspector.UIString("Left"), keywords, units);
+            left.masterProperty = true;
+            let right = new WebInspector.VisualStyleNumberInputBox(propertyName, WebInspector.UIString("Right"), keywords, units);
+            right.masterProperty = true;
+
+            horizontal.element.appendChild(left.element);
+            horizontal.element.appendChild(right.element);
+
+            return {group: new WebInspector.DetailsSectionGroup([vertical, horizontal]), properties: [top, bottom, left, right]};
+        }
+
+        let nonKeywordUnits = [WebInspector.UIString("Number")];
+
+        let borderImageUnits = this._units.defaults;
+        borderImageUnits.basic = nonKeywordUnits.concat(borderImageUnits.basic);
+        let borderImageWidth = generateBorderImagePropertyEditors("border-image-width", this._keywords.boxModel, borderImageUnits);
+        properties.borderImageWidth = new WebInspector.VisualStylePropertyCombiner("border-image-width", borderImageWidth.properties, true);
+
+        let borderOutsetUnits = this._units.defaultsSansPercent;
+        borderOutsetUnits.basic = nonKeywordUnits.concat(borderOutsetUnits.basic);
+        let borderImageOutset = generateBorderImagePropertyEditors("border-image-outset", this._keywords.defaults, borderOutsetUnits);
+        properties.borderImageOutset = new WebInspector.VisualStylePropertyCombiner("border-image-outset", borderImageOutset.properties, true);
+
+        let borderImageSlice = generateBorderImagePropertyEditors("border-image-slice", this._keywords.defaults, ["%"].concat(nonKeywordUnits));
+        borderImageSlice.properties.push(borderImageSliceFill);
+        properties.borderImageSlice = new WebInspector.VisualStylePropertyCombiner("border-image-slice", borderImageSlice.properties, true);
+
+        let borderImagePropertiesTabController = new WebInspector.VisualStyleTabbedPropertiesRow({
+            "width": {title: WebInspector.UIString("Width"), element: borderImageWidth.group.element, properties: [properties.borderImageWidth]},
+            "outset": {title: WebInspector.UIString("Outset"), element: borderImageOutset.group.element, properties: [properties.borderImageOutset]},
+            "slice": {title: WebInspector.UIString("Slice"), element: borderImageSlice.group.element, properties: [properties.borderImageSlice]}
+        });
+
+        let borderImageGroup = new WebInspector.DetailsSectionGroup([borderImageSourceRow, borderImageRepeatRow, borderImagePropertiesTabController, borderImageWidth.group, borderImageOutset.group, borderImageSlice.group]);
+
         group.autocompleteCompatibleProperties = [properties.borderColor, properties.borderTopColor, properties.borderBottomColor, properties.borderLeftColor, properties.borderRightColor];
 
-        let borderGroup = new WebInspector.DetailsSectionGroup([borderTabController, borderAllGroup, borderTopGroup, borderRightGroup, borderBottomGroup, borderLeftGroup]);
-        this._populateSection(group, [borderGroup]);
+        this._populateSection(group, [borderGroup, borderImageGroup]);
+
+        let allowedBorderValues = ["solid", "dashed", "dotted", "double", "groove", "inset", "outset", "ridge"];
+        properties.borderWidth.addDependency(["border-top-style", "border-right-style", "border-bottom-style", "border-left-style"], allowedBorderValues);
+        properties.borderColor.addDependency(["border-top-style", "border-right-style", "border-bottom-style", "border-left-style"], allowedBorderValues);
+        properties.borderTopWidth.addDependency("border-top-style", allowedBorderValues);
+        properties.borderTopColor.addDependency("border-top-style", allowedBorderValues);
+        properties.borderRightWidth.addDependency("border-right-style", allowedBorderValues);
+        properties.borderRightColor.addDependency("border-right-style", allowedBorderValues);
+        properties.borderBottomWidth.addDependency("border-bottom-style", allowedBorderValues);
+        properties.borderBottomColor.addDependency("border-bottom-style", allowedBorderValues);
+        properties.borderLeftWidth.addDependency("border-left-style", allowedBorderValues);
+        properties.borderLeftColor.addDependency("border-left-style", allowedBorderValues);
     }
 
     _populateOutlineSection()
@@ -975,24 +1079,28 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         let outlineSizeRow = new WebInspector.DetailsSectionRow;
 
+        properties.outlineStyle = new WebInspector.VisualStyleKeywordPicker("outline-style" , WebInspector.UIString("Style"), this._keywords.borderStyle);
         properties.outlineWidth = new WebInspector.VisualStyleNumberInputBox("outline-width", WebInspector.UIString("Width"), this._keywords.borderWidth, this._units.defaults);
-        properties.outlineOffset = new WebInspector.VisualStyleNumberInputBox("outline-offset", WebInspector.UIString("Offset"), this._keywords.defaults, this._units.defaults, true);
 
+        outlineSizeRow.element.appendChild(properties.outlineStyle.element);
         outlineSizeRow.element.appendChild(properties.outlineWidth.element);
-        outlineSizeRow.element.appendChild(properties.outlineOffset.element);
 
         let outlineStyleRow = new WebInspector.DetailsSectionRow;
 
-        properties.outlineStyle = new WebInspector.VisualStyleKeywordPicker("outline-style" , WebInspector.UIString("Style"), this._keywords.borderStyle);
         properties.outlineColor = new WebInspector.VisualStyleColorPicker("outline-color", WebInspector.UIString("Color"));
+        properties.outlineOffset = new WebInspector.VisualStyleNumberInputBox("outline-offset", WebInspector.UIString("Offset"), this._keywords.defaults, this._units.defaults, true);
 
-        outlineStyleRow.element.appendChild(properties.outlineStyle.element);
         outlineStyleRow.element.appendChild(properties.outlineColor.element);
+        outlineStyleRow.element.appendChild(properties.outlineOffset.element);
 
         group.autocompleteCompatibleProperties = [properties.outlineColor];
 
         let outlineGroup = new WebInspector.DetailsSectionGroup([outlineSizeRow, outlineStyleRow]);
         this._populateSection(group, [outlineGroup]);
+
+        let allowedOutlineValues = ["solid", "dashed", "dotted", "double", "groove", "inset", "outset", "ridge"];
+        properties.outlineWidth.addDependency("outline-style", allowedOutlineValues);
+        properties.outlineColor.addDependency("outline-style", allowedOutlineValues);
     }
 
     _populateBoxShadowSection()

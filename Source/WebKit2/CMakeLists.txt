@@ -229,7 +229,6 @@ set(WebKit2_SOURCES
     Shared/BlobDataFileReferenceWithSandboxExtension.cpp
     Shared/CacheModel.cpp
     Shared/ChildProcess.cpp
-    Shared/ChildProcessProxy.cpp
     Shared/ContextMenuContextData.cpp
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
@@ -335,6 +334,7 @@ set(WebKit2_SOURCES
 
     Shared/WebsiteData/WebsiteData.cpp
 
+    UIProcess/ChildProcessProxy.cpp
     UIProcess/DrawingAreaProxy.cpp
     UIProcess/FrameLoadState.cpp
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp

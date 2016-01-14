@@ -43,6 +43,7 @@ template<> struct ForEach<Tmp> {
         inst.forEachTmp(functor);
     }
 };
+
 template<> struct ForEach<Arg> {
     template<typename Functor>
     static void forEach(Inst& inst, const Functor& functor)
@@ -50,6 +51,7 @@ template<> struct ForEach<Arg> {
         inst.forEachArg(functor);
     }
 };
+
 template<> struct ForEach<StackSlot*> {
     template<typename Functor>
     static void forEach(Inst& inst, const Functor& functor)
@@ -72,26 +74,37 @@ template<> struct ForEach<StackSlot*> {
     }
 };
 
+template<> struct ForEach<Reg> {
+    template<typename Functor>
+    static void forEach(Inst& inst, const Functor& functor)
+    {
+        inst.forEachTmp(
+            [&] (Tmp& tmp, Arg::Role role, Arg::Type type, Arg::Width width) {
+                if (!tmp.isReg())
+                    return;
+
+                Reg reg = tmp.reg();
+                functor(reg, role, type, width);
+                tmp = Tmp(reg);
+            });
+    }
+};
+
 template<typename Thing, typename Functor>
 void Inst::forEach(const Functor& functor)
 {
     ForEach<Thing>::forEach(*this, functor);
 }
 
-inline bool Inst::hasSpecial() const
-{
-    return args.size() && args[0].isSpecial();
-}
-
 inline const RegisterSet& Inst::extraClobberedRegs()
 {
-    ASSERT(hasSpecial());
+    ASSERT(opcode == Patch);
     return args[0].special()->extraClobberedRegs(*this);
 }
 
 inline const RegisterSet& Inst::extraEarlyClobberedRegs()
 {
-    ASSERT(hasSpecial());
+    ASSERT(opcode == Patch);
     return args[0].special()->extraEarlyClobberedRegs(*this);
 }
 
@@ -128,12 +141,12 @@ inline void Inst::forEachDefWithExtraClobberedRegs(
         functor(Thing(reg), regDefRole, type, Arg::conservativeWidth(type));
     };
 
-    if (prevInst && prevInst->hasSpecial()) {
+    if (prevInst && prevInst->opcode == Patch) {
         regDefRole = Arg::Def;
         prevInst->extraClobberedRegs().forEach(reportReg);
     }
 
-    if (nextInst && nextInst->hasSpecial()) {
+    if (nextInst && nextInst->opcode == Patch) {
         regDefRole = Arg::EarlyDef;
         nextInst->extraEarlyClobberedRegs().forEach(reportReg);
     }
@@ -141,7 +154,7 @@ inline void Inst::forEachDefWithExtraClobberedRegs(
 
 inline void Inst::reportUsedRegisters(const RegisterSet& usedRegisters)
 {
-    ASSERT(hasSpecial());
+    ASSERT(opcode == Patch);
     args[0].special()->reportUsedRegisters(*this, usedRegisters);
 }
 

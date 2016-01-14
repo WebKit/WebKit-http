@@ -33,24 +33,39 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "PeerConnectionBackend.h"
 #include "RTCRtpSenderReceiverBase.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class RTCRtpSenderClient {
+public:
+    virtual void replaceTrack(RTCRtpSender&, MediaStreamTrack&, PeerConnection::VoidPromise&&) = 0;
+
+    virtual ~RTCRtpSenderClient() { }
+};
+
 class RTCRtpSender : public RTCRtpSenderReceiverBase {
 public:
-    static Ref<RTCRtpSender> create(RefPtr<MediaStreamTrack>&& track, const String& mediaStreamId)
+    static Ref<RTCRtpSender> create(RefPtr<MediaStreamTrack>&& track, Vector<String>&& mediaStreamIds, RTCRtpSenderClient& client)
     {
-        return adoptRef(*new RTCRtpSender(WTFMove(track), mediaStreamId));
+        return adoptRef(*new RTCRtpSender(WTFMove(track), WTFMove(mediaStreamIds), client));
     }
 
-    const String& mediaStreamId() const { return m_mediaStreamId; }
+    const String& trackId() { return m_trackId; }
+    const Vector<String>& mediaStreamIds() const { return m_mediaStreamIds; }
+
+    void stop() { m_client = nullptr; }
+
+    void replaceTrack(MediaStreamTrack*, PeerConnection::VoidPromise&&, ExceptionCode&);
 
 private:
-    RTCRtpSender(RefPtr<MediaStreamTrack>&&, const String& mediaStreamId);
+    RTCRtpSender(RefPtr<MediaStreamTrack>&&, Vector<String>&& mediaStreamIds, RTCRtpSenderClient&);
 
-    String m_mediaStreamId;
+    String m_trackId;
+    Vector<String> m_mediaStreamIds;
+    RTCRtpSenderClient* m_client;
 };
 
 } // namespace WebCore

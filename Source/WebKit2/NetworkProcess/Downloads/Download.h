@@ -76,7 +76,7 @@ class Download : public IPC::MessageSender {
     WTF_MAKE_NONCOPYABLE(Download);
 public:
 #if USE(NETWORK_SESSION)
-    Download(DownloadManager&, const NetworkSession&, DownloadID);
+    Download(DownloadManager&, DownloadID);
 #else
     Download(DownloadManager&, DownloadID, const WebCore::ResourceRequest&);
 #endif
@@ -97,8 +97,8 @@ public:
     void didStart(const WebCore::ResourceRequest&);
 #else
     void didStart();
-#endif
     void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
+#endif
     void didReceiveResponse(const WebCore::ResourceResponse&);
     void didReceiveData(uint64_t length);
     bool shouldDecodeSourceDataOfMIMEType(const String& mimeType);
@@ -113,6 +113,7 @@ public:
     DownloadAuthenticationClient* authenticationClient();
 #endif
 
+#if !USE(NETWORK_SESSION)
     // Authentication
     static void receivedCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
     static void receivedRequestToContinueWithoutCredential(const WebCore::AuthenticationChallenge&);
@@ -123,6 +124,7 @@ public:
     void useCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
     void continueWithoutCredential(const WebCore::AuthenticationChallenge&);
     void cancelAuthenticationChallenge(const WebCore::AuthenticationChallenge&);
+#endif
 
 private:
     // IPC::MessageSender
@@ -141,7 +143,6 @@ private:
 
 #if PLATFORM(COCOA)
 #if USE(NETWORK_SESSION)
-    const NetworkSession& m_session;
     RetainPtr<NSURLSessionDownloadTask> m_download;
 #else
     RetainPtr<NSURLDownload> m_nsURLDownload;

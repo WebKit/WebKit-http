@@ -43,6 +43,7 @@
 #include "XLinkNames.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -273,7 +274,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 
     String httpBodyAsString;
     if (DocumentLoader* documentLoader = document->frame()->loader().documentLoader()) {
-        DEPRECATED_DEFINE_STATIC_LOCAL(String, XSSProtectionHeader, (ASCIILiteral("X-XSS-Protection")));
+        static NeverDestroyed<String> XSSProtectionHeader(ASCIILiteral("X-XSS-Protection"));
         String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
         String errorDetails;
         unsigned errorPosition = 0;
@@ -387,7 +388,7 @@ void XSSAuditor::filterEndToken(const FilterTokenRequest& request)
 bool XSSAuditor::filterCharacterToken(const FilterTokenRequest& request)
 {
     ASSERT(m_scriptTagNestingLevel);
-    if (isContainedInRequest(m_cachedDecodedSnippet) && isContainedInRequest(decodedSnippetForJavaScript(request))) {
+    if (m_wasScriptTagFoundInRequest && isContainedInRequest(decodedSnippetForJavaScript(request))) {
         request.token.clear();
         LChar space = ' ';
         request.token.appendToCharacter(space); // Technically, character tokens can't be empty.
@@ -401,10 +402,10 @@ bool XSSAuditor::filterScriptToken(const FilterTokenRequest& request)
     ASSERT(request.token.type() == HTMLToken::StartTag);
     ASSERT(hasName(request.token, scriptTag));
 
-    m_cachedDecodedSnippet = decodedSnippetForName(request);
+    m_wasScriptTagFoundInRequest = isContainedInRequest(decodedSnippetForName(request));
 
     bool didBlockScript = false;
-    if (isContainedInRequest(decodedSnippetForName(request))) {
+    if (m_wasScriptTagFoundInRequest) {
         didBlockScript |= eraseAttributeIfInjected(request, srcAttr, blankURL().string(), SrcLikeAttribute);
         didBlockScript |= eraseAttributeIfInjected(request, XLinkNames::hrefAttr, blankURL().string(), SrcLikeAttribute);
     }
@@ -523,7 +524,7 @@ bool XSSAuditor::filterButtonToken(const FilterTokenRequest& request)
 
 bool XSSAuditor::eraseDangerousAttributesIfInjected(const FilterTokenRequest& request)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, safeJavaScriptURL, (ASCIILiteral("javascript:void(0)")));
+    static NeverDestroyed<String> safeJavaScriptURL(ASCIILiteral("javascript:void(0)"));
 
     bool didBlockScript = false;
     for (size_t i = 0; i < request.token.attributes().size(); ++i) {
@@ -538,7 +539,7 @@ bool XSSAuditor::eraseDangerousAttributesIfInjected(const FilterTokenRequest& re
             continue;
         request.token.eraseValueOfAttribute(i);
         if (valueContainsJavaScriptURL)
-            request.token.appendToAttributeValue(i, safeJavaScriptURL);
+            request.token.appendToAttributeValue(i, safeJavaScriptURL.get());
         didBlockScript = true;
     }
     return didBlockScript;
@@ -669,12 +670,9 @@ String XSSAuditor::decodedSnippetForJavaScript(const FilterTokenRequest& request
         lastNonSpacePosition = notFound;
         for (foundPosition = startPosition; foundPosition < endPosition; foundPosition++) {
             if (!request.shouldAllowCDATA) {
-                if (startsSingleLineCommentAt(string, foundPosition) || startsMultiLineCommentAt(string, foundPosition)) {
-                    foundPosition += 2;
-                    break;
-                }
-                if (startsHTMLCommentAt(string, foundPosition)) {
-                    foundPosition += 4;
+                if (startsSingleLineCommentAt(string, foundPosition)
+                    || startsMultiLineCommentAt(string, foundPosition)
+                    || startsHTMLCommentAt(string, foundPosition)) {
                     break;
                 }
             }

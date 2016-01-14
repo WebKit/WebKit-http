@@ -154,10 +154,11 @@
 #include "ShadowRoot.h"
 #include "StorageEvent.h"
 #include "StyleProperties.h"
-#include "StyleResolveTree.h"
+#include "StyleResolveForDocument.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
+#include "StyleTreeResolver.h"
 #include "SubresourceLoader.h"
 #include "TextEvent.h"
 #include "TextNodeTraversal.h"
@@ -177,6 +178,7 @@
 #include <ctime>
 #include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/StringBuffer.h>
 #include <yarr/RegularExpression.h>
@@ -1118,9 +1120,9 @@ RefPtr<Element> Document::createElementNS(const String& namespaceURI, const Stri
 
 String Document::readyState() const
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, loading, (ASCIILiteral("loading")));
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, interactive, (ASCIILiteral("interactive")));
-    DEPRECATED_DEFINE_STATIC_LOCAL(const String, complete, (ASCIILiteral("complete")));
+    static NeverDestroyed<const String> loading(ASCIILiteral("loading"));
+    static NeverDestroyed<const String> interactive(ASCIILiteral("interactive"));
+    static NeverDestroyed<const String> complete(ASCIILiteral("complete"));
 
     switch (m_readyState) {
     case Loading:
@@ -1851,9 +1853,23 @@ void Document::recalcStyle(Style::Change change)
         if (change == Style::Force) {
             // This may get set again during style resolve.
             m_hasNodesWithPlaceholderStyle = false;
+
+            auto documentStyle = Style::resolveForDocument(*this);
+
+            // Inserting the pictograph font at the end of the font fallback list is done by the
+            // font selector, so set a font selector if needed.
+            if (Settings* settings = this->settings()) {
+                if (settings->fontFallbackPrefersPictographs())
+                    documentStyle.get().fontCascade().update(&fontSelector());
+            }
+
+            auto documentChange = Style::determineChange(documentStyle.get(), m_renderView->style());
+            if (documentChange != Style::NoChange)
+                renderView()->setStyle(WTFMove(documentStyle));
         }
 
-        Style::resolveTree(*this, change);
+        Style::TreeResolver resolver(*this);
+        resolver.resolve(change);
 
         updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
 

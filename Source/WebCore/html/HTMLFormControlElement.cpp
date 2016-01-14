@@ -38,7 +38,7 @@
 #include "HTMLTextAreaElement.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
-#include "StyleResolveTree.h"
+#include "StyleTreeResolver.h"
 #include "ValidationMessage.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
@@ -102,6 +102,19 @@ void HTMLFormControlElement::setFormMethod(const String& value)
 bool HTMLFormControlElement::formNoValidate() const
 {
     return fastHasAttribute(formnovalidateAttr);
+}
+
+String HTMLFormControlElement::formAction() const
+{
+    const AtomicString& value = fastGetAttribute(formactionAttr);
+    if (value.isEmpty())
+        return document().url();
+    return getURLAttribute(formactionAttr);
+}
+
+void HTMLFormControlElement::setFormAction(const AtomicString& value)
+{
+    setAttributeWithoutSynchronization(formactionAttr, value);
 }
 
 bool HTMLFormControlElement::computeIsDisabledByFieldsetAncestor() const

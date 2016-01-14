@@ -28,6 +28,8 @@
 
 @interface TestProtocol : NSURLProtocol {
 }
++ (void)registerWithScheme:(NSString *)scheme;
++ (void)unregister;
 + (NSString *)scheme;
 @end
 

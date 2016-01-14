@@ -49,8 +49,6 @@
 #include "RTCIceCandidate.h"
 #include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
-#include "RTCRtpReceiver.h"
-#include "RTCRtpSender.h"
 #include "RTCSessionDescription.h"
 #include "RTCTrackEvent.h"
 #include <wtf/MainThread.h>
@@ -104,24 +102,6 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
-Vector<RefPtr<RTCRtpSender>> RTCPeerConnection::getSenders() const
-{
-    Vector<RefPtr<RTCRtpSender>> senders;
-    senders.reserveCapacity(m_senderSet.size());
-    copyValuesToVector(m_senderSet, senders);
-
-    return senders;
-}
-
-Vector<RefPtr<RTCRtpReceiver>> RTCPeerConnection::getReceivers() const
-{
-    Vector<RefPtr<RTCRtpReceiver>> receivers;
-    receivers.reserveCapacity(m_receiverSet.size());
-    copyValuesToVector(m_receiverSet, receivers);
-
-    return receivers;
-}
-
 RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(RefPtr<MediaStreamTrack>&& track, Vector<MediaStream*> streams, ExceptionCode& ec)
 {
     if (!track) {
@@ -140,15 +120,20 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(RefPtr<MediaStreamTrack>&& trac
         return nullptr;
     }
 
-    if (m_senderSet.contains(track->id())) {
-        // FIXME: Spec says InvalidParameter
-        ec = INVALID_MODIFICATION_ERR;
-        return nullptr;
+    for (auto& sender : m_senderSet) {
+        if (sender->trackId() == track->id()) {
+            // FIXME: Spec says InvalidParameter
+            ec = INVALID_MODIFICATION_ERR;
+            return nullptr;
+        }
     }
 
-    const String& trackId = track->id();
-    RefPtr<RTCRtpSender> sender = RTCRtpSender::create(WTFMove(track), streams[0]->id());
-    m_senderSet.add(trackId, sender);
+    Vector<String> mediaStreamIds;
+    for (auto stream : streams)
+        mediaStreamIds.append(stream->id());
+
+    RefPtr<RTCRtpSender> sender = RTCRtpSender::create(WTFMove(track), WTFMove(mediaStreamIds), *this);
+    m_senderSet.append(sender);
 
     m_backend->markAsNeedingNegotiation();
 
@@ -167,8 +152,10 @@ void RTCPeerConnection::removeTrack(RTCRtpSender* sender, ExceptionCode& ec)
         return;
     }
 
-    if (!m_senderSet.remove(sender->track()->id()))
+    if (!m_senderSet.contains(sender))
         return;
+
+    sender->stop();
 
     m_backend->markAsNeedingNegotiation();
 }
@@ -440,6 +427,11 @@ void RTCPeerConnection::scheduleNegotiationNeededEvent()
 void RTCPeerConnection::fireEvent(Event& event)
 {
     dispatchEvent(event);
+}
+
+void RTCPeerConnection::replaceTrack(RTCRtpSender& sender, MediaStreamTrack& withTrack, PeerConnection::VoidPromise&& promise)
+{
+    m_backend->replaceTrack(sender, withTrack, WTFMove(promise));
 }
 
 } // namespace WebCore
