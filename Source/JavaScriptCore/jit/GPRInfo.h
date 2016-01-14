@@ -792,14 +792,6 @@ public:
         return result;
     }
 
-    static GPRReg toArgumentRegister(unsigned index)
-    {
-        ASSERT(index < numberOfArgumentRegisters);
-        static const GPRReg registerForIndex[numberOfArgumentRegisters] = { argumentGPR0, argumentGPR1, argumentGPR2, argumentGPR3 };
-        return registerForIndex[index];
-    }
-
-
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);

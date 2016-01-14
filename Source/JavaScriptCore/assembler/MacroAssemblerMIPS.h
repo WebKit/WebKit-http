@@ -2875,8 +2875,6 @@ public:
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
-
     static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
     {
         MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
@@ -2885,29 +2883,6 @@ public:
     static void repatchCall(CodeLocationCall call, FunctionPtr destination)
     {
         MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
-    }
-
-    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
-    {
-        UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
-    }
-
-    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
-    {
-        UNREACHABLE_FOR_PLATFORM();
-    }
-
-    void abortWithReason(AbortReason reason)
-    {
-        move(TrustedImm32(reason), MIPSRegisters::t9);
-        breakpoint();
-    }
-
-    void abortWithReason(AbortReason reason, intptr_t misc)
-    {
-        move(TrustedImm32(misc), MIPSRegisters::t8);
-        abortWithReason(reason);
     }
 
     void countLeadingZeros32(RegisterID src, RegisterID dest)
