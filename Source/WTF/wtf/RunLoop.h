@@ -103,6 +103,10 @@ public:
 #elif PLATFORM(COCOA)
         static void timerFired(CFRunLoopTimerRef, void*);
         RetainPtr<CFRunLoopTimerRef> m_timer;
+#elif PLATFORM(QT)
+        static void timerFired(RunLoop*, int ID);
+        int m_ID;
+        bool m_isRepeating;
 #elif PLATFORM(EFL)
         static bool timerFired(void* data);
         Ecore_Timer* m_timer;
@@ -157,6 +161,11 @@ private:
     RetainPtr<CFRunLoopRef> m_runLoop;
     RetainPtr<CFRunLoopSourceRef> m_runLoopSource;
     int m_nestingLevel;
+#elif PLATFORM(QT)
+    typedef HashMap<int, TimerBase*> TimerMap;
+    TimerMap m_activeTimers;
+    class TimerObject;
+    TimerObject* m_timerObject;
 #elif PLATFORM(EFL)
     Mutex m_pipeLock;
     EflUniquePtr<Ecore_Pipe> m_pipe;
