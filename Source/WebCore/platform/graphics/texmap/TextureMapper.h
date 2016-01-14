@@ -22,6 +22,13 @@
 
 #if USE(TEXTURE_MAPPER)
 
+#if PLATFORM(QT)
+#include <qglobal.h>
+#if defined(QT_OPENGL_ES_2) && !defined(TEXMAP_OPENGL_ES_2)
+    #define TEXMAP_OPENGL_ES_2
+#endif
+#endif
+
 #include "BitmapTexture.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"

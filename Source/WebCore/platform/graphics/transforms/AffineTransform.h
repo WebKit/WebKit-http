@@ -36,6 +36,8 @@
 typedef struct CGAffineTransform CGAffineTransform;
 #elif USE(CAIRO)
 #include <cairo.h>
+#elif PLATFORM(QT)
+#include <QTransform>
 #endif
 
 namespace WebCore {
@@ -170,6 +172,8 @@ public:
     operator CGAffineTransform() const;
 #elif USE(CAIRO)
     operator cairo_matrix_t() const;
+#elif PLATFORM(QT)
+    operator QTransform() const;
 #endif
 
     static AffineTransform translation(double x, double y)

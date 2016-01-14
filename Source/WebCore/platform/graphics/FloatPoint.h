@@ -47,6 +47,13 @@ typedef struct _NSPoint NSPoint;
 #endif
 #endif // PLATFORM(MAC)
 
+#if PLATFORM(QT)
+#include "qglobal.h"
+QT_BEGIN_NAMESPACE
+class QPointF;
+QT_END_NAMESPACE
+#endif
+
 namespace WebCore {
 
 class AffineTransform;
@@ -146,6 +153,11 @@ public:
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     WEBCORE_EXPORT FloatPoint(const NSPoint&);
     WEBCORE_EXPORT operator NSPoint() const;
+#endif
+
+#if PLATFORM(QT)
+    FloatPoint(const QPointF&);
+    operator QPointF() const;
 #endif
 
     FloatPoint matrixTransform(const TransformationMatrix&) const;

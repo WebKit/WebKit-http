@@ -22,7 +22,7 @@
 #define DISABLE_SHIMS
 #include "OpenGLShims.h"
 
-#if !PLATFORM(WIN)
+#if !PLATFORM(QT) && !PLATFORM(WIN)
 #include <dlfcn.h>
 #endif
 
@@ -41,6 +41,13 @@ OpenGLFunctionTable* openGLFunctionTable()
 static void* getProcAddress(const char* procName)
 {
     return GetProcAddress(GetModuleHandleA("libGLESv2"), procName);
+}
+#elif PLATFORM(QT)
+static void* getProcAddress(const char* procName)
+{
+    if (QOpenGLContext* context = QOpenGLContext::currentContext())
+        return reinterpret_cast<void*>(context->getProcAddress(procName));
+    return 0;
 }
 #else
 typedef void* (*glGetProcAddressType) (const char* procName);

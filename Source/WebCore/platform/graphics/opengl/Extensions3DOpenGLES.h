@@ -31,8 +31,20 @@
 
 #if USE(OPENGL_ES_2)
 
+#if PLATFORM(QT)
+// Takes care of declaring the GLES extensions.
+#include <qopengl.h>
+#else
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif
+
+#if PLATFORM(QT)
+// See https://bugs.webkit.org/show_bug.cgi?id=91030.
+// Newer Khorons headers do define these with a PROC suffix, but older headers don't.
+#define PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMG PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEIMGPROC
+#define PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMG PFNGLRENDERBUFFERSTORAGEMULTISAMPLEIMGPROC
+#endif
 
 #ifndef GL_EXT_robustness
 /* reuse GL_NO_ERROR */

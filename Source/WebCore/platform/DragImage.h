@@ -38,6 +38,10 @@ typedef struct CGImage *CGImageRef;
 #elif PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS NSImage;
+#elif PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QPixmap;
+QT_END_NAMESPACE
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
 #elif PLATFORM(GTK)
@@ -60,6 +64,8 @@ class URL;
 typedef RetainPtr<CGImageRef> DragImageRef;
 #elif PLATFORM(MAC)
 typedef RetainPtr<NSImage> DragImageRef;
+#elif PLATFORM(QT)
+typedef QPixmap* DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
 #elif PLATFORM(GTK)

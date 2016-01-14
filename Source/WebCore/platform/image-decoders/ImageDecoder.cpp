@@ -25,6 +25,9 @@
 #include "BMPImageDecoder.h"
 #include "GIFImageDecoder.h"
 #include "ICOImageDecoder.h"
+#if PLATFORM(QT)
+#include "ImageDecoderQt.h"
+#endif
 #include "JPEGImageDecoder.h"
 #include "PNGImageDecoder.h"
 #include "SharedBuffer.h"
@@ -123,6 +126,9 @@ ImageDecoder* ImageDecoder::create(const SharedBuffer& data, ImageSource::AlphaO
     if (matchesBMPSignature(contents))
         return new BMPImageDecoder(alphaOption, gammaAndColorProfileOption);
 
+#if PLATFORM(QT)
+    return new ImageDecoderQt(alphaOption, gammaAndColorProfileOption);
+#endif
     return 0;
 }
 

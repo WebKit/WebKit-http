@@ -55,7 +55,7 @@
 #define GL_RGB32F_ARB                       0x8815
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 

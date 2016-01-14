@@ -30,6 +30,9 @@
 
 #if PLATFORM(GTK) || PLATFORM(EFL)
     #define suppressNotImplementedWarning() getenv("DISABLE_NI_WARNING")
+#elif PLATFORM(QT)
+    #include <QByteArray>
+    #define suppressNotImplementedWarning() !qgetenv("DISABLE_NI_WARNING").isEmpty()
 #else
     #define suppressNotImplementedWarning() false
 #endif

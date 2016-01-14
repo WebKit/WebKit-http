@@ -48,9 +48,17 @@ typedef const struct __SCDynamicStore * SCDynamicStoreRef;
 #include <wtf/RetainPtr.h>
 OBJC_CLASS WebNetworkStateObserver;
 
+#elif PLATFORM(QT)
+
+#include <QtCore/qglobal.h>
+
 #endif
 
 namespace WebCore {
+
+#if (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
+class NetworkStateNotifierPrivate;
+#endif
 
 class NetworkStateNotifier {
     WTF_MAKE_NONCOPYABLE(NetworkStateNotifier); WTF_MAKE_FAST_ALLOCATED;
@@ -62,6 +70,9 @@ public:
     void addNetworkStateChangeListener(std::function<void (bool isOnLine)>);
 
     bool onLine() const;
+#if (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
+    void setNetworkAccessAllowed(bool);
+#endif
 
 private:
 #if !PLATFORM(IOS)
@@ -102,10 +113,14 @@ private:
     mutable bool m_isOnLine;
     mutable bool m_isOnLineInitialized;
     mutable RetainPtr<WebNetworkStateObserver> m_observer;
+
+#elif (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
+    friend class NetworkStateNotifierPrivate;
+    NetworkStateNotifierPrivate* p;
 #endif
 };
 
-#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(EFL)
+#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(EFL) && !(PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
 
 inline NetworkStateNotifier::NetworkStateNotifier()
     : m_isOnLine(true)

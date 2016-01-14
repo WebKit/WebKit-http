@@ -40,6 +40,8 @@ typedef HICON HCURSOR;
 #include <wtf/RetainPtr.h>
 #elif PLATFORM(GTK)
 #include "GRefPtrGtk.h"
+#elif PLATFORM(QT)
+#include <QCursor>
 #endif
 
 #if USE(APPKIT)
@@ -72,6 +74,9 @@ namespace WebCore {
     typedef GRefPtr<GdkCursor> PlatformCursor;
 #elif PLATFORM(EFL)
     typedef const char* PlatformCursor;
+#elif PLATFORM(QT) && !defined(QT_NO_CURSOR)
+    // Do not need to be shared but need to be created dynamically via ensurePlatformCursor.
+    typedef QCursor* PlatformCursor;
 #else
     typedef void* PlatformCursor;
 #endif

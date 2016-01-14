@@ -42,6 +42,11 @@ typedef struct CGContext* CGContextRef;
 typedef struct CGGradient* CGGradientRef;
 typedef CGGradientRef PlatformGradient;
 
+#elif PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QGradient;
+QT_END_NAMESPACE
+typedef QGradient* PlatformGradient;
 #elif USE(CAIRO)
 typedef struct _cairo_pattern cairo_pattern_t;
 typedef cairo_pattern_t* PlatformGradient;

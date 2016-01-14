@@ -56,6 +56,15 @@
 #include <wtf/glib/GRefPtr.h>
 #endif
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QWebNetworkJob;
+QT_END_NAMESPACE
+namespace WebCore {
+class QNetworkReplyHandler;
+}
+#endif
+
 #if PLATFORM(COCOA)
 OBJC_CLASS NSURLAuthenticationChallenge;
 OBJC_CLASS NSURLConnection;
@@ -97,6 +106,9 @@ namespace WebCore {
             , m_redirectCount(0)
             , m_previousPosition(0)
             , m_useAuthenticationManager(true)
+#endif
+#if PLATFORM(QT)
+            , m_job(0)
 #endif
 #if PLATFORM(COCOA)
             , m_startWhenScheduled(false)
@@ -184,6 +196,9 @@ namespace WebCore {
             Credential credential;
             AuthenticationChallenge challenge;
         } m_credentialDataToSaveInPersistentStore;
+#endif
+#if PLATFORM(QT)
+        QNetworkReplyHandler* m_job;
 #endif
 
 #if PLATFORM(COCOA)

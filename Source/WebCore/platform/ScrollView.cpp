@@ -1488,7 +1488,7 @@ void ScrollView::styleDidChange()
         m_verticalScrollbar->styleChanged();
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(QT) && !PLATFORM(COCOA)
 
 void ScrollView::platformAddChild(Widget*)
 {

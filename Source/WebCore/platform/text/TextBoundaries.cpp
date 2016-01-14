@@ -58,7 +58,7 @@ unsigned startOfLastWordBoundaryContext(StringView text)
     return 0;
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(QT)
 
 int findNextWordFromIndex(StringView text, int position, bool forward)
 {
@@ -106,6 +106,6 @@ void findEndWordBoundary(StringView text, int position, int* end)
         *end = textBreakLast(it);
 }
 
-#endif // !PLATFORM(COCOA)
+#endif // !PLATFORM(COCOA) && !PLATFORM(QT)
 
 } // namespace WebCore

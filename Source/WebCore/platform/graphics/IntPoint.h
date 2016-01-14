@@ -39,7 +39,7 @@ typedef struct CGPoint CGPoint;
 
 
 #if !PLATFORM(IOS)
-#if OS(DARWIN)
+#if OS(DARWIN) && !PLATFORM(QT)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGPoint NSPoint;
 #else
@@ -51,6 +51,10 @@ typedef struct _NSPoint NSPoint;
 #if PLATFORM(WIN)
 typedef struct tagPOINT POINT;
 typedef struct tagPOINTS POINTS;
+#elif PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QPoint;
+QT_END_NAMESPACE
 #endif
 
 namespace WebCore {
@@ -119,7 +123,7 @@ public:
 #endif
 
 #if !PLATFORM(IOS)
-#if OS(DARWIN) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
+#if OS(DARWIN) && !PLATFORM(QT) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     WEBCORE_EXPORT explicit IntPoint(const NSPoint&); // don't do this implicitly since it's lossy
     WEBCORE_EXPORT operator NSPoint() const;
 #endif
@@ -130,6 +134,9 @@ public:
     operator POINT() const;
     IntPoint(const POINTS&);
     operator POINTS() const;
+#elif PLATFORM(QT)
+    IntPoint(const QPoint&);
+    operator QPoint() const;
 #elif PLATFORM(EFL)
     explicit IntPoint(const Evas_Point&);
     operator Evas_Point() const;

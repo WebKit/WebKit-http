@@ -41,7 +41,15 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if USE(CF)
+#if PLATFORM(QT)
+#include <QFile>
+#include <QLibrary>
+#if defined(Q_OS_WIN32)
+#include <windows.h>
+#endif
+#endif
+
+#if USE(CF) || (PLATFORM(QT) && defined(Q_WS_MAC))
 typedef struct __CFBundle* CFBundleRef;
 typedef const struct __CFData* CFDataRef;
 #endif
@@ -66,6 +74,14 @@ namespace WebCore {
 typedef HMODULE PlatformModule;
 #elif PLATFORM(EFL)
 typedef Eina_Module* PlatformModule;
+#elif PLATFORM(QT)
+#if defined(Q_WS_MAC)
+typedef CFBundleRef PlatformModule;
+#elif !defined(QT_NO_LIBRARY)
+typedef QLibrary* PlatformModule;
+#else
+typedef void* PlatformModule;
+#endif
 #elif USE(GLIB)
 typedef GModule* PlatformModule;
 #elif USE(CF)
@@ -98,7 +114,10 @@ typedef unsigned PlatformModuleVersion;
 #endif
 
 // PlatformFileHandle
-#if USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(WIN)
+#if PLATFORM(QT)
+typedef QFile* PlatformFileHandle;
+const PlatformFileHandle invalidPlatformFileHandle = 0;
+#elif USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(WIN)
 typedef GFileIOStream* PlatformFileHandle;
 const PlatformFileHandle invalidPlatformFileHandle = 0;
 #elif OS(WINDOWS)
@@ -197,7 +216,7 @@ String filenameForDisplay(const String&);
 CString applicationDirectoryPath();
 CString sharedResourcesPath();
 #endif
-#if USE(SOUP)
+#if USE(SOUP) || PLATFORM(QT)
 uint64_t getVolumeFreeSizeForPath(const char*);
 #endif
 

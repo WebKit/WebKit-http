@@ -175,7 +175,7 @@ public:
 
     WEBCORE_EXPORT static void forceContentSniffing();
 
-#if USE(CURL) || USE(SOUP)
+#if PLATFORM(QT) || USE(CURL) || USE(SOUP)
     ResourceHandleInternal* getInternal() { return d.get(); }
 #endif
 

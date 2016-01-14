@@ -43,7 +43,7 @@ enum ContextMenuAction {
     ContextMenuItemTagOpenImageInNewWindow,
     ContextMenuItemTagDownloadImageToDisk,
     ContextMenuItemTagCopyImageToClipboard,
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT)
     ContextMenuItemTagCopyImageUrlToClipboard,
 #endif
     ContextMenuItemTagOpenFrameInNewWindow,
@@ -57,7 +57,7 @@ enum ContextMenuAction {
 #if PLATFORM(GTK)
     ContextMenuItemTagDelete,
 #endif
-#if PLATFORM(GTK) || PLATFORM (EFL)
+#if PLATFORM(GTK) || PLATFORM (EFL) || PLATFORM(QT)
     ContextMenuItemTagSelectAll,
 #endif
 #if PLATFORM(GTK)

@@ -43,7 +43,7 @@
 #endif
 
 // FIXME: Find a better way to avoid the name confliction for NO_ERROR.
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS))
 #undef NO_ERROR
 #elif PLATFORM(GTK)
 // This define is from the X11 headers, but it's used below, so we must undefine it.
@@ -60,6 +60,13 @@
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS WebGLLayer;
+#elif PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QPainter;
+class QRect;
+class QOpenGLContext;
+class QSurface;
+QT_END_NAMESPACE
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN_CAIRO)
 typedef unsigned int GLuint;
 #endif
@@ -74,6 +81,9 @@ typedef void* PlatformGraphicsContext3D;
 typedef struct _CGLContextObject *CGLContextObj;
 
 typedef CGLContextObj PlatformGraphicsContext3D;
+#elif PLATFORM(QT)
+typedef QOpenGLContext* PlatformGraphicsContext3D;
+typedef QSurface* PlatformGraphicsSurface3D;
 #else
 typedef void* PlatformGraphicsContext3D;
 typedef void* PlatformGraphicsSurface3D;
@@ -89,6 +99,9 @@ class Extensions3D;
 class Extensions3DOpenGLES;
 #else
 class Extensions3DOpenGL;
+#endif
+#if PLATFORM(QT)
+class Extensions3DQt;
 #endif
 class HostWindow;
 class Image;
@@ -1130,6 +1143,9 @@ public:
                        int canvasWidth, int canvasHeight, PlatformContextCairo* context);
 #elif USE(CG)
     void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight, GraphicsContext&);
+#elif PLATFORM(QT)
+    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
+                       int canvasWidth, int canvasHeight, QPainter* context);
 #endif
 
     void markContextChanged();
@@ -1249,6 +1265,8 @@ public:
         RetainPtr<CGImageRef> m_decodedImage;
         RetainPtr<CFDataRef> m_pixelData;
         std::unique_ptr<uint8_t[]> m_formalizedRGBA8Data;
+#elif PLATFORM(QT)
+        QImage m_qtImage;
 #endif
         Image* m_image;
         ImageHtmlDomSource m_imageHtmlDomSource;
@@ -1295,7 +1313,7 @@ private:
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
     void attachDepthAndStencilBufferIfNeeded(GLuint internalDepthStencilFormat, int width, int height);
-#if PLATFORM(EFL) && USE(GRAPHICS_SURFACE)
+#if (PLATFORM(QT) || PLATFORM(EFL)) && USE(GRAPHICS_SURFACE)
     void createGraphicsSurfaces(const IntSize&);
 #endif
 
@@ -1403,7 +1421,7 @@ private:
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 
-#if ((PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)) && USE(OPENGL_ES_2))
+#if (PLATFORM(QT) && defined(QT_OPENGL_ES_2)) || ((PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)) && USE(OPENGL_ES_2))
     friend class Extensions3DOpenGLES;
     std::unique_ptr<Extensions3DOpenGLES> m_extensions;
 #else

@@ -41,6 +41,12 @@ typedef struct _NSRect NSRect;
 #endif
 #endif // PLATFORM(MAC)
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QRectF;
+QT_END_NAMESPACE
+#endif
+
 #if USE(CAIRO)
 typedef struct _cairo_rectangle cairo_rectangle_t;
 #endif
@@ -175,6 +181,12 @@ public:
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     WEBCORE_EXPORT FloatRect(const NSRect&);
     WEBCORE_EXPORT operator NSRect() const;
+#endif
+
+#if PLATFORM(QT)
+    FloatRect(const QRectF&);
+    operator QRectF() const;
+    FloatRect normalized() const;
 #endif
 
 #if USE(CAIRO)

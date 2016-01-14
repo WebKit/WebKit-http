@@ -25,6 +25,8 @@
 // FIXME: This is temporary until all ports switch to using this file.
 #if PLATFORM(EFL) || PLATFORM(GTK)
 #include "freetype/FontPlatformData.h"
+#elif PLATFORM(QT)
+#include "qt/FontPlatformData.h"
 #else
 
 #ifndef FontPlatformData_h

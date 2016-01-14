@@ -39,6 +39,10 @@
 #include <wtf/RefCounted.h>
 #include <wtf/TemporaryChange.h>
 
+#if PLATFORM(QT)
+#include "NativeImageQt.h"
+#endif
+
 #if USE(CAIRO)
 #include "CairoUtilities.h"
 #include "RefPtrCairo.h"
@@ -191,6 +195,13 @@ void TextureMapperGL::beginPainting(PaintFlags flags)
     m_context3D->getIntegerv(GraphicsContext3D::CURRENT_PROGRAM, &data().previousProgram);
     data().previousScissorState = m_context3D->isEnabled(GraphicsContext3D::SCISSOR_TEST);
     data().previousDepthState = m_context3D->isEnabled(GraphicsContext3D::DEPTH_TEST);
+#if PLATFORM(QT)
+    if (m_context) {
+        QPainter* painter = m_context->platformContext();
+        painter->save();
+        painter->beginNativePainting();
+    }
+#endif
     m_context3D->disable(GraphicsContext3D::DEPTH_TEST);
     m_context3D->enable(GraphicsContext3D::SCISSOR_TEST);
     data().didModifyStencil = false;
@@ -222,6 +233,14 @@ void TextureMapperGL::endPainting()
         m_context3D->enable(GraphicsContext3D::DEPTH_TEST);
     else
         m_context3D->disable(GraphicsContext3D::DEPTH_TEST);
+
+#if PLATFORM(QT)
+    if (!m_context)
+        return;
+    QPainter* painter = m_context->platformContext();
+    painter->endNativePainting();
+    painter->restore();
+#endif
 }
 
 void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix)
@@ -244,8 +263,33 @@ void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRec
 void TextureMapperGL::drawNumber(int number, const Color& color, const FloatPoint& targetPoint, const TransformationMatrix& modelViewMatrix)
 {
     int pointSize = 8;
+#if PLATFORM(QT)
+    QString counterString = QString::number(number);
 
-#if USE(CAIRO)
+    QFont font(QString::fromLatin1("Monospace"), pointSize, QFont::Bold);
+    font.setStyleHint(QFont::TypeWriter);
+
+    QFontMetrics fontMetrics(font);
+    int width = fontMetrics.width(counterString) + 4;
+    int height = fontMetrics.height();
+
+    IntSize size(width, height);
+    IntRect sourceRect(IntPoint::zero(), size);
+    IntRect targetRect(roundedIntPoint(targetPoint), size);
+
+    QImage image(size, NativeImageQt::defaultFormatForAlphaEnabledImages());
+    QPainter painter(&image);
+    painter.fillRect(sourceRect, Color::createUnchecked(color.blue(), color.green(), color.red())); // Since we won't swap R+B when uploading a texture, paint with the swapped R+B color.
+    painter.setFont(font);
+    painter.setPen(Qt::white);
+    painter.drawText(2, height * 0.85, counterString);
+
+    RefPtr<BitmapTexture> texture = acquireTextureFromPool(size);
+    const uchar* bits = image.bits();
+    static_cast<BitmapTextureGL*>(texture.get())->updateContentsNoSwizzle(bits, sourceRect, IntPoint::zero(), image.bytesPerLine());
+    drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, AllEdges);
+
+#elif USE(CAIRO)
     CString counterString = String::number(number).ascii();
     // cairo_text_extents() requires a cairo_t, so dimensions need to be guesstimated.
     int width = counterString.length() * pointSize * 1.2;

@@ -45,6 +45,9 @@ namespace WebCore {
 class PlatformContextCairo;
 }
 typedef WebCore::PlatformContextCairo PlatformGraphicsContext;
+#elif PLATFORM(QT)
+#include <QPainter>
+typedef QPainter PlatformGraphicsContext;
 #elif USE(WINGDI)
 typedef struct HDC__ PlatformGraphicsContext;
 #else
@@ -58,6 +61,10 @@ typedef struct HDC__* HDC;
 // UInt8 is defined in CoreFoundation/CFBase.h
 typedef unsigned char UInt8;
 #endif
+#endif
+
+#if PLATFORM(QT) && OS(WINDOWS)
+#include <windows.h>
 #endif
 
 namespace WebCore {
@@ -432,7 +439,7 @@ public:
     bool hasShadow() const { return hasVisibleShadow() && (m_state.shadowBlur || m_state.shadowOffset.width() || m_state.shadowOffset.height()); }
     bool hasBlurredShadow() const { return hasVisibleShadow() && m_state.shadowBlur; }
 
-#if USE(CAIRO)
+#if PLATFORM(QT) || USE(CAIRO)
     bool mustUseShadowBlur() const;
 #endif
 
@@ -553,6 +560,11 @@ public:
     bool shouldIncludeChildWindows() const { return false; }
 #endif // PLATFORM(WIN)
 #endif // OS(WINDOWS)
+
+#if PLATFORM(QT)
+    void pushTransparencyLayerInternal(const QRect&, qreal, QPixmap&);
+    void takeOwnershipOfPlatformContext();
+#endif
 
 #if USE(CAIRO)
     GraphicsContext(cairo_t*);

@@ -46,6 +46,12 @@ typedef struct _GdkEventKey GdkEventKey;
 #include "CompositionResults.h"
 #endif
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QKeyEvent;
+QT_END_NAMESPACE
+#endif
+
 #if PLATFORM(EFL)
 typedef struct _Evas_Event_Key_Down Evas_Event_Key_Down;
 typedef struct _Evas_Event_Key_Up Evas_Event_Key_Up;
@@ -69,6 +75,10 @@ namespace WebCore {
             , m_isSystemKey(false)
 #if PLATFORM(GTK)
             , m_gdkEventKey(0)
+#endif
+#if PLATFORM(QT)
+            , m_qtEvent(0)
+            , m_useNativeVirtualKeyAsDOMKey(false)
 #endif
         {
         }
@@ -154,6 +164,13 @@ namespace WebCore {
         static String singleCharacterString(unsigned);
 #endif
 
+#if PLATFORM(QT)
+        PlatformKeyboardEvent(QKeyEvent*, bool);
+        QKeyEvent* qtEvent() const { return m_qtEvent; }
+        uint32_t nativeModifiers() const;
+        uint32_t nativeScanCode() const;
+#endif
+
 #if PLATFORM(EFL)
         explicit PlatformKeyboardEvent(const Evas_Event_Key_Down*);
         explicit PlatformKeyboardEvent(const Evas_Event_Key_Up*);
@@ -189,8 +206,18 @@ namespace WebCore {
         GdkEventKey* m_gdkEventKey;
         CompositionResults m_compositionResults;
 #endif
+#if PLATFORM(QT)
+        QKeyEvent* m_qtEvent;
+        bool m_useNativeVirtualKeyAsDOMKey;
+#endif
     };
     
+#if PLATFORM(QT)
+// Used by WebKit2.
+String keyIdentifierForQtKeyCode(int keyCode);
+int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad = false);
+#endif
+
 } // namespace WebCore
 
 #endif // PlatformKeyboardEvent_h

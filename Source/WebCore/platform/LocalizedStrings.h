@@ -49,12 +49,15 @@ namespace WebCore {
 
 #if ENABLE(CONTEXT_MENUS)
     WEBCORE_EXPORT String contextMenuItemTagOpenLinkInNewWindow();
+#if PLATFORM(QT)
+    String contextMenuItemTagOpenLinkInThisWindow();
+#endif
     String contextMenuItemTagDownloadLinkToDisk();
     String contextMenuItemTagCopyLinkToClipboard();
     String contextMenuItemTagOpenImageInNewWindow();
     String contextMenuItemTagDownloadImageToDisk();
     String contextMenuItemTagCopyImageToClipboard();
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
     String contextMenuItemTagCopyImageUrlToClipboard();
 #endif
     String contextMenuItemTagOpenFrameInNewWindow();
@@ -80,7 +83,7 @@ namespace WebCore {
     String contextMenuItemTagUnicodeInsertZWJMark();
     String contextMenuItemTagUnicodeInsertZWNJMark();
 #endif
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
     String contextMenuItemTagSelectAll();
 #endif
     String contextMenuItemTagNoGuessesFound();

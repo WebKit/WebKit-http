@@ -43,6 +43,9 @@ static URLSchemesMap& localURLSchemes()
 #if PLATFORM(COCOA)
         localSchemes.get().add("applewebdata");
 #endif
+#if PLATFORM(QT)
+        localSchemes.add("qrc");
+#endif
     }
 
     return localSchemes;

@@ -42,6 +42,10 @@ OBJC_CLASS NSArray;
 OBJC_CLASS NSString;
 #endif
 
+#if PLATFORM(QT)
+#include <QMimeData>
+#endif
+
 #if PLATFORM(WIN)
 #include "COMPtr.h"
 #include "WCDataObject.h"
@@ -68,7 +72,7 @@ enum ShouldSerializeSelectedTextForDataTransfer { DefaultSelectedTextType, Inclu
 // For writing to the pasteboard. Generally sorted with the richest formats on top.
 
 struct PasteboardWebContent {
-#if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WIN))
+#if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN))
     WEBCORE_EXPORT PasteboardWebContent();
     WEBCORE_EXPORT ~PasteboardWebContent();
     bool canSmartCopyOrDelete;
@@ -102,7 +106,7 @@ struct PasteboardImage {
     WEBCORE_EXPORT PasteboardImage();
     WEBCORE_EXPORT ~PasteboardImage();
     RefPtr<Image> image;
-#if !(PLATFORM(EFL) || PLATFORM(WIN))
+#if !(PLATFORM(EFL) || PLATFORM(WIN)|| PLATFORM(QT))
     PasteboardURL url;
 #endif
 #if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WIN))
@@ -117,7 +121,7 @@ class PasteboardWebContentReader {
 public:
     virtual ~PasteboardWebContentReader() { }
 
-#if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WIN))
+#if !(PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(WIN))
     virtual bool readWebArchive(PassRefPtr<SharedBuffer>) = 0;
     virtual bool readFilenames(const Vector<String>&) = 0;
     virtual bool readHTML(const String&) = 0;
@@ -208,6 +212,15 @@ public:
     const String& name() const { return m_pasteboardName; }
 #endif
 
+#if PLATFORM(QT)
+    static PassOwnPtr<Pasteboard> create(const QMimeData* readableClipboard = 0, bool isForDragAndDrop = false);
+
+    QMimeData* clipboardData() const { return m_writableData; }
+    void invalidateWritableData() const { m_writableData = 0; }
+    bool isForDragAndDrop() const { return m_isForDragAndDrop; }
+    bool isForCopyAndPaste() const { return !m_isForDragAndDrop; }
+#endif
+
 #if PLATFORM(WIN)
     COMPtr<IDataObject> dataObject() const { return m_dataObject; }
     void setExternalDataObject(IDataObject*);
@@ -218,6 +231,12 @@ public:
 #endif
 
 private:
+#if PLATFORM(QT)
+    Pasteboard(const QMimeData* , bool);
+
+    const QMimeData* readData() const;
+#endif
+
 #if PLATFORM(WIN)
     void finishCreatingPasteboard();
     void writeRangeToDataObject(Range&, Frame&); // FIXME: Layering violation.
@@ -239,6 +258,13 @@ private:
     long m_changeCount;
 #endif
 
+#if PLATFORM(QT)
+    bool m_selectionMode;
+    const QMimeData* m_readableData;
+    mutable QMimeData* m_writableData;
+    bool m_isForDragAndDrop;
+#endif
+
 #if PLATFORM(WIN)
     HWND m_owner;
     COMPtr<IDataObject> m_dataObject;
@@ -256,7 +282,7 @@ extern const char* const WebArchivePboardType;
 extern const char* const WebURLNamePboardType;
 #endif
 
-#if !PLATFORM(GTK)
+#if !(PLATFORM(GTK) || PLATFORM(QT))
 
 inline Pasteboard::~Pasteboard()
 {
