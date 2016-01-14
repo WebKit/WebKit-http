@@ -110,13 +110,16 @@ enum InterpolationQuality {
     InterpolationHigh
 };
 
+namespace DisplayList {
+class Recorder;
+}
+
 struct GraphicsContextState {
     GraphicsContextState()
         : shouldAntialias(true)
         , shouldSmoothFonts(true)
         , antialiasedFontDilationEnabled(true)
         , shouldSubpixelQuantizeFonts(true)
-        , paintingDisabled(false)
         , shadowsIgnoreTransforms(false)
 #if USE(CG)
         // Core Graphics incorrectly renders shadows with radius > 8px (<rdar://problem/8103442>),
@@ -126,6 +129,33 @@ struct GraphicsContextState {
         , drawLuminanceMask(false)
     {
     }
+
+    enum Change : uint32_t {
+        NoChange                                = 0,
+        StrokeGradientChange                    = 1 << 1,
+        StrokePatternChange                     = 1 << 2,
+        FillGradientChange                      = 1 << 3,
+        FillPatternChange                       = 1 << 4,
+        StrokeThicknessChange                   = 1 << 5,
+        StrokeColorChange                       = 1 << 6,
+        StrokeStyleChange                       = 1 << 7,
+        FillColorChange                         = 1 << 8,
+        FillRuleChange                          = 1 << 9,
+        ShadowChange                            = 1 << 10,
+        ShadowColorChange                       = 1 << 11,
+        ShadowsIgnoreTransformsChange           = 1 << 12,
+        AlphaChange                             = 1 << 13,
+        CompositeOperationChange                = 1 << 14,
+        BlendModeChange                         = 1 << 15,
+        TextDrawingModeChange                   = 1 << 16,
+        ShouldAntialiasChange                   = 1 << 17,
+        ShouldSmoothFontsChange                 = 1 << 18,
+        AntialiasedFontDilationEnabledChange    = 1 << 19,
+        ShouldSubpixelQuantizeFontsChange       = 1 << 20,
+        DrawLuminanceMaskChange                 = 1 << 21,
+        ImageInterpolationQualityChange         = 1 << 22,
+    };
+    typedef uint32_t StateChangeFlags;
 
     RefPtr<Gradient> strokeGradient;
     RefPtr<Pattern> strokePattern;
@@ -156,7 +186,6 @@ struct GraphicsContextState {
     bool shouldSmoothFonts : 1;
     bool antialiasedFontDilationEnabled : 1;
     bool shouldSubpixelQuantizeFonts : 1;
-    bool paintingDisabled : 1;
     bool shadowsIgnoreTransforms : 1;
 #if USE(CG)
     bool shadowsUseLegacyRadius : 1;
@@ -195,13 +224,48 @@ struct ImagePaintingOptions {
     bool m_useLowQualityScale;
 };
 
+struct GraphicsContextStateChange {
+    GraphicsContextStateChange() = default;
+    GraphicsContextStateChange(const GraphicsContextState& state, GraphicsContextState::StateChangeFlags flags)
+        : m_state(state)
+        , m_changeFlags(flags)
+    {
+    }
+
+    GraphicsContextState::StateChangeFlags changesFromState(const GraphicsContextState&) const;
+
+    void accumulate(const GraphicsContextState&, GraphicsContextState::StateChangeFlags);
+    void apply(GraphicsContext&) const;
+    
+    void dump(TextStream&) const;
+
+    GraphicsContextState m_state;
+    GraphicsContextState::StateChangeFlags m_changeFlags { GraphicsContextState::NoChange };
+};
+
+TextStream& operator<<(TextStream&, const GraphicsContextStateChange&);
+
+
 class GraphicsContext {
     WTF_MAKE_NONCOPYABLE(GraphicsContext); WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT GraphicsContext(PlatformGraphicsContext*);
+    GraphicsContext() = default;
     WEBCORE_EXPORT ~GraphicsContext();
+    
+    enum class NonPaintingReasons {
+        NoReasons,
+        UpdatingControlTints
+    };
+    GraphicsContext(NonPaintingReasons);
 
     WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
+
+    bool paintingDisabled() const { return !m_data && !isRecording(); }
+    bool updatingControlTints() const { return m_nonPaintingReasons == NonPaintingReasons::UpdatingControlTints; }
+
+    void setDisplayListRecorder(DisplayList::Recorder* recorder) { m_displayListRecorder = recorder; }
+    bool isRecording() const { return m_displayListRecorder; }
 
     void setStrokeThickness(float);
     float strokeThickness() const { return m_state.strokeThickness; }
@@ -218,7 +282,7 @@ public:
     void setStrokeGradient(Ref<Gradient>&&);
     Gradient* strokeGradient() const { return m_state.strokeGradient.get(); }
 
-    void setFillRule(WindRule fillRule) { m_state.fillRule = fillRule; }
+    void setFillRule(WindRule);
     WindRule fillRule() const { return m_state.fillRule; }
 
     WEBCORE_EXPORT void setFillColor(const Color&);
@@ -230,7 +294,7 @@ public:
     WEBCORE_EXPORT void setFillGradient(Ref<Gradient>&&);
     Gradient* fillGradient() const { return m_state.fillGradient.get(); }
 
-    void setShadowsIgnoreTransforms(bool shadowsIgnoreTransforms) { m_state.shadowsIgnoreTransforms = shadowsIgnoreTransforms; }
+    void setShadowsIgnoreTransforms(bool);
     bool shadowsIgnoreTransforms() const { return m_state.shadowsIgnoreTransforms; }
 
     WEBCORE_EXPORT void setShouldAntialias(bool);
@@ -244,7 +308,7 @@ public:
 
     // Normally CG enables subpixel-quantization because it improves the performance of aligning glyphs.
     // In some cases we have to disable to to ensure a high-quality output of the glyphs.
-    void setShouldSubpixelQuantizeFonts(bool shouldSubpixelQuantizeFonts) { m_state.shouldSubpixelQuantizeFonts = shouldSubpixelQuantizeFonts; }
+    void setShouldSubpixelQuantizeFonts(bool);
     bool shouldSubpixelQuantizeFonts() const { return m_state.shouldSubpixelQuantizeFonts; }
 
     const GraphicsContextState& state() const { return m_state; }
@@ -318,7 +382,6 @@ public:
     WEBCORE_EXPORT void setImageInterpolationQuality(InterpolationQuality);
     InterpolationQuality imageInterpolationQuality() const { return m_state.imageInterpolationQuality; }
 
-    WEBCORE_EXPORT void clip(const IntRect&);
     WEBCORE_EXPORT void clip(const FloatRect&);
     void clipRoundedRect(const FloatRoundedRect&);
 
@@ -338,13 +401,15 @@ public:
     void drawEmphasisMarks(const FontCascade&, const TextRun& , const AtomicString& mark, const FloatPoint&, int from = 0, int to = -1);
     void drawBidiText(const FontCascade&, const TextRun&, const FloatPoint&, FontCascade::CustomFontNotReadyAction = FontCascade::DoNotPaintIfFontNotReady);
 
+    void applyState(const GraphicsContextState&);
+
     enum RoundingMode {
         RoundAllSides,
         RoundOriginAndDimensions
     };
     FloatRect roundToDevicePixels(const FloatRect&, RoundingMode = RoundAllSides);
 
-    FloatRect computeLineBoundsForText(const FloatPoint&, float width, bool printing);
+    FloatRect computeUnderlineBoundsForText(const FloatPoint&, float width, bool printing);
     WEBCORE_EXPORT void drawLineForText(const FloatPoint&, float width, bool printing, bool doubleLines = false);
     void drawLinesForText(const FloatPoint&, const DashArray& widths, bool printing, bool doubleLines = false);
     enum DocumentMarkerLineStyle {
@@ -358,12 +423,6 @@ public:
     };
     static void updateDocumentMarkerResources();
     void drawLineForDocumentMarker(const FloatPoint&, float width, DocumentMarkerLineStyle);
-
-    void setPaintingDisabled(bool paintingDisabled) { m_state.paintingDisabled = paintingDisabled; }
-    bool paintingDisabled() const { return m_state.paintingDisabled; }
-
-    void setUpdatingControlTints(bool);
-    bool updatingControlTints() const { return m_updatingControlTints; }
 
     WEBCORE_EXPORT void beginTransparencyLayer(float opacity);
     WEBCORE_EXPORT void endTransparencyLayer();
@@ -403,7 +462,7 @@ public:
     CompositeOperator compositeOperation() const { return m_state.compositeOperator; }
     BlendMode blendModeOperation() const { return m_state.blendMode; }
 
-    void setDrawLuminanceMask(bool drawLuminanceMask) { m_state.drawLuminanceMask = drawLuminanceMask; }
+    void setDrawLuminanceMask(bool);
     bool drawLuminanceMask() const { return m_state.drawLuminanceMask; }
 
     // This clip function is used only by <canvas> code. It allows
@@ -550,14 +609,16 @@ private:
 
     void platformFillRoundedRect(const FloatRoundedRect&, const Color&);
 
-    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatPoint&, float width, bool printing, bool& shouldAntialias, Color&);
+    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatPoint&, float width, bool printing,  Color&);
 
-    GraphicsContextPlatformPrivate* m_data;
+    GraphicsContextPlatformPrivate* m_data { nullptr };
+    DisplayList::Recorder* m_displayListRecorder { nullptr };
 
     GraphicsContextState m_state;
     Vector<GraphicsContextState, 1> m_stack;
-    bool m_updatingControlTints;
-    unsigned m_transparencyCount;
+
+    const NonPaintingReasons m_nonPaintingReasons { NonPaintingReasons::NoReasons };
+    unsigned m_transparencyCount { 0 };
 };
 
 class GraphicsContextStateSaver {

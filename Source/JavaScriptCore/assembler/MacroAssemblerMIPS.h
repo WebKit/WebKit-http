@@ -289,7 +289,7 @@ public:
     {
         if (!imm.m_value && !m_fixedWidth)
             move(MIPSRegisters::zero, dest);
-        else if (imm.m_value > 0 && imm.m_value < 65535 && !m_fixedWidth)
+        else if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth)
             m_assembler.andi(dest, dest, imm.m_value);
         else {
             /*
@@ -305,7 +305,7 @@ public:
     {
         if (!imm.m_value && !m_fixedWidth)
             move(MIPSRegisters::zero, dest);
-        else if (imm.m_value > 0 && imm.m_value < 65535 && !m_fixedWidth)
+        else if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth)
             m_assembler.andi(dest, src, imm.m_value);
         else {
             move(imm, immTempRegister);
@@ -376,12 +376,23 @@ public:
         m_assembler.orInsn(dest, op1, op2);
     }
 
+    void or32(TrustedImm32 imm, AbsoluteAddress dest)
+    {
+        if (!imm.m_value && !m_fixedWidth)
+            return;
+
+        // TODO: Swap dataTempRegister and immTempRegister usage
+        load32(dest.m_ptr, immTempRegister);
+        or32(imm, immTempRegister);
+        store32(immTempRegister, dest.m_ptr);
+    }
+
     void or32(TrustedImm32 imm, RegisterID dest)
     {
         if (!imm.m_value && !m_fixedWidth)
             return;
 
-        if (imm.m_value > 0 && imm.m_value < 65535
+        if (imm.m_value > 0 && imm.m_value <= 65535
             && !m_fixedWidth) {
             m_assembler.ori(dest, dest, imm.m_value);
             return;
@@ -402,7 +413,7 @@ public:
             return;
         }
 
-        if (imm.m_value > 0 && imm.m_value < 65535 && !m_fixedWidth) {
+        if (imm.m_value > 0 && imm.m_value <= 65535 && !m_fixedWidth) {
             m_assembler.ori(dest, src, imm.m_value);
             return;
         }
@@ -2775,6 +2786,18 @@ public:
         m_assembler.sync();
     }
 
+    void abortWithReason(AbortReason reason)
+    {
+        move(TrustedImm32(reason), dataTempRegister);
+        breakpoint();
+    }
+
+    void abortWithReason(AbortReason reason, intptr_t misc)
+    {
+        move(TrustedImm32(misc), immTempRegister);
+        abortWithReason(reason);
+    }
+
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(MIPSAssembler::readCallTarget(call.dataLocation())));
@@ -2792,6 +2815,13 @@ public:
     }
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
+    static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
+
+    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+        return CodeLocationLabel();
+    }
 
     static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
     {
@@ -2809,11 +2839,25 @@ public:
         return CodeLocationLabel();
     }
 
+    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+    }
+
     static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
+    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
+    {
+        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
+    }
+
+    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
+    {
+        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
+    }
 
 private:
     // If m_fixedWidth is true, we will generate a fixed number of instructions.
@@ -2828,16 +2872,6 @@ private:
             MIPSAssembler::linkJump(code, call.m_label, function.value());
         else
             MIPSAssembler::linkCall(code, call.m_label, function.value());
-    }
-
-    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
-    {
-        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
-    }
-
-    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
-    {
-        MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
 };

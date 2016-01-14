@@ -134,8 +134,8 @@ private:
     Vector<PageReservation, 16> reservations;
     static HashSet<DemandExecutableAllocator*>& allocators()
     {
-        DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<DemandExecutableAllocator*>, sAllocators, ());
-        return sAllocators;
+        static NeverDestroyed<HashSet<DemandExecutableAllocator*>> set;
+        return set;
     }
 
     static StaticLock& allocatorsMutex()
@@ -231,6 +231,16 @@ void ExecutableAllocator::dumpProfile()
     DemandExecutableAllocator::dumpProfileFromAllAllocators();
 }
 #endif
+
+Lock& ExecutableAllocator::getLock() const
+{
+    return gAllocator->getLock();
+}
+
+bool ExecutableAllocator::isValidExecutableMemory(const LockHolder& locker, void* address)
+{
+    return gAllocator->isInAllocatedMemory(locker, address);
+}
 
 #endif // ENABLE(EXECUTABLE_ALLOCATOR_DEMAND)
 

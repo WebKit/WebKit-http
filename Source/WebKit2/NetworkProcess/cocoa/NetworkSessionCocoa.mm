@@ -28,7 +28,9 @@
 
 #if USE(NETWORK_SESSION)
 
+#import "CustomProtocolManager.h"
 #import "Download.h"
+#import "NetworkLoad.h"
 #import "NetworkProcess.h"
 #import "SessionTracker.h"
 #import <Foundation/NSURLSession.h>
@@ -166,12 +168,12 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didBecomeDownloadTask:(NSURLSessionDownloadTask *)downloadTask
 {
     if (auto* networkDataTask = _session->dataTaskForIdentifier([dataTask taskIdentifier])) {
-        auto downloadID = networkDataTask->downloadID();
+        auto downloadID = networkDataTask->pendingDownloadID();
         auto& downloadManager = WebKit::NetworkProcess::singleton().downloadManager();
-        auto download = std::make_unique<WebKit::Download>(downloadManager, *_session, downloadID);
+        auto download = std::make_unique<WebKit::Download>(downloadManager, downloadID);
         download->didStart([downloadTask currentRequest]);
         download->didReceiveResponse([downloadTask response]);
-        downloadManager.dataTaskBecameDownloadTask(downloadID, WTFMove(download));
+        auto pendingDownload = downloadManager.dataTaskBecameDownloadTask(downloadID, WTFMove(download));
 
         networkDataTask->client().didBecomeDownload();
 
@@ -206,6 +208,9 @@ NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID)
 
     NSURLSessionConfiguration *configuration = configurationForType(type);
 
+    if (auto* customProtocolManager = NetworkProcess::singleton().supplement<CustomProtocolManager>())
+        customProtocolManager->registerProtocolClass(configuration);
+    
 #if HAVE(TIMINGDATAOPTIONS)
     configuration._timingDataOptions = _TimingDataOptionsEnableW3CNavigationTiming;
 #else

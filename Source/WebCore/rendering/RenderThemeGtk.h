@@ -102,8 +102,9 @@ public:
 #endif
 #endif
 
+    virtual bool shouldHaveCapsLockIndicator(HTMLInputElement&) const override;
+
 private:
-    RenderThemeGtk();
     virtual ~RenderThemeGtk();
 
     virtual bool paintCheckbox(const RenderObject&, const PaintInfo&, const IntRect&) override;
@@ -133,16 +134,16 @@ private:
     virtual bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
 
     virtual void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintSearchFieldResultsDecorationPart(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    virtual bool paintSearchFieldResultsDecorationPart(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
     virtual void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
     virtual bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
     virtual void adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintSearchFieldResultsButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    virtual bool paintSearchFieldResultsButton(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
     virtual void adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    virtual bool paintSearchFieldCancelButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    virtual bool paintSearchFieldCancelButton(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
     virtual bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
@@ -153,8 +154,6 @@ private:
     virtual void adjustSliderThumbSize(RenderStyle&, Element*) const override;
 
 #if ENABLE(VIDEO)
-    void initMediaColors();
-    void initMediaButtons();
     virtual bool hasOwnDisabledStateHandlingFor(ControlPart) const override;
     virtual bool paintMediaFullscreenButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaPlayButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
@@ -163,7 +162,6 @@ private:
     virtual bool paintMediaSeekForwardButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    virtual bool paintMediaVolumeSliderContainer(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaVolumeSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaVolumeSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
     virtual bool paintMediaCurrentTime(const RenderObject&, const PaintInfo&, const IntRect&) override;
@@ -177,8 +175,6 @@ private:
     virtual void adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const override;
     virtual bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    virtual bool paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&) override;
-
     virtual void adjustInnerSpinButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
     virtual bool paintInnerSpinButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
@@ -187,16 +183,10 @@ private:
     static void setTextInputBorders(RenderStyle&);
 
 #if ENABLE(VIDEO)
-    bool paintMediaButton(const RenderObject&, GraphicsContext&, const IntRect&, const char* symbolicIconName, const char* fallbackStockIconName);
+    bool paintMediaButton(const RenderObject&, GraphicsContext&, const IntRect&, const char* iconName);
 #endif
 
     static IntRect calculateProgressRect(const RenderObject&, const IntRect&);
-
-    mutable Color m_panelColor;
-    mutable Color m_sliderColor;
-    mutable Color m_sliderThumbColor;
-    const int m_mediaIconSize;
-    const int m_mediaSliderHeight;
 #endif // GTK_API_VERSION_2
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,6 +80,7 @@
 #include "RegExpObject.h"
 #include "RegisterAtOffsetList.h"
 #include "RuntimeType.h"
+#include "SamplingProfiler.h"
 #include "SimpleTypedArrayController.h"
 #include "SourceProviderCache.h"
 #include "StackVisitor.h"
@@ -309,6 +310,12 @@ VM::VM(VMType vmType, HeapType heapType)
         enableTypeProfiler();
     if (Options::useControlFlowProfiler())
         enableControlFlowProfiler();
+#if ENABLE(SAMPLING_PROFILER)
+    if (Options::useSamplingProfiler()) {
+        m_samplingProfiler = adoptRef(new SamplingProfiler(*this, Stopwatch::create()));
+        m_samplingProfiler->start();
+    }
+#endif // ENABLE(SAMPLING_PROFILER)
 
     if (Options::watchdog()) {
         std::chrono::milliseconds timeoutMillis(Options::watchdog());
@@ -321,6 +328,11 @@ VM::~VM()
 {
     // Never GC, ever again.
     heap.incrementDeferralDepth();
+
+#if ENABLE(SAMPLING_PROFILER)
+    if (m_samplingProfiler)
+        m_samplingProfiler->shutdown();
+#endif // ENABLE(SAMPLING_PROFILER)
     
 #if ENABLE(DFG_JIT)
     // Make sure concurrent compilations are done, but don't install them, since there is
@@ -363,6 +375,11 @@ VM::~VM()
     for (unsigned i = 0; i < scratchBuffers.size(); ++i)
         fastFree(scratchBuffers[i]);
 #endif
+}
+
+void VM::setLastStackTop(void* lastStackTop)
+{ 
+    m_lastStackTop = lastStackTop;
 }
 
 Ref<VM> VM::createContextGroup(HeapType heapType)
@@ -418,6 +435,14 @@ Watchdog& VM::ensureWatchdog()
     return *m_watchdog;
 }
 
+#if ENABLE(SAMPLING_PROFILER)
+void VM::ensureSamplingProfiler(RefPtr<Stopwatch>&& stopwatch)
+{
+    if (!m_samplingProfiler)
+        m_samplingProfiler = adoptRef(new SamplingProfiler(*this, WTFMove(stopwatch)));
+}
+#endif // ENABLE(SAMPLING_PROFILER)
+
 #if ENABLE(JIT)
 static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
 {
@@ -455,24 +480,24 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
     }
 }
 
-NativeExecutable* VM::getHostFunction(NativeFunction function, NativeFunction constructor)
+NativeExecutable* VM::getHostFunction(NativeFunction function, NativeFunction constructor, const String& name)
 {
-    return jitStubs->hostFunctionStub(this, function, constructor);
+    return jitStubs->hostFunctionStub(this, function, constructor, name);
 }
-NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrinsic)
+NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrinsic, const String& name)
 {
     ASSERT(canUseJIT());
-    return jitStubs->hostFunctionStub(this, function, intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : 0, intrinsic);
+    return jitStubs->hostFunctionStub(this, function, intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : 0, intrinsic, name);
 }
 
 #else // !ENABLE(JIT)
 
-NativeExecutable* VM::getHostFunction(NativeFunction function, NativeFunction constructor)
+NativeExecutable* VM::getHostFunction(NativeFunction function, NativeFunction constructor, const String& name)
 {
     return NativeExecutable::create(*this,
         adoptRef(new NativeJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_native_call_trampoline), JITCode::HostCallThunk)), function,
         adoptRef(new NativeJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_native_construct_trampoline), JITCode::HostCallThunk)), constructor,
-        NoIntrinsic);
+        NoIntrinsic, name);
 }
 
 #endif // !ENABLE(JIT)

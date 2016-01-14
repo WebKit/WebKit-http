@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2006, 2007, 2008, 2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *
@@ -42,10 +42,12 @@ public:
     const String displayName(ExecState*);
     const String calculatedDisplayName(ExecState*);
 
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto) 
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     { 
         return Structure::create(vm, globalObject, proto, TypeInfo(ObjectType, StructureFlags), info()); 
     }
+
+    JS_EXPORT_PRIVATE static Structure* createSubclassStructure(ExecState*, JSValue newTarget, Structure*);
 
 protected:
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*);

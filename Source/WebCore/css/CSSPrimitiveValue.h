@@ -30,7 +30,7 @@
 #include <utility>
 #include <wtf/Forward.h>
 #include <wtf/MathExtras.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -382,7 +382,16 @@ public:
     static double conversionToCanonicalUnitsScaleFactor(unsigned short unitType);
 
     static double computeNonCalcLengthDouble(const CSSToLengthConversionData&, unsigned short primitiveType, double value);
+
+#if COMPILER(MSVC)
+    // FIXME: This should be private, but for some reason MSVC then fails to invoke it from LazyNeverDestroyed::construct.
+public:
+#else
 private:
+    friend class CSSValuePool;
+    friend class LazyNeverDestroyed<CSSPrimitiveValue>;
+#endif
+
     CSSPrimitiveValue(CSSValueID);
     CSSPrimitiveValue(CSSPropertyID);
     // FIXME: int vs. unsigned overloading is too subtle to distinguish the color and operator cases.

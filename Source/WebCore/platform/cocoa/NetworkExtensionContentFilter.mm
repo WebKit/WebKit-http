@@ -63,25 +63,32 @@ std::unique_ptr<NetworkExtensionContentFilter> NetworkExtensionContentFilter::cr
     return std::make_unique<NetworkExtensionContentFilter>();
 }
 
-NetworkExtensionContentFilter::NetworkExtensionContentFilter()
-    : m_status { NEFilterSourceStatusNeedsMoreData }
-    , m_queue { adoptOSObject(dispatch_queue_create("com.apple.WebCore.NEFilterSourceQueue", DISPATCH_QUEUE_SERIAL)) }
-    , m_semaphore { adoptOSObject(dispatch_semaphore_create(0)) }
-#if HAVE(MODERN_NE_FILTER_SOURCE)
-    , m_neFilterSource { adoptNS([allocNEFilterSourceInstance() initWithDecisionQueue:m_queue.get()]) }
-#endif
+void NetworkExtensionContentFilter::initialize(const URL* url)
 {
-    ASSERT([getNEFilterSourceClass() filterRequired]);
+    ASSERT(!m_queue);
+    ASSERT(!m_semaphore);
+    ASSERT(!m_neFilterSource);
+    m_queue = adoptOSObject(dispatch_queue_create("WebKit NetworkExtension Filtering", DISPATCH_QUEUE_SERIAL));
+    m_semaphore = adoptOSObject(dispatch_semaphore_create(0));
+#if HAVE(MODERN_NE_FILTER_SOURCE)
+    ASSERT_UNUSED(url, !url);
+    m_neFilterSource = adoptNS([allocNEFilterSourceInstance() initWithDecisionQueue:m_queue.get()]);
+#else
+    ASSERT_ARG(url, url);
+    m_neFilterSource = adoptNS([allocNEFilterSourceInstance() initWithURL:*url direction:NEFilterSourceDirectionInbound socketIdentifier:0]);
+#endif
 }
 
 void NetworkExtensionContentFilter::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
 #if HAVE(MODERN_NE_FILTER_SOURCE)
     ASSERT(!request.isNull());
-    if (!request.url().protocolIsInHTTPFamily()) {
-        m_status = NEFilterSourceStatusPass;
+    if (!request.url().protocolIsInHTTPFamily() || !enabled()) {
+        m_state = State::Allowed;
         return;
     }
+
+    initialize();
 
     if (!redirectResponse.isNull()) {
         responseReceived(redirectResponse);
@@ -120,13 +127,17 @@ void NetworkExtensionContentFilter::willSendRequest(ResourceRequest& request, co
 void NetworkExtensionContentFilter::responseReceived(const ResourceResponse& response)
 {
     if (!response.url().protocolIsInHTTPFamily()) {
-        m_status = NEFilterSourceStatusPass;
+        m_state = State::Allowed;
         return;
     }
 
 #if !HAVE(MODERN_NE_FILTER_SOURCE)
-    ASSERT(!m_neFilterSource);
-    m_neFilterSource = adoptNS([allocNEFilterSourceInstance() initWithURL:response.url() direction:NEFilterSourceDirectionInbound socketIdentifier:0]);
+    if (!enabled()) {
+        m_state = State::Allowed;
+        return;
+    }
+
+    initialize(&response.url());
 #else
     [m_neFilterSource receivedResponse:response.nsURLResponse() decisionHandler:[this](NEFilterSourceStatus status, NSDictionary *decisionInfo) {
         handleDecision(status, replacementDataFromDecisionInfo(decisionInfo));
@@ -179,16 +190,6 @@ void NetworkExtensionContentFilter::finishedAddingData()
     dispatch_semaphore_wait(m_semaphore.get(), DISPATCH_TIME_FOREVER);
 }
 
-bool NetworkExtensionContentFilter::needsMoreData() const
-{
-    return m_status == NEFilterSourceStatusNeedsMoreData;
-}
-
-bool NetworkExtensionContentFilter::didBlockData() const
-{
-    return m_status == NEFilterSourceStatusBlock;
-}
-
 Ref<SharedBuffer> NetworkExtensionContentFilter::replacementData() const
 {
     ASSERT(didBlockData());
@@ -217,8 +218,23 @@ ContentFilterUnblockHandler NetworkExtensionContentFilter::unblockHandler() cons
 void NetworkExtensionContentFilter::handleDecision(NEFilterSourceStatus status, NSData *replacementData)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!replacementData || [replacementData isKindOfClass:[NSData class]]);
-    m_status = status;
-    if (status == NEFilterSourceStatusBlock)
+
+    switch (status) {
+    case NEFilterSourceStatusPass:
+    case NEFilterSourceStatusError:
+    case NEFilterSourceStatusWhitelisted:
+    case NEFilterSourceStatusBlacklisted:
+        m_state = State::Allowed;
+        break;
+    case NEFilterSourceStatusBlock:
+        m_state = State::Blocked;
+        break;
+    case NEFilterSourceStatusNeedsMoreData:
+        m_state = State::Filtering;
+        break;
+    }
+
+    if (didBlockData())
         m_replacementData = replacementData;
 #if !LOG_DISABLED
     if (!needsMoreData())

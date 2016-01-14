@@ -29,6 +29,7 @@
 
 #include "AffineTransform.h"
 #include "CoreGraphicsSPI.h"
+#include "DisplayListRecorder.h"
 #include "FloatConversion.h"
 #include "GraphicsContextPlatformPrivateCG.h"
 #include "ImageBuffer.h"
@@ -115,15 +116,15 @@ static InterpolationQuality convertInterpolationQuality(CGInterpolationQuality q
 
 void GraphicsContext::platformInit(CGContextRef cgContext)
 {
+    if (!cgContext)
+        return;
+
     m_data = new GraphicsContextPlatformPrivate(cgContext);
-    setPaintingDisabled(!cgContext);
-    if (cgContext) {
-        // Make sure the context starts in sync with our state.
-        setPlatformFillColor(fillColor());
-        setPlatformStrokeColor(strokeColor());
-        setPlatformStrokeThickness(strokeThickness());
-        m_state.imageInterpolationQuality = convertInterpolationQuality(CGContextGetInterpolationQuality(platformContext()));
-    }
+    // Make sure the context starts in sync with our state.
+    setPlatformFillColor(fillColor());
+    setPlatformStrokeColor(strokeColor());
+    setPlatformStrokeThickness(strokeThickness());
+    m_state.imageInterpolationQuality = convertInterpolationQuality(CGContextGetInterpolationQuality(platformContext()));
 }
 
 void GraphicsContext::platformDestroy()
@@ -140,6 +141,9 @@ CGContextRef GraphicsContext::platformContext() const
 
 void GraphicsContext::savePlatformState()
 {
+    ASSERT(!paintingDisabled());
+    ASSERT(!isRecording());
+
     // Note: Do not use this function within this class implementation, since we want to avoid the extra
     // save of the secondary context (in GraphicsContextPlatformPrivateCG.h).
     CGContextSaveGState(platformContext());
@@ -148,6 +152,9 @@ void GraphicsContext::savePlatformState()
 
 void GraphicsContext::restorePlatformState()
 {
+    ASSERT(!paintingDisabled());
+    ASSERT(!isRecording());
+
     // Note: Do not use this function within this class implementation, since we want to avoid the extra
     // restore of the secondary context (in GraphicsContextPlatformPrivateCG.h).
     CGContextRestoreGState(platformContext());
@@ -157,6 +164,14 @@ void GraphicsContext::restorePlatformState()
 
 void GraphicsContext::drawNativeImage(PassNativeImagePtr imagePtr, const FloatSize& imageSize, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, ImageOrientation orientation)
 {
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawNativeImage(imagePtr, imageSize, destRect, srcRect, op, blendMode, orientation);
+        return;
+    }
+
     RetainPtr<CGImageRef> image(imagePtr);
 
     float currHeight = orientation.usesWidthAsHeight() ? CGImageGetWidth(image.get()) : CGImageGetHeight(image.get());
@@ -271,8 +286,13 @@ static void patternReleaseCallback(void* info)
 
 void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
 {
-    if (!patternTransform.isInvertible())
+    if (paintingDisabled() || !patternTransform.isInvertible())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        return;
+    }
 
     CGContextRef context = platformContext();
     CGContextStateSaver stateSaver(context);
@@ -371,11 +391,15 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
 // Draws a filled rectangle with a stroked border.
 void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
 {
-    // FIXME: this function does not handle patterns and gradients
-    // like drawPath does, it probably should.
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawRect(rect, borderThickness);
+        return;
+    }
+
+    // FIXME: this function does not handle patterns and gradients like drawPath does, it probably should.
     ASSERT(!rect.isEmpty());
 
     CGContextRef context = platformContext();
@@ -407,6 +431,11 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
 
     if (strokeStyle() == NoStroke)
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawLine(point1, point2);
+        return;
+    }
 
     float thickness = strokeThickness();
     bool isVerticalLine = (point1.x() + thickness == point2.x());
@@ -493,6 +522,11 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawEllipse(rect);
+        return;
+    }
+
     Path path;
     path.addEllipse(rect);
     drawPath(path);
@@ -516,6 +550,11 @@ void GraphicsContext::drawConvexPolygon(size_t numberOfPoints, const FloatPoint*
     if (numberOfPoints <= 1)
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawConvexPolygon(numberOfPoints, points, antialiased);
+        return;
+    }
+
     CGContextRef context = platformContext();
 
     if (antialiased != shouldAntialias())
@@ -537,6 +576,11 @@ void GraphicsContext::clipConvexPolygon(size_t numberOfPoints, const FloatPoint*
     if (numberOfPoints <= 1)
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->clipConvexPolygon(numberOfPoints, points, antialias);
+        return;
+    }
+
     CGContextRef context = platformContext();
 
     if (antialias != shouldAntialias())
@@ -552,6 +596,14 @@ void GraphicsContext::clipConvexPolygon(size_t numberOfPoints, const FloatPoint*
 
 void GraphicsContext::applyStrokePattern()
 {
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->applyStrokePattern();
+        return;
+    }
+
     CGContextRef cgContext = platformContext();
     AffineTransform userToBaseCTM = AffineTransform(getUserToBaseCTM(cgContext));
 
@@ -568,6 +620,14 @@ void GraphicsContext::applyStrokePattern()
 
 void GraphicsContext::applyFillPattern()
 {
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->applyFillPattern();
+        return;
+    }
+
     CGContextRef cgContext = platformContext();
     AffineTransform userToBaseCTM = AffineTransform(getUserToBaseCTM(cgContext));
 
@@ -614,6 +674,11 @@ void GraphicsContext::drawPath(const Path& path)
     if (paintingDisabled() || path.isEmpty())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->drawPath(path);
+        return;
+    }
+
     CGContextRef context = platformContext();
     const GraphicsContextState& state = m_state;
 
@@ -650,6 +715,11 @@ void GraphicsContext::fillPath(const Path& path)
 {
     if (paintingDisabled() || path.isEmpty())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->fillPath(path);
+        return;
+    }
 
     CGContextRef context = platformContext();
 
@@ -704,6 +774,11 @@ void GraphicsContext::strokePath(const Path& path)
 {
     if (paintingDisabled() || path.isEmpty())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->strokePath(path);
+        return;
+    }
 
     CGContextRef context = platformContext();
 
@@ -762,6 +837,11 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->fillRect(rect);
+        return;
+    }
+
     CGContextRef context = platformContext();
 
     if (m_state.fillGradient) {
@@ -810,6 +890,11 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->fillRect(rect, color);
+        return;
+    }
+
     CGContextRef context = platformContext();
     Color oldFillColor = fillColor();
 
@@ -839,6 +924,8 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
 {
     if (paintingDisabled())
         return;
+    
+    ASSERT(!isRecording());
 
     CGContextRef context = platformContext();
     Color oldFillColor = fillColor();
@@ -881,6 +968,11 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        m_displayListRecorder->fillRectWithRoundedHole(rect, roundedHoleRect, color);
+        return;
+    }
+
     CGContextRef context = platformContext();
 
     Path path;
@@ -921,6 +1013,12 @@ void GraphicsContext::clip(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->clip(rect);
+        return;
+    }
+
     CGContextClipToRect(platformContext(), rect);
     m_data->clip(rect);
 }
@@ -929,6 +1027,11 @@ void GraphicsContext::clipOut(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->clipOut(rect);
+        return;
+    }
 
     // FIXME: Using CGRectInfinite is much faster than getting the clip bounding box. However, due
     // to <rdar://problem/12584492>, CGRectInfinite can't be used with an accelerated context that
@@ -942,10 +1045,32 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     CGContextEOClip(platformContext());
 }
 
+void GraphicsContext::clipOut(const Path& path)
+{
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->clipOut(path);
+        return;
+    }
+
+    CGContextBeginPath(platformContext());
+    CGContextAddRect(platformContext(), CGContextGetClipBoundingBox(platformContext()));
+    if (!path.isEmpty())
+        CGContextAddPath(platformContext(), path.platformPath());
+    CGContextEOClip(platformContext());
+}
+
 void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->clipPath(path, clipRule);
+        return;
+    }
 
     CGContextRef context = platformContext();
     if (path.isEmpty())
@@ -965,6 +1090,15 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 
 IntRect GraphicsContext::clipBounds() const
 {
+    if (paintingDisabled())
+        return IntRect();
+
+    if (isRecording()) {
+        WTFLogAlways("Getting the clip bounds not yet supported with display lists");
+        return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
+    }
+
+
     return enclosingIntRect(CGContextGetClipBoundingBox(platformContext()));
 }
 
@@ -972,6 +1106,8 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
 
     save();
 
@@ -985,6 +1121,9 @@ void GraphicsContext::endPlatformTransparencyLayer()
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     CGContextRef context = platformContext();
     CGContextEndTransparencyLayer(context);
 
@@ -1028,6 +1167,8 @@ void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, con
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
     
     // FIXME: we could avoid the shadow setup cost when we know we'll render the shadow ourselves.
 
@@ -1078,6 +1219,13 @@ void GraphicsContext::setMiterLimit(float limit)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        // Maybe this should be part of the state.
+        m_displayListRecorder->setMiterLimit(limit);
+        return;
+    }
+
     CGContextSetMiterLimit(platformContext(), limit);
 }
 
@@ -1085,6 +1233,12 @@ void GraphicsContext::clearRect(const FloatRect& r)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->clearRect(r);
+        return;
+    }
+
     CGContextClearRect(platformContext(), r);
 }
 
@@ -1092,6 +1246,11 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float lineWidth)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->strokeRect(rect, lineWidth);
+        return;
+    }
 
     CGContextRef context = platformContext();
 
@@ -1157,6 +1316,12 @@ void GraphicsContext::setLineCap(LineCap cap)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->setLineCap(cap);
+        return;
+    }
+
     switch (cap) {
     case ButtCap:
         CGContextSetLineCap(platformContext(), kCGLineCapButt);
@@ -1172,6 +1337,14 @@ void GraphicsContext::setLineCap(LineCap cap)
 
 void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
 {
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->setLineDash(dashes, dashOffset);
+        return;
+    }
+
     if (dashOffset < 0) {
         float length = 0;
         for (size_t i = 0; i < dashes.size(); ++i)
@@ -1186,6 +1359,12 @@ void GraphicsContext::setLineJoin(LineJoin join)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->setLineJoin(join);
+        return;
+    }
+
     switch (join) {
     case MiterJoin:
         CGContextSetLineJoin(platformContext(), kCGLineJoinMiter);
@@ -1204,22 +1383,16 @@ void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
     clipPath(path, fillRule);
 }
 
-void GraphicsContext::clipOut(const Path& path)
-{
-    if (paintingDisabled())
-        return;
-
-    CGContextBeginPath(platformContext());
-    CGContextAddRect(platformContext(), CGContextGetClipBoundingBox(platformContext()));
-    if (!path.isEmpty())
-        CGContextAddPath(platformContext(), path.platformPath());
-    CGContextEOClip(platformContext());
-}
-
 void GraphicsContext::scale(const FloatSize& size)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->scale(size);
+        return;
+    }
+
     CGContextScaleCTM(platformContext(), size.width(), size.height());
     m_data->scale(size);
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
@@ -1229,6 +1402,12 @@ void GraphicsContext::rotate(float angle)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->rotate(angle);
+        return;
+    }
+
     CGContextRotateCTM(platformContext(), angle);
     m_data->rotate(angle);
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
@@ -1238,6 +1417,12 @@ void GraphicsContext::translate(float x, float y)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->translate(x, y);
+        return;
+    }
+
     CGContextTranslateCTM(platformContext(), x, y);
     m_data->translate(x, y);
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
@@ -1247,6 +1432,12 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->concatCTM(transform);
+        return;
+    }
+
     CGContextConcatCTM(platformContext(), transform);
     m_data->concatCTM(transform);
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
@@ -1256,6 +1447,12 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
 {
     if (paintingDisabled())
         return;
+
+    if (isRecording()) {
+        WTFLogAlways("GraphicsContext::setCTM() is not compatible with recording contexts.");
+        return;
+    }
+
     CGContextSetCTM(platformContext(), transform);
     m_data->setCTM(transform);
     m_data->m_userToDeviceTransformKnownToBeIdentity = false;
@@ -1265,6 +1462,11 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
+
+    if (isRecording()) {
+        WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
+        return AffineTransform();
+    }
 
     // The CTM usually includes the deviceScaleFactor except in WebKit 1 when the
     // content is non-composited, since the scale factor is integrated at a lower
@@ -1277,6 +1479,14 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode roundingMode)
 {
+    if (paintingDisabled())
+        return rect;
+
+    if (isRecording()) {
+        WTFLogAlways("GraphicsContext::roundToDevicePixels() is not yet compatible with recording contexts.");
+        return rect;
+    }
+
     // It is not enough just to round to pixels in device space. The rotation part of the
     // affine transform matrix to device space can mess with this conversion if we have a
     // rotating image like the hands of the world clock widget. We just need the scale, so
@@ -1319,13 +1529,6 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
-FloatRect GraphicsContext::computeLineBoundsForText(const FloatPoint& point, float width, bool printing)
-{
-    bool dummyBool;
-    Color dummyColor;
-    return computeLineBoundsAndAntialiasingModeForText(point, width, printing, dummyBool, dummyColor);
-}
-
 void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing, bool doubleLines)
 {
     DashArray widths;
@@ -1339,13 +1542,17 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     if (paintingDisabled())
         return;
 
-    if (widths.size() <= 0)
+    if (!widths.size())
         return;
+
+    if (isRecording()) {
+        m_displayListRecorder->drawLinesForText(point, widths, printing, doubleLines, strokeThickness());
+        return;
+    }
 
     Color localStrokeColor(strokeColor());
 
-    bool shouldAntialiasLine;
-    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(point, widths.last(), printing, shouldAntialiasLine, localStrokeColor);
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(point, widths.last(), printing, localStrokeColor);
     bool fillColorIsNotEqualToStrokeColor = fillColor() != localStrokeColor;
     
     Vector<CGRect, 4> dashBounds;
@@ -1375,6 +1582,11 @@ void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        WTFLogAlways("GraphicsContext::setURLForRect() is not yet compatible with recording contexts.");
+        return; // FIXME for display lists.
+    }
+
     RetainPtr<CFURLRef> urlRef = link.createCFURL();
     if (!urlRef)
         return;
@@ -1398,6 +1610,8 @@ void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
 
 void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality mode)
 {
+    ASSERT(!paintingDisabled());
+
     CGInterpolationQuality quality = kCGInterpolationDefault;
     switch (mode) {
     case InterpolationDefault:
@@ -1421,6 +1635,13 @@ void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality 
 
 void GraphicsContext::setIsCALayerContext(bool isLayerContext)
 {
+    if (paintingDisabled())
+        return;
+
+    // FIXME
+    if (isRecording())
+        return;
+
     if (isLayerContext)
         m_data->m_contextFlags |= IsLayerCGContext;
     else
@@ -1429,11 +1650,25 @@ void GraphicsContext::setIsCALayerContext(bool isLayerContext)
 
 bool GraphicsContext::isCALayerContext() const
 {
+    if (paintingDisabled())
+        return false;
+
+    // FIXME
+    if (isRecording())
+        return false;
+
     return m_data->m_contextFlags & IsLayerCGContext;
 }
 
 void GraphicsContext::setIsAcceleratedContext(bool isAccelerated)
 {
+    if (paintingDisabled())
+        return;
+
+    // FIXME
+    if (isRecording())
+        return;
+
     if (isAccelerated)
         m_data->m_contextFlags |= IsAcceleratedCGContext;
     else
@@ -1442,6 +1677,13 @@ void GraphicsContext::setIsAcceleratedContext(bool isAccelerated)
 
 bool GraphicsContext::isAcceleratedContext() const
 {
+    if (paintingDisabled())
+        return false;
+
+    // FIXME
+    if (isRecording())
+        return false;
+
     return m_data->m_contextFlags & IsAcceleratedCGContext;
 }
 
@@ -1449,6 +1691,8 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags mode)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
 
     CGContextRef context = platformContext();
     switch (mode) {
@@ -1470,6 +1714,9 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     setCGStrokeColor(platformContext(), color);
 }
 
@@ -1477,6 +1724,9 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     CGContextSetLineWidth(platformContext(), std::max(thickness, 0.f));
 }
 
@@ -1484,6 +1734,9 @@ void GraphicsContext::setPlatformFillColor(const Color& color)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     setCGFillColor(platformContext(), color);
 }
 
@@ -1491,6 +1744,9 @@ void GraphicsContext::setPlatformShouldAntialias(bool enable)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     CGContextSetShouldAntialias(platformContext(), enable);
 }
 
@@ -1498,6 +1754,9 @@ void GraphicsContext::setPlatformShouldSmoothFonts(bool enable)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     CGContextSetShouldSmoothFonts(platformContext(), enable);
 }
 
@@ -1505,6 +1764,9 @@ void GraphicsContext::setPlatformAlpha(float alpha)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
+
     CGContextSetAlpha(platformContext(), alpha);
 }
 
@@ -1512,6 +1774,8 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, Blen
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
 
     CGBlendMode target = kCGBlendModeNormal;
     if (blendMode != BlendModeNormal) {
@@ -1621,6 +1885,11 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, Blen
 
 void GraphicsContext::platformApplyDeviceScaleFactor(float deviceScaleFactor)
 {
+    if (paintingDisabled())
+        return;
+
+    ASSERT(!isRecording());
+
     // CoreGraphics expects the base CTM of a HiDPI context to have the scale factor applied to it.
     // Failing to change the base level CTM will cause certain CG features, such as focus rings,
     // to draw with a scale factor of 1 rather than the actual scale factor.
@@ -1631,6 +1900,8 @@ void GraphicsContext::platformFillEllipse(const FloatRect& ellipse)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
 
     // CGContextFillEllipseInRect only supports solid colors.
     if (m_state.fillGradient || m_state.fillPattern) {
@@ -1646,6 +1917,8 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
 {
     if (paintingDisabled())
         return;
+
+    ASSERT(!isRecording());
 
     // CGContextStrokeEllipseInRect only supports solid colors.
     if (m_state.strokeGradient || m_state.strokePattern) {

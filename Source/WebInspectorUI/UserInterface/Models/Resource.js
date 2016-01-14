@@ -59,7 +59,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._transferSize = NaN;
         this._cached = false;
 
-        if (this._initiatorSourceCodeLocation)
+        if (this._initiatorSourceCodeLocation && this._initiatorSourceCodeLocation.sourceCode instanceof WebInspector.Resource)
             this._initiatorSourceCodeLocation.sourceCode.addInitiatedResource(this);
     }
 
@@ -224,11 +224,14 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         return this._parentFrame ? this._parentFrame.mainResource === this : false;
     }
 
-    addInitiatedResource(resource) {
+    addInitiatedResource(resource)
+    {
         if (!(resource instanceof WebInspector.Resource))
             return;
 
         this._initiatedResources.push(resource);
+
+        this.dispatchEventToListeners(WebInspector.Resource.Event.InitiatedResourcesDidChange);
     }
 
     get parentFrame()
@@ -692,7 +695,8 @@ WebInspector.Resource.Event = {
     TimestampsDidChange: "resource-timestamps-did-change",
     SizeDidChange: "resource-size-did-change",
     TransferSizeDidChange: "resource-transfer-size-did-change",
-    CacheStatusDidChange: "resource-cached-did-change"
+    CacheStatusDidChange: "resource-cached-did-change",
+    InitiatedResourcesDidChange: "resource-initiated-resources-did-change",
 };
 
 // Keep these in sync with the "ResourceType" enum defined by the "Page" domain.

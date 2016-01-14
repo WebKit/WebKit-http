@@ -52,6 +52,11 @@
 #include "B3ValueInlines.h"
 #include <wtf/ListDump.h>
 
+#if COMPILER(GCC) && ASSERT_DISABLED
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif // COMPILER(GCC) && ASSERT_DISABLED
+
 namespace JSC { namespace B3 {
 
 using namespace Air;
@@ -1338,6 +1343,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [this] (
                 Arg::Width width, const Arg& resCond,
@@ -1367,6 +1373,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
                 if (isValidForm(BranchDouble, Arg::DoubleCond, left.kind(), right.kind())) {
@@ -1413,6 +1420,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [this] (
                 Arg::Width width, const Arg& resCond,
@@ -1436,6 +1444,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
                 if (isValidForm(CompareDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
@@ -1495,6 +1504,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [&] (
                 Arg::Width width, const Arg& resCond,
@@ -1521,6 +1531,7 @@ private:
                     }
                     return Inst();
                 }
+                ASSERT_NOT_REACHED();
             },
             [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
                 if (isValidForm(config.moveConditionallyDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
@@ -1542,7 +1553,7 @@ private:
     }
 
     template<typename BankInfo>
-    Arg marshallCCallArgument(unsigned& argumentCount, unsigned& stackCount, Value* child)
+    Arg marshallCCallArgument(unsigned& argumentCount, unsigned& stackOffset, Value* child)
     {
         unsigned argumentIndex = argumentCount++;
         if (argumentIndex < BankInfo::numberOfArgumentRegisters) {
@@ -1551,13 +1562,16 @@ private:
             return result;
         }
 
-        // Compute the place that this goes onto the stack. On X86_64 and probably other calling
-        // conventions that don't involve obsolete computers and operating systems, sub-pointer-size
-        // arguments are still given a full pointer-sized stack slot. Hence we don't have to consider
-        // the type of the argument when deducing the stack index.
-        unsigned stackIndex = stackCount++;
-
-        Arg result = Arg::callArg(stackIndex * sizeof(void*));
+#if CPU(ARM64) && PLATFORM(IOS)
+        // iOS does not follow the ARM64 ABI regarding function calls.
+        // Arguments must be packed.
+        unsigned slotSize = sizeofType(child->type());
+        stackOffset = WTF::roundUpToMultipleOf(slotSize, stackOffset);
+#else
+        unsigned slotSize = sizeof(void*);
+#endif
+        Arg result = Arg::callArg(stackOffset);
+        stackOffset += slotSize;
         
         // Put the code for storing the argument before anything else. This significantly eases the
         // burden on the register allocator. If we could, we'd hoist these stores as far as
@@ -1612,10 +1626,12 @@ private:
         }
 
         case Sub: {
-            if (m_value->child(0)->isInt(0))
-                appendUnOp<Neg32, Neg64>(m_value->child(1));
-            else
-                appendBinOp<Sub32, Sub64, SubDouble, SubFloat>(m_value->child(0), m_value->child(1));
+            appendBinOp<Sub32, Sub64, SubDouble, SubFloat>(m_value->child(0), m_value->child(1));
+            return;
+        }
+
+        case Neg: {
+            appendUnOp<Neg32, Neg64, NegateDouble, Air::Oops>(m_value->child(0));
             return;
         }
 
@@ -1625,21 +1641,25 @@ private:
             return;
         }
 
+        case ChillDiv:
+            RELEASE_ASSERT(isARM64());
+            FALLTHROUGH;
         case Div: {
-            if (isInt(m_value->type())) {
 #if CPU(X86) || CPU(X86_64)
+            if (isInt(m_value->type())) {
                 lowerX86Div();
                 append(Move, Tmp(X86Registers::eax), tmp(m_value));
-#endif
                 return;
             }
-            ASSERT(isFloat(m_value->type()));
+#endif
+            ASSERT(!isX86() || isFloat(m_value->type()));
 
-            appendBinOp<Air::Oops, Air::Oops, DivDouble, DivFloat>(m_value->child(0), m_value->child(1));
+            appendBinOp<Div32, Div64, DivDouble, DivFloat>(m_value->child(0), m_value->child(1));
             return;
         }
 
         case Mod: {
+            RELEASE_ASSERT(isX86());
 #if CPU(X86) || CPU(X86_64)
             lowerX86Div();
             append(Move, Tmp(X86Registers::edx), tmp(m_value));
@@ -1682,7 +1702,7 @@ private:
                 appendUnOp<Not32, Not64>(m_value->child(0));
                 return;
             }
-            appendBinOp<Xor32, Xor64, Commutative>(
+            appendBinOp<Xor32, Xor64, XorDouble, XorFloat, Commutative>(
                 m_value->child(0), m_value->child(1));
             return;
         }
@@ -1943,18 +1963,18 @@ private:
             // this, Air does not know what the convention is; it just takes our word for it.
             unsigned gpArgumentCount = 0;
             unsigned fpArgumentCount = 0;
-            unsigned stackCount = 0;
+            unsigned stackOffset = 0;
             for (unsigned i = 1; i < cCall->numChildren(); ++i) {
                 Value* argChild = cCall->child(i);
                 Arg arg;
                 
                 switch (Arg::typeForB3Type(argChild->type())) {
                 case Arg::GP:
-                    arg = marshallCCallArgument<GPRInfo>(gpArgumentCount, stackCount, argChild);
+                    arg = marshallCCallArgument<GPRInfo>(gpArgumentCount, stackOffset, argChild);
                     break;
 
                 case Arg::FP:
-                    arg = marshallCCallArgument<FPRInfo>(fpArgumentCount, stackCount, argChild);
+                    arg = marshallCCallArgument<FPRInfo>(fpArgumentCount, stackOffset, argChild);
                     break;
                 }
 
@@ -2086,12 +2106,19 @@ private:
             } else if (imm(right) && isValidForm(opcode, Arg::ResCond, Arg::Imm, Arg::Tmp)) {
                 sources.append(imm(right));
                 append(Move, tmp(left), result);
-            } else if (commutativity == Commutative && preferRightForResult(left, right)) {
+            } else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp)) {
+                if (commutativity == Commutative && preferRightForResult(left, right)) {
+                    sources.append(tmp(left));
+                    append(Move, tmp(right), result);
+                } else {
+                    sources.append(tmp(right));
+                    append(Move, tmp(left), result);
+                }
+            } else if (isValidForm(opcode, Arg::ResCond, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
                 sources.append(tmp(left));
-                append(Move, tmp(right), result);
-            } else {
                 sources.append(tmp(right));
-                append(Move, tmp(left), result);
+                sources.append(m_code.newTmp(Arg::typeForB3Type(m_value->type())));
+                sources.append(m_code.newTmp(Arg::typeForB3Type(m_value->type())));
             }
 
             // There is a really hilarious case that arises when we do BranchAdd32(%x, %x). We won't emit
@@ -2286,5 +2313,8 @@ void lowerToAir(Procedure& procedure)
 
 } } // namespace JSC::B3
 
-#endif // ENABLE(B3_JIT)
+#if COMPILER(GCC) && ASSERT_DISABLED
+#pragma GCC diagnostic pop
+#endif // COMPILER(GCC) && ASSERT_DISABLED
 
+#endif // ENABLE(B3_JIT)

@@ -42,6 +42,7 @@
 #include "FTLAbstractHeapRepository.h"
 #include "FTLAvailableRecovery.h"
 #include "FTLB3Output.h"
+#include "FTLExceptionTarget.h"
 #include "FTLForOSREntryJITCode.h"
 #include "FTLFormattedValue.h"
 #include "FTLInlineCacheSize.h"
@@ -49,6 +50,7 @@
 #include "FTLLoweredNodeValue.h"
 #include "FTLOperations.h"
 #include "FTLOutput.h"
+#include "FTLPatchpointExceptionHandle.h"
 #include "FTLThunks.h"
 #include "FTLWeightedTarget.h"
 #include "JITAddGenerator.h"
@@ -60,7 +62,6 @@
 #include "JITMulGenerator.h"
 #include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
-#include "JSArrowFunction.h"
 #include "JSCInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -72,7 +73,9 @@
 #include "VirtualRegister.h"
 #include "Watchdog.h"
 #include <atomic>
+#if !OS(WINDOWS)
 #include <dlfcn.h>
+#endif
 #include <llvm/InitializeLLVM.h>
 #include <unordered_set>
 #include <wtf/Box.h>
@@ -138,6 +141,8 @@ public:
     
     void lower()
     {
+        State* state = &m_ftlState;
+        
         CString name;
         if (verboseCompilationEnabled()) {
             name = toCString(
@@ -149,16 +154,16 @@ public:
         m_graph.ensureDominators();
 
 #if !FTL_USES_B3
-        m_ftlState.module =
-            moduleCreateWithNameInContext(name.data(), m_ftlState.context);
+        state->module =
+            moduleCreateWithNameInContext(name.data(), state->context);
         
-        m_ftlState.function = addFunction(
-            m_ftlState.module, name.data(), functionType(m_out.int64));
-        setFunctionCallingConv(m_ftlState.function, LLVMCCallConv);
+        state->function = addFunction(
+            state->module, name.data(), functionType(m_out.int64));
+        setFunctionCallingConv(state->function, LLVMCCallConv);
         if (isX86() && Options::llvmDisallowAVX()) {
             // AVX makes V8/raytrace 80% slower. It makes Kraken/audio-oscillator 4.5x
             // slower. It should be disabled.
-            addTargetDependentFunctionAttr(m_ftlState.function, "target-features", "-avx");
+            addTargetDependentFunctionAttr(state->function, "target-features", "-avx");
         }
 #endif // !FTL_USES_B3
         
@@ -168,7 +173,7 @@ public:
 #if FTL_USES_B3
         m_out.initialize(m_heaps);
 #else
-        m_out.initialize(m_ftlState.module, m_ftlState.function, m_heaps);
+        m_out.initialize(state->module, state->function, m_heaps);
 #endif
 
         // We use prologue frequency for all of the initialization code.
@@ -201,7 +206,7 @@ public:
         size_t sizeOfCaptured = sizeof(JSValue) * m_graph.m_nextMachineLocal;
         B3::StackSlotValue* capturedBase = m_out.lockedStackSlot(sizeOfCaptured);
         m_captured = m_out.add(capturedBase, m_out.constIntPtr(sizeOfCaptured));
-        m_ftlState.capturedValue = capturedBase;
+        state->capturedValue = capturedBase;
 #else // FTL_USES_B3
         LValue capturedAlloca = m_out.alloca(arrayType(m_out.int64, m_graph.m_nextMachineLocal));
         
@@ -209,9 +214,9 @@ public:
             m_out.ptrToInt(capturedAlloca, m_out.intPtr),
             m_out.constIntPtr(m_graph.m_nextMachineLocal * sizeof(Register)));
         
-        m_ftlState.capturedStackmapID = m_stackmapIDs++;
+        state->capturedStackmapID = m_stackmapIDs++;
         m_out.call(
-            m_out.voidType, m_out.stackmapIntrinsic(), m_out.constInt64(m_ftlState.capturedStackmapID),
+            m_out.voidType, m_out.stackmapIntrinsic(), m_out.constInt64(state->capturedStackmapID),
             m_out.int32Zero, capturedAlloca);
 #endif // FTL_USE_B3
 
@@ -258,13 +263,21 @@ public:
                     case ArithDiv:
                     case ArithMul:
                     case ArithSub:
+                    case ValueAdd:
+                    case DFG::BitAnd:
+                    case DFG::BitOr:
+                    case DFG::BitXor:
+                    case BitLShift:
+                    case BitRShift:
+                    case BitURShift:
+                        if (!node->isBinaryUseKind(UntypedUse))
+                            break; // We only compile patchpoints for UntypedUse.
+                        FALLTHROUGH;
+
                     case GetById:
-                    case GetByIdFlush:
-                    case ValueAdd: {
-                        // We may have to flush one thing for GetByIds/ArithSubs when the base and result or the left/right and the result
+                    case GetByIdFlush: {
+                        // We may have to flush one thing for GetByIds/ binary ops when the base and result or the left/right and the result
                         // are assigned the same register. For a more comprehensive overview, look at the comment in FTLCompile.cpp
-                        if (node->op() == ArithSub && node->binaryUseKind() != UntypedUse)
-                            break; // We only compile patchpoints for ArithSub UntypedUse.
                         CodeOrigin opCatchOrigin;
                         HandlerInfo* exceptionHandler;
                         bool willCatchException = m_graph.willCatchExceptionInMachineFrame(node->origin.forExit, opCatchOrigin, exceptionHandler);
@@ -286,10 +299,10 @@ public:
         if (hasVarargs) {
             LValue varargsSpillSlots = m_out.alloca(
                 arrayType(m_out.int64, JSCallVarargs::numSpillSlotsNeeded()));
-            m_ftlState.varargsSpillSlotsStackmapID = m_stackmapIDs++;
+            state->varargsSpillSlotsStackmapID = m_stackmapIDs++;
             m_out.call(
                 m_out.voidType, m_out.stackmapIntrinsic(),
-                m_out.constInt64(m_ftlState.varargsSpillSlotsStackmapID),
+                m_out.constInt64(state->varargsSpillSlotsStackmapID),
                 m_out.int32Zero, varargsSpillSlots);
         }
 
@@ -300,10 +313,10 @@ public:
 
             LValue exceptionHandlingVolatileRegistersSpillSlots = m_out.alloca(
                 arrayType(m_out.int64, maxNumberOfCatchSpills));
-            m_ftlState.exceptionHandlingSpillSlotStackmapID = m_stackmapIDs++;
+            state->exceptionHandlingSpillSlotStackmapID = m_stackmapIDs++;
             m_out.call(
                 m_out.voidType, m_out.stackmapIntrinsic(),
-                m_out.constInt64(m_ftlState.exceptionHandlingSpillSlotStackmapID),
+                m_out.constInt64(state->exceptionHandlingSpillSlotStackmapID),
                 m_out.int32Zero, exceptionHandlingVolatileRegistersSpillSlots);
         }
 #endif // !FTL_USES_B3
@@ -335,23 +348,47 @@ public:
         m_out.appendTo(stackOverflow, m_handleExceptions);
         m_out.call(m_out.voidType, m_out.operation(operationThrowStackOverflowError), m_callFrame, m_out.constIntPtr(codeBlock()));
 #if FTL_USES_B3
-        // FIXME
-#else
-        m_ftlState.handleStackOverflowExceptionStackmapID = m_stackmapIDs++;
+        m_out.patchpoint(Void)->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams&) {
+                // We are terminal, so we can clobber everything. That's why we don't claim to
+                // clobber scratch.
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                
+                jit.copyCalleeSavesToVMCalleeSavesBuffer();
+                jit.move(CCallHelpers::TrustedImmPtr(jit.vm()), GPRInfo::argumentGPR0);
+                jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+                CCallHelpers::Call call = jit.call();
+                jit.jumpToExceptionHandler();
+
+                jit.addLinkTask(
+                    [=] (LinkBuffer& linkBuffer) {
+                        linkBuffer.link(call, FunctionPtr(lookupExceptionHandlerFromCallerFrame));
+                    });
+            });
+#else // FTL_USES_B3
+        state->handleStackOverflowExceptionStackmapID = m_stackmapIDs++;
         m_out.call(
             m_out.voidType, m_out.stackmapIntrinsic(),
-            m_out.constInt64(m_ftlState.handleStackOverflowExceptionStackmapID),
+            m_out.constInt64(state->handleStackOverflowExceptionStackmapID),
             m_out.constInt32(MacroAssembler::maxJumpReplacementSize()));
-#endif
+#endif // FTL_USES_B3
         m_out.unreachable();
         
         m_out.appendTo(m_handleExceptions, checkArguments);
 #if FTL_USES_B3
-        // FIXME
+        Box<CCallHelpers::Label> exceptionHandler = state->exceptionHandler;
+        m_out.patchpoint(Void)->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams&) {
+                CCallHelpers::Jump jump = jit.jump();
+                jit.addLinkTask(
+                    [=] (LinkBuffer& linkBuffer) {
+                        linkBuffer.link(jump, linkBuffer.locationOf(*exceptionHandler));
+                    });
+            });
 #else
-        m_ftlState.handleExceptionStackmapID = m_stackmapIDs++;
+        state->handleExceptionStackmapID = m_stackmapIDs++;
         m_out.call(
-            m_out.voidType, m_out.stackmapIntrinsic(), m_out.constInt64(m_ftlState.handleExceptionStackmapID),
+            m_out.voidType, m_out.stackmapIntrinsic(), m_out.constInt64(state->handleExceptionStackmapID),
             m_out.constInt32(MacroAssembler::maxJumpReplacementSize()));
 #endif
         m_out.unreachable();
@@ -418,11 +455,11 @@ public:
 
 #if !FTL_USES_B3
         if (Options::dumpLLVMIR())
-            dumpModule(m_ftlState.module);
+            dumpModule(state->module);
         if (verboseCompilationEnabled())
-            m_ftlState.dumpState("after lowering");
+            state->dumpState("after lowering");
         if (validationEnabled())
-            verifyModule(m_ftlState.module);
+            verifyModule(state->module);
 #endif
     }
 
@@ -1656,7 +1693,7 @@ private:
             }
 
 #if FTL_USES_B3
-            B3::CheckValue* result =
+            CheckValue* result =
                 isSub ? m_out.speculateSub(left, right) : m_out.speculateAdd(left, right);
             blessSpeculation(result, Overflow, noValue(), nullptr, m_origin);
             setInt32(result);
@@ -1712,7 +1749,7 @@ private:
             LValue left = lowInt52(m_node->child1());
             LValue right = lowInt52(m_node->child2());
 #if FTL_USES_B3
-            B3::CheckValue* result =
+            CheckValue* result =
                 isSub ? m_out.speculateSub(left, right) : m_out.speculateAdd(left, right);
             blessSpeculation(result, Overflow, noValue(), nullptr, m_origin);
             setInt52(result);
@@ -1803,7 +1840,7 @@ private:
                 result = m_out.mul(left, right);
             else {
 #if FTL_USES_B3
-                B3::CheckValue* speculation = m_out.speculateMul(left, right);
+                CheckValue* speculation = m_out.speculateMul(left, right);
                 blessSpeculation(speculation, Overflow, noValue(), nullptr, m_origin);
                 result = speculation;
 #else // FTL_USES_B3
@@ -1837,7 +1874,7 @@ private:
             LValue right = lowInt52(m_node->child2(), opposite(kind));
 
 #if FTL_USES_B3
-            B3::CheckValue* result = m_out.speculateMul(left, right);
+            CheckValue* result = m_out.speculateMul(left, right);
             blessSpeculation(result, Overflow, noValue(), nullptr, m_origin);
 #else // FTL_USES_B3
             LValue overflowResult = m_out.mulWithOverflow64(left, right);
@@ -2639,13 +2676,16 @@ private:
         auto uid = m_graph.identifiers()[node->identifierNumber()];
 
 #if FTL_USES_B3
-        // FIXME: Make this do exceptions.
-        // https://bugs.webkit.org/show_bug.cgi?id=151686
-
         B3::PatchpointValue* patchpoint = m_out.patchpoint(Void);
-        patchpoint->append(base, ValueRep::SomeRegister);
-        patchpoint->append(value, ValueRep::SomeRegister);
+        patchpoint->appendSomeRegister(base);
+        patchpoint->appendSomeRegister(value);
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+
+        // FIXME: If this is a PutByIdFlush, we might want to late-clobber volatile registers.
+        // https://bugs.webkit.org/show_bug.cgi?id=152848
+
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
 
         State* state = &m_ftlState;
         ECMAMode ecmaMode = m_graph.executableFor(node->origin.semantic)->ecmaMode();
@@ -2654,9 +2694,17 @@ private:
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
 
+                CallSiteIndex callSiteIndex =
+                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic);
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+                // JS setter call ICs generated by the PutById IC will need this.
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+
                 auto generator = Box<JITPutByIdGenerator>::create(
-                    jit.codeBlock(), node->origin.semantic,
-                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic),
+                    jit.codeBlock(), node->origin.semantic, callSiteIndex,
                     params.unavailableRegisters(), JSValueRegs(params[0].gpr()),
                     JSValueRegs(params[1].gpr()), GPRInfo::patchpointScratchRegister, ecmaMode,
                     node->op() == PutByIdDirect ? Direct : NotDirect);
@@ -2668,14 +2716,11 @@ private:
                     [=] (CCallHelpers& jit) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
 
-                        // FIXME: Make this do something.
-                        CCallHelpers::JumpList exceptions;
-
                         generator->slowPathJump().link(&jit);
                         CCallHelpers::Label slowPathBegin = jit.label();
                         CCallHelpers::Call slowPathCall = callOperation(
                             *state, params.unavailableRegisters(), jit, node->origin.semantic,
-                            &exceptions, generator->slowPathFunction(), InvalidGPRReg,
+                            exceptions.get(), generator->slowPathFunction(), InvalidGPRReg,
                             CCallHelpers::TrustedImmPtr(generator->stubInfo()), params[1].gpr(),
                             params[0].gpr(), CCallHelpers::TrustedImmPtr(uid)).call();
                         jit.jump().linkTo(done, &jit);
@@ -3642,16 +3687,13 @@ private:
     void compileNewFunction()
     {
         ASSERT(m_node->op() == NewFunction || m_node->op() == NewArrowFunction || m_node->op() == NewGeneratorFunction);
-        bool isArrowFunction = m_node->op() == NewArrowFunction;
         bool isGeneratorFunction = m_node->op() == NewGeneratorFunction;
         
         LValue scope = lowCell(m_node->child1());
-        LValue thisValue = isArrowFunction ? lowCell(m_node->child2()) : nullptr;
         
         FunctionExecutable* executable = m_node->castOperand<FunctionExecutable*>();
         if (executable->singletonFunction()->isStillValid()) {
             LValue callResult =
-                isArrowFunction ? vmCall(m_out.int64, m_out.operation(operationNewArrowFunction), m_callFrame, scope, weakPointer(executable), thisValue) :
                 isGeneratorFunction ? vmCall(m_out.int64, m_out.operation(operationNewGeneratorFunction), m_callFrame, scope, weakPointer(executable)) :
                 vmCall(m_out.int64, m_out.operation(operationNewFunction), m_callFrame, scope, weakPointer(executable));
             setJSValue(callResult);
@@ -3659,7 +3701,6 @@ private:
         }
         
         Structure* structure =
-            isArrowFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->arrowFunctionStructure() :
             isGeneratorFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->generatorFunctionStructure() :
             m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure();
         
@@ -3669,20 +3710,15 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
         LValue fastObject =
-            isArrowFunction ? allocateObject<JSArrowFunction>(structure, m_out.intPtrZero, slowPath) :
             isGeneratorFunction ? allocateObject<JSGeneratorFunction>(structure, m_out.intPtrZero, slowPath) :
             allocateObject<JSFunction>(structure, m_out.intPtrZero, slowPath);
         
         
         // We don't need memory barriers since we just fast-created the function, so it
         // must be young.
-        m_out.storePtr(scope, fastObject, isArrowFunction ? m_heaps.JSArrowFunction_scope : m_heaps.JSFunction_scope);
-        m_out.storePtr(weakPointer(executable), fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_executable : m_heaps.JSFunction_executable);
-        
-        if (isArrowFunction)
-            m_out.storePtr(thisValue, fastObject, m_heaps.JSArrowFunction_this);
-        
-        m_out.storePtr(m_out.intPtrZero, fastObject, isArrowFunction ?  m_heaps.JSArrowFunction_rareData : m_heaps.JSFunction_rareData);
+        m_out.storePtr(scope, fastObject, m_heaps.JSFunction_scope);
+        m_out.storePtr(weakPointer(executable), fastObject, m_heaps.JSFunction_executable);
+        m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.JSFunction_rareData);
         
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
@@ -3691,16 +3727,8 @@ private:
 
         Vector<LValue> slowPathArguments;
         slowPathArguments.append(scope);
-        if (isArrowFunction)
-            slowPathArguments.append(thisValue);
         LValue callResult = lazySlowPath(
             [=] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
-                if (isArrowFunction) {
-                    return createLazyCallGenerator(
-                        operationNewArrowFunctionWithInvalidatedReallocationWatchpoint,
-                        locations[0].directGPR(), locations[1].directGPR(),
-                        CCallHelpers::TrustedImmPtr(executable), locations[2].directGPR());
-                }
                 if (isGeneratorFunction) {
                     return createLazyCallGenerator(
                         operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint,
@@ -4291,7 +4319,7 @@ private:
         for (unsigned i = 1; i < numKids; ++i) {
             flags = m_out.bitAnd(flags, m_out.load32(kids[i], m_heaps.JSString_flags));
 #if FTL_USES_B3
-            B3::CheckValue* lengthCheck = m_out.speculateAdd(
+            CheckValue* lengthCheck = m_out.speculateAdd(
                 length, m_out.load32(kids[i], m_heaps.JSString_length));
             blessSpeculation(lengthCheck, Uncountable, noValue(), nullptr, m_origin);
             length = lengthCheck;
@@ -5015,6 +5043,10 @@ private:
 
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendVector(arguments);
+
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
+        
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
         patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
@@ -5026,10 +5058,7 @@ private:
                 AllowMacroScratchRegisterUsage allowScratch(jit);
                 CallSiteIndex callSiteIndex = state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
 
-                // FIXME: If we were handling exceptions, then at this point we would ask our descriptor
-                // to prepare and then we would modify the OSRExit data structure inside the
-                // OSRExitHandle to link it up to this call.
-                // https://bugs.webkit.org/show_bug.cgi?id=151686
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
 
                 jit.store32(
                     CCallHelpers::TrustedImm32(callSiteIndex.bits()),
@@ -5119,6 +5148,9 @@ private:
         // convenient. The generator then shuffles those arguments into our own call frame,
         // destroying our frame in the process.
 
+        // Note that we don't have to do anything special for exceptions. A tail call is only a
+        // tail call if it is not inside a try block.
+
         Vector<ConstrainedValue> arguments;
 
         arguments.append(ConstrainedValue(jsCallee, ValueRep::reg(GPRInfo::regT0)));
@@ -5148,9 +5180,6 @@ private:
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
-
-                // FIXME: There may be some exception things that need to happen here.
-                // https://bugs.webkit.org/show_bug.cgi?id=151686
 
                 CallFrameShuffleData shuffleData;
                 shuffleData.numLocals = state->jitCode->common.frameRegisterCount;
@@ -5260,16 +5289,13 @@ private:
         }
         
 #if FTL_USES_B3
-        // FIXME: Need a story for exceptions.
-        // https://bugs.webkit.org/show_bug.cgi?id=151686
-
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
 
         // Append the forms of the arguments that we will use before any clobbering happens.
         patchpoint->append(jsCallee, ValueRep::reg(GPRInfo::regT0));
         if (jsArguments)
-            patchpoint->append(jsArguments, ValueRep::SomeRegister);
-        patchpoint->append(thisArg, ValueRep::SomeRegister);
+            patchpoint->appendSomeRegister(jsArguments);
+        patchpoint->appendSomeRegister(thisArg);
 
         if (!forwarding) {
             // Now append them again for after clobbering. Note that the compiler may ask us to use a
@@ -5280,6 +5306,9 @@ private:
             patchpoint->append(thisArg, ValueRep::LateColdAny);
         }
 
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
+        
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
         patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
@@ -5299,11 +5328,10 @@ private:
                 CallSiteIndex callSiteIndex =
                     state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
 
-                // FIXME: We would ask the OSR exit descriptor to prepare and then we would modify
-                // the OSRExit data structure inside the OSRExitHandle to link it up to this call.
-                // Also, the exception checks JumpList should be linked to somewhere.
-                // https://bugs.webkit.org/show_bug.cgi?id=151686
-                CCallHelpers::JumpList exceptions;
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
 
                 jit.store32(
                     CCallHelpers::TrustedImm32(callSiteIndex.bits()),
@@ -5385,7 +5413,7 @@ private:
                 auto callWithExceptionCheck = [&] (void* callee) {
                     jit.move(CCallHelpers::TrustedImmPtr(callee), GPRInfo::nonPreservedNonArgumentGPR);
                     jit.call(GPRInfo::nonPreservedNonArgumentGPR);
-                    exceptions.append(jit.emitExceptionCheck(AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
+                    exceptions->append(jit.emitExceptionCheck(AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 };
 
                 auto adjustStack = [&] (GPRReg amount) {
@@ -5489,7 +5517,16 @@ private:
                     });
             });
 
-        setJSValue(patchpoint);
+        switch (node->op()) {
+        case TailCallVarargs:
+        case TailCallForwardVarargs:
+            m_out.unreachable();
+            break;
+
+        default:
+            setJSValue(patchpoint);
+            break;
+        }
 #else
         UNUSED_PARAM(forwarding);
         unsigned stackmapID = m_stackmapIDs++;
@@ -6126,7 +6163,7 @@ private:
                 UniquedStringImpl* str = bitwise_cast<UniquedStringImpl*>(string->tryGetValueImpl());
 #if FTL_USES_B3
                 B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
-                patchpoint->append(cell, ValueRep::SomeRegister);
+                patchpoint->appendSomeRegister(cell);
                 patchpoint->clobber(RegisterSet::macroScratchRegisters());
 
                 State* state = &m_ftlState;
@@ -7205,21 +7242,38 @@ private:
         UniquedStringImpl* uid = m_graph.identifiers()[node->identifierNumber()];
 
 #if FTL_USES_B3
-        // FIXME: Make this do exceptions.
-        // https://bugs.webkit.org/show_bug.cgi?id=151686
-        
         B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
-        patchpoint->append(base, ValueRep::SomeRegister);
+        patchpoint->appendSomeRegister(base);
+
+        // FIXME: If this is a GetByIdFlush, we might get some performance boost if we claim that it
+        // clobbers volatile registers late. It's not necessary for correctness, though, since the
+        // IC code is super smart about saving registers.
+        // https://bugs.webkit.org/show_bug.cgi?id=152848
+        
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
 
         State* state = &m_ftlState;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
 
+                CallSiteIndex callSiteIndex =
+                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic);
+
+                // This is the direct exit target for operation calls.
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+                // This is the exit for call IC's created by the getById for getters. We don't have
+                // to do anything weird other than call this, since it will associate the exit with
+                // the callsite index.
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+
                 auto generator = Box<JITGetByIdGenerator>::create(
-                    jit.codeBlock(), node->origin.semantic,
-                    state->jitCode->common.addUniqueCallSiteIndex(node->origin.semantic),
+                    jit.codeBlock(), node->origin.semantic, callSiteIndex,
                     params.unavailableRegisters(), JSValueRegs(params[1].gpr()),
                     JSValueRegs(params[0].gpr()));
 
@@ -7229,15 +7283,12 @@ private:
                 params.addLatePath(
                     [=] (CCallHelpers& jit) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
-                        
-                        // FIXME: Make this do something.
-                        CCallHelpers::JumpList exceptions;
 
                         generator->slowPathJump().link(&jit);
                         CCallHelpers::Label slowPathBegin = jit.label();
                         CCallHelpers::Call slowPathCall = callOperation(
                             *state, params.unavailableRegisters(), jit, node->origin.semantic,
-                            &exceptions, operationGetByIdOptimize, params[0].gpr(),
+                            exceptions.get(), operationGetByIdOptimize, params[0].gpr(),
                             CCallHelpers::TrustedImmPtr(generator->stubInfo()), params[1].gpr(),
                             CCallHelpers::TrustedImmPtr(uid)).call();
                         jit.jump().linkTo(done, &jit);
@@ -7514,9 +7565,6 @@ private:
     {
         Node* node = m_node;
         
-        // FIXME: Make this do exceptions.
-        // https://bugs.webkit.org/show_bug.cgi?id=151686
-            
         LValue left = lowJSValue(node->child1());
         LValue right = lowJSValue(node->child2());
 
@@ -7524,10 +7572,12 @@ private:
         SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
             
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
-        patchpoint->append(left, ValueRep::SomeRegister);
-        patchpoint->append(right, ValueRep::SomeRegister);
+        patchpoint->appendSomeRegister(left);
+        patchpoint->appendSomeRegister(right);
         patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
         patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
         patchpoint->numFPScratchRegisters = 2;
         if (scratchFPRUsage == NeedScratchFPR)
@@ -7537,7 +7587,10 @@ private:
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
-                    
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
                 auto generator = Box<BinaryArithOpGenerator>::create(
                     leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
                     JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()),
@@ -7545,23 +7598,28 @@ private:
                     scratchFPRUsage == NeedScratchFPR ? params.fpScratch(2) : InvalidFPRReg);
 
                 generator->generateFastPath(jit);
-                generator->endJumpList().link(&jit);
-                CCallHelpers::Label done = jit.label();
 
-                params.addLatePath(
-                    [=] (CCallHelpers& jit) {
-                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                if (generator->didEmitFastPath()) {
+                    generator->endJumpList().link(&jit);
+                    CCallHelpers::Label done = jit.label();
+                    
+                    params.addLatePath(
+                        [=] (CCallHelpers& jit) {
+                            AllowMacroScratchRegisterUsage allowScratch(jit);
                             
-                        // FIXME: Make this do something.
-                        CCallHelpers::JumpList exceptions;
-
-                        generator->slowPathJumpList().link(&jit);
-                        callOperation(
-                            *state, params.unavailableRegisters(), jit, node->origin.semantic,
-                            &exceptions, slowPathFunction, params[0].gpr(), params[1].gpr(),
-                            params[2].gpr());
-                        jit.jump().linkTo(done, &jit);
-                    });
+                            generator->slowPathJumpList().link(&jit);
+                            callOperation(
+                                *state, params.unavailableRegisters(), jit, node->origin.semantic,
+                                exceptions.get(), slowPathFunction, params[0].gpr(),
+                                params[1].gpr(), params[2].gpr());
+                            jit.jump().linkTo(done, &jit);
+                        });
+                } else {
+                    callOperation(
+                        *state, params.unavailableRegisters(), jit, node->origin.semantic,
+                        exceptions.get(), slowPathFunction, params[0].gpr(), params[1].gpr(),
+                        params[2].gpr());
+                }
             });
 
         setJSValue(patchpoint);
@@ -7582,16 +7640,21 @@ private:
         SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
             
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
-        patchpoint->append(left, ValueRep::SomeRegister);
-        patchpoint->append(right, ValueRep::SomeRegister);
+        patchpoint->appendSomeRegister(left);
+        patchpoint->appendSomeRegister(right);
         patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
         patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         State* state = &m_ftlState;
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
+                    
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
                     
                 auto generator = Box<BinaryBitOpGenerator>::create(
                     leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
@@ -7605,14 +7668,11 @@ private:
                     [=] (CCallHelpers& jit) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
                             
-                        // FIXME: Make this do something.
-                        CCallHelpers::JumpList exceptions;
-
                         generator->slowPathJumpList().link(&jit);
                         callOperation(
                             *state, params.unavailableRegisters(), jit, node->origin.semantic,
-                            &exceptions, slowPathFunction, params[0].gpr(), params[1].gpr(),
-                            params[2].gpr());
+                            exceptions.get(), slowPathFunction, params[0].gpr(),
+                            params[1].gpr(), params[2].gpr());
                         jit.jump().linkTo(done, &jit);
                     });
             });
@@ -7634,10 +7694,12 @@ private:
         SnippetOperand rightOperand(m_state.forNode(node->child2()).resultType());
             
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
-        patchpoint->append(left, ValueRep::SomeRegister);
-        patchpoint->append(right, ValueRep::SomeRegister);
+        patchpoint->appendSomeRegister(left);
+        patchpoint->appendSomeRegister(right);
         patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
         patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
         patchpoint->numFPScratchRegisters = 1;
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
@@ -7645,6 +7707,9 @@ private:
         patchpoint->setGenerator(
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
+                    
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
                     
                 auto generator = Box<JITRightShiftGenerator>::create(
                     leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
@@ -7659,9 +7724,6 @@ private:
                     [=] (CCallHelpers& jit) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
                             
-                        // FIXME: Make this do something.
-                        CCallHelpers::JumpList exceptions;
-
                         generator->slowPathJumpList().link(&jit);
 
                         J_JITOperation_EJJ slowPathFunction =
@@ -7670,8 +7732,8 @@ private:
                         
                         callOperation(
                             *state, params.unavailableRegisters(), jit, node->origin.semantic,
-                            &exceptions, slowPathFunction, params[0].gpr(), params[1].gpr(),
-                            params[2].gpr());
+                            exceptions.get(), slowPathFunction, params[0].gpr(),
+                            params[1].gpr(), params[2].gpr());
                         jit.jump().linkTo(done, &jit);
                     });
             });
@@ -7687,12 +7749,8 @@ private:
         LValue result;
         LValue condition;
         if (Options::forceGCSlowPaths()) {
-#if FTL_USES_B3
-            CRASH();
-#else
-            result = getUndef(m_out.int64);
+            result = m_out.intPtrZero;
             condition = m_out.booleanFalse;
-#endif
         } else {
             result = m_out.loadPtr(
                 allocator, m_heaps.MarkedAllocator_freeListHead);
@@ -8802,11 +8860,12 @@ private:
 #if FTL_USES_B3
         CodeOrigin origin = m_node->origin.semantic;
         
-        B3::PatchpointValue* result = m_out.patchpoint(B3::Int64);
+        PatchpointValue* result = m_out.patchpoint(B3::Int64);
         for (LValue arg : userArguments)
             result->append(ConstrainedValue(arg, B3::ValueRep::SomeRegister));
 
-        // FIXME: As part of handling exceptions, we need to append OSR exit state here.
+        RefPtr<PatchpointExceptionHandle> exceptionHandle =
+            preparePatchpointForExceptions(result);
         
         result->clobber(RegisterSet::macroScratchRegisters());
         State* state = &m_ftlState;
@@ -8823,6 +8882,9 @@ private:
                 CCallHelpers::Label done = jit.label();
 
                 RegisterSet usedRegisters = params.unavailableRegisters();
+
+                RefPtr<ExceptionTarget> exceptionTarget =
+                    exceptionHandle->scheduleExitCreation(params);
 
                 // FIXME: As part of handling exceptions, we need to create a concrete OSRExit here.
                 // Doing so should automagically register late paths that emit exit thunks.
@@ -8855,18 +8917,14 @@ private:
                                     linkBuffer.locationOf(patchableJump));
                                 CodeLocationLabel linkedDone = linkBuffer.locationOf(done);
 
-                                // FIXME: Need a story for exceptions in FTL-B3. That basically means
-                                // doing a lookup of the exception entrypoint here. We will have an
-                                // OSR exit data structure of some sort.
-                                // https://bugs.webkit.org/show_bug.cgi?id=151686
-                                CodeLocationLabel exceptionTarget;
                                 CallSiteIndex callSiteIndex =
                                     jitCode->common.addUniqueCallSiteIndex(origin);
                                     
                                 std::unique_ptr<LazySlowPath> lazySlowPath =
                                     std::make_unique<LazySlowPath>(
-                                        linkedPatchableJump, linkedDone, exceptionTarget,
-                                        usedRegisters, callSiteIndex, generator);
+                                        linkedPatchableJump, linkedDone,
+                                        exceptionTarget->label(linkBuffer), usedRegisters,
+                                        callSiteIndex, generator);
                                     
                                 jitCode->lazySlowPaths[index] = WTFMove(lazySlowPath);
                             });
@@ -10132,7 +10190,43 @@ private:
         m_out.appendTo(continuation);
     }
 
-#if !FTL_USES_B3
+#if FTL_USES_B3
+    RefPtr<PatchpointExceptionHandle> preparePatchpointForExceptions(PatchpointValue* value)
+    {
+        CodeOrigin opCatchOrigin;
+        HandlerInfo* exceptionHandler;
+        bool willCatchException = m_graph.willCatchExceptionInMachineFrame(m_origin.forExit, opCatchOrigin, exceptionHandler);
+        if (!willCatchException)
+            return PatchpointExceptionHandle::defaultHandle(m_ftlState);
+
+        if (verboseCompilationEnabled()) {
+            dataLog("    Patchpoint exception OSR exit #", m_ftlState.jitCode->osrExitDescriptors.size(), " with availability: ", availabilityMap(), "\n");
+            if (!m_availableRecoveries.isEmpty())
+                dataLog("        Available recoveries: ", listDump(m_availableRecoveries), "\n");
+        }
+
+        bool exitOK = true;
+        NodeOrigin origin = m_origin.withForExitAndExitOK(opCatchOrigin, exitOK);
+
+        OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(noValue(), nullptr);
+
+        // Compute the offset into the StackmapGenerationParams where we will find the exit arguments
+        // we are about to append. We need to account for both the children we've already added, and
+        // for the possibility of a result value if the patchpoint is not void.
+        unsigned offset = value->numChildren();
+        if (value->type() != Void)
+            offset++;
+
+        // Use LateColdAny to ensure that the stackmap arguments interfere with the patchpoint's
+        // result and with any late-clobbered registers.
+        value->appendVectorWithRep(
+            buildExitArguments(exitDescriptor, opCatchOrigin, noValue()),
+            ValueRep::LateColdAny);
+
+        return PatchpointExceptionHandle::create(
+            m_ftlState, exitDescriptor, origin, offset, *exceptionHandler);
+    }
+#else // FTL_USES_B3
     void appendOSRExitArgumentsForPatchpointIfWillCatchException(StackmapArgumentList& arguments, ExceptionType exceptionType, unsigned offsetOfExitArguments)
     {
         CodeOrigin opCatchOrigin;
@@ -10153,7 +10247,7 @@ private:
             buildExitArguments(exitDescriptor, exitDescriptorImpl.m_codeOrigin, noValue(), offsetOfExitArguments);
         arguments.appendVector(freshList);
     }
-#endif // !FTL_USES_B3
+#endif // FTL_USES_B3
 
     LBasicBlock lowBlock(DFG::BasicBlock* block)
     {
@@ -10245,7 +10339,7 @@ private:
     }
 
 #if FTL_USES_B3
-    void blessSpeculation(B3::CheckValue* value, ExitKind kind, FormattedValue lowValue, Node* highValue, NodeOrigin origin, bool isExceptionHandler = false)
+    void blessSpeculation(CheckValue* value, ExitKind kind, FormattedValue lowValue, Node* highValue, NodeOrigin origin, bool isExceptionHandler = false)
     {
         OSRExitDescriptor* exitDescriptor = appendOSRExitDescriptor(lowValue, highValue);
         

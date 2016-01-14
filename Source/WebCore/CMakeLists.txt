@@ -70,6 +70,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm/filters"
+    "${WEBCORE_DIR}/platform/graphics/displaylists"
     "${WEBCORE_DIR}/platform/graphics/filters"
     "${WEBCORE_DIR}/platform/graphics/filters/texmap"
     "${WEBCORE_DIR}/platform/graphics/harfbuzz"
@@ -883,6 +884,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/server/MemoryIndexCursor.cpp
     Modules/indexeddb/server/MemoryObjectStore.cpp
     Modules/indexeddb/server/MemoryObjectStoreCursor.cpp
+    Modules/indexeddb/server/SQLiteIDBBackingStore.cpp
     Modules/indexeddb/server/ServerOpenDBRequest.cpp
     Modules/indexeddb/server/UniqueIDBDatabase.cpp
     Modules/indexeddb/server/UniqueIDBDatabaseConnection.cpp
@@ -1167,6 +1169,7 @@ set(WebCore_SOURCES
     bindings/js/JSHTMLTemplateElementCustom.cpp
     bindings/js/JSHistoryCustom.cpp
     bindings/js/JSIDBAnyCustom.cpp
+    bindings/js/JSIDBCursorCustom.cpp
     bindings/js/JSIDBDatabaseCustom.cpp
     bindings/js/JSIDBObjectStoreCustom.cpp
     bindings/js/JSImageConstructor.cpp
@@ -1231,6 +1234,7 @@ set(WebCore_SOURCES
     bindings/js/ScriptGlobalObject.cpp
     bindings/js/ScriptState.cpp
     bindings/js/SerializedScriptValue.cpp
+    bindings/js/WebCoreJSBuiltinInternals.cpp
     bindings/js/WebCoreJSBuiltins.cpp
     bindings/js/WebCoreTypedArrayController.cpp
     bindings/js/WorkerScriptController.cpp
@@ -2217,6 +2221,11 @@ set(WebCore_SOURCES
 
     platform/graphics/cpu/arm/filters/FELightingNEON.cpp
 
+    platform/graphics/displaylists/DisplayList.cpp
+    platform/graphics/displaylists/DisplayListItems.cpp
+    platform/graphics/displaylists/DisplayListRecorder.cpp
+    platform/graphics/displaylists/DisplayListReplayer.cpp
+
     platform/graphics/filters/DistantLightSource.cpp
     platform/graphics/filters/FEBlend.cpp
     platform/graphics/filters/FEColorMatrix.cpp
@@ -2607,7 +2616,7 @@ set(WebCore_SOURCES
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleResolveForDocument.cpp
-    style/StyleResolveTree.cpp
+    style/StyleTreeResolver.cpp
 
     svg/SVGAElement.cpp
     svg/SVGAltGlyphDefElement.cpp
