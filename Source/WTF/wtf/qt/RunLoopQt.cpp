@@ -39,7 +39,8 @@ namespace WTF {
 class RunLoop::TimerObject : public QObject {
     Q_OBJECT
 public:
-    TimerObject(RunLoop* runLoop) : m_runLoop(runLoop)
+    TimerObject(RunLoop* runLoop)
+        : m_runLoop(runLoop)
     {
         int methodIndex = metaObject()->indexOfMethod("performWork()");
         m_method = metaObject()->method(methodIndex);
