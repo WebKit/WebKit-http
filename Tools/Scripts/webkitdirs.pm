@@ -2077,6 +2077,10 @@ sub buildCMakeProjectOrExit($$$@)
         system("perl", "$sourceDir/Tools/Scripts/update-webkitgtk-libs") == 0 or die $!;
     }
 
+    if (isQt() && isAnyWindows() && checkForArgumentAndRemoveFromARGV("--update-qt")) {
+        system("perl", "$sourceDir/Tools/Scripts/update-qtwebkit-win-libs") == 0 or die $!;
+    }
+
     $returnCode = exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs));
     exit($returnCode) if $returnCode;
 
