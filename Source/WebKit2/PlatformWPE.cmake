@@ -426,6 +426,9 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKViewportAttributes.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKWindowFeaturesRef.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKGeolocationManager.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKGeolocationPermissionRequest.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKGeolocationPosition.h
 
     ${WEBKIT2_DIR}/UIProcess/API/C/wpe/WKView.h
 

@@ -73,9 +73,6 @@ list(APPEND WebCore_SOURCES
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
-    platform/geoclue/GeolocationProviderGeoclue1.cpp
-    platform/geoclue/GeolocationProviderGeoclue2.cpp
-
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
