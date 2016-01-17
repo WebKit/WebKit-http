@@ -450,6 +450,9 @@ void BUrlProtocolHandler::ConnectionOpened(BUrlRequest*)
 
 void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
 {
+    if (!m_resourceHandle)
+        return;
+
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
     WTF::String contentType = m_request->Result().ContentType();
