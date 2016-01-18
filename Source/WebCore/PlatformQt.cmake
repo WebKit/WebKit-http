@@ -47,6 +47,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/FloatRectQt.cpp
     platform/graphics/qt/FloatSizeQt.cpp
     platform/graphics/qt/FontCacheQt.cpp
+    platform/graphics/qt/FontCascadeQt.cpp
     platform/graphics/qt/FontCustomPlatformDataQt.cpp
     platform/graphics/qt/FontPlatformDataQt.cpp
     platform/graphics/qt/FontQt.cpp
@@ -64,7 +65,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/MediaPlayerPrivateQt.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
-    platform/graphics/qt/SimpleFontDataQt.cpp
     platform/graphics/qt/StillImageQt.cpp
     platform/graphics/qt/TileQt.cpp
     platform/graphics/qt/TransformationMatrixQt.cpp
