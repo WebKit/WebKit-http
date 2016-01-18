@@ -60,7 +60,7 @@ void GCController::garbageCollectSoon()
     // We only use reportAbandonedObjectGraph for systems for which there's an implementation
     // of the garbage collector timers in JavaScriptCore. We wouldn't need this if JavaScriptCore
     // used a timer implementation from WTF like RunLoop::Timer.
-#if USE(CF) || USE(GLIB)
+#if USE(CF) || USE(GLIB) || PLATFORM(QT)
     JSLockHolder lock(JSDOMWindow::commonVM());
     JSDOMWindow::commonVM().heap.reportAbandonedObjectGraph();
 #else
@@ -90,7 +90,7 @@ void GCController::garbageCollectNow()
 
 void GCController::garbageCollectNowIfNotDoneRecently()
 {
-#if USE(CF) || USE(GLIB)
+#if USE(CF) || USE(GLIB) || PLATFORM(QT)
     JSLockHolder lock(JSDOMWindow::commonVM());
     if (!JSDOMWindow::commonVM().heap.isBusy())
         JSDOMWindow::commonVM().heap.collectAllGarbageIfNotDoneRecently();

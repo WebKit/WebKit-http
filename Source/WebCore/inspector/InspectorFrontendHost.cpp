@@ -260,6 +260,8 @@ String InspectorFrontendHost::port()
     return ASCIILiteral("gtk");
 #elif PLATFORM(EFL)
     return ASCIILiteral("efl");
+#elif PLATFORM(QT)
+    return ASCIILiteral("qt");
 #else
     return ASCIILiteral("unknown");
 #endif
