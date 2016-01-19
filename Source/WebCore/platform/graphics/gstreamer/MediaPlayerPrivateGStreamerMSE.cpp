@@ -638,8 +638,6 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
             cacheDuration();
         }
 
-        bool didBuffering = m_buffering;
-
         // Update ready and network states.
         switch (state) {
         case GST_STATE_NULL:
@@ -694,7 +692,7 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
                 m_volumeAndMuteInitialized = true;
             }
 
-            if (didBuffering && !m_buffering && !m_paused && m_playbackRate) {
+            if (!seeking() && !m_buffering && !m_paused && m_playbackRate) {
                 LOG_MEDIA_MESSAGE("[Buffering] Restarting playback.");
                 changePipelineState(GST_STATE_PLAYING);
             }
