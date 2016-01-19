@@ -2885,11 +2885,6 @@ public:
         MIPSAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-    void countLeadingZeros32(RegisterID src, RegisterID dest)
-    {
-        m_assembler.clz(dest, src);
-    }
-
 private:
     // If m_fixedWidth is true, we will generate a fixed number of instructions.
     // Otherwise, we can emit any number of instructions.
