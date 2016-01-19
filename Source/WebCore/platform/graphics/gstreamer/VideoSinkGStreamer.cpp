@@ -518,6 +518,29 @@ static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
     }
 }
 
+static gboolean webkitVideoSinkEvent(GstBaseSink *baseSink, GstEvent *event)
+{
+    WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
+    WebKitVideoSinkPrivate* priv = sink->priv;
+
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_FLUSH_START:
+#if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 3, 0)
+        priv->scheduler.drain();
+
+        LOG_MEDIA_MESSAGE("Flush-start, emitting DRAIN signal and releasing EGL samples");
+
+        GST_OBJECT_LOCK (sink);
+        g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
+        GST_OBJECT_UNLOCK (sink);
+#endif
+        // No break on purpose, falling back to default case
+    default:
+        return GST_CALL_PARENT_WITH_DEFAULT(GST_BASE_SINK_CLASS, event, (baseSink, event), TRUE);
+      break;
+    }
+}
+
 #if GST_CHECK_VERSION(1, 3, 0)
 static void
 webkitVideoSinkSetContext(GstElement* element, GstContext* context)
@@ -554,6 +577,7 @@ static void webkit_video_sink_class_init(WebKitVideoSinkClass* klass)
     baseSinkClass->set_caps = webkitVideoSinkSetCaps;
     baseSinkClass->propose_allocation = webkitVideoSinkProposeAllocation;
     baseSinkClass->query = webkitVideoSinkQuery;
+    baseSinkClass->event = webkitVideoSinkEvent;
 
 #if GST_CHECK_VERSION(1, 3, 0)
     elementClass->set_context = webkitVideoSinkSetContext;
