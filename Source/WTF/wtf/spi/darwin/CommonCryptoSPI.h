@@ -34,6 +34,9 @@
 #endif
 #endif
 
+typedef struct __CCRandom* CCRandomRef;
+extern const CCRandomRef kCCRandomDefault;
+extern "C" int CCRandomCopyBytes(CCRandomRef rnd, void *bytes, size_t count);
 
 #endif // OS(DARWIN)
 

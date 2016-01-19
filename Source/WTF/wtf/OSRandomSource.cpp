@@ -41,7 +41,11 @@
 #endif
 
 #if OS(DARWIN)
+#if PLATFORM(IOS) && !USE(APPLE_INTERNAL_SDK)
 #include <Security/SecRandom.h>
+#else
+#include "CommonCryptoSPI.h"
+#endif
 #endif
 
 namespace WTF {
@@ -61,7 +65,12 @@ NEVER_INLINE NO_RETURN_DUE_TO_CRASH static void crashUnableToReadFromURandom()
 void cryptographicallyRandomValuesFromOS(unsigned char* buffer, size_t length)
 {
 #if OS(DARWIN)
+#if PLATFORM(IOS) && !USE(APPLE_INTERNAL_SDK)
     RELEASE_ASSERT(!SecRandomCopyBytes(kSecRandomDefault, length, buffer));
+#else
+    RELEASE_ASSERT(!CCRandomCopyBytes(kCCRandomDefault, buffer, length));
+#endif
+    
 #elif OS(UNIX)
     int fd = open("/dev/urandom", O_RDONLY, 0);
     if (fd < 0)
