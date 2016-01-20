@@ -388,7 +388,7 @@ bool Font::applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advance
     CTFontTransformOptions options = (enableKerning ? kCTFontTransformApplyPositioning : 0) | (requiresShaping ? kCTFontTransformApplyShaping : 0);
     return CTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
 #elif PLATFORM(QT)
-    QRawFont::LayoutFlags flags = (typesettingFeatures & Kerning) ? QRawFont::KernedAdvances : QRawFont::SeparateAdvances;
+    QRawFont::LayoutFlags flags = enableKerning ? QRawFont::KernedAdvances : QRawFont::SeparateAdvances;
     return m_platformData.rawFont().advancesForGlyphIndexes(glyphs, advances, glyphCount, flags);
 #else
     UNUSED_PARAM(glyphs);

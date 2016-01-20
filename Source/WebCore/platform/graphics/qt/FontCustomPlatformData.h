@@ -30,6 +30,7 @@
 
 namespace WebCore {
 
+class FontDescription;
 class FontPlatformData;
 class SharedBuffer;
 
@@ -38,15 +39,14 @@ struct FontCustomPlatformData {
 public:
     FontCustomPlatformData() { }
 
-    FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal,
-                                      FontWidthVariant = RegularWidth, FontRenderingMode = FontRenderingMode::Normal);
+    FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic);
 
     static bool supportsFormat(const String&);
 
     QRawFont m_rawFont;
 };
 
-FontCustomPlatformData* createFontCustomPlatformData(SharedBuffer* buffer);
+std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer&);
 
 } // namespace WebCore
 

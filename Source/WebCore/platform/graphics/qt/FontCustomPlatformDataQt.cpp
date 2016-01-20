@@ -31,30 +31,30 @@
 
 namespace WebCore {
 
-FontPlatformData FontCustomPlatformData::fontPlatformData(int size, bool bold, bool italic, FontOrientation, FontWidthVariant, FontRenderingMode)
+FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription& description, bool bold, bool italic)
 {
     Q_ASSERT(m_rawFont.isValid());
+    int size = description.computedPixelSize();
     m_rawFont.setPixelSize(qreal(size));
     return FontPlatformData(m_rawFont);
 }
 
-FontCustomPlatformData* createFontCustomPlatformData(SharedBuffer* buffer)
+std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer)
 {
-    ASSERT_ARG(buffer, buffer);
-
 #if USE(ZLIB)
+    SharedBuffer* fontBuffer = &buffer;
     RefPtr<SharedBuffer> sfntBuffer;
-    if (isWOFF(buffer)) {
+    if (isWOFF(&buffer)) {
         Vector<char> sfnt;
-        if (!convertWOFFToSfnt(buffer, sfnt))
+        if (!convertWOFFToSfnt(&buffer, sfnt))
             return 0;
 
         sfntBuffer = SharedBuffer::adoptVector(sfnt);
-        buffer = sfntBuffer.get();
+        fontBuffer = sfntBuffer.get();
     }
 #endif // USE(ZLIB)
 
-    const QByteArray fontData(buffer->data(), buffer->size());
+    const QByteArray fontData(fontBuffer->data(), fontBuffer->size());
 #if !USE(ZLIB)
     if (fontData.startsWith("wOFF")) {
         qWarning("WOFF support requires QtWebKit to be built with zlib support.");
@@ -66,7 +66,7 @@ FontCustomPlatformData* createFontCustomPlatformData(SharedBuffer* buffer)
     if (!rawFont.isValid())
         return 0;
 
-    FontCustomPlatformData *data = new FontCustomPlatformData;
+    auto data = std::make_unique<FontCustomPlatformData>();
     data->m_rawFont = rawFont;
     return data;
 }

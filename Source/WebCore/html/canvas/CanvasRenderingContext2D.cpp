@@ -2416,14 +2416,14 @@ Ref<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)
 
 #if PLATFORM(QT)
     // We always use complex text shaping since it can't be turned off for QPainterPath::addText().
-    Font::CodePath oldCodePath = Font::codePath();
-    Font::setCodePath(Font::Complex);
+    FontCascade::CodePath oldCodePath = FontCascade::codePath();
+    FontCascade::setCodePath(FontCascade::Complex);
 #endif
 
     metrics->setWidth(fontProxy().width(TextRun(normalizedText)));
 
 #if PLATFORM(QT)
-    Font::setCodePath(oldCodePath);
+    FontCascade::setCodePath(oldCodePath);
 #endif
 
     return metrics;
@@ -2585,8 +2585,8 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
 
 #if PLATFORM(QT)
     // We always use complex text shaping since it can't be turned off for QPainterPath::addText().
-    Font::CodePath oldCodePath = Font::codePath();
-    Font::setCodePath(Font::Complex);
+    FontCascade::CodePath oldCodePath = FontCascade::codePath();
+    FontCascade::setCodePath(FontCascade::Complex);
 #endif
 
     GraphicsContextStateSaver stateSaver(*c);
@@ -2612,7 +2612,7 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
     }
 
 #if PLATFORM(QT)
-    Font::setCodePath(oldCodePath);
+    FontCascade::setCodePath(oldCodePath);
 #endif
 }
 
