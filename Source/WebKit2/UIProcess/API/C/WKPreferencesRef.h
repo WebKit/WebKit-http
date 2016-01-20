@@ -274,6 +274,10 @@ WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef pr
 WK_EXPORT void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences);
 
+// Default to false.
+WK_EXPORT void WKPreferencesSetGamepadsEnabled(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetGamepadsEnabled(WKPreferencesRef preferencesRef);
+
 #ifdef __cplusplus
 }
 #endif
