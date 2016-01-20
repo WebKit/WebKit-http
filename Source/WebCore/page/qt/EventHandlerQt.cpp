@@ -53,7 +53,7 @@
 namespace WebCore {
 
 #if ENABLE(DRAG_SUPPORT)
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_OSX)
 const double EventHandler::TextDragDelay = 0.15;
 #else
 const double EventHandler::TextDragDelay = 0.0;
