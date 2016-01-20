@@ -1213,8 +1213,8 @@ static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
 static void appendPipelineAppSinkEOS(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap);
-static gboolean appendPipelineDataStarveTimeout(AppendPipeline* ap);
-static gboolean appendPipelineLastSampleTimeout(AppendPipeline* ap);
+static gboolean appendPipelineDataStarveTimeout(gpointer);
+static gboolean appendPipelineLastSampleTimeout(gpointer);
 
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
 {
@@ -1453,7 +1453,7 @@ gint AppendPipeline::id()
 void AppendPipeline::scheduleDataStarveTimer()
 {
     LOG_MEDIA_MESSAGE("Scheduling data starve timer");
-    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, GSourceFunc(appendPipelineDataStarveTimeout), this);
+    m_dataStarvedTimeoutTag = g_timeout_add(s_dataStarvedTimeoutMsec, appendPipelineDataStarveTimeout, this);
 }
 
 void AppendPipeline::cancelDataStarveTimer()
@@ -1470,7 +1470,7 @@ void AppendPipeline::scheduleLastSampleTimer()
 {
     if (m_lastSampleTimeoutTag)
         cancelLastSampleTimer();
-    m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, GSourceFunc(appendPipelineLastSampleTimeout), this);
+    m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, appendPipelineLastSampleTimeout, this);
 }
 
 void AppendPipeline::cancelLastSampleTimer()
@@ -2299,23 +2299,17 @@ static gboolean appendPipelineAppSinkEOSMainThread(AppendPipeline* ap)
     return G_SOURCE_REMOVE;
 }
 
-static gboolean appendPipelineDataStarveTimeout(AppendPipeline* ap)
+static gboolean appendPipelineDataStarveTimeout(gpointer)
 {
-    LOG_MEDIA_MESSAGE("data starve timer fired");
-    if (ap->appendStage()==AppendPipeline::AppendStage::Invalid)
-        return G_SOURCE_REMOVE;
-
-    ap->setAppendStage(AppendPipeline::DataStarve);
+    ERROR_MEDIA_MESSAGE("data starve timer fired");
+    ASSERT_NOT_REACHED();
     return G_SOURCE_REMOVE;
 }
 
-static gboolean appendPipelineLastSampleTimeout(AppendPipeline* ap)
+static gboolean appendPipelineLastSampleTimeout(gpointer)
 {
-    TRACE_MEDIA_MESSAGE("last sample timer fired");
-    if (ap->appendStage()==AppendPipeline::AppendStage::Invalid)
-        return G_SOURCE_REMOVE;
-
-    ap->setAppendStage(AppendPipeline::LastSample);
+    ERROR_MEDIA_MESSAGE("last sample timer fired");
+    ASSERT_NOT_REACHED();
     return G_SOURCE_REMOVE;
 }
 
