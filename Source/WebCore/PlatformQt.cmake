@@ -79,6 +79,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/QtMIMETypeSniffer.cpp
     platform/network/qt/ResourceHandleQt.cpp
     platform/network/qt/ResourceRequestQt.cpp
+    platform/network/qt/ResourceResponseQt.cpp
     platform/network/qt/SocketStreamHandleQt.cpp
     platform/qt/CursorQt.cpp
     platform/qt/DataTransferItemListQt.cpp
