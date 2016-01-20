@@ -120,6 +120,8 @@ public:
 
     void scheduleDataStarveTimer();
     void cancelDataStarveTimer();
+    void scheduleLastSampleTimer();
+    void cancelLastSampleTimer();
 
 private:
     void resetPipeline();
@@ -1260,19 +1262,10 @@ AppendPipeline::~AppendPipeline()
     g_mutex_unlock(&m_padAddRemoveMutex);
 
     LOG_MEDIA_MESSAGE("%p", this);
-    if (m_dataStarvedTimeoutTag) {
-        LOG_MEDIA_MESSAGE("m_dataStarvedTimeoutTag=%u", m_dataStarvedTimeoutTag);
-        // TODO: Maybe notify appendComplete here?
-        g_source_remove(m_dataStarvedTimeoutTag);
-        m_dataStarvedTimeoutTag = 0;
-    }
 
-    if (m_lastSampleTimeoutTag) {
-        LOG_MEDIA_MESSAGE("m_lastSampleTimeoutTag=%u", m_lastSampleTimeoutTag);
-        // TODO: Maybe notify appendComplete here?
-        g_source_remove(m_lastSampleTimeoutTag);
-        m_lastSampleTimeoutTag = 0;
-    }
+    cancelDataStarveTimer();
+    // TODO: Maybe notify appendComplete here?
+    cancelLastSampleTimer();
 
     if (m_pipeline) {
         GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
@@ -1420,9 +1413,25 @@ void AppendPipeline::cancelDataStarveTimer()
     if (!m_dataStarvedTimeoutTag)
         return;
 
-    LOG_MEDIA_MESSAGE("Cancelling data starve timer");
+    LOG_MEDIA_MESSAGE("Canceling data starve timer");
     g_source_remove(m_dataStarvedTimeoutTag);
     m_dataStarvedTimeoutTag = 0;
+}
+
+void AppendPipeline::scheduleLastSampleTimer()
+{
+    if (m_lastSampleTimeoutTag)
+        cancelLastSampleTimer();
+    m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, GSourceFunc(appendPipelineLastSampleTimeout), this);
+}
+
+void AppendPipeline::cancelLastSampleTimer()
+{
+    if (!m_lastSampleTimeoutTag)
+        return;
+
+    g_source_remove(m_lastSampleTimeoutTag);
+    m_lastSampleTimeoutTag = 0;
 }
 
 void AppendPipeline::setAppendStage(AppendStage newAppendStage)
@@ -1482,10 +1491,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         case Invalid:
             ok = true;
             cancelDataStarveTimer();
-            if (m_lastSampleTimeoutTag) {
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
+            cancelLastSampleTimer();
             break;
         default:
             break;
@@ -1511,21 +1517,14 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         case Sampling:
             ok = true;
             cancelDataStarveTimer();
-
-            if (m_lastSampleTimeoutTag) {
+            if (m_lastSampleTimeoutTag)
                 TRACE_MEDIA_MESSAGE("lastSampleTimeoutTag already exists while transitioning Ongoing-->Sampling");
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
-            m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, GSourceFunc(appendPipelineLastSampleTimeout), this);
+            scheduleLastSampleTimer();
             break;
         case Invalid:
             ok = true;
             cancelDataStarveTimer();
-            if (m_lastSampleTimeoutTag) {
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
+            cancelLastSampleTimer();
             break;
         default:
             break;
@@ -1555,18 +1554,11 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         switch (newAppendStage) {
         case Sampling:
             ok = true;
-            if (m_lastSampleTimeoutTag) {
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
-            m_lastSampleTimeoutTag = g_timeout_add(s_lastSampleTimeoutMsec, GSourceFunc(appendPipelineLastSampleTimeout), this);
+            scheduleLastSampleTimer();
             break;
         case LastSample:
             ok = true;
-            if (m_lastSampleTimeoutTag) {
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
+            cancelLastSampleTimer();
             m_mediaSourceClient->didReceiveAllPendingSamples(m_sourceBufferPrivate.get());
             if (m_abortPending)
                 nextAppendStage = Aborting;
@@ -1575,10 +1567,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
             break;
         case Invalid:
             ok = true;
-            if (m_lastSampleTimeoutTag) {
-                g_source_remove(m_lastSampleTimeoutTag);
-                m_lastSampleTimeoutTag = 0;
-            }
+            cancelLastSampleTimer();
             break;
         default:
             break;
