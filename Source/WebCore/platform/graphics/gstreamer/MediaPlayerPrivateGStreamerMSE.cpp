@@ -1260,12 +1260,8 @@ AppendPipeline::~AppendPipeline()
     g_mutex_unlock(&m_padAddRemoveMutex);
 
     LOG_MEDIA_MESSAGE("%p", this);
-    if (m_dataStarvedTimeoutTag) {
-        LOG_MEDIA_MESSAGE("m_dataStarvedTimeoutTag=%u", m_dataStarvedTimeoutTag);
-        // TODO: Maybe notify appendComplete here?
-        g_source_remove(m_dataStarvedTimeoutTag);
-        m_dataStarvedTimeoutTag = 0;
-    }
+
+    cancelDataStarveTimer();
 
     if (m_lastSampleTimeoutTag) {
         LOG_MEDIA_MESSAGE("m_lastSampleTimeoutTag=%u", m_lastSampleTimeoutTag);
@@ -1420,7 +1416,7 @@ void AppendPipeline::cancelDataStarveTimer()
     if (!m_dataStarvedTimeoutTag)
         return;
 
-    LOG_MEDIA_MESSAGE("Cancelling data starve timer");
+    LOG_MEDIA_MESSAGE("Canceling data starve timer");
     g_source_remove(m_dataStarvedTimeoutTag);
     m_dataStarvedTimeoutTag = 0;
 }
