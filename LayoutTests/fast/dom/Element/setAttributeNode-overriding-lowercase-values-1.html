@@ -25,29 +25,29 @@ shouldBeFalse('document.documentElement.hasAttributeNS("", "FooBar")');
 
 shouldBe('document.documentElement.attributes.length', '1');
 
-// "FooBar" should nuke the "foobar" value while itself having the "FooBar" name.
+// "FooBar" should nuke the "foobar" value and itself having the "foobar" name.
 var camelCaseFoobar = document.createAttribute("FooBar");
 camelCaseFoobar.value = 'Rocks!'
 var oldAttributeNode = document.documentElement.setAttributeNode(camelCaseFoobar);
 
 shouldNotBe('camelCaseFoobar', 'oldAttributeNode');
 
-shouldBe('document.documentElement.getAttribute("foobar")', 'null');
-shouldBeFalse('document.documentElement.hasAttribute("foobar")');
-shouldBe('document.documentElement.getAttribute("FooBar")', 'null');
-shouldBeFalse('document.documentElement.hasAttribute("FooBar")');
+shouldBeEqualToString('document.documentElement.getAttribute("foobar")', 'Rocks!');
+shouldBeTrue('document.documentElement.hasAttribute("foobar")');
+shouldBeEqualToString('document.documentElement.getAttribute("FooBar")', 'Rocks!');
+shouldBeTrue('document.documentElement.hasAttribute("FooBar")');
 
-shouldBe('document.documentElement.getAttributeNS("", "foobar")', 'null');
-shouldBeFalse('document.documentElement.hasAttributeNS("", "foobar")');
-shouldBeEqualToString('document.documentElement.getAttributeNS("", "FooBar")', 'Rocks!');
-shouldBeTrue('document.documentElement.hasAttributeNS("", "FooBar")');
+shouldBeEqualToString('document.documentElement.getAttributeNS("", "foobar")', 'Rocks!');
+shouldBeTrue('document.documentElement.hasAttributeNS("", "foobar")');
+shouldBeNull('document.documentElement.getAttributeNS("", "FooBar")');
+shouldBeFalse('document.documentElement.hasAttributeNS("", "FooBar")');
 
 // "foobar" should exist alongside "FooBar".
 var lowerCaseFoobar = document.createAttribute("foobar");
 lowerCaseFoobar.value = 'WebKit2'
 var oldAttributeNode2 = document.documentElement.setAttributeNode(lowerCaseFoobar);
 
-shouldBe('oldAttributeNode2', 'null');
+shouldBe('oldAttributeNode2', 'camelCaseFoobar');
 
 shouldBeEqualToString('document.documentElement.getAttribute("foobar")', 'WebKit2');
 shouldBeTrue('document.documentElement.hasAttribute("foobar")');
@@ -56,8 +56,8 @@ shouldBeTrue('document.documentElement.hasAttribute("FooBar")');
 
 shouldBeEqualToString('document.documentElement.getAttributeNS("", "foobar")', 'WebKit2');
 shouldBeTrue('document.documentElement.hasAttributeNS("", "foobar")');
-shouldBeEqualToString('document.documentElement.getAttributeNS("", "FooBar")', 'Rocks!');
-shouldBeTrue('document.documentElement.hasAttributeNS("", "FooBar")');
+shouldBeNull('document.documentElement.getAttributeNS("", "FooBar")');
+shouldBeFalse('document.documentElement.hasAttributeNS("", "FooBar")');
 </script>
 <script src="../../../resources/js-test-post.js"></script>
 </html>

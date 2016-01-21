@@ -224,9 +224,14 @@ enum MediaControlEvent {
 
     [RaisesException] DOMString repaintRectsAsText();
 
-    [RaisesException] void garbageCollectDocumentResources();
+    // These throw if the element does not have a compositing layer.
+    [RaisesException] void setElementUsesDisplayListDrawing(Element element, boolean usesDisplayListDrawing);
 
-    void allowRoundingHacks();
+    // Flags for displayListForElement.
+    const unsigned short DISPLAY_LIST_INCLUDES_PLATFORM_OPERATIONS = 1;
+    [RaisesException] DOMString displayListForElement(Element element, optional unsigned short flags);
+
+    [RaisesException] void garbageCollectDocumentResources();
 
     [RaisesException] void insertAuthorCSS(DOMString css);
     [RaisesException] void insertUserCSS(DOMString css);

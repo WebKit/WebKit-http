@@ -1278,21 +1278,21 @@ bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, c
     paintInfo.context().setFillColor(renderer.style().visitedDependentColor(CSSPropertyColor));
     paintInfo.context().setStrokeStyle(NoStroke);
 
-    FloatPoint arrow1[3];
-    arrow1[0] = FloatPoint(leftEdge, centerY - spaceBetweenArrows / 2.0f);
-    arrow1[1] = FloatPoint(leftEdge + arrowWidth, centerY - spaceBetweenArrows / 2.0f);
-    arrow1[2] = FloatPoint(leftEdge + arrowWidth / 2.0f, centerY - spaceBetweenArrows / 2.0f - arrowHeight);
-
     // Draw the top arrow
-    paintInfo.context().drawConvexPolygon(3, arrow1, true);
-
-    FloatPoint arrow2[3];
-    arrow2[0] = FloatPoint(leftEdge, centerY + spaceBetweenArrows / 2.0f);
-    arrow2[1] = FloatPoint(leftEdge + arrowWidth, centerY + spaceBetweenArrows / 2.0f);
-    arrow2[2] = FloatPoint(leftEdge + arrowWidth / 2.0f, centerY + spaceBetweenArrows / 2.0f + arrowHeight);
+    Vector<FloatPoint> arrow1 = {
+        { leftEdge, centerY - spaceBetweenArrows / 2.0f },
+        { leftEdge + arrowWidth, centerY - spaceBetweenArrows / 2.0f },
+        { leftEdge + arrowWidth / 2.0f, centerY - spaceBetweenArrows / 2.0f - arrowHeight }
+    };
+    paintInfo.context().fillPath(Path::polygonPathFromPoints(arrow1));
 
     // Draw the bottom arrow
-    paintInfo.context().drawConvexPolygon(3, arrow2, true);
+    Vector<FloatPoint> arrow2 = {
+        { leftEdge, centerY + spaceBetweenArrows / 2.0f },
+        { leftEdge + arrowWidth, centerY + spaceBetweenArrows / 2.0f },
+        { leftEdge + arrowWidth / 2.0f, centerY + spaceBetweenArrows / 2.0f + arrowHeight }
+    };
+    paintInfo.context().fillPath(Path::polygonPathFromPoints(arrow2));
 
     Color leftSeparatorColor(0, 0, 0, 40);
     Color rightSeparatorColor(255, 255, 255, 40);
@@ -2014,9 +2014,9 @@ String RenderThemeMac::fileListNameForWidth(const FileList* fileList, const Font
     else if (fileList->length() == 1)
         strToTruncate = [[NSFileManager defaultManager] displayNameAtPath:(fileList->item(0)->path())];
     else
-        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font, StringTruncator::EnableRoundingHacks);
+        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font);
 
-    return StringTruncator::centerTruncate(strToTruncate, width, font, StringTruncator::EnableRoundingHacks);
+    return StringTruncator::centerTruncate(strToTruncate, width, font);
 }
 
 #if ENABLE(SERVICE_CONTROLS)

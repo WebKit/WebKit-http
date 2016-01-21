@@ -253,9 +253,16 @@ public:
     String mainThreadScrollingReasons(ExceptionCode&) const;
     RefPtr<ClientRectList> nonFastScrollableRects(ExceptionCode&) const;
 
-    void garbageCollectDocumentResources(ExceptionCode&) const;
+    void setElementUsesDisplayListDrawing(Element*, bool usesDisplayListDrawing, ExceptionCode&);
 
-    void allowRoundingHacks() const;
+    enum {
+        // Values need to be kept in sync with Internals.idl.
+        DISPLAY_LIST_INCLUDES_PLATFORM_OPERATIONS = 1,
+    };
+    String displayListForElement(Element*, unsigned flags, ExceptionCode&);
+    String displayListForElement(Element*, ExceptionCode&);
+
+    void garbageCollectDocumentResources(ExceptionCode&) const;
 
     void insertAuthorCSS(const String&, ExceptionCode&) const;
     void insertUserCSS(const String&, ExceptionCode&) const;

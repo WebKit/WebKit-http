@@ -525,7 +525,7 @@ def mipsLowerMisplacedImmediates(list)
             when /^(addi|subi)/
                 newList << node.riscLowerMalformedImmediatesRecurse(newList, -0x7fff..0x7fff)
             when "andi", "andp", "ori", "orp", "xori", "xorp"
-                newList << node.riscLowerMalformedImmediatesRecurse(newList, 0..0x7fff)
+                newList << node.riscLowerMalformedImmediatesRecurse(newList, 0..0xffff)
             else
                 newList << node
             end
@@ -1034,6 +1034,8 @@ class Instruction
             $asm.puts "movz #{operands[0].mipsOperand}, #{operands[1].mipsOperand}, #{operands[2].mipsOperand}"
         when "movn"
             $asm.puts "movn #{operands[0].mipsOperand}, #{operands[1].mipsOperand}, #{operands[2].mipsOperand}"
+        when "setcallreg"
+            $asm.puts "move #{MIPS_CALL_REG.mipsOperand}, #{operands[0].mipsOperand}"
         when "slt", "sltb"
             $asm.puts "slt #{operands[0].mipsOperand}, #{operands[1].mipsOperand}, #{operands[2].mipsOperand}"
         when "sltu", "sltub"

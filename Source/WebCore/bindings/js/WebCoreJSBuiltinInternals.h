@@ -27,6 +27,8 @@
 #ifndef WebCoreJSBuiltinInternals_h
 #define WebCoreJSBuiltinInternals_h
 
+#include <runtime/VM.h>
+
 #if ENABLE(MEDIA_STREAM)
 #include "RTCPeerConnectionInternalsBuiltins.h"
 #endif
@@ -35,10 +37,6 @@
 #include "ReadableStreamInternalsBuiltins.h"
 #include "StreamInternalsBuiltins.h"
 #include "WritableStreamInternalsBuiltins.h"
-#endif
-
-#if ENABLE(STREAMS_API) || ENABLE(MEDIA_STREAM)
-#define SKIP_UNUSED_PARAM
 #endif
 
 namespace WebCore {

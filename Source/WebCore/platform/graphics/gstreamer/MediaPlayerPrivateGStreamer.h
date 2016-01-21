@@ -221,7 +221,10 @@ protected:
     GRefPtr<GstElement> m_textAppSink;
     GRefPtr<GstPad> m_textAppSinkPad;
 #endif
-    float m_endTime;
+    float m_seekTime;
+    bool m_changingRate;
+    bool m_isEndReached;
+    mutable bool m_isStreaming;
     GstStructure* m_mediaLocations;
     int m_mediaLocationCurrentIndex;
     bool m_playbackRatePause;

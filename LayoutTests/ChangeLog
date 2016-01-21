@@ -1,3 +1,2651 @@
+2016-01-20  Zalan Bujtas  <zalan@apple.com>
+
+        http://victordarras.fr/cssgame/ doesn't work in Safari.
+        https://bugs.webkit.org/show_bug.cgi?id=153285
+        <rdar://problem/24212369>
+
+        Reviewed by Tim Horton.
+
+        This patch adds support for hittesting ClipPathOperation::Reference.
+
+        * svg/clip-path/hittest-clip-path-reference-miss-expected.html: Added.
+        * svg/clip-path/hittest-clip-path-reference-miss.html: Added.
+
+2016-01-20  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Add -private.html variants of every storage/indexeddb test that doesn't already have them.
+        https://bugs.webkit.org/show_bug.cgi?id=153272
+
+        Reviewed by Alex Christensen.
+
+        This includes some cleanups to the shared js files to make each test more resilient to being run twice.
+        
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+        * storage/indexeddb/clone-exception-private-expected.txt: Added.
+        * storage/indexeddb/clone-exception-private.html: Added.
+        * storage/indexeddb/closed-cursor-private-expected.txt: Added.
+        * storage/indexeddb/closed-cursor-private.html: Added.
+        * storage/indexeddb/connection-leak-private-expected.txt: Added.
+        * storage/indexeddb/connection-leak-private.html: Added.
+        * storage/indexeddb/cursor-cast-private-expected.txt: Added.
+        * storage/indexeddb/cursor-cast-private.html: Added.
+        * storage/indexeddb/cursor-leak-private-expected.txt: Added.
+        * storage/indexeddb/cursor-leak-private.html: Added.
+        * storage/indexeddb/cursor-overloads-private-expected.txt: Added.
+        * storage/indexeddb/cursor-overloads-private.html: Added.
+        * storage/indexeddb/cursor-request-cycle-private-expected.txt: Added.
+        * storage/indexeddb/cursor-request-cycle-private.html: Added.
+        * storage/indexeddb/deleteIndex-bug110792-private-expected.txt: Added.
+        * storage/indexeddb/deleteIndex-bug110792-private.html: Added.
+        * storage/indexeddb/deletedatabase-delayed-by-versionchange-private-expected.txt: Removed.
+        * storage/indexeddb/deletedatabase-transaction-private-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-transaction-private.html: Added.
+        * storage/indexeddb/dont-commit-on-blocked-private-expected.txt: Added.
+        * storage/indexeddb/dont-commit-on-blocked-private.html: Added.
+        * storage/indexeddb/lazy-index-population-private-expected.txt: Added.
+        * storage/indexeddb/lazy-index-population-private.html: Added.
+        * storage/indexeddb/metadata-race-private-expected.txt: Added.
+        * storage/indexeddb/metadata-race-private.html: Added.
+        * storage/indexeddb/modern/abort-objectstore-info-private-expected.txt: Added.
+        * storage/indexeddb/modern/abort-objectstore-info-private.html: Added.
+        * storage/indexeddb/modern/abort-requests-cancelled-private-expected.txt: Added.
+        * storage/indexeddb/modern/abort-requests-cancelled-private.html: Added.
+        * storage/indexeddb/modern/aborted-put-private-expected.txt: Added.
+        * storage/indexeddb/modern/aborted-put-private.html: Added.
+        * storage/indexeddb/modern/autoincrement-abort-private-expected.txt: Added.
+        * storage/indexeddb/modern/autoincrement-abort-private.html: Added.
+        * storage/indexeddb/modern/basic-add-private-expected.txt: Added.
+        * storage/indexeddb/modern/basic-add-private.html: Added.
+        * storage/indexeddb/modern/basic-put-private-expected.txt: Added.
+        * storage/indexeddb/modern/basic-put-private.html: Added.
+        * storage/indexeddb/modern/blocked-open-db-requests-private-expected.txt: Added.
+        * storage/indexeddb/modern/blocked-open-db-requests-private.html: Added.
+        * storage/indexeddb/modern/create-index-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/create-index-failures-private.html: Added.
+        * storage/indexeddb/modern/createobjectstore-basic-private-expected.txt: Added.
+        * storage/indexeddb/modern/createobjectstore-basic-private.html: Added.
+        * storage/indexeddb/modern/createobjectstore-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/createobjectstore-failures-private.html: Added.
+        * storage/indexeddb/modern/cursor-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-1-private.html: Added.
+        * storage/indexeddb/modern/cursor-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-2-private.html: Added.
+        * storage/indexeddb/modern/cursor-3-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-3-private.html: Added.
+        * storage/indexeddb/modern/cursor-4-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-4-private.html: Added.
+        * storage/indexeddb/modern/cursor-5-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-5-private.html: Added.
+        * storage/indexeddb/modern/cursor-6-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-6-private.html: Added.
+        * storage/indexeddb/modern/cursor-7-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-7-private.html: Added.
+        * storage/indexeddb/modern/cursor-8-private-expected.txt: Added.
+        * storage/indexeddb/modern/cursor-8-private.html: Added.
+        * storage/indexeddb/modern/date-basic-private-expected.txt: Added.
+        * storage/indexeddb/modern/date-basic-private.html: Added.
+        * storage/indexeddb/modern/deletedatabase-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-1-private.html: Added.
+        * storage/indexeddb/modern/deletedatabase-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-2-private.html: Added.
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-private-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-private.html: Added.
+        * storage/indexeddb/modern/deletedatabase-request-event-private-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-request-event-private.html: Added.
+        * storage/indexeddb/modern/deletedatabase-request-private-expected.txt: Added.
+        * storage/indexeddb/modern/deletedatabase-request-private.html: Added.
+        * storage/indexeddb/modern/deleteindex-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/deleteindex-1-private.html: Added.
+        * storage/indexeddb/modern/deleteindex-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/deleteindex-2-private.html: Added.
+        * storage/indexeddb/modern/deleteobjectstore-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/deleteobjectstore-1-private.html: Added.
+        * storage/indexeddb/modern/double-abort-private-expected.txt: Added.
+        * storage/indexeddb/modern/double-abort-private.html: Added.
+        * storage/indexeddb/modern/double-open-private-expected.txt: Added.
+        * storage/indexeddb/modern/double-open-private.html: Added.
+        * storage/indexeddb/modern/get-index-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/get-index-failures-private.html: Added.
+        * storage/indexeddb/modern/get-keyrange-private-expected.txt: Added.
+        * storage/indexeddb/modern/get-keyrange-private.html: Added.
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-private.html: Added.
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-private.html: Added.
+        * storage/indexeddb/modern/idbindex-properties-basic-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbindex-properties-basic-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-clear-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-clear-1-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-clear-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-clear-2-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-count-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-count-1-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-count-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-count-failures-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-1-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-2-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-delete-failures-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-get-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-get-failures-private.html: Added.
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-private.html: Added.
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html: Added.
+        * storage/indexeddb/modern/index-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-1-private.html: Added.
+        * storage/indexeddb/modern/index-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-2-private.html: Added.
+        * storage/indexeddb/modern/index-3-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-3-private.html: Added.
+        * storage/indexeddb/modern/index-4-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-4-private.html: Added.
+        * storage/indexeddb/modern/index-5-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-5-private.html: Added.
+        * storage/indexeddb/modern/index-cursor-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-cursor-1-private.html: Added.
+        * storage/indexeddb/modern/index-cursor-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-cursor-2-private.html: Added.
+        * storage/indexeddb/modern/index-cursor-3-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-cursor-3-private.html: Added.
+        * storage/indexeddb/modern/index-get-count-basic-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-get-count-basic-private.html: Added.
+        * storage/indexeddb/modern/index-get-count-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/index-get-count-failures-private.html: Added.
+        * storage/indexeddb/modern/keypath-basic-private-expected.txt: Added.
+        * storage/indexeddb/modern/keypath-basic-private.html: Added.
+        * storage/indexeddb/modern/memory-index-not-deleted-with-objectstore-private-expected.txt: Added.
+        * storage/indexeddb/modern/memory-index-not-deleted-with-objectstore-private.html: Added.
+        * storage/indexeddb/modern/objectstore-attributes-private-expected.txt: Added.
+        * storage/indexeddb/modern/objectstore-attributes-private.html: Added.
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures-private.html: Added.
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures-private.html: Added.
+        * storage/indexeddb/modern/opencursor-failures-private-expected.txt: Added.
+        * storage/indexeddb/modern/opencursor-failures-private.html: Added.
+        * storage/indexeddb/modern/opendatabase-request-event-private-expected.txt: Added.
+        * storage/indexeddb/modern/opendatabase-request-event-private.html: Added.
+        * storage/indexeddb/modern/opendatabase-request-private-expected.txt: Added.
+        * storage/indexeddb/modern/opendatabase-request-private.html: Added.
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange-private-expected.txt: Added.
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange-private.html: Added.
+        * storage/indexeddb/modern/opendatabase-versions-private-expected.txt: Added.
+        * storage/indexeddb/modern/opendatabase-versions-private.html: Added.
+        * storage/indexeddb/modern/request-readystate-private-expected.txt: Added.
+        * storage/indexeddb/modern/request-readystate-private.html: Added.
+        * storage/indexeddb/modern/resources/opendatabase-request-event.js:
+        * storage/indexeddb/modern/resources/opendatabase-versions.js:
+        * storage/indexeddb/modern/resources/request-readystate.js:
+        * storage/indexeddb/modern/resources/versionchange-abort-then-reopen.js:
+        * storage/indexeddb/modern/transaction-scheduler-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-1-private.html: Added.
+        * storage/indexeddb/modern/transaction-scheduler-2-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-2-private.html: Added.
+        * storage/indexeddb/modern/transaction-scheduler-3-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-3-private.html: Added.
+        * storage/indexeddb/modern/transaction-scheduler-4-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-4-private.html: Added.
+        * storage/indexeddb/modern/transaction-scheduler-5-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-5-private.html: Added.
+        * storage/indexeddb/modern/transaction-scheduler-6-private-expected.txt: Added.
+        * storage/indexeddb/modern/transaction-scheduler-6-private.html: Added.
+        * storage/indexeddb/modern/transactions-stop-on-navigation-private-expected.txt: Added.
+        * storage/indexeddb/modern/transactions-stop-on-navigation-private.html: Added.
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-private-expected.txt: Added.
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-private.html: Added.
+        * storage/indexeddb/modern/versionchange-event-private-expected.txt: Added.
+        * storage/indexeddb/modern/versionchange-event-private.html: Added.
+        * storage/indexeddb/mozilla/add-twice-failure-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/add-twice-failure-private.html: Added.
+        * storage/indexeddb/mozilla/autoincrement-indexes-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/autoincrement-indexes-private.html: Added.
+        * storage/indexeddb/mozilla/bad-keypath-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/bad-keypath-private.html: Added.
+        * storage/indexeddb/mozilla/clear-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/clear-private.html: Added.
+        * storage/indexeddb/mozilla/create-index-unique-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/create-index-unique-private.html: Added.
+        * storage/indexeddb/mozilla/create-index-with-integer-keys-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/create-index-with-integer-keys-private.html: Added.
+        * storage/indexeddb/mozilla/create-objectstore-basics-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/create-objectstore-basics-private.html: Added.
+        * storage/indexeddb/mozilla/create-objectstore-null-name-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/create-objectstore-null-name-private.html: Added.
+        * storage/indexeddb/mozilla/cursor-mutation-objectstore-only-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/cursor-mutation-objectstore-only-private.html: Added.
+        * storage/indexeddb/mozilla/cursor-mutation-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/cursor-mutation-private.html: Added.
+        * storage/indexeddb/mozilla/cursor-update-updates-indexes-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/cursor-update-updates-indexes-private.html: Added.
+        * storage/indexeddb/mozilla/cursors-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/cursors-private.html: Added.
+        * storage/indexeddb/mozilla/delete-result-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/delete-result-private.html: Added.
+        * storage/indexeddb/mozilla/event-source-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/event-source-private.html: Added.
+        * storage/indexeddb/mozilla/global-data-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/global-data-private.html: Added.
+        * storage/indexeddb/mozilla/index-prev-no-duplicate-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/index-prev-no-duplicate-private.html: Added.
+        * storage/indexeddb/mozilla/indexes-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/indexes-private.html: Added.
+        * storage/indexeddb/mozilla/key-requirements-delete-null-key-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/key-requirements-delete-null-key-private.html: Added.
+        * storage/indexeddb/mozilla/key-requirements-inline-and-passed-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/key-requirements-inline-and-passed-private.html: Added.
+        * storage/indexeddb/mozilla/key-requirements-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/key-requirements-private.html: Added.
+        * storage/indexeddb/mozilla/key-requirements-put-no-key-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/key-requirements-put-no-key-private.html: Added.
+        * storage/indexeddb/mozilla/key-requirements-put-null-key-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/key-requirements-put-null-key-private.html: Added.
+        * storage/indexeddb/mozilla/object-cursors-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/object-cursors-private.html: Added.
+        * storage/indexeddb/mozilla/object-identity-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/object-identity-private.html: Added.
+        * storage/indexeddb/mozilla/object-store-inline-autoincrement-key-added-on-put-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/object-store-inline-autoincrement-key-added-on-put-private.html: Added.
+        * storage/indexeddb/mozilla/object-store-remove-values-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/object-store-remove-values-private.html: Added.
+        * storage/indexeddb/mozilla/objectstorenames-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/objectstorenames-private.html: Added.
+        * storage/indexeddb/mozilla/odd-result-order-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/odd-result-order-private.html: Added.
+        * storage/indexeddb/mozilla/open-database-null-name-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/open-database-null-name-private.html: Added.
+        * storage/indexeddb/mozilla/put-get-values-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/put-get-values-private.html: Added.
+        * storage/indexeddb/mozilla/readonly-transactions-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/readonly-transactions-private.html: Added.
+        * storage/indexeddb/mozilla/readwrite-transactions-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/readwrite-transactions-private.html: Added.
+        * storage/indexeddb/mozilla/readyState-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/readyState-private.html: Added.
+        * storage/indexeddb/mozilla/remove-index-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/remove-index-private.html: Added.
+        * storage/indexeddb/mozilla/remove-objectstore-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/remove-objectstore-private.html: Added.
+        * storage/indexeddb/mozilla/versionchange-abort-private-expected.txt: Added.
+        * storage/indexeddb/mozilla/versionchange-abort-private.html: Added.
+        * storage/indexeddb/noblobs-private-expected.txt: Added.
+        * storage/indexeddb/noblobs-private.html: Added.
+        * storage/indexeddb/object-lookups-in-versionchange-private-expected.txt: Added.
+        * storage/indexeddb/object-lookups-in-versionchange-private.html: Added.
+        * storage/indexeddb/open-bad-versions-private-expected.txt: Added.
+        * storage/indexeddb/open-bad-versions-private.html: Added.
+        * storage/indexeddb/optional-arguments-private-expected.txt: Added.
+        * storage/indexeddb/optional-arguments-private.html: Added.
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-private-expected.txt: Added.
+        * storage/indexeddb/pending-version-change-stuck-works-with-terminate-private.html: Added.
+        * storage/indexeddb/prefetch-invalidation-private-expected.txt: Added.
+        * storage/indexeddb/prefetch-invalidation-private.html: Added.
+        * storage/indexeddb/prefetch-race-private-expected.txt: Added.
+        * storage/indexeddb/prefetch-race-private.html: Added.
+        * storage/indexeddb/primary-key-unique-to-objectstore-private-expected.txt: Added.
+        * storage/indexeddb/primary-key-unique-to-objectstore-private.html: Added.
+        * storage/indexeddb/request-leak-private-expected.txt: Added.
+        * storage/indexeddb/request-leak-private.html: Added.
+        * storage/indexeddb/request-result-cache-private-expected.txt: Added.
+        * storage/indexeddb/request-result-cache-private.html: Added.
+        * storage/indexeddb/resources/primary-key-unique-to-objectstore.js:
+        * storage/indexeddb/resources/shared.js:
+        * storage/indexeddb/resources/version-change-event-basic.js:
+        * storage/indexeddb/structured-clone-private-expected.txt: Added.
+        * storage/indexeddb/structured-clone-private.html: Added.
+        * storage/indexeddb/transaction-complete-with-js-recursion-cross-frame-private-expected.txt: Added.
+        * storage/indexeddb/transaction-complete-with-js-recursion-cross-frame-private.html: Added.
+        * storage/indexeddb/transaction-complete-with-js-recursion-private-expected.txt: Added.
+        * storage/indexeddb/transaction-complete-with-js-recursion-private.html: Added.
+        * storage/indexeddb/transaction-crash-in-tasks-private-expected.txt: Added.
+        * storage/indexeddb/transaction-crash-in-tasks-private.html: Added.
+        * storage/indexeddb/transaction-ordering-private-expected.txt: Added.
+        * storage/indexeddb/transaction-ordering-private.html: Added.
+        * storage/indexeddb/transaction-overlapping-private-expected.txt: Added.
+        * storage/indexeddb/transaction-overlapping-private.html: Added.
+        * storage/indexeddb/transaction-starvation-private-expected.txt: Removed.
+        * storage/indexeddb/version-change-event-basic-private-expected.txt: Added.
+        * storage/indexeddb/version-change-event-basic-private.html: Added.
+        * storage/indexeddb/version-change-event-private-expected.txt: Added.
+        * storage/indexeddb/version-change-event-private.html: Added.
+
+2016-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update ios-simulator specific -expected.txt files after most recent WPT revision in r194580
+        https://bugs.webkit.org/show_bug.cgi?id=152139
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-checkValidity-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valid-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-valueMissing-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-textselection-01-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/semantics/forms/the-label-element/labelable-elements-expected.txt:
+
+2016-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Follow up to r195361. Removing ios-simulator-wk2 fast/viewport/ios directory pass expectation, explicitly re-enabling passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=153110
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-20  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Date.prototype.toLocaleTimeString in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147613
+
+        Reviewed by Darin Adler.
+
+        Added tests for toLocaleTimeString.
+
+        * js/date-toLocaleString-expected.txt:
+        * js/script-tests/date-toLocaleString.js:
+
+2016-01-20  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Make storage/indexeddb/modern tests more modern.
+        https://bugs.webkit.org/show_bug.cgi?id=153284
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/modern/abort-requests-cancelled-expected.txt:
+        * storage/indexeddb/modern/aborted-put-expected.txt:
+        * storage/indexeddb/modern/autoincrement-abort-expected.txt:
+        * storage/indexeddb/modern/basic-add-expected.txt:
+        * storage/indexeddb/modern/basic-put-expected.txt:
+        * storage/indexeddb/modern/create-index-failures-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-basic-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/cursor-1-expected.txt:
+        * storage/indexeddb/modern/cursor-2-expected.txt:
+        * storage/indexeddb/modern/cursor-3-expected.txt:
+        * storage/indexeddb/modern/cursor-4-expected.txt:
+        * storage/indexeddb/modern/cursor-5-expected.txt:
+        * storage/indexeddb/modern/cursor-6-expected.txt:
+        * storage/indexeddb/modern/cursor-7-expected.txt:
+        * storage/indexeddb/modern/cursor-8-expected.txt:
+        * storage/indexeddb/modern/date-basic-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-1-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-2-expected.txt:
+        * storage/indexeddb/modern/deleteindex-1-expected.txt:
+        * storage/indexeddb/modern/deleteindex-2-expected.txt:
+        * storage/indexeddb/modern/deleteobjectstore-1-expected.txt:
+        * storage/indexeddb/modern/double-abort-expected.txt:
+        * storage/indexeddb/modern/get-index-failures-expected.txt:
+        * storage/indexeddb/modern/get-keyrange-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-expected.txt:
+        * storage/indexeddb/modern/idbindex-properties-basic-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-2-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-2-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-get-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-expected.txt:
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-expected.txt:
+        * storage/indexeddb/modern/index-1-expected.txt:
+        * storage/indexeddb/modern/index-2-expected.txt:
+        * storage/indexeddb/modern/index-3-expected.txt:
+        * storage/indexeddb/modern/index-4-expected.txt:
+        * storage/indexeddb/modern/index-5-expected.txt:
+        * storage/indexeddb/modern/index-cursor-1-expected.txt:
+        * storage/indexeddb/modern/index-cursor-2-expected.txt:
+        * storage/indexeddb/modern/index-cursor-3-expected.txt:
+        * storage/indexeddb/modern/index-get-count-basic-expected.txt:
+        * storage/indexeddb/modern/index-get-count-failures-expected.txt:
+        * storage/indexeddb/modern/keypath-basic-expected.txt:
+        * storage/indexeddb/modern/objectstore-attributes-expected.txt:
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures-expected.txt:
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures-expected.txt:
+        * storage/indexeddb/modern/opencursor-failures-expected.txt:
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange-expected.txt:
+        * storage/indexeddb/modern/opendatabase-versions-expected.txt:
+        * storage/indexeddb/modern/resources/abort-requests-cancelled.js:
+        * storage/indexeddb/modern/resources/aborted-put.js:
+        * storage/indexeddb/modern/resources/autoincrement-abort.js:
+        * storage/indexeddb/modern/resources/basic-add.js:
+        * storage/indexeddb/modern/resources/basic-put.js:
+        * storage/indexeddb/modern/resources/create-index-failures.js:
+        * storage/indexeddb/modern/resources/createobjectstore-basic.js:
+        * storage/indexeddb/modern/resources/createobjectstore-failures.js:
+        * storage/indexeddb/modern/resources/cursor-1.js:
+        * storage/indexeddb/modern/resources/cursor-2.js:
+        * storage/indexeddb/modern/resources/cursor-3.js:
+        * storage/indexeddb/modern/resources/cursor-4.js:
+        * storage/indexeddb/modern/resources/cursor-5.js:
+        * storage/indexeddb/modern/resources/cursor-6.js:
+        * storage/indexeddb/modern/resources/cursor-7.js:
+        * storage/indexeddb/modern/resources/cursor-8.js:
+        * storage/indexeddb/modern/resources/date-basic.js:
+        * storage/indexeddb/modern/resources/deletedatabase-1.js:
+        * storage/indexeddb/modern/resources/deletedatabase-2.js:
+        * storage/indexeddb/modern/resources/deletedatabase-null-name-exception.js:
+        * storage/indexeddb/modern/resources/deletedatabase-request-event.js:
+        * storage/indexeddb/modern/resources/deletedatabase-request.js:
+        * storage/indexeddb/modern/resources/deleteindex-1.js:
+        * storage/indexeddb/modern/resources/deleteindex-2.js:
+        * storage/indexeddb/modern/resources/deleteobjectstore-1.js:
+        * storage/indexeddb/modern/resources/double-abort.js:
+        * storage/indexeddb/modern/resources/double-open.js:
+        * storage/indexeddb/modern/resources/get-index-failures.js:
+        * storage/indexeddb/modern/resources/get-keyrange.js:
+        * storage/indexeddb/modern/resources/idbdatabase-deleteobjectstore-failures.js:
+        * storage/indexeddb/modern/resources/idbdatabase-transaction-failures.js:
+        * storage/indexeddb/modern/resources/idbindex-properties-basic.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-1.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-2.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-count-1.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-count-failures.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-1.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-2.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-failures.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-get-failures.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-put-and-clear-failures.js:
+        * storage/indexeddb/modern/resources/idbtransaction-objectstore-failures.js:
+        * storage/indexeddb/modern/resources/index-1.js:
+        * storage/indexeddb/modern/resources/index-2.js:
+        * storage/indexeddb/modern/resources/index-3.js:
+        * storage/indexeddb/modern/resources/index-4.js:
+        * storage/indexeddb/modern/resources/index-5.js:
+        * storage/indexeddb/modern/resources/index-cursor-1.js:
+        * storage/indexeddb/modern/resources/index-cursor-2.js:
+        * storage/indexeddb/modern/resources/index-cursor-3.js:
+        * storage/indexeddb/modern/resources/index-get-count-basic.js:
+        * storage/indexeddb/modern/resources/index-get-count-failures.js:
+        * storage/indexeddb/modern/resources/keypath-basic.js:
+        * storage/indexeddb/modern/resources/objectstore-attributes.js:
+        * storage/indexeddb/modern/resources/objectstore-cursor-advance-failures.js:
+        * storage/indexeddb/modern/resources/objectstore-cursor-continue-failures.js:
+        * storage/indexeddb/modern/resources/opencursor-failures.js:
+        * storage/indexeddb/modern/resources/opendatabase-request-event.js:
+        * storage/indexeddb/modern/resources/opendatabase-request.js:
+        * storage/indexeddb/modern/resources/opendatabase-success-after-versionchange.js:
+        * storage/indexeddb/modern/resources/opendatabase-versions.js:
+        * storage/indexeddb/modern/resources/request-readystate.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-1.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-2.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-3.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-5.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-6.js:
+        * storage/indexeddb/modern/resources/versionchange-abort-then-reopen.js:
+        * storage/indexeddb/modern/resources/versionchange-event.js:
+        * storage/indexeddb/modern/transaction-scheduler-1-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-2-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-3-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-5-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-6-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-expected.txt:
+        * storage/indexeddb/modern/versionchange-event-expected.txt:
+
+2016-01-20  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Hook the sampling profiler into the Timelines UI
+        https://bugs.webkit.org/show_bug.cgi?id=152766
+        <rdar://problem/24066360>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/sampling-profiler: Added.
+        * inspector/sampling-profiler/basic-expected.txt: Added.
+        * inspector/sampling-profiler/basic.html: Added.
+        * inspector/sampling-profiler/call-frame-with-dom-functions-expected.txt: Added.
+        * inspector/sampling-profiler/call-frame-with-dom-functions.html: Added.
+        * inspector/sampling-profiler/eval-source-url-expected.txt: Added.
+        * inspector/sampling-profiler/eval-source-url.html: Added.
+        * inspector/sampling-profiler/many-call-frames-expected.txt: Added.
+        * inspector/sampling-profiler/many-call-frames.html: Added.
+        * inspector/sampling-profiler/named-function-expression-expected.txt: Added.
+        * inspector/sampling-profiler/named-function-expression.html: Added.
+        * inspector/script-profiler/event-type-API-expected.txt:
+        * inspector/script-profiler/event-type-API.html:
+        * inspector/script-profiler/event-type-Microtask-expected.txt:
+        * inspector/script-profiler/event-type-Microtask.html:
+        * inspector/script-profiler/event-type-Other-expected.txt:
+        * inspector/script-profiler/event-type-Other.html:
+        * inspector/script-profiler/tracking-expected.txt:
+        * inspector/script-profiler/tracking.html:
+
+2016-01-20  Daniel Bates  <dabates@apple.com>
+
+        CSP: Add tests to ensure that alternative text of an image is rendered when CSP blocks its load
+        https://bugs.webkit.org/show_bug.cgi?id=153280
+
+        Reviewed by Alexey Proskuryakov.
+
+        These tests were inspired by the Blink test
+        <https://src.chromium.org/viewvc/blink/trunk/LayoutTests/http/tests/security/contentSecurityPolicy/image-blocked-alt-content.html?revision=186800>.
+
+        * http/tests/security/contentSecurityPolicy/image-blocked-alt-text-expected.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-blocked-alt-text.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-data-URL-blocked-alt-text-expected.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-data-URL-blocked-alt-text.html: Added.
+
+2016-01-20  Daniel Bates  <dabates@apple.com>
+
+        CSP: Merge from Blink many new tests and changes to existing tests
+        https://bugs.webkit.org/show_bug.cgi?id=153277
+        <rdar://problem/24260782>
+
+        Reviewed by Brent Fulgham.
+
+        Merge new Content Security Policy tests from Blink as well as changes made to existing tests
+        as of Blink r202656: <https://src.chromium.org/viewvc/blink/trunk/LayoutTests/http/tests/security/contentSecurityPolicy/?pathrev=202656>.
+        Many of these new tests fail and have been marked accordingly with associated WebKit bugs in
+        TestExpectations. We also do not run CSP 1.1 tests as we do not compile with ENABLE(CSP_NEXT)
+        enabled (see <https://bugs.webkit.org/show_bug.cgi?id=85558>). We will look to enable CSP 1.1
+        and make all these merged tests pass in subsequent commits.
+
+        One non-mechanical change I made is that I removed the sub-test for shared workers when
+        merging http/tests/security/contentSecurityPolicy/worker-without-own-csp.html as WebKit does
+        not support shared workers. I also swapped the argument order in the call to assert_equals()
+        in the remaining sub-test so that the expected result, "xhr allowed", is the second argument (as
+        expected by assert_equals()) and hence the failure message would read well.
+
+        The tests http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html,
+        http/tests/security/contentSecurityPolicy/1.1/{script, style}hash-default-src.html do not have
+        expected results and are skipped for now. These tests do not have expected results because no
+        expected results were committed to Blink and it is not straightforward to generate the expected
+        result without reasoning about the test or compiling Blink. When it comes time to enable CSP 1.1
+        support we can generate the expected results and verify correctness.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-about-blank-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-about-blank-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-redirect-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/worker-shared-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-none-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-none-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-self-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-self-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-star-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-star-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-cross-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-none-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-none-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-self-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-self-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-star-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-star-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-same-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-none-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-none-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-self-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-self-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-star-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-star-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-cross-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-none-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-none-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-self-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-self-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-star-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-star-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-same-in-same-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-none-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-none-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-overrides-xfo.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-protocolless-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-protocolless-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-self-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-crossorigin-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-crossorigin.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-sameorigin-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-star-allow-sameorigin.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/meta-outside-head-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/meta-outside-head.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html:
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-always-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-default-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-empty-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-invalid-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-never-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-http-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-http-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-http.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-https-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/referrer-origin-https-https.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/report-uri-effective-directive-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/reportonly-in-meta-ignored-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/reportonly-in-meta-ignored.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-basic-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-default-src.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-ignore-unsafeinline-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-ignore-unsafeinline.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-malformed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-malformed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-unicode-normalization-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-unicode-normalization.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-and-scripthash-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-and-scripthash.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-basic-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-basic-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/source-list-parsing-03-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-ignore-unsafeinline-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-ignore-unsafeinline.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/source-list-parsing-07-expected.txt.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-redirect-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scriptnonce-redirect.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-basics-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-basics.html:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-from-script-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image-from-script.html:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-cross-origin-image.html:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-from-script-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image-from-script.html:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-block-image.html:
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-basic-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-default-src.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-svg-style-basic-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-svg-style-basic-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-basic-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-basic-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-svg-style-basic-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylenonce-svg-style-basic-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/blob-urls-match-self.html:
+        * http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/connect-src-eventsource-redirect-to-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/connect-src-xmlhttprequest-redirect-to-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/csp-header-is-sent-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/csp-header-is-sent.html: Added.
+        * http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode-and-sends-report-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode-and-sends-report.html: Added.
+        * http/tests/security/contentSecurityPolicy/eval-blocked-and-sends-report-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/eval-blocked-and-sends-report.html: Added.
+        * http/tests/security/contentSecurityPolicy/frame-src-cross-origin-load-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/frame-src-cross-origin-load.html: Added.
+        * http/tests/security/contentSecurityPolicy/icon-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/icon-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/icon-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/icon-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/image-document-default-src-none-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/image-document-default-src-none.html: Added.
+        * http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta.html: Added.
+        * http/tests/security/contentSecurityPolicy/manifest-src-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/manifest-src-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/manifest-src-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/manifest-src-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/manifest.test/manifest.json: Added.
+        * http/tests/security/contentSecurityPolicy/object-in-svg-foreignobject-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-in-svg-foreignobject.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-archive-codebase-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-archive-codebase.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-archive-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-archive.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-code-codebase-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-code-codebase.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-code-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-applet-code.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-does-not-affect-child-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-does-not-affect-child.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-code-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-code-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-movie-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-url-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/plugin-in-iframe-with-csp-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/plugin-in-iframe-with-csp.html: Added.
+        * http/tests/security/contentSecurityPolicy/redirect-does-not-match-paths-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/redirect-does-not-match-paths.html: Added.
+        * http/tests/security/contentSecurityPolicy/register-bypassing-scheme-partial-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/register-bypassing-scheme-partial.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-and-enforce-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-and-enforce.html:
+        * http/tests/security/contentSecurityPolicy/report-blocked-data-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-file-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-cross-origin-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-blocked-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-multiple-violations-01-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-multiple-violations-01.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-multiple-violations-02-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-multiple-violations-02.html: Added.
+        * http/tests/security/contentSecurityPolicy/report-only-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-only-from-header-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-child-frame-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-inline-javascript-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-from-javascript-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/report-uri-scheme-relative.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/alert-pass.js: Added.
+        * http/tests/security/contentSecurityPolicy/resources/child-src-test.js: Added.
+        (window.onload):
+        (injectFrame):
+        (iframeLoaded):
+        (injectFrameRedirectingTo):
+        (injectWorker):
+        (injectSharedWorker):
+        * http/tests/security/contentSecurityPolicy/resources/csp-header-is-sent.js: Added.
+        (async_test.xhr.onload):
+        (async_test):
+        (test):
+        * http/tests/security/contentSecurityPolicy/resources/fail-to-inject-script.js: Added.
+        (s.onerror):
+        (s.onload):
+        * http/tests/security/contentSecurityPolicy/resources/frame-ancestors-and-x-frame-options.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/frame-ancestors-test.js: Added.
+        (injectNestedIframe):
+        (injectIFrame):
+        (iframeLoaded):
+        (crossOriginFrameShouldBeBlocked.window.onload):
+        (crossOriginFrameShouldBeBlocked):
+        (crossOriginFrameShouldBeAllowed.window.onload):
+        (crossOriginFrameShouldBeAllowed):
+        (sameOriginFrameShouldBeBlocked.window.onload):
+        (sameOriginFrameShouldBeBlocked):
+        (sameOriginFrameShouldBeAllowed.window.onload):
+        (sameOriginFrameShouldBeAllowed):
+        (window.onload):
+        (testNestedIFrame):
+        * http/tests/security/contentSecurityPolicy/resources/frame-ancestors.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/frame-in-frame.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/generate-csp-report.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/iframe-redirect-not-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/image-document-default-src-none-iframe.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-test.js:
+        * http/tests/security/contentSecurityPolicy/resources/nph-cached-csp.pl:
+        * http/tests/security/contentSecurityPolicy/resources/object-src-param.js: Added.
+        (appendObjectElement.window.onload):
+        (appendObjectElement):
+        * http/tests/security/contentSecurityPolicy/resources/post-message.js: Added.
+        * http/tests/security/contentSecurityPolicy/resources/redir.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/redirect-does-not-match-paths.js: Added.
+        (test):
+        (async_test.img.onload):
+        (async_test):
+        (async_test.xhr.onload):
+        * http/tests/security/contentSecurityPolicy/resources/redirect.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test-endpoint.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test.js: Added.
+        (ReferrerTest.bindHandler):
+        (ReferrerTest.base):
+        (ReferrerTest.generateFrameURL):
+        (ReferrerTest.injectFrame):
+        (expectFullReferrer):
+        (expectNoReferrer):
+        (expectOriginReferrer):
+        * http/tests/security/contentSecurityPolicy/resources/referrer-test.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/sandbox.php:
+        * http/tests/security/contentSecurityPolicy/resources/script-redirect-not-allowed.js: Added.
+        * http/tests/security/contentSecurityPolicy/resources/script-set-value.js: Added.
+        * http/tests/security/contentSecurityPolicy/resources/style-set-red.css: Added.
+        (p):
+        * http/tests/security/contentSecurityPolicy/resources/stylesheet-redirect-not-allowed.css: Added.
+        (body):
+        * http/tests/security/contentSecurityPolicy/resources/test-csp-header.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/worker.php: Added.
+        * http/tests/security/contentSecurityPolicy/resources/xhr-redirect-not-allowed.pl: Added.
+        * http/tests/security/contentSecurityPolicy/sandbox-report-only-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/sandbox-report-only.html: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-appended-script-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-appended-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-redirect-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-redirect.html:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-03-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-03.html:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-07-expected.txt:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-07.html:
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-03-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/source-list-parsing-paths-03.html: Added.
+        * http/tests/security/contentSecurityPolicy/style-src-blocked-error-event-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/style-src-blocked-error-event.html: Added.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp.html: Added.
+        * http/tests/security/contentSecurityPolicy/worker-connect-src-allowed.html:
+        * http/tests/security/contentSecurityPolicy/worker-connect-src-blocked.html:
+        * http/tests/security/contentSecurityPolicy/worker-eval-blocked.html:
+        * http/tests/security/contentSecurityPolicy/worker-function-function-blocked.html:
+        * http/tests/security/contentSecurityPolicy/worker-importscripts-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/worker-importscripts-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/worker-multiple-csp-headers-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/worker-multiple-csp-headers.html: Added.
+        * http/tests/security/contentSecurityPolicy/worker-script-src-expected.txt:
+        * http/tests/security/contentSecurityPolicy/worker-script-src.html:
+        * http/tests/security/contentSecurityPolicy/worker-set-timeout-blocked.html:
+        * http/tests/security/contentSecurityPolicy/worker-without-own-csp-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/worker-without-own-csp.html: Added.
+        * platform/wk2/TestExpectations:
+
+2016-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking three fast/viewport/ios/width-is-device-width-overflowing* tests as flaky on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=153110
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-01-20  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for obsolete Node.isSupported()
+        https://bugs.webkit.org/show_bug.cgi?id=153164
+
+        Reviewed by Darin Adler.
+
+        Drop obsolete DOM tests.
+
+        * dom/html/level2/html/HTMLBodyElement07-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement07.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement07.js: Removed.
+        * dom/html/level2/html/HTMLBodyElement08-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement08.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement08.js: Removed.
+        * dom/html/level2/html/HTMLBodyElement09-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement09.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement09.js: Removed.
+        * dom/html/level2/html/HTMLBodyElement10-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement10.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement10.js: Removed.
+        * dom/html/level2/html/HTMLBodyElement11-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement11.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement11.js: Removed.
+        * dom/html/level2/html/HTMLBodyElement12-expected.txt: Removed.
+        * dom/html/level2/html/HTMLBodyElement12.html: Removed.
+        * dom/html/level2/html/HTMLBodyElement12.js: Removed.
+        * dom/html/level2/html/HTMLDocument22-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument22.html: Removed.
+        * dom/html/level2/html/HTMLDocument22.js: Removed.
+        * dom/html/level2/html/HTMLDocument23-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument23.html: Removed.
+        * dom/html/level2/html/HTMLDocument23.js: Removed.
+        * dom/html/level2/html/HTMLDocument24-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument24.html: Removed.
+        * dom/html/level2/html/HTMLDocument24.js: Removed.
+        * dom/html/level2/html/HTMLDocument25-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument25.html: Removed.
+        * dom/html/level2/html/HTMLDocument25.js: Removed.
+        * dom/html/level2/html/HTMLDocument26-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument26.html: Removed.
+        * dom/html/level2/html/HTMLDocument26.js: Removed.
+        * dom/html/level2/html/HTMLDocument27-expected.txt: Removed.
+        * dom/html/level2/html/HTMLDocument27.html: Removed.
+        * dom/html/level2/html/HTMLDocument27.js: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_3-expected.txt: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_3.js: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_3.svg: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_empty-expected.txt: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_empty.js: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_empty.svg: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_null-expected.txt: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_null.js: Removed.
+        * dom/svg/level3/xpath/Conformance_isSupported_null.svg: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement07-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement07.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement07.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement08-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement08.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement08.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement09-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement09.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement09.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement10-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement10.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement10.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement11-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement11.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement11.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement12-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement12.js: Removed.
+        * dom/xhtml/level2/html/HTMLBodyElement12.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument22-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument22.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument22.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument23-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument23.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument23.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument24-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument24.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument24.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument25-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument25.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument25.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument26-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument26.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument26.xhtml: Removed.
+        * dom/xhtml/level2/html/HTMLDocument27-expected.txt: Removed.
+        * dom/xhtml/level2/html/HTMLDocument27.js: Removed.
+        * dom/xhtml/level2/html/HTMLDocument27.xhtml: Removed.
+        * fast/dom/features-expected.txt:
+        * fast/dom/features.html:
+
+2016-01-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fix inspector/model/remote-object.html test
+        https://bugs.webkit.org/show_bug.cgi?id=153261
+        <rdar://problem/24249553>
+
+        Reviewed by Timothy Hatcher.
+
+        Rebaseline the test for Mac platform that broke in r195305.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2016-01-19  Chris Dumez  <cdumez@apple.com>
+
+        DocumentType.publicId / systemId should never return null
+        https://bugs.webkit.org/show_bug.cgi?id=153264
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop outdated DOM test.
+
+        * dom/xhtml/level3/core/documentgetdoctype01-expected.txt: Removed.
+        * dom/xhtml/level3/core/documentgetdoctype01.js: Removed.
+        * dom/xhtml/level3/core/documentgetdoctype01.xhtml: Removed.
+
+2016-01-19  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Remove unneeded "Alert: " string from storage/indexeddb/modern tests.
+        https://bugs.webkit.org/show_bug.cgi?id=153257
+
+        Reviewed by Sam Weinig.
+        
+        These were put in to minimize the diff for https://trac.webkit.org/changeset/195321 and
+        make it easier to review.
+        
+        Now they can be removed.
+
+        * storage/indexeddb/modern/aborted-put-expected.txt:
+        * storage/indexeddb/modern/autoincrement-abort-expected.txt:
+        * storage/indexeddb/modern/basic-add-expected.txt:
+        * storage/indexeddb/modern/basic-put-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-basic-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/date-basic-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-request-event-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-request-expected.txt:
+        * storage/indexeddb/modern/deleteobjectstore-1-expected.txt:
+        * storage/indexeddb/modern/double-abort-expected.txt:
+        * storage/indexeddb/modern/get-keyrange-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-expected.txt:
+        * storage/indexeddb/modern/idbindex-properties-basic-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-2-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-get-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-expected.txt:
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-expected.txt:
+        * storage/indexeddb/modern/keypath-basic-expected.txt:
+        * storage/indexeddb/modern/opendatabase-request-event-expected.txt:
+        * storage/indexeddb/modern/opendatabase-request-expected.txt:
+        * storage/indexeddb/modern/resources/aborted-put.js:
+        * storage/indexeddb/modern/resources/autoincrement-abort.js:
+        * storage/indexeddb/modern/resources/basic-add.js:
+        * storage/indexeddb/modern/resources/basic-put.js:
+        * storage/indexeddb/modern/resources/createobjectstore-basic.js:
+        * storage/indexeddb/modern/resources/createobjectstore-failures.js:
+        * storage/indexeddb/modern/resources/date-basic.js:
+        * storage/indexeddb/modern/resources/deletedatabase-null-name-exception.js:
+        * storage/indexeddb/modern/resources/deletedatabase-request-event.js:
+        * storage/indexeddb/modern/resources/deletedatabase-request.js:
+        * storage/indexeddb/modern/resources/deleteobjectstore-1.js:
+        * storage/indexeddb/modern/resources/double-abort.js:
+        * storage/indexeddb/modern/resources/get-keyrange.js:
+        * storage/indexeddb/modern/resources/idbdatabase-deleteobjectstore-failures.js:
+        * storage/indexeddb/modern/resources/idbdatabase-transaction-failures.js:
+        * storage/indexeddb/modern/resources/idbindex-properties-basic.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-1.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-2.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-count-1.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-count-failures.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-get-failures.js:
+        * storage/indexeddb/modern/resources/idbobjectstore-put-and-clear-failures.js:
+        * storage/indexeddb/modern/resources/idbtransaction-objectstore-failures.js:
+        * storage/indexeddb/modern/resources/keypath-basic.js:
+        * storage/indexeddb/modern/resources/opendatabase-request-event.js:
+        * storage/indexeddb/modern/resources/opendatabase-request.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-1.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-2.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-3.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-5.js:
+        * storage/indexeddb/modern/resources/transaction-scheduler-6.js:
+        * storage/indexeddb/modern/resources/versionchange-abort-then-reopen.js:
+        * storage/indexeddb/modern/resources/versionchange-event.js:
+        * storage/indexeddb/modern/transaction-scheduler-1-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-2-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-3-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-5-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-6-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-expected.txt:
+        * storage/indexeddb/modern/versionchange-event-expected.txt:
+
+2016-01-19  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Date.prototype.toLocaleDateString in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147612
+
+        Reviewed by Benjamin Poulain.
+
+        Added tests for toLocaleDateString.
+
+        * js/date-toLocaleString-expected.txt:
+        * js/script-tests/date-toLocaleString.js:
+
+2016-01-19  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Split all storage/indexeddb/modern tests into separate HTML + JS format.
+        https://bugs.webkit.org/show_bug.cgi?id=153251
+
+        Reviewed by Sam Weinig.
+
+        * storage/indexeddb/modern/abort-requests-cancelled-expected.txt:
+        * storage/indexeddb/modern/abort-requests-cancelled.html:
+        * storage/indexeddb/modern/aborted-put-expected.txt:
+        * storage/indexeddb/modern/aborted-put.html:
+        * storage/indexeddb/modern/autoincrement-abort-expected.txt:
+        * storage/indexeddb/modern/autoincrement-abort.html:
+        * storage/indexeddb/modern/basic-add-expected.txt:
+        * storage/indexeddb/modern/basic-add.html:
+        * storage/indexeddb/modern/basic-put-expected.txt:
+        * storage/indexeddb/modern/basic-put.html:
+        * storage/indexeddb/modern/create-index-failures-expected.txt:
+        * storage/indexeddb/modern/create-index-failures.html:
+        * storage/indexeddb/modern/createobjectstore-basic-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-basic.html:
+        * storage/indexeddb/modern/createobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/createobjectstore-failures.html:
+        * storage/indexeddb/modern/cursor-1-expected.txt:
+        * storage/indexeddb/modern/cursor-1.html:
+        * storage/indexeddb/modern/cursor-2-expected.txt:
+        * storage/indexeddb/modern/cursor-2.html:
+        * storage/indexeddb/modern/cursor-3-expected.txt:
+        * storage/indexeddb/modern/cursor-3.html:
+        * storage/indexeddb/modern/cursor-4-expected.txt:
+        * storage/indexeddb/modern/cursor-4.html:
+        * storage/indexeddb/modern/cursor-5-expected.txt:
+        * storage/indexeddb/modern/cursor-5.html:
+        * storage/indexeddb/modern/cursor-6-expected.txt:
+        * storage/indexeddb/modern/cursor-6.html:
+        * storage/indexeddb/modern/cursor-7-expected.txt:
+        * storage/indexeddb/modern/cursor-7.html:
+        * storage/indexeddb/modern/cursor-8-expected.txt:
+        * storage/indexeddb/modern/cursor-8.html:
+        * storage/indexeddb/modern/date-basic-expected.txt:
+        * storage/indexeddb/modern/date-basic.html:
+        * storage/indexeddb/modern/deletedatabase-1-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-1.html:
+        * storage/indexeddb/modern/deletedatabase-2-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-2.html:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-null-name-exception.html:
+        * storage/indexeddb/modern/deletedatabase-request-event-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-request-event.html:
+        * storage/indexeddb/modern/deletedatabase-request-expected.txt:
+        * storage/indexeddb/modern/deletedatabase-request.html:
+        * storage/indexeddb/modern/deleteindex-1-expected.txt:
+        * storage/indexeddb/modern/deleteindex-1.html:
+        * storage/indexeddb/modern/deleteindex-2-expected.txt:
+        * storage/indexeddb/modern/deleteindex-2.html:
+        * storage/indexeddb/modern/deleteobjectstore-1-expected.txt:
+        * storage/indexeddb/modern/deleteobjectstore-1.html:
+        * storage/indexeddb/modern/double-abort-expected.txt:
+        * storage/indexeddb/modern/double-abort.html:
+        * storage/indexeddb/modern/double-open-expected.txt:
+        * storage/indexeddb/modern/double-open.html:
+        * storage/indexeddb/modern/get-index-failures-expected.txt:
+        * storage/indexeddb/modern/get-index-failures.html:
+        * storage/indexeddb/modern/get-keyrange-expected.txt:
+        * storage/indexeddb/modern/get-keyrange.html:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures.html:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures-expected.txt:
+        * storage/indexeddb/modern/idbdatabase-transaction-failures.html:
+        * storage/indexeddb/modern/idbindex-properties-basic-expected.txt:
+        * storage/indexeddb/modern/idbindex-properties-basic.html:
+        * storage/indexeddb/modern/idbobjectstore-clear-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-1.html:
+        * storage/indexeddb/modern/idbobjectstore-clear-2-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-clear-2.html:
+        * storage/indexeddb/modern/idbobjectstore-count-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-1.html:
+        * storage/indexeddb/modern/idbobjectstore-count-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-count-failures.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-1-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-1.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-2-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-2.html:
+        * storage/indexeddb/modern/idbobjectstore-delete-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-delete-failures.html:
+        * storage/indexeddb/modern/idbobjectstore-get-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-get-failures.html:
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures-expected.txt:
+        * storage/indexeddb/modern/idbobjectstore-put-and-clear-failures.html:
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures-expected.txt:
+        * storage/indexeddb/modern/idbtransaction-objectstore-failures.html:
+        * storage/indexeddb/modern/index-1-expected.txt:
+        * storage/indexeddb/modern/index-1.html:
+        * storage/indexeddb/modern/index-2-expected.txt:
+        * storage/indexeddb/modern/index-2.html:
+        * storage/indexeddb/modern/index-3-expected.txt:
+        * storage/indexeddb/modern/index-3.html:
+        * storage/indexeddb/modern/index-4-expected.txt:
+        * storage/indexeddb/modern/index-4.html:
+        * storage/indexeddb/modern/index-5-expected.txt:
+        * storage/indexeddb/modern/index-5.html:
+        * storage/indexeddb/modern/index-cursor-1-expected.txt:
+        * storage/indexeddb/modern/index-cursor-1.html:
+        * storage/indexeddb/modern/index-cursor-2-expected.txt:
+        * storage/indexeddb/modern/index-cursor-2.html:
+        * storage/indexeddb/modern/index-cursor-3-expected.txt:
+        * storage/indexeddb/modern/index-cursor-3.html:
+        * storage/indexeddb/modern/index-get-count-basic-expected.txt:
+        * storage/indexeddb/modern/index-get-count-basic.html:
+        * storage/indexeddb/modern/index-get-count-failures-expected.txt:
+        * storage/indexeddb/modern/index-get-count-failures.html:
+        * storage/indexeddb/modern/keypath-basic-expected.txt:
+        * storage/indexeddb/modern/keypath-basic.html:
+        * storage/indexeddb/modern/objectstore-attributes-expected.txt:
+        * storage/indexeddb/modern/objectstore-attributes.html:
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures-expected.txt:
+        * storage/indexeddb/modern/objectstore-cursor-advance-failures.html:
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures-expected.txt:
+        * storage/indexeddb/modern/objectstore-cursor-continue-failures.html:
+        * storage/indexeddb/modern/opencursor-failures-expected.txt:
+        * storage/indexeddb/modern/opencursor-failures.html:
+        * storage/indexeddb/modern/opendatabase-request-event-expected.txt:
+        * storage/indexeddb/modern/opendatabase-request-event.html:
+        * storage/indexeddb/modern/opendatabase-request-expected.txt:
+        * storage/indexeddb/modern/opendatabase-request.html:
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange-expected.txt:
+        * storage/indexeddb/modern/opendatabase-success-after-versionchange.html:
+        * storage/indexeddb/modern/opendatabase-versions-expected.txt:
+        * storage/indexeddb/modern/opendatabase-versions.html:
+        * storage/indexeddb/modern/request-readystate-expected.txt:
+        * storage/indexeddb/modern/request-readystate.html:
+        * storage/indexeddb/modern/resources/abort-requests-cancelled.js: Copied from LayoutTests/storage/indexeddb/modern/abort-requests-cancelled.html.
+        * storage/indexeddb/modern/resources/aborted-put.js: Copied from LayoutTests/storage/indexeddb/modern/aborted-put.html.
+        * storage/indexeddb/modern/resources/autoincrement-abort.js: Copied from LayoutTests/storage/indexeddb/modern/autoincrement-abort.html.
+        * storage/indexeddb/modern/resources/basic-add.js: Copied from LayoutTests/storage/indexeddb/modern/basic-add.html.
+        * storage/indexeddb/modern/resources/basic-put.js: Copied from LayoutTests/storage/indexeddb/modern/basic-put.html.
+        * storage/indexeddb/modern/resources/create-index-failures.js: Copied from LayoutTests/storage/indexeddb/modern/create-index-failures.html.
+        * storage/indexeddb/modern/resources/createobjectstore-basic.js: Copied from LayoutTests/storage/indexeddb/modern/createobjectstore-basic.html.
+        * storage/indexeddb/modern/resources/createobjectstore-failures.js: Copied from LayoutTests/storage/indexeddb/modern/createobjectstore-failures.html.
+        * storage/indexeddb/modern/resources/cursor-1.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-1.html.
+        * storage/indexeddb/modern/resources/cursor-2.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-2.html.
+        * storage/indexeddb/modern/resources/cursor-3.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-3.html.
+        * storage/indexeddb/modern/resources/cursor-4.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-4.html.
+        * storage/indexeddb/modern/resources/cursor-5.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-5.html.
+        * storage/indexeddb/modern/resources/cursor-6.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-6.html.
+        * storage/indexeddb/modern/resources/cursor-7.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-7.html.
+        * storage/indexeddb/modern/resources/cursor-8.js: Copied from LayoutTests/storage/indexeddb/modern/cursor-8.html.
+        * storage/indexeddb/modern/resources/date-basic.js: Copied from LayoutTests/storage/indexeddb/modern/date-basic.html.
+        * storage/indexeddb/modern/resources/deletedatabase-1.js: Copied from LayoutTests/storage/indexeddb/modern/deletedatabase-1.html.
+        * storage/indexeddb/modern/resources/deletedatabase-2.js: Copied from LayoutTests/storage/indexeddb/modern/deletedatabase-2.html.
+        * storage/indexeddb/modern/resources/deletedatabase-null-name-exception.js: Added.
+        * storage/indexeddb/modern/resources/deletedatabase-request-event.js: Copied from LayoutTests/storage/indexeddb/modern/deletedatabase-request-event.html.
+        * storage/indexeddb/modern/resources/deletedatabase-request.js: Added.
+        * storage/indexeddb/modern/resources/deleteindex-1.js: Copied from LayoutTests/storage/indexeddb/modern/deleteindex-1.html.
+        * storage/indexeddb/modern/resources/deleteindex-2.js: Copied from LayoutTests/storage/indexeddb/modern/deleteindex-2.html.
+        * storage/indexeddb/modern/resources/deleteobjectstore-1.js: Copied from LayoutTests/storage/indexeddb/modern/deleteobjectstore-1.html.
+        * storage/indexeddb/modern/resources/double-abort.js: Copied from LayoutTests/storage/indexeddb/modern/double-abort.html.
+        * storage/indexeddb/modern/resources/double-open.js: Added.
+        * storage/indexeddb/modern/resources/get-index-failures.js: Copied from LayoutTests/storage/indexeddb/modern/get-index-failures.html.
+        * storage/indexeddb/modern/resources/get-keyrange.js: Copied from LayoutTests/storage/indexeddb/modern/get-keyrange.html.
+        * storage/indexeddb/modern/resources/idbdatabase-deleteobjectstore-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbdatabase-deleteobjectstore-failures.html.
+        * storage/indexeddb/modern/resources/idbdatabase-transaction-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbdatabase-transaction-failures.html.
+        * storage/indexeddb/modern/resources/idbindex-properties-basic.js: Copied from LayoutTests/storage/indexeddb/modern/idbindex-properties-basic.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-1.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-clear-1.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-clear-2.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-clear-2.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-count-1.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-count-1.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-count-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-count-failures.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-1.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-delete-1.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-2.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-delete-2.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-delete-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-delete-failures.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-get-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-get-failures.html.
+        * storage/indexeddb/modern/resources/idbobjectstore-put-and-clear-failures.js: Copied from LayoutTests/storage/indexeddb/modern/idbobjectstore-put-and-clear-failures.html.
+        * storage/indexeddb/modern/resources/idbtransaction-objectstore-failures.js: Added.
+        * storage/indexeddb/modern/resources/index-1.js: Copied from LayoutTests/storage/indexeddb/modern/index-1.html.
+        * storage/indexeddb/modern/resources/index-2.js: Copied from LayoutTests/storage/indexeddb/modern/index-2.html.
+        * storage/indexeddb/modern/resources/index-3.js: Copied from LayoutTests/storage/indexeddb/modern/index-3.html.
+        * storage/indexeddb/modern/resources/index-4.js: Copied from LayoutTests/storage/indexeddb/modern/index-4.html.
+        * storage/indexeddb/modern/resources/index-5.js: Copied from LayoutTests/storage/indexeddb/modern/index-5.html.
+        * storage/indexeddb/modern/resources/index-cursor-1.js: Copied from LayoutTests/storage/indexeddb/modern/index-cursor-1.html.
+        * storage/indexeddb/modern/resources/index-cursor-2.js: Copied from LayoutTests/storage/indexeddb/modern/index-cursor-2.html.
+        * storage/indexeddb/modern/resources/index-cursor-3.js: Copied from LayoutTests/storage/indexeddb/modern/index-cursor-3.html.
+        * storage/indexeddb/modern/resources/index-get-count-basic.js: Copied from LayoutTests/storage/indexeddb/modern/index-get-count-basic.html.
+        * storage/indexeddb/modern/resources/index-get-count-failures.js: Copied from LayoutTests/storage/indexeddb/modern/index-get-count-failures.html.
+        * storage/indexeddb/modern/resources/keypath-basic.js: Copied from LayoutTests/storage/indexeddb/modern/keypath-basic.html.
+        * storage/indexeddb/modern/resources/objectstore-attributes.js: Copied from LayoutTests/storage/indexeddb/modern/objectstore-attributes.html.
+        * storage/indexeddb/modern/resources/objectstore-cursor-advance-failures.js: Copied from LayoutTests/storage/indexeddb/modern/objectstore-cursor-advance-failures.html.
+        * storage/indexeddb/modern/resources/objectstore-cursor-continue-failures.js: Copied from LayoutTests/storage/indexeddb/modern/objectstore-cursor-continue-failures.html.
+        * storage/indexeddb/modern/resources/opencursor-failures.js: Copied from LayoutTests/storage/indexeddb/modern/opencursor-failures.html.
+        * storage/indexeddb/modern/resources/opendatabase-request-event.js: Added.
+        * storage/indexeddb/modern/resources/opendatabase-request.js: Copied from LayoutTests/storage/indexeddb/modern/opendatabase-request.html.
+        * storage/indexeddb/modern/resources/opendatabase-success-after-versionchange.js: Copied from LayoutTests/storage/indexeddb/modern/opendatabase-success-after-versionchange.html.
+        * storage/indexeddb/modern/resources/opendatabase-versions.js: Copied from LayoutTests/storage/indexeddb/modern/opendatabase-versions.html.
+        * storage/indexeddb/modern/resources/request-readystate.js: Added.
+        * storage/indexeddb/modern/resources/transaction-scheduler-1.js: Copied from LayoutTests/storage/indexeddb/modern/transaction-scheduler-1.html.
+        * storage/indexeddb/modern/resources/transaction-scheduler-2.js: Copied from LayoutTests/storage/indexeddb/modern/transaction-scheduler-2.html.
+        * storage/indexeddb/modern/resources/transaction-scheduler-3.js: Copied from LayoutTests/storage/indexeddb/modern/transaction-scheduler-3.html.
+        * storage/indexeddb/modern/resources/transaction-scheduler-5.js: Copied from LayoutTests/storage/indexeddb/modern/transaction-scheduler-5.html.
+        * storage/indexeddb/modern/resources/transaction-scheduler-6.js: Copied from LayoutTests/storage/indexeddb/modern/transaction-scheduler-6.html.
+        * storage/indexeddb/modern/resources/transactions-stop-on-navigation-2.html:
+        * storage/indexeddb/modern/resources/versionchange-abort-then-reopen.js: Copied from LayoutTests/storage/indexeddb/modern/versionchange-abort-then-reopen.html.
+        * storage/indexeddb/modern/resources/versionchange-event.js: Copied from LayoutTests/storage/indexeddb/modern/versionchange-event.html.
+        * storage/indexeddb/modern/transaction-scheduler-1-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-1.html:
+        * storage/indexeddb/modern/transaction-scheduler-2-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-2.html:
+        * storage/indexeddb/modern/transaction-scheduler-3-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-3.html:
+        * storage/indexeddb/modern/transaction-scheduler-5-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-5.html:
+        * storage/indexeddb/modern/transaction-scheduler-6-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-6.html:
+        * storage/indexeddb/modern/transactions-stop-on-navigation-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen-expected.txt:
+        * storage/indexeddb/modern/versionchange-abort-then-reopen.html:
+        * storage/indexeddb/modern/versionchange-event-expected.txt:
+        * storage/indexeddb/modern/versionchange-event.html:
+
+2016-01-19  Zalan Bujtas  <zalan@apple.com>
+
+        outline-offset does not work for inlines.
+        https://bugs.webkit.org/show_bug.cgi?id=153238
+
+        Reviewed by Simon Fraser.
+
+        Adjust outline box width/height with outline-offset.
+
+        Test: fast/inline/inlines-with-outline-offset.html
+
+        * fast/inline/inlines-with-outline-offset-expected.html: Added.
+        * fast/inline/inlines-with-outline-offset.html: Added.
+
+2016-01-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebInspector.Object.addEventListener is O(n), make it O(1)
+        https://bugs.webkit.org/show_bug.cgi?id=152422
+        <rdar://problem/24038047>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/console-api-expected.txt:
+        * inspector/console/console-table-expected.txt:
+        * inspector/model/remote-object-expected.txt:
+        Rebaseline tests, add "_listeners: null" to all WebInspector.Object instances.
+
+        * inspector/unit-tests/linked-list-expected.txt: Added.
+        * inspector/unit-tests/linked-list.html: Added.
+        * inspector/unit-tests/list-multimap-expected.txt: Added.
+        * inspector/unit-tests/list-multimap.html: Added.
+
+2016-01-19  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Split all storage/indexeddb/mozilla tests into separate HTML + JS format.
+        https://bugs.webkit.org/show_bug.cgi?id=153237
+
+        Reviewed by Sam Weinig.
+
+        * storage/indexeddb/mozilla/index-prev-no-duplicate.html:
+        * storage/indexeddb/mozilla/resources/index-prev-no-duplicate.js: Copied from LayoutTests/storage/indexeddb/mozilla/index-prev-no-duplicate.html.
+
+2016-01-19  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Split all storage/indexeddb tests into separate HTML + JS format.
+        https://bugs.webkit.org/show_bug.cgi?id=153178
+
+        Reviewed by Sam Weinig.
+
+        * storage/indexeddb/clone-exception.html:
+        * storage/indexeddb/closed-cursor.html:
+        * storage/indexeddb/connection-leak.html:
+        * storage/indexeddb/cursor-cast.html:
+        * storage/indexeddb/cursor-leak.html:
+        * storage/indexeddb/cursor-overloads.html:
+        * storage/indexeddb/cursor-request-cycle.html:
+        * storage/indexeddb/deleteIndex-bug110792.html:
+        * storage/indexeddb/deletedatabase-transaction.html:
+        * storage/indexeddb/metadata-race.html:
+        * storage/indexeddb/noblobs.html:
+        * storage/indexeddb/object-lookups-in-versionchange.html:
+        * storage/indexeddb/open-bad-versions.html:
+        * storage/indexeddb/optional-arguments.html:
+        * storage/indexeddb/prefetch-invalidation.html:
+        * storage/indexeddb/prefetch-race.html:
+        * storage/indexeddb/primary-key-unique-to-objectstore.html:
+        * storage/indexeddb/request-leak.html:
+        * storage/indexeddb/request-result-cache.html:
+        * storage/indexeddb/resources/clone-exception.js: Copied from LayoutTests/storage/indexeddb/clone-exception.html.
+        * storage/indexeddb/resources/closed-cursor.js: Copied from LayoutTests/storage/indexeddb/closed-cursor.html.
+        * storage/indexeddb/resources/connection-leak.js: Copied from LayoutTests/storage/indexeddb/connection-leak.html.
+        * storage/indexeddb/resources/cursor-cast.js: Copied from LayoutTests/storage/indexeddb/cursor-cast.html.
+        * storage/indexeddb/resources/cursor-leak.js: Copied from LayoutTests/storage/indexeddb/cursor-leak.html.
+        * storage/indexeddb/resources/cursor-overloads.js: Copied from LayoutTests/storage/indexeddb/cursor-overloads.html.
+        * storage/indexeddb/resources/cursor-request-cycle.js: Copied from LayoutTests/storage/indexeddb/cursor-request-cycle.html.
+        * storage/indexeddb/resources/deleteIndex-bug110792.js: Copied from LayoutTests/storage/indexeddb/deleteIndex-bug110792.html.
+        * storage/indexeddb/resources/deletedatabase-transaction.js: Copied from LayoutTests/storage/indexeddb/deletedatabase-transaction.html.
+        * storage/indexeddb/resources/metadata-race.js: Copied from LayoutTests/storage/indexeddb/metadata-race.html.
+        * storage/indexeddb/resources/noblobs.js: Copied from LayoutTests/storage/indexeddb/noblobs.html.
+        * storage/indexeddb/resources/object-lookups-in-versionchange.js: Copied from LayoutTests/storage/indexeddb/object-lookups-in-versionchange.html.
+        * storage/indexeddb/resources/open-bad-versions.js: Copied from LayoutTests/storage/indexeddb/open-bad-versions.html.
+        * storage/indexeddb/resources/optional-arguments.js: Copied from LayoutTests/storage/indexeddb/optional-arguments.html.
+        * storage/indexeddb/resources/prefetch-invalidation.js: Copied from LayoutTests/storage/indexeddb/prefetch-invalidation.html.
+        * storage/indexeddb/resources/prefetch-race.js: Copied from LayoutTests/storage/indexeddb/prefetch-race.html.
+        * storage/indexeddb/resources/primary-key-unique-to-objectstore.js: Copied from LayoutTests/storage/indexeddb/primary-key-unique-to-objectstore.html.
+        * storage/indexeddb/resources/request-leak.js: Copied from LayoutTests/storage/indexeddb/request-leak.html.
+        * storage/indexeddb/resources/request-result-cache.js: Copied from LayoutTests/storage/indexeddb/request-result-cache.html.
+        * storage/indexeddb/resources/structured-clone.js: Copied from LayoutTests/storage/indexeddb/structured-clone.html.
+        * storage/indexeddb/resources/transaction-complete-with-js-recursion-cross-frame.js: Copied from LayoutTests/storage/indexeddb/transaction-complete-with-js-recursion-cross-frame.html.
+        * storage/indexeddb/resources/transaction-complete-with-js-recursion.js: Copied from LayoutTests/storage/indexeddb/transaction-complete-with-js-recursion.html.
+        * storage/indexeddb/resources/transaction-crash-in-tasks.js: Copied from LayoutTests/storage/indexeddb/transaction-crash-in-tasks.html.
+        * storage/indexeddb/resources/transaction-ordering.js: Copied from LayoutTests/storage/indexeddb/transaction-ordering.html.
+        * storage/indexeddb/resources/transaction-overlapping.js: Copied from LayoutTests/storage/indexeddb/transaction-overlapping.html.
+        * storage/indexeddb/resources/version-change-event-basic.js: Copied from LayoutTests/storage/indexeddb/version-change-event-basic.html.
+        * storage/indexeddb/resources/version-change-event.js: Copied from LayoutTests/storage/indexeddb/version-change-event.html.
+        * storage/indexeddb/structured-clone.html:
+        * storage/indexeddb/transaction-complete-with-js-recursion-cross-frame.html:
+        * storage/indexeddb/transaction-complete-with-js-recursion.html:
+        * storage/indexeddb/transaction-crash-in-tasks.html:
+        * storage/indexeddb/transaction-ordering.html:
+        * storage/indexeddb/transaction-overlapping.html:
+        * storage/indexeddb/transaction-starvation.html:
+        * storage/indexeddb/version-change-event-basic.html:
+        * storage/indexeddb/version-change-event.html:
+
+2016-01-19  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid][css-align] justify-self stretch is not applied for img elements
+        https://bugs.webkit.org/show_bug.cgi?id=153206
+
+        Reviewed by Darin Adler.
+
+        Test to verify Replaced Elements, like images, are stretched in the inline
+        axis, when fulfilling the Box Alignment restrictions on this regard.
+
+        * fast/css-grid-layout/grid-align-stretching-replaced-items-expected.txt: Added.
+        * fast/css-grid-layout/grid-align-stretching-replaced-items.html: Added.
+
+2016-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Text::splitText doesn't update Range end points anchored on parent nodes
+        https://bugs.webkit.org/show_bug.cgi?id=153227
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test since the rebaselined W3C test is incomprehensible.
+
+        * fast/dom/Range/update-range-in-split-text-expected.txt: Added.
+        * fast/dom/Range/update-range-in-split-text.html: Added.
+
+2016-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        innerHTML should always add a mutation record for removing all children
+        https://bugs.webkit.org/show_bug.cgi?id=148782
+        <rdar://problem/22571962>
+
+        Reviewed by Antti Koivisto.
+
+        Add a more comprehensive test for replacing a single text node with innerHTML's setter to ensure
+        WebKit's optimization to avoid replacing the node should not be observable by scripts in any way.
+
+        * fast/dom/innerHTML-single-text-node-expected.txt: Added.
+        * fast/dom/innerHTML-single-text-node.html: Added.
+
+2016-01-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        createAttribute should lowercase the attribute name in a HTML document
+        https://bugs.webkit.org/show_bug.cgi?id=153112
+
+        Reviewed by Darin Adler.
+
+        Update tests, rebaseline tests, and add more test cases as needed.
+
+        createAttribute lowercases localName and getAttributeNode finds attribute ignoring cases
+        whereas createAttributeNS preserves localName's case and getAttributeNodeNS finds attribute preserving cases
+
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702-expected.txt: Since the test is adding "aa" as well
+        as "AA" as Attr nodes, we should be able to get both.
+        * fast/dom/Element/mozilla-dom-base-tests/test_bug1075702.xhtml: Renamed from .html file since test cases here
+        are more relevant for XHTML documents.
+
+        * fast/dom/Element/getAttribute-check-case-sensitivity-expected.txt:
+        * fast/dom/Element/script-tests/getAttribute-check-case-sensitivity.js:
+        (testGetAttributeNodeMixedCase): Change the test case to retrieve the attribute name with lowercase name
+        since createAttribute always lowercases the name in a HTML document.
+        (testAttribNodeNamePreservesCase): Use getAttributeNode instead of getAttributeNodeNS since the former does
+        case insensitive lookup as needed here.
+        (testAttribNodeNamePreservesCaseGetNode): Ditto.
+        (testAttribNodeNamePreservesCaseGetNode2): Ditto. Use createAttributeNS to create a case-preserving Attr node.
+
+        * fast/dom/Element/setAttributeNode-case-insensitivity-expected.txt:
+        * fast/dom/Element/setAttributeNode-case-insensitivity.html: Since getAttributeNode does a case-insensitive
+        lookup, we should be getting the same Attr node for both 'style' and 'STYLE'.
+
+        * fast/dom/Element/setAttributeNode-for-existing-attribute-expected.txt: Rebaselined. This is a progression
+        since we're now getting "green" when querying style.backgroundColor as expected.
+
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-expected.txt:
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1.html: Updated test cases for new behavior.
+
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-xml-expected.txt: Added.
+        * fast/dom/Element/setAttributeNode-overriding-lowercase-values-1-xml.xhtml: Added. Test behaviors in a XML
+        document.
+
+2016-01-18  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Add private-browsing variant for many IDB tests, and enable private browsing in Modern IDB.
+        https://bugs.webkit.org/show_bug.cgi?id=153179
+
+        Reviewed by Darin Adler.
+
+        Update many expectations files to skip some of the new tests on some platforms:
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+        
+        Add a special case for URLs that end with "-private.html" to enable private browsing:
+        * resources/js-test.js:
+        
+        Add a whole bunch of -private.html wrappers along with new test expectations, along 
+        with some minor test changes to remove unnecessary ambiguity due to .html filename:
+        * storage/indexeddb/aborted-versionchange-closes-private-expected.txt: Added.
+        * storage/indexeddb/aborted-versionchange-closes-private.html: Added.
+        * storage/indexeddb/basics-private-expected.txt: Added.
+        * storage/indexeddb/basics-private.html: Added.
+        * storage/indexeddb/create-and-remove-object-store-private-expected.txt: Added.
+        * storage/indexeddb/create-and-remove-object-store-private.html: Added.
+        * storage/indexeddb/create-object-store-options-private-expected.txt: Added.
+        * storage/indexeddb/create-object-store-options-private.html: Added.
+        * storage/indexeddb/createIndex-after-failure-private-expected.txt: Added.
+        * storage/indexeddb/createIndex-after-failure-private.html: Added.
+        * storage/indexeddb/createObjectStore-name-argument-required-private-expected.txt: Added.
+        * storage/indexeddb/createObjectStore-name-argument-required-private.html: Added.
+        * storage/indexeddb/createObjectStore-null-name-private-expected.txt: Added.
+        * storage/indexeddb/createObjectStore-null-name-private.html: Added.
+        * storage/indexeddb/cursor-added-bug-private-expected.txt: Added.
+        * storage/indexeddb/cursor-added-bug-private.html: Added.
+        * storage/indexeddb/cursor-advance-private-expected.txt: Added.
+        * storage/indexeddb/cursor-advance-private.html: Added.
+        * storage/indexeddb/cursor-basics-private-expected.txt: Added.
+        * storage/indexeddb/cursor-basics-private.html: Added.
+        * storage/indexeddb/cursor-continue-dir-private-expected.txt: Added.
+        * storage/indexeddb/cursor-continue-dir-private.html: Added.
+        * storage/indexeddb/cursor-continue-private-expected.txt: Added.
+        * storage/indexeddb/cursor-continue-private.html: Added.
+        * storage/indexeddb/cursor-continue-validity-private-expected.txt: Added.
+        * storage/indexeddb/cursor-continue-validity-private.html: Added.
+        * storage/indexeddb/cursor-delete-private-expected.txt: Added.
+        * storage/indexeddb/cursor-delete-private.html: Added.
+        * storage/indexeddb/cursor-finished-private-expected.txt: Added.
+        * storage/indexeddb/cursor-finished-private.html: Added.
+        * storage/indexeddb/cursor-inconsistency-private-expected.txt: Added.
+        * storage/indexeddb/cursor-inconsistency-private.html: Added.
+        * storage/indexeddb/cursor-index-delete-private-expected.txt: Added.
+        * storage/indexeddb/cursor-index-delete-private.html: Added.
+        * storage/indexeddb/cursor-key-order-private-expected.txt: Added.
+        * storage/indexeddb/cursor-key-order-private.html: Added.
+        * storage/indexeddb/cursor-prev-no-duplicate-private-expected.txt: Added.
+        * storage/indexeddb/cursor-prev-no-duplicate-private.html: Added.
+        * storage/indexeddb/cursor-primary-key-order-private-expected.txt: Added.
+        * storage/indexeddb/cursor-primary-key-order-private.html: Added.
+        * storage/indexeddb/cursor-properties-private-expected.txt: Added.
+        * storage/indexeddb/cursor-properties-private.html: Added.
+        * storage/indexeddb/cursor-reverse-bug-private-expected.txt: Added.
+        * storage/indexeddb/cursor-reverse-bug-private.html: Added.
+        * storage/indexeddb/cursor-skip-deleted-private-expected.txt: Added.
+        * storage/indexeddb/cursor-skip-deleted-private.html: Added.
+        * storage/indexeddb/cursor-update-private-expected.txt: Added.
+        * storage/indexeddb/cursor-update-private.html: Added.
+        * storage/indexeddb/cursor-update-value-argument-required-private-expected.txt: Added.
+        * storage/indexeddb/cursor-update-value-argument-required-private.html: Added.
+        * storage/indexeddb/cursor-value-private-expected.txt: Added.
+        * storage/indexeddb/cursor-value-private.html: Added.
+        * storage/indexeddb/database-basics-private-expected.txt: Added.
+        * storage/indexeddb/database-basics-private.html: Added.
+        * storage/indexeddb/database-close-private-expected.txt: Added.
+        * storage/indexeddb/database-close-private.html: Added.
+        * storage/indexeddb/database-closepending-flag-private-expected.txt: Added.
+        * storage/indexeddb/database-closepending-flag-private.html: Added.
+        * storage/indexeddb/database-deletepending-flag-private-expected.txt: Added.
+        * storage/indexeddb/database-deletepending-flag-private.html: Added.
+        * storage/indexeddb/database-name-undefined-private-expected.txt: Added.
+        * storage/indexeddb/database-name-undefined-private.html: Added.
+        * storage/indexeddb/database-odd-names-private-expected.txt: Added.
+        * storage/indexeddb/database-odd-names-private.html: Added.
+        * storage/indexeddb/database-quota-private-expected.txt: Added.
+        * storage/indexeddb/database-quota-private.html: Added.
+        * storage/indexeddb/database-wrapper-private-expected.txt: Added.
+        * storage/indexeddb/database-wrapper-private.html: Added.
+        * storage/indexeddb/delete-closed-database-object-private-expected.txt: Added.
+        * storage/indexeddb/delete-closed-database-object-private.html: Added.
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-private-expected.txt: Added.
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-private.html: Added.
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-private-expected.txt: Added.
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-private.html: Added.
+        * storage/indexeddb/delete-range-private-expected.txt: Added.
+        * storage/indexeddb/delete-range-private.html: Added.
+        * storage/indexeddb/deleteIndex-private-expected.txt: Added.
+        * storage/indexeddb/deleteIndex-private.html: Added.
+        * storage/indexeddb/deleteObjectStore-name-argument-required-private-expected.txt: Added.
+        * storage/indexeddb/deleteObjectStore-name-argument-required-private.html: Added.
+        * storage/indexeddb/deleteObjectStore-null-name-private-expected.txt: Added.
+        * storage/indexeddb/deleteObjectStore-null-name-private.html: Added.
+        * storage/indexeddb/deleted-objects-private-expected.txt: Added.
+        * storage/indexeddb/deleted-objects-private.html: Added.
+        * storage/indexeddb/deletedatabase-blocked-private-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-blocked-private.html: Added.
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-private.html: Added.
+        * storage/indexeddb/deletedatabase-delayed-by-versionchange-private-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-not-blocked-private-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-not-blocked-private.html: Added.
+        * storage/indexeddb/dont-wedge-private-expected.txt: Added.
+        * storage/indexeddb/dont-wedge-private.html: Added.
+        * storage/indexeddb/duplicates-private-expected.txt: Added.
+        * storage/indexeddb/duplicates-private.html: Added.
+        * storage/indexeddb/error-causes-abort-by-default-private-expected.txt: Added.
+        * storage/indexeddb/error-causes-abort-by-default-private.html: Added.
+        * storage/indexeddb/events-private-expected.txt: Added.
+        * storage/indexeddb/events-private.html: Added.
+        * storage/indexeddb/exception-in-event-aborts-private-expected.txt: Added.
+        * storage/indexeddb/exception-in-event-aborts-private.html: Added.
+        * storage/indexeddb/exceptions-private-expected.txt: Added.
+        * storage/indexeddb/exceptions-private.html: Added.
+        * storage/indexeddb/factory-cmp-private-expected.txt: Added.
+        * storage/indexeddb/factory-cmp-private.html: Added.
+        * storage/indexeddb/factory-deletedatabase-private-expected.txt: Added.
+        * storage/indexeddb/factory-deletedatabase-private.html: Added.
+        * storage/indexeddb/get-keyrange-private-expected.txt: Added.
+        * storage/indexeddb/get-keyrange-private.html: Added.
+        * storage/indexeddb/index-basics-private-expected.txt: Added.
+        * storage/indexeddb/index-basics-private.html: Added.
+        * storage/indexeddb/index-count-private-expected.txt: Added.
+        * storage/indexeddb/index-count-private.html: Added.
+        * storage/indexeddb/index-cursor-private-expected.txt: Added.
+        * storage/indexeddb/index-cursor-private.html: Added.
+        * storage/indexeddb/index-duplicate-keypaths-private-expected.txt: Added.
+        * storage/indexeddb/index-duplicate-keypaths-private.html: Added.
+        * storage/indexeddb/index-get-key-argument-required-private-expected.txt: Added.
+        * storage/indexeddb/index-get-key-argument-required-private.html: Added.
+        * storage/indexeddb/index-multientry-private-expected.txt: Added.
+        * storage/indexeddb/index-multientry-private.html: Added.
+        * storage/indexeddb/index-population-private-expected.txt: Added.
+        * storage/indexeddb/index-population-private.html: Added.
+        * storage/indexeddb/index-unique-private-expected.txt: Added.
+        * storage/indexeddb/index-unique-private.html: Added.
+        * storage/indexeddb/interfaces-private-expected.txt: Added.
+        * storage/indexeddb/interfaces-private.html: Added.
+        * storage/indexeddb/intversion-abort-in-initial-upgradeneeded-private-expected.txt: Added.
+        * storage/indexeddb/intversion-abort-in-initial-upgradeneeded-private.html: Added.
+        * storage/indexeddb/intversion-bad-parameters-private-expected.txt: Added.
+        * storage/indexeddb/intversion-bad-parameters-private.html: Added.
+        * storage/indexeddb/intversion-blocked-private-expected.txt: Added.
+        * storage/indexeddb/intversion-blocked-private.html: Added.
+        * storage/indexeddb/intversion-close-between-events-private-expected.txt: Added.
+        * storage/indexeddb/intversion-close-between-events-private.html: Added.
+        * storage/indexeddb/intversion-close-in-oncomplete-private-expected.txt: Added.
+        * storage/indexeddb/intversion-close-in-oncomplete-private.html: Added.
+        * storage/indexeddb/intversion-close-in-upgradeneeded-private-expected.txt: Added.
+        * storage/indexeddb/intversion-close-in-upgradeneeded-private.html: Added.
+        * storage/indexeddb/intversion-encoding-private-expected.txt: Added.
+        * storage/indexeddb/intversion-encoding-private.html: Added.
+        * storage/indexeddb/intversion-gated-on-delete-private-expected.txt: Added.
+        * storage/indexeddb/intversion-gated-on-delete-private.html: Added.
+        * storage/indexeddb/intversion-long-queue-private-expected.txt: Added.
+        * storage/indexeddb/intversion-long-queue-private.html: Added.
+        * storage/indexeddb/intversion-omit-parameter-private-expected.txt: Added.
+        * storage/indexeddb/intversion-omit-parameter-private.html: Added.
+        * storage/indexeddb/intversion-open-in-upgradeneeded-private-expected.txt: Added.
+        * storage/indexeddb/intversion-open-in-upgradeneeded-private.html: Added.
+        * storage/indexeddb/intversion-open-with-version-private-expected.txt: Added.
+        * storage/indexeddb/intversion-open-with-version-private.html: Added.
+        * storage/indexeddb/intversion-pending-version-changes-ascending-private-expected.txt: Added.
+        * storage/indexeddb/intversion-pending-version-changes-ascending-private.html: Added.
+        * storage/indexeddb/intversion-pending-version-changes-descending-private-expected.txt: Added.
+        * storage/indexeddb/intversion-pending-version-changes-descending-private.html: Added.
+        * storage/indexeddb/intversion-pending-version-changes-same-private-expected.txt: Added.
+        * storage/indexeddb/intversion-pending-version-changes-same-private.html: Added.
+        * storage/indexeddb/intversion-persistence-private-expected.txt: Added.
+        * storage/indexeddb/intversion-persistence-private.html: Added.
+        * storage/indexeddb/intversion-revert-on-abort-private-expected.txt: Added.
+        * storage/indexeddb/intversion-revert-on-abort-private.html: Added.
+        * storage/indexeddb/intversion-two-opens-no-versions-private-expected.txt: Added.
+        * storage/indexeddb/intversion-two-opens-no-versions-private.html: Added.
+        * storage/indexeddb/intversion-upgrades-private-expected.txt: Added.
+        * storage/indexeddb/intversion-upgrades-private.html: Added.
+        * storage/indexeddb/invalid-keys-private-expected.txt: Added.
+        * storage/indexeddb/invalid-keys-private.html: Added.
+        * storage/indexeddb/key-generator-private-expected.txt: Added.
+        * storage/indexeddb/key-generator-private.html: Added.
+        * storage/indexeddb/key-sort-order-across-types-private-expected.txt: Added.
+        * storage/indexeddb/key-sort-order-across-types-private.html: Added.
+        * storage/indexeddb/key-sort-order-date-private-expected.txt: Added.
+        * storage/indexeddb/key-sort-order-date-private.html: Added.
+        * storage/indexeddb/key-type-array-private-expected.txt: Added.
+        * storage/indexeddb/key-type-array-private.html: Added.
+        * storage/indexeddb/key-type-binary-private-expected.txt: Added.
+        * storage/indexeddb/key-type-binary-private.html: Added.
+        * storage/indexeddb/key-type-infinity-private-expected.txt: Added.
+        * storage/indexeddb/key-type-infinity-private.html: Added.
+        * storage/indexeddb/keypath-arrays-private-expected.txt: Added.
+        * storage/indexeddb/keypath-arrays-private.html: Added.
+        * storage/indexeddb/keypath-basics-private-expected.txt: Added.
+        * storage/indexeddb/keypath-basics-private.html: Added.
+        * storage/indexeddb/keypath-edges-private-expected.txt: Added.
+        * storage/indexeddb/keypath-edges-private.html: Added.
+        * storage/indexeddb/keypath-fetch-key-private-expected.txt: Added.
+        * storage/indexeddb/keypath-fetch-key-private.html: Added.
+        * storage/indexeddb/keypath-intrinsic-properties-private-expected.txt: Added.
+        * storage/indexeddb/keypath-intrinsic-properties-private.html: Added.
+        * storage/indexeddb/keyrange-private-expected.txt: Added.
+        * storage/indexeddb/keyrange-private.html: Added.
+        * storage/indexeddb/keyrange-required-arguments-private-expected.txt: Added.
+        * storage/indexeddb/keyrange-required-arguments-private.html: Added.
+        * storage/indexeddb/lazy-index-types-private-expected.txt: Added.
+        * storage/indexeddb/lazy-index-types-private.html: Added.
+        * storage/indexeddb/legacy-constants-private-expected.txt: Added.
+        * storage/indexeddb/legacy-constants-private.html: Added.
+        * storage/indexeddb/list-ordering-private-expected.txt: Added.
+        * storage/indexeddb/list-ordering-private.html: Added.
+        * storage/indexeddb/metadata-private-expected.txt: Added.
+        * storage/indexeddb/metadata-private.html: Added.
+        * storage/indexeddb/mutating-cursor-private-expected.txt: Added.
+        * storage/indexeddb/mutating-cursor-private.html: Added.
+        * storage/indexeddb/objectStore-required-arguments-private-expected.txt: Added.
+        * storage/indexeddb/objectStore-required-arguments-private.html: Added.
+        * storage/indexeddb/objectstore-autoincrement-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-autoincrement-private.html: Added.
+        * storage/indexeddb/objectstore-basics-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-basics-private.html: Added.
+        * storage/indexeddb/objectstore-clear-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-clear-private.html: Added.
+        * storage/indexeddb/objectstore-count-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-count-private.html: Added.
+        * storage/indexeddb/objectstore-cursor-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-cursor-private.html: Added.
+        * storage/indexeddb/objectstore-removeobjectstore-private-expected.txt: Added.
+        * storage/indexeddb/objectstore-removeobjectstore-private.html: Added.
+        * storage/indexeddb/odd-strings-private-expected.txt: Added.
+        * storage/indexeddb/odd-strings-private.html: Added.
+        * storage/indexeddb/open-cursor-private-expected.txt: Added.
+        * storage/indexeddb/open-cursor-private.html: Added.
+        * storage/indexeddb/open-during-transaction-private-expected.txt: Added.
+        * storage/indexeddb/open-during-transaction-private.html: Added.
+        * storage/indexeddb/open-ordering-private-expected.txt: Added.
+        * storage/indexeddb/open-ordering-private.html: Added.
+        * storage/indexeddb/opencursor-key-private-expected.txt: Added.
+        * storage/indexeddb/opencursor-key-private.html: Added.
+        * storage/indexeddb/pending-activity-private-expected.txt: Added.
+        * storage/indexeddb/pending-activity-private.html: Added.
+        * storage/indexeddb/pending-version-change-on-exit-private-expected.txt: Added.
+        * storage/indexeddb/pending-version-change-on-exit-private.html: Added.
+        * storage/indexeddb/pending-version-change-stuck-private-expected.txt: Added.
+        * storage/indexeddb/pending-version-change-stuck-private.html: Added.
+        * storage/indexeddb/persistence-expected.txt:
+        * storage/indexeddb/persistence-private-expected.txt: Copied from LayoutTests/storage/indexeddb/persistence-expected.txt.
+        * storage/indexeddb/persistence-private.html: Added.
+        * storage/indexeddb/prefetch-bugfix-108071-private-expected.txt: Added.
+        * storage/indexeddb/prefetch-bugfix-108071-private.html: Added.
+        * storage/indexeddb/queued-commands-private-expected.txt: Added.
+        * storage/indexeddb/queued-commands-private.html: Added.
+        * storage/indexeddb/readonly-private-expected.txt: Added.
+        * storage/indexeddb/readonly-private.html: Added.
+        * storage/indexeddb/readonly-properties-private-expected.txt: Added.
+        * storage/indexeddb/readonly-properties-private.html: Added.
+        * storage/indexeddb/removed-private-expected.txt: Added.
+        * storage/indexeddb/removed-private.html: Added.
+        * storage/indexeddb/request-continue-abort-private-expected.txt: Added.
+        * storage/indexeddb/request-continue-abort-private.html: Added.
+        * storage/indexeddb/request-event-propagation-private-expected.txt: Added.
+        * storage/indexeddb/request-event-propagation-private.html: Added.
+        * storage/indexeddb/resources/persistence.js:
+        * storage/indexeddb/set_version_blocked-private-expected.txt: Added.
+        * storage/indexeddb/set_version_blocked-private.html: Added.
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-private-expected.txt: Added.
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-private.html: Added.
+        * storage/indexeddb/setversion-not-blocked-private-expected.txt: Added.
+        * storage/indexeddb/setversion-not-blocked-private.html: Added.
+        * storage/indexeddb/transaction-abort-private-expected.txt: Added.
+        * storage/indexeddb/transaction-abort-private.html: Added.
+        * storage/indexeddb/transaction-active-flag-private-expected.txt: Added.
+        * storage/indexeddb/transaction-active-flag-private.html: Added.
+        * storage/indexeddb/transaction-after-close-private-expected.txt: Added.
+        * storage/indexeddb/transaction-after-close-private.html: Added.
+        * storage/indexeddb/transaction-and-objectstore-calls-private-expected.txt: Added.
+        * storage/indexeddb/transaction-and-objectstore-calls-private.html: Added.
+        * storage/indexeddb/transaction-basics-private-expected.txt: Added.
+        * storage/indexeddb/transaction-basics-private.html: Added.
+        * storage/indexeddb/transaction-complete-workers-private-expected.txt: Added.
+        * storage/indexeddb/transaction-complete-workers-private.html: Added.
+        * storage/indexeddb/transaction-coordination-across-databases-private-expected.txt: Added.
+        * storage/indexeddb/transaction-coordination-across-databases-private.html: Added.
+        * storage/indexeddb/transaction-coordination-within-database-private-expected.txt: Added.
+        * storage/indexeddb/transaction-coordination-within-database-private.html: Added.
+        * storage/indexeddb/transaction-crash-on-abort-private-expected.txt: Added.
+        * storage/indexeddb/transaction-crash-on-abort-private.html: Added.
+        * storage/indexeddb/transaction-error-private-expected.txt: Added.
+        * storage/indexeddb/transaction-error-private.html: Added.
+        * storage/indexeddb/transaction-event-propagation-private-expected.txt: Added.
+        * storage/indexeddb/transaction-event-propagation-private.html: Added.
+        * storage/indexeddb/transaction-read-only-private-expected.txt: Added.
+        * storage/indexeddb/transaction-read-only-private.html: Added.
+        * storage/indexeddb/transaction-readwrite-exclusive-private-expected.txt: Added.
+        * storage/indexeddb/transaction-readwrite-exclusive-private.html: Added.
+        * storage/indexeddb/transaction-rollback-private-expected.txt: Added.
+        * storage/indexeddb/transaction-rollback-private.html: Added.
+        * storage/indexeddb/transaction-scope-sequencing-private-expected.txt: Added.
+        * storage/indexeddb/transaction-scope-sequencing-private.html: Added.
+        * storage/indexeddb/transaction-starvation-private-expected.txt: Added.
+        * storage/indexeddb/transaction-storeNames-required-private-expected.txt: Added.
+        * storage/indexeddb/transaction-storeNames-required-private.html: Added.
+        * storage/indexeddb/unblocked-version-changes-private-expected.txt: Added.
+        * storage/indexeddb/unblocked-version-changes-private.html: Added.
+        * storage/indexeddb/unprefix-private-expected.txt: Added.
+        * storage/indexeddb/unprefix-private.html: Added.
+        * storage/indexeddb/value-undefined-private-expected.txt: Added.
+        * storage/indexeddb/value-undefined-private.html: Added.
+        * storage/indexeddb/values-odd-types-private-expected.txt: Added.
+        * storage/indexeddb/values-odd-types-private.html: Added.
+        * storage/indexeddb/version-change-abort-private-expected.txt: Added.
+        * storage/indexeddb/version-change-abort-private.html: Added.
+        * storage/indexeddb/version-change-exclusive-private-expected.txt: Added.
+        * storage/indexeddb/version-change-exclusive-private.html: Added.
+        * storage/indexeddb/versionchangerequest-activedomobject-private-expected.txt: Added.
+        * storage/indexeddb/versionchangerequest-activedomobject-private.html: Added.
+
+2016-01-18  Nan Wang  <n_wang@apple.com>
+
+        AX: [Mac] Implement next/previous text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=152728
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/previous-next-text-marker-expected.txt: Added.
+        * accessibility/mac/previous-next-text-marker.html: Added.
+        * accessibility/mac/text-marker-with-user-select-none-expected.txt: Added.
+        * accessibility/mac/text-marker-with-user-select-none.html: Added.
+
+2016-01-17  Simon Fraser  <simon.fraser@apple.com>
+
+        More displaylist tests, and minor cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=153198
+
+        Reviewed by Zalan Bujtas.
+
+        A couple more display list tests that check that the computed extent of an item
+        includes shadows and transforms.
+
+        WK1 results differ in that they disable should-subpixel-quantize-fonts in the state
+        (which is a bug).
+
+        Move some shared JS into a helper file.
+
+        * displaylists/extent-includes-shadow-expected.txt: Added.
+        * displaylists/extent-includes-shadow.html: Added.
+        * displaylists/extent-includes-transforms-expected.txt: Added.
+        * displaylists/extent-includes-transforms.html: Added.
+        * displaylists/layer-dispay-list.html:
+        * displaylists/resources/dump-target-display-list.js: Added.
+        (doTest):
+        * platform/mac-wk1/displaylists/extent-includes-shadow-expected.txt: Added.
+        * platform/mac-wk1/displaylists/extent-includes-transforms-expected.txt: Added.
+
+2016-01-17  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: .js test files should not log database names.
+        https://bugs.webkit.org/show_bug.cgi?id=153181
+
+        Reviewed by Alex Christensen.
+
+        We'll be sharing .js files as well as test expectations between different HTML test files,
+        and logging the filename is counter to this goal, as it will change depending on the HTML
+        driver running the test.
+        
+        * storage/indexeddb/resources/shared.js:
+        (setDBNameFromPath): eval() setting the filename instead of evalAndLog().
+
+        * platform/wk2/storage/indexeddb/aborted-versionchange-closes-expected.txt:
+        * platform/wk2/storage/indexeddb/create-and-remove-object-store-expected.txt:
+        * platform/wk2/storage/indexeddb/cursor-continue-dir-expected.txt:
+        * platform/wk2/storage/indexeddb/cursor-continue-expected.txt:
+        * platform/wk2/storage/indexeddb/cursor-finished-expected.txt:
+        * platform/wk2/storage/indexeddb/database-basics-expected.txt:
+        * platform/wk2/storage/indexeddb/index-count-expected.txt:
+        * platform/wk2/storage/indexeddb/intversion-abort-in-initial-upgradeneeded-expected.txt:
+        * platform/wk2/storage/indexeddb/intversion-close-in-oncomplete-expected.txt:
+        * platform/wk2/storage/indexeddb/intversion-close-in-upgradeneeded-expected.txt:
+        * platform/wk2/storage/indexeddb/invalid-keys-expected.txt:
+        * platform/wk2/storage/indexeddb/key-type-array-expected.txt:
+        * platform/wk2/storage/indexeddb/keypath-arrays-expected.txt:
+        * platform/wk2/storage/indexeddb/keypath-edges-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/bad-keypath-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/clear-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/create-objectstore-basics-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/cursors-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-delete-null-key-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-inline-and-passed-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-put-no-key-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/key-requirements-put-null-key-expected.txt:
+        * platform/wk2/storage/indexeddb/mozilla/readonly-transactions-expected.txt:
+        * platform/wk2/storage/indexeddb/object-lookups-in-versionchange-expected.txt:
+        * platform/wk2/storage/indexeddb/objectstore-count-expected.txt:
+        * platform/wk2/storage/indexeddb/open-cursor-expected.txt:
+        * platform/wk2/storage/indexeddb/request-result-cache-expected.txt:
+        * platform/wk2/storage/indexeddb/transaction-abort-expected.txt:
+        * platform/wk2/storage/indexeddb/transaction-active-flag-expected.txt:
+        * platform/wk2/storage/indexeddb/transaction-after-close-expected.txt:
+        * platform/wk2/storage/indexeddb/transaction-read-only-expected.txt:
+        * platform/wk2/storage/indexeddb/version-change-exclusive-expected.txt:
+        * storage/indexeddb/aborted-versionchange-closes-expected.txt:
+        * storage/indexeddb/clone-exception-expected.txt:
+        * storage/indexeddb/closed-cursor-expected.txt:
+        * storage/indexeddb/create-and-remove-object-store-expected.txt:
+        * storage/indexeddb/create-object-store-options-expected.txt:
+        * storage/indexeddb/createIndex-after-failure-expected.txt:
+        * storage/indexeddb/createObjectStore-name-argument-required-expected.txt:
+        * storage/indexeddb/createObjectStore-null-name-expected.txt:
+        * storage/indexeddb/cursor-added-bug-expected.txt:
+        * storage/indexeddb/cursor-advance-expected.txt:
+        * storage/indexeddb/cursor-basics-expected.txt:
+        * storage/indexeddb/cursor-cast-expected.txt:
+        * storage/indexeddb/cursor-continue-dir-expected.txt:
+        * storage/indexeddb/cursor-continue-expected.txt:
+        * storage/indexeddb/cursor-continue-validity-expected.txt:
+        * storage/indexeddb/cursor-delete-expected.txt:
+        * storage/indexeddb/cursor-finished-expected.txt:
+        * storage/indexeddb/cursor-inconsistency-expected.txt:
+        * storage/indexeddb/cursor-index-delete-expected.txt:
+        * storage/indexeddb/cursor-key-order-expected.txt:
+        * storage/indexeddb/cursor-overloads-expected.txt:
+        * storage/indexeddb/cursor-prev-no-duplicate-expected.txt:
+        * storage/indexeddb/cursor-primary-key-order-expected.txt:
+        * storage/indexeddb/cursor-properties-expected.txt:
+        * storage/indexeddb/cursor-reverse-bug-expected.txt:
+        * storage/indexeddb/cursor-skip-deleted-expected.txt:
+        * storage/indexeddb/cursor-update-expected.txt:
+        * storage/indexeddb/cursor-update-value-argument-required-expected.txt:
+        * storage/indexeddb/cursor-value-expected.txt:
+        * storage/indexeddb/database-basics-expected.txt:
+        * storage/indexeddb/database-close-expected.txt:
+        * storage/indexeddb/database-closepending-flag-expected.txt:
+        * storage/indexeddb/database-deletepending-flag-expected.txt:
+        * storage/indexeddb/database-wrapper-expected.txt:
+        * storage/indexeddb/delete-closed-database-object-expected.txt:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-open-success-expected.txt:
+        * storage/indexeddb/delete-in-upgradeneeded-close-in-versionchange-expected.txt:
+        * storage/indexeddb/delete-range-expected.txt:
+        * storage/indexeddb/deleteIndex-expected.txt:
+        * storage/indexeddb/deleteObjectStore-name-argument-required-expected.txt:
+        * storage/indexeddb/deleteObjectStore-null-name-expected.txt:
+        * storage/indexeddb/deleted-objects-expected.txt:
+        * storage/indexeddb/deletedatabase-blocked-expected.txt:
+        * storage/indexeddb/deletedatabase-delayed-by-open-and-versionchange-expected.txt:
+        * storage/indexeddb/deletedatabase-not-blocked-expected.txt:
+        * storage/indexeddb/deletedatabase-transaction-expected.txt:
+        * storage/indexeddb/dont-wedge-expected.txt:
+        * storage/indexeddb/duplicates-expected.txt:
+        * storage/indexeddb/error-causes-abort-by-default-expected.txt:
+        * storage/indexeddb/exception-in-event-aborts-expected.txt:
+        * storage/indexeddb/exceptions-expected.txt:
+        * storage/indexeddb/factory-deletedatabase-expected.txt:
+        * storage/indexeddb/get-keyrange-expected.txt:
+        * storage/indexeddb/index-basics-expected.txt:
+        * storage/indexeddb/index-count-expected.txt:
+        * storage/indexeddb/index-cursor-expected.txt:
+        * storage/indexeddb/index-duplicate-keypaths-expected.txt:
+        * storage/indexeddb/index-get-key-argument-required-expected.txt:
+        * storage/indexeddb/index-multientry-expected.txt:
+        * storage/indexeddb/index-population-expected.txt:
+        * storage/indexeddb/index-unique-expected.txt:
+        * storage/indexeddb/intversion-abort-in-initial-upgradeneeded-expected.txt:
+        * storage/indexeddb/intversion-bad-parameters-expected.txt:
+        * storage/indexeddb/intversion-blocked-expected.txt:
+        * storage/indexeddb/intversion-close-between-events-expected.txt:
+        * storage/indexeddb/intversion-close-in-oncomplete-expected.txt:
+        * storage/indexeddb/intversion-close-in-upgradeneeded-expected.txt:
+        * storage/indexeddb/intversion-encoding-expected.txt:
+        * storage/indexeddb/intversion-gated-on-delete-expected.txt:
+        * storage/indexeddb/intversion-long-queue-expected.txt:
+        * storage/indexeddb/intversion-omit-parameter-expected.txt:
+        * storage/indexeddb/intversion-open-in-upgradeneeded-expected.txt:
+        * storage/indexeddb/intversion-open-with-version-expected.txt:
+        * storage/indexeddb/intversion-pending-version-changes-ascending-expected.txt:
+        * storage/indexeddb/intversion-pending-version-changes-descending-expected.txt:
+        * storage/indexeddb/intversion-pending-version-changes-same-expected.txt:
+        * storage/indexeddb/intversion-persistence-expected.txt:
+        * storage/indexeddb/intversion-revert-on-abort-expected.txt:
+        * storage/indexeddb/intversion-two-opens-no-versions-expected.txt:
+        * storage/indexeddb/intversion-upgrades-expected.txt:
+        * storage/indexeddb/invalid-keys-expected.txt:
+        * storage/indexeddb/key-generator-expected.txt:
+        * storage/indexeddb/key-sort-order-across-types-expected.txt:
+        * storage/indexeddb/key-sort-order-date-expected.txt:
+        * storage/indexeddb/key-type-array-expected.txt:
+        * storage/indexeddb/key-type-binary-expected.txt:
+        * storage/indexeddb/key-type-infinity-expected.txt:
+        * storage/indexeddb/keypath-arrays-expected.txt:
+        * storage/indexeddb/keypath-basics-expected.txt:
+        * storage/indexeddb/keypath-edges-expected.txt:
+        * storage/indexeddb/keypath-fetch-key-expected.txt:
+        * storage/indexeddb/keypath-intrinsic-properties-expected.txt:
+        * storage/indexeddb/lazy-index-population-expected.txt:
+        * storage/indexeddb/lazy-index-types-expected.txt:
+        * storage/indexeddb/list-ordering-expected.txt:
+        * storage/indexeddb/metadata-expected.txt:
+        * storage/indexeddb/metadata-race-expected.txt:
+        * storage/indexeddb/modern/abort-objectstore-info-expected.txt:
+        * storage/indexeddb/modern/blocked-open-db-requests-expected.txt:
+        * storage/indexeddb/modern/memory-index-not-deleted-with-objectstore-expected.txt:
+        * storage/indexeddb/modern/transaction-scheduler-4-expected.txt:
+        * storage/indexeddb/mozilla/add-twice-failure-expected.txt:
+        * storage/indexeddb/mozilla/autoincrement-indexes-expected.txt:
+        * storage/indexeddb/mozilla/bad-keypath-expected.txt:
+        * storage/indexeddb/mozilla/clear-expected.txt:
+        * storage/indexeddb/mozilla/create-index-unique-expected.txt:
+        * storage/indexeddb/mozilla/create-index-with-integer-keys-expected.txt:
+        * storage/indexeddb/mozilla/create-objectstore-basics-expected.txt:
+        * storage/indexeddb/mozilla/create-objectstore-null-name-expected.txt:
+        * storage/indexeddb/mozilla/cursor-mutation-expected.txt:
+        * storage/indexeddb/mozilla/cursor-mutation-objectstore-only-expected.txt:
+        * storage/indexeddb/mozilla/cursor-update-updates-indexes-expected.txt:
+        * storage/indexeddb/mozilla/cursors-expected.txt:
+        * storage/indexeddb/mozilla/delete-result-expected.txt:
+        * storage/indexeddb/mozilla/event-source-expected.txt:
+        * storage/indexeddb/mozilla/global-data-expected.txt:
+        * storage/indexeddb/mozilla/index-prev-no-duplicate-expected.txt:
+        * storage/indexeddb/mozilla/indexes-expected.txt:
+        * storage/indexeddb/mozilla/key-requirements-delete-null-key-expected.txt:
+        * storage/indexeddb/mozilla/key-requirements-expected.txt:
+        * storage/indexeddb/mozilla/key-requirements-inline-and-passed-expected.txt:
+        * storage/indexeddb/mozilla/key-requirements-put-no-key-expected.txt:
+        * storage/indexeddb/mozilla/key-requirements-put-null-key-expected.txt:
+        * storage/indexeddb/mozilla/object-cursors-expected.txt:
+        * storage/indexeddb/mozilla/object-identity-expected.txt:
+        * storage/indexeddb/mozilla/object-store-inline-autoincrement-key-added-on-put-expected.txt:
+        * storage/indexeddb/mozilla/object-store-remove-values-expected.txt:
+        * storage/indexeddb/mozilla/objectstorenames-expected.txt:
+        * storage/indexeddb/mozilla/odd-result-order-expected.txt:
+        * storage/indexeddb/mozilla/put-get-values-expected.txt:
+        * storage/indexeddb/mozilla/readonly-transactions-expected.txt:
+        * storage/indexeddb/mozilla/readwrite-transactions-expected.txt:
+        * storage/indexeddb/mozilla/readyState-expected.txt:
+        * storage/indexeddb/mozilla/remove-index-expected.txt:
+        * storage/indexeddb/mozilla/remove-objectstore-expected.txt:
+        * storage/indexeddb/mozilla/versionchange-abort-expected.txt:
+        * storage/indexeddb/mutating-cursor-expected.txt:
+        * storage/indexeddb/noblobs-expected.txt:
+        * storage/indexeddb/object-lookups-in-versionchange-expected.txt:
+        * storage/indexeddb/objectStore-required-arguments-expected.txt:
+        * storage/indexeddb/objectstore-autoincrement-expected.txt:
+        * storage/indexeddb/objectstore-basics-expected.txt:
+        * storage/indexeddb/objectstore-clear-expected.txt:
+        * storage/indexeddb/objectstore-count-expected.txt:
+        * storage/indexeddb/objectstore-cursor-expected.txt:
+        * storage/indexeddb/objectstore-removeobjectstore-expected.txt:
+        * storage/indexeddb/open-cursor-expected.txt:
+        * storage/indexeddb/open-during-transaction-expected.txt:
+        * storage/indexeddb/open-ordering-expected.txt:
+        * storage/indexeddb/opencursor-key-expected.txt:
+        * storage/indexeddb/optional-arguments-expected.txt:
+        * storage/indexeddb/pending-activity-expected.txt:
+        * storage/indexeddb/persistence-expected.txt:
+        * storage/indexeddb/prefetch-bugfix-108071-expected.txt:
+        * storage/indexeddb/prefetch-invalidation-expected.txt:
+        * storage/indexeddb/prefetch-race-expected.txt:
+        * storage/indexeddb/queued-commands-expected.txt:
+        * storage/indexeddb/readonly-expected.txt:
+        * storage/indexeddb/readonly-properties-expected.txt:
+        * storage/indexeddb/request-continue-abort-expected.txt:
+        * storage/indexeddb/request-event-propagation-expected.txt:
+        * storage/indexeddb/request-result-cache-expected.txt:
+        * storage/indexeddb/set_version_blocked-expected.txt:
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-expected.txt:
+        * storage/indexeddb/setversion-not-blocked-expected.txt:
+        * storage/indexeddb/structured-clone-expected.txt:
+        * storage/indexeddb/transaction-abort-expected.txt:
+        * storage/indexeddb/transaction-active-flag-expected.txt:
+        * storage/indexeddb/transaction-after-close-expected.txt:
+        * storage/indexeddb/transaction-and-objectstore-calls-expected.txt:
+        * storage/indexeddb/transaction-basics-expected.txt:
+        * storage/indexeddb/transaction-complete-with-js-recursion-cross-frame-expected.txt:
+        * storage/indexeddb/transaction-complete-with-js-recursion-expected.txt:
+        * storage/indexeddb/transaction-coordination-across-databases-expected.txt:
+        * storage/indexeddb/transaction-coordination-within-database-expected.txt:
+        * storage/indexeddb/transaction-crash-in-tasks-expected.txt:
+        * storage/indexeddb/transaction-crash-on-abort-expected.txt:
+        * storage/indexeddb/transaction-error-expected.txt:
+        * storage/indexeddb/transaction-event-propagation-expected.txt:
+        * storage/indexeddb/transaction-ordering-expected.txt:
+        * storage/indexeddb/transaction-overlapping-expected.txt:
+        * storage/indexeddb/transaction-read-only-expected.txt:
+        * storage/indexeddb/transaction-readwrite-exclusive-expected.txt:
+        * storage/indexeddb/transaction-rollback-expected.txt:
+        * storage/indexeddb/transaction-scope-sequencing-expected.txt:
+        * storage/indexeddb/transaction-starvation-expected.txt:
+        * storage/indexeddb/transaction-storeNames-required-expected.txt:
+        * storage/indexeddb/unblocked-version-changes-expected.txt:
+        * storage/indexeddb/value-undefined-expected.txt:
+        * storage/indexeddb/values-odd-types-expected.txt:
+        * storage/indexeddb/version-change-abort-expected.txt:
+        * storage/indexeddb/version-change-event-expected.txt:
+        * storage/indexeddb/version-change-exclusive-expected.txt:
+
+2016-01-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove TextRun::allowsRoundingHacks()
+        https://bugs.webkit.org/show_bug.cgi?id=153185
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac/fast/text/rounding-hacks-expansion.html: Removed.
+        * platform/mac/fast/text/rounding-hacks.html: Removed.
+        * platform/mac/platform/mac/fast/text/rounding-hacks-expansion-expected.png: Removed.
+        * platform/mac/platform/mac/fast/text/rounding-hacks-expansion-expected.txt: Removed.
+        * platform/mac/platform/mac/fast/text/rounding-hacks-expected.png: Removed.
+        * platform/mac/platform/mac/fast/text/rounding-hacks-expected.txt: Removed.
+        * svg/text/svg-font-word-rounding-hacks-spaces-expected.html: Removed.
+        * svg/text/svg-font-word-rounding-hacks-spaces.html: Removed.
+
+2016-01-16  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES6] Arrow function syntax. Arrow function should support the destructuring parameters.
+        https://bugs.webkit.org/show_bug.cgi?id=146934
+
+        Reviewed by Saam Barati.
+
+        * js/arrowfunction-syntax-errors-expected.txt:
+        * js/arrowfunction-syntax-expected.txt:
+        * js/script-tests/arrowfunction-syntax-errors.js:
+        * js/script-tests/arrowfunction-syntax.js:
+
+2016-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add tests for Array Utilities like lowerBound/upperBound
+        https://bugs.webkit.org/show_bug.cgi?id=153177
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/array-utilities-expected.txt: Added.
+        * inspector/unit-tests/array-utilities.html: Added.
+
+2016-01-16  Simon Fraser  <simon.fraser@apple.com>
+
+        This test needs to force layout before calling setElementUsesDisplayListDrawing(),
+        so that the layer already has its "drawsContents" property updated.
+
+        * displaylists/layer-dispay-list.html:
+
+2016-01-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        FrameLoaderClient::didReceiveServerRedirectForProvisionalLoadForFrame() is never called when loading a main resource from the memory cache
+        https://bugs.webkit.org/show_bug.cgi?id=152520
+        <rdar://problem/23305737>
+
+        Reviewed by Andy Estes.
+
+        * http/tests/loading/resources/server-redirect-result.html: Added.
+        * http/tests/loading/resources/server-redirect.php: Added.
+        * http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt: Added.
+        * http/tests/loading/server-redirect-for-provisional-load-caching.html: Added.
+
+2016-01-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Content blocking console messages are not deterministic for one test
+        https://bugs.webkit.org/show_bug.cgi?id=153051
+
+        Unreviewed.
+
+        Console messages will print the line number of whichever JavaScript line is
+        being parsed. However, font requests (and therefore content blockers) are
+        not run in response to script. The solution is to add the webfont style
+        from script, so the line number is deterministic.
+
+        * http/tests/contentextensions/font-display-none-repeated-layout.html:
+
+2016-01-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop obsolete HTMLDocument.width / height attributes
+        https://bugs.webkit.org/show_bug.cgi?id=153144
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/HTMLDocument/width-and-height-expected.txt: Removed.
+        * fast/dom/HTMLDocument/width-and-height.html: Removed.
+        Drop outdated test.
+
+        * fast/dom/Window/window-property-invalid-characters-ignored-expected.txt:
+        * fast/dom/Window/window-property-invalid-characters-ignored.html:
+        Stop relying on Document.width / height as these are obsolete.
+
+2016-01-15  Beth Dakin  <bdakin@apple.com>
+
+        Add a test for touch events in scaled documents
+        https://bugs.webkit.org/show_bug.cgi?id=153149
+        -and corresponding-
+        rdar://problem/24181371
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/touch-event-in-scaled-document-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-in-scaled-document.html: Added.
+
+2016-01-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Make a way to test display-list drawing
+        https://bugs.webkit.org/show_bug.cgi?id=152956
+
+        Reviewed by Ryosuke Niwa.
+        
+        Enable displaylists tests on Mac and iOS.
+
+        * TestExpectations:
+        * displaylists/layer-dispay-list-expected.txt: Added.
+        * displaylists/layer-dispay-list.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-01-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        createElementNS and createAttributeNS should treat undefined namespaceURI as null string
+        https://bugs.webkit.org/show_bug.cgi?id=153119
+
+        Reviewed by Chris Dumez.
+
+        Add a regression test for calling createAttributeNS with undefined namespaceURI.
+
+        * fast/dom/Document/createAttributeNS-undefined-namespace-expected.txt: Added.
+        * fast/dom/Document/createAttributeNS-undefined-namespace.html: Added.
+
+2016-01-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Refine http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer*
+        https://bugs.webkit.org/show_bug.cgi?id=153140
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html:
+        * http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html:
+        * http/tests/contentdispositionattachmentsandbox/resources/referer-header-stripped.js:
+        (onload):
+        (navigation): Deleted.
+        The reason why the tests are not completed after calling testRunner.notifyDone() is that the original navigation()
+        is bound as the onload of the iframe which will dispatch two load events. Therefore, navigation() will be called
+        twice. Here, change the navigation() to be bound with the main frame's onload function, which will restrict it to
+        be called only once.
+
+2016-01-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Font features are not applied to the system font
+        https://bugs.webkit.org/show_bug.cgi?id=153053
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/system-font-features-expected.html: Added.
+        * fast/text/system-font-features.html: Added.
+
+2016-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Media Query (-webkit-video-playable-inline) is failing as an invalid media query expression
+        https://bugs.webkit.org/show_bug.cgi?id=153111
+
+        Reviewed by Dean Jackson.
+
+        * fast/media/video-playable-inline-media-query-expected.txt: Added.
+        * fast/media/video-playable-inline-media-query.html: Added.
+        * platform/ios-simulator/ios/fast/media/video-inline-expected.txt: Removed.
+        * platform/ios-simulator/ios/fast/media/video-inline.html: Removed.
+
+2016-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest inspector/script-profiler/event-type-Other.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=153016
+        <rdar://problem/24192919>
+
+        Reviewed by Brian Burg.
+
+        Introduce a better way for the inspected page to signal to
+        the inspector page by dispatching an event with JSON data.
+        Use it in this test to try to eliminate flakyness.
+
+        * http/tests/inspector/resources/inspector-test.js:
+        (TestPage.dispatchEventToFrontend):
+        * http/tests/inspector/resources/protocol-test.js:
+        (TestPage.runTest.window.runTest):
+        (TestPage.dispatchEventToFrontend):
+        * inspector/script-profiler/event-type-Other.html:
+        * inspector/unit-tests/inspector-test-dispatch-event-to-frontend-expected.txt: Added.
+        * inspector/unit-tests/inspector-test-dispatch-event-to-frontend.html: Added.
+        * inspector/unit-tests/protocol-test-dispatch-event-to-frontend-expected.txt: Added.
+        * inspector/unit-tests/protocol-test-dispatch-event-to-frontend.html: Added.
+        * platform/mac/TestExpectations:
+
+2016-01-15  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: canHaveChildren() || canHaveGeneratedChildren() in WebCore::RenderElement::insertChildInternal
+        https://bugs.webkit.org/show_bug.cgi?id=123331
+
+        Reviewed by Darin Adler.
+
+        Do not set named flow fragment bit on the flow until after the renderer is attached. Setting/resetting it too early
+        could affect the attach/detach process itself (This is similar to attaching a multi column flow thread).
+
+        * fast/regions/input-box-with-region-assert-expected.txt: Added.
+        * fast/regions/input-box-with-region-assert.html: Added.
+
+2016-01-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix some typos in unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=153141
+
+        Reviewed by Brian Burg.
+
+        * inspector/unit-tests/async-test-suite-expected.txt:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite-expected.txt:
+        * inspector/unit-tests/sync-test-suite.html:
+        Fix some typos.
+
+2016-01-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline tables/mozilla_expected_failures/bugs/bug89315.html for ios-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=152130
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/tables/mozilla_expected_failures/bugs/bug89315-expected.txt:
+
+2016-01-15  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Date.prototype.toLocaleString in ECMA-402
+        https://bugs.webkit.org/show_bug.cgi?id=147611
+
+        Reviewed by Benjamin Poulain.
+
+        * js/intl-datetimeformat-expected.txt: Added test for null options.
+        * js/date-toLocaleString-expected.txt: Added.
+        * js/date-toLocaleString.html: Added.
+        * js/script-tests/intl-datetimeformat.js: Added test for null options.
+        * js/script-tests/date-toLocaleString.js: Added.
+
+2016-01-15  Antti Koivisto  <antti@apple.com>
+
+        Switch out from ES6 arrow function syntax to allow the test to work with an older WebKit.
+
+        * fast/loader/cache-encoding.html:
+
+2016-01-15  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Expose ReadableStream and relatives to Worker
+        https://bugs.webkit.org/show_bug.cgi?id=152066
+
+        Reviewed by Darin Adler.
+
+        Rebasing tests as ReadableStream is now available in workers.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/efl/js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-01-15  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        CORS: Fix the handling of redirected request containing Origin null.
+        https://bugs.webkit.org/show_bug.cgi?id=128816
+
+        Reviewed by Brent Fulgham.
+
+        Merging Blink patch from George Ancil (https://chromiumcodereview.appspot.com/20735002)
+
+        Added two tests to check CORS with Origin null in HTTP redirect and iframe cases.
+        Updated two test sandboxed iframes test expectations (requests are still denied but error messages are different).
+
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-allow-origin-null-expected.txt: Added.
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-allow-origin-null.html: Added.
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-expected.txt:
+        * http/tests/xmlhttprequest/access-control-sandboxed-iframe-denied-without-wildcard-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cors-origin-null-expected.txt: Added.
+        * http/tests/xmlhttprequest/redirect-cors-origin-null.html: Added.
+        * http/tests/xmlhttprequest/resources/access-control-sandboxed-iframe-allow-origin-null-iframe.html: Added.
+        * http/tests/xmlhttprequest/resources/access-control-sandboxed-iframe-allow-origin-null.cgi: Added.
+        * http/tests/xmlhttprequest/resources/redirect-cors-origin-null-pass.php: Added.
+        * http/tests/xmlhttprequest/resources/redirect-cors-origin-null.php: Added.
+
+2016-01-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195064.
+        https://bugs.webkit.org/show_bug.cgi?id=153118
+
+        test fails most of the time (Requested by alexchristensen on
+        #webkit).
+
+        Reverted changeset:
+
+        "Avoid downloading the wrong image for <picture> elements."
+        https://bugs.webkit.org/show_bug.cgi?id=153027
+        http://trac.webkit.org/changeset/195064
+
+2016-01-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r195088
+
+        Unreviewed.
+
+        * http/tests/contentextensions/font-display-none-repeated-layout-expected.txt:
+
+2016-01-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Mixing Content Blocking of fonts and display:none rules causes battery drain
+        https://bugs.webkit.org/show_bug.cgi?id=153051
+        <rdar://problem/23187709>
+
+        Reviewed by Alex Christensen.
+
+        Make sure that layoutCount does not skyrocket.
+
+        * http/tests/contentextensions/font-display-none-repeated-layout-expected.txt: Added.
+        * http/tests/contentextensions/font-display-none-repeated-layout.html: Added.
+        * http/tests/contentextensions/font-display-none-repeated-layout.html.json: Added.
+
+2016-01-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add document.defineCustomElement
+        https://bugs.webkit.org/show_bug.cgi?id=153092
+
+        Reviewed by Chris Dumez.
+
+        Added tests for document.defineCustomElement and instantiating custom elements.
+
+        * TestExpectations: Skipped the tests on non-Mac ports.
+        * fast/custom-elements: Added.
+        * fast/custom-elements/Document-defineCustomElement-expected.txt: Added.
+        * fast/custom-elements/Document-defineCustomElement.html: Added.
+        * fast/custom-elements/HTMLElement-constructor-expected.txt: Added.
+        * fast/custom-elements/HTMLElement-constructor.html: Added.
+        * platform/mac/TestExpectations:
+
+2016-01-14  Beth Dakin  <bdakin@apple.com>
+
+        WK2: Request completion candidates when needed
+        https://bugs.webkit.org/show_bug.cgi?id=153040
+        -and corresponding-
+        rdar://problem/24155631
+
+        Reviewed by Enrica Casucci and Tim Horton.
+
+        Getting updated EditorState in platformEditorState causes some extra layout 
+        to happen, so now the layout test results for WK2 reflect the results that we 
+        already see on iOS for this test and they reflect the render tree as it is 
+        when you load the page in browser.
+        * platform/mac/fast/dom/focus-contenteditable-expected.txt:
+
+        WebKit 1 is not affected by these new results, so this adds WK-1 only results 
+        that match the old Mac results.
+        * platform/mac-wk1/fast/dom: Added.
+        * platform/mac-wk1/fast/dom/focus-contenteditable-expected.txt: Added.
+
+2016-01-14  Daniel Bates  <dabates@apple.com>
+
+        Disallow use of Geolocation service from unique origins
+        https://bugs.webkit.org/show_bug.cgi?id=153102
+        <rdar://problem/23055645>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * fast/dom/Geolocation/dataURL-getCurrentPosition-expected.txt: Added.
+        * fast/dom/Geolocation/dataURL-getCurrentPosition.html: Added.
+        * fast/dom/Geolocation/dataURL-watchPosition-expected.txt: Added.
+        * fast/dom/Geolocation/dataURL-watchPosition.html: Added.
+        * fast/dom/Geolocation/srcdoc-getCurrentPosition-expected.txt: Added.
+        * fast/dom/Geolocation/srcdoc-getCurrentPosition.html: Added.
+        * fast/dom/Geolocation/srcdoc-watchPosition-expected.txt: Added.
+        * fast/dom/Geolocation/srcdoc-watchPosition.html: Added.
+        * http/tests/security/resources/checkThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod.js: Added.
+        (done):
+        (logMessage):
+        (didReceivePosition):
+        (didReceiveError):
+        (checkThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod):
+        (markupToCheckThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod):
+        (dataURLToCheckThatPositionErrorCallbackIsCalledWithPositionUnavailableForGeolocationMethod):
+        * http/tests/security/resources/sandboxed-iframe-geolocation-getCurrentPosition.html: Added.
+        * http/tests/security/resources/sandboxed-iframe-geolocation-watchPosition.html: Added.
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition-expected.txt: Added.
+        * http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition.html: Added.
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition-expected.txt: Added.
+        * http/tests/security/sandboxed-iframe-geolocation-watchPosition.html: Added.
+
+2016-01-14  Daniel Bates  <dabates@apple.com>
+
+        [XSS Auditor] Partial bypass when web server collapses path components
+        https://bugs.webkit.org/show_bug.cgi?id=152872
+
+        Reviewed by Brent Fulgham.
+
+        Merged from Blink (patch by Tom Sepez <tsepez@chromium.org>):
+        <https://src.chromium.org/viewvc/blink?revision=167610&view=revision>
+
+        * http/tests/security/xssAuditor/embed-tag-in-path-unterminated-expected.txt: Added.
+        * http/tests/security/xssAuditor/embed-tag-in-path-unterminated.html: Added.
+        * http/tests/security/xssAuditor/intercept/.htaccess:
+
+2016-01-14  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS Simulator] fast/table/003.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=152444
+
+        Unreviewed gardening.
+
+        * platform/ios-simulator/fast/table/003-expected.txt:
+
+2016-01-14  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Support subclassing Function.
+        https://bugs.webkit.org/show_bug.cgi?id=153081
+
+        Reviewed by Geoffrey Garen.
+
+        Rebasline tests with the new clearer error message.
+
+        * js/class-syntax-extends-expected.txt:
+        * js/script-tests/class-syntax-extends.js:
+
+2016-01-14  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !newRelayoutRoot.container() || !newRelayoutRoot.container()->needsLayout() in WebCore::FrameView::scheduleRelayoutOfSubtree
+        https://bugs.webkit.org/show_bug.cgi?id=151605#c1
+
+        Reviewed by David Hyatt.
+
+        Do not let RenderMultiColumnSet/RenderFlowThread mark ancestors dirty while updating scrollbars
+        for overflow content. While updating scrollbars, we only layout descendants so marking parents dirty
+        is unnecessary and could lead to an invalid dirty state.
+
+        * fast/multicol/body-stuck-with-dirty-bit-with-columns-expected.txt: Added.
+        * fast/multicol/body-stuck-with-dirty-bit-with-columns.html: Added.
+
+2016-01-14  Dave Hyatt  <hyatt@apple.com>
+
+        Avoid downloading the wrong image for <picture> elements.
+        https://bugs.webkit.org/show_bug.cgi?id=153027
+
+        Reviewed by Dean Jackson.
+
+        * fast/picture/image-picture-loads-1x-expected.txt: Added.
+        * fast/picture/image-picture-loads-1x.html: Added.
+
+2016-01-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Move streams/webkitGetUserMedia-shadowing-then.html to fast/mediastream
+        https://bugs.webkit.org/show_bug.cgi?id=152973
+
+        Reviewed by Brent Fulgham.
+
+        Moved the test, made it asynchronous to ensure that the error callback is called.
+
+        * fast/mediastream/webkitGetUserMedia-shadowing-then-expected.txt: Renamed from LayoutTests/streams/webkitGetUserMedia-shadowing-then-expected.txt.
+        * fast/mediastream/webkitGetUserMedia-shadowing-then.html: Renamed from LayoutTests/streams/webkitGetUserMedia-shadowing-then.html.
+
+2016-01-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195002.
+        https://bugs.webkit.org/show_bug.cgi?id=153098
+
+        Crashes many/most editing tests (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "WK2: Request completion candidates when needed"
+        https://bugs.webkit.org/show_bug.cgi?id=153040
+        http://trac.webkit.org/changeset/195002
+
+2016-01-14  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [EFL] Hyphenation can never work in practice due to requirements on lang tags
+        https://bugs.webkit.org/show_bug.cgi?id=147310
+
+        Reviewed by Michael Catanzaro.
+
+        Update some baselines and add a GTK+ specific test for locale variations.
+
+        * platform/gtk/fast/text/hyphenate-flexible-locales-expected.html: Added.
+        * platform/gtk/fast/text/hyphenate-flexible-locales.html: Added.
+        * platform/gtk/fast/text/hyphenate-locale-expected.png: We now properly hyphenate
+        text with the 'en' locale.
+        * platform/gtk/fast/text/hyphenate-locale-expected.txt:
+
+2016-01-14  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Fix problems with cross-origin redirects
+        https://bugs.webkit.org/show_bug.cgi?id=116075
+
+        Reviewed by Daniel Bates.
+
+        Merging https://chromium.googlesource.com/chromium/blink/+/7ea774e478f84f355748108d2aaabca15355d512 by Ken Russell
+        This merge adds tests for cross origin requests triggered from same origin redirection responses with and without credentials).
+        Rebaseline of some tests due to console error messages generated from newly hit CORS checks.
+
+        * TestExpectations: Disabled WPT tests that require access to non localhost URLs which are currently blocked by DTR/WTR.
+        * http/tests/xmlhttprequest/access-control-and-redirects-async-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects-async-same-origin-expected.txt: Added.
+        * http/tests/xmlhttprequest/access-control-and-redirects-async-same-origin.html: Added.
+        * http/tests/xmlhttprequest/access-control-and-redirects-async.html:
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects.html:
+        * http/tests/xmlhttprequest/redirect-cross-origin-2-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt:
+        * http/tests/xmlhttprequest/resources/access-control-basic-allow-no-credentials.cgi: Added.
+        * http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt:
+
 2016-01-13  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking test as flaky: sputnik/Conformance/15_Native_Objects/15.1_The_Global_Object/15.1.3/15.1.3.3_encodeURI/S15.1.3.3_A2.4_T2.html

@@ -707,7 +707,7 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
         startOffset = std::min(startOffset, endOffset);
         if (action == Extract || action == Clone) {
             RefPtr<ProcessingInstruction> c = static_cast<ProcessingInstruction*>(container->cloneNode(true).ptr());
-            c->setData(c->data().substring(startOffset, endOffset - startOffset), ec);
+            c->setData(c->data().substring(startOffset, endOffset - startOffset));
             if (fragment) {
                 result = fragment;
                 result->appendChild(c.release(), ec);
@@ -718,7 +718,7 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
             ProcessingInstruction& pi = downcast<ProcessingInstruction>(*container);
             String data(pi.data());
             data.remove(startOffset, endOffset - startOffset);
-            pi.setData(data, ec);
+            pi.setData(data);
         }
         break;
     case Node::ELEMENT_NODE:
@@ -1712,12 +1712,19 @@ void Range::textNodesMerged(NodeWithIndex& oldNode, unsigned offset)
 
 static inline void boundaryTextNodesSplit(RangeBoundaryPoint& boundary, Text* oldNode)
 {
-    if (boundary.container() != oldNode)
+    if (boundary.container() == oldNode) {
+        unsigned splitOffset = oldNode->length();
+        unsigned boundaryOffset = boundary.offset();
+        if (boundaryOffset > splitOffset)
+            boundary.set(oldNode->nextSibling(), boundaryOffset - splitOffset, 0);
         return;
-    unsigned boundaryOffset = boundary.offset();
-    if (boundaryOffset <= oldNode->length())
-        return;
-    boundary.set(oldNode->nextSibling(), boundaryOffset - oldNode->length(), 0);
+    }
+    auto* parent = oldNode->parentNode();
+    if (boundary.container() == parent && boundary.childBefore() == oldNode) {
+        auto* newChild = oldNode->nextSibling();
+        ASSERT(newChild);
+        boundary.setToAfterChild(*newChild);
+    }
 }
 
 void Range::textNodeSplit(Text* oldNode)

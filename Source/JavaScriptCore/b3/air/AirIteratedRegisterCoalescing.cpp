@@ -29,7 +29,6 @@
 #if ENABLE(B3_JIT)
 
 #include "AirCode.h"
-#include "AirFixSpillSlotZDef.h"
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
 #include "AirLiveness.h"
@@ -54,9 +53,10 @@ bool reportStats = false;
 template<typename IndexType>
 class AbstractColoringAllocator {
 public:
-    AbstractColoringAllocator(const Vector<Reg>& regsInPriorityOrder, IndexType lastPrecoloredRegisterIndex, unsigned tmpArraySize)
+    AbstractColoringAllocator(const Vector<Reg>& regsInPriorityOrder, IndexType lastPrecoloredRegisterIndex, unsigned tmpArraySize, const HashSet<unsigned>& unspillableTmp)
         : m_regsInPriorityOrder(regsInPriorityOrder)
         , m_lastPrecoloredRegisterIndex(lastPrecoloredRegisterIndex)
+        , m_unspillableTmps(unspillableTmp)
     {
         initializeDegrees(tmpArraySize);
 
@@ -91,12 +91,20 @@ protected:
                 continue;
 
             if (degree >= m_regsInPriorityOrder.size())
-                m_spillWorklist.add(i);
+                addToSpill(i);
             else if (!m_moveList[i].isEmpty())
                 m_freezeWorklist.add(i);
             else
                 m_simplifyWorklist.append(i);
         }
+    }
+
+    void addToSpill(unsigned toSpill)
+    {
+        if (m_unspillableTmps.contains(toSpill))
+            return;
+
+        m_spillWorklist.add(toSpill);
     }
 
     // Low-degree vertex can always be colored: just pick any of the color taken by any
@@ -362,7 +370,7 @@ private:
         });
 
         if (m_degrees[u] >= m_regsInPriorityOrder.size() && m_freezeWorklist.remove(u))
-            m_spillWorklist.add(u);
+            addToSpill(u);
     }
 
     bool canBeSafelyCoalesced(IndexType u, IndexType v)
@@ -626,6 +634,8 @@ protected:
 
     // The mapping of Tmp to their alias for Moves that are always coalescing regardless of spilling.
     Vector<IndexType, 0, UnsafeVectorOverflow> m_coalescedTmpsAtSpill;
+    
+    const HashSet<unsigned>& m_unspillableTmps;
 };
 
 // This perform all the tasks that are specific to certain register type.
@@ -633,11 +643,10 @@ template<Arg::Type type>
 class ColoringAllocator : public AbstractColoringAllocator<unsigned> {
 public:
     ColoringAllocator(Code& code, TmpWidth& tmpWidth, const UseCounts<Tmp>& useCounts, const HashSet<unsigned>& unspillableTmp)
-        : AbstractColoringAllocator<unsigned>(regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code))
+        : AbstractColoringAllocator<unsigned>(regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code), unspillableTmp)
         , m_code(code)
         , m_tmpWidth(tmpWidth)
         , m_useCounts(useCounts)
-        , m_unspillableTmps(unspillableTmp)
     {
         initializePrecoloredTmp();
         build();
@@ -928,10 +937,8 @@ private:
 
         auto iterator = m_spillWorklist.begin();
 
-        while (iterator != m_spillWorklist.end() && m_unspillableTmps.contains(*iterator))
-            ++iterator;
-
-        RELEASE_ASSERT_WITH_MESSAGE(iterator != m_spillWorklist.end(), "It is not possible to color the Air graph with the number of available registers.");
+        RELEASE_ASSERT_WITH_MESSAGE(iterator != m_spillWorklist.end(), "selectSpill() called when there was no spill.");
+        RELEASE_ASSERT_WITH_MESSAGE(!m_unspillableTmps.contains(*iterator), "trying to spill unspillable tmp");
 
         // Higher score means more desirable to spill. Lower scores maximize the likelihood that a tmp
         // gets a register.
@@ -946,8 +953,16 @@ private:
 
             // All else being equal, the score should be inversely related to the number of warm uses and
             // defs.
-            const UseCounts<Tmp>::Counts& counts = m_useCounts[tmp];
-            double uses = counts.numWarmUses + counts.numDefs;
+            const UseCounts<Tmp>::Counts* counts = m_useCounts[tmp];
+            if (!counts)
+                return std::numeric_limits<double>::infinity();
+            
+            double uses = counts->numWarmUses + counts->numDefs;
+
+            // If it's a constant, then it's not as bad to spill. We can rematerialize it in many
+            // cases.
+            if (counts->numConstDefs == counts->numDefs)
+                uses /= 2;
 
             return degree / uses;
         };
@@ -959,9 +974,7 @@ private:
         for (;iterator != m_spillWorklist.end(); ++iterator) {
             double tmpScore = score(AbsoluteTmpMapper<type>::tmpFromAbsoluteIndex(*iterator));
             if (tmpScore > maxScore) {
-                if (m_unspillableTmps.contains(*iterator))
-                    continue;
-
+                ASSERT(!m_unspillableTmps.contains(*iterator));
                 victimIterator = iterator;
                 maxScore = tmpScore;
             }
@@ -1054,7 +1067,6 @@ private:
     TmpWidth& m_tmpWidth;
     // FIXME: spilling should not type specific. It is only a side effect of using UseCounts.
     const UseCounts<Tmp>& m_useCounts;
-    const HashSet<unsigned>& m_unspillableTmps;
 };
 
 class IteratedRegisterCoalescing {
@@ -1124,11 +1136,11 @@ private:
                 // complete register allocation. So, we record this before starting.
                 bool mayBeCoalescable = allocator.mayBeCoalescable(inst);
 
-                // On X86_64, Move32 is cheaper if we know that it's equivalent to a Move. It's
+                // Move32 is cheaper if we know that it's equivalent to a Move. It's
                 // equivalent if the destination's high bits are not observable or if the source's high
                 // bits are all zero. Note that we don't have the opposite optimization for other
                 // architectures, which may prefer Move over Move32, because Move is canonical already.
-                if (type == Arg::GP && optimizeForX86_64() && inst.opcode == Move
+                if (type == Arg::GP && inst.opcode == Move
                     && inst.args[0].isTmp() && inst.args[1].isTmp()) {
                     if (m_tmpWidth.useWidth(inst.args[1].tmp()) <= Arg::Width32
                         || m_tmpWidth.defWidth(inst.args[0].tmp()) <= Arg::Width32)
@@ -1168,7 +1180,6 @@ private:
     void addSpillAndFill(const ColoringAllocator<type>& allocator, HashSet<unsigned>& unspillableTmps)
     {
         HashMap<Tmp, StackSlot*> stackSlots;
-        unsigned newStackSlotThreshold = m_code.stackSlots().size();
         for (Tmp tmp : allocator.spilledTmps()) {
             // All the spilled values become unspillable.
             unspillableTmps.add(AbsoluteTmpMapper<type>::absoluteIndex(tmp));
@@ -1202,16 +1213,19 @@ private:
                 }
 
                 // Try to replace the register use by memory use when possible.
-                for (unsigned i = 0; i < inst.args.size(); ++i) {
-                    Arg& arg = inst.args[i];
-                    if (arg.isTmp() && arg.type() == type && !arg.isReg()) {
-                        auto stackSlotEntry = stackSlots.find(arg.tmp());
-                        if (stackSlotEntry != stackSlots.end() && inst.admitsStack(i)) {
-                            arg = Arg::stack(stackSlotEntry->value);
-                            didSpill = true;
+                inst.forEachArg(
+                    [&] (Arg& arg, Arg::Role, Arg::Type argType, Arg::Width width) {
+                        if (arg.isTmp() && argType == type && !arg.isReg()) {
+                            auto stackSlotEntry = stackSlots.find(arg.tmp());
+                            if (stackSlotEntry != stackSlots.end()
+                                && inst.admitsStack(arg)) {
+                                stackSlotEntry->value->ensureSize(
+                                    forceMove32IfDidSpill ? 4 : Arg::bytes(width));
+                                arg = Arg::stack(stackSlotEntry->value);
+                                didSpill = true;
+                            }
                         }
-                    }
-                }
+                    });
 
                 if (didSpill && forceMove32IfDidSpill)
                     inst.opcode = Move32;
@@ -1262,12 +1276,6 @@ private:
                 });
             }
         }
-
-        fixSpillSlotZDef(
-            m_code,
-            [&] (StackSlot* stackSlot) -> bool {
-                return stackSlot->index() >= newStackSlotThreshold;
-            });
     }
 
     Code& m_code;

@@ -262,7 +262,7 @@ void PageClientImpl::derefView()
 }
 
 #if ENABLE(VIDEO)
-bool PageClientImpl::decicePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&)
+bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&)
 {
     return false;
 }

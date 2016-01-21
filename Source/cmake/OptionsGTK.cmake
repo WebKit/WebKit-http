@@ -2,7 +2,7 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 11)
-set(PROJECT_VERSION_MICRO 3)
+set(PROJECT_VERSION_MICRO 4)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
@@ -15,8 +15,8 @@ endif ()
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 50 0 13)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 21 2 3)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 50 1 13)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 21 3 3)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -471,10 +471,11 @@ endmacro()
 # CMake does not automatically add --whole-archive when building shared objects from
 # a list of convenience libraries. This can lead to missing symbols in the final output.
 # We add --whole-archive to all libraries manually to prevent the linker from trimming
-# symbols that we actually need later. (--whole-archive isn't an option on XCode's
-# linker, though.)
+# symbols that we actually need later. With ld64 on darwin, we use -all_load instead.
 macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
-    if (NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        list(APPEND ${_list_name} -Wl,-all_load)
+    else ()
         foreach (library IN LISTS ${_list_name})
           list(APPEND ${_list_name}_TMP -Wl,--whole-archive ${library} -Wl,--no-whole-archive)
         endforeach ()

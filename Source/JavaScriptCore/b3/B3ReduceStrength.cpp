@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "B3BasicBlockInlines.h"
+#include "B3BlockInsertionSet.h"
 #include "B3ControlValue.h"
 #include "B3Dominators.h"
 #include "B3IndexSet.h"
@@ -84,11 +85,181 @@ namespace {
 
 bool verbose = false;
 
+class IntRange {
+public:
+    IntRange()
+    {
+    }
+
+    IntRange(int64_t min, int64_t max)
+        : m_min(min)
+        , m_max(max)
+    {
+    }
+
+    template<typename T>
+    static IntRange top()
+    {
+        return IntRange(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+    }
+
+    static IntRange top(Type type)
+    {
+        switch (type) {
+        case Int32:
+            return top<int32_t>();
+        case Int64:
+            return top<int64_t>();
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return IntRange();
+        }
+    }
+
+    template<typename T>
+    static IntRange rangeForMask(T mask)
+    {
+        if (!(mask + 1))
+            return top<T>();
+        return IntRange(0, mask);
+    }
+
+    static IntRange rangeForMask(int64_t mask, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return rangeForMask<int32_t>(static_cast<int32_t>(mask));
+        case Int64:
+            return rangeForMask<int64_t>(mask);
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return IntRange();
+        }
+    }
+
+    template<typename T>
+    static IntRange rangeForZShr(int32_t shiftAmount)
+    {
+        typename std::make_unsigned<T>::type mask = 0;
+        mask--;
+        mask >>= shiftAmount;
+        return rangeForMask<T>(static_cast<T>(mask));
+    }
+
+    static IntRange rangeForZShr(int32_t shiftAmount, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return rangeForZShr<int32_t>(shiftAmount);
+        case Int64:
+            return rangeForZShr<int64_t>(shiftAmount);
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return IntRange();
+        }
+    }
+
+    template<typename T>
+    static IntRange rangeForSShr(int32_t shiftAmount)
+    {
+        return IntRange(top<T>().min() >> shiftAmount, top<T>().max() >> shiftAmount);
+    }
+
+    static IntRange rangeForSShr(int32_t shiftAmount, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return rangeForSShr<int32_t>(shiftAmount);
+        case Int64:
+            return rangeForSShr<int64_t>(shiftAmount);
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return IntRange();
+        }
+    }
+
+    int64_t min() const { return m_min; }
+    int64_t max() const { return m_max; }
+
+    void dump(PrintStream& out) const
+    {
+        out.print("[", m_min, ",", m_max, "]");
+    }
+
+    template<typename T>
+    bool couldOverflowAdd(const IntRange& other)
+    {
+        return sumOverflows<T>(m_min, other.m_min)
+            || sumOverflows<T>(m_min, other.m_max)
+            || sumOverflows<T>(m_max, other.m_min)
+            || sumOverflows<T>(m_max, other.m_max);
+    }
+
+    bool couldOverflowAdd(const IntRange& other, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return couldOverflowAdd<int32_t>(other);
+        case Int64:
+            return couldOverflowAdd<int64_t>(other);
+        default:
+            return true;
+        }
+    }
+
+    template<typename T>
+    bool couldOverflowSub(const IntRange& other)
+    {
+        return differenceOverflows<T>(m_min, other.m_min)
+            || differenceOverflows<T>(m_min, other.m_max)
+            || differenceOverflows<T>(m_max, other.m_min)
+            || differenceOverflows<T>(m_max, other.m_max);
+    }
+
+    bool couldOverflowSub(const IntRange& other, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return couldOverflowSub<int32_t>(other);
+        case Int64:
+            return couldOverflowSub<int64_t>(other);
+        default:
+            return true;
+        }
+    }
+
+    template<typename T>
+    bool couldOverflowMul(const IntRange& other)
+    {
+        return productOverflows<T>(m_min, other.m_min)
+            || productOverflows<T>(m_min, other.m_max)
+            || productOverflows<T>(m_max, other.m_min)
+            || productOverflows<T>(m_max, other.m_max);
+    }
+
+    bool couldOverflowMul(const IntRange& other, Type type)
+    {
+        switch (type) {
+        case Int32:
+            return couldOverflowMul<int32_t>(other);
+        case Int64:
+            return couldOverflowMul<int64_t>(other);
+        default:
+            return true;
+        }
+    }
+
+private:
+    int64_t m_min { 0 };
+    int64_t m_max { 0 };
+};
+
 class ReduceStrength {
 public:
     ReduceStrength(Procedure& proc)
         : m_proc(proc)
         , m_insertionSet(proc)
+        , m_blockInsertionSet(proc)
     {
     }
 
@@ -117,6 +288,11 @@ public:
                 m_block = block;
                 
                 for (m_index = 0; m_index < block->size(); ++m_index) {
+                    if (verbose) {
+                        dataLog(
+                            "Looking at ", *block, " #", m_index, ": ",
+                            deepDump(m_proc, block->at(m_index)), "\n");
+                    }
                     m_value = m_block->at(m_index);
                     m_value->performSubstitution();
                     
@@ -126,6 +302,13 @@ public:
                 m_insertionSet.execute(m_block);
             }
 
+            if (m_blockInsertionSet.execute()) {
+                m_proc.resetReachability();
+                m_proc.invalidateCFG();
+                m_dominators = &m_proc.dominators(); // Recompute if necessary.
+                m_changedCFG = true;
+            }
+            
             simplifyCFG();
 
             if (m_changedCFG) {
@@ -597,7 +780,7 @@ private:
             if (m_value->child(0)->opcode() == BitwiseCast) {
                 Value* mask;
                 if (m_value->type() == Double)
-                    mask = m_insertionSet.insert<Const64Value>(m_index, m_value->origin(), ~(1l << 63));
+                    mask = m_insertionSet.insert<Const64Value>(m_index, m_value->origin(), ~(1ll << 63));
                 else
                     mask = m_insertionSet.insert<Const32Value>(m_index, m_value->origin(), ~(1l << 31));
 
@@ -948,18 +1131,19 @@ private:
             break;
         }
 
-        case CCall:
+        case CCall: {
             // Turn this: Call(fmod, constant1, constant2)
             // Into this: fcall-constant(constant1, constant2)
+            double(*fmodDouble)(double, double) = fmod;
             if (m_value->type() == Double
                 && m_value->numChildren() == 3
-                && m_value->child(0)->isIntPtr(reinterpret_cast<intptr_t>(fmod))
+                && m_value->child(0)->isIntPtr(reinterpret_cast<intptr_t>(fmodDouble))
                 && m_value->child(1)->type() == Double
                 && m_value->child(2)->type() == Double) {
                 replaceWithNewValue(m_value->child(1)->modConstant(m_proc, m_value->child(2)));
             }
             break;
-
+        }
         case Equal:
             handleCommutativity();
 
@@ -1090,7 +1274,7 @@ private:
                     m_value->child(1)->equalOrUnorderedConstant(m_value->child(0))));
             break;
 
-        case CheckAdd:
+        case CheckAdd: {
             if (replaceWithNewValue(m_value->child(0)->checkAddConstant(m_proc, m_value->child(1))))
                 break;
 
@@ -1101,9 +1285,18 @@ private:
                 m_changed = true;
                 break;
             }
-            break;
 
-        case CheckSub:
+            IntRange leftRange = rangeFor(m_value->child(0));
+            IntRange rightRange = rangeFor(m_value->child(1));
+            if (!leftRange.couldOverflowAdd(rightRange, m_value->type())) {
+                replaceWithNewValue(
+                    m_proc.add<Value>(Add, m_value->origin(), m_value->child(0), m_value->child(1)));
+                break;
+            }
+            break;
+        }
+
+        case CheckSub: {
             if (replaceWithNewValue(m_value->child(0)->checkSubConstant(m_proc, m_value->child(1))))
                 break;
 
@@ -1120,9 +1313,18 @@ private:
                 m_changed = true;
                 break;
             }
-            break;
 
-        case CheckMul:
+            IntRange leftRange = rangeFor(m_value->child(0));
+            IntRange rightRange = rangeFor(m_value->child(1));
+            if (!leftRange.couldOverflowSub(rightRange, m_value->type())) {
+                replaceWithNewValue(
+                    m_proc.add<Value>(Sub, m_value->origin(), m_value->child(0), m_value->child(1)));
+                break;
+            }
+            break;
+        }
+
+        case CheckMul: {
             if (replaceWithNewValue(m_value->child(0)->checkMulConstant(m_proc, m_value->child(1))))
                 break;
 
@@ -1150,7 +1352,16 @@ private:
                 if (modified)
                     break;
             }
+
+            IntRange leftRange = rangeFor(m_value->child(0));
+            IntRange rightRange = rangeFor(m_value->child(1));
+            if (!leftRange.couldOverflowMul(rightRange, m_value->type())) {
+                replaceWithNewValue(
+                    m_proc.add<Value>(Mul, m_value->origin(), m_value->child(0), m_value->child(1)));
+                break;
+            }
             break;
+        }
 
         case Check: {
             CheckValue* checkValue = m_value->as<CheckValue>();
@@ -1190,6 +1401,51 @@ private:
                 && checkValue->child(0)->child(1)->isInt(0)) {
                 checkValue->child(0) = checkValue->child(0)->child(0);
                 m_changed = true;
+            }
+
+            // If we are checking some bounded-size SSA expression that leads to a Select that
+            // has a constant as one of its results, then turn the Select into a Branch and split
+            // the code between the Check and the Branch. For example, this:
+            //
+            //     @a = Select(@p, @x, 42)
+            //     @b = Add(@a, 35)
+            //     Check(@b)
+            //
+            // becomes this:
+            //
+            //     Branch(@p, #truecase, #falsecase)
+            //
+            //   BB#truecase:
+            //     @b_truecase = Add(@x, 35)
+            //     Check(@b_truecase)
+            //     Upsilon(@x, ^a)
+            //     Upsilon(@b_truecase, ^b)
+            //     Jump(#continuation)
+            //
+            //   BB#falsecase:
+            //     @b_falsecase = Add(42, 35)
+            //     Check(@b_falsecase)
+            //     Upsilon(42, ^a)
+            //     Upsilon(@b_falsecase, ^b)
+            //     Jump(#continuation)
+            //
+            //   BB#continuation:
+            //     @a = Phi()
+            //     @b = Phi()
+            //
+            // The goal of this optimization is to kill a lot of code in one of those basic
+            // blocks. This is pretty much guaranteed since one of those blocks will replace all
+            // uses of the Select with a constant, and that constant will be transitively used
+            // from the check.
+            static const unsigned selectSpecializationBound = 3;
+            Value* select = findRecentNodeMatching(
+                m_value->child(0), selectSpecializationBound,
+                [&] (Value* value) -> bool {
+                    return value->opcode() == Select
+                        && (value->child(1)->isConstant() && value->child(2)->isConstant());
+                });
+            if (select) {
+                specializeSelect(select);
                 break;
             }
             break;
@@ -1261,6 +1517,148 @@ private:
         }
     }
 
+    // Find a node that:
+    //     - functor(node) returns true.
+    //     - it's reachable from the given node via children.
+    //     - it's in the last "bound" slots in the current basic block.
+    // This algorithm is optimized under the assumption that the bound is small.
+    template<typename Functor>
+    Value* findRecentNodeMatching(Value* start, unsigned bound, const Functor& functor)
+    {
+        unsigned startIndex = bound < m_index ? m_index - bound : 0;
+        Value* result = nullptr;
+        start->walk(
+            [&] (Value* value) -> Value::WalkStatus {
+                bool found = false;
+                for (unsigned i = startIndex; i <= m_index; ++i) {
+                    if (m_block->at(i) == value)
+                        found = true;
+                }
+                if (!found)
+                    return Value::IgnoreChildren;
+
+                if (functor(value)) {
+                    result = value;
+                    return Value::Stop;
+                }
+
+                return Value::Continue;
+            });
+        return result;
+    }
+
+    // This specializes a sequence of code up to a Select. This doesn't work when we're at a
+    // terminal. It would be cool to fix that eventually. The main problem is that instead of
+    // splitting the block, we should just insert the then/else blocks. We'll have to create
+    // double the Phis and double the Upsilons. It'll probably be the sort of optimization that
+    // we want to do only after we've done loop optimizations, since this will *definitely*
+    // obscure things. In fact, even this simpler form of select specialization will possibly
+    // obscure other optimizations. It would be great to have two modes of strength reduction,
+    // one that does obscuring optimizations and runs late, and another that does not do
+    // obscuring optimizations and runs early.
+    // FIXME: Make select specialization handle branches.
+    // FIXME: Have a form of strength reduction that does no obscuring optimizations and runs
+    // early.
+    void specializeSelect(Value* source)
+    {
+        if (verbose)
+            dataLog("Specializing select: ", deepDump(m_proc, source), "\n");
+
+        // This mutates startIndex to account for the fact that m_block got the front of it
+        // chopped off.
+        BasicBlock* predecessor =
+            m_blockInsertionSet.splitForward(m_block, m_index, &m_insertionSet);
+
+        // Splitting will commit the insertion set, which changes the exact position of the
+        // source. That's why we do the search after splitting.
+        unsigned startIndex = UINT_MAX;
+        for (unsigned i = predecessor->size(); i--;) {
+            if (predecessor->at(i) == source) {
+                startIndex = i;
+                break;
+            }
+        }
+        
+        RELEASE_ASSERT(startIndex != UINT_MAX);
+
+        // By BasicBlock convention, caseIndex == 0 => then, caseIndex == 1 => else.
+        static const unsigned numCases = 2;
+        BasicBlock* cases[numCases];
+        for (unsigned i = 0; i < numCases; ++i)
+            cases[i] = m_blockInsertionSet.insertBefore(m_block);
+
+        HashMap<Value*, Value*> mappings[2];
+
+        // Save things we want to know about the source.
+        Value* predicate = source->child(0);
+
+        for (unsigned i = 0; i < numCases; ++i)
+            mappings[i].add(source, source->child(1 + i));
+
+        auto cloneValue = [&] (Value* value) {
+            ASSERT(value != source);
+
+            for (unsigned i = 0; i < numCases; ++i) {
+                Value* clone = m_proc.clone(value);
+                for (Value*& child : clone->children()) {
+                    if (Value* newChild = mappings[i].get(child))
+                        child = newChild;
+                }
+                if (value->type() != Void)
+                    mappings[i].add(value, clone);
+
+                cases[i]->append(clone);
+                if (value->type() != Void)
+                    cases[i]->appendNew<UpsilonValue>(m_proc, value->origin(), clone, value);
+            }
+
+            value->replaceWithPhi();
+        };
+
+        // The jump that the splitter inserted is of no use to us.
+        predecessor->removeLast(m_proc);
+
+        // Hance the source, it's special.
+        for (unsigned i = 0; i < numCases; ++i) {
+            cases[i]->appendNew<UpsilonValue>(
+                m_proc, source->origin(), source->child(1 + i), source);
+        }
+        source->replaceWithPhi();
+        m_insertionSet.insertValue(m_index, source);
+
+        // Now handle all values between the source and the check.
+        for (unsigned i = startIndex + 1; i < predecessor->size(); ++i) {
+            Value* value = predecessor->at(i);
+            value->owner = nullptr;
+
+            cloneValue(value);
+
+            if (value->type() != Void)
+                m_insertionSet.insertValue(m_index, value);
+            else
+                m_proc.deleteValue(value);
+        }
+
+        // Finally, deal with the check.
+        cloneValue(m_value);
+
+        // Remove the values from the predecessor.
+        predecessor->values().resize(startIndex);
+        
+        predecessor->appendNew<ControlValue>(
+            m_proc, Branch, source->origin(), predicate,
+            FrequentedBlock(cases[0]), FrequentedBlock(cases[1]));
+
+        for (unsigned i = 0; i < numCases; ++i) {
+            cases[i]->appendNew<ControlValue>(
+                m_proc, Jump, m_value->origin(), FrequentedBlock(m_block));
+        }
+
+        m_changed = true;
+
+        predecessor->updatePredecessorsAfter();
+    }
+
     // Turn this: Add(constant, value)
     // Into this: Add(value, constant)
     //
@@ -1291,6 +1689,37 @@ private:
             m_changed = true;
             return;
         }
+    }
+
+    IntRange rangeFor(Value* value)
+    {
+        switch (value->opcode()) {
+        case Const32:
+        case Const64: {
+            int64_t intValue = value->asInt();
+            return IntRange(intValue, intValue);
+        }
+
+        case BitAnd:
+            if (value->child(1)->hasInt())
+                return IntRange::rangeForMask(value->child(1)->asInt(), value->type());
+            break;
+
+        case SShr:
+            if (value->child(1)->hasInt32())
+                return IntRange::rangeForSShr(value->child(1)->asInt32(), value->type());
+            break;
+
+        case ZShr:
+            if (value->child(1)->hasInt32())
+                return IntRange::rangeForZShr(value->child(1)->asInt32(), value->type());
+            break;
+
+        default:
+            break;
+        }
+
+        return IntRange::top(value->type());
     }
 
     template<typename ValueType, typename... Arguments>
@@ -1608,6 +2037,7 @@ private:
 
     Procedure& m_proc;
     InsertionSet m_insertionSet;
+    BlockInsertionSet m_blockInsertionSet;
     BasicBlock* m_block { nullptr };
     unsigned m_index { 0 };
     Value* m_value { nullptr };

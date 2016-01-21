@@ -38,7 +38,11 @@
 #pragma GCC diagnostic ignored "-Wreturn-type"
 #endif // COMPILER(GCC) && ASSERT_DISABLED
 
-namespace JSC { namespace B3 { namespace Air {
+namespace JSC { namespace B3 {
+
+class Value;
+
+namespace Air {
 
 class Special;
 class StackSlot;
@@ -74,7 +78,8 @@ public:
         RelCond,
         ResCond,
         DoubleCond,
-        Special
+        Special,
+        WidthArg
     };
 
     enum Role : int8_t {
@@ -121,6 +126,7 @@ public:
         // depending on the kind of the argument:
         //
         // For register: the upper bits are zero-filled.
+        // For anonymous stack slot: the upper bits are zero-filled.
         // For address: the upper bits are not touched (i.e. we do a 32-bit store in our example).
         // For tmp: either the upper bits are not touched or they are zero-filled, and we won't know
         // which until we lower the tmp to either a StackSlot or a Reg.
@@ -160,6 +166,13 @@ public:
     };
 
     static const unsigned numTypes = 2;
+
+    template<typename Functor>
+    static void forEachType(const Functor& functor)
+    {
+        functor(GP);
+        functor(FP);
+    }
 
     enum Width : int8_t {
         Width8,
@@ -225,6 +238,26 @@ public:
     static bool isWarmUse(Role role)
     {
         return isAnyUse(role) && !isColdUse(role);
+    }
+
+    static Role cooled(Role role)
+    {
+        switch (role) {
+        case ColdUse:
+        case LateColdUse:
+        case UseDef:
+        case UseZDef:
+        case Def:
+        case ZDef:
+        case UseAddr:
+        case Scratch:
+        case EarlyDef:
+            return role;
+        case Use:
+            return ColdUse;
+        case LateUse:
+            return LateColdUse;
+        }
     }
 
     // Returns true if the Role implies that the Inst will Use the Arg before doing anything else.
@@ -449,6 +482,11 @@ public:
         return result;
     }
 
+    static Arg immPtr(const void* address)
+    {
+        return imm64(bitwise_cast<intptr_t>(address));
+    }
+
     static Arg addr(Air::Tmp base, int32_t offset = 0)
     {
         ASSERT(base.isGP());
@@ -473,6 +511,17 @@ public:
         Arg result;
         result.m_kind = CallArg;
         result.m_offset = offset;
+        return result;
+    }
+
+    static Arg stackAddr(int32_t offsetFromFP, unsigned frameSize, Width width)
+    {
+        Arg result = Arg::addr(Air::Tmp(GPRInfo::callFrameRegister), offsetFromFP);
+        if (!result.isValidForm(width)) {
+            result = Arg::addr(
+                Air::Tmp(MacroAssembler::stackPointerRegister),
+                offsetFromFP + frameSize);
+        }
         return result;
     }
 
@@ -563,6 +612,14 @@ public:
         return result;
     }
 
+    static Arg widthArg(Width width)
+    {
+        Arg result;
+        result.m_kind = WidthArg;
+        result.m_offset = width;
+        return result;
+    }
+
     bool operator==(const Arg& other) const
     {
         return m_offset == other.m_offset
@@ -599,6 +656,11 @@ public:
         return kind() == Imm64;
     }
 
+    bool isSomeImm() const
+    {
+        return isImm() || isImm64();
+    }
+
     bool isAddr() const
     {
         return kind() == Addr;
@@ -618,6 +680,21 @@ public:
     {
         return kind() == Index;
     }
+
+    bool isMemory() const
+    {
+        switch (kind()) {
+        case Addr:
+        case Stack:
+        case CallArg:
+        case Index:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool isStackMemory() const;
 
     bool isRelCond() const
     {
@@ -649,6 +726,11 @@ public:
     bool isSpecial() const
     {
         return kind() == Special;
+    }
+
+    bool isWidthArg() const
+    {
+        return kind() == WidthArg;
     }
 
     bool isAlive() const
@@ -694,18 +776,7 @@ public:
         return m_base;
     }
 
-    bool hasOffset() const
-    {
-        switch (kind()) {
-        case Addr:
-        case Stack:
-        case CallArg:
-        case Index:
-            return true;
-        default:
-            return false;
-        }
-    }
+    bool hasOffset() const { return isMemory(); }
     
     int32_t offset() const
     {
@@ -744,6 +815,12 @@ public:
         return bitwise_cast<Air::Special*>(m_offset);
     }
 
+    Width width() const
+    {
+        ASSERT(kind() == WidthArg);
+        return static_cast<Width>(m_offset);
+    }
+
     bool isGPTmp() const
     {
         return isTmp() && tmp().isGP();
@@ -768,6 +845,7 @@ public:
         case ResCond:
         case DoubleCond:
         case Special:
+        case WidthArg:
             return true;
         case Tmp:
             return isGPTmp();
@@ -786,6 +864,7 @@ public:
         case ResCond:
         case DoubleCond:
         case Special:
+        case WidthArg:
         case Invalid:
             return false;
         case Addr:
@@ -828,6 +907,10 @@ public:
         }
         ASSERT_NOT_REACHED();
     }
+
+    bool canRepresent(Value* value) const;
+
+    bool isCompatibleType(const Arg& other) const;
 
     bool isGPR() const
     {
@@ -970,6 +1053,7 @@ public:
         case ResCond:
         case DoubleCond:
         case Special:
+        case WidthArg:
             return true;
         }
         ASSERT_NOT_REACHED();
@@ -991,6 +1075,20 @@ public:
             break;
         }
     }
+
+    bool usesTmp(Air::Tmp tmp) const;
+
+    template<typename Thing>
+    bool is() const;
+
+    template<typename Thing>
+    Thing as() const;
+
+    template<typename Thing, typename Functor>
+    void forEachFast(const Functor&);
+
+    template<typename Thing, typename Functor>
+    void forEach(Role, Type, Width, const Functor&);
 
     // This is smart enough to know that an address arg in a Def or UseDef rule will use its
     // tmps and never def them. For example, this:

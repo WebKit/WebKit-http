@@ -1642,7 +1642,7 @@ EncodedJSValue JSC_HOST_CALL functionStartSamplingProfiler(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState* exec)
 {
     RELEASE_ASSERT(exec->vm().samplingProfiler());
-    String jsonString = exec->vm().samplingProfiler()->stacktracesAsJSON();
+    String jsonString = exec->vm().samplingProfiler()->stackTracesAsJSON();
     exec->vm().samplingProfiler()->clearData();
     EncodedJSValue result = JSValue::encode(JSONParse(exec, jsonString));
     RELEASE_ASSERT(!exec->hadException());
@@ -1720,7 +1720,7 @@ int main(int argc, char** argv)
     // have a chance to parse options.
     WTF::initializeThreading();
 
-    if (char* timeoutString = getenv("JSC_timeout")) {
+    if (char* timeoutString = getenv("JSCTEST_timeout")) {
         if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
             dataLog(
                 "WARNING: timeout string is malformed, got ", timeoutString,
