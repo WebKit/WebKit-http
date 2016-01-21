@@ -2100,6 +2100,9 @@ void WebViewImpl::requestCandidatesForSelectionIfNeeded()
     if (!editorState.isContentEditable)
         return;
 
+    if (editorState.isMissingPostLayoutData)
+        return;
+
     auto& postLayoutData = editorState.postLayoutData();
     m_lastStringForCandidateRequest = postLayoutData.stringForCandidateRequest;
 
@@ -2121,16 +2124,21 @@ void WebViewImpl::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NS
     if (!editorState.isContentEditable)
         return;
 
+    // FIXME: It's pretty lame that we have to depend on the most recent EditorState having post layout data,
+    // and that we just bail if it is missing.
+    if (editorState.isMissingPostLayoutData)
+        return;
+
     auto& postLayoutData = editorState.postLayoutData();
     if (m_lastStringForCandidateRequest != postLayoutData.stringForCandidateRequest)
         return;
 
-    auto weakEditor = m_weakPtrFactory.createWeakPtr();
-    [[NSSpellChecker sharedSpellChecker] showCandidates:candidates forString:postLayoutData.stringForCandidateRequest inRect:postLayoutData.selectionClipRect view:m_view completionHandler:[weakEditor](NSTextCheckingResult *acceptedCandidate) {
+    auto weakThis = createWeakPtr();
+    [[NSSpellChecker sharedSpellChecker] showCandidates:candidates forString:postLayoutData.stringForCandidateRequest inRect:postLayoutData.selectionClipRect view:m_view completionHandler:[weakThis](NSTextCheckingResult *acceptedCandidate) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (!weakEditor)
+            if (!weakThis)
                 return;
-            weakEditor->handleAcceptedCandidate(acceptedCandidate);
+            weakThis->handleAcceptedCandidate(acceptedCandidate);
         });
     }];
 }
@@ -2167,6 +2175,11 @@ void WebViewImpl::handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidat
 {
     const EditorState& editorState = m_page->editorState();
     if (!editorState.isContentEditable)
+        return;
+
+    // FIXME: It's pretty lame that we have to depend on the most recent EditorState having post layout data,
+    // and that we just bail if it is missing.
+    if (editorState.isMissingPostLayoutData)
         return;
 
     auto& postLayoutData = editorState.postLayoutData();

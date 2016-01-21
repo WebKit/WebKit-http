@@ -137,7 +137,8 @@ function setDBNameFromPath(suffix) {
     var name = self.location.pathname.substring(1 + self.location.pathname.lastIndexOf("/"));
     if (suffix)
         name += suffix;
-    evalAndLog('dbname = "' + name + '"');
+    eval('dbname = "' + name + '"');
+    return name;
 }
 
 function preamble(evt)

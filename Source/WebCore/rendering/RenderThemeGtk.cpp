@@ -35,6 +35,7 @@
 #include "Gradient.h"
 #include "GraphicsContext.h"
 #include "GtkVersioning.h"
+#include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "LocalizedStrings.h"
 #include "MediaControlElements.h"
@@ -157,7 +158,6 @@ enum RenderThemePart {
     ProgressBarTrough,
     ProgressBarProgress,
     ListBox,
-    ListBoxSelection,
     SpinButton,
     SpinButtonUpButton,
     SpinButtonDownButton,
@@ -333,14 +333,6 @@ static GRefPtr<GtkStyleContext> createStyleContext(RenderThemePart themePart, Gt
 #endif
         gtk_widget_path_iter_add_class(path.get(), -1, GTK_STYLE_CLASS_VIEW);
         break;
-    case ListBoxSelection:
-        gtk_widget_path_append_type(path.get(), GTK_TYPE_TREE_VIEW);
-#if GTK_CHECK_VERSION(3, 19, 2)
-        gtk_widget_path_iter_set_object_name(path.get(), -1, "selection");
-#else
-        gtk_widget_path_iter_add_class(path.get(), -1, GTK_STYLE_CLASS_VIEW);
-#endif
-        break;
     case SpinButton:
         gtk_widget_path_append_type(path.get(), GTK_TYPE_SPIN_BUTTON);
 #if GTK_CHECK_VERSION(3, 19, 2)
@@ -383,11 +375,13 @@ static GRefPtr<GdkPixbuf> loadThemedIcon(GtkStyleContext* context, const char* i
 {
     GRefPtr<GIcon> icon = adoptGRef(g_themed_icon_new(iconName));
     unsigned lookupFlags = GTK_ICON_LOOKUP_USE_BUILTIN | GTK_ICON_LOOKUP_FORCE_SIZE | GTK_ICON_LOOKUP_FORCE_SVG;
+#if GTK_CHECK_VERSION(3, 14, 0)
     GtkTextDirection direction = gtk_style_context_get_direction(context);
     if (direction & GTK_TEXT_DIR_LTR)
         lookupFlags |= GTK_ICON_LOOKUP_DIR_LTR;
     else if (direction & GTK_TEXT_DIR_RTL)
         lookupFlags |= GTK_ICON_LOOKUP_DIR_RTL;
+#endif
     int width, height;
     gtk_icon_size_lookup(iconSize, &width, &height);
     GRefPtr<GtkIconInfo> iconInfo = adoptGRef(gtk_icon_theme_lookup_by_gicon(gtk_icon_theme_get_default(), icon.get(), std::min(width, height), static_cast<GtkIconLookupFlags>(lookupFlags)));
@@ -1288,10 +1282,9 @@ static Color styleColor(RenderThemePart themePart, GtkStateFlags state, StyleCol
 {
     GRefPtr<GtkStyleContext> parentContext;
     RenderThemePart part = themePart;
-    if (state & GTK_STATE_FLAG_SELECTED) {
-        parentContext = createStyleContext(themePart);
-        ASSERT(themePart == Entry || themePart == ListBox);
-        part = themePart == Entry ? EntrySelection : ListBoxSelection;
+    if (themePart == Entry && (state & GTK_STATE_FLAG_SELECTED)) {
+        parentContext = createStyleContext(Entry);
+        part = EntrySelection;
     }
 
     GRefPtr<GtkStyleContext> context = createStyleContext(part, parentContext.get());
@@ -1583,7 +1576,7 @@ String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font
         return String();
 
     if (fileList->length() > 1)
-        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font, StringTruncator::EnableRoundingHacks);
+        return StringTruncator::rightTruncate(multipleFileUploadText(fileList->length()), width, font);
 
     String string;
     if (fileList->length())
@@ -1593,7 +1586,7 @@ String RenderThemeGtk::fileListNameForWidth(const FileList* fileList, const Font
     else
         string = fileButtonNoFileSelectedLabel();
 
-    return StringTruncator::centerTruncate(string, width, font, StringTruncator::EnableRoundingHacks);
+    return StringTruncator::centerTruncate(string, width, font);
 }
 
 #if ENABLE(VIDEO)

@@ -47,6 +47,7 @@
 #include <limits.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
+#include <wtf/SystemTracing.h>
 #include <wtf/TemporaryChange.h>
 #include <wtf/text/WTFString.h>
 
@@ -674,6 +675,7 @@ void GraphicsLayerCA::setUsesDisplayListDrawing(bool usesDisplayListDrawing)
     if (usesDisplayListDrawing == m_usesDisplayListDrawing)
         return;
 
+    setNeedsDisplay();
     GraphicsLayer::setUsesDisplayListDrawing(usesDisplayListDrawing);
 }
 
@@ -1414,8 +1416,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 
         GraphicsContext context;
         DisplayList::Recorder recorder(context, *m_displayList, initialClip, AffineTransform());
-        context.setDisplayListRecorder(&recorder);
         paintGraphicsLayerContents(context, FloatRect(FloatPoint(), size()));
+
 #ifdef LOG_RECORDING_TIME
         double duration = currentTime() - startTime;
         WTFLogAlways("Recording took %.5fms", duration * 1000.0);
@@ -1446,6 +1448,8 @@ void GraphicsLayerCA::platformCALayerPaintContents(PlatformCALayer*, GraphicsCon
         replayer.replay(clip);
         return;
     }
+
+    TraceScope tracingScope(PaintLayerStart, PaintLayerEnd);
     paintGraphicsLayerContents(context, clip);
 }
 
@@ -3265,6 +3269,14 @@ void GraphicsLayerCA::setShowRepaintCounter(bool showCounter)
 
     GraphicsLayer::setShowRepaintCounter(showCounter);
     noteLayerPropertyChanged(DebugIndicatorsChanged);
+}
+
+String GraphicsLayerCA::displayListAsText(DisplayList::AsTextFlags flags) const
+{
+    if (!m_displayList)
+        return String();
+
+    return m_displayList->asText(flags);
 }
 
 void GraphicsLayerCA::setDebugBackgroundColor(const Color& color)

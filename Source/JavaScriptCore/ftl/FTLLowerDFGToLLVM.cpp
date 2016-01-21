@@ -1858,8 +1858,8 @@ private:
                     m_out.notZero32(result), usually(continuation), rarely(slowCase));
                 
                 LBasicBlock lastNext = m_out.appendTo(slowCase, continuation);
-                LValue cond = m_out.bitOr(m_out.lessThan(left, m_out.int32Zero), m_out.lessThan(right, m_out.int32Zero));
-                speculate(NegativeZero, noValue(), 0, cond);
+                speculate(NegativeZero, noValue(), nullptr, m_out.lessThan(left, m_out.int32Zero));
+                speculate(NegativeZero, noValue(), nullptr, m_out.lessThan(right, m_out.int32Zero));
                 m_out.jump(continuation);
                 m_out.appendTo(continuation, lastNext);
             }
@@ -1890,8 +1890,8 @@ private:
                     m_out.notZero64(result), usually(continuation), rarely(slowCase));
                 
                 LBasicBlock lastNext = m_out.appendTo(slowCase, continuation);
-                LValue cond = m_out.bitOr(m_out.lessThan(left, m_out.int64Zero), m_out.lessThan(right, m_out.int64Zero));
-                speculate(NegativeZero, noValue(), 0, cond);
+                speculate(NegativeZero, noValue(), nullptr, m_out.lessThan(left, m_out.int64Zero));
+                speculate(NegativeZero, noValue(), nullptr, m_out.lessThan(right, m_out.int64Zero));
                 m_out.jump(continuation);
                 m_out.appendTo(continuation, lastNext);
             }
@@ -1957,8 +1957,8 @@ private:
 
                 LBasicBlock lastNext = m_out.appendTo(unsafeDenominator, continuation);
                 LValue neg2ToThe31 = m_out.constInt32(-2147483647-1);
-                LValue cond = m_out.bitOr(m_out.isZero32(denominator), m_out.equal(numerator, neg2ToThe31));
-                speculate(Overflow, noValue(), 0, cond);
+                speculate(Overflow, noValue(), nullptr, m_out.isZero32(denominator));
+                speculate(Overflow, noValue(), nullptr, m_out.equal(numerator, neg2ToThe31));
                 m_out.jump(continuation);
 
                 m_out.appendTo(continuation, lastNext);
@@ -2013,8 +2013,8 @@ private:
 
                 LBasicBlock lastNext = m_out.appendTo(unsafeDenominator, continuation);
                 LValue neg2ToThe31 = m_out.constInt32(-2147483647-1);
-                LValue cond = m_out.bitOr(m_out.isZero32(denominator), m_out.equal(numerator, neg2ToThe31));
-                speculate(Overflow, noValue(), 0, cond);
+                speculate(Overflow, noValue(), nullptr, m_out.isZero32(denominator));
+                speculate(Overflow, noValue(), nullptr, m_out.equal(numerator, neg2ToThe31));
                 m_out.jump(continuation);
 
                 m_out.appendTo(continuation, lastNext);
@@ -3540,7 +3540,7 @@ private:
             m_out.branch(
                 m_out.aboveOrEqual(
                     prevLength, m_out.load32(storage, m_heaps.Butterfly_vectorLength)),
-                rarely(slowPath), usually(fastPath));
+                unsure(slowPath), unsure(fastPath));
             
             LBasicBlock lastNext = m_out.appendTo(fastPath, slowPath);
             m_out.store(
@@ -8225,7 +8225,7 @@ private:
                 LBasicBlock holeCase =
                     FTL_NEW_BLOCK(m_out, ("PutByVal hole case"));
                     
-                m_out.branch(isOutOfBounds, unsure(outOfBoundsCase), unsure(holeCase));
+                m_out.branch(isOutOfBounds, rarely(outOfBoundsCase), usually(holeCase));
                     
                 LBasicBlock innerLastNext = m_out.appendTo(outOfBoundsCase, holeCase);
                     

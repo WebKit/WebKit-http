@@ -1,3 +1,73 @@
+2016-01-16  Timothy Hatcher  <timothy@apple.com>
+
+        Fix some responsive issues on smaller screens.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline .time):
+        (@media (max-width: 900px)):
+        (.timeline:before):
+        (.timeline > li):
+        (.timeline > li:before):
+        (.timeline .content):
+        (.timeline li .time::before):
+
+2016-01-14  Timothy Hatcher  <timothy@apple.com>
+
+        Eliminate the margin on timeline elements so multiple timelines can touch.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline):
+
+2016-01-14  Timothy Hatcher  <timothy@apple.com>
+
+        Use a 2px border radius instead to look good on 2x devices as well as 1x.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline .time):
+
+2016-01-14  Timothy Hatcher  <timothy@apple.com>
+
+        Fix hairline crack on 1x devices between arrow and time label.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline .content):
+        (.timeline .time):
+
+2016-01-13  Timothy Hatcher  <timothy@apple.com>
+
+        Correct some history timeline styles.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline .content):
+
+2016-01-13  Timothy Hatcher  <timothy@apple.com>
+
+        Add styles for a history timeline, needed by an upcoming blog post.
+
+        * wp-content/themes/webkit/style.css:
+        (.timeline):
+        (.timeline:after):
+        (.timeline *):
+        (.timeline:before):
+        (.timeline > li):
+        (.timeline > li:before):
+        (.timeline .content):
+        (.timeline figure):
+        (.timeline .time):
+        (.timeline h2, .timeline h3):
+        (.timeline .time::before):
+        (.timeline img):
+        (@media (min-width: 900px)):
+        (.timeline > li.force-clear):
+        (.timeline > li:nth-child(odd)):
+        (.timeline > li:nth-child(even)):
+        (.timeline > li.force-clear + li):
+        (.timeline li .time):
+        (.timeline li:nth-child(odd) .time):
+        (.timeline li:nth-child(even) .time):
+        (.timeline li:nth-child(even) .time::before):
+        (.timeline > li:nth-child(even):before):
+
 2016-01-06  Jonathan Davis  <jond@apple.com>
 
         Fixed Individuals and Vendor Contact formatting.

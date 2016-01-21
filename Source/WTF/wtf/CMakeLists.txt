@@ -98,6 +98,7 @@ set(WTF_HEADERS
     Stopwatch.h
     StringExtras.h
     StringPrintStream.h
+    SystemTracing.h
     ThreadIdentifierDataPthreads.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
@@ -246,8 +247,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     )
 endif ()
 
-# FIXME: Port bmalloc to Windows. https://bugs.webkit.org/show_bug.cgi?id=143310
-if (NOT WIN32)
+if (NOT USE_SYSTEM_MALLOC)
     list(APPEND WTF_LIBRARIES bmalloc)
 endif ()
 
