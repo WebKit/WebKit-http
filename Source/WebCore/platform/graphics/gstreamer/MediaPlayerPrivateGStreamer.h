@@ -175,10 +175,8 @@ protected:
     bool m_buffering;
     int m_bufferingPercentage;
     mutable float m_cachedPosition;
-    bool m_changingRate;
     bool m_downloadFinished;
     bool m_errorOccured;
-    mutable bool m_isStreaming;
     mutable gfloat m_mediaDuration;
     bool m_paused;
     float m_playbackRate;
@@ -186,7 +184,6 @@ protected:
     bool m_resetPipeline;
     bool m_seeking;
     bool m_seekIsPending;
-    float m_seekTime;
     bool m_volumeAndMuteInitialized;
 
     void readyTimerFired();
@@ -223,7 +220,7 @@ protected:
 #endif
     float m_seekTime;
     bool m_changingRate;
-    bool m_isEndReached;
+    mutable bool m_isEndReached;
     mutable bool m_isStreaming;
     GstStructure* m_mediaLocations;
     int m_mediaLocationCurrentIndex;
