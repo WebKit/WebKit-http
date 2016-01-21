@@ -142,6 +142,7 @@ private:
     GstFlowReturn m_flowReturn;
 
     GstElement* m_pipeline;
+    GRefPtr<GstBus> m_bus;
     GstElement* m_appsrc;
     GstElement* m_typefind;
     GstElement* m_qtdemux;
@@ -1223,11 +1224,11 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     // The track name is still unknown at this time, though.
     m_pipeline = gst_pipeline_new(NULL);
 
-    GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
-    gst_bus_add_signal_watch(bus.get());
-    gst_bus_enable_sync_message_emission(bus.get());
+    m_bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
+    gst_bus_add_signal_watch(m_bus.get());
+    gst_bus_enable_sync_message_emission(m_bus.get());
 
-    g_signal_connect(bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
+    g_signal_connect(m_bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
 
     g_mutex_init(&m_newSampleMutex);
     g_cond_init(&m_newSampleCondition);
@@ -1292,10 +1293,9 @@ AppendPipeline::~AppendPipeline()
     cancelLastSampleTimer();
 
     if (m_pipeline) {
-        GRefPtr<GstBus> bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline)));
-        ASSERT(bus);
-        g_signal_handlers_disconnect_by_func(bus.get(), reinterpret_cast<gpointer>(appendPipelineElementMessageCallback), this);
-        gst_bus_disable_sync_message_emission(bus.get());
+        ASSERT(m_bus);
+        g_signal_handlers_disconnect_by_func(m_bus.get(), reinterpret_cast<gpointer>(appendPipelineElementMessageCallback), this);
+        gst_bus_disable_sync_message_emission(m_bus.get());
 
         gst_element_set_state (m_pipeline, GST_STATE_NULL);
         gst_object_unref(m_pipeline);
