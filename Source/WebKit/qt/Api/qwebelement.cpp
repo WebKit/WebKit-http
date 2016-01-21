@@ -728,7 +728,14 @@ static bool setupScriptContext(WebCore::Element* element, ScriptState*& state)
 }
 
 /*!
-    Executes \a scriptSource with this element as \c this object.
+    Executes \a scriptSource with this element as \c this object
+    and returns the result of the last executed statement.
+
+    \note This method may be very inefficient if \a scriptSource returns
+    a DOM element as a result. See \l{QWebFrame::evaluateJavaScript()}
+    for more details.
+
+    \sa QWebFrame::evaluateJavaScript()
 */
 QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
 {
