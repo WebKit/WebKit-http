@@ -780,13 +780,11 @@ public:
     static unsigned toIndex(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 32);
-        static const unsigned indexForRegister[32] = {
+        ASSERT(reg < 24);
+        static const unsigned indexForRegister[24] = {
             InvalidIndex, InvalidIndex, 0, 1, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
             6, 7, 2, 3, 4, 5, InvalidIndex, InvalidIndex,
-            InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
-            InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
-            InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex
+            InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex
         };
         unsigned result = indexForRegister[reg];
         return result;
