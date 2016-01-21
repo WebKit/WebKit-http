@@ -1435,15 +1435,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
             it = m_trackBufferMap.add(trackID, TrackBuffer()).iterator;
         TrackBuffer& trackBuffer = it->value;
 
-        // METRO FIXME: Hack to add fake range to fill start hole
-        double fakeRangeEnd = 0.0;
-        if (buffered() && buffered()->length()) {
-            ExceptionCode exceptionCode;
-            MediaTime previousRangeEnd = MediaTime::createWithDouble(trackBuffer.m_buffered->end(trackBuffer.m_buffered->length() - 1, exceptionCode));
-            if (previousRangeEnd <= presentationTimestamp + MediaTime::createWithDouble(0.1))
-                fakeRangeEnd = presentationTimestamp.toDouble();
-        }
-
         // 1.7 If last decode timestamp for track buffer is set and decode timestamp is less than last
         // decode timestamp:
         // OR
@@ -1647,12 +1638,6 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Pas
         // presentation end timestamp, then set highest presentation end timestamp equal to frame end timestamp.
         if (m_highestPresentationEndTimestamp.isInvalid() || frameEndTimestamp > m_highestPresentationEndTimestamp)
             m_highestPresentationEndTimestamp = frameEndTimestamp;
-
-        // METRO FIXME: Hack to add fake range to fill start hole (continued)
-        if (fakeRangeEnd > 0.0) {
-            LOG(MediaSource, "SourceBuffer::sourceBufferPrivateDidReceiveSample(%p) - Adding a fake range to fill start hole", this);
-            trackBuffer.m_buffered->add(m_timestampOffset.toDouble(), fakeRangeEnd);
-        }
 
         trackBuffer.m_buffered->add(presentationTimestamp.toDouble(), (presentationTimestamp + frameDuration + microsecond).toDouble());
         m_bufferedSinceLastMonitor += frameDuration.toDouble();
