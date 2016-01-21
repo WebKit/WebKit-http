@@ -415,6 +415,19 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     // Stop accepting new samples until actual seek is finished
     webkit_media_src_set_readyforsamples(WEBKIT_MEDIA_SRC(m_source.get()), false);
 
+    // Correct seek time if it helps to fix a small gap
+    if (!timeIsBuffered(seekTime)) {
+        // Look if a near future time (<0.1 sec.) is buffered and change the seek target time
+        if (m_mediaSource) {
+            const MediaTime miniGap = MediaTime::createWithDouble(0.1);
+            MediaTime nearest = m_mediaSource->buffered()->nearest(seekTime);
+            if (nearest.isValid() && nearest > seekTime && (nearest - seekTime) <= miniGap && timeIsBuffered(nearest + miniGap)) {
+                LOG_MEDIA_MESSAGE("[Seek] Changed the seek target time from %f to %f, a near point in the future", seekTime.toFloat(), nearest.toFloat());
+                seekTime = nearest;
+            }
+        }
+    }
+
     // Check if MSE has samples for requested time and defer actual seek if needed
     if (!timeIsBuffered(seekTime)) {
         LOG_MEDIA_MESSAGE("[Seek] Delaying the seek: MSE is not ready");
