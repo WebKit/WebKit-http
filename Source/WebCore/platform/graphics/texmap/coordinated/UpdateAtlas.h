@@ -42,7 +42,7 @@ public:
         virtual void removeUpdateAtlas(uint32_t /* id */) = 0;
     };
 
-    UpdateAtlas(Client*, int dimension, CoordinatedSurface::Flags);
+    UpdateAtlas(Client*, const IntSize&, CoordinatedSurface::Flags);
     ~UpdateAtlas();
 
     inline IntSize size() const { return m_surface->size(); }

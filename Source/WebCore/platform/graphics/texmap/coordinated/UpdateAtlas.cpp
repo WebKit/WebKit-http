@@ -56,13 +56,12 @@ private:
     bool m_supportsAlpha;
 };
 
-UpdateAtlas::UpdateAtlas(Client* client, int dimension, CoordinatedSurface::Flags flags)
+UpdateAtlas::UpdateAtlas(Client* client, const IntSize& size, CoordinatedSurface::Flags flags)
     : m_client(client)
     , m_inactivityInSeconds(0)
 {
     static uint32_t nextID = 0;
     m_ID = ++nextID;
-    IntSize size = nextPowerOfTwo(IntSize(dimension, dimension));
     m_surface = CoordinatedSurface::create(size, flags);
 
     m_client->createUpdateAtlas(m_ID, m_surface);
