@@ -58,8 +58,8 @@ static const int frameWidth = 2;
 static const int checkBoxWidth = 21;
 static const int radioWidth = 21;
 static const int sliderSize = 20;
-static const int buttonHeightRatio = 1.5;
 
+static const float buttonHeightRatio = 1.5;
 static const float multipleComboDotsOffsetFactor = 1.8;
 static const float buttonPaddingLeft = 18;
 static const float buttonPaddingRight = 18;
