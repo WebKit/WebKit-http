@@ -100,6 +100,7 @@
 #include <sys/resource.h>
 #endif
 
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
 
 #if OS(WINDOWS)
@@ -125,7 +126,9 @@
 #ifndef CF_ENUM_AVAILABLE
 #define CF_ENUM_AVAILABLE(_mac, _ios)
 #endif
-#endif
+#endif // OS(WINDOWS)
+
+#endif // USE(CF)
 
 #if PLATFORM(WIN_CAIRO)
 #include <ConditionalMacros.h>
