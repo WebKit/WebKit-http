@@ -100,7 +100,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/PasteboardQt.cpp
     platform/qt/PlatformKeyboardEventQt.cpp
     platform/qt/PlatformScreenQt.cpp
-    platform/qt/PlatformSupportQt.cpp
     platform/qt/QtTestSupport.cpp
     platform/qt/RenderThemeQStyle.cpp
     platform/qt/RenderThemeQt.cpp
