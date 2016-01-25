@@ -28,8 +28,8 @@
 #include "config.h"
 #include "EventHandler.h"
 
-#include "Clipboard.h"
 #include "Cursor.h"
+#include "DataTransfer.h"
 #include "Document.h"
 #include "EventNames.h"
 #include "FloatPoint.h"
@@ -87,19 +87,18 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget* widget)
+bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget& widget)
 {
-    Q_ASSERT(widget);
-    if (!widget->isFrameView())
+    if (!widget.isFrameView())
         return false;
 
-    return toFrameView(widget)->frame().eventHandler().handleWheelEvent(event);
+    return downcast<FrameView>(widget).frame().eventHandler().handleWheelEvent(event);
 }
 
 #if ENABLE(DRAG_SUPPORT)
-PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
+PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
-    return Clipboard::createForDragAndDrop();
+    return DataTransfer::createForDragAndDrop();
 }
 #endif
 

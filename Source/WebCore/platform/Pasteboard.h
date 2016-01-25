@@ -157,6 +157,10 @@ public:
     explicit Pasteboard(const DragDataMap&);
 #endif
 
+#if PLATFORM(QT)
+    Pasteboard(const QMimeData* , bool);
+#endif
+
     WEBCORE_EXPORT static std::unique_ptr<Pasteboard> createForCopyAndPaste();
     static std::unique_ptr<Pasteboard> createPrivate(); // Temporary pasteboard. Can put data on this and then write to another pasteboard with writePasteboard.
 
@@ -190,7 +194,7 @@ public:
     void setDragImage(DragImageRef, const IntPoint& hotSpot);
 #endif
 
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) || PLATFORM(QT)
     PassRefPtr<DocumentFragment> documentFragment(Frame&, Range&, bool allowPlainText, bool& chosePlainText); // FIXME: Layering violation.
     void writeImage(Element&, const URL&, const String& title); // FIXME: Layering violation.
     void writeSelection(Range&, bool canSmartCopyOrDelete, Frame&, ShouldSerializeSelectedTextForDataTransfer = DefaultSelectedTextType); // FIXME: Layering violation.
@@ -213,12 +217,14 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    static PassOwnPtr<Pasteboard> create(const QMimeData* readableClipboard = 0, bool isForDragAndDrop = false);
+    static std::unique_ptr<Pasteboard> createForGlobalSelection();
+    static std::unique_ptr<Pasteboard> create(const QMimeData* readableClipboard = 0, bool isForDragAndDrop = false);
 
     QMimeData* clipboardData() const { return m_writableData; }
     void invalidateWritableData() const { m_writableData = 0; }
     bool isForDragAndDrop() const { return m_isForDragAndDrop; }
     bool isForCopyAndPaste() const { return !m_isForDragAndDrop; }
+    void writeImage(Node&, const URL&, const String& title); // FIXME: Layering violation.
 #endif
 
 #if PLATFORM(WIN)
@@ -232,8 +238,6 @@ public:
 
 private:
 #if PLATFORM(QT)
-    Pasteboard(const QMimeData* , bool);
-
     const QMimeData* readData() const;
 #endif
 
