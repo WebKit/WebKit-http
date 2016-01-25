@@ -54,9 +54,6 @@
 #include "NotImplemented.h"
 #include "Path.h"
 #include "PlatformMouseEvent.h"
-#include "PluginDatabase.h"
-#include "PluginPackage.h"
-#include "PluginView.h"
 #include "RenderTheme.h"
 #include "SharedBuffer.h"
 #include "TextBoundaries.h"
@@ -68,34 +65,6 @@
 #include <wtf/text/CString.h>
 
 using namespace WebCore;
-
-#if defined(Q_OS_WINCE)
-Vector<String> PluginDatabase::defaultPluginDirectories()
-{
-    notImplemented();
-    return Vector<String>();
-}
-
-void PluginDatabase::getPluginPathsInDirectories(HashSet<String>& paths) const
-{
-    notImplemented();
-}
-
-bool PluginDatabase::isPreferredPluginDirectory(const String& directory)
-{
-    notImplemented();
-    return false;
-}
-
-PassRefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
-{
-    return 0;
-}
-
-void PluginView::setJavaScriptPaused(bool)
-{
-}
-#endif
 
 namespace WebCore {
 
