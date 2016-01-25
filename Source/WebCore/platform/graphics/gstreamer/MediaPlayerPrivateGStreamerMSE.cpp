@@ -267,6 +267,12 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
     load(mediasourceUri);
 }
 
+void MediaPlayerPrivateGStreamerMSE::pause()
+{
+    m_paused = true;
+    MediaPlayerPrivateGStreamer::pause();
+}
+
 float MediaPlayerPrivateGStreamerMSE::duration() const
 {
     if (!m_pipeline)

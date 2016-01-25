@@ -87,7 +87,7 @@ public:
 
     void prepareToPlay() override;
     void play() override;
-    void pause() override;
+    virtual void pause() override;
 
     bool paused() const override;
     bool seeking() const override;

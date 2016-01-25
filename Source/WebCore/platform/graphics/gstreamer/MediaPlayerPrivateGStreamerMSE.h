@@ -56,6 +56,7 @@ public:
     bool isLiveStream() const override { return false; }
     float currentTime() const override;
 
+    void pause() override;
     bool seeking() const override;
     void seek(float) override;
     bool changePipelineState(GstState) override;

@@ -468,7 +468,6 @@ void MediaPlayerPrivateGStreamer::play()
 void MediaPlayerPrivateGStreamer::pause()
 {
     m_playbackRatePause = false;
-    m_paused = true;
     GstState currentState, pendingState;
     gst_element_get_state(m_pipeline.get(), &currentState, &pendingState, 0);
     if (currentState < GST_STATE_PAUSED && pendingState <= GST_STATE_PAUSED)
