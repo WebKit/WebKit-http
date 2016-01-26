@@ -34,16 +34,23 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 
 list(APPEND WebCore_SOURCES
     accessibility/qt/AccessibilityObjectQt.cpp
-    history/qt/HistoryItemQt.cpp
+
     bridge/qt/qt_class.cpp
     bridge/qt/qt_instance.cpp
     bridge/qt/qt_pixmapruntime.cpp
     bridge/qt/qt_runtime.cpp
+
     editing/qt/EditorQt.cpp
+
+    history/qt/HistoryItemQt.cpp
+
     page/qt/DragControllerQt.cpp
     page/qt/EventHandlerQt.cpp
+
     platform/audio/qt/AudioBusQt.cpp
+
     platform/graphics/gpu/qt/DrawingBufferQt.cpp
+
     platform/graphics/qt/ColorQt.cpp
     platform/graphics/qt/FloatPointQt.cpp
     platform/graphics/qt/FloatRectQt.cpp
@@ -69,7 +76,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/StillImageQt.cpp
     platform/graphics/qt/TileQt.cpp
     platform/graphics/qt/TransformationMatrixQt.cpp
+
 #    platform/graphics/surfaces/qt/GraphicsSurfaceQt.cpp
+
     platform/network/qt/CookieJarQt.cpp
     platform/network/qt/CredentialStorageQt.cpp
     platform/network/qt/DNSQt.cpp
@@ -81,6 +90,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/ResourceRequestQt.cpp
     platform/network/qt/ResourceResponseQt.cpp
     platform/network/qt/SocketStreamHandleQt.cpp
+
     platform/qt/CursorQt.cpp
     platform/qt/DataTransferItemListQt.cpp
     platform/qt/DataTransferItemQt.cpp
@@ -110,6 +120,7 @@ list(APPEND WebCore_SOURCES
     platform/qt/URLQt.cpp
     platform/qt/UserAgentQt.cpp
     platform/qt/WidgetQt.cpp
+
     platform/text/qt/TextBoundariesQt.cpp
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
