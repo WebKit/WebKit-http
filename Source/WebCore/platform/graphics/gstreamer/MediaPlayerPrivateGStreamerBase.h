@@ -40,24 +40,11 @@
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
-#if USE(GSTREAMER_GL)
-#include <gst/video/gstvideometa.h>
-#endif
-
-typedef struct _GstSample GstSample;
-typedef struct _GstElement GstElement;
-typedef struct _GstGLContext GstGLContext;
-typedef struct _GstGLDisplay GstGLDisplay;
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
-typedef struct _WebKitVideoSink WebKitVideoSink;
-
-typedef struct _GstMiniObject GstMiniObject;
-
-typedef struct _GstEGLImageMemoryPool GstEGLImageMemoryPool;
-typedef struct _GstEGLImageMemory GstEGLImageMemory;
-typedef struct _EGLDetails EGLDetails;
+typedef struct _GstGLContext GstGLContext;
+typedef struct _GstGLDisplay GstGLDisplay;
 
 namespace WebCore {
 
@@ -181,7 +168,7 @@ public:
     void setVideoSourceRotation(VideoSourceRotation rotation);
 
 #if USE(GSTREAMER_GL)
-    virtual PassNativeImagePtr nativeImageForCurrentTime();
+    virtual PassNativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
 protected:
