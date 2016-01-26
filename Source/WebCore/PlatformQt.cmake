@@ -54,10 +54,10 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/FontQt.cpp
     platform/graphics/qt/GlyphPageTreeNodeQt.cpp
     platform/graphics/qt/GradientQt.cpp
-    platform/graphics/qt/GraphicsContext3DQt.cpp
+#    platform/graphics/qt/GraphicsContext3DQt.cpp
     platform/graphics/qt/GraphicsContextQt.cpp
     platform/graphics/qt/IconQt.cpp
-    platform/graphics/qt/ImageBufferQt.cpp
+#    platform/graphics/qt/ImageBufferQt.cpp
     platform/graphics/qt/ImageDecoderQt.cpp
     platform/graphics/qt/ImageQt.cpp
     platform/graphics/qt/IntPointQt.cpp
@@ -68,7 +68,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/StillImageQt.cpp
     platform/graphics/qt/TileQt.cpp
     platform/graphics/qt/TransformationMatrixQt.cpp
-    platform/graphics/surfaces/qt/GraphicsSurfaceQt.cpp
+#    platform/graphics/surfaces/qt/GraphicsSurfaceQt.cpp
     platform/network/qt/CookieJarQt.cpp
     platform/network/qt/CredentialStorageQt.cpp
     platform/network/qt/DNSQt.cpp
