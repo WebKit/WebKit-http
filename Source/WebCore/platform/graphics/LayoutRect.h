@@ -155,6 +155,9 @@ public:
     void scale(float xScale, float yScale);
 
     LayoutRect transposedRect() const { return LayoutRect(m_location.transposedPoint(), m_size.transposedSize()); }
+
+    bool operator==(const LayoutRect& o) const { return m_location == o.location() && m_size == o.size(); }
+    bool operator!=(const LayoutRect& o) const { return m_location != o.location() || m_size != o.size(); }
     bool isInfinite() const { return *this == LayoutRect::infiniteRect(); }
 
     static LayoutRect infiniteRect()
@@ -185,16 +188,6 @@ inline LayoutRect unionRect(const LayoutRect& a, const LayoutRect& b)
 }
 
 LayoutRect unionRect(const Vector<LayoutRect>&);
-
-inline bool operator==(const LayoutRect& a, const LayoutRect& b)
-{
-    return a.location() == b.location() && a.size() == b.size();
-}
-
-inline bool operator!=(const LayoutRect& a, const LayoutRect& b)
-{
-    return a.location() != b.location() || a.size() != b.size();
-}
 
 // Integral snapping functions.
 inline IntRect snappedIntRect(const LayoutRect& rect)
