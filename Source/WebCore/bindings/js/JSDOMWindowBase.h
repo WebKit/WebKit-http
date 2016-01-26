@@ -20,6 +20,7 @@
 #ifndef JSDOMWindowBase_h
 #define JSDOMWindowBase_h
 
+#include "DOMWindow.h"
 #include "JSDOMBinding.h"
 #include "JSDOMGlobalObject.h"
 #include <wtf/Forward.h>

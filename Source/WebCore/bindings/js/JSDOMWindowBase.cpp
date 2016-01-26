@@ -26,7 +26,6 @@
 
 #include "ActiveDOMCallbackMicrotask.h"
 #include "Chrome.h"
-#include "DOMWindow.h"
 #include "Frame.h"
 #include "InspectorController.h"
 #include "JSDOMGlobalObjectTask.h"
