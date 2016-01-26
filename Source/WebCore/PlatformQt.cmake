@@ -63,7 +63,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp
     platform/graphics/qt/IntSizeQt.cpp
-    platform/graphics/qt/MediaPlayerPrivateQt.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
     platform/graphics/qt/StillImageQt.cpp
@@ -84,15 +83,10 @@ list(APPEND WebCore_SOURCES
     platform/qt/CursorQt.cpp
     platform/qt/DataTransferItemListQt.cpp
     platform/qt/DataTransferItemQt.cpp
-    platform/qt/DeviceMotionClientQt.cpp
-    platform/qt/DeviceMotionProviderQt.cpp
-    platform/qt/DeviceOrientationClientQt.cpp
-    platform/qt/DeviceOrientationProviderQt.cpp
     platform/qt/DragDataQt.cpp
     platform/qt/DragImageQt.cpp
     platform/qt/EventLoopQt.cpp
     platform/qt/FileSystemQt.cpp
-    platform/qt/GamepadsQt.cpp
     platform/qt/LanguageQt.cpp
     platform/qt/LocalizedStringsQt.cpp
     platform/qt/LoggingQt.cpp
@@ -118,6 +112,28 @@ list(APPEND WebCore_SOURCES
     platform/text/qt/TextBoundariesQt.cpp
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
+
+
+if (ENABLE_DEVICE_ORIENTATION)
+    list(APPEND WebCore_SOURCES
+        platform/qt/DeviceMotionClientQt.cpp
+        platform/qt/DeviceMotionProviderQt.cpp
+        platform/qt/DeviceOrientationClientQt.cpp
+        platform/qt/DeviceOrientationProviderQt.cpp
+    )
+endif ()
+
+if (ENABLE_GAMEPAD)
+    list(APPEND WebCore_SOURCES
+        platform/qt/GamepadsQt.cpp
+    )
+endif ()
+
+if (USE_QT_MULTIMEDIA)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/qt/MediaPlayerPrivateQt.cpp
+    )
+endif ()
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Core_INCLUDES}
