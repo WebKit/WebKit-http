@@ -841,6 +841,10 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
         }
     }
 
+    setModuleEnvironment(vm, moduleEnvironment);
+}
+
+void JSModuleRecord::setModuleEnvironment(VM& vm, JSModuleEnvironment* moduleEnvironment) {
     m_moduleEnvironment.set(vm, this, moduleEnvironment);
 }
 

@@ -122,6 +122,8 @@ public:
         return m_moduleEnvironment.get();
     }
 
+    void setModuleEnvironment(VM&, JSModuleEnvironment*);
+    
     void link(ExecState*);
     JS_EXPORT_PRIVATE JSValue evaluate(ExecState*);
 
@@ -143,6 +145,8 @@ public:
     Resolution resolveImport(ExecState*, const Identifier& localName);
 
     JSModuleRecord* hostResolveImportedModule(ExecState*, const Identifier& moduleName);
+    
+    JSModuleNamespaceObject* getModuleNamespace(ExecState*);
 
 private:
     JSModuleRecord(VM& vm, Structure* structure, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
@@ -155,8 +159,6 @@ private:
     }
 
     void finishCreation(VM&);
-
-    JSModuleNamespaceObject* getModuleNamespace(ExecState*);
 
     static void visitChildren(JSCell*, SlotVisitor&);
     static void destroy(JSCell*);

@@ -74,8 +74,12 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
                 JSModuleRecord* importedRecord = resolution.moduleRecord;
                 JSModuleEnvironment* importedEnvironment = importedRecord->moduleEnvironment();
                 SymbolTableEntry entry = importedEnvironment->symbolTable()->get(resolution.localName.impl());
-                ASSERT(!entry.isNull());
-                op = ResolveOp(makeType(ModuleVar, needsVarInjectionChecks), depth, 0, importedEnvironment, entry.watchpointSet(), entry.scopeOffset().offset(), resolution.localName.impl());
+                if (!entry.isNull()) {
+                    op = ResolveOp(makeType(ModuleVar, needsVarInjectionChecks), depth, 0, importedEnvironment, entry.watchpointSet(), entry.scopeOffset().offset(), resolution.localName.impl());
+                } else {
+                    op = ResolveOp(makeType(ModuleVar, needsVarInjectionChecks), depth, 0, importedEnvironment, 0, 0, resolution.localName.impl());
+                }
+                
                 return true;
             }
         }
