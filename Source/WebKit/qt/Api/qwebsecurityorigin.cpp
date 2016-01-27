@@ -224,7 +224,7 @@ QList<QWebDatabase> QWebSecurityOrigin::databases() const
     to the \c file: scheme.
 
     Cross domain restrictions depend on the two web settings QWebSettings::LocalContentCanAccessFileUrls
-    and QWebSettings::LocalContentCanAccessRemoteUrls. By default all local schemes are concidered to be
+    and QWebSettings::LocalContentCanAccessRemoteUrls. By default all local schemes are considered to be
     in the same security origin, and local schemes can not access remote content.
 */
 void QWebSecurityOrigin::addLocalScheme(const QString& scheme)
