@@ -5,7 +5,7 @@ list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
-    ${Qt5Core_INCLUDES}
+    ${Qt5Core_INCLUDE_DIRS}
 )
 
 list(APPEND JavaScriptCore_LIBRARIES

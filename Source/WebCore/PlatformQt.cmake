@@ -147,15 +147,17 @@ if (USE_QT_MULTIMEDIA)
     )
 endif ()
 
+# Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-    ${Qt5Core_INCLUDES}
-    ${Qt5Gui_INCLUDES}
+    ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
-    ${Qt5Network_INCLUDES}
+    ${Qt5Network_INCLUDE_DIRS}
     ${Qt5Sql_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
 )
+# Build the include path with duplicates removed
+list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
 
 list(APPEND WebCore_LIBRARIES
     ${Qt5Core_LIBRARIES}
