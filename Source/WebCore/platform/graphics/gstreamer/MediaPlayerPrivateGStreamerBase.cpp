@@ -194,13 +194,10 @@ public:
         m_flags = GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0;
 
         GstBuffer* buffer = gst_sample_get_buffer(sample);
-        m_videoFrame = new GstVideoFrame();
-        if (UNLIKELY(!gst_video_frame_map(m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))) {
-            delete m_videoFrame;
+        if (UNLIKELY(!gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL))))
             return;
-        }
 
-        m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame->data[0]);
+        m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
         m_isValid = true;
     }
 
@@ -209,21 +206,7 @@ public:
         if (UNLIKELY(!m_isValid))
             return;
 
-        GstMapInfo* info = &m_videoFrame->map[0];
-        GstGLBaseBuffer* mem = (GstGLBaseBuffer*)info->memory;
-        GstGLWindow* gstWindow = gst_gl_context_get_window(mem->context);
-
-        gst_gl_window_send_message_async(gstWindow, (GstGLWindowCB)unmapVideoFrameCallback, m_videoFrame, (GDestroyNotify)freeVideoFrameCallback);
-    }
-
-    static void unmapVideoFrameCallback(GstVideoFrame* videoFrame)
-    {
-        gst_video_frame_unmap(videoFrame);
-    }
-
-    static void freeVideoFrameCallback(GstVideoFrame* videoFrame)
-    {
-        delete videoFrame;
+        gst_video_frame_unmap(&m_videoFrame);
     }
 
     const IntSize& size() const { return m_size; }
@@ -232,7 +215,7 @@ public:
     bool isValid() const { return m_isValid; }
 
 private:
-    GstVideoFrame* m_videoFrame;
+    GstVideoFrame m_videoFrame;
     IntSize m_size;
     TextureMapperGL::Flags m_flags;
     GLuint m_textureID;
