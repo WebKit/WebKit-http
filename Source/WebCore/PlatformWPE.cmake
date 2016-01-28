@@ -73,6 +73,9 @@ list(APPEND WebCore_SOURCES
     platform/audio/gstreamer/FFTFrameGStreamer.cpp
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
 
+    platform/glib/KeyedDecoderGlib.cpp
+    platform/glib/KeyedEncoderGlib.cpp
+
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
