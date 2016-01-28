@@ -87,17 +87,19 @@ Trac.prototype = {
             "&daysback=" + ((toDay - fromDay) / 1000 / 60 / 60 / 24);
     },
 
-    _convertCommitInfoElementToObject: function(doc, commitElement)
+    _parseRevisionFromURL: function(url)
     {
-        var link = doc.evaluate("./link", commitElement, null, XPathResult.STRING_TYPE).stringValue;
-
         // There are multiple link formats for Trac that we support:
         // https://trac.webkit.org/changeset/190497
         // http://trac.foobar.com/repository/changeset/75388/project
-        var linkComponents = link.split("/");
-        var revisionNumber = parseInt(linkComponents.pop());
-        if (!revisionNumber)
-            var revisionNumber = parseInt(linkComponents.pop());
+        // https://git.foobar.com/trac/Whatever.git/changeset/0e498db5d8e5b5a342631
+        return /changeset\/([a-f0-9]+).*$/.exec(url)[1];
+    },
+
+    _convertCommitInfoElementToObject: function(doc, commitElement)
+    {
+        var link = doc.evaluate("./link", commitElement, null, XPathResult.STRING_TYPE).stringValue;
+        var revisionNumber = this._parseRevisionFromURL(link);
 
         function tracNSResolver(prefix)
         {
@@ -195,7 +197,7 @@ Trac.prototype = {
         }
 
         if (newCommits.length)
-            this.recordedCommits = newCommits.concat(this.recordedCommits).sort(function(a, b) { return a.revisionNumber - b.revisionNumber; });
+            this.recordedCommits = newCommits.concat(this.recordedCommits).sort(function(a, b) { return a.date - b.date; });
 
         if (newCommits.length || knownCommitsWereUpdated)
             this.dispatchEventToListeners(Trac.Event.CommitsUpdated, null);

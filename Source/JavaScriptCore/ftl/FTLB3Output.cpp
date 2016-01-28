@@ -51,6 +51,23 @@ void Output::initialize(AbstractHeapRepository& heaps)
     m_heaps = &heaps;
 }
 
+LBasicBlock Output::newBlock(const char*)
+{
+    LBasicBlock result = m_proc.addBlock(m_frequency);
+
+    if (!m_nextBlock)
+        m_blockOrder.append(result);
+    else
+        m_blockOrder.insertBefore(m_nextBlock, result);
+
+    return result;
+}
+
+void Output::applyBlockOrder()
+{
+    m_proc.setBlockOrder(m_blockOrder);
+}
+
 LBasicBlock Output::appendTo(LBasicBlock block, LBasicBlock nextBlock)
 {
     appendTo(block);
@@ -62,9 +79,10 @@ void Output::appendTo(LBasicBlock block)
     m_block = block;
 }
 
-StackSlotValue* Output::lockedStackSlot(size_t bytes)
+SlotBaseValue* Output::lockedStackSlot(size_t bytes)
 {
-    return m_block->appendNew<StackSlotValue>(m_proc, origin(), bytes, StackSlotKind::Locked);
+    return m_block->appendNew<SlotBaseValue>(
+        m_proc, origin(), m_proc.addStackSlot(bytes, StackSlotKind::Locked));
 }
 
 LValue Output::neg(LValue value)

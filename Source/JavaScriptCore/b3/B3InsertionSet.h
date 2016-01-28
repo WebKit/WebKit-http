@@ -48,6 +48,8 @@ public:
     {
     }
 
+    bool isEmpty() const { return m_insertions.isEmpty(); }
+
     Procedure& code() { return m_procedure; }
 
     void appendInsertion(const Insertion& insertion)

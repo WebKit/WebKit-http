@@ -125,8 +125,8 @@ bool isValidHTTPToken(const String& value)
 {
     if (value.isEmpty())
         return false;
-    for (unsigned i = 0; i < value.length(); ++i) {
-        UChar c = value[i];
+    auto valueStringView = StringView(value);
+    for (UChar c : valueStringView.codeUnits()) {
         if (c <= 0x20 || c >= 0x7F
             || c == '(' || c == ')' || c == '<' || c == '>' || c == '@'
             || c == ',' || c == ';' || c == ':' || c == '\\' || c == '"'
@@ -157,7 +157,7 @@ ContentDispositionType contentDispositionType(const String& contentDisposition)
     String dispositionType = parameters[0];
     dispositionType.stripWhiteSpace();
 
-    if (equalIgnoringCase(dispositionType, "inline"))
+    if (equalLettersIgnoringASCIICase(dispositionType, "inline"))
         return ContentDispositionInline;
 
     // Some broken sites just send bogus headers like
@@ -483,11 +483,11 @@ XFrameOptionsDisposition parseXFrameOptionsHeader(const String& header)
     for (size_t i = 0; i < headers.size(); i++) {
         String currentHeader = headers[i].stripWhiteSpace();
         XFrameOptionsDisposition currentValue = XFrameOptionsNone;
-        if (equalIgnoringCase(currentHeader, "deny"))
+        if (equalLettersIgnoringASCIICase(currentHeader, "deny"))
             currentValue = XFrameOptionsDeny;
-        else if (equalIgnoringCase(currentHeader, "sameorigin"))
+        else if (equalLettersIgnoringASCIICase(currentHeader, "sameorigin"))
             currentValue = XFrameOptionsSameOrigin;
-        else if (equalIgnoringCase(currentHeader, "allowall"))
+        else if (equalLettersIgnoringASCIICase(currentHeader, "allowall"))
             currentValue = XFrameOptionsAllowAll;
         else
             currentValue = XFrameOptionsInvalid;

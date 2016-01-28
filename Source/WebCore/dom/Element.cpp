@@ -1404,7 +1404,7 @@ StyleResolver& Element::styleResolver()
 
 Ref<RenderStyle> Element::resolveStyle(RenderStyle* parentStyle)
 {
-    return styleResolver().styleForElement(this, parentStyle);
+    return styleResolver().styleForElement(*this, parentStyle);
 }
 
 // Returns true is the given attribute is an event handler.
@@ -1713,13 +1713,16 @@ RefPtr<ShadowRoot> Element::attachShadow(const Dictionary& dictionary, Exception
     return shadowRoot();
 }
 
-ShadowRoot* Element::bindingShadowRoot() const
+ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
 {
     ShadowRoot* root = shadowRoot();
     if (!root)
         return nullptr;
-    if (root->type() != ShadowRoot::Type::Open)
-        return nullptr;
+
+    if (root->type() != ShadowRoot::Type::Open) {
+        if (!JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->world().shadowRootIsAlwaysOpen())
+            return nullptr;
+    }
     return root;
 }
 
@@ -2873,11 +2876,11 @@ void Element::requestPointerLock()
 SpellcheckAttributeState Element::spellcheckAttributeState() const
 {
     const AtomicString& value = fastGetAttribute(HTMLNames::spellcheckAttr);
-    if (value == nullAtom)
+    if (value.isNull())
         return SpellcheckAttributeDefault;
-    if (equalIgnoringCase(value, "true") || equalIgnoringCase(value, ""))
+    if (value.isEmpty() || equalLettersIgnoringASCIICase(value, "true"))
         return SpellcheckAttributeTrue;
-    if (equalIgnoringCase(value, "false"))
+    if (equalLettersIgnoringASCIICase(value, "false"))
         return SpellcheckAttributeFalse;
 
     return SpellcheckAttributeDefault;
@@ -3372,7 +3375,7 @@ void Element::clearHasPendingResources()
 
 bool Element::canContainRangeEndPoint() const
 {
-    return !equalIgnoringCase(fastGetAttribute(roleAttr), "img");
+    return !equalLettersIgnoringASCIICase(fastGetAttribute(roleAttr), "img");
 }
 
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const

@@ -90,36 +90,36 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     putDirectWithoutTransition(vm, vm.propertyNames->values, globalObject->arrayProtoValuesFunction(), DontEnum);
     putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, globalObject->arrayProtoValuesFunction(), DontEnum);
     
-    JSC_NATIVE_FUNCTION(vm.propertyNames->toString, arrayProtoFuncToString, DontEnum, 0);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->toLocaleString, arrayProtoFuncToLocaleString, DontEnum, 0);
-    JSC_NATIVE_FUNCTION("concat", arrayProtoFuncConcat, DontEnum, 1);
-    JSC_BUILTIN_FUNCTION("fill", arrayPrototypeFillCodeGenerator, DontEnum);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->join, arrayProtoFuncJoin, DontEnum, 1);
-    JSC_NATIVE_INTRINSIC_FUNCTION("pop", arrayProtoFuncPop, DontEnum, 0, ArrayPopIntrinsic);
-    JSC_NATIVE_INTRINSIC_FUNCTION(vm.propertyNames->builtinNames().pushPublicName(), arrayProtoFuncPush, DontEnum, 1, ArrayPushIntrinsic);
-    JSC_NATIVE_INTRINSIC_FUNCTION(vm.propertyNames->builtinNames().pushPrivateName(), arrayProtoFuncPush, DontEnum | DontDelete | ReadOnly, 1, ArrayPushIntrinsic);
-    JSC_NATIVE_FUNCTION("reverse", arrayProtoFuncReverse, DontEnum, 0);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->builtinNames().shiftPublicName(), arrayProtoFuncShift, DontEnum, 0);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->builtinNames().shiftPrivateName(), arrayProtoFuncShift, DontEnum | DontDelete | ReadOnly, 0);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->slice, arrayProtoFuncSlice, DontEnum, 2);
-    JSC_BUILTIN_FUNCTION("sort", arrayPrototypeSortCodeGenerator, DontEnum);
-    JSC_NATIVE_FUNCTION("splice", arrayProtoFuncSplice, DontEnum, 2);
-    JSC_NATIVE_FUNCTION("unshift", arrayProtoFuncUnShift, DontEnum, 1);
-    JSC_BUILTIN_FUNCTION("every", arrayPrototypeEveryCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("forEach", arrayPrototypeForEachCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("some", arrayPrototypeSomeCodeGenerator, DontEnum);
-    JSC_NATIVE_FUNCTION("indexOf", arrayProtoFuncIndexOf, DontEnum, 1);
-    JSC_NATIVE_FUNCTION("lastIndexOf", arrayProtoFuncLastIndexOf, DontEnum, 1);
-    JSC_BUILTIN_FUNCTION("filter", arrayPrototypeFilterCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("reduce", arrayPrototypeReduceCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("reduceRight", arrayPrototypeReduceRightCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("map", arrayPrototypeMapCodeGenerator, DontEnum);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->entries, arrayProtoFuncEntries, DontEnum, 0);
-    JSC_NATIVE_FUNCTION(vm.propertyNames->keys, arrayProtoFuncKeys, DontEnum, 0);
-    JSC_BUILTIN_FUNCTION("find", arrayPrototypeFindCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("findIndex", arrayPrototypeFindIndexCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("includes", arrayPrototypeIncludesCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION("copyWithin", arrayPrototypeCopyWithinCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->toString, arrayProtoFuncToString, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->toLocaleString, arrayProtoFuncToLocaleString, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("concat", arrayProtoFuncConcat, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("fill", arrayPrototypeFillCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->join, arrayProtoFuncJoin, DontEnum, 1);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("pop", arrayProtoFuncPop, DontEnum, 0, ArrayPopIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().pushPublicName(), arrayProtoFuncPush, DontEnum, 1, ArrayPushIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().pushPrivateName(), arrayProtoFuncPush, DontEnum | DontDelete | ReadOnly, 1, ArrayPushIntrinsic);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("reverse", arrayProtoFuncReverse, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().shiftPublicName(), arrayProtoFuncShift, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().shiftPrivateName(), arrayProtoFuncShift, DontEnum | DontDelete | ReadOnly, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->slice, arrayProtoFuncSlice, DontEnum, 2);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("sort", arrayPrototypeSortCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("splice", arrayProtoFuncSplice, DontEnum, 2);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("unshift", arrayProtoFuncUnShift, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("every", arrayPrototypeEveryCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("forEach", arrayPrototypeForEachCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("some", arrayPrototypeSomeCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("indexOf", arrayProtoFuncIndexOf, DontEnum, 1);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("lastIndexOf", arrayProtoFuncLastIndexOf, DontEnum, 1);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("filter", arrayPrototypeFilterCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("reduce", arrayPrototypeReduceCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("reduceRight", arrayPrototypeReduceRightCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("map", arrayPrototypeMapCodeGenerator, DontEnum);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->entries, arrayProtoFuncEntries, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->keys, arrayProtoFuncKeys, DontEnum, 0);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("find", arrayPrototypeFindCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("findIndex", arrayPrototypeFindIndexCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("includes", arrayPrototypeIncludesCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("copyWithin", arrayPrototypeCopyWithinCodeGenerator, DontEnum);
     
     JSObject* unscopables = constructEmptyObject(globalObject->globalExec(), globalObject->nullPrototypeObjectStructure());
     const char* unscopableNames[] = {
@@ -336,6 +336,31 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToLocaleString(ExecState* exec)
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
+#if ENABLE(INTL)
+    ArgList arguments(exec);
+    for (unsigned i = 0; i < length; ++i) {
+        JSValue element = thisObject->getIndex(exec, i);
+        if (exec->hadException())
+            return JSValue::encode(jsUndefined());
+        if (element.isUndefinedOrNull())
+            element = jsEmptyString(exec);
+        else {
+            JSValue conversionFunction = element.get(exec, exec->propertyNames().toLocaleString);
+            if (exec->hadException())
+                return JSValue::encode(jsUndefined());
+            CallData callData;
+            CallType callType = getCallData(conversionFunction, callData);
+            if (callType != CallTypeNone) {
+                element = call(exec, conversionFunction, callType, callData, element, arguments);
+                if (exec->hadException())
+                return JSValue::encode(jsUndefined());
+            }
+        }
+        stringJoiner.append(*exec, element);
+        if (exec->hadException())
+            return JSValue::encode(jsUndefined());
+    }
+#else // !ENABLE(INTL)
     for (unsigned i = 0; i < length; ++i) {
         JSValue element = thisObject->getIndex(exec, i);
         if (exec->hadException())
@@ -356,6 +381,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToLocaleString(ExecState* exec)
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
     }
+#endif // !ENABLE(INTL)
 
     return JSValue::encode(stringJoiner.join(*exec));
 }

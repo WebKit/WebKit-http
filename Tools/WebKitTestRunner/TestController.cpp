@@ -714,6 +714,8 @@ bool TestController::resetStateToConsistentValues()
 
     WKContextSetCacheModel(TestController::singleton().context(), kWKCacheModelDocumentBrowser);
 
+    WKContextClearCachedCredentials(TestController::singleton().context());
+
     // FIXME: This function should also ensure that there is only one page open.
 
     // Reset the EventSender for each test.
@@ -917,6 +919,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.useThreadedScrolling = parseBooleanTestHeaderValue(value);
         if (key == "useFlexibleViewport")
             testOptions.useFlexibleViewport = parseBooleanTestHeaderValue(value);
+        if (key == "useDataDetection")
+            testOptions.useDataDetection = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

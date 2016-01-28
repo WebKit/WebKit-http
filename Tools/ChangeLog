@@ -1,3 +1,405 @@
+2016-01-27  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Remove unused accessibility related code
+        https://bugs.webkit.org/show_bug.cgi?id=153543
+
+        Reviewed by Darin Adler.
+
+        Removed reference to EAIL library.
+        It not going to be support anymore. There have been changes in
+        EFL/Elementary in terms of the accessibility and we should
+        follow those.
+
+        * efl/jhbuild-optional.modules:
+
+2016-01-27  Daniel Bates  <dabates@apple.com>
+
+        Remove WebKitSystemInterface for iOS SDK < 9
+        https://bugs.webkit.org/show_bug.cgi?id=153570
+
+        Reviewed by Andy Estes.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-01-27  Jason Marcell  <jmarcell@apple.com>
+
+        Fix bugs caused by incorrect usage of "branch" vs. "branchName".
+        https://bugs.webkit.org/show_bug.cgi?id=153330
+
+        Reviewed by Daniel Bates.
+
+        In an earlier patch we started using the name "branch" to indicate a branch object, whereas
+        "branchName" implies that the variable or property in question is simply a string. We fixed some
+        inconsistencies regarding this issue in 152982 but further bugs and inconsistencies were recently
+        spotted in BuildbotQueueView.js.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverLinesForCommitRange): Change branchName to branch in method signature.
+        Changed branchName to branch.name in call to commitsOnBranch.
+        (BuildbotQueueView.prototype._presentPopoverForPendingCommits): Change branch.name to branch in call to
+        _popoverLinesForCommitRange.
+        (BuildbotQueueView.prototype._presentPopoverForRevisionRange): Changed context.branchName to context.branch.name.
+        (BuildbotQueueView.prototype._revisionContentWithPopoverForIteration): Changed branch.name to branch.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added tests to verify
+        fix.
+
+2016-01-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add API to access closed shadowRoot in InjectedBundle
+        https://bugs.webkit.org/show_bug.cgi?id=153533
+
+        Reviewed by Antti Koivisto.
+
+        Added WebKit2 API test for WKBundleScriptWorldMakeAllShadowRootsOpen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleMakeAllShadowRootsOpen.cpp: Added.
+        (TestWebKitAPI::runJavaScriptAlert):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/InjectedBundleMakrAllShadowRootOpen_Bundle.cpp: Added.
+        (TestWebKitAPI::InjectedBundleMakrAllShadowRootOpenTest::InjectedBundleMakrAllShadowRootOpenTest):
+        (TestWebKitAPI::InjectedBundleMakrAllShadowRootOpenTest::initialize):
+
+2016-01-27  Jason Marcell  <jmarcell@apple.com>
+
+        Refactor logic for parsing Trac revisions into its own function and add logic for parsing git hashes.
+        https://bugs.webkit.org/show_bug.cgi?id=153332
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._xmlTimelineURL): Uses new function.
+        (Trac.prototype._parseRevisionFromURL): Added. Pulled out logic for parsing revisions from a URL. Also added
+        logic for parsing git hashes.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added tests for
+        Trac._parseRevisionFromURL.
+
+2016-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove Mavericks from the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=153521
+
+        Reviewed by Dan Bernstein.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2016-01-27  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove ENABLE_CURRENTSRC
+        https://bugs.webkit.org/show_bug.cgi?id=153545
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2016-01-26  Jason Marcell  <jmarcell@apple.com>
+
+        Sort incoming commits via date instead of revision number.
+        https://bugs.webkit.org/show_bug.cgi?id=153467
+
+        Reviewed by Alexey Proskuryakov.
+
+        Future Trac instances may use Git or other revision control systems where we cannnot rely on the revision number
+        for sorting revisions. Instead we use the commit date to sort revisions chronologically.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac.prototype._loaded): Sort via date instead of revision number.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/MockTrac.js:
+        (MockTrac): Fix up the mock data to look more like real-world data.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/test-fixture-trac-rss.xml: Added.
+        Fake RSS feed that adds three more commits.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/tests.js: Added unit tests to test
+        Trac._loaded().
+
+2016-01-26  I-Ting Liu  <iting_liu@apple.com>
+
+        Add a test for WebKit::stringMatchesWildcardString.
+        https://bugs.webkit.org/show_bug.cgi?id=153090
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add the file to the project.
+
+        * TestWebKitAPI/Tests/WebKit2/mac/StringUtilities.mm: Added.
+        (TestWebKitAPI::TEST):
+        Test that a string matches another string that may contain wildcard characters.
+
+2016-01-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] Removed check for bison, gperf, and flex.
+        https://bugs.webkit.org/show_bug.cgi?id=153496
+
+        Reviewed by Alex Christensen.
+
+        This prerequisites are checked in WebKitCommon.cmake and don't
+        have to be in $PATH.
+
+        * Scripts/webkitdirs.pm:
+        (checkRequiredSystemConfig):
+
+2016-01-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [webkitdirs] isCMakeBuild should be true by default
+        https://bugs.webkit.org/show_bug.cgi?id=153497
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitdirs.pm:
+        (isCMakeBuild):
+
+2016-01-26  Daniel Bates  <dabates@apple.com>
+
+        Add WebKitSystemInterface for iOS 9.2
+        https://bugs.webkit.org/show_bug.cgi?id=153355
+
+        Rubber-stamped by David Kilzer.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-01-26  Daniel Bates  <dabates@apple.com>
+
+        WebKitTestRunner: Credential cache is not cleared between tests
+        https://bugs.webkit.org/show_bug.cgi?id=153407
+        <rdar://problem/24280834>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Call WKContextClearCachedCredentials()
+        to clear cached credentials.
+
+2016-01-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        kill-old-processes: allow to specify on the environment of the bot a list of process that should be killed.
+        https://bugs.webkit.org/show_bug.cgi?id=153483
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (main): Allow to specify extra tasks to kill via the environment variable WEBKITBOT_TASKSTOKILL
+
+2016-01-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Give the layout test results file a <title> showing the date and time the tests were run
+        https://bugs.webkit.org/show_bug.cgi?id=153187
+
+        Reviewed by Darin Adler.
+        
+        Include a 'date' property in the JSON with the date and time the tests completed.
+
+        * Scripts/webkitpy/layout_tests/models/test_run_results.py:
+        (summarize_results):
+
+2016-01-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r195543.
+        https://bugs.webkit.org/show_bug.cgi?id=153451
+
+        regressed performance of test bots by ~6% (Requested by dydz
+        on #webkit).
+
+        Reverted changeset:
+
+        "WebKitTestRunner: Credential cache is not cleared between
+        tests"
+        https://bugs.webkit.org/show_bug.cgi?id=153407
+        http://trac.webkit.org/changeset/195543
+
+2016-01-25  Aakash Jain  <aakash_jain@apple.com>
+
+        Failing to upload to flakiness dashboard should not be a hard error
+        https://bugs.webkit.org/show_bug.cgi?id=153444
+        <rdar://problem/22146294>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._upload_json_files): If JSON file is not generated, do not try to upload it.
+
+2016-01-25  Daniel Bates  <dabates@apple.com>
+
+        WebKitTestRunner: Credential cache is not cleared between tests
+        https://bugs.webkit.org/show_bug.cgi?id=153407
+        <rdar://problem/24280834>
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Reset testing network session
+        to clear cached credentials.
+
+2016-01-24  Dan Bernstein  <mitz@apple.com>
+
+        Added project.xcworkspace and xcuserdata to this project’s svn:ignore.
+
+        * LayoutTestRelay/LayoutTestRelay.xcodeproj: Added property svn:ignore.
+
+2016-01-22  Enrica Casucci  <enrica@apple.com>
+
+        Unreviewed build fix after http://trac.webkit.org/changeset/195474.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
+2016-01-22  Tim Horton  <timothy_horton@apple.com>
+
+        Add a test for iOS arrow-key repeat
+        https://bugs.webkit.org/show_bug.cgi?id=152857
+        <rdar://problem/24017380>
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/UIScriptContext/Bindings/UIScriptController.idl:
+        * WebKitTestRunner/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::keyUpUsingHardwareKeyboard):
+        (WTR::UIScriptController::keyDownUsingHardwareKeyboard):
+        * WebKitTestRunner/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator keyPress:completionBlock:]):
+        (-[HIDEventGenerator keyDown:completionBlock:]):
+        (-[HIDEventGenerator keyUp:completionBlock:]):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::typeCharacterUsingHardwareKeyboard):
+        (WTR::UIScriptController::keyDownUsingHardwareKeyboard):
+        (WTR::UIScriptController::keyUpUsingHardwareKeyboard):
+        Make it possible to independently send keyUp/keyDown, instead of just paired.
+
+2016-01-22  Tim Horton  <timothy_horton@apple.com>
+
+        Reproducible "Unhanded web process message 'WebUserContentController:AddUserScripts'" and friends
+        https://bugs.webkit.org/show_bug.cgi?id=153193
+        <rdar://problem/24222034>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        (webViewForScriptMessageHandlerMultipleHandlerRemovalTest):
+        (TEST):
+        Add a test that exhibits the problems we're fixing here.
+        Before, it would both log and assert in debug, and crash in release.
+        Now it runs happily to completion.
+
+2016-01-22  Enrica Casucci  <enrica@apple.com>
+
+        Add support for testing data detection.
+        https://bugs.webkit.org/show_bug.cgi?id=153360
+
+        Reviewed by Tim Horton.
+
+        Adding a new testing option (useDataDetection) to turn on
+        data detection when running the a test.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
+2016-01-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the lldb WebCoreLayoutUnitProvider to not dynamically look up the LayoutUnit denominator
+        https://bugs.webkit.org/show_bug.cgi?id=153334
+
+        Reviewed by Zalan Bujtas.
+        
+        Evaluating expressions in the LayoutUnit summary provider seems to cause
+        re-entrancy problems in lldb python bindings, so just hardcode the LayoutUnit
+        denominator to 64.
+
+        * lldb/lldb_webkit.py:
+        (WebCoreLayoutUnitProvider.to_string):
+
+2016-01-21  Filip Pizlo  <fpizlo@apple.com>
+
+        display-profiler-output should be able to display code blocks sorted by machine counts
+        https://bugs.webkit.org/show_bug.cgi?id=153298
+
+        Reviewed by Oliver Hunt.
+
+        * Scripts/display-profiler-output:
+
+2016-01-21  Julien Isorce  <j.isorce@samsung.com>
+
+        Ensure to use compatible liborc version with wanted gstreamer version
+        https://bugs.webkit.org/show_bug.cgi?id=153276
+
+        For example gst-plugins-base-1.4.4 fails to build with liborc-0.4.24.
+        The user may have a very recent liborc installed on his system.
+
+        Reviewed by Philippe Normand.
+
+        * efl/jhbuild.modules: add liborc-0.4.17 and make it a gst dependency.
+        * gtk/jhbuild.modules: add liborc-0.4.17 and make it a gst depencendy.
+
+2016-01-21  Nan Wang  <n_wang@apple.com>
+
+        AX: [IOS] Implement next/previous text marker functions using TextIterator
+        https://bugs.webkit.org/show_bug.cgi?id=153292
+        <rdar://problem/24268243>
+
+        Reviewed by Chris Fleizach.
+
+        Made text marker tests available on iOS.
+
+        * DumpRenderTree/AccessibilityTextMarker.h:
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/ios/AccessibilityTextMarkerIOS.mm: Added.
+        (AccessibilityTextMarker::AccessibilityTextMarker):
+        (AccessibilityTextMarker::~AccessibilityTextMarker):
+        (AccessibilityTextMarker::isEqual):
+        (AccessibilityTextMarker::platformTextMarker):
+        (AccessibilityTextMarkerRange::AccessibilityTextMarkerRange):
+        (AccessibilityTextMarkerRange::~AccessibilityTextMarkerRange):
+        (AccessibilityTextMarkerRange::isEqual):
+        (AccessibilityTextMarkerRange::platformTextMarkerRange):
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::pathDescription):
+        (AccessibilityUIElement::lineTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::textMarkerRangeForElement):
+        (AccessibilityUIElement::selectedTextMarkerRange):
+        (AccessibilityUIElement::resetSelectedTextMarkerRange):
+        (AccessibilityUIElement::textMarkerRangeLength):
+        (AccessibilityUIElement::textMarkerRangeForMarkers):
+        (AccessibilityUIElement::startTextMarkerForTextMarkerRange):
+        (AccessibilityUIElement::endTextMarkerForTextMarkerRange):
+        (AccessibilityUIElement::accessibilityElementForTextMarker):
+        (AccessibilityUIElement::endTextMarkerForBounds):
+        (AccessibilityUIElement::startTextMarkerForBounds):
+        (AccessibilityUIElement::textMarkerForPoint):
+        (AccessibilityUIElement::previousTextMarker):
+        (AccessibilityUIElement::nextTextMarker):
+        (AccessibilityUIElement::stringForTextMarkerRange):
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute):
+        (AccessibilityUIElement::indexForTextMarker):
+        (AccessibilityUIElement::isTextMarkerValid):
+        (AccessibilityUIElement::textMarkerForIndex):
+        (AccessibilityUIElement::startTextMarker):
+        (AccessibilityUIElement::endTextMarker):
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::getLinkedUIElements):
+        * DumpRenderTree/mac/AccessibilityTextMarkerMac.mm:
+        (AccessibilityTextMarkerRange::platformTextMarkerRange):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::removeSelection):
+        (AccessibilityUIElement::lineTextMarkerRangeForTextMarker):
+        (AccessibilityUIElement::setSelectedVisibleTextRange):
+        (AccessibilityUIElement::supportedActions):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::textMarkerRangeForElement):
+        (WTR::AccessibilityUIElement::textMarkerRangeLength):
+        (WTR::AccessibilityUIElement::previousTextMarker):
+        (WTR::AccessibilityUIElement::nextTextMarker):
+        (WTR::AccessibilityUIElement::stringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::textMarkerRangeForMarkers):
+        (WTR::AccessibilityUIElement::startTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForTextMarkerRange):
+        (WTR::AccessibilityUIElement::endTextMarkerForBounds):
+        (WTR::AccessibilityUIElement::accessibilityElementForTextMarker):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeContainsAttribute):
+
 2016-01-20  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, revert accidental unreviewed commit.

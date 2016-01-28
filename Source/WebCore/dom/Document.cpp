@@ -90,6 +90,7 @@
 #include "HTMLScriptElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTitleElement.h"
+#include "HTMLUnknownElement.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "HashChangeEvent.h"
@@ -167,6 +168,7 @@
 #include "TreeWalker.h"
 #include "VisitedLinkState.h"
 #include "WheelEvent.h"
+#include "XMLDocument.h"
 #include "XMLDocumentParser.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
@@ -475,7 +477,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_gotoAnchorNeededAfterStylesheetsLoad(false)
     , m_frameElementsShouldIgnoreScrolling(false)
     , m_updateFocusAppearanceRestoresSelection(SelectionRestorationMode::SetDefault)
-    , m_ignoreDestructiveWriteCount(0)
     , m_markers(std::make_unique<DocumentMarkerController>(*this))
     , m_updateFocusAppearanceTimer(*this, &Document::updateFocusAppearanceTimerFired)
     , m_cssTarget(nullptr)
@@ -515,8 +516,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_loadEventDelayCount(0)
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
     , m_referrerPolicy(ReferrerPolicyDefault)
-    , m_directionSetOnDocumentElement(false)
-    , m_writingModeSetOnDocumentElement(false)
     , m_writeRecursionIsTooDeep(false)
     , m_writeRecursionDepth(0)
     , m_lastHandledUserGestureTimestamp(0)
@@ -882,18 +881,40 @@ void Document::childrenChanged(const ChildChange& change)
     clearStyleResolver();
 }
 
-RefPtr<Element> Document::createElement(const AtomicString& name, ExceptionCode& ec)
+static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, const QualifiedName qualifiedName, ExceptionCode& ec)
 {
-    if (!isValidName(name)) {
+    RefPtr<HTMLElement> element = HTMLElementFactory::createKnownElement(qualifiedName, document);
+    if (LIKELY(element))
+        return element;
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    auto* definitions = document.customElementDefinitions();
+    if (UNLIKELY(definitions)) {
+        if (auto* interface = definitions->findInterface(qualifiedName))
+            return interface->constructElement(qualifiedName.localName());
+    }
+#endif
+
+    if (UNLIKELY(!Document::isValidName(qualifiedName.localName()))) {
         ec = INVALID_CHARACTER_ERR;
         return nullptr;
     }
 
+    return HTMLUnknownElement::create(qualifiedName, document);
+}
+
+RefPtr<Element> Document::createElementForBindings(const AtomicString& name, ExceptionCode& ec)
+{
     if (isHTMLDocument())
-        return HTMLElementFactory::createElement(QualifiedName(nullAtom, name.convertToASCIILowercase(), xhtmlNamespaceURI), *this);
+        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name.convertToASCIILowercase(), xhtmlNamespaceURI), ec);
 
     if (isXHTMLDocument())
-        return HTMLElementFactory::createElement(QualifiedName(nullAtom, name, xhtmlNamespaceURI), *this);
+        return createHTMLElementWithNameValidation(*this, QualifiedName(nullAtom, name, xhtmlNamespaceURI), ec);
+
+    if (!isValidName(name)) {
+        ec = INVALID_CHARACTER_ERR;
+        return nullptr;
+    }
 
     return createElement(QualifiedName(nullAtom, name, nullAtom), false);
 }
@@ -2497,6 +2518,9 @@ ScriptableDocumentParser* Document::scriptableDocumentParser() const
 
 void Document::open(Document* ownerDocument)
 {
+    if (m_ignoreOpensDuringUnloadCount)
+        return;
+
     if (ownerDocument) {
         setURL(ownerDocument->url());
         setCookieURL(ownerDocument->cookieURL());
@@ -2583,10 +2607,8 @@ HTMLElement* Document::bodyOrFrameset() const
     return nullptr;
 }
 
-void Document::setBodyOrFrameset(PassRefPtr<HTMLElement> prpNewBody, ExceptionCode& ec)
+void Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody, ExceptionCode& ec)
 {
-    RefPtr<HTMLElement> newBody = prpNewBody;
-
     // FIXME: This does not support setting a <frameset> Element, only a <body>. This does
     // not match the HTML specification:
     // https://html.spec.whatwg.org/multipage/dom.html#dom-document-body
@@ -2845,7 +2867,7 @@ void Document::write(const SegmentedString& text, Document* ownerDocument)
 #endif
 
     bool hasInsertionPoint = m_parser && m_parser->hasInsertionPoint();
-    if (!hasInsertionPoint && m_ignoreDestructiveWriteCount)
+    if (!hasInsertionPoint && (m_ignoreOpensDuringUnloadCount || m_ignoreDestructiveWriteCount))
         return;
 
     if (!hasInsertionPoint)
@@ -3342,7 +3364,7 @@ void Document::updateViewportArguments()
 // FIXME: Find a better place for this functionality.
 void setParserFeature(const String& key, const String& value, Document* document, void*)
 {
-    if (key == "telephone" && equalIgnoringCase(value, "no"))
+    if (key == "telephone" && equalLettersIgnoringASCIICase(value, "no"))
         document->setIsTelephoneNumberParsingAllowed(false);
 }
 
@@ -3370,13 +3392,13 @@ void Document::processReferrerPolicy(const String& policy)
 
     // Note that we're supporting both the standard and legacy keywords for referrer
     // policies, as defined by http://www.w3.org/TR/referrer-policy/#referrer-policy-delivery-meta
-    if (equalIgnoringCase(policy, "no-referrer") || equalIgnoringCase(policy, "never"))
+    if (equalLettersIgnoringASCIICase(policy, "no-referrer") || equalLettersIgnoringASCIICase(policy, "never"))
         setReferrerPolicy(ReferrerPolicyNever);
-    else if (equalIgnoringCase(policy, "unsafe-url") || equalIgnoringCase(policy, "always"))
+    else if (equalLettersIgnoringASCIICase(policy, "unsafe-url") || equalLettersIgnoringASCIICase(policy, "always"))
         setReferrerPolicy(ReferrerPolicyAlways);
-    else if (equalIgnoringCase(policy, "origin"))
+    else if (equalLettersIgnoringASCIICase(policy, "origin"))
         setReferrerPolicy(ReferrerPolicyOrigin);
-    else if (equalIgnoringCase(policy, "no-referrer-when-downgrade") || equalIgnoringCase(policy, "default"))
+    else if (equalLettersIgnoringASCIICase(policy, "no-referrer-when-downgrade") || equalLettersIgnoringASCIICase(policy, "default"))
         setReferrerPolicy(ReferrerPolicyDefault);
     else {
         addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, "Failed to set referrer policy: The value '" + policy + "' is not one of 'no-referrer', 'origin', 'no-referrer-when-downgrade', or 'unsafe-url'. Defaulting to 'no-referrer'.");
@@ -3508,7 +3530,12 @@ Ref<Node> Document::cloneNodeInternal(Document&, CloningOperation type)
 
 Ref<Document> Document::cloneDocumentWithoutChildren() const
 {
-    return isXHTMLDocument() ? createXHTML(nullptr, url()) : create(nullptr, url());
+    if (isXMLDocument()) {
+        if (isXHTMLDocument())
+            return XMLDocument::createXHTML(nullptr, url());
+        return XMLDocument::create(nullptr, url());
+    }
+    return create(nullptr, url());
 }
 
 void Document::cloneDataFromDocument(const Document& other)
@@ -3756,10 +3783,9 @@ void Document::setAnnotatedRegions(const Vector<AnnotatedRegionValue>& regions)
 }
 #endif
 
-bool Document::setFocusedElement(PassRefPtr<Element> prpNewFocusedElement, FocusDirection direction)
+bool Document::setFocusedElement(Element* element, FocusDirection direction)
 {
-    RefPtr<Element> newFocusedElement = prpNewFocusedElement;
-
+    RefPtr<Element> newFocusedElement = element;
     // Make sure newFocusedElement is actually in this document
     if (newFocusedElement && (&newFocusedElement->document() != this))
         return true;
@@ -4161,21 +4187,21 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // The following strings are the ones from the DOM specification
     // <https://dom.spec.whatwg.org/#dom-document-createevent>.
 
-    if (equalIgnoringASCIICase(type, "customevent"))
+    if (equalLettersIgnoringASCIICase(type, "customevent"))
         return CustomEvent::create();
-    if (equalIgnoringASCIICase(type, "event") || equalIgnoringASCIICase(type, "events") || equalIgnoringASCIICase(type, "htmlevents"))
+    if (equalLettersIgnoringASCIICase(type, "event") || equalLettersIgnoringASCIICase(type, "events") || equalLettersIgnoringASCIICase(type, "htmlevents"))
         return Event::create();
-    if (equalIgnoringASCIICase(type, "keyboardevent") || equalIgnoringASCIICase(type, "keyboardevents"))
+    if (equalLettersIgnoringASCIICase(type, "keyboardevent") || equalLettersIgnoringASCIICase(type, "keyboardevents"))
         return KeyboardEvent::create();
-    if (equalIgnoringASCIICase(type, "messageevent"))
+    if (equalLettersIgnoringASCIICase(type, "messageevent"))
         return MessageEvent::create();
-    if (equalIgnoringASCIICase(type, "mouseevent") || equalIgnoringASCIICase(type, "mouseevents"))
+    if (equalLettersIgnoringASCIICase(type, "mouseevent") || equalLettersIgnoringASCIICase(type, "mouseevents"))
         return MouseEvent::create();
-    if (equalIgnoringASCIICase(type, "uievent") || equalIgnoringASCIICase(type, "uievents"))
+    if (equalLettersIgnoringASCIICase(type, "uievent") || equalLettersIgnoringASCIICase(type, "uievents"))
         return UIEvent::create();
 
 #if ENABLE(TOUCH_EVENTS)
-    if (equalIgnoringASCIICase(type, "touchevent"))
+    if (equalLettersIgnoringASCIICase(type, "touchevent"))
         return TouchEvent::create();
 #endif
 
@@ -4185,7 +4211,7 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // However, since there is no provision for initializing the event once it is created,
     // there is no practical value in this feature.
 
-    if (equalIgnoringASCIICase(type, "svgzoomevents"))
+    if (equalLettersIgnoringASCIICase(type, "svgzoomevents"))
         return SVGZoomEvent::create();
 
     // The following strings are for event classes where WebKit supplies an init function.
@@ -4195,25 +4221,25 @@ RefPtr<Event> Document::createEvent(const String& type, ExceptionCode& ec)
     // FIXME: For each of the strings below, prove there is no content depending on it and remove
     // both the string and the corresponding init function for that class.
 
-    if (equalIgnoringASCIICase(type, "compositionevent"))
+    if (equalLettersIgnoringASCIICase(type, "compositionevent"))
         return CompositionEvent::create();
-    if (equalIgnoringASCIICase(type, "hashchangeevent"))
+    if (equalLettersIgnoringASCIICase(type, "hashchangeevent"))
         return HashChangeEvent::create();
-    if (equalIgnoringASCIICase(type, "mutationevent") || equalIgnoringASCIICase(type, "mutationevents"))
+    if (equalLettersIgnoringASCIICase(type, "mutationevent") || equalLettersIgnoringASCIICase(type, "mutationevents"))
         return MutationEvent::create();
-    if (equalIgnoringASCIICase(type, "overflowevent"))
+    if (equalLettersIgnoringASCIICase(type, "overflowevent"))
         return OverflowEvent::create();
-    if (equalIgnoringASCIICase(type, "storageevent"))
+    if (equalLettersIgnoringASCIICase(type, "storageevent"))
         return StorageEvent::create();
-    if (equalIgnoringASCIICase(type, "textevent"))
+    if (equalLettersIgnoringASCIICase(type, "textevent"))
         return TextEvent::create();
-    if (equalIgnoringASCIICase(type, "wheelevent"))
+    if (equalLettersIgnoringASCIICase(type, "wheelevent"))
         return WheelEvent::create();
 
 #if ENABLE(DEVICE_ORIENTATION)
-    if (equalIgnoringASCIICase(type, "devicemotionevent"))
+    if (equalLettersIgnoringASCIICase(type, "devicemotionevent"))
         return DeviceMotionEvent::create();
-    if (equalIgnoringASCIICase(type, "deviceorientationevent"))
+    if (equalLettersIgnoringASCIICase(type, "deviceorientationevent"))
         return DeviceOrientationEvent::create();
 #endif
 
@@ -4564,9 +4590,9 @@ bool Document::parseQualifiedName(const String& qualifiedName, String& prefix, S
     return true;
 }
 
-void Document::setDecoder(PassRefPtr<TextResourceDecoder> decoder)
+void Document::setDecoder(RefPtr<TextResourceDecoder>&& decoder)
 {
-    m_decoder = decoder;
+    m_decoder = WTFMove(decoder);
 }
 
 URL Document::completeURL(const String& url, const URL& baseURLOverride) const
@@ -4833,7 +4859,7 @@ String Document::queryCommandValue(const String& commandName)
     return command(this, commandName).value();
 }
 
-void Document::pushCurrentScript(PassRefPtr<HTMLScriptElement> newCurrentScript)
+void Document::pushCurrentScript(HTMLScriptElement* newCurrentScript)
 {
     ASSERT(newCurrentScript);
     m_currentScriptStack.append(newCurrentScript);
@@ -5338,7 +5364,7 @@ void Document::initDNSPrefetch()
 
 void Document::parseDNSPrefetchControlHeader(const String& dnsPrefetchControl)
 {
-    if (equalIgnoringCase(dnsPrefetchControl, "on") && !m_haveExplicitlyDisabledDNSPrefetch) {
+    if (equalLettersIgnoringASCIICase(dnsPrefetchControl, "on") && !m_haveExplicitlyDisabledDNSPrefetch) {
         m_isDNSPrefetchEnabled = true;
         return;
     }

@@ -154,6 +154,7 @@ public:
         { return m_string.endsWith<matchLength>(prefix, caseSensitive); }
 
     WTF_EXPORT_STRING_API AtomicString convertToASCIILowercase() const;
+    WTF_EXPORT_STRING_API AtomicString convertToASCIIUppercase() const;
     WTF_EXPORT_STRING_API AtomicString lower() const;
     AtomicString upper() const { return AtomicString(impl()->upper()); }
 
@@ -185,6 +186,9 @@ public:
 private:
     // The explicit constructors with AtomicString::ConstructFromLiteral must be used for literals.
     AtomicString(ASCIILiteral);
+
+    enum class CaseConvertType { Upper, Lower };
+    template<CaseConvertType> AtomicString convertASCIICase() const;
 
     WTF_EXPORT_STRING_API static AtomicString fromUTF8Internal(const char*, const char*);
 
@@ -223,8 +227,7 @@ inline bool equalIgnoringASCIICase(const AtomicString& a, const AtomicString& b)
 inline bool equalIgnoringASCIICase(const AtomicString& a, const String& b) { return equalIgnoringASCIICase(a.impl(), b.impl()); }
 inline bool equalIgnoringASCIICase(const String& a, const AtomicString& b) { return equalIgnoringASCIICase(a.impl(), b.impl()); }
 
-template <unsigned charactersCount>
-inline bool equalIgnoringASCIICase(const AtomicString& a, const char (&b)[charactersCount]) { return equalIgnoringASCIICase<charactersCount>(a.impl(), b); }
+template<unsigned length> bool equalLettersIgnoringASCIICase(const AtomicString&, const char (&lowercaseLetters)[length]);
 
 inline AtomicString::AtomicString()
 {
@@ -294,7 +297,7 @@ inline AtomicString::AtomicString(CFStringRef s)
 
 #ifdef __OBJC__
 inline AtomicString::AtomicString(NSString* s)
-    : m_string(AtomicStringImpl::add((CFStringRef)s))
+    : m_string(AtomicStringImpl::add((__bridge CFStringRef)s))
 {
 }
 #endif
@@ -336,6 +339,11 @@ template<> struct DefaultHash<AtomicString> {
     typedef AtomicStringHash Hash;
 };
 
+template<unsigned length> inline bool equalLettersIgnoringASCIICase(const AtomicString& string, const char (&lowercaseLetters)[length])
+{
+    return equalLettersIgnoringASCIICase(string.string(), lowercaseLetters);
+}
+
 } // namespace WTF
 
 #ifndef ATOMICSTRING_HIDE_GLOBALS
@@ -351,4 +359,5 @@ using WTF::xlinkAtom;
 #endif
 
 #include <wtf/text/StringConcatenate.h>
+
 #endif // AtomicString_h

@@ -69,7 +69,7 @@ CDMSessionClearKey::~CDMSessionClearKey()
 {
 }
 
-RefPtr<Uint8Array> CDMSessionClearKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode)
+RefPtr<Uint8Array> CDMSessionClearKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     UNUSED_PARAM(mimeType);
     UNUSED_PARAM(destinationURL);
@@ -96,7 +96,7 @@ void CDMSessionClearKey::releaseKeys()
     m_cachedKeys.clear();
 }
 
-bool CDMSessionClearKey::update(Uint8Array* rawKeysData, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode)
+bool CDMSessionClearKey::update(Uint8Array* rawKeysData, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
 {
     UNUSED_PARAM(nextMessage);
     UNUSED_PARAM(systemCode);
@@ -137,13 +137,13 @@ bool CDMSessionClearKey::update(Uint8Array* rawKeysData, RefPtr<Uint8Array>& nex
             }
 
             String algorithm;
-            if (!keyDictionary.get("alg", algorithm) || !equalIgnoringCase(algorithm, "a128kw")) {
+            if (!keyDictionary.get("alg", algorithm) || !equalLettersIgnoringASCIICase(algorithm, "a128kw")) {
                 LOG(Media, "CDMSessionClearKey::update(%p) - failed: algorithm unsupported", this);
                 continue;
             }
 
             String keyType;
-            if (!keyDictionary.get("kty", keyType) || !equalIgnoringCase(keyType, "oct")) {
+            if (!keyDictionary.get("kty", keyType) || !equalLettersIgnoringASCIICase(keyType, "oct")) {
                 LOG(Media, "CDMSessionClearKey::update(%p) - failed: keyType unsupported", this);
                 continue;
             }

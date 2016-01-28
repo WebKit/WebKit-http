@@ -34,12 +34,10 @@
 #include "SVGFontFaceElement.h"
 #endif
 #include "Timer.h"
-#include <wtf/HashMap.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class CachedFont;
 class CSSFontFace;
 class CSSFontSelector;
 class Font;
@@ -68,8 +66,7 @@ public:
 #if ENABLE(SVG_FONTS)
     SVGFontFaceElement* svgFontFaceElement() const { return m_svgFontFaceElement.get(); }
     void setSVGFontFaceElement(PassRefPtr<SVGFontFaceElement> element) { m_svgFontFaceElement = element; }
-    bool isSVGFontFaceSource() const { return m_svgFontFaceElement || m_hasExternalSVGFont; }
-    void setHasExternalSVGFont() { m_hasExternalSVGFont = true; }
+    bool isSVGFontFaceSource() const;
 #endif
 
 #if ENABLE(FONT_LOAD_EVENTS)
@@ -83,7 +80,6 @@ private:
     AtomicString m_string; // URI for remote, built-in font name for local.
     CachedResourceHandle<CachedFont> m_font; // For remote fonts, a pointer to our cached resource.
     CSSFontFace* m_face; // Our owning font face.
-    HashMap<unsigned, RefPtr<Font>> m_fontTable; // The hash key is composed of size synthetic styles.
 
 #if ENABLE(SVG_OTF_CONVERTER)
     RefPtr<SharedBuffer> m_generatedOTFBuffer;
@@ -91,7 +87,6 @@ private:
 
 #if ENABLE(SVG_FONTS) || ENABLE(SVG_OTF_CONVERTER)
     RefPtr<SVGFontFaceElement> m_svgFontFaceElement;
-    bool m_hasExternalSVGFont;
 #endif
 };
 

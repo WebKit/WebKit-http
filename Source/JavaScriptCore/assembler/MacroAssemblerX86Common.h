@@ -129,6 +129,33 @@ public:
         add32AndSetFlags(imm, address);
     }
 
+    void add32(TrustedImm32 imm, BaseIndex address)
+    {
+        if (!imm.m_value)
+            return;
+        add32AndSetFlags(imm, address);
+    }
+
+    void add8(TrustedImm32 imm, Address address)
+    {
+        m_assembler.addb_im(imm.m_value, address.offset, address.base);
+    }
+
+    void add8(TrustedImm32 imm, BaseIndex address)
+    {
+        m_assembler.addb_im(imm.m_value, address.offset, address.base, address.index, address.scale);
+    }
+
+    void add16(TrustedImm32 imm, Address address)
+    {
+        m_assembler.addw_im(imm.m_value, address.offset, address.base);
+    }
+
+    void add16(TrustedImm32 imm, BaseIndex address)
+    {
+        m_assembler.addw_im(imm.m_value, address.offset, address.base, address.index, address.scale);
+    }
+
     void add32(TrustedImm32 imm, RegisterID dest)
     {
         if (!imm.m_value)
@@ -144,6 +171,31 @@ public:
     void add32(RegisterID src, Address dest)
     {
         m_assembler.addl_rm(src, dest.offset, dest.base);
+    }
+
+    void add32(RegisterID src, BaseIndex dest)
+    {
+        m_assembler.addl_rm(src, dest.offset, dest.base, dest.index, dest.scale);
+    }
+
+    void add8(RegisterID src, Address dest)
+    {
+        m_assembler.addb_rm(src, dest.offset, dest.base);
+    }
+
+    void add8(RegisterID src, BaseIndex dest)
+    {
+        m_assembler.addb_rm(src, dest.offset, dest.base, dest.index, dest.scale);
+    }
+
+    void add16(RegisterID src, Address dest)
+    {
+        m_assembler.addw_rm(src, dest.offset, dest.base);
+    }
+
+    void add16(RegisterID src, BaseIndex dest)
+    {
+        m_assembler.addw_rm(src, dest.offset, dest.base, dest.index, dest.scale);
     }
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
@@ -1351,6 +1403,11 @@ public:
     {
         m_assembler.movl_rr(src, dest);
     }
+
+    void zeroExtend32ToPtr(TrustedImm32 src, RegisterID dest)
+    {
+        m_assembler.movl_i32r(src.m_value, dest);
+    }
 #else
     void move(RegisterID src, RegisterID dest)
     {
@@ -2008,6 +2065,11 @@ private:
     void add32AndSetFlags(TrustedImm32 imm, Address address)
     {
         m_assembler.addl_im(imm.m_value, address.offset, address.base);
+    }
+
+    void add32AndSetFlags(TrustedImm32 imm, BaseIndex address)
+    {
+        m_assembler.addl_im(imm.m_value, address.offset, address.base, address.index, address.scale);
     }
 
     // If lzcnt is not available, use this after BSR
