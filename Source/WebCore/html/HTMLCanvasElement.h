@@ -52,6 +52,10 @@ class ImageData;
 class ImageBuffer;
 class IntSize;
 
+namespace DisplayList {
+typedef unsigned AsTextFlags;
+}
+
 class CanvasObserver {
 public:
     virtual ~CanvasObserver() { }
@@ -135,6 +139,11 @@ public:
 
     bool shouldAccelerate(const IntSize&) const;
 
+    WEBCORE_EXPORT void setUsesDisplayListDrawing(bool);
+    WEBCORE_EXPORT void setTracksDisplayListReplay(bool);
+    WEBCORE_EXPORT String displayListAsText(DisplayList::AsTextFlags) const;
+    WEBCORE_EXPORT String replayDisplayListAsText(DisplayList::AsTextFlags) const;
+
     size_t memoryCost() const;
 
 private:
@@ -162,21 +171,21 @@ private:
 #endif
 
     HashSet<CanvasObserver*> m_observers;
-
-    IntSize m_size;
-
     std::unique_ptr<CanvasRenderingContext> m_context;
 
-    bool m_rendererIsCanvas;
-
-    bool m_ignoreReset;
     FloatRect m_dirtyRect;
+    IntSize m_size;
 
-    bool m_originClean;
+    bool m_originClean { true };
+    bool m_rendererIsCanvas { false };
+    bool m_ignoreReset { false };
+
+    bool m_usesDisplayListDrawing { false };
+    bool m_tracksDisplayListReplay { false };
 
     // m_createdImageBuffer means we tried to malloc the buffer.  We didn't necessarily get it.
-    mutable bool m_hasCreatedImageBuffer;
-    mutable bool m_didClearImageBuffer;
+    mutable bool m_hasCreatedImageBuffer { false };
+    mutable bool m_didClearImageBuffer { false };
     mutable std::unique_ptr<ImageBuffer> m_imageBuffer;
     mutable std::unique_ptr<GraphicsContextStateSaver> m_contextStateSaver;
     

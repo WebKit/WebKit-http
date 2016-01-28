@@ -1032,7 +1032,7 @@ void Page::userStyleSheetLocationChanged()
         m_didLoadUserStyleSheet = true;
 
         Vector<char> styleSheetAsUTF8;
-        if (base64Decode(decodeURLEscapeSequences(url.string().substring(35)), styleSheetAsUTF8, Base64IgnoreWhitespace))
+        if (base64Decode(decodeURLEscapeSequences(url.string().substring(35)), styleSheetAsUTF8, Base64IgnoreSpacesAndNewLines))
             m_userStyleSheet = String::fromUTF8(styleSheetAsUTF8.data(), styleSheetAsUTF8.size());
     }
 
@@ -1735,6 +1735,11 @@ void Page::setSessionID(SessionID sessionID)
 {
     ASSERT(sessionID.isValid());
 
+#if ENABLE(INDEXED_DATABASE)
+    if (sessionID != m_sessionID)
+        m_idbIDBConnectionToServer = nullptr;
+#endif
+
     bool privateBrowsingStateChanged = (sessionID.isEphemeral() != m_sessionID.isEphemeral());
 
     m_sessionID = sessionID;
@@ -1836,19 +1841,14 @@ void Page::setAllowsMediaDocumentInlinePlayback(bool flag)
 #if ENABLE(INDEXED_DATABASE)
 IDBClient::IDBConnectionToServer& Page::idbConnection()
 {
-    if (!m_idbIDBConnectionToServer) {
-        if (usesEphemeralSession()) {
-            auto inProcessServer = InProcessIDBServer::create();
-            m_idbIDBConnectionToServer = &inProcessServer->connectionToServer();
-        } else
-            m_idbIDBConnectionToServer = &databaseProvider().idbConnectionToServerForSession(m_sessionID);
-    }
+    if (!m_idbIDBConnectionToServer)
+        m_idbIDBConnectionToServer = &databaseProvider().idbConnectionToServerForSession(m_sessionID);
     
     return *m_idbIDBConnectionToServer;
 }
 #endif
 
-#if ENABLE(RESOURCE_USAGE_OVERLAY)
+#if ENABLE(RESOURCE_USAGE)
 void Page::setResourceUsageOverlayVisible(bool visible)
 {
     if (!visible) {
@@ -1863,7 +1863,7 @@ void Page::setResourceUsageOverlayVisible(bool visible)
 
 bool Page::canTabSuspend()
 {
-    return s_tabSuspensionIsEnabled && !m_isPrerender && (m_pageThrottler.activityState() == PageActivityState::NoFlags) && PageCache::singleton().canCache(this);
+    return s_tabSuspensionIsEnabled && !m_isPrerender && (m_pageThrottler.activityState() == PageActivityState::NoFlags) && PageCache::singleton().canCache(*this);
 }
 
 void Page::setIsTabSuspended(bool shouldSuspend)

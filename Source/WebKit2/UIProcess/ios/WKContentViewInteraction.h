@@ -161,6 +161,8 @@ struct WKAutoCorrectionData {
     BOOL _didAccessoryTabInitiateFocus;
     BOOL _isExpectingFastSingleTapCommit;
     BOOL _showDebugTapHighlightsForFastClicking;
+
+    BOOL _resigningFirstResponder;
 }
 
 @end
@@ -209,6 +211,7 @@ struct WKAutoCorrectionData {
 - (void)_disableInspectorNodeSearch;
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler;
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled;
+- (NSArray *)_dataDetectionResults;
 @end
 
 #if HAVE(LINK_PREVIEW)

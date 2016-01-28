@@ -271,6 +271,7 @@ list(APPEND WebCore_SOURCES
 
     page/cocoa/UserAgent.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
+    page/cocoa/ResourceUsageThreadCocoa.mm
     page/cocoa/SettingsCocoa.mm
 
     page/mac/ChromeMac.mm
@@ -335,6 +336,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.cpp
     platform/cocoa/VNodeTrackerCocoa.cpp
+    platform/cocoa/WebCoreNSErrorExtras.mm
 
     platform/graphics/DisplayRefreshMonitor.cpp
     platform/graphics/DisplayRefreshMonitorManager.cpp

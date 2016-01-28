@@ -609,6 +609,9 @@ webkit.org/b/149016 accessibility/aria-current.html [ Skip ]
 # ARIA 1.1 table related attributes are not supported
 webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 
+# Text marker tests are not supported
+webkit.org/b/153292 accessibility/text-marker [ Skip ]
+
 # WebKitGTK+ needs WOFF2 support.
 webkit.org/b/152616 fast/text/woff2.html [ ImageOnlyFailure ]
 
@@ -627,6 +630,9 @@ webkit.org/b/152620 css3/font-variant-petite-caps-synthesis-coverage.html [ Imag
 webkit.org/b/152620 css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
 webkit.org/b/152620 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 webkit.org/b/152620 css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
+
+# Requires ENABLE(SAMPLING_PROFILER)
+webkit.org/b/153466 inspector/sampling-profiler [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -1407,6 +1413,8 @@ webkit.org/b/146731 fast/events/touch/touch-scaled-scrolled.html [ Timeout ]
 webkit.org/b/146731 fast/events/touch/touch-stale-node-crash.html [ Timeout ]
 
 webkit.org/b/153061 [ Release ] imported/w3c/indexeddb/idbindex-multientry-big.htm [ Timeout ]
+
+webkit.org/b/153468 inspector/dom-debugger/node-removed.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out

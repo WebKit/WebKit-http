@@ -57,9 +57,6 @@ CSSFontFaceSource::CSSFontFaceSource(const String& str, CachedFont* font)
     : m_string(str)
     , m_font(font)
     , m_face(0)
-#if ENABLE(SVG_FONTS)
-    , m_hasExternalSVGFont(false)
-#endif
 {
     if (m_font)
         m_font->addClient(this);
@@ -69,15 +66,6 @@ CSSFontFaceSource::~CSSFontFaceSource()
 {
     if (m_font)
         m_font->removeClient(this);
-    pruneTable();
-}
-
-void CSSFontFaceSource::pruneTable()
-{
-    if (m_fontTable.isEmpty())
-        return;
-
-    m_fontTable.clear();
 }
 
 bool CSSFontFaceSource::isValid() const
@@ -89,7 +77,6 @@ bool CSSFontFaceSource::isValid() const
 
 void CSSFontFaceSource::fontLoaded(CachedFont*)
 {
-    pruneTable();
     if (m_face)
         m_face->fontLoaded(this);
 }
@@ -110,23 +97,12 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
         return FontCache::singleton().fontForFamily(fontDescription, m_string, true);
     }
 
-    unsigned hashKey = (fontDescription.computedPixelSize() + 1) << 5 | fontDescription.widthVariant() << 3
-                       | (fontDescription.orientation() == Vertical ? 4 : 0) | (syntheticBold ? 2 : 0) | (syntheticItalic ? 1 : 0);
-
-    RefPtr<Font> font = m_fontTable.add(hashKey, nullptr).iterator->value;
-    if (font)
-        return font.release();
-
     if (!m_font || m_font->isLoaded()) {
         if (m_font) {
-            bool hasExternalSVGFont = false;
-#if ENABLE(SVG_FONTS)
-            hasExternalSVGFont = m_hasExternalSVGFont;
-#endif
-            if (!m_font->ensureCustomFontData(hasExternalSVGFont, m_string))
+            if (!m_font->ensureCustomFontData(m_string))
                 return nullptr;
 
-            font = m_font->createFont(fontDescription, m_string, syntheticBold, syntheticItalic, hasExternalSVGFont, fontFaceFeatures, fontFaceVariantSettings);
+            return m_font->createFont(fontDescription, m_string, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings);
         } else {
 #if ENABLE(SVG_FONTS)
             // In-Document SVG Fonts
@@ -144,25 +120,29 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
                 auto customPlatformData = createFontCustomPlatformData(*m_generatedOTFBuffer);
                 if (!customPlatformData)
                     return nullptr;
-                font = Font::create(customPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings), true, false);
+                return Font::create(customPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings), true, false);
 #else
-                font = Font::create(std::make_unique<SVGFontData>(m_svgFontFaceElement.get()), fontDescription.computedPixelSize(), syntheticBold, syntheticItalic);
+                return Font::create(std::make_unique<SVGFontData>(m_svgFontFaceElement.get()), fontDescription.computedPixelSize(), syntheticBold, syntheticItalic);
 #endif
             }
 #endif
+            return nullptr;
         }
     } else {
         // Kick off the load. Do it soon rather than now, because we may be in the middle of layout,
         // and the loader may invoke arbitrary delegate or event handler code.
         fontSelector->beginLoadingFontSoon(m_font.get());
 
-        Ref<Font> placeholderFont = FontCache::singleton().lastResortFallbackFont(fontDescription);
-        Ref<Font> placeholderFontCopyInLoadingState = Font::create(placeholderFont->platformData(), true, true);
-        return WTFMove(placeholderFontCopyInLoadingState);
+        return Font::create(FontCache::singleton().lastResortFallbackFont(fontDescription)->platformData(), true, true);
     }
-
-    return font.release();
 }
+
+#if ENABLE(SVG_FONTS)
+bool CSSFontFaceSource::isSVGFontFaceSource() const
+{
+    return m_svgFontFaceElement || is<CachedSVGFont>(m_font.get());
+}
+#endif
 
 #if ENABLE(FONT_LOAD_EVENTS)
 bool CSSFontFaceSource::isDecodeError() const

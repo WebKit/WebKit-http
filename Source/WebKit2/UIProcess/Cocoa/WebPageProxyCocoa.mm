@@ -26,10 +26,19 @@
 #import "config.h"
 #import "WebProcessProxy.h"
 
+#import "DataDetectionResult.h"
+
 #import <WebCore/SearchPopupMenuCocoa.h>
 #import <wtf/cf/TypeCastsCF.h>
 
 namespace WebKit {
+
+#if ENABLE(DATA_DETECTION)
+void WebPageProxy::setDataDetectionResult(const DataDetectionResult& dataDetectionResult)
+{
+    m_dataDetectionResults = dataDetectionResult.results;
+}
+#endif
 
 void WebPageProxy::saveRecentSearches(const String& name, const Vector<WebCore::RecentSearch>& searchItems)
 {

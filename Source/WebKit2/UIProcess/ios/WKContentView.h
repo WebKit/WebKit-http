@@ -62,6 +62,7 @@ class WebProcessPool;
 @property (nonatomic, readonly) BOOL isAssistingNode;
 @property (nonatomic, getter=isShowingInspectorIndication) BOOL showingInspectorIndication;
 @property (nonatomic, readonly) BOOL isBackground;
+@property (nonatomic, readonly, getter=isResigningFirstResponder) BOOL resigningFirstResponder;
 
 - (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView;
 
@@ -74,6 +75,8 @@ class WebProcessPool;
 - (void)didInterruptScrolling;
 - (void)didZoomToScale:(CGFloat)scale;
 - (void)willStartZoomOrScroll;
+
+- (void)_webViewDestroyed;
 
 - (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
 - (void)_processDidExit;

@@ -28,7 +28,7 @@
 #import "AccessibilityTextMarker.h"
 #import "DumpRenderTree.h"
 
-#if SUPPORTS_AX_TEXTMARKERS
+#if SUPPORTS_AX_TEXTMARKERS && PLATFORM(MAC)
 
 // MARK: AccessibilityTextMarker
 
@@ -82,4 +82,4 @@ PlatformTextMarkerRange AccessibilityTextMarkerRange::platformTextMarkerRange() 
     return m_textMarkerRange.get();
 }
 
-#endif // SUPPORTS_AX_TEXTMARKERS
+#endif // SUPPORTS_AX_TEXTMARKERS && PLATFORM(MAC)

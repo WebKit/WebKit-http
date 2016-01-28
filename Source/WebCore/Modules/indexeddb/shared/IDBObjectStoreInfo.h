@@ -46,6 +46,7 @@ public:
     const String& name() const { return m_name; }
     const IDBKeyPath& keyPath() const { return m_keyPath; }
     bool autoIncrement() const { return m_autoIncrement; }
+    uint64_t maxIndexID() const { return m_maxIndexID; }
 
     IDBObjectStoreInfo isolatedCopy() const;
 
@@ -56,8 +57,10 @@ public:
     IDBIndexInfo* infoForExistingIndex(const String& name);
 
     Vector<String> indexNames() const;
+    const HashMap<uint64_t, IDBIndexInfo>& indexMap() const { return m_indexMap; }
 
     void deleteIndex(const String& indexName);
+    void deleteIndex(uint64_t indexIdentifier);
 
 #ifndef NDEBUG
     String loggingString(int indent = 0) const;

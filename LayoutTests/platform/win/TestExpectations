@@ -723,9 +723,6 @@ webkit.org/b/117323 platform/win/plugins/windowless-paint-rect-coordinates.html 
 # This test is dependant on DRT being able to open windows.
 fast/dom/Window/new-window-opener.html
 
-# <rdar://5667279> Undefined value exception
-http/tests/xmlhttprequest/XMLHttpRequestException.html [ Skip ]
-
 # <rdar://5670235> Sometimes spews output into the next test
 http/tests/security/cross-frame-access-put.html [ Skip ]
 
@@ -1717,6 +1714,9 @@ webkit.org/b/146903 accessibility/roles-table-and-cell.html [ Skip ]
 # Skip aria-modal tests for win
 webkit.org/b/138566 accessibility/aria-modal.html [ Skip ]
 webkit.org/b/138566 accessibility/aria-modal-multiple-dialogs.html [ Skip ]
+
+# Text marker tests are not supported
+webkit.org/b/153292 accessibility/text-marker [ Skip ]
 
 ################################################################################
 #######################   End Accessibility Issues   ###########################

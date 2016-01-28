@@ -362,10 +362,14 @@ bool CachedResource::isExpired() const
 static inline bool shouldCacheSchemeIndefinitely(const String& scheme)
 {
 #if PLATFORM(COCOA)
-    if (equalIgnoringCase(scheme, "applewebdata"))
+    if (equalLettersIgnoringASCIICase(scheme, "applewebdata"))
         return true;
 #endif
-    return equalIgnoringCase(scheme, "data");
+#if USE(SOUP)
+    if (equalLettersIgnoringASCIICase(scheme, "resource"))
+        return true;
+#endif
+    return equalLettersIgnoringASCIICase(scheme, "data");
 }
 
 std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceResponse& response) const
@@ -803,9 +807,8 @@ void CachedResource::tryReplaceEncodedData(SharedBuffer& newBuffer)
     if (m_data->size() != newBuffer.size() || memcmp(m_data->data(), newBuffer.data(), m_data->size()))
         return;
 
-    if (m_data->tryReplaceContentsWithPlatformBuffer(newBuffer)) {
-        // FIXME: Should we call checkNotify() here to move already-decoded images to the new data source?
-    }
+    if (m_data->tryReplaceContentsWithPlatformBuffer(newBuffer))
+        didReplaceSharedBufferContents();
 }
 
 #endif
