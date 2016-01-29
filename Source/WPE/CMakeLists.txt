@@ -35,6 +35,10 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
     add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
 endif ()
 
+if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
+    add_definitions(-DWPE_BUFFER_MANAGEMENT_BCM_RPI=1)
+endif ()
+
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
@@ -134,6 +138,16 @@ if (USE_WPE_BUFFER_MANAGEMENT_GBM)
     )
 endif ()
 
+if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMRPiBM"
+    )
+
+    list(APPEND WPE_SOURCES
+        Source/Graphics/BCMRPiBM/RenderingBackendBCMRPiBM.cpp
+    )
+endif ()
+
 if (USE_WPE_BACKEND_DRM)
     list(APPEND WPE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
@@ -166,6 +180,12 @@ if (USE_WPE_BACKEND_WAYLAND)
     if (USE_WPE_BUFFER_MANAGEMENT_GBM)
         list(APPEND WPE_SOURCES
             Source/Graphics/Wayland/BufferFactoryWLDRM.cpp
+        )
+    endif ()
+
+    if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
+        list(APPEND WPE_SOURCES
+            Source/Graphics/Wayland/BufferFactoryBCMRPi.cpp
         )
     endif ()
 endif ()
