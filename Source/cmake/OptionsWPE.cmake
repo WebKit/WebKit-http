@@ -90,6 +90,10 @@ if (USE_WPE_BACKEND_INTEL_CE)
     find_package(GDL REQUIRED)
 endif ()
 
+if (USE_WPE_BACKEND_WAYLAND)
+    find_package(Wayland REQUIRED)
+endif ()
+
 find_package(Libinput REQUIRED)
 find_package(Libudev REQUIRED)
 
