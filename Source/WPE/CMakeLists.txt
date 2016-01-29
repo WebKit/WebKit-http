@@ -148,14 +148,26 @@ if (USE_WPE_BACKEND_DRM)
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/Wayland"
+    )
     list(APPEND WPE_SOURCES
+        Source/Graphics/Wayland/BufferFactory.cpp
+
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
+
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
         Source/ViewBackend/Wayland/ivi-application-protocol.c
         Source/ViewBackend/Wayland/wayland-drm-protocol.c
         Source/ViewBackend/Wayland/xdg-shell-protocol.c
     )
+
+    if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+        list(APPEND WPE_SOURCES
+            Source/Graphics/Wayland/BufferFactoryWLDRM.cpp
+        )
+    endif ()
 endif ()
 
 include_directories(${WPE_INCLUDE_DIRECTORIES})

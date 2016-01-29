@@ -30,6 +30,8 @@
 #if WPE_BACKEND(WAYLAND)
 
 #include <WPE/ViewBackend/ViewBackend.h>
+
+#include "BufferFactory.h"
 #include <unordered_map>
 
 struct ivi_surface;
@@ -87,6 +89,8 @@ private:
     BufferListenerData m_bufferData { nullptr, decltype(m_bufferData.map){ } };
     CallbackListenerData m_callbackData { nullptr, nullptr };
     ResizingData m_resizingData { nullptr, 0, 0 };
+
+    std::unique_ptr<Graphics::BufferFactory> m_bufferFactory;
 };
 
 } // namespace ViewBackend
