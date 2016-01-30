@@ -57,7 +57,9 @@
 #include "Page.h"
 #include "PlatformMouseEvent.h"
 #include "PluginData.h"
+#if !PLUGIN_VIEW_IS_BROKEN
 #include "PluginDatabase.h"
+#endif
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
 #include "QNetworkReplyHandler.h"
@@ -211,7 +213,9 @@ static const char* navigationTypeToString(NavigationType type)
 FrameLoaderClientQt::FrameLoaderClientQt()
     : m_frame(0)
     , m_webFrame(0)
+#if !PLUGIN_VIEW_IS_BROKEN
     , m_pluginView(0)
+#endif
     , m_hasSentResponseToPlugin(false)
     , m_isOriginatingLoad(false)
 {
@@ -612,12 +616,14 @@ void FrameLoaderClientQt::didChangeTitle(DocumentLoader*)
 
 void FrameLoaderClientQt::finishedLoading(DocumentLoader*)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_pluginView)
         return;
     if (m_pluginView->isPluginView())
         m_pluginView->didFinishLoading();
     m_pluginView = 0;
     m_hasSentResponseToPlugin = false;
+#endif
 }
 
 bool FrameLoaderClientQt::canShowMIMETypeAsHTML(const String& MIMEType) const
@@ -633,9 +639,11 @@ bool FrameLoaderClientQt::canShowMIMEType(const String& MIMEType) const
     if (MIMETypeRegistry::canShowMIMEType(type))
         return true;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     if (m_frame && m_frame->settings().arePluginsEnabled()
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(type))
         return true;
+#endif
 
     return false;
 }
@@ -865,24 +873,29 @@ bool FrameLoaderClientQt::canCachePage() const
 
 void FrameLoaderClientQt::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_pluginView)
         return;
     if (m_pluginView->isPluginView())
         m_pluginView->didFail(error);
     m_pluginView = 0;
     m_hasSentResponseToPlugin = false;
+#endif
 }
 
 // FIXME: This function should be moved into WebCore.
 void FrameLoaderClientQt::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_pluginView)
+#endif
         loader->commitData(data, length);
 
     // If we are sending data to MediaDocument, we should stop here and cancel the request.
     if (m_frame->document()->isMediaDocument())
         loader->cancelMainResourceLoad(pluginWillHandleLoadError(loader->response()));
 
+#if !PLUGIN_VIEW_IS_BROKEN
     // We re-check here as the plugin can have been created.
     if (m_pluginView && m_pluginView->isPluginView()) {
         if (!m_hasSentResponseToPlugin) {
@@ -896,6 +909,7 @@ void FrameLoaderClientQt::committedLoad(WebCore::DocumentLoader* loader, const c
         }
         m_pluginView->didReceiveData(data, length);
     }
+#endif
 }
 
 WebCore::ResourceError FrameLoaderClientQt::cancelledError(const WebCore::ResourceRequest& request)
@@ -1355,12 +1369,15 @@ ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const S
         mimeType = MIMETypeRegistry::getMIMETypeForExtension(extension);
 
     bool arePluginsEnabled = (m_frame && m_frame->settings().arePluginsEnabled());
+#if !PLUGIN_VIEW_IS_BROKEN
     if (arePluginsEnabled && !mimeType.length())
         mimeType = PluginDatabase::installedPlugins()->MIMETypeForExtension(extension);
+#endif
 
     if (!mimeType.length())
         return ObjectContentFrame;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     ObjectContentType plugInType = ObjectContentNone;
     if (arePluginsEnabled && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         plugInType = ObjectContentNetscapePlugin;
@@ -1376,6 +1393,7 @@ ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const S
     
     if (plugInType != ObjectContentNone)
         return plugInType;
+#endif
 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return ObjectContentFrame;
@@ -1463,6 +1481,10 @@ private:
 
 PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTMLPlugInElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)
 {
+#if PLUGIN_VIEW_IS_BROKEN
+    return nullptr;
+#endif
+
     // qDebug()<<"------ Creating plugin in FrameLoaderClientQt::createPlugin for "<<url.string() << mimeType;
     // qDebug()<<"------\t url = "<<url.string();
 
@@ -1534,6 +1556,7 @@ PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, 
         // FIXME: Make things work for widgetless plugins as well.
         delete pluginAdapter;
     }
+#if !PLUGIN_VIEW_IS_BROKEN
 #if ENABLE(NETSCAPE_PLUGIN_API)
     else { // NPAPI Plugins
         Vector<String> params = paramNames;
@@ -1553,15 +1576,18 @@ PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, 
         return pluginView;
     }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
+#endif
 
     return 0;
 }
 
 void FrameLoaderClientQt::redirectDataToPlugin(Widget* pluginWidget)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     m_pluginView = toPluginView(pluginWidget);
     if (pluginWidget)
         m_hasSentResponseToPlugin = false;
+#endif
 }
 
 PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)

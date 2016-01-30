@@ -30,6 +30,9 @@
 #ifndef FrameLoaderClientQt_h
 #define FrameLoaderClientQt_h
 
+// FIXME
+#define PLUGIN_VIEW_IS_BROKEN 1
+
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -38,12 +41,15 @@
 #include "URL.h"
 #include "ResourceError.h"
 #include "ResourceResponse.h"
-#include "WebCore/plugins/PluginView.h"
 #include <QUrl>
 #include <qobject.h>
 #include <wtf/Forward.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
+
+#if !PLUGIN_VIEW_IS_BROKEN
+#include "WebCore/plugins/PluginView.h"
+#endif
 
 QT_BEGIN_NAMESPACE
 class QNetworkReply;
@@ -257,8 +263,10 @@ private:
     QWebFrameAdapter *m_webFrame;
     ResourceResponse m_response;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     // Plugin view to redirect data to
     WebCore::PluginView* m_pluginView;
+#endif
     bool m_hasSentResponseToPlugin;
 
     URL m_lastRequestedUrl;

@@ -20,8 +20,10 @@
 #include "config.h"
 #include "qwebplugindatabase_p.h"
 
+#if !PLUGIN_VIEW_IS_BROKEN
 #include "PluginDatabase.h"
 #include "PluginPackage.h"
+#endif
 
 using namespace WebCore;
 
@@ -55,25 +57,33 @@ using namespace WebCore;
     Constructs a null QWebPluginInfo.
 */
 QWebPluginInfo::QWebPluginInfo()
+#if !PLUGIN_VIEW_IS_BROKEN
     : m_package(0)
+#endif
 {
 }
 
+#if !PLUGIN_VIEW_IS_BROKEN
 QWebPluginInfo::QWebPluginInfo(PluginPackage* package)
     : m_package(package)
 {
     if (m_package)
         m_package->ref();
 }
+#endif
 
 /*!
     Contructs a copy of \a other.
 */
 QWebPluginInfo::QWebPluginInfo(const QWebPluginInfo& other)
+#if !PLUGIN_VIEW_IS_BROKEN
     : m_package(other.m_package)
+#endif
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (m_package)
         m_package->ref();
+#endif
 }
 
 /*!
@@ -81,8 +91,10 @@ QWebPluginInfo::QWebPluginInfo(const QWebPluginInfo& other)
 */
 QWebPluginInfo::~QWebPluginInfo()
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (m_package)
         m_package->deref();
+#endif
 }
 
 /*!
@@ -92,9 +104,13 @@ QWebPluginInfo::~QWebPluginInfo()
 */
 QString QWebPluginInfo::name() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return QString();
     return m_package->name();
+#else
+    return QString();
+#endif
 }
 
 /*!
@@ -104,9 +120,13 @@ QString QWebPluginInfo::name() const
 */
 QString QWebPluginInfo::description() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return QString();
     return m_package->description();
+#else
+    return QString();
+#endif
 }
 
 /*!
@@ -116,6 +136,7 @@ QString QWebPluginInfo::description() const
 */
 QList<QWebPluginInfo::MimeType> QWebPluginInfo::mimeTypes() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (m_package && m_mimeTypes.isEmpty()) {
         const MIMEToDescriptionsMap& mimeToDescriptions = m_package->mimeToDescriptions();
         MIMEToDescriptionsMap::const_iterator end = mimeToDescriptions.end();
@@ -135,6 +156,7 @@ QList<QWebPluginInfo::MimeType> QWebPluginInfo::mimeTypes() const
             m_mimeTypes.append(mimeType);
         }
     }
+#endif
 
     return m_mimeTypes;
 }
@@ -147,9 +169,13 @@ QList<QWebPluginInfo::MimeType> QWebPluginInfo::mimeTypes() const
 */
 bool QWebPluginInfo::supportsMimeType(const QString& mimeType) const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return false;
     return m_package->mimeToDescriptions().contains(mimeType);
+#else
+    return false;
+#endif
 }
 
 /*!
@@ -157,9 +183,13 @@ bool QWebPluginInfo::supportsMimeType(const QString& mimeType) const
 */
 QString QWebPluginInfo::path() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return QString();
     return m_package->path();
+#else
+    return QString();
+#endif
 }
 
 /*!
@@ -167,7 +197,11 @@ QString QWebPluginInfo::path() const
 */
 bool QWebPluginInfo::isNull() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     return !m_package;
+#else
+    return true;
+#endif
 }
 
 /*!
@@ -180,9 +214,11 @@ bool QWebPluginInfo::isNull() const
 */
 void QWebPluginInfo::setEnabled(bool enabled)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return;
     m_package->setEnabled(enabled);
+#endif
 }
 
 /*!
@@ -192,9 +228,13 @@ void QWebPluginInfo::setEnabled(bool enabled)
 */
 bool QWebPluginInfo::isEnabled() const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     if (!m_package)
         return false;
     return m_package->isEnabled();
+#else
+    return false;
+#endif
 }
 
 /*!
@@ -202,7 +242,11 @@ bool QWebPluginInfo::isEnabled() const
 */
 bool QWebPluginInfo::operator==(const QWebPluginInfo& other) const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     return m_package == other.m_package;
+#else
+    return true;
+#endif
 }
 
 /*!
@@ -210,7 +254,11 @@ bool QWebPluginInfo::operator==(const QWebPluginInfo& other) const
 */
 bool QWebPluginInfo::operator!=(const QWebPluginInfo& other) const
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     return m_package != other.m_package;
+#else
+    return false;
+#endif
 }
 
 /*!
@@ -222,11 +270,13 @@ QWebPluginInfo &QWebPluginInfo::operator=(const QWebPluginInfo& other)
     if (this == &other)
         return *this;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     if (m_package)
         m_package->deref();
     m_package = other.m_package;
     if (m_package)
         m_package->ref();
+#endif
     m_mimeTypes = other.m_mimeTypes;
 
     return *this;
@@ -261,7 +311,9 @@ QWebPluginInfo &QWebPluginInfo::operator=(const QWebPluginInfo& other)
 
 QWebPluginDatabase::QWebPluginDatabase(QObject* parent)
     : QObject(parent)
+#if !PLUGIN_VIEW_IS_BROKEN
     , m_database(PluginDatabase::installedPlugins())
+#endif
 {
 }
 
@@ -280,6 +332,7 @@ QWebPluginDatabase::~QWebPluginDatabase()
 QList<QWebPluginInfo> QWebPluginDatabase::plugins() const
 {
     QList<QWebPluginInfo> qwebplugins;
+#if !PLUGIN_VIEW_IS_BROKEN
     const Vector<PluginPackage*>& plugins = m_database->plugins();
 
     for (unsigned int i = 0; i < plugins.size(); ++i) {
@@ -290,6 +343,7 @@ QList<QWebPluginInfo> QWebPluginDatabase::plugins() const
 #endif
         qwebplugins.append(QWebPluginInfo(plugin));
     }
+#endif
 
     return qwebplugins;
 }
@@ -303,9 +357,11 @@ QStringList QWebPluginDatabase::defaultSearchPaths()
 {
     QStringList paths;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     const Vector<String>& directories = PluginDatabase::defaultPluginDirectories();
     for (unsigned int i = 0; i < directories.size(); ++i)
         paths.append(directories[i]);
+#endif
 
     return paths;
 }
@@ -319,9 +375,11 @@ QStringList QWebPluginDatabase::searchPaths() const
 {
     QStringList paths;
 
+#if !PLUGIN_VIEW_IS_BROKEN
     const Vector<String>& directories = m_database->pluginDirectories();
     for (unsigned int i = 0; i < directories.size(); ++i)
         paths.append(directories[i]);
+#endif
 
     return paths;
 }
@@ -334,6 +392,7 @@ QStringList QWebPluginDatabase::searchPaths() const
 */
 void QWebPluginDatabase::setSearchPaths(const QStringList& paths)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     Vector<String> directories;
 
     for (int i = 0; i < paths.count(); ++i)
@@ -342,6 +401,7 @@ void QWebPluginDatabase::setSearchPaths(const QStringList& paths)
     m_database->setPluginDirectories(directories);
     // PluginDatabase::setPluginDirectories() does not refresh the database.
     m_database->refresh();
+#endif
 }
 
 /*!
@@ -352,8 +412,10 @@ void QWebPluginDatabase::setSearchPaths(const QStringList& paths)
 */
 void QWebPluginDatabase::addSearchPath(const QString& path)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     m_database->addExtraPluginDirectory(path);
     // PluginDatabase::addExtraPluginDirectory() does refresh the database.
+#endif
 }
 
 /*!
@@ -366,7 +428,9 @@ void QWebPluginDatabase::addSearchPath(const QString& path)
 */
 void QWebPluginDatabase::refresh()
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     m_database->refresh();
+#endif
 }
 
 /*!
@@ -376,7 +440,11 @@ void QWebPluginDatabase::refresh()
 */
 QWebPluginInfo QWebPluginDatabase::pluginForMimeType(const QString& mimeType)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     return QWebPluginInfo(m_database->pluginForMIMEType(mimeType));
+#else
+    return QWebPluginInfo();
+#endif
 }
 
 /*!
@@ -389,5 +457,7 @@ QWebPluginInfo QWebPluginDatabase::pluginForMimeType(const QString& mimeType)
 */
 void QWebPluginDatabase::setPreferredPluginForMimeType(const QString& mimeType, const QWebPluginInfo& plugin)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     m_database->setPreferredPluginForMIMEType(mimeType, plugin.m_package);
+#endif
 }

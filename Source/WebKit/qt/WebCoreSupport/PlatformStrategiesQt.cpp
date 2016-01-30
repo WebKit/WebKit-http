@@ -41,7 +41,9 @@
 #include <Page.h>
 #include <PageGroup.h>
 #include <PlatformCookieJar.h>
+#if !PLUGIN_VIEW_IS_BROKEN
 #include <PluginDatabase.h>
+#endif
 #include <QCoreApplication>
 #include <QLocale>
 #include <wtf/MathExtras.h>
@@ -132,11 +134,14 @@ void PlatformStrategiesQt::deleteCookie(const NetworkStorageSession& session, co
 
 void PlatformStrategiesQt::refreshPlugins()
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     PluginDatabase::installedPlugins()->refresh();
+#endif
 }
 
 void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCore::PluginInfo>& outPlugins)
 {
+#if !PLUGIN_VIEW_IS_BROKEN
     QWebPageAdapter* qPage = 0;
     if (!page->chrome().client().isEmptyChromeClient())
         qPage = static_cast<ChromeClientQt&>(page->chrome().client()).m_webPage;
@@ -191,7 +196,7 @@ void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCo
 
         outPlugins.append(info);
     }
-
+#endif
 }
 
 // VisitedLinkStrategy
