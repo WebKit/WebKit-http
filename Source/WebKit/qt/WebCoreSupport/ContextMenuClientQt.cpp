@@ -40,11 +40,6 @@ void ContextMenuClientQt::contextMenuDestroyed()
     delete this;
 }
 
-PassOwnPtr<ContextMenu> ContextMenuClientQt::customizeMenu(PassOwnPtr<ContextMenu> menu)
-{
-    return menu;
-}
-
 void ContextMenuClientQt::contextMenuItemSelected(ContextMenuItem*, const ContextMenu*)
 {
     notImplemented();

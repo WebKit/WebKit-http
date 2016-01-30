@@ -37,7 +37,6 @@ class ContextMenuClientQt : public ContextMenuClient {
 public:
     virtual void contextMenuDestroyed();
 
-    virtual PassOwnPtr<ContextMenu> customizeMenu(PassOwnPtr<ContextMenu>);
     virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
 
     virtual void downloadURL(const URL&);
