@@ -55,7 +55,7 @@ class QWebFrame;
 class QWebPageAdapter;
 class QWebSecurityOrigin;
 
-class WEBKIT_EXPORTDATA QWebHitTestResultPrivate {
+class WEBCORE_EXPORT QWebHitTestResultPrivate {
 public:
     QWebHitTestResultPrivate()
         : isContentEditable(false)
@@ -111,7 +111,7 @@ public:
     int marginHeight;
 };
 
-class WEBKIT_EXPORTDATA QWebFrameAdapter {
+class WEBCORE_EXPORT QWebFrameAdapter {
 public:
     enum ValueOwnership {
         QtOwnership,
