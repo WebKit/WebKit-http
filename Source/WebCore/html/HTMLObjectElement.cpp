@@ -93,7 +93,8 @@ RenderWidget* HTMLObjectElement::renderWidgetLoadingPlugin() const
 #if PLATFORM(QT)
 static bool isQtPluginServiceType(const String& serviceType)
 {
-    return equalIgnoringCase(serviceType, "application/x-qt-plugin") || equalIgnoringCase(serviceType, "application/x-qt-styled-widget");
+    return equalLettersIgnoringASCIICase(serviceType, "application/x-qt-plugin")
+        || equalLettersIgnoringASCIICase(serviceType, "application/x-qt-styled-widget");
 }
 #endif
 

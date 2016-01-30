@@ -73,9 +73,10 @@ std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffe
 
 bool FontCustomPlatformData::supportsFormat(const String& format)
 {
-    return equalIgnoringCase(format, "truetype") || equalIgnoringCase(format, "opentype")
+    return equalLettersIgnoringASCIICase(format, "truetype")
+        || equalLettersIgnoringASCIICase(format, "opentype")
 #if USE(ZLIB)
-            || equalIgnoringCase(format, "woff")
+        || equalLettersIgnoringASCIICase(format, "woff")
 #endif
     ;
 }
