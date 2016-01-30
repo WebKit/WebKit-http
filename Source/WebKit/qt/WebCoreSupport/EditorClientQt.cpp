@@ -48,7 +48,7 @@
 #include "Range.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "WindowsKeyboardCodes.h"
 #include "qguiapplication.h"
 
@@ -165,7 +165,7 @@ bool EditorClientQt::shouldChangeSelectedRange(Range* currentRange, Range* propo
     return acceptsEditing;
 }
 
-bool EditorClientQt::shouldApplyStyle(WebCore::StylePropertySet* style, WebCore::Range* range)
+bool EditorClientQt::shouldApplyStyle(WebCore::StyleProperties* style, WebCore::Range* range)
 {
     if (dumpEditingCallbacks)
         printf("EDITING DELEGATE: shouldApplyStyle:%s toElementsInDOMRange:%s\n",

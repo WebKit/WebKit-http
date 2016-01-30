@@ -32,7 +32,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLElement.h"
-#include "StylePropertySet.h"
+#include "StyleProperties.h"
 #include "StyleRule.h"
 #include "Completion.h"
 #include "JSGlobalObject.h"
@@ -796,14 +796,14 @@ QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy str
         return QString();
 
     if (strategy == InlineStyle) {
-        const StylePropertySet* style = static_cast<StyledElement*>(m_element)->inlineStyle();
+        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
         if (!style)
             return QString();
         return style->getPropertyValue(propID);
     }
 
     if (strategy == CascadedStyle) {
-        const StylePropertySet* style = static_cast<StyledElement*>(m_element)->inlineStyle();
+        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
         if (style && style->propertyIsImportant(propID))
             return style->getPropertyValue(propID);
 

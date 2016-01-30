@@ -63,7 +63,7 @@ public:
     virtual bool shouldInsertText(const String&, Range*, EditorInsertAction);
     virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange, EAffinity, bool stillSelecting);
 
-    virtual bool shouldApplyStyle(StylePropertySet*, Range*);
+    virtual bool shouldApplyStyle(StyleProperties*, Range*);
 
     virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
 
