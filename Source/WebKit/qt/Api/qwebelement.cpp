@@ -251,7 +251,7 @@ QWebElement QWebElement::findFirst(const QString &selectorQuery) const
     if (!m_element)
         return QWebElement();
     ExceptionCode exception = 0; // ###
-    return QWebElement(m_element->querySelector(selectorQuery, exception).get());
+    return QWebElement(m_element->querySelector(selectorQuery, exception));
 }
 
 /*!
