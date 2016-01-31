@@ -88,6 +88,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QStringList>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(ICONDATABASE)
@@ -906,17 +907,18 @@ WebCore::ResourceError FrameLoaderClientQt::pluginWillHandleLoadError(const WebC
 
 bool FrameLoaderClientQt::shouldFallBack(const WebCore::ResourceError& error)
 {
-    DEFINE_STATIC_LOCAL(const ResourceError, cancelledError, (this->cancelledError(ResourceRequest())));
-    DEFINE_STATIC_LOCAL(const ResourceError, pluginWillHandleLoadError, (this->pluginWillHandleLoadError(ResourceResponse())));
-    DEFINE_STATIC_LOCAL(const ResourceError, errorInterruptedForPolicyChange, (this->interruptedForPolicyChangeError(ResourceRequest())));
+    using Error = NeverDestroyed<const ResourceError>;
+    static Error cancelledError(this->cancelledError(ResourceRequest()));
+    static Error pluginWillHandleLoadError(this->pluginWillHandleLoadError(ResourceResponse()));
+    static Error errorInterruptedForPolicyChange(this->interruptedForPolicyChangeError(ResourceRequest()));
 
-    if (error.errorCode() == cancelledError.errorCode() && error.domain() == cancelledError.domain())
+    if (error.errorCode() == cancelledError.get().errorCode() && error.domain() == cancelledError.get().domain())
         return false;
 
-    if (error.errorCode() == errorInterruptedForPolicyChange.errorCode() && error.domain() == errorInterruptedForPolicyChange.domain())
+    if (error.errorCode() == errorInterruptedForPolicyChange.get().errorCode() && error.domain() == errorInterruptedForPolicyChange.get().domain())
         return false;
 
-    if (error.errorCode() == pluginWillHandleLoadError.errorCode() && error.domain() == pluginWillHandleLoadError.domain())
+    if (error.errorCode() == pluginWillHandleLoadError.get().errorCode() && error.domain() == pluginWillHandleLoadError.get().domain())
         return false;
 
     return true;

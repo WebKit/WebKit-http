@@ -49,12 +49,13 @@
 #include <QCoreApplication>
 #include <QLocale>
 #include <wtf/MathExtras.h>
+#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
 void PlatformStrategiesQt::initialize()
 {
-    DEFINE_STATIC_LOCAL(PlatformStrategiesQt, platformStrategies, ());
+    static NeverDestroyed<PlatformStrategiesQt> platformStrategies;
     Q_UNUSED(platformStrategies);
 }
 

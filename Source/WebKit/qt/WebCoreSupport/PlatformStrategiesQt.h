@@ -38,6 +38,7 @@ class PasteboardStrategy;
 }
 
 class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PluginStrategy {
+    friend class WTF::NeverDestroyed<PlatformStrategiesQt>;
 public:
     static void initialize();
 
