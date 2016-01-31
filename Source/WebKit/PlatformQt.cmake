@@ -1,11 +1,11 @@
 list(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}"
 
     # Copied from WebCore/CMakeLists.txt
-    "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
