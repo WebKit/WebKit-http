@@ -740,8 +740,8 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
 
     ScriptSourceCode sourceCode(scriptSource);
 
-    JSC::JSValue evaluationException;
-    JSC::JSValue evaluationResult = JSC::evaluate(state, sourceCode.jsSourceCode(), thisValue, &evaluationException);
+    NakedPtr<JSC::Exception> evaluationException;
+    JSC::JSValue evaluationResult = JSC::evaluate(state, sourceCode.jsSourceCode(), thisValue, evaluationException);
     if (evaluationException)
         return QVariant();
     JSValueRef evaluationResultRef = toRef(state, evaluationResult);
@@ -2055,7 +2055,7 @@ static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *di
     Element* element = 0;
     QVariant ret;
     if (object && object->inherits(JSElement::info())) {
-        element =(static_cast<JSElement*>(object))->impl();
+        element = JSElement::toWrapped(object);
         *distance = 0;
         // Allow other objects to reach this one. This won't cause our algorithm to
         // loop since when we find an Element we do not recurse.
@@ -2065,7 +2065,7 @@ static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *di
         // conversion from 'document' to the QWebElement representing the 'document.documentElement'.
         // We can't simply use a QVariantMap in nodesFromRect() because it currently times out
         // when serializing DOMMimeType and DOMPlugin, even if we limit the recursion.
-        element =(static_cast<JSDocument*>(object))->impl()->documentElement();
+        element = JSDocument::toWrapped(object)->documentElement();
     }
 
     return QVariant::fromValue<QWebElement>(QtWebElementRuntime::create(element));
