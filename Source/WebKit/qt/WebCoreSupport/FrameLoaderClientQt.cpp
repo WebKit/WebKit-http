@@ -194,17 +194,17 @@ QMap<QString, QString> FrameLoaderClientQt::URLsToRedirect = QMap<QString, QStri
 static const char* navigationTypeToString(NavigationType type)
 {
     switch (type) {
-    case NavigationTypeLinkClicked:
+    case NavigationType::LinkClicked:
         return "link clicked";
-    case NavigationTypeFormSubmitted:
+    case NavigationType::FormSubmitted:
         return "form submitted";
-    case NavigationTypeBackForward:
+    case NavigationType::BackForward:
         return "back/forward";
-    case NavigationTypeReload:
+    case NavigationType::Reload:
         return "reload";
-    case NavigationTypeFormResubmitted:
+    case NavigationType::FormResubmitted:
         return "form resubmitted";
-    case NavigationTypeOther:
+    case NavigationType::Other:
         return "other";
     }
     return "illegal value";
@@ -1242,10 +1242,10 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(FramePolicyFunc
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
 
     if (!m_webFrame->pageAdapter->acceptNavigationRequest(0, r, (int)action.type())) {
-        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+        if (action.type() == NavigationType::FormSubmitted || action.type() == NavigationType::FormResubmitted)
             m_frame->loader().resetMultipleFormSubmissionProtection();
 
-        if (action.type() == NavigationTypeLinkClicked && r.url().hasFragment()) {
+        if (action.type() == NavigationType::LinkClicked && r.url().hasFragment()) {
             ResourceRequest emptyRequest;
             m_frame->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
@@ -1288,10 +1288,10 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(FramePolicyFun
     }
 
     if (!m_webFrame->pageAdapter->acceptNavigationRequest(m_webFrame, r, (int)action.type())) {
-        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+        if (action.type() == NavigationType::FormSubmitted || action.type() == NavigationType::FormResubmitted)
             m_frame->loader().resetMultipleFormSubmissionProtection();
 
-        if (action.type() == NavigationTypeLinkClicked && r.url().hasFragment()) {
+        if (action.type() == NavigationType::LinkClicked && r.url().hasFragment()) {
             ResourceRequest emptyRequest;
             m_frame->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
