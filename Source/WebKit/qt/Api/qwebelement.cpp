@@ -545,7 +545,7 @@ QRect QWebElement::geometry() const
 {
     if (!m_element)
         return QRect();
-    return m_element->pixelSnappedBoundingBox();
+    return m_element->renderer()->absoluteBoundingBoxRect();
 }
 
 /*!
@@ -1457,7 +1457,7 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
 
     view->updateLayoutAndStyleIfNeededRecursive();
 
-    IntRect rect = e->pixelSnappedBoundingBox();
+    IntRect rect = e->renderer()->absoluteBoundingBoxRect();
 
     if (rect.size().isEmpty())
         return;
