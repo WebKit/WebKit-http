@@ -54,6 +54,10 @@
 #include <wtf/SchedulePair.h>
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+#include "MediaEventTypes.h"
+#endif
+
 namespace JSC {
 class Debugger;
 }
@@ -151,6 +155,15 @@ public:
 
     MainFrame& mainFrame() { ASSERT(m_mainFrame); return *m_mainFrame; }
     const MainFrame& mainFrame() const { ASSERT(m_mainFrame); return *m_mainFrame; }
+
+    enum class DismissalType {
+        None,
+        BeforeUnload,
+        PageHide,
+        Unload
+    };
+    DismissalType dismissalEventBeingDispatched() const { return m_dismissalEventBeingDispatched; }
+    void setDismissalEventBeingDispatched(DismissalType dismissalType) { m_dismissalEventBeingDispatched = dismissalType; }
 
     bool openedByDOM() const;
     void setOpenedByDOM();
@@ -434,6 +447,10 @@ public:
     bool isMuted() const { return m_muted; }
     WEBCORE_EXPORT void setMuted(bool);
 
+#if ENABLE(MEDIA_SESSION)
+    WEBCORE_EXPORT void handleMediaEvent(MediaEventType);
+#endif
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void addPlaybackTargetPickerClient(uint64_t);
     void removePlaybackTargetPickerClient(uint64_t);
@@ -607,6 +624,7 @@ private:
     bool m_isClosing;
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
+    DismissalType m_dismissalEventBeingDispatched { DismissalType::None };
 };
 
 inline PageGroup& Page::group()

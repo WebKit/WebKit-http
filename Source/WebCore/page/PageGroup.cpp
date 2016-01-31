@@ -74,7 +74,7 @@ PageGroup::~PageGroup()
 }
 
 typedef HashMap<String, PageGroup*> PageGroupMap;
-static PageGroupMap* pageGroups = 0;
+static PageGroupMap* pageGroups = nullptr;
 
 PageGroup* PageGroup::pageGroup(const String& groupName)
 {
@@ -109,8 +109,8 @@ void PageGroup::removePage(Page& page)
 #if ENABLE(VIDEO_TRACK)
 void PageGroup::captionPreferencesChanged()
 {
-    for (auto it = m_pages.begin(), end = m_pages.end(); it != end; ++it)
-        (*it)->captionPreferencesChanged();
+    for (auto& page : m_pages)
+        page->captionPreferencesChanged();
     PageCache::singleton().markPagesForCaptionPreferencesChanged();
 }
 

@@ -39,7 +39,6 @@
 #include "WKRetainPtr.h"
 #include "WebCertificateInfo.h"
 #include "WebIconDatabase.h"
-#include "WebPluginSiteDataManager.h"
 #include "WebProcessPool.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
@@ -53,7 +52,6 @@
 #include "WebKeyValueStorageManager.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
-#include "WebOriginDataManagerProxy.h"
 #include "WebResourceCacheManagerProxy.h"
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
@@ -464,13 +462,13 @@ WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef
     return toAPI(toImpl(contextRef)->supplement<WebNotificationManagerProxy>());
 }
 
-WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef contextRef)
+WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef context)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    return toAPI(toImpl(contextRef)->pluginSiteDataManager());
+    return reinterpret_cast<WKPluginSiteDataManagerRef>(toAPI(toImpl(context)->websiteDataStore()));
 #else
-    UNUSED_PARAM(contextRef);
-    return 0;
+    UNUSED_PARAM(context);
+    return nullptr;
 #endif
 }
 
@@ -479,9 +477,9 @@ WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef contextR
     return toAPI(toImpl(contextRef)->supplement<WebResourceCacheManagerProxy>());
 }
 
-WKOriginDataManagerRef WKContextGetOriginDataManager(WKContextRef contextRef)
+WKOriginDataManagerRef WKContextGetOriginDataManager(WKContextRef context)
 {
-    return toAPI(toImpl(contextRef)->supplement<WebOriginDataManagerProxy>());
+    return reinterpret_cast<WKOriginDataManagerRef>(toAPI(toImpl(context)->websiteDataStore()));
 }
 
 void WKContextStartMemorySampler(WKContextRef contextRef, WKDoubleRef interval)
@@ -502,16 +500,6 @@ void WKContextSetIconDatabasePath(WKContextRef contextRef, WKStringRef iconDatab
 void WKContextAllowSpecificHTTPSCertificateForHost(WKContextRef contextRef, WKCertificateInfoRef certificateRef, WKStringRef hostRef)
 {
     toImpl(contextRef)->allowSpecificHTTPSCertificateForHost(toImpl(certificateRef), toImpl(hostRef)->string());
-}
-
-WK_EXPORT void WKContextSetApplicationCacheDirectory(WKContextRef contextRef, WKStringRef applicationCacheDirectory)
-{
-    toImpl(contextRef)->setApplicationCacheDirectory(toImpl(applicationCacheDirectory)->string());
-}
-
-WK_EXPORT void WKContextSetDiskCacheDirectory(WKContextRef contextRef, WKStringRef diskCacheDirectory)
-{
-    toImpl(contextRef)->setDiskCacheDirectory(toImpl(diskCacheDirectory)->string());
 }
 
 WK_EXPORT void WKContextSetCookieStorageDirectory(WKContextRef contextRef, WKStringRef cookieStorageDirectory)

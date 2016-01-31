@@ -29,6 +29,7 @@
 #include "Completion.h"
 #include "CopiedSpaceInlines.h"
 #include "Disassembler.h"
+#include "Exception.h"
 #include "ExceptionHelpers.h"
 #include "HeapStatistics.h"
 #include "InitializeThreading.h"
@@ -129,27 +130,34 @@ class RuntimeArray;
 
 class Element : public JSNonFinalObject {
 public:
-    Element(VM& vm, Structure* structure, Root* root)
+    Element(VM& vm, Structure* structure)
         : Base(vm, structure)
-        , m_root(root)
     {
     }
 
     typedef JSNonFinalObject Base;
     static const bool needsDestruction = false;
 
-    Root* root() const { return m_root; }
-    void setRoot(Root* root) { m_root = root; }
+    Root* root() const { return m_root.get(); }
+    void setRoot(VM& vm, Root* root) { m_root.set(vm, this, root); }
 
     static Element* create(VM& vm, JSGlobalObject* globalObject, Root* root)
     {
         Structure* structure = createStructure(vm, globalObject, jsNull());
-        Element* element = new (NotNull, allocateCell<Element>(vm.heap, sizeof(Element))) Element(vm, structure, root);
-        element->finishCreation(vm);
+        Element* element = new (NotNull, allocateCell<Element>(vm.heap, sizeof(Element))) Element(vm, structure);
+        element->finishCreation(vm, root);
         return element;
     }
 
-    void finishCreation(VM&);
+    void finishCreation(VM&, Root*);
+
+    static void visitChildren(JSCell* cell, SlotVisitor& visitor)
+    {
+        Element* thisObject = jsCast<Element*>(cell);
+        ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+        Base::visitChildren(thisObject, visitor);
+        visitor.append(&thisObject->m_root);
+    }
 
     static ElementHandleOwner* handleOwner();
 
@@ -161,7 +169,7 @@ public:
     DECLARE_INFO;
 
 private:
-    Root* m_root;
+    WriteBarrier<Root> m_root;
 };
 
 class ElementHandleOwner : public WeakHandleOwner {
@@ -420,9 +428,10 @@ ElementHandleOwner* Element::handleOwner()
     return owner;
 }
 
-void Element::finishCreation(VM& vm)
+void Element::finishCreation(VM& vm, Root* root)
 {
     Base::finishCreation(vm);
+    setRoot(vm, root);
     m_root->setElement(this);
 }
 
@@ -785,7 +794,7 @@ EncodedJSValue JSC_HOST_CALL functionSetElementRoot(ExecState* exec)
     JSLockHolder lock(exec);
     Element* element = jsCast<Element*>(exec->argument(0));
     Root* root = jsCast<Root*>(exec->argument(1));
-    element->setRoot(root);
+    element->setRoot(exec->vm(), root);
     return JSValue::encode(jsUndefined());
 }
 
@@ -899,13 +908,13 @@ EncodedJSValue JSC_HOST_CALL functionRun(ExecState* exec)
     globalObject->putDirect(
         exec->vm(), Identifier::fromString(globalObject->globalExec(), "arguments"), array);
 
-    JSValue exception;
+    Exception* exception;
     StopWatch stopWatch;
     stopWatch.start();
-    evaluate(globalObject->globalExec(), jscSource(script.data(), fileName), JSValue(), &exception);
+    evaluate(globalObject->globalExec(), jscSource(script.data(), fileName), JSValue(), exception);
     stopWatch.stop();
 
-    if (!!exception) {
+    if (exception) {
         exec->vm().throwException(globalObject->globalExec(), exception);
         return JSValue::encode(jsUndefined());
     }
@@ -922,8 +931,8 @@ EncodedJSValue JSC_HOST_CALL functionLoad(ExecState* exec)
 
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     
-    JSValue evaluationException;
-    JSValue result = evaluate(globalObject->globalExec(), jscSource(script.data(), fileName), JSValue(), &evaluationException);
+    Exception* evaluationException;
+    JSValue result = evaluate(globalObject->globalExec(), jscSource(script.data(), fileName), JSValue(), evaluationException);
     if (evaluationException)
         exec->vm().throwException(exec, evaluationException);
     return JSValue::encode(result);
@@ -1285,15 +1294,15 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
 
         vm.startSampling();
 
-        JSValue evaluationException;
-        JSValue returnValue = evaluate(globalObject->globalExec(), jscSource(script, fileName), JSValue(), &evaluationException);
+        Exception* evaluationException;
+        JSValue returnValue = evaluate(globalObject->globalExec(), jscSource(script, fileName), JSValue(), evaluationException);
         success = success && !evaluationException;
         if (dump && !evaluationException)
             printf("End: %s\n", returnValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
         if (evaluationException) {
-            printf("Exception: %s\n", evaluationException.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
+            printf("Exception: %s\n", evaluationException->value().toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
             Identifier stackID = Identifier::fromString(globalObject->globalExec(), "stack");
-            JSValue stackValue = evaluationException.get(globalObject->globalExec(), stackID);
+            JSValue stackValue = evaluationException->value().get(globalObject->globalExec(), stackID);
             if (!stackValue.isUndefinedOrNull())
                 printf("%s\n", stackValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
         }
@@ -1349,8 +1358,8 @@ static void runInteractive(GlobalObject* globalObject)
         }
         
         
-        JSValue evaluationException;
-        JSValue returnValue = evaluate(globalObject->globalExec(), makeSource(source, interpreterName), JSValue(), &evaluationException);
+        Exception* evaluationException;
+        JSValue returnValue = evaluate(globalObject->globalExec(), makeSource(source, interpreterName), JSValue(), evaluationException);
 #else
         printf("%s", interactivePrompt);
         Vector<char, 256> line;
@@ -1365,11 +1374,11 @@ static void runInteractive(GlobalObject* globalObject)
             break;
         line.append('\0');
 
-        JSValue evaluationException;
-        JSValue returnValue = evaluate(globalObject->globalExec(), jscSource(line.data(), interpreterName), JSValue(), &evaluationException);
+        Exception* evaluationException;
+        JSValue returnValue = evaluate(globalObject->globalExec(), jscSource(line.data(), interpreterName), JSValue(), evaluationException);
 #endif
         if (evaluationException)
-            printf("Exception: %s\n", evaluationException.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
+            printf("Exception: %s\n", evaluationException->value().toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
         else
             printf("%s\n", returnValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
 
@@ -1495,7 +1504,7 @@ int jscmain(int argc, char** argv)
     // Note that the options parsing can affect VM creation, and thus
     // comes first.
     CommandLine options(argc, argv);
-    VM* vm = VM::create(LargeHeap).leakRef();
+    VM* vm = &VM::create(LargeHeap).leakRef();
     int result;
     {
         JSLockHolder locker(vm);

@@ -51,6 +51,7 @@
 #include "GenericEventQueue.h"
 #include "HRTFDatabaseLoader.h"
 #include "HRTFPanner.h"
+#include "JSDOMPromise.h"
 #include "OfflineAudioCompletionEvent.h"
 #include "OfflineAudioDestinationNode.h"
 #include "OscillatorNode.h"
@@ -277,13 +278,13 @@ bool AudioContext::isInitialized() const
     return m_isInitialized;
 }
 
-void AudioContext::addReaction(State state, std::function<void()> reaction)
+void AudioContext::addReaction(State state, Promise&& promise)
 {
     size_t stateIndex = static_cast<size_t>(state);
     if (stateIndex >= m_stateReactions.size())
         m_stateReactions.resize(stateIndex + 1);
 
-    m_stateReactions[stateIndex].append(reaction);
+    m_stateReactions[stateIndex].append(WTF::move(promise));
 }
 
 void AudioContext::setState(State state)
@@ -298,11 +299,11 @@ void AudioContext::setState(State state)
     if (stateIndex >= m_stateReactions.size())
         return;
 
-    Vector<std::function<void()>> reactions;
+    Vector<Promise> reactions;
     m_stateReactions[stateIndex].swap(reactions);
 
-    for (auto& reaction : reactions)
-        reaction();
+    for (auto& promise : reactions)
+        promise.resolve(nullptr);
 }
 
 const AtomicString& AudioContext::state() const
@@ -458,14 +459,13 @@ PassRefPtr<MediaStreamAudioSourceNode> AudioContext::createMediaStreamSource(Med
     ASSERT(isMainThread());
     lazyInitialize();
 
-    AudioSourceProvider* provider = 0;
+    AudioSourceProvider* provider = nullptr;
 
-    Vector<RefPtr<MediaStreamTrack>> audioTracks = mediaStream->getAudioTracks();
     RefPtr<MediaStreamTrack> audioTrack;
 
     // FIXME: get a provider for non-local MediaStreams (like from a remote peer).
-    for (size_t i = 0; i < audioTracks.size(); ++i) {
-        audioTrack = audioTracks[i];
+    for (auto& track : mediaStream->getAudioTracks()) {
+        audioTrack = track;
         if (audioTrack->source()->isAudioStreamSource()) {
             auto source = static_cast<MediaStreamAudioSource*>(audioTrack->source());
             ASSERT(!source->deviceId().isEmpty());
@@ -664,8 +664,8 @@ void AudioContext::derefFinishedSourceNodes()
 {
     ASSERT(isGraphOwner());
     ASSERT(isAudioThread() || isAudioThreadFinished());
-    for (unsigned i = 0; i < m_finishedNodes.size(); i++)
-        derefNode(m_finishedNodes[i]);
+    for (auto& node : m_finishedNodes)
+        derefNode(node);
 
     m_finishedNodes.clear();
 }
@@ -692,8 +692,8 @@ void AudioContext::derefNode(AudioNode* node)
 void AudioContext::derefUnfinishedSourceNodes()
 {
     ASSERT(isMainThread() && isAudioThreadFinished());
-    for (unsigned i = 0; i < m_referencedNodes.size(); ++i)
-        m_referencedNodes[i]->deref(AudioNode::RefTypeConnection);
+    for (auto& node : m_referencedNodes)
+        node->deref(AudioNode::RefTypeConnection);
 
     m_referencedNodes.clear();
 }
@@ -825,10 +825,8 @@ void AudioContext::handlePostRenderTasks()
 void AudioContext::handleDeferredFinishDerefs()
 {
     ASSERT(isAudioThread() && isGraphOwner());
-    for (unsigned i = 0; i < m_deferredFinishDerefList.size(); ++i) {
-        AudioNode* node = m_deferredFinishDerefList[i];
+    for (auto& node : m_deferredFinishDerefList)
         node->finishDeref(AudioNode::RefTypeConnection);
-    }
     
     m_deferredFinishDerefList.clear();
 }
@@ -922,8 +920,8 @@ void AudioContext::handleDirtyAudioSummingJunctions()
 {
     ASSERT(isGraphOwner());    
 
-    for (HashSet<AudioSummingJunction*>::iterator i = m_dirtySummingJunctions.begin(); i != m_dirtySummingJunctions.end(); ++i)
-        (*i)->updateRenderingState();
+    for (auto& junction : m_dirtySummingJunctions)
+        junction->updateRenderingState();
 
     m_dirtySummingJunctions.clear();
 }
@@ -932,8 +930,8 @@ void AudioContext::handleDirtyAudioNodeOutputs()
 {
     ASSERT(isGraphOwner());    
 
-    for (HashSet<AudioNodeOutput*>::iterator i = m_dirtyAudioNodeOutputs.begin(); i != m_dirtyAudioNodeOutputs.end(); ++i)
-        (*i)->updateRenderingState();
+    for (auto& output : m_dirtyAudioNodeOutputs)
+        output->updateRenderingState();
 
     m_dirtyAudioNodeOutputs.clear();
 }
@@ -962,11 +960,9 @@ void AudioContext::updateAutomaticPullNodes()
         // Copy from m_automaticPullNodes to m_renderingAutomaticPullNodes.
         m_renderingAutomaticPullNodes.resize(m_automaticPullNodes.size());
 
-        unsigned j = 0;
-        for (HashSet<AudioNode*>::iterator i = m_automaticPullNodes.begin(); i != m_automaticPullNodes.end(); ++i, ++j) {
-            AudioNode* output = *i;
-            m_renderingAutomaticPullNodes[j] = output;
-        }
+        unsigned i = 0;
+        for (auto& output : m_automaticPullNodes)
+            m_renderingAutomaticPullNodes[i++] = output;
 
         m_automaticPullNodesNeedUpdating = false;
     }
@@ -976,8 +972,8 @@ void AudioContext::processAutomaticPullNodes(size_t framesToProcess)
 {
     ASSERT(isAudioThread());
 
-    for (unsigned i = 0; i < m_renderingAutomaticPullNodes.size(); ++i)
-        m_renderingAutomaticPullNodes[i]->processIfNecessary(framesToProcess);
+    for (auto& node : m_renderingAutomaticPullNodes)
+        node->processIfNecessary(framesToProcess);
 }
 
 ScriptExecutionContext* AudioContext::scriptExecutionContext() const
@@ -1101,27 +1097,24 @@ void AudioContext::decrementActiveSourceCount()
     --m_activeSourceCount;
 }
 
-void AudioContext::suspendContext(std::function<void()> successCallback, FailureCallback failureCallback)
+void AudioContext::suspend(Promise&& promise)
 {
-    ASSERT(successCallback);
-    ASSERT(failureCallback);
-
     if (isOfflineContext()) {
-        failureCallback(INVALID_STATE_ERR);
+        promise.reject(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Suspended) {
-        successCallback();
+        promise.resolve(nullptr);
         return;
     }
 
     if (m_state == State::Closed || m_state == State::Interrupted || !m_destinationNode) {
-        failureCallback(0);
+        promise.reject(0);
         return;
     }
 
-    addReaction(State::Suspended, successCallback);
+    addReaction(State::Suspended, WTF::move(promise));
 
     if (!willPausePlayback())
         return;
@@ -1134,27 +1127,24 @@ void AudioContext::suspendContext(std::function<void()> successCallback, Failure
     });
 }
 
-void AudioContext::resumeContext(std::function<void()> successCallback, FailureCallback failureCallback)
+void AudioContext::resume(Promise&& promise)
 {
-    ASSERT(successCallback);
-    ASSERT(failureCallback);
-
     if (isOfflineContext()) {
-        failureCallback(INVALID_STATE_ERR);
+        promise.reject(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Running) {
-        successCallback();
+        promise.resolve(nullptr);
         return;
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        failureCallback(0);
+        promise.reject(0);
         return;
     }
 
-    addReaction(State::Running, successCallback);
+    addReaction(State::Running, WTF::move(promise));
 
     if (!willBeginPlayback())
         return;
@@ -1167,27 +1157,24 @@ void AudioContext::resumeContext(std::function<void()> successCallback, FailureC
     });
 }
 
-void AudioContext::closeContext(std::function<void()> successCallback, FailureCallback failureCallback)
+void AudioContext::close(Promise&& promise)
 {
-    ASSERT(successCallback);
-    ASSERT(failureCallback);
-
     if (isOfflineContext()) {
-        failureCallback(INVALID_STATE_ERR);
+        promise.reject(INVALID_STATE_ERR);
         return;
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        successCallback();
+        promise.resolve(nullptr);
         return;
     }
 
-    addReaction(State::Closed, successCallback);
+    addReaction(State::Closed, WTF::move(promise));
 
     lazyInitialize();
 
     RefPtr<AudioContext> strongThis(this);
-    m_destinationNode->close([strongThis, successCallback] {
+    m_destinationNode->close([strongThis] {
         strongThis->setState(State::Closed);
         strongThis->uninitialize();
     });

@@ -1101,9 +1101,6 @@ webkit.org/b/137505 media/track/track-forced-subtitles-in-band.html [ Failure Pa
 # FIXME: Needs bugzilla (<rdar://problem/16802068>)
 [ Yosemite+ ] fast/css/input-search-padding.html [ Failure ]
 
-# FIXME: Needs bugzilla (<rdar://problem/17458024>)
-[ Yosemite ] http/tests/misc/webtiming-ssl.php [ Skip ]
-
 # FIXME: Needs bugzilla (<rdar://problem/17458211>)
 [ Yosemite+ ] platform/mac/fast/text/systemFont.html [ Pass Failure ]
 [ Mavericks ] platform/mac/fast/text/systemFont.html [ Failure ]
@@ -1260,6 +1257,7 @@ webkit.org/b/17022 [ MountainLion Mavericks ] fast/images/animated-png.html [ Sk
 
 # OS X 10.10.3+ has the necessary glyphs.
 webkit.org/b/142548 [ Yosemite+ ] editing/selection/extend-by-character-007.html [ Pass ]
-webkit.org/b/141661 [ Yosemite+ ] fast/text/emoji.html [ Pass ]
 
 media/accessiblity-describes-video.html [ Pass Failure ]
+
+webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]

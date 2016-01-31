@@ -24,11 +24,11 @@
 #define CallFrame_h
 
 #include "AbstractPC.h"
-#include "VM.h"
 #include "JSStack.h"
 #include "MacroAssemblerCodeRef.h"
 #include "Register.h"
 #include "StackVisitor.h"
+#include "VM.h"
 #include "VMEntryRecord.h"
 
 namespace JSC  {
@@ -75,13 +75,12 @@ namespace JSC  {
         // But they're used in many places in legacy code, so they're not going away any time soon.
 
         void clearException() { vm().clearException(); }
-        void clearSupplementaryExceptionInfo()
-        {
-            vm().clearExceptionStack();
-        }
 
-        JSValue exception() const { return vm().exception(); }
-        bool hadException() const { return !vm().exception().isEmpty(); }
+        Exception* exception() const { return vm().exception(); }
+        bool hadException() const { return !!vm().exception(); }
+
+        Exception* lastException() const { return vm().lastException(); }
+        void clearLastException() { vm().clearLastException(); }
 
         AtomicStringTable* atomicStringTable() const { return vm().atomicStringTable(); }
         const CommonIdentifiers& propertyNames() const { return *vm().propertyNames; }

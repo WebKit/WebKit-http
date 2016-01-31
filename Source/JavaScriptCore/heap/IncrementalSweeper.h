@@ -39,7 +39,6 @@ class IncrementalSweeper : public HeapTimer {
 public:
 #if USE(CF)
     JS_EXPORT_PRIVATE IncrementalSweeper(Heap*, CFRunLoopRef);
-    JS_EXPORT_PRIVATE void fullSweep();
 #else
     explicit IncrementalSweeper(VM*);
 #endif

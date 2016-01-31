@@ -69,7 +69,7 @@ void IDBOpenDBRequest::onBlocked(uint64_t oldVersion)
     if (!shouldEnqueueEvent())
         return;
     
-    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, m_version, m_versionNullness, eventNames().blockedEvent));
+    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, m_version, eventNames().blockedEvent));
 }
 
 void IDBOpenDBRequest::onUpgradeNeeded(uint64_t oldVersion, PassRefPtr<IDBDatabaseBackend> prpDatabaseBackend, const IDBDatabaseMetadata& metadata)
@@ -91,7 +91,7 @@ void IDBOpenDBRequest::onUpgradeNeeded(uint64_t oldVersion, PassRefPtr<IDBDataba
     RefPtr<IDBDatabase> idbDatabase = IDBDatabase::create(scriptExecutionContext(), databaseBackend, m_databaseCallbacks);
     idbDatabase->setMetadata(metadata);
     m_databaseCallbacks->connect(idbDatabase.get());
-    m_databaseCallbacks = 0;
+    m_databaseCallbacks = nullptr;
 
     IDBDatabaseMetadata oldMetadata(metadata);
     oldMetadata.version = oldVersion;
@@ -101,7 +101,7 @@ void IDBOpenDBRequest::onUpgradeNeeded(uint64_t oldVersion, PassRefPtr<IDBDataba
 
     if (m_versionNullness == IndexedDB::VersionNullness::Null)
         m_version = 1;
-    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, m_version, m_versionNullness, eventNames().upgradeneededEvent));
+    enqueueEvent(IDBVersionChangeEvent::create(oldVersion, m_version, eventNames().upgradeneededEvent));
 }
 
 void IDBOpenDBRequest::onSuccess(PassRefPtr<IDBDatabaseBackend> prpBackend, const IDBDatabaseMetadata& metadata)
@@ -120,7 +120,7 @@ void IDBOpenDBRequest::onSuccess(PassRefPtr<IDBDatabaseBackend> prpBackend, cons
         ASSERT(m_databaseCallbacks);
         idbDatabase = IDBDatabase::create(scriptExecutionContext(), backend.release(), m_databaseCallbacks);
         m_databaseCallbacks->connect(idbDatabase.get());
-        m_databaseCallbacks = 0;
+        m_databaseCallbacks = nullptr;
         m_result = IDBAny::create(idbDatabase.get());
     }
     idbDatabase->setMetadata(metadata);

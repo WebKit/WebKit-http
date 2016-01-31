@@ -291,7 +291,6 @@ void FrameView::reset()
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
     m_maintainScrollPositionAnchor = nullptr;
-    m_throttledTimers.clear();
 }
 
 void FrameView::removeFromAXObjectCache()
@@ -453,6 +452,7 @@ void FrameView::invalidateRect(const IntRect& rect)
 
 void FrameView::setFrameRect(const IntRect& newRect)
 {
+    Ref<FrameView> protect(*this);
     IntRect oldRect = frameRect();
     if (newRect == oldRect)
         return;
@@ -1806,7 +1806,6 @@ void FrameView::viewportContentsChanged()
     // check if we should resume animated images or unthrottle DOM timers.
     applyRecursivelyWithVisibleRect([] (FrameView& frameView, const IntRect& visibleRect) {
         frameView.resumeVisibleImageAnimations(visibleRect);
-        frameView.updateThrottledDOMTimersState(visibleRect);
         frameView.updateScriptedAnimationsAndTimersThrottlingState(visibleRect);
     });
 }
@@ -1878,10 +1877,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
     hostWindow()->scroll(scrollDelta, rectToScroll, clipRect);
 
     // 2) update the area of fixed objects that has been invalidated
-    Vector<IntRect> subRectsToUpdate = regionToUpdate.rects();
-    size_t viewportConstrainedObjectsCount = subRectsToUpdate.size();
-    for (size_t i = 0; i < viewportConstrainedObjectsCount; ++i) {
-        IntRect updateRect = subRectsToUpdate[i];
+    for (auto& updateRect : regionToUpdate.rects()) {
         IntRect scrolledRect = updateRect;
         scrolledRect.move(scrollDelta);
         updateRect.unite(scrolledRect);
@@ -2682,8 +2678,8 @@ void FrameView::serviceScriptedAnimations(double monotonicAnimationStartTime)
     for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext())
         documents.append(frame->document());
 
-    for (size_t i = 0; i < documents.size(); ++i)
-        documents[i]->serviceScriptedAnimations(monotonicAnimationStartTime);
+    for (auto& document : documents)
+        document->serviceScriptedAnimations(monotonicAnimationStartTime);
 }
 #endif
 
@@ -2940,7 +2936,8 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
     if (!weakRenderer)
         return;
 
-    embeddedObject.updateWidgetPosition();
+    auto ignoreWidgetState = embeddedObject.updateWidgetPosition();
+    UNUSED_PARAM(ignoreWidgetState);
 }
 
 bool FrameView::updateEmbeddedObjects()
@@ -2988,7 +2985,7 @@ void FrameView::performPostLayoutTasks()
 
     m_postLayoutTasksTimer.stop();
 
-    frame().selection().didLayout();
+    frame().selection().updateAppearanceAfterLayout();
 
     if (m_nestedLayoutCount <= 1 && frame().document()->documentElement())
         fireLayoutRelatedMilestonesIfNeeded();
@@ -3123,29 +3120,6 @@ void FrameView::willEndLiveResize()
 void FrameView::postLayoutTimerFired()
 {
     performPostLayoutTasks();
-}
-
-void FrameView::registerThrottledDOMTimer(DOMTimer* timer)
-{
-    m_throttledTimers.add(timer);
-}
-
-void FrameView::unregisterThrottledDOMTimer(DOMTimer* timer)
-{
-    m_throttledTimers.remove(timer);
-}
-
-void FrameView::updateThrottledDOMTimersState(const IntRect& visibleRect)
-{
-    if (m_throttledTimers.isEmpty())
-        return;
-
-    // Do not iterate over the HashSet because calling DOMTimer::updateThrottlingStateAfterViewportChange()
-    // may cause timers to remove themselves from it while we are iterating.
-    Vector<DOMTimer*> timers;
-    copyToVector(m_throttledTimers, timers);
-    for (auto* timer : timers)
-        timer->updateThrottlingStateAfterViewportChange(visibleRect);
 }
 
 void FrameView::autoSizeIfEnabled()
@@ -4416,8 +4390,8 @@ String FrameView::trackedRepaintRectsAsText() const
     TextStream ts;
     if (!m_trackedRepaintRects.isEmpty()) {
         ts << "(repaint rects\n";
-        for (size_t i = 0; i < m_trackedRepaintRects.size(); ++i)
-            ts << "  (rect " << LayoutUnit(m_trackedRepaintRects[i].x()) << " " << LayoutUnit(m_trackedRepaintRects[i].y()) << " " << LayoutUnit(m_trackedRepaintRects[i].width()) << " " << LayoutUnit(m_trackedRepaintRects[i].height()) << ")\n";
+        for (auto& rect : m_trackedRepaintRects)
+            ts << "  (rect " << LayoutUnit(rect.x()) << " " << LayoutUnit(rect.y()) << " " << LayoutUnit(rect.width()) << " " << LayoutUnit(rect.height()) << ")\n";
         ts << ")\n";
     }
     return ts.release();
@@ -4741,20 +4715,18 @@ void FrameView::updateWidgetPositions()
     // updateWidgetPosition() can possibly cause layout to be re-entered (via plug-ins running
     // scripts in response to NPP_SetWindow, for example), so we need to keep the Widgets
     // alive during enumeration.
-    auto protectedWidgets = collectAndProtectWidgets(m_widgetsInRenderTree);
-
-    for (unsigned i = 0, size = protectedWidgets.size(); i < size; ++i) {
-        if (RenderWidget* renderWidget = RenderWidget::find(protectedWidgets[i].get()))
-            renderWidget->updateWidgetPosition();
+    for (auto& widget : collectAndProtectWidgets(m_widgetsInRenderTree)) {
+        if (RenderWidget* renderWidget = RenderWidget::find(widget.get())) {
+            auto ignoreWidgetState = renderWidget->updateWidgetPosition();
+            UNUSED_PARAM(ignoreWidgetState);
+        }
     }
 }
 
 void FrameView::notifyWidgets(WidgetNotification notification)
 {
-    auto protectedWidgets = collectAndProtectWidgets(m_widgetsInRenderTree);
-
-    for (unsigned i = 0, size = protectedWidgets.size(); i < size; ++i)
-        protectedWidgets[i]->notifyWidget(notification);
+    for (auto& widget : collectAndProtectWidgets(m_widgetsInRenderTree))
+        widget->notifyWidget(notification);
 }
 
 void FrameView::setExposedRect(FloatRect exposedRect)

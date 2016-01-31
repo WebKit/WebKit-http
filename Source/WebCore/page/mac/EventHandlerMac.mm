@@ -771,7 +771,15 @@ unsigned EventHandler::accessKeyModifiers()
     return PlatformEvent::CtrlKey | PlatformEvent::AltKey;
 }
 
-static ContainerNode* findEnclosingOverflowScroll(ContainerNode* node)
+static ScrollableArea* scrollableAreaForBox(RenderBox& box)
+{
+    if (is<RenderListBox>(box))
+        return downcast<RenderListBox>(&box);
+
+    return box.layer();
+}
+    
+static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, float deltaX, float deltaY)
 {
     // Find the first node with a valid scrollable area starting with the current
     // node and traversing its parents (or shadow hosts).
@@ -783,8 +791,14 @@ static ContainerNode* findEnclosingOverflowScroll(ContainerNode* node)
             return nullptr;
 
         RenderBox* box = candidate->renderBox();
-        if (box && box->canBeScrolledAndHasScrollableArea())
-            return candidate;
+        if (box && box->canBeScrolledAndHasScrollableArea()) {
+            if (ScrollableArea* scrollableArea = scrollableAreaForBox(*box)) {
+                if (((deltaY > 0) && !scrollableArea->scrolledToTop()) || ((deltaY < 0) && !scrollableArea->scrolledToBottom())
+                    || ((deltaX > 0) && !scrollableArea->scrolledToRight()) || ((deltaX < 0) && !scrollableArea->scrolledToLeft())) {
+                    return candidate;
+                }
+            }
+        }
     }
     
     return nullptr;
@@ -883,6 +897,22 @@ static bool latchingIsLockedToAncestorOfThisFrame(const Frame& frame)
     return false;
 }
 
+static ScrollableArea* scrollableAreaForContainerNode(ContainerNode& container)
+{
+    ScrollableArea* scrollableArea = nullptr;
+
+    if (RenderBox* box = container.renderBox())
+        scrollableArea = scrollableAreaForBox(*box);
+
+    return scrollableArea;
+}
+
+static bool latchedToFrameOrBody(ContainerNode& container)
+{
+    // FIXME(106133): We might need to add or switch to is<HTMLDocumentElement> when this bug is fixed.
+    return is<HTMLFrameSetElement>(container) || is<HTMLBodyElement>(container);
+}
+
 void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheelEvent, const HitTestResult& result, RefPtr<Element>& wheelEventTarget, RefPtr<ContainerNode>& scrollableContainer, ScrollableArea*& scrollableArea, bool& isOverWidget)
 {
     FrameView* view = m_frame.view();
@@ -896,15 +926,10 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
             scrollableContainer = wheelEventTarget;
             scrollableArea = scrollViewForEventTarget(wheelEventTarget.get());
         } else {
-            scrollableContainer = findEnclosingOverflowScroll(wheelEventTarget.get());
-            if (scrollableContainer) {
-                if (RenderBox* box = scrollableContainer->renderBox()) {
-                    if (is<RenderListBox>(*box))
-                        scrollableArea = downcast<RenderListBox>(box);
-                    else
-                        scrollableArea = box->layer();
-                }
-            } else {
+            scrollableContainer = findEnclosingScrollableContainer(wheelEventTarget.get(), wheelEvent.deltaX(), wheelEvent.deltaY());
+            if (scrollableContainer)
+                scrollableArea = scrollableAreaForContainerNode(*scrollableContainer);
+            else {
                 scrollableContainer = view->frame().document()->bodyOrFrameset();
                 scrollableArea = view;
             }
@@ -944,6 +969,12 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
 
         wheelEventTarget = latchingState->wheelEventElement();
         isOverWidget = latchingState->widgetIsLatched();
+        scrollableContainer = latchingState->scrollableContainer();
+
+        if (scrollableContainer) {
+            if (!latchedToFrameOrBody(*scrollableContainer) && !latchingState->widgetIsLatched())
+                scrollableArea = scrollableAreaForContainerNode(*scrollableContainer);
+        }
     }
 }
 

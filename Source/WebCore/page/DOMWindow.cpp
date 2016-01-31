@@ -256,22 +256,21 @@ bool DOMWindow::dispatchAllPendingBeforeUnloadEvents()
 
     Vector<Ref<DOMWindow>> windows;
     windows.reserveInitialCapacity(set.size());
-    for (auto it = set.begin(), end = set.end(); it != end; ++it)
-        windows.uncheckedAppend(*it->key);
+    for (auto& window : set)
+        windows.uncheckedAppend(*window.key);
 
-    for (Ref<DOMWindow>& windowRef : windows) {
-        DOMWindow& window = windowRef;
-        if (!set.contains(&window))
+    for (auto& window : windows) {
+        if (!set.contains(window.ptr()))
             continue;
 
-        Frame* frame = window.frame();
+        Frame* frame = window->frame();
         if (!frame)
             continue;
 
         if (!frame->loader().shouldClose())
             return false;
 
-        window.enableSuddenTermination();
+        window->enableSuddenTermination();
     }
 
     alreadyDispatched = true;
@@ -299,15 +298,14 @@ void DOMWindow::dispatchAllPendingUnloadEvents()
     for (auto& keyValue : set)
         windows.uncheckedAppend(*keyValue.key);
 
-    for (Ref<DOMWindow>& windowRef : windows) {
-        DOMWindow& window = windowRef;
-        if (!set.contains(&window))
+    for (auto& window : windows) {
+        if (!set.contains(window.ptr()))
             continue;
 
-        window.dispatchEvent(PageTransitionEvent::create(eventNames().pagehideEvent, false), window.document());
-        window.dispatchEvent(Event::create(eventNames().unloadEvent, false, false), window.document());
+        window->dispatchEvent(PageTransitionEvent::create(eventNames().pagehideEvent, false), window->document());
+        window->dispatchEvent(Event::create(eventNames().unloadEvent, false, false), window->document());
 
-        window.enableSuddenTermination();
+        window->enableSuddenTermination();
     }
 
     alreadyDispatched = true;
@@ -389,7 +387,7 @@ bool DOMWindow::canShowModalDialogNow(const Frame* frame)
     Page* page = frame->page();
     if (!page)
         return false;
-    return page->chrome().canRunModalNow();
+    return page->chrome().canRunModal();
 }
 
 DOMWindow::DOMWindow(Document* document)
@@ -495,8 +493,8 @@ void DOMWindow::willDestroyCachedFrame()
     // unregister themselves from the DOMWindow as a result of the call to willDestroyGlobalObjectInCachedFrame.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
-    for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->willDestroyGlobalObjectInCachedFrame();
+    for (auto& property : properties)
+        property->willDestroyGlobalObjectInCachedFrame();
 }
 
 void DOMWindow::willDestroyDocumentInFrame()
@@ -505,8 +503,8 @@ void DOMWindow::willDestroyDocumentInFrame()
     // unregister themselves from the DOMWindow as a result of the call to willDestroyGlobalObjectInFrame.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
-    for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->willDestroyGlobalObjectInFrame();
+    for (auto& property : properties)
+        property->willDestroyGlobalObjectInFrame();
 }
 
 void DOMWindow::willDetachDocumentFromFrame()
@@ -515,8 +513,8 @@ void DOMWindow::willDetachDocumentFromFrame()
     // unregister themselves from the DOMWindow as a result of the call to willDetachGlobalObjectFromFrame.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
-    for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->willDetachGlobalObjectFromFrame();
+    for (auto& property : properties)
+        property->willDetachGlobalObjectFromFrame();
 }
 
 #if ENABLE(GAMEPAD)
@@ -571,8 +569,8 @@ void DOMWindow::disconnectDOMWindowProperties()
     // unregister themselves from the DOMWindow as a result of the call to disconnectFrameForPageCache.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
-    for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->disconnectFrameForPageCache();
+    for (auto& property : properties)
+        property->disconnectFrameForPageCache();
 }
 
 void DOMWindow::reconnectDOMWindowProperties()
@@ -582,32 +580,32 @@ void DOMWindow::reconnectDOMWindowProperties()
     // unregister themselves from the DOMWindow as a result of the call to reconnectFromPageCache.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
-    for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->reconnectFrameFromPageCache(m_frame);
+    for (auto& property : properties)
+        property->reconnectFrameFromPageCache(m_frame);
 }
 
 void DOMWindow::resetDOMWindowProperties()
 {
     m_properties.clear();
 
-    m_screen = 0;
-    m_history = 0;
-    m_crypto = 0;
-    m_locationbar = 0;
-    m_menubar = 0;
-    m_personalbar = 0;
-    m_scrollbars = 0;
-    m_statusbar = 0;
-    m_toolbar = 0;
-    m_navigator = 0;
+    m_screen = nullptr;
+    m_history = nullptr;
+    m_crypto = nullptr;
+    m_locationbar = nullptr;
+    m_menubar = nullptr;
+    m_personalbar = nullptr;
+    m_scrollbars = nullptr;
+    m_statusbar = nullptr;
+    m_toolbar = nullptr;
+    m_navigator = nullptr;
 #if ENABLE(WEB_TIMING)
-    m_performance = 0;
+    m_performance = nullptr;
 #endif
-    m_location = 0;
-    m_media = 0;
-    m_sessionStorage = 0;
-    m_localStorage = 0;
-    m_applicationCache = 0;
+    m_location = nullptr;
+    m_media = nullptr;
+    m_sessionStorage = nullptr;
+    m_localStorage = nullptr;
+    m_applicationCache = nullptr;
 }
 
 bool DOMWindow::isCurrentlyDisplayedInFrame() const
@@ -833,7 +831,7 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
     if (!document)
         return nullptr;
 
-    if (!document->securityOrigin()->canAccessLocalStorage(0)) {
+    if (!document->securityOrigin()->canAccessLocalStorage(nullptr)) {
         ec = SECURITY_ERR;
         return nullptr;
     }
@@ -989,7 +987,7 @@ void DOMWindow::focus(ScriptExecutionContext* context)
     // Clear the current frame's focused node if a new frame is about to be focused.
     Frame* focusedFrame = page->focusController().focusedFrame();
     if (focusedFrame && focusedFrame != m_frame)
-        focusedFrame->document()->setFocusedElement(0);
+        focusedFrame->document()->setFocusedElement(nullptr);
 
     m_frame->eventHandler().focusDocumentView();
 }
@@ -1453,8 +1451,8 @@ PassRefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const St
         return 0;
 
     RefPtr<StaticCSSRuleList> ruleList = StaticCSSRuleList::create();
-    for (unsigned i = 0; i < matchedRules.size(); ++i)
-        ruleList->rules().append(matchedRules[i]->createCSSOMWrapper());
+    for (auto& rule : matchedRules)
+        ruleList->rules().append(rule->createCSSOMWrapper());
 
     return ruleList.release();
 }
@@ -2114,7 +2112,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
 
     if (created) {
         ResourceRequest resourceRequest(completedURL, referrer, UseProtocolCachePolicy);
-        FrameLoadRequest frameRequest(activeWindow.document()->securityOrigin(), resourceRequest, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, activeDocument->shouldOpenExternalURLsPolicyToPropagate());
+        FrameLoadRequest frameRequest(activeWindow.document()->securityOrigin(), resourceRequest, "_self", LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, activeDocument->shouldOpenExternalURLsPolicyToPropagate());
         newFrame->loader().changeLocation(frameRequest);
     } else if (!urlString.isEmpty()) {
         LockHistory lockHistory = ScriptController::processingUserGesture() ? LockHistory::No : LockHistory::Yes;

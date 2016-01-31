@@ -99,10 +99,8 @@ class WebNotificationManagerProxy;
 class WebNotificationProvider;
 class WebOpenPanelParameters;
 class WebOpenPanelResultListenerProxy;
-class WebOriginDataManagerProxy;
 class WebPageGroup;
 class WebPageProxy;
-class WebPluginSiteDataManager;
 class WebPreferences;
 class WebProcessPool;
 class WebProtectionSpace;
@@ -153,11 +151,9 @@ WK_ADD_API_MAPPING(WKNotificationProviderRef, WebNotificationProvider)
 WK_ADD_API_MAPPING(WKNotificationRef, WebNotification)
 WK_ADD_API_MAPPING(WKOpenPanelParametersRef, WebOpenPanelParameters)
 WK_ADD_API_MAPPING(WKOpenPanelResultListenerRef, WebOpenPanelResultListenerProxy)
-WK_ADD_API_MAPPING(WKOriginDataManagerRef, WebOriginDataManagerProxy)
 WK_ADD_API_MAPPING(WKPageGroupRef, WebPageGroup)
 WK_ADD_API_MAPPING(WKPageConfigurationRef, API::PageConfiguration)
 WK_ADD_API_MAPPING(WKPageRef, WebPageProxy)
-WK_ADD_API_MAPPING(WKPluginSiteDataManagerRef, WebPluginSiteDataManager)
 WK_ADD_API_MAPPING(WKPreferencesRef, WebPreferences)
 WK_ADD_API_MAPPING(WKProtectionSpaceRef, WebProtectionSpace)
 WK_ADD_API_MAPPING(WKRenderLayerRef, WebRenderLayer)

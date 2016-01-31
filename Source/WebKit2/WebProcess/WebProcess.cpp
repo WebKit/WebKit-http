@@ -52,7 +52,6 @@
 #include "WebMediaCacheManager.h"
 #include "WebMediaKeyStorageManager.h"
 #include "WebMemorySampler.h"
-#include "WebOriginDataManager.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
 #include "WebPageGroupProxyMessages.h"
@@ -86,6 +85,7 @@
 #include <WebCore/PageCache.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
@@ -157,10 +157,6 @@ WebProcess::WebProcess()
     , m_inDidClose(false)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
-    , m_diskCacheIsDisabledForTesting(false)
-#if PLATFORM(COCOA)
-    , m_clearResourceCachesDispatchGroup(0)
-#endif
     , m_fullKeyboardAccessEnabled(false)
     , m_textCheckerState()
     , m_iconDatabaseProxy(new WebIconDatabaseProxy(this))
@@ -177,7 +173,6 @@ WebProcess::WebProcess()
     , m_hasRichContentServices(false)
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
-    , m_webOriginDataManager(std::make_unique<WebOriginDataManager>(*this, *this))
 #if PLATFORM(IOS)
     , m_webSQLiteDatabaseTracker(*this)
 #endif
@@ -207,6 +202,14 @@ WebProcess::WebProcess()
     addSupplement<WebMediaKeyStorageManager>();
 #endif
     m_plugInAutoStartOriginHashes.add(SessionID::defaultSessionID(), HashMap<unsigned, double>());
+
+#if ENABLE(INDEXED_DATABASE)
+    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
+#endif
+}
+
+WebProcess::~WebProcess()
+{
 }
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
@@ -300,7 +303,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     if (!parameters.applicationCacheDirectory.isEmpty())
         ApplicationCacheStorage::singleton().setCacheDirectory(parameters.applicationCacheDirectory);
 
-    m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
     if (!parameters.languages.isEmpty())
@@ -591,7 +593,7 @@ bool WebProcess::shouldTerminate()
 void WebProcess::terminate()
 {
 #ifndef NDEBUG
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif
@@ -655,7 +657,7 @@ void WebProcess::didClose(IPC::Connection&)
         page->close();
     pages.clear();
 
-    gcController().garbageCollectSoon();
+    GCController::singleton().garbageCollectSoon();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
 #endif    
@@ -980,12 +982,12 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
 
 void WebProcess::garbageCollectJavaScriptObjects()
 {
-    gcController().garbageCollectNow();
+    GCController::singleton().garbageCollectNow();
 }
 
 void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 {
-    gcController().setJavaScriptGarbageCollectorTimerEnabled(flag);
+    GCController::singleton().setJavaScriptGarbageCollectorTimerEnabled(flag);
 }
 
 void WebProcess::handleInjectedBundleMessage(const String& messageName, const UserData& messageBody)
@@ -1226,7 +1228,7 @@ void WebProcess::resetAllGeolocationPermissions()
 
 void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
 {
-    MemoryPressureHandler::singleton().releaseMemory(true);
+    MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
     setAllLayerTreeStatesFrozen(true);
 
     if (markAllLayersVolatileIfPossible()) {
@@ -1437,72 +1439,5 @@ void WebProcess::setEnabledServices(bool hasImageServices, bool hasSelectionServ
     m_hasRichContentServices = hasRichContentServices;
 }
 #endif
-
-void WebProcess::getOrigins(WKOriginDataTypes types, std::function<void (const Vector<SecurityOriginData>&)> completion)
-{
-    if (!(types & kWKMediaKeyStorageOriginData)) {
-        completion(Vector<SecurityOriginData>());
-        return;
-    }
-
-    WebMediaKeyStorageManager* manager = supplement<WebMediaKeyStorageManager>();
-    if (!manager) {
-        completion(Vector<SecurityOriginData>());
-        return;
-    }
-
-    completion(manager->getMediaKeyOrigins());
-}
-
-void WebProcess::deleteEntriesForOrigin(WKOriginDataTypes types, const SecurityOriginData& origin, std::function<void ()> completion)
-{
-    if (!(types & kWKMediaKeyStorageOriginData)) {
-        completion();
-        return;
-    }
-
-    WebMediaKeyStorageManager* manager = supplement<WebMediaKeyStorageManager>();
-    if (!manager) {
-        completion();
-        return;
-    }
-
-    manager->deleteMediaKeyEntriesForOrigin(origin);
-    completion();
-}
-
-void WebProcess::deleteEntriesModifiedBetweenDates(WKOriginDataTypes types, double startDate, double endDate, std::function<void ()> completion)
-{
-    if (!(types & kWKMediaKeyStorageOriginData)) {
-        completion();
-        return;
-    }
-
-    WebMediaKeyStorageManager* manager = supplement<WebMediaKeyStorageManager>();
-    if (!manager) {
-        completion();
-        return;
-    }
-
-    manager->deleteMediaKeyEntriesModifiedBetweenDates(startDate, endDate);
-    completion();
-}
-
-void WebProcess::deleteAllEntries(WKOriginDataTypes types, std::function<void ()> completion)
-{
-    if (!(types & kWKMediaKeyStorageOriginData)) {
-        completion();
-        return;
-    }
-    
-    WebMediaKeyStorageManager* manager = supplement<WebMediaKeyStorageManager>();
-    if (!manager) {
-        completion();
-        return;
-    }
-
-    manager->deleteAllMediaKeyEntries();
-    completion();
-}
 
 } // namespace WebKit

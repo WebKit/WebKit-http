@@ -63,6 +63,12 @@ public:
     int64_t diskCacheSizeOverride() const { return m_diskCacheSizeOverride; }
     void setDiskCacheSizeOverride(int64_t size) { m_diskCacheSizeOverride = size; }
 
+    WTF::String applicationCacheDirectory() const { return m_applicationCacheDirectory; }
+    void setApplicationCacheDirectory(const WTF::String& applicationCacheDirectory) { m_applicationCacheDirectory = applicationCacheDirectory; }
+
+    WTF::String diskCacheDirectory() const { return m_diskCacheDirectory; }
+    void setDiskCacheDirectory(const WTF::String& diskCacheDirectory) { m_diskCacheDirectory = diskCacheDirectory; }
+
     WTF::String indexedDBDatabaseDirectory() const { return m_indexedDBDatabaseDirectory; }
     void setIndexedDBDatabaseDirectory(const WTF::String& indexedDBDatabaseDirectory) { m_indexedDBDatabaseDirectory = indexedDBDatabaseDirectory; }
 
@@ -89,8 +95,11 @@ private:
     unsigned m_maximumProcessCount { 0 };
     WebKit::CacheModel m_cacheModel { WebKit::CacheModelPrimaryWebBrowser };
     int64_t m_diskCacheSizeOverride { -1 };
-    WTF::String m_injectedBundlePath;
+
+    WTF::String m_applicationCacheDirectory;
+    WTF::String m_diskCacheDirectory;
     WTF::String m_indexedDBDatabaseDirectory;
+    WTF::String m_injectedBundlePath;
     WTF::String m_localStorageDirectory;
     WTF::String m_webSQLDatabaseDirectory;
     WTF::String m_mediaKeysStorageDirectory;

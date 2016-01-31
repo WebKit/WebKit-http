@@ -50,8 +50,7 @@ VMEntryScope::VMEntryScope(VM& vm, JSGlobalObject* globalObject)
         vm.resetDateCache();
     }
 
-    // Clear the captured exception stack between entries
-    vm.clearExceptionStack();
+    vm.clearLastException();
 }
 
 void VMEntryScope::setEntryScopeDidPopListener(void* key, EntryScopeDidPopListener listener)

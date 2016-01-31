@@ -156,7 +156,7 @@ void OpenCursorOperation::perform(std::function<void()> completionCallback)
             m_callbacks->onError(error);
         } else if (!key) {
             // If there's no error but also no key, then the cursor had no records.
-            m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
+            m_callbacks->onSuccess(static_cast<SharedBuffer*>(nullptr));
         } else {
             RefPtr<IDBCursorBackend> cursor = IDBCursorBackend::create(cursorID, m_cursorType, m_taskType, *m_transaction, m_objectStoreID);
             cursor->updateCursorData(key.get(), primaryKey.get(), valueBuffer.get());
@@ -238,8 +238,11 @@ void IDBDatabaseBackend::VersionChangeOperation::perform(std::function<void()> c
     LOG(StorageAPI, "VersionChangeOperation");
 
     uint64_t oldVersion = m_transaction->database().metadata().version;
+    if (oldVersion == IDBDatabaseMetadata::NoIntVersion)
+        oldVersion = 0;
+
     RefPtr<IDBDatabaseBackend::VersionChangeOperation> operation(this);
-    ASSERT(static_cast<uint64_t>(m_version) > oldVersion || oldVersion == IDBDatabaseMetadata::NoIntVersion);
+    ASSERT(static_cast<uint64_t>(m_version) > oldVersion);
 
     std::function<void(PassRefPtr<IDBDatabaseError>)> operationCallback = [oldVersion, operation, this, completionCallback](PassRefPtr<IDBDatabaseError> prpError) {
         RefPtr<IDBDatabaseError> error = prpError;

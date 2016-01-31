@@ -33,10 +33,11 @@
 #if ENABLE(STREAMS_API)
 
 #include "ActiveDOMObject.h"
-#include "ReadableStreamSource.h"
 #include "ScriptWrappable.h"
 #include <functional>
+#include <wtf/Deque.h>
 #include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 
 namespace JSC {
 class JSValue;
@@ -65,15 +66,15 @@ public:
     const ReadableStreamReader* reader() const { return m_reader.get(); }
     bool isLocked() const { return !!m_reader; }
 
+    bool isErrored() const { return m_state == State::Errored; }
     bool isReadable() const { return m_state == State::Readable; }
+    bool isCloseRequested() const { return m_closeRequested; }
 
     virtual JSC::JSValue error() = 0;
 
     void start();
     void changeStateToClosed();
     void changeStateToErrored();
-
-    ReadableStreamSource& source() { return m_source.get(); }
 
     typedef std::function<void(JSC::JSValue)> FailureCallback;
 
@@ -85,7 +86,10 @@ public:
     void read(ReadSuccessCallback&&, ReadEndCallback&&, FailureCallback&&);
 
 protected:
-    ReadableStream(ScriptExecutionContext&, Ref<ReadableStreamSource>&&);
+    explicit ReadableStream(ScriptExecutionContext&);
+
+    bool resolveReadCallback(JSC::JSValue);
+    void pull();
 
 private:
     // ActiveDOMObject API.
@@ -93,9 +97,11 @@ private:
     bool canSuspendForPageCache() const override;
 
     void clearCallbacks();
+    void close();
 
     virtual bool hasValue() const = 0;
     virtual JSC::JSValue read() = 0;
+    virtual void doPull() = 0;
 
     std::unique_ptr<ReadableStreamReader> m_reader;
     Vector<std::unique_ptr<ReadableStreamReader>> m_releasedReaders;
@@ -108,10 +114,11 @@ private:
         ReadEndCallback endCallback;
         FailureCallback failureCallback;
     };
-    Vector<ReadCallbacks> m_readRequests;
+    Deque<ReadCallbacks> m_readRequests;
 
+    bool m_isStarted { false };
+    bool m_closeRequested { false };
     State m_state { State::Readable };
-    Ref<ReadableStreamSource> m_source;
 };
 
 }

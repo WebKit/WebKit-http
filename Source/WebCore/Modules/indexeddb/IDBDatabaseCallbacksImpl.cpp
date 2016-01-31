@@ -38,7 +38,7 @@ Ref<IDBDatabaseCallbacksImpl> IDBDatabaseCallbacksImpl::create()
 }
 
 IDBDatabaseCallbacksImpl::IDBDatabaseCallbacksImpl()
-    : m_database(0)
+    : m_database(nullptr)
 {
 }
 
@@ -52,10 +52,10 @@ void IDBDatabaseCallbacksImpl::onForcedClose()
         m_database->forceClose();
 }
 
-void IDBDatabaseCallbacksImpl::onVersionChange(uint64_t oldVersion, uint64_t newVersion, IndexedDB::VersionNullness newVersionNullness)
+void IDBDatabaseCallbacksImpl::onVersionChange(uint64_t oldVersion, uint64_t newVersion)
 {
     if (m_database)
-        m_database->onVersionChange(oldVersion, newVersion, newVersionNullness);
+        m_database->onVersionChange(oldVersion, newVersion);
 }
 
 void IDBDatabaseCallbacksImpl::connect(IDBDatabase* database)

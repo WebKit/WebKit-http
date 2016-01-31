@@ -358,12 +358,16 @@ void TextFieldInputType::disabledAttributeChanged()
 {
     if (m_innerSpinButton)
         m_innerSpinButton->releaseCapture();
+    capsLockStateMayHaveChanged();
+    updateAutoFillButton();
 }
 
 void TextFieldInputType::readonlyAttributeChanged()
 {
     if (m_innerSpinButton)
         m_innerSpinButton->releaseCapture();
+    capsLockStateMayHaveChanged();
+    updateAutoFillButton();
 }
 
 bool TextFieldInputType::supportsReadOnly() const
@@ -549,6 +553,9 @@ bool TextFieldInputType::shouldDrawCapsLockIndicator() const
     if (element().document().focusedElement() != &element())
         return false;
 
+    if (element().isDisabledOrReadOnly())
+        return false;
+
     Frame* frame = element().document().frame();
     if (!frame)
         return false;
@@ -570,7 +577,7 @@ void TextFieldInputType::capsLockStateMayHaveChanged()
 
 bool TextFieldInputType::shouldDrawAutoFillButton() const
 {
-    return element().showAutoFillButton();
+    return !element().isDisabledOrReadOnly() && element().showAutoFillButton();
 }
 
 void TextFieldInputType::autoFillButtonElementWasClicked()

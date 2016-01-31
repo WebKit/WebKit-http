@@ -261,6 +261,8 @@ webkit.org/b/144811 platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-
 webkit.org/b/144811 platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-padding.html [ Pass Timeout ]
 webkit.org/b/144811 platform/mac-wk2/tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-rotated.html [ Pass Timeout ]
 
+webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -527,6 +529,8 @@ webkit.org/b/141322 [ Debug Yosemite+ ] fast/images/destroyed-image-load-event.h
 webkit.org/b/141325 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abortedonmain.html [ Pass Failure ]
 
 webkit.org/b/141085 [ Yosemite ] http/tests/media/video-query-url.html [ Pass Timeout ]
+
+webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout ]
 
 ### END OF (7) New WebKit2-only failures in Yosemite
 ########################################

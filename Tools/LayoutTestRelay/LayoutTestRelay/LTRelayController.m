@@ -24,10 +24,10 @@
  */
 
 #import "LTRelayController.h"
-#import "LTPipeRelay.h"
 
+#import "CoreSimulatorSPI.h"
+#import "LTPipeRelay.h"
 #import <AppKit/AppKit.h>
-#import <CoreSimulator/CoreSimulator.h>
 
 @interface LTRelayController ()
 @property (readonly, strong) dispatch_source_t standardInputDispatchSource;
@@ -213,7 +213,7 @@
             @"__XPC_DYLD_LIBRARY_PATH": productDirectory,
         } mutableCopy];
 
-        for (NSString *keyName in @[@"DYLD_INSERT_LIBRARIES", @"MallocStackLogging"]) {
+        for (NSString *keyName in @[@"DYLD_INSERT_LIBRARIES", @"MallocStackLogging", @"LOCAL_RESOURCE_ROOT", @"DUMPRENDERTREE_TEMP"]) {
             const char* value = getenv([keyName UTF8String]);
             if (value && strlen(value)) {
                 NSString *nsValue = [NSString stringWithUTF8String:value];

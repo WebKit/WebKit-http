@@ -52,7 +52,6 @@
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
-#include "WebPluginSiteDataManager.h"
 #include "WebPreferences.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
@@ -79,7 +78,6 @@
 #if ENABLE(DATABASE_PROCESS)
 #include "DatabaseProcessCreationParameters.h"
 #include "DatabaseProcessMessages.h"
-#include "WebOriginDataManagerProxy.h"
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
@@ -138,6 +136,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory();
     configuration.mediaKeysStorageDirectory = WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory();
+    configuration.networkCacheDirectory = WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory();
 
     return configuration;
 }
@@ -165,9 +164,10 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 #if USE(SOUP)
     , m_initialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
 #endif
-    , m_webSQLDatabaseDirectory(configuration.webSQLDatabaseDirectory())
+    , m_applicationCacheDirectory(configuration.applicationCacheDirectory())
     , m_indexedDBDatabaseDirectory(configuration.indexedDBDatabaseDirectory())
     , m_mediaKeysStorageDirectory(configuration.mediaKeysStorageDirectory())
+    , m_webSQLDatabaseDirectory(configuration.webSQLDatabaseDirectory())
     , m_shouldUseTestingNetworkSession(false)
     , m_processTerminationEnabled(true)
 #if ENABLE(NETWORK_PROCESS)
@@ -192,9 +192,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 
     // NOTE: These sub-objects must be initialized after m_messageReceiverMap..
     m_iconDatabase = WebIconDatabase::create(this);
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    m_pluginSiteDataManager = WebPluginSiteDataManager::create(this);
-#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
     addSupplement<WebApplicationCacheManagerProxy>();
     addSupplement<WebCookieManagerProxy>();
@@ -209,9 +206,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
 #endif
 #if ENABLE(BATTERY_STATUS)
     addSupplement<WebBatteryManagerProxy>();
-#endif
-#if ENABLE(DATABASE_PROCESS)
-    addSupplement<WebOriginDataManagerProxy>();
 #endif
 
     processPools().append(this);
@@ -258,11 +252,6 @@ WebProcessPool::~WebProcessPool()
     m_iconDatabase->clearProcessPool();
     WebIconDatabase* rawIconDatabase = m_iconDatabase.release().leakRef();
     rawIconDatabase->derefWhenAppropriate();
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    m_pluginSiteDataManager->invalidate();
-    m_pluginSiteDataManager->clearProcessPool();
-#endif
 
     invalidateCallbackMap(m_dictionaryCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 
@@ -415,7 +404,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess()
     parameters.diskCacheSizeOverride = m_diskCacheSizeOverride;
     parameters.canHandleHTTPSServerTrustEvaluation = m_canHandleHTTPSServerTrustEvaluation;
 
-    parameters.diskCacheDirectory = stringByResolvingSymlinksInPath(diskCacheDirectory());
+    parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
@@ -609,17 +598,13 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
     if (!parameters.injectedBundlePath.isEmpty())
         SandboxExtension::createHandle(parameters.injectedBundlePath, SandboxExtension::ReadOnly, parameters.injectedBundlePathExtensionHandle);
 
-    parameters.applicationCacheDirectory = applicationCacheDirectory();
+    parameters.applicationCacheDirectory = m_applicationCacheDirectory;
     if (!parameters.applicationCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.applicationCacheDirectory, parameters.applicationCacheDirectoryExtensionHandle);
 
     parameters.webSQLDatabaseDirectory = m_webSQLDatabaseDirectory;
     if (!parameters.webSQLDatabaseDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.webSQLDatabaseDirectory, parameters.webSQLDatabaseDirectoryExtensionHandle);
-
-    parameters.diskCacheDirectory = diskCacheDirectory();
-    if (!parameters.diskCacheDirectory.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
 #if ENABLE(SECCOMP_FILTERS)
     parameters.cookieStorageDirectory = this->cookieStorageDirectory();
@@ -1168,14 +1153,6 @@ void WebProcessPool::stopMemorySampler()
     sendToAllProcesses(Messages::WebProcess::StopMemorySampler());
 }
 
-String WebProcessPool::applicationCacheDirectory() const
-{
-    if (!m_overrideApplicationCacheDirectory.isEmpty())
-        return m_overrideApplicationCacheDirectory;
-
-    return legacyPlatformDefaultApplicationCacheDirectory();
-}
-
 void WebProcessPool::setIconDatabasePath(const String& path)
 {
     m_overrideIconDatabasePath = path;
@@ -1191,14 +1168,6 @@ String WebProcessPool::iconDatabasePath() const
         return m_overrideIconDatabasePath;
 
     return platformDefaultIconDatabasePath();
-}
-
-String WebProcessPool::diskCacheDirectory() const
-{
-    if (!m_overrideDiskCacheDirectory.isEmpty())
-        return m_overrideDiskCacheDirectory;
-
-    return platformDefaultDiskCacheDirectory();
 }
 
 #if ENABLE(SECCOMP_FILTERS)

@@ -395,7 +395,17 @@ void RenderLayerBacking::updateBackdropFiltersGeometry()
 {
     if (!m_canCompositeBackdropFilters)
         return;
-    m_graphicsLayer->setBackdropFiltersRect(snapRectToDevicePixels(contentsBox(), deviceScaleFactor()));
+
+    if (!is<RenderBox>(renderer()))
+        return;
+
+    RenderBox& renderer = downcast<RenderBox>(this->renderer());
+    LayoutRect backdropFiltersRect = renderer.borderBoxRect();
+    if (renderer.hasClip())
+        backdropFiltersRect.intersect(renderer.clipRect(LayoutPoint(), nullptr));
+
+    backdropFiltersRect.move(contentOffsetInCompostingLayer());
+    m_graphicsLayer->setBackdropFiltersRect(snapRectToDevicePixels(backdropFiltersRect, deviceScaleFactor()));
 }
 #endif
 
@@ -536,7 +546,7 @@ void RenderLayerBacking::updateAfterLayout(UpdateAfterLayoutFlags flags)
         }
     }
     
-    if (flags & NeedsFullRepaint && !paintsIntoWindow() && !paintsIntoCompositedAncestor())
+    if (flags & NeedsFullRepaint && canIssueSetNeedsDisplay())
         setContentsNeedDisplay();
 }
 
@@ -655,6 +665,13 @@ static LayoutRect clipBox(RenderBox& renderer)
     return result;
 }
 
+static bool devicePixelFractionGapFromRendererChanged(const LayoutSize& previousDevicePixelFractionFromRenderer, const LayoutSize& currentDevicePixelFractionFromRenderer, float deviceScaleFactor)
+{
+    FloatSize previous = snapSizeToDevicePixel(previousDevicePixelFractionFromRenderer, LayoutPoint(), deviceScaleFactor);
+    FloatSize current = snapSizeToDevicePixel(currentDevicePixelFractionFromRenderer, LayoutPoint(), deviceScaleFactor);
+    return previous != current;
+}
+
 static FloatSize pixelFractionForLayerPainting(const LayoutPoint& point, float pixelSnappingFactor)
 {
     LayoutUnit x = point.x();
@@ -749,6 +766,7 @@ void RenderLayerBacking::updateGeometry()
     FloatSize devicePixelOffsetFromRenderer;
     LayoutSize devicePixelFractionFromRenderer;
     calculateDevicePixelOffsetFromRenderer(rendererOffsetFromGraphicsLayer, devicePixelOffsetFromRenderer, devicePixelFractionFromRenderer, deviceScaleFactor);
+    LayoutSize oldDevicePixelFractionFromRenderer = m_devicePixelFractionFromRenderer;
     m_devicePixelFractionFromRenderer = LayoutSize(-devicePixelFractionFromRenderer.width(), -devicePixelFractionFromRenderer.height());
 
     adjustAncestorCompositingBoundsForFlowThread(ancestorCompositingBounds, compAncestor);
@@ -1002,6 +1020,9 @@ void RenderLayerBacking::updateGeometry()
 #endif
     updateAfterWidgetResize();
 
+    if (devicePixelFractionGapFromRendererChanged(oldDevicePixelFractionFromRenderer, m_devicePixelFractionFromRenderer, deviceScaleFactor) && canIssueSetNeedsDisplay())
+        setContentsNeedDisplay();
+
     compositor().updateScrollCoordinatedStatus(m_owningLayer);
 }
 
@@ -1035,8 +1056,10 @@ void RenderLayerBacking::updateMaskingLayerGeometry()
 
             WindRule windRule;
             // FIXME: Use correct reference box for inlines: https://bugs.webkit.org/show_bug.cgi?id=129047
-            LayoutRect referenceBoxForClippedInline = m_owningLayer.boundingBox(&m_owningLayer);
-            Path clipPath = m_owningLayer.computeClipPath(LayoutSize(), referenceBoxForClippedInline, windRule);
+            LayoutRect boundingBox = m_owningLayer.boundingBox(&m_owningLayer);
+            LayoutRect referenceBoxForClippedInline = LayoutRect(snapRectToDevicePixels(boundingBox, deviceScaleFactor()));
+            LayoutSize offset = LayoutSize(snapSizeToDevicePixel(m_devicePixelFractionFromRenderer, LayoutPoint(), deviceScaleFactor()));
+            Path clipPath = m_owningLayer.computeClipPath(offset, referenceBoxForClippedInline, windRule);
 
             m_maskLayer->setShapeLayerPath(clipPath);
             m_maskLayer->setShapeLayerWindRule(windRule);
@@ -1931,7 +1954,7 @@ bool RenderLayerBacking::containsPaintedContent(bool isSimpleContainer) const
     // and set background color on the layer in that case, instead of allocating backing store and painting.
 #if ENABLE(VIDEO)
     if (is<RenderVideo>(renderer()) && downcast<RenderVideo>(renderer()).shouldDisplayVideo())
-        return m_owningLayer.hasBoxDecorationsOrBackground();
+        return m_owningLayer.hasBoxDecorationsOrBackground() || (!(downcast<RenderVideo>(renderer()).supportsAcceleratedRendering()) && m_requiresOwnBackingStore);
 #endif
 
 #if ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)

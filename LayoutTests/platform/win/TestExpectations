@@ -242,6 +242,10 @@ http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
 crypto/subtle/rsa-indexeddb.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
+
+# But since it is disabled at runtime, we should make sure it is correctly disabled
+storage/indexeddb/properties-disabled-at-runtime.html [ Pass ]
+
 fast/history/page-cache-webdatabase-no-transaction-db.html [ Skip ]
 fast/history/page-cache-webdatabase-pending-transaction.html [ Skip ]
 
@@ -452,9 +456,6 @@ fast/css/draggable-region-parser.html [ Skip ]
 
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html [ Skip ]
-
-# TODO Implement dumpProgressFinishedCallback
-webkit.org/b/66773 http/tests/loading/progress-finished-callback.html
 
 # TODO HiDPI tests require test infrastructure enhancements (e.g. testRunner.setBackingScaleFactor)
 # https://bugs.webkit.org/show_bug.cgi?id=87919
@@ -1334,10 +1335,8 @@ webkit.org/b/140798 [ Release ] accessibility/legend-children-are-visible.html [
 webkit.org/b/140798 [ Debug ] accessibility/legend-children-are-visible.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/link-inside-button-accessible-text.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/link-inside-button-accessible-text.html [ Skip ] # Debug assertion
-webkit.org/b/145271 [ Release ] accessibility/list-detection.html [ Failure ]
-webkit.org/b/145271 [ Debug ] accessibility/list-detection.html [ Skip ] # Debug assertion
-webkit.org/b/145271 [ Release ] accessibility/list-detection2.html [ Failure ]
-webkit.org/b/145271 [ Debug ] accessibility/list-detection2.html [ Failure ]
+webkit.org/b/140798 [ Release ] accessibility/list-detection.html [ Failure ]
+webkit.org/b/140798 [ Debug ] accessibility/list-detection.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/listitem-title.html [ Failure ]
 webkit.org/b/140798 [ Debug ] accessibility/listitem-title.html [ Skip ] # Debug assertion
 webkit.org/b/140798 [ Release ] accessibility/math-multiscript-attributes.html [ Failure ]
@@ -3107,3 +3106,6 @@ fast/text/simple-line-layout-text-stroke-width.html [ Failure ]
 
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
+
+#Subpixel difference
+fast/text/decorations-vertical-underline.html [ Skip ]

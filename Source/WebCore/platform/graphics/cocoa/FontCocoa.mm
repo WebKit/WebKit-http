@@ -84,12 +84,10 @@ static bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
     if (!fontFamilyName)
         return false;
 
-    // Times New Roman contains Arabic glyphs, but Core Text doesn't know how to shape them. <rdar://problem/9823975>
+    // Times New Roman and Arial are not performant enough to use. <rdar://problem/21333326>
     // FIXME <rdar://problem/12096835> remove this function once the above bug is fixed.
-    // Arial and Tahoma are have performance issues so don't use them as well.
     return (CFStringCompare(CFSTR("Times New Roman"), fontFamilyName, 0) == kCFCompareEqualTo)
-        || (CFStringCompare(CFSTR("Arial"), fontFamilyName, 0) == kCFCompareEqualTo)
-        || (CFStringCompare(CFSTR("Tahoma"), fontFamilyName, 0) == kCFCompareEqualTo);
+        || (CFStringCompare(CFSTR("Arial"), fontFamilyName, 0) == kCFCompareEqualTo);
 }
 #endif
 
@@ -267,12 +265,11 @@ void Font::platformInit()
     if (platformData().orientation() == Vertical && !isTextOrientationFallback())
         m_hasVerticalGlyphs = fontHasVerticalGlyphs(m_platformData.ctFont());
 
-    if (m_platformData.m_isEmoji) {
+    if (m_platformData.isEmoji()) {
         int thirdOfSize = m_platformData.size() / 3;
         m_fontMetrics.setAscent(thirdOfSize);
         m_fontMetrics.setDescent(thirdOfSize);
         m_fontMetrics.setLineGap(thirdOfSize);
-        m_fontMetrics.setLineSpacing(0);
     }
 #endif
 
@@ -455,16 +452,6 @@ static inline bool advanceForColorBitmapFont(const FontPlatformData& platformDat
 #endif
 }
 
-static inline bool isEmoji(const FontPlatformData& platformData)
-{
-#if PLATFORM(IOS)
-    return platformData.m_isEmoji;
-#else
-    UNUSED_PARAM(platformData);
-    return false;
-#endif
-}
-
 static inline bool canUseFastGlyphAdvanceGetter(const Font& font, Glyph glyph, CGSize& advance, bool& populatedAdvance)
 {
     const FontPlatformData& platformData = font.platformData();
@@ -472,7 +459,7 @@ static inline bool canUseFastGlyphAdvanceGetter(const Font& font, Glyph glyph, C
     if (font.hasCustomTracking())
         return false;
     // Fast getter doesn't work for emoji
-    if (isEmoji(platformData))
+    if (platformData.isEmoji())
         return false;
     // ... or for any bitmap fonts in general
     if (advanceForColorBitmapFont(platformData, glyph, advance)) {

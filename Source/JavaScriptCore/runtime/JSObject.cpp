@@ -31,6 +31,7 @@
 #include "CustomGetterSetter.h"
 #include "DatePrototype.h"
 #include "ErrorConstructor.h"
+#include "Exception.h"
 #include "Executable.h"
 #include "GetterSetter.h"
 #include "IndexingHeaderInlines.h"
@@ -78,7 +79,7 @@ static inline void getClassPropertyNames(ExecState* exec, const ClassInfo* class
             continue;
 
         for (auto iter = table->begin(); iter != table->end(); ++iter) {
-            if ((!(iter->attributes() & DontEnum) || mode.includeDontEnumProperties()) && !((iter->attributes() & BuiltinOrFunction) && didReify))
+            if ((!(iter->attributes() & DontEnum) || mode.includeDontEnumProperties()) && !((iter->attributes() & BuiltinOrFunctionOrAccessor) && didReify))
                 propertyNames.add(Identifier::fromString(&vm, iter.key()));
         }
     }
@@ -432,8 +433,10 @@ void JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSV
         const ClassInfo* info = obj->classInfo();
         if (info->hasStaticSetterOrReadonlyProperties()) {
             if (const HashTableValue* entry = obj->findPropertyHashEntry(propertyName)) {
-                putEntry(exec, entry, obj, propertyName, value, slot);
-                return;
+                if (!obj->staticFunctionsReified() || !(entry->attributes() & BuiltinOrFunctionOrAccessor)) {
+                    putEntry(exec, entry, obj, propertyName, value, slot);
+                    return;
+                }
             }
         }
         prototype = obj->prototype();
@@ -1293,7 +1296,10 @@ bool JSObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName proper
             return false; // this builtin property can't be deleted
 
         PutPropertySlot slot(thisObject);
-        putEntry(exec, entry, thisObject, propertyName, jsUndefined(), slot);
+        if (!(entry->attributes() & BuiltinOrFunctionOrAccessor)) {
+            ASSERT(thisObject->staticFunctionsReified());
+            putEntry(exec, entry, thisObject, propertyName, jsUndefined(), slot);
+        }
     }
 
     return true;
@@ -1650,7 +1656,7 @@ void JSObject::reifyStaticFunctionsForDelete(ExecState* exec)
             continue;
         PropertySlot slot(this);
         for (auto iter = hashTable->begin(); iter != hashTable->end(); ++iter) {
-            if (iter->attributes() & BuiltinOrFunction)
+            if (iter->attributes() & BuiltinOrFunctionOrAccessor)
                 setUpStaticFunctionSlot(globalObject()->globalExec(), iter.value(), this, Identifier::fromString(&vm, iter.key()), slot);
         }
     }

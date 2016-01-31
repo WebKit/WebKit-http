@@ -45,7 +45,7 @@ DatabaseThread::DatabaseThread()
 #endif
     , m_transactionClient(std::make_unique<SQLTransactionClient>())
     , m_transactionCoordinator(std::make_unique<SQLTransactionCoordinator>())
-    , m_cleanupSync(0)
+    , m_cleanupSync(nullptr)
 {
     m_selfRef = this;
 }
@@ -150,10 +150,10 @@ void DatabaseThread::handlePausedQueue()
     while (auto task = m_pausedQueue.tryGetMessage())
         pausedTasks.append(WTF::move(task));
 
-    for (unsigned i = 0; i < pausedTasks.size(); ++i) {
+    for (auto& pausedTask : pausedTasks) {
         AutodrainedPool pool;
 
-        std::unique_ptr<DatabaseTask> task(pausedTasks[i].release());
+        std::unique_ptr<DatabaseTask> task(pausedTask.release());
         {
             MutexLocker pausedLocker(m_pausedMutex);
             if (m_paused) {
@@ -203,9 +203,8 @@ void DatabaseThread::databaseThread()
         // As the call to close will modify the original set, we must take a copy to iterate over.
         DatabaseSet openSetCopy;
         openSetCopy.swap(m_openDatabaseSet);
-        DatabaseSet::iterator end = openSetCopy.end();
-        for (DatabaseSet::iterator it = openSetCopy.begin(); it != end; ++it)
-            (*it).get()->close();
+        for (auto& openDatabase : openSetCopy)
+            openDatabase->close();
     }
 
     // Detach the thread so its resources are no longer of any concern to anyone else
@@ -214,7 +213,7 @@ void DatabaseThread::databaseThread()
     DatabaseTaskSynchronizer* cleanupSync = m_cleanupSync;
 
     // Clear the self refptr, possibly resulting in deletion
-    m_selfRef = 0;
+    m_selfRef = nullptr;
 
     if (cleanupSync) // Someone wanted to know when we were done cleaning up.
         cleanupSync->taskCompleted();

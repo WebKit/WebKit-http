@@ -390,7 +390,7 @@ EventHandler::EventHandler(Frame& frame)
     , m_fakeMouseMoveEventTimer(*this, &EventHandler::fakeMouseMoveEventTimerFired)
 #endif
     , m_svgPan(false)
-    , m_resizeLayer(0)
+    , m_resizeLayer(nullptr)
     , m_eventHandlerWillResetCapturingMouseEventsElement(false)
     , m_clickCount(0)
 #if ENABLE(IOS_GESTURE_EVENTS)
@@ -2037,28 +2037,22 @@ void EventHandler::invalidateClick()
     m_clickNode = nullptr;
 }
 
-inline static bool mouseIsReleasedOnPressedElement(Node* targetNode, Node* clickNode)
+static Node* targetNodeForClickEvent(Node* mousePressNode, Node* mouseReleaseNode)
 {
-    if (targetNode == clickNode)
-        return true;
+    if (!mousePressNode || !mouseReleaseNode)
+        return nullptr;
 
-    if (!targetNode)
-        return false;
+    if (mousePressNode == mouseReleaseNode)
+        return mouseReleaseNode;
 
-    ShadowRoot* containingShadowRoot = targetNode->containingShadowRoot();
-    if (!containingShadowRoot)
-        return false;
-
-    // FIXME: When an element in UA ShadowDOM (e.g. inner element in <input>) is clicked,
-    // we assume that the host element is clicked. This is necessary for implementing <input type="range"> etc.
-    // However, we should not check ShadowRoot type basically.
-    // https://bugs.webkit.org/show_bug.cgi?id=108047
-    if (containingShadowRoot->type() != ShadowRoot::UserAgentShadowRoot)
-        return false;
-
-    Node* adjustedTargetNode = targetNode->shadowHost();
-    Node* adjustedClickNode = clickNode ? clickNode->shadowHost() : 0;
-    return adjustedTargetNode == adjustedClickNode;
+    Element* mouseReleaseShadowHost = mouseReleaseNode->shadowHost();
+    if (mouseReleaseShadowHost && mouseReleaseShadowHost == mousePressNode->shadowHost()) {
+        // We want to dispatch the click to the shadow tree host element to give listeners the illusion that the
+        // shadom tree is a single element. For example, we want to give the illusion that <input type="range">
+        // is a single element even though it is a composition of multiple shadom tree elements.
+        return mouseReleaseShadowHost;
+    }
+    return nullptr;
 }
 
 bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMouseEvent)
@@ -2122,7 +2116,8 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& platformMou
 
     bool contextMenuEvent = platformMouseEvent.button() == RightButton;
 
-    bool swallowClickEvent = m_clickCount > 0 && !contextMenuEvent && mouseIsReleasedOnPressedElement(mouseEvent.targetNode(), m_clickNode.get()) && !dispatchMouseEvent(eventNames().clickEvent, mouseEvent.targetNode(), true, m_clickCount, platformMouseEvent, true);
+    Node* nodeToClick = targetNodeForClickEvent(m_clickNode.get(), mouseEvent.targetNode());
+    bool swallowClickEvent = m_clickCount > 0 && !contextMenuEvent && nodeToClick && !dispatchMouseEvent(eventNames().clickEvent, nodeToClick, true, m_clickCount, platformMouseEvent, true);
 
     if (m_resizeLayer) {
         m_resizeLayer->setInResizeMode(false);
@@ -2555,9 +2550,9 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
                 m_lastElementUnderMouse->dispatchMouseEvent(platformMouseEvent, eventNames().mouseoutEvent, 0, m_elementUnderMouse.get());
 
             // Send mouseleave to the node hierarchy no longer under the mouse.
-            for (size_t i = 0; i < leftElementsChain.size(); ++i) {
-                if (hasCapturingMouseLeaveListener || leftElementsChain[i]->hasEventListeners(eventNames().mouseleaveEvent))
-                    leftElementsChain[i]->dispatchMouseEvent(platformMouseEvent, eventNames().mouseleaveEvent, 0, m_elementUnderMouse.get());
+            for (auto& chain : leftElementsChain) {
+                if (hasCapturingMouseLeaveListener || chain->hasEventListeners(eventNames().mouseleaveEvent))
+                    chain->dispatchMouseEvent(platformMouseEvent, eventNames().mouseleaveEvent, 0, m_elementUnderMouse.get());
             }
 
             // Send mouseover event to the new node.
@@ -2565,9 +2560,9 @@ void EventHandler::updateMouseEventTargetNode(Node* targetNode, const PlatformMo
                 m_elementUnderMouse->dispatchMouseEvent(platformMouseEvent, eventNames().mouseoverEvent, 0, m_lastElementUnderMouse.get());
 
             // Send mouseleave event to the nodes hierarchy under the mouse.
-            for (size_t i = 0, size = enteredElementsChain.size(); i < size; ++i) {
-                if (hasCapturingMouseEnterListener || enteredElementsChain[i]->hasEventListeners(eventNames().mouseenterEvent))
-                    enteredElementsChain[i]->dispatchMouseEvent(platformMouseEvent, eventNames().mouseenterEvent, 0, m_lastElementUnderMouse.get());
+            for (auto& chain : enteredElementsChain) {
+                if (hasCapturingMouseEnterListener || chain->hasEventListeners(eventNames().mouseenterEvent))
+                    chain->dispatchMouseEvent(platformMouseEvent, eventNames().mouseenterEvent, 0, m_lastElementUnderMouse.get());
             }
         }
         m_lastElementUnderMouse = m_elementUnderMouse;
@@ -3004,7 +2999,7 @@ void EventHandler::setResizingFrameSet(HTMLFrameSetElement* frameSet)
 void EventHandler::resizeLayerDestroyed()
 {
     ASSERT(m_resizeLayer);
-    m_resizeLayer = 0;
+    m_resizeLayer = nullptr;
 }
 
 void EventHandler::hoverTimerFired()
@@ -3389,7 +3384,7 @@ void EventHandler::freeDataTransfer()
     if (!dragState().dataTransfer)
         return;
     dragState().dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb);
-    dragState().dataTransfer = 0;
+    dragState().dataTransfer = nullptr;
 }
 
 void EventHandler::dragSourceEndedAt(const PlatformMouseEvent& event, DragOperation operation)
@@ -3404,7 +3399,7 @@ void EventHandler::dragSourceEndedAt(const PlatformMouseEvent& event, DragOperat
         dispatchDragSrcEvent(eventNames().dragendEvent, event);
     }
     freeDataTransfer();
-    dragState().source = 0;
+    dragState().source = nullptr;
     // In case the drag was ended due to an escape key press we need to ensure
     // that consecutive mousemove events don't reinitiate the drag and drop.
     m_mouseDownMayStartDrag = false;
@@ -3470,7 +3465,7 @@ bool EventHandler::handleDrag(const MouseEventWithHitTestResults& event, CheckDr
         } else if (!(dragState().type & (DragSourceActionDHTML | DragSourceActionLink))) {
             // ... but only bail if we're not over an unselectable element.
             m_mouseDownMayStartDrag = false;
-            dragState().source = 0;
+            dragState().source = nullptr;
             // ... but if this was the first click in the window, we don't even want to start selection
             if (eventActivatedView(event.event()))
                 m_mouseDownMayStartSelect = false;
@@ -3577,7 +3572,7 @@ cleanupDrag:
     if (!m_mouseDownMayStartDrag) {
         // Something failed to start the drag, clean up.
         freeDataTransfer();
-        dragState().source = 0;
+        dragState().source = nullptr;
     }
     
     // No more default handling (like selection), whether we're past the hysteresis bounds or not
@@ -3859,19 +3854,16 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
 
     UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture, m_frame.document());
 
-    unsigned i;
     bool freshTouchEvents = true;
     bool allTouchReleased = true;
-    for (i = 0; i < points.size(); ++i) {
-        const PlatformTouchPoint& point = points[i];
+    for (auto& point : points) {
         if (point.state() != PlatformTouchPoint::TouchPressed)
             freshTouchEvents = false;
         if (point.state() != PlatformTouchPoint::TouchReleased && point.state() != PlatformTouchPoint::TouchCancelled)
             allTouchReleased = false;
     }
 
-    for (i = 0; i < points.size(); ++i) {
-        const PlatformTouchPoint& point = points[i];
+    for (auto& point : points) {
         PlatformTouchPoint::State pointState = point.state();
         LayoutPoint pagePoint = documentPointForWindowPoint(m_frame, point.pos());
 
@@ -4015,10 +4007,9 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
         bool isTouchCancelEvent = (state == PlatformTouchPoint::TouchCancelled);
         RefPtr<TouchList>& effectiveTouches(isTouchCancelEvent ? emptyList : touches);
         const AtomicString& stateName(eventNameForTouchPointState(static_cast<PlatformTouchPoint::State>(state)));
-        const EventTargetSet& targetsForState = changedTouches[state].m_targets;
 
-        for (EventTargetSet::const_iterator it = targetsForState.begin(); it != targetsForState.end(); ++it) {
-            EventTarget* touchEventTarget = it->get();
+        for (auto& taget : changedTouches[state].m_targets) {
+            EventTarget* touchEventTarget = taget.get();
             RefPtr<TouchList> targetTouches(isTouchCancelEvent ? emptyList : touchesByTarget.get(touchEventTarget));
             ASSERT(targetTouches);
 

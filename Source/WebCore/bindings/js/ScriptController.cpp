@@ -69,9 +69,9 @@ static void collectGarbageAfterWindowShellDestruction()
     if (MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
         // NOTE: We do the collection on next runloop to ensure that there's no pointer
         //       to the window object on the stack.
-        gcController().garbageCollectOnNextRunLoop();
+        GCController::singleton().garbageCollectOnNextRunLoop();
     } else
-        gcController().garbageCollectSoon();
+        GCController::singleton().garbageCollectSoon();
 }
 
 void ScriptController::initializeThreading()
@@ -160,9 +160,8 @@ Deprecated::ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, sourceCode.startLine());
 
-    JSValue evaluationException;
-
-    JSValue returnValue = JSMainThreadExecState::evaluate(exec, jsSourceCode, shell, &evaluationException);
+    Exception* evaluationException;
+    JSValue returnValue = JSMainThreadExecState::evaluate(exec, jsSourceCode, shell, evaluationException);
 
     InspectorInstrumentation::didEvaluateScript(cookie, m_frame);
 

@@ -73,7 +73,7 @@ void PluginProcess::initializeProcess(const ChildProcessInitializationParameters
     platformInitializeProcess(parameters);
 
     auto& memoryPressureHandler = MemoryPressureHandler::singleton();
-    memoryPressureHandler.setLowMemoryHandler([this] (bool) {
+    memoryPressureHandler.setLowMemoryHandler([this] (Critical, Synchronous) {
         if (shouldTerminate())
             terminate();
     });
@@ -199,19 +199,29 @@ void PluginProcess::getSitesWithData(uint64_t callbackID)
     parentProcessConnection()->send(Messages::PluginProcessProxy::DidGetSitesWithData(sites, callbackID), 0);
 }
 
-void PluginProcess::clearSiteData(const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
+void PluginProcess::deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
-    if (NetscapePluginModule* module = netscapePluginModule()) {
-        if (sites.isEmpty()) {
-            // Clear everything.
-            module->clearSiteData(String(), flags, maxAgeInSeconds);
-        } else {
-            for (size_t i = 0; i < sites.size(); ++i)
-                module->clearSiteData(sites[i], flags, maxAgeInSeconds);
+    if (auto* module = netscapePluginModule()) {
+        auto currentTime = std::chrono::system_clock::now();
+
+        if (currentTime > modifiedSince) {
+            uint64_t maximumAge = std::chrono::duration_cast<std::chrono::seconds>(currentTime - modifiedSince).count();
+
+            module->clearSiteData(String(), NP_CLEAR_ALL, maximumAge);
         }
     }
 
-    parentProcessConnection()->send(Messages::PluginProcessProxy::DidClearSiteData(callbackID), 0);
+    parentProcessConnection()->send(Messages::PluginProcessProxy::DidDeleteWebsiteData(callbackID), 0);
+}
+
+void PluginProcess::deleteWebsiteDataForHostNames(const Vector<String>& hostNames, uint64_t callbackID)
+{
+    if (auto* module = netscapePluginModule()) {
+        for (auto& hostName : hostNames)
+            module->clearSiteData(hostName, NP_CLEAR_ALL, std::numeric_limits<uint64_t>::max());
+    }
+
+    parentProcessConnection()->send(Messages::PluginProcessProxy::DidDeleteWebsiteDataForHostNames(callbackID), 0);
 }
 
 void PluginProcess::setMinimumLifetime(double lifetime)

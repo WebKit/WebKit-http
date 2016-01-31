@@ -70,7 +70,11 @@ static void invalidateAfterGenericFamilyChange(Page* page)
 }
 
 #if USE(AVFOUNDATION)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
 bool Settings::gAVFoundationEnabled = false;
+#else
+bool Settings::gAVFoundationEnabled = true;
+#endif
 #endif
 
 #if PLATFORM(COCOA)
@@ -160,7 +164,7 @@ static const bool defaultSelectTrailingWhitespaceEnabled = false;
 static const auto layoutScheduleThreshold = std::chrono::milliseconds(250);
 
 Settings::Settings(Page* page)
-    : m_page(0)
+    : m_page(nullptr)
     , m_mediaTypeOverride("screen")
     , m_fontGenericFamilies(std::make_unique<FontGenericFamilies>())
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)

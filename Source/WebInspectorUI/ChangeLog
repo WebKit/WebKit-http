@@ -1,3 +1,446 @@
+2015-06-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS Regions not displaying DOM Trees in inspector
+        https://bugs.webkit.org/show_bug.cgi?id=145903
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._updateContentFlowFromPayload):
+        Fix function inside the assertion to actually return a value.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.update):
+        For DOMTreeOutlines without a root node, don't clear the tree on updates,
+        since that will clear the nodes that have already been added explicitly.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeElementSelected):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        ResourceTab and sidebar can deal with ContentFlow related views.
+
+2015-06-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: IndexedDB data not showing for MDN example page
+        https://bugs.webkit.org/show_bug.cgi?id=145851
+
+        Reviewed by Anders Carlsson.
+
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel.prototype._indexedDatabaseWasAdded):
+        Fix typo in Storage tab refactoring that was causing an
+        uncaught exception and not showing Indexed DBs.
+
+2015-06-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: font-family names interpreted as color
+        https://bugs.webkit.org/show_bug.cgi?id=123468
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CodeMirrorAdditions.js: Added logic to prevent color picker buttons from appearing before colors that come after a quote character (both " and ').
+
+2015-06-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Rendering Frames timeline should distinguish between layout and painting
+        https://bugs.webkit.org/show_bug.cgi?id=145856
+
+        Reviewed by Timothy Hatcher.
+
+        This patch formalizes the runloop task concept in the frontend, adds new Paint task type to the Rendering
+        Frames timeline, and reorders UI elements such as chart sections and frame "segments" to match the order in
+        which tasks are executed within the runloop.
+
+        We will need to make UI changes to the standard Timelines view in a follow up patch, since tree element icons
+        for Paint records now use a different color that those of other Layout records.
+
+        * UserInterface/Images/TimelineRecordPaint.svg:
+        Changed to use green color.
+
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WebInspector.RenderingFrameTimelineRecord):
+        (WebInspector.RenderingFrameTimelineRecord.displayNameForTaskType):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask.get validRecordForTaskType):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask.set return):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForTask):
+        (WebInspector.RenderingFrameTimelineRecord.prototype.get durationRemainder): Deleted.
+        (WebInspector.RenderingFrameTimelineRecord.prototype.durationForRecords.get var): Deleted.
+        Added TaskType enum to decouple runloop task types from timeline record types, and removed duration remainder
+        support now that "Other" has an associated task type.
+
+        * UserInterface/Views/RenderingFrameTimelineDataGridNode.js:
+        (WebInspector.RenderingFrameTimelineDataGridNode.prototype.get data):
+        (WebInspector.RenderingFrameTimelineDataGridNode.prototype.createCellContent):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WebInspector.RenderingFrameTimelineView):
+        Added new grid column for Paint task, reordered columns to be consistent with the rest of the UI.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-script):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-layout):
+        (.timeline-record-frame > .frame > .duration.rendering-frame-timeline-record-paint):
+        (.timeline-record-frame > .frame > .duration): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-network): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-layout): Deleted.
+        (.timeline-record-frame > .frame > .duration.timeline-record-type-script): Deleted.
+        Updated styles for Render Frame tasks.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        (WebInspector.TimelineRecordFrame.prototype._updateChildElements.createDurationElement):
+        Updated to use Render Frame task types. Frame segment insertion order is now consistent with the rest of the UI.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart.chartData.Object.keys.map):
+        (WebInspector.TimelineSidebarPanel.set this):
+        (WebInspector.TimelineSidebarPanel._refreshFrameSelectionChart.get this):
+        (WebInspector.TimelineSidebarPanel): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart.durationForRecordType): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart): Deleted.
+        Updated to use Render Frame task types.
+
+2015-06-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Wrong overview graph shown after switching from Frames to Timelines
+        https://bugs.webkit.org/show_bug.cgi?id=145778
+
+        Reviewed by Timothy Hatcher.
+
+        TimelineSidebarPanel stores a reference to the selected timeline before switching to the Rendering Frames view,
+        which is used to restore the tree selection, overview graph, and content views when switching back to the
+        standard Timelines view. However if another recording is created before switching, the previously selected
+        timeline tracked by the sidebar cannot be restored, since it doesn't belong to the active recording.
+
+        This is addressed by storing the previously selected timeline type, rather than the timeline object itself.
+        The type is also updated whenever the selected timeline in the tree outline changes, ensuring that the correct
+        timeline will always be restored.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if.get if):
+        (WebInspector.TimelineSidebarPanel.get else): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject.get if): Deleted.
+        (WebInspector.TimelineSidebarPanel.prototype.treeElementForRepresentedObject): Deleted.
+
+2015-06-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clearing active Timeline recording should stop capturing
+        https://bugs.webkit.org/show_bug.cgi?id=145767
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._clearTimeline):
+        Stop capturing if necessary.
+
+2015-06-07  Tobias Reiss  <tobi+webkit@basecode.de>
+
+        Web Inspector: Add PrettyPrinter CSSRule tests
+        https://bugs.webkit.org/show_bug.cgi?id=145740
+
+        Reviewed by Brian Burg.
+
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-colon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-colon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-comma-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/add-whitespace-after-comma.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/do-not-append-semicolon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/do-not-append-semicolon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/invalid-property-is-not-removed-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/invalid-property-is-not-removed.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/keep-prefixed-value-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/keep-prefixed-value.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-colon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-colon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-semicolon-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/remove-whitespace-before-semicolon.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-comment-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-invalid-property-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-comment-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-comment.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-invalid-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-invalid-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-prefixed-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-prefixed-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-followed-by-property.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-without-semicolon-followed-by-comment-and-property-expected.css: Added.
+        * Tools/PrettyPrinting/css-rule-tests/split-property-without-semicolon-followed-by-comment-and-property.css: Added.
+
+2015-06-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Fixing code style and adding more limitations for bug 141262
+        https://bugs.webkit.org/show_bug.cgi?id=145668
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.prototype.isValidPropertyName): Loops through the full property list and returns true only if a property exactly matches the given property name.
+        (WebInspector.CSSCompletions): Added isValidPropertyName function.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): Added logic to limit the invalid class marker to only the property value if the property name is an actual property and to prevent invalid style from being applied incorrectly.
+
+2015-06-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlighting a CSS section does not deselect previously highlighted CSS sections
+        https://bugs.webkit.org/show_bug.cgi?id=145399
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection): Added delegate variable to constructor.
+        (WebInspector.CSSStyleDeclarationSection.prototype.clearSelection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorFocused):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor): Added event listener to codeMirror on "focus".
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.clearSelection): Sets the cursor of the codeMirror to character 0 on line 0.
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._editorFocused): Function that calls the delegate function "editorFocused" when the codeMirror is focused
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.appendStyleSection):
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorFocused): Loops through all sections except for the ignoredSection (parameter) and clears the selected text in each of them.
+
+2015-06-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION (r185213): TypeError: undefined is not an object (evaluating 'WebInspector.clearLogOnReload.value')
+        https://bugs.webkit.org/show_bug.cgi?id=145695
+
+        Reviewed by Mark Lam.
+
+        Move and rename the clear log on reload setting property from
+        WebInspector (Main.js) to LogManager (shared with tests).
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded): Deleted.
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting):
+
+2015-06-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: [REGRESSION] Dashboard's resource count does not reset when main resource navigates
+        https://bugs.webkit.org/show_bug.cgi?id=144553
+
+        Add missing _mainResourceDidChange, which was removed after switching to the tabs UI.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard):
+        _waitingForFirstMainResourceToStartTrackingSize is not used anywhere, remove it.
+
+        (WebInspector.DefaultDashboard.prototype._mainResourceDidChange): Added.
+
+        (WebInspector.DefaultDashboard.prototype._resourceSizeDidChange): Removed.
+        Unused.
+
+2015-06-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Switch to doughnut chart and remove idle time in the Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=145671
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        "Idle" string no longer used.
+
+        * UserInterface/Views/TimelineRecordFrame.js:
+        Reduced maximum frame width by 2px.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        (WebInspector.TimelineSidebarPanel):
+        (WebInspector.TimelineSidebarPanel.prototype._refreshFrameSelectionChart):
+        Added inner radius to chart and removed "Idle" value.
+
+2015-06-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Class constructor appearing as Object Tree property does not include parameters
+        https://bugs.webkit.org/show_bug.cgi?id=145661
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.get functionDescription):
+        Include the className as only use it for "class" types to override
+        the normal description string. Stash the actual function description
+        in a property we can access later.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._functionParameterString):
+        Even if this property is a "class" we want to specifically parse it's
+        function description string. So use functionDescription.
+
+2015-06-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Close and open tabs on mouseup, not mousedown
+        https://bugs.webkit.org/show_bug.cgi?id=145656
+
+        Match Safari's behaviour.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar):
+        (WebInspector.TabBar.prototype.set newTabItem):
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        (WebInspector.TabBar.prototype._handleClick): Added.
+        (WebInspector.TabBar.prototype._handleMouseUp):
+        (WebInspector.TabBar.prototype._handleNewTabClick): Added.
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+
+2015-06-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Decrease tabs height to match Safari's tabs height
+        https://bugs.webkit.org/show_bug.cgi?id=145647
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar):
+
+2015-06-04  Tobias Reiss  <tobi+webkit@basecode.de>
+        
+        Web Inspector: Activity Viewer does not update on "Clear Log on reload"
+        https://bugs.webkit.org/show_bug.cgi?id=145466
+        
+        Reviewed by Joseph Pecoraro.
+
+        1. Isolate logic within LogManager and remove hacks/logic from all other files
+        2. Within LogManager: Differentiate "messagesCleared" calls
+         a) that happen as a result of a "requested clear" by Frontend (e.g. Button)
+         b) that happen on page reload and install "clear/keep-on-page-reload" logic
+         c) that happen on frame navigated, console.clear() or clear()
+        3. Unify "ActiveLogCleared" and "Cleared" events to "Cleared"
+        
+        For step 2b and 2c it is important to delay the handling and wait until
+        "_mainResourceDidChange" has determined whether a page reload happened or
+        not.
+        
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Store "clear-log-on-reload" setting globally.
+        
+        * UserInterface/Controllers/IssueManager.js:
+        (WebInspector.IssueManager):
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard): Deleted.
+        * UserInterface/Views/ObjectTreeView.js:
+        (WebInspector.ObjectTreeView.prototype._trackWeakEntries): Deleted.
+        (WebInspector.ObjectTreeView.prototype._untrackWeakEntries): Deleted.
+        (WebInspector.ObjectTreeView): Deleted.
+        Remove deleted events.
+        
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype._handleClearShortcut):
+        (WebInspector.JavaScriptLogViewController.prototype.clear): Deleted.
+        Remove delegate function call and call LogManager directly.
+        
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        (WebInspector.LogManager.prototype.messagesCleared):
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        (WebInspector.LogManager.prototype.requestClearMessages):
+        (WebInspector.LogManager.prototype._mainResourceDidChange):
+        Isolate "clear log" logic, especially clear/keep-log-on-reload logic.
+        
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._logCleared):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnReloadSetting):
+        (WebInspector.LogContentView.prototype._clearLog):
+        (WebInspector.LogContentView.prototype.didClearMessages): Deleted.
+        (WebInspector.LogContentView.prototype._sessionsCleared): Deleted.
+        (WebInspector.LogContentView.prototype._activeLogCleared): Deleted.
+        (WebInspector.LogContentView.prototype._clearLogIgnoringClearMessages): Deleted.
+        Make it a consumer of LogManager and remove special hacks. Simplify code.
+
+2015-06-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: if a known CSS property has an unsupported value, only strikethrough the value
+        https://bugs.webkit.org/show_bug.cgi?id=141262
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.prototype.nameMatchesValidPropertyExactly): Loops through the full property list and returns true only if a property exactly matches the given property name.
+        (WebInspector.CSSCompletions): Added nameMatchesValidPropertyExactly function.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createTextMarkerForPropertyIfNeeded): Added logic to limit the invalid class marker to only the property value if the property name is an actual property.
+
+2015-06-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Search field bottom border doesn't match the rest of the toolbar
+        https://bugs.webkit.org/show_bug.cgi?id=145611
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Toolbar.css:
+        (body:not(.unknown-mac) .toolbar .search-bar > input[type="search"]):
+
+2015-06-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception starting a NavigationBar drag and mousing over a different NavigationBar
+        https://bugs.webkit.org/show_bug.cgi?id=145589
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype._mouseDown):
+        (WebInspector.NavigationBar.prototype._mouseUp):
+        When mouse dragging for navigation bars, only match against navigation
+        bar items inside this navigation bar. Also, fix horizontal detection
+        of navigation bar items by scanning in the middle of the navigation
+        bar instead of the top, which missed the items.
+
+2015-06-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Popover for Node object should have go-to-arrow to show the node in DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=145594
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.inspectElement):
+        Previously we could get an exception later on if we tried to
+        inspect an element that was not in the DOM. Bail if the node
+        is not in the DOM or not.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content > .title > .go-to-arrow):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForObject.data.pushNodeToFrontend):
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForObject):
+        For a node type, add a go-to-arrow in the popover if it is in the DOM or not.
+
 2015-06-02  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Remove uses of delete in Sidebar related code

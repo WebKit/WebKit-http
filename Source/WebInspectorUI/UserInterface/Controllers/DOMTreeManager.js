@@ -266,8 +266,10 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     inspectElement(nodeId)
     {
         var node = this._idToDOMNode[nodeId];
-        if (node)
-            this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.DOMNodeWasInspected, {node});
+        if (!node || !node.ownerDocument)
+            return;
+
+        this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.DOMNodeWasInspected, {node});
 
         this._inspectModeEnabled = false;
         this.dispatchEventToListeners(WebInspector.DOMTreeManager.Event.InspectModeStateChanged);
@@ -433,7 +435,7 @@ WebInspector.DOMTreeManager = class DOMTreeManager extends WebInspector.Object
     _updateContentFlowFromPayload(contentFlow, flowPayload)
     {
         console.assert(contentFlow.contentNodes.length === flowPayload.content.length);
-        console.assert(contentFlow.contentNodes.every(function(node, i) { node.id === flowPayload.content[i]; }));
+        console.assert(contentFlow.contentNodes.every(function(node, i) { return node.id === flowPayload.content[i]; }));
 
         // FIXME: Collect the regions from the payload.
         contentFlow.overset = flowPayload.overset;

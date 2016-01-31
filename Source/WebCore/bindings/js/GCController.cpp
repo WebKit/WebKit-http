@@ -32,6 +32,7 @@
 #include <heap/Heap.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/NeverDestroyed.h>
 
 using namespace JSC;
 
@@ -43,10 +44,10 @@ static void collect(void*)
     JSDOMWindow::commonVM().heap.collectAllGarbage();
 }
 
-GCController& gcController()
+GCController& GCController::singleton()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(GCController, staticGCController, ());
-    return staticGCController;
+    static NeverDestroyed<GCController> controller;
+    return controller;
 }
 
 GCController::GCController()
@@ -87,6 +88,17 @@ void GCController::garbageCollectNow()
         JSDOMWindow::commonVM().heap.collectAllGarbage();
         WTF::releaseFastMallocFreeMemory();
     }
+}
+
+void GCController::garbageCollectNowIfNotDoneRecently()
+{
+#if USE(CF)
+    JSLockHolder lock(JSDOMWindow::commonVM());
+    if (!JSDOMWindow::commonVM().heap.isBusy())
+        JSDOMWindow::commonVM().heap.collectAllGarbageIfNotDoneRecently();
+#else
+    garbageCollectSoon();
+#endif
 }
 
 void GCController::garbageCollectOnAlternateThreadForDebugging(bool waitUntilDone)

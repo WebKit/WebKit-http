@@ -54,7 +54,7 @@ Controller.PauseAfterSeeking = 1;
 
 /* Globals */
 Controller.gSimulateWirelessPlaybackTarget = false; // Used for testing when there are no wireless targets.
-Controller.gSimulateOptimizedFullscreenAvailable = false; // Used for testing when optimized fullscreen is not available.
+Controller.gSimulatePictureInPictureAvailable = false; // Used for testing when picture-in-picture is not available.
 
 Controller.prototype = {
 
@@ -99,10 +99,10 @@ Controller.prototype = {
         list: 'list',
         muteBox: 'mute-box',
         muted: 'muted',
-        optimized: 'optimized',
         paused: 'paused',
+        pictureInPicture: 'picture-in-picture',
         playing: 'playing',
-        returnFromOptimized: 'return-from-optimized',
+        returnFromPictureInPicture: 'return-from-picture-in-picture',
         selected: 'selected',
         show: 'show',
         small: 'small',
@@ -464,14 +464,15 @@ Controller.prototype = {
         fullscreenButton.setAttribute('aria-label', this.UIString('Display Full Screen'));
         this.listenFor(fullscreenButton, 'click', this.handleFullscreenButtonClicked);
 
-        var optimizedFullscreenButton = this.controls.optimizedFullscreenButton = document.createElement('button');
-        optimizedFullscreenButton.setAttribute('pseudo', '-webkit-media-controls-optimized-fullscreen-button');
-        optimizedFullscreenButton.setAttribute('aria-label', this.UIString('Display Optimized Full Screen'));
-        this.listenFor(optimizedFullscreenButton, 'click', this.handleOptimizedFullscreenButtonClicked);
+        var pictureInPictureButton = this.controls.pictureInPictureButton = document.createElement('button');
+        pictureInPictureButton.setAttribute('pseudo', '-webkit-media-controls-picture-in-picture-button');
+        pictureInPictureButton.setAttribute('aria-label', this.UIString('Display Picture in Picture'));
+        this.listenFor(pictureInPictureButton, 'click', this.handlePictureInPictureButtonClicked);
 
         var inlinePlaybackPlaceholder = this.controls.inlinePlaybackPlaceholder = document.createElement('div');
         inlinePlaybackPlaceholder.setAttribute('pseudo', '-webkit-media-controls-wireless-playback-status');
-        if (!Controller.gSimulateOptimizedFullscreenAvailable)
+        inlinePlaybackPlaceholder.setAttribute('aria-label', this.UIString('Video Playback Placeholder'));
+        if (!Controller.gSimulatePictureInPictureAvailable)
             inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
 
         var inlinePlaybackPlaceholderText = this.controls.inlinePlaybackPlaceholderText = document.createElement('div');
@@ -611,6 +612,15 @@ Controller.prototype = {
         this.setNeedsUpdateForDisplayedWidth();
         this.updateLayoutForDisplayedWidth();
         this.setNeedsTimelineMetricsUpdate();
+
+        if (this.shouldHaveControls()) {
+            this.controls.panel.classList.add(this.ClassNames.show);
+            this.controls.panel.classList.remove(this.ClassNames.hidden);
+            this.resetHideControlsTimer();
+        } else {
+            this.controls.panel.classList.remove(this.ClassNames.show);
+            this.controls.panel.classList.add(this.ClassNames.hidden);
+        }
     },
 
     isPlayable: function()
@@ -779,6 +789,9 @@ Controller.prototype = {
 
     handleWrapperMouseMove: function(event)
     {
+        if (!this.video.controls && !this.isFullScreen())
+            return;
+
         if (this.controlsAreHidden())
             this.showControls();
         this.resetHideControlsTimer();
@@ -1012,8 +1025,8 @@ Controller.prototype = {
     updateFullscreenButtons: function()
     {
         var shouldBeHidden = !this.video.webkitSupportsFullscreen || !this.hasVideo();
-        this.controls.fullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
-        this.controls.optimizedFullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
+        this.controls.fullscreenButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden && !this.isFullScreen());
+        this.controls.pictureInPictureButton.classList.toggle(this.ClassNames.hidden, shouldBeHidden);
         this.setNeedsUpdateForDisplayedWidth();
         this.updateLayoutForDisplayedWidth();
     },
@@ -1429,7 +1442,7 @@ Controller.prototype = {
 
         // Filter all the buttons which are not explicitly hidden.
         var buttons = [this.controls.playButton, this.controls.rewindButton, this.controls.captionButton,
-                       this.controls.fullscreenButton, this.controls.optimizedFullscreenButton,
+                       this.controls.fullscreenButton, this.controls.pictureInPictureButton,
                        this.controls.wirelessTargetPicker, this.controls.muteBox];
         var visibleButtons = buttons.filter(this.isControlVisible, this);
 
@@ -1443,7 +1456,7 @@ Controller.prototype = {
         this.controls.remainingTime.classList.toggle(this.ClassNames.dropped, shouldDropTimeline);
 
         // Then controls in the following order:
-        var removeOrder = [this.controls.wirelessTargetPicker, this.controls.optimizedFullscreenButton,
+        var removeOrder = [this.controls.wirelessTargetPicker, this.controls.pictureInPictureButton,
                            this.controls.captionButton, this.controls.muteBox, this.controls.rewindButton,
                            this.controls.fullscreenButton];
         removeOrder.forEach(function(control) {
@@ -1475,7 +1488,7 @@ Controller.prototype = {
     {
         this.base.appendChild(this.controls.inlinePlaybackPlaceholder);
         this.base.appendChild(this.controls.panel);
-        this.setNeedsTimelineMetricsUpdate();
+        this.updateControls();
     },
 
     updateTime: function()
@@ -1867,10 +1880,12 @@ Controller.prototype = {
     {
         if (this.hideTimer)
             clearTimeout(this.hideTimer);
-        this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
+
+        if (this.isPlaying)
+            this.hideTimer = setTimeout(this.hideControls.bind(this), this.HideControlsDelay);
     },
 
-    handleOptimizedFullscreenButtonClicked: function(event) {
+    handlePictureInPictureButtonClicked: function(event) {
     },
 
     currentPlaybackTargetIsWireless: function() {
@@ -2020,12 +2035,6 @@ Controller.prototype = {
             return;
 
         this._pageScaleFactor = newScaleFactor;
-
-        // FIXME: this should react to the scale change by
-        // unscaling the controls panel. However, this
-        // hits a bug with the backdrop blur layer getting
-        // too big and moving to a tiled layer.
-        // https://bugs.webkit.org/show_bug.cgi?id=142317
     },
 
     handleRootResize: function(event)

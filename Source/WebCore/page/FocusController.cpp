@@ -291,8 +291,8 @@ bool FocusController::advanceFocusInDocumentOrder(FocusDirection direction, Keyb
     if (!element) {
         // We didn't find a node to focus, so we should try to pass focus to Chrome.
         if (!initialFocus && m_page.chrome().canTakeFocus(direction)) {
-            document->setFocusedElement(0);
-            setFocusedFrame(0);
+            document->setFocusedElement(nullptr);
+            setFocusedFrame(nullptr);
             m_page.chrome().takeFocus(direction);
             return true;
         }
@@ -700,8 +700,7 @@ void FocusController::setIsVisibleAndActiveInternal(bool contentIsVisible)
         if (!scrollableAreas)
             continue;
 
-        for (HashSet<ScrollableArea*>::const_iterator it = scrollableAreas->begin(), end = scrollableAreas->end(); it != end; ++it) {
-            ScrollableArea* scrollableArea = *it;
+        for (auto& scrollableArea : *scrollableAreas) {
             ASSERT(scrollableArea->scrollbarsCanBeActive() || m_page.shouldSuppressScrollbarAnimations());
 
             contentAreaDidShowOrHide(scrollableArea, contentIsVisible);

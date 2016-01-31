@@ -174,10 +174,6 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.accessibilityEnhancedUserInterfaceEnabled = false;
 #endif
 
-    NSURLCache *urlCache = [NSURLCache sharedURLCache];
-    parameters.nsURLCacheMemoryCapacity = [urlCache memoryCapacity];
-    parameters.nsURLCacheDiskCapacity = [urlCache diskCapacity];
-
     parameters.shouldEnableKerningAndLigaturesByDefault = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey];
     parameters.shouldEnableJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCJITEnabledDefaultsKey];
     parameters.shouldEnableFTLJIT = [[NSUserDefaults standardUserDefaults] boolForKey:WebKitJSCFTLJITEnabledDefaultsKey];
@@ -256,8 +252,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
 #if ENABLE(NETWORK_CACHE)
-    bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey] && ![defaults boolForKey:WebKitNetworkCacheTemporarilyDisabledForTestingKey];
-    parameters.shouldEnableNetworkCache = networkCacheEnabledByDefaults && linkedOnOrAfter(LibraryVersion::FirstWithNetworkCache);
+    parameters.shouldEnableNetworkCache = isNetworkCacheEnabled();
     parameters.shouldEnableNetworkCacheEfficacyLogging = [defaults boolForKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 #endif
 
@@ -272,14 +267,6 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 void WebProcessPool::platformInvalidateContext()
 {
     unregisterNotificationObservers();
-}
-
-String WebProcessPool::platformDefaultDiskCacheDirectory() const
-{
-    RetainPtr<NSString> cachePath = adoptNS((NSString *)WKCopyFoundationCacheDirectory());
-    if (!cachePath)
-        cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
-    return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
 }
 
 #if PLATFORM(IOS)
@@ -335,6 +322,8 @@ String WebProcessPool::containerTemporaryDirectory() const
 
 String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
 {
+    registerUserDefaultsIfNeeded();
+
     NSString *databasesDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebDatabaseDirectoryDefaultsKey];
     if (!databasesDirectory || ![databasesDirectory isKindOfClass:[NSString class]])
         databasesDirectory = @"~/Library/WebKit/Databases";
@@ -352,6 +341,8 @@ String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 {
+    registerUserDefaultsIfNeeded();
+
     NSString *localStorageDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebStorageDirectoryDefaultsKey];
     if (!localStorageDirectory || ![localStorageDirectory isKindOfClass:[NSString class]])
         localStorageDirectory = @"~/Library/WebKit/LocalStorage";
@@ -360,6 +351,8 @@ String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 
 String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 {
+    registerUserDefaultsIfNeeded();
+
     NSString *mediaKeysStorageDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebKitMediaKeysStorageDirectoryDefaultsKey];
     if (!mediaKeysStorageDirectory || ![mediaKeysStorageDirectory isKindOfClass:[NSString class]])
         mediaKeysStorageDirectory = @"~/Library/WebKit/MediaKeys";
@@ -392,6 +385,35 @@ String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 #endif
     NSString* cachePath = [cacheDir stringByAppendingPathComponent:appName];
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
+}
+
+String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
+{
+    RetainPtr<NSString> cachePath = adoptNS((NSString *)WKCopyFoundationCacheDirectory());
+    if (!cachePath)
+        cachePath = @"~/Library/Caches/com.apple.WebKit.WebProcess";
+
+#if ENABLE(NETWORK_CACHE)
+    if (isNetworkCacheEnabled())
+        cachePath = [cachePath stringByAppendingPathComponent:@"WebKitCache"];
+#endif
+
+    return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
+}
+
+bool WebProcessPool::isNetworkCacheEnabled()
+{
+#if ENABLE(NETWORK_CACHE)
+    registerUserDefaultsIfNeeded();
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+    bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey] && ![defaults boolForKey:WebKitNetworkCacheTemporarilyDisabledForTestingKey];
+
+    return networkCacheEnabledByDefaults && linkedOnOrAfter(LibraryVersion::FirstWithNetworkCache);
+#else
+    return false;
+#endif
 }
 
 String WebProcessPool::platformDefaultIconDatabasePath() const

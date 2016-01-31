@@ -1749,7 +1749,6 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
 {
     return [_wkView draggingUpdated:sender];
-    
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
@@ -1937,6 +1936,17 @@ static int32_t activeOrientation(WKWebView *webView)
         completionHandlerCopy(didBecomeFirstResponder);
         Block_release(completionHandlerCopy);
     }];
+}
+
+- (id)_snapshotLayerContentsForBackForwardListItem:(WKBackForwardListItem *)item
+{
+    if (_page->backForwardList().currentItem() == &item._item)
+        _page->recordNavigationSnapshot(*_page->backForwardList().currentItem());
+
+    if (auto* viewSnapshot = item._item.snapshot())
+        return viewSnapshot->asLayerContents();
+
+    return nil;
 }
 
 #endif

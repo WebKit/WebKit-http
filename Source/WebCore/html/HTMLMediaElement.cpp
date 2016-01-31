@@ -65,10 +65,10 @@
 #include "MediaPlayer.h"
 #include "MediaQueryEvaluator.h"
 #include "MediaResourceLoader.h"
-#include "MediaSessionManager.h"
 #include "NetworkingContext.h"
 #include "PageGroup.h"
 #include "PageThrottler.h"
+#include "PlatformMediaSessionManager.h"
 #include "ProgressTracker.h"
 #include "RenderLayerCompositor.h"
 #include "RenderVideo.h"
@@ -112,6 +112,10 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "WebKitPlaybackTargetAvailabilityEvent.h"
+#endif
+
+#if ENABLE(MEDIA_SESSION)
+#include "MediaSession.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -451,6 +455,13 @@ HTMLMediaElement::~HTMLMediaElement()
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_isolatedWorld)
         m_isolatedWorld->clearWrappers();
+#endif
+
+#if ENABLE(MEDIA_SESSION)
+    if (m_session) {
+        m_session->removeMediaElement(*this);
+        m_session = nullptr;
+    }
 #endif
 
     m_seekTaskQueue.close();
@@ -2818,6 +2829,19 @@ void HTMLMediaElement::playInternal()
             scheduleEvent(eventNames().waitingEvent);
         else if (m_readyState >= HAVE_FUTURE_DATA)
             scheduleEvent(eventNames().playingEvent);
+
+#if ENABLE(MEDIA_SESSION)
+        // 6.3 Activating a media session from a media element
+        // When the play() method is invoked, the paused attribute is true, and the readyState attribute has the value
+        // HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA, then
+        // 1. Let media session be the value of the current media session.
+        // 2. If we are not currently in media session's list of active participating media elements then append
+        //    ourselves to this list.
+        if (m_readyState == HAVE_ENOUGH_DATA || m_readyState == HAVE_FUTURE_DATA) {
+            if (m_session)
+                m_session->addActiveMediaElement(*this);
+        }
+#endif
     }
     m_autoplaying = false;
     updatePlayState();
@@ -5114,12 +5138,6 @@ void HTMLMediaElement::exitFullscreen()
     }
 }
 
-void HTMLMediaElement::enterFullscreenOptimized()
-{
-    if (m_mediaSession->allowsAlternateFullscreen(*this))
-        enterFullscreen(VideoFullscreenModeOptimized);
-}
-
 void HTMLMediaElement::didBecomeFullscreenElement()
 {
     if (hasMediaControls())
@@ -6353,6 +6371,26 @@ bool HTMLMediaElement::canSaveMediaData() const
 
     return false;
 }
+
+#if ENABLE(MEDIA_SESSION)
+
+MediaSession* HTMLMediaElement::session() const
+{
+    return m_session.get();
+}
+
+void HTMLMediaElement::setSession(MediaSession* session)
+{
+    if (m_session)
+        m_session->removeMediaElement(*this);
+
+    m_session = session;
+
+    if (session)
+        session->addMediaElement(*this);
+}
+
+#endif
 
 }
 
