@@ -816,7 +816,7 @@ QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy str
         // declarations, as well as embedded and inline style declarations.
 
         Document& document = m_element->document();
-        Vector<RefPtr<StyleRuleBase> > rules = document.ensureStyleResolver().styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
+        Vector<RefPtr<StyleRule>> rules = document.ensureStyleResolver().styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
         for (int i = rules.size(); i > 0; --i) {
             if (!rules[i - 1]->isStyleRule())
                 continue;
@@ -959,7 +959,7 @@ void QWebElement::appendInside(const QWebElement &element)
         return;
 
     ExceptionCode exception = 0;
-    m_element->appendChild(element.m_element, exception);
+    m_element->appendChild(*element.m_element, exception);
 }
 
 /*!
@@ -980,7 +980,7 @@ void QWebElement::appendInside(const QString &markup)
     ExceptionCode exception = 0;
     RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
 
-    m_element->appendChild(fragment, exception);
+    m_element->appendChild(*fragment, exception);
 }
 
 /*!
@@ -1002,9 +1002,9 @@ void QWebElement::prependInside(const QWebElement &element)
     ExceptionCode exception = 0;
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(element.m_element, m_element->firstChild(), exception);
+        m_element->insertBefore(*element.m_element, m_element->firstChild(), exception);
     else
-        m_element->appendChild(element.m_element, exception);
+        m_element->appendChild(*element.m_element, exception);
 }
 
 /*!
@@ -1026,9 +1026,9 @@ void QWebElement::prependInside(const QString &markup)
     RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(fragment, m_element->firstChild(), exception);
+        m_element->insertBefore(*fragment, m_element->firstChild(), exception);
     else
-        m_element->appendChild(fragment, exception);
+        m_element->appendChild(*fragment, exception);
 }
 
 
@@ -1051,7 +1051,7 @@ void QWebElement::prependOutside(const QWebElement &element)
         return;
 
     ExceptionCode exception = 0;
-    m_element->parentNode()->insertBefore(element.m_element, m_element, exception);
+    m_element->parentNode()->insertBefore(*element.m_element, m_element, exception);
 }
 
 /*!
@@ -1099,9 +1099,9 @@ void QWebElement::appendOutside(const QWebElement &element)
 
     ExceptionCode exception = 0;
     if (!m_element->nextSibling())
-        m_element->parentNode()->appendChild(element.m_element, exception);
+        m_element->parentNode()->appendChild(*element.m_element, exception);
     else
-        m_element->parentNode()->insertBefore(element.m_element, m_element->nextSibling(), exception);
+        m_element->parentNode()->insertBefore(*element.m_element, m_element->nextSibling(), exception);
 }
 
 /*!
@@ -1144,7 +1144,8 @@ QWebElement QWebElement::clone() const
     if (!m_element)
         return QWebElement();
 
-    return QWebElement(m_element->cloneElementWithChildren().get());
+    // FIXME: Do we need to add document argument? What is use case for cloning to different document?
+    return QWebElement(&m_element->cloneElementWithChildren(m_element->document()).get());
 }
 
 /*!
@@ -1247,9 +1248,9 @@ void QWebElement::encloseContentsWith(const QWebElement &element)
     }
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(element.m_element, m_element->firstChild(), exception);
+        m_element->insertBefore(*element.m_element, m_element->firstChild(), exception);
     else
-        m_element->appendChild(element.m_element, exception);
+        m_element->appendChild(*element.m_element, exception);
 }
 
 /*!
@@ -1288,9 +1289,9 @@ void QWebElement::encloseContentsWith(const QString &markup)
     }
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(fragment, m_element->firstChild(), exception);
+        m_element->insertBefore(*fragment, m_element->firstChild(), exception);
     else
-        m_element->appendChild(fragment, exception);
+        m_element->appendChild(*fragment, exception);
 }
 
 /*!
@@ -1472,7 +1473,7 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
     context.translate(-rect.x(), -rect.y());
     painter->setClipRect(finalClipRect, Qt::IntersectClip);
     view->setNodeToDraw(e);
-    view->paintContents(&context, finalClipRect);
+    view->paintContents(context, finalClipRect);
     view->setNodeToDraw(0);
     context.restore();
 }
@@ -1480,7 +1481,7 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
 class QWebElementCollectionPrivate : public QSharedData
 {
 public:
-    static QWebElementCollectionPrivate* create(const PassRefPtr<Node> &context, const QString &query);
+    static QWebElementCollectionPrivate* create(const PassRefPtr<ContainerNode> &context, const QString &query);
 
     RefPtr<NodeList> m_result;
 
@@ -1488,7 +1489,7 @@ private:
     inline QWebElementCollectionPrivate() {}
 };
 
-QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const PassRefPtr<Node> &context, const QString &query)
+QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const PassRefPtr<ContainerNode> &context, const QString &query)
 {
     if (!context)
         return 0;
