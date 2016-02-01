@@ -27,6 +27,7 @@
 #define PageClientImpl_h
 
 #include "PageClient.h"
+#include "WebFullScreenManagerProxy.h"
 
 namespace WKWPE {
 class View;
@@ -34,7 +35,12 @@ class View;
 
 namespace WebKit {
 
-class PageClientImpl final : public PageClient {
+class PageClientImpl final : public PageClient 
+#if ENABLE(FULLSCREEN_API)
+    , public WebFullScreenManagerProxyClient
+#endif
+
+{
 public:
     PageClientImpl(WKWPE::View&);
 
@@ -114,6 +120,21 @@ private:
 #endif
 
     virtual void didRestoreScrollPosition() override;
+
+    // Auxiliary Client Creation
+#if ENABLE(FULLSCREEN_API)
+    virtual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+    // WebFullScreenManagerProxyClient
+    virtual void closeFullScreenManager() override;
+    virtual bool isFullScreen() override;
+    virtual void enterFullScreen() override;
+    virtual void exitFullScreen() override;
+    virtual void beganEnterFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) override;
+    virtual void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) override;
+#endif
 
     WKWPE::View& m_view;
 };

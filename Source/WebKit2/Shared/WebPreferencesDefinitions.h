@@ -135,7 +135,7 @@
     macro(DOMPasteAllowed, domPasteAllowed, Bool, bool, false) \
     macro(JavaScriptCanAccessClipboard, javaScriptCanAccessClipboard, Bool, bool, false) \
     macro(ShouldPrintBackgrounds, shouldPrintBackgrounds, Bool, bool, DEFAULT_SHOULD_PRINT_BACKGROUNDS) \
-    macro(FullScreenEnabled, fullScreenEnabled, Bool, bool, false) \
+    macro(FullScreenEnabled, fullScreenEnabled, Bool, bool, true) \
     macro(AsynchronousSpellCheckingEnabled, asynchronousSpellCheckingEnabled, Bool, bool, false) \
     macro(WebSecurityEnabled, webSecurityEnabled, Bool, bool, true) \
     macro(AllowUniversalAccessFromFileURLs, allowUniversalAccessFromFileURLs, Bool, bool, false) \

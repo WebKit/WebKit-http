@@ -5702,6 +5702,9 @@ void Document::requestFullScreenForElement(Element* element, unsigned short flag
         m_areKeysEnabledInFullScreen = flags & Element::ALLOW_KEYBOARD_INPUT;
         page()->chrome().client().enterFullScreenForElement(element);
 
+	    webkitWillEnterFullScreenForElement(element);
+	    webkitDidEnterFullScreenForElement(element);
+
         // 7. Optionally, display a message indicating how the user can exit displaying the context object fullscreen.
         return;
     } while (0);
@@ -5793,6 +5796,10 @@ void Document::webkitExitFullscreen()
     // full screen stack.
     if (!newTop) {
         page()->chrome().client().exitFullScreenForElement(m_fullScreenElement.get());
+
+        webkitWillExitFullScreenForElement(m_fullScreenElement.get());
+        webkitDidExitFullScreenForElement(m_fullScreenElement.get());
+
         return;
     }
 
