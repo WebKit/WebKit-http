@@ -120,9 +120,9 @@ private:
 #endif
     InterpolationQuality m_interpolationQuality;
     TextDrawingModeFlags m_textDrawingMode;
+    bool m_isMaskMode;
     TransformationMatrix m_patternTransform;
-    WrapMode m_wrapMode : 8;
-    bool m_isMaskMode : 8;
+    WrapMode m_wrapMode;
 };
 
 }
