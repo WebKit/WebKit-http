@@ -1,0 +1,5 @@
+[
+    ConstructorTemplate=Event
+] interface ClipboardEvent : Event {
+    readonly attribute DataTransfer clipboardData;
+};
