@@ -24,9 +24,15 @@
 #include "ClipboardEvent.h"
 
 #include "DataTransfer.h"
+#include "DataTransferAccessPolicy.h"
 #include "EventNames.h"
 
 namespace WebCore {
+
+ClipboardEventInit::ClipboardEventInit()
+    : dataTransfer(DataTransfer::createForCopyAndPaste(DataTransferAccessPolicy::Writable))
+{
+}
 
 ClipboardEvent::ClipboardEvent()
 {
@@ -37,14 +43,19 @@ ClipboardEvent::ClipboardEvent(const AtomicString& eventType, bool canBubble, bo
 {
 }
 
+ClipboardEvent::ClipboardEvent(const AtomicString& eventType, ClipboardEventInit& initializer)
+    : Event(eventType, initializer)
+    , m_dataTransfer(initializer.dataTransfer)
+{
+}
+
 ClipboardEvent::~ClipboardEvent()
 {
 }
 
 EventInterface ClipboardEvent::eventInterface() const
 {
-    // Notice that there is no ClipboardEvent.idl.
-    return EventInterfaceType;
+    return ClipboardEventInterfaceType;
 }
 
 bool ClipboardEvent::isClipboardEvent() const
