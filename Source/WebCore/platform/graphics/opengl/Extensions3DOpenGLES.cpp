@@ -32,10 +32,6 @@
 
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 
-#if PLATFORM(WAYLAND)
-#include <wayland-egl.h>
-#endif
-
 #include "GraphicsContext3D.h"
 #include "NotImplemented.h"
 #include <EGL/egl.h>

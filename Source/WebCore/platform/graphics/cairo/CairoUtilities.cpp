@@ -41,9 +41,6 @@
 #include <wtf/Vector.h>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-#if PLATFORM(WAYLAND)
-#include <wayland-egl.h>
-#endif
 #include <cairo-gl.h>
 #endif
 
