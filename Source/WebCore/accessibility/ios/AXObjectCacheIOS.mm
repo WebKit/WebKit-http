@@ -85,6 +85,9 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
         case AXValueChanged:
             [obj->wrapper() postValueChangedNotification];
             break;
+        case AXExpandedChanged:
+            [obj->wrapper() postExpandedChangedNotification];
+            break;
         case AXSelectedChildrenChanged:
         case AXCheckedStateChanged:
         default:
@@ -92,7 +95,8 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
     }
     
     // Used by DRT to know when notifications are posted.
-    [obj->wrapper() accessibilityPostedNotification:notificationString];
+    if (notificationString)
+        [obj->wrapper() accessibilityPostedNotification:notificationString];
 }
 
 void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject* object, const AXTextStateChangeIntent&, const VisibleSelection&)

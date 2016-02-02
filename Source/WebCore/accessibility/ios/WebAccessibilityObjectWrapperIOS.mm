@@ -1515,6 +1515,11 @@ static RenderObject* rendererForView(WAKView* view)
     // The UIKit accessibility wrapper will override and post appropriate notification.
 }
 
+- (void)postExpandedChangedNotification
+{
+    // The UIKit accessibility wrapper will override and post appropriate notification.
+}
+
 - (void)postScrollStatusChangeNotification
 {
     // The UIKit accessibility wrapper will override and post appropriate notification.
@@ -2300,12 +2305,28 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return m_object->ariaLiveRegionAtomic();
 }
 
+- (BOOL)accessibilitySupportsARIAPressed
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+    
+    return m_object->supportsARIAPressed();
+}
+
+- (BOOL)accessibilityIsPressed
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+    
+    return m_object->isPressed();
+}
+
 - (BOOL)accessibilitySupportsARIAExpanded
 {
     if (![self _prepareAccessibilityCall])
         return NO;
     
-    return m_object->supportsARIAExpanded();
+    return m_object->supportsExpanded();
 }
 
 - (BOOL)accessibilityIsExpanded
@@ -2502,24 +2523,6 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 - (CGPoint)accessibilityClickPoint
 {
     return m_object->clickPoint();
-}
-
-// These are used by DRT so that it can know when notifications are sent.
-// Since they are static, only one callback can be installed at a time (that's all DRT should need).
-typedef void (*AXPostedNotificationCallback)(id element, NSString* notification, void* context);
-static AXPostedNotificationCallback AXNotificationCallback = nullptr;
-static void* AXPostedNotificationContext = nullptr;
-
-- (void)accessibilitySetPostedNotificationCallback:(AXPostedNotificationCallback)function withContext:(void*)context
-{
-    AXNotificationCallback = function;
-    AXPostedNotificationContext = context;
-}
-
-- (void)accessibilityPostedNotification:(NSString *)notificationName
-{
-    if (AXNotificationCallback && notificationName)
-        AXNotificationCallback(self, notificationName, AXPostedNotificationContext);
 }
 
 #ifndef NDEBUG

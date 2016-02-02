@@ -105,8 +105,6 @@ MESSAGE_RECEIVERS = \
     ViewUpdateDispatcher \
     VisitedLinkProvider \
     VisitedLinkTableController \
-    WebApplicationCacheManager \
-    WebApplicationCacheManagerProxy \
     WebConnection \
     WebCookieManager \
     WebCookieManagerProxy \
@@ -133,8 +131,6 @@ MESSAGE_RECEIVERS = \
     WebProcessConnection \
     WebProcessPool \
     WebProcessProxy \
-    WebResourceCacheManager \
-    WebResourceCacheManagerProxy \
     WebResourceLoader \
     WebUserContentController \
     WebUserContentControllerProxy \

@@ -347,7 +347,6 @@ set(WebKit2_SOURCES
     UIProcess/UserMediaPermissionRequestManagerProxy.cpp
     UIProcess/UserMediaPermissionRequestProxy.cpp
     UIProcess/VisitedLinkProvider.cpp
-    UIProcess/WebApplicationCacheManagerProxy.cpp
     UIProcess/WebBackForwardList.cpp
     UIProcess/WebBatteryManagerProxy.cpp
     UIProcess/WebBatteryProvider.cpp
@@ -375,7 +374,6 @@ set(WebKit2_SOURCES
     UIProcess/WebIconDatabase.cpp
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
-    UIProcess/WebKeyValueStorageManager.cpp
     UIProcess/WebMediaCacheManagerProxy.cpp
     UIProcess/WebNavigationState.cpp
     UIProcess/WebOpenPanelResultListenerProxy.cpp
@@ -389,7 +387,6 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessLifetimeTracker.cpp
     UIProcess/WebProcessPool.cpp
     UIProcess/WebProcessProxy.cpp
-    UIProcess/WebResourceCacheManagerProxy.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp
     UIProcess/WebVibrationProvider.cpp
@@ -498,8 +495,6 @@ set(WebKit2_SOURCES
     WebProcess/WebConnectionToUIProcess.cpp
     WebProcess/WebProcess.cpp
 
-    WebProcess/ApplicationCache/WebApplicationCacheManager.cpp
-
     WebProcess/Battery/WebBatteryManager.cpp
 
     WebProcess/Cookies/WebCookieManager.cpp
@@ -584,8 +579,6 @@ set(WebKit2_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
     WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
-    WebProcess/ResourceCache/WebResourceCacheManager.cpp
-
     WebProcess/Storage/StorageAreaImpl.cpp
     WebProcess/Storage/StorageAreaMap.cpp
     WebProcess/Storage/StorageNamespaceImpl.cpp
@@ -663,7 +656,6 @@ set(WebKit2_MESSAGES_IN_FILES
 
     UIProcess/DrawingAreaProxy.messages.in
     UIProcess/VisitedLinkProvider.messages.in
-    UIProcess/WebApplicationCacheManagerProxy.messages.in
     UIProcess/WebBatteryManagerProxy.messages.in
     UIProcess/WebCookieManagerProxy.messages.in
     UIProcess/WebDatabaseManagerProxy.messages.in
@@ -676,7 +668,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebPasteboardProxy.messages.in
     UIProcess/WebProcessPool.messages.in
     UIProcess/WebProcessProxy.messages.in
-    UIProcess/WebResourceCacheManagerProxy.messages.in
     UIProcess/WebVibrationProxy.messages.in
 
     UIProcess/Databases/DatabaseProcessProxy.messages.in
@@ -694,8 +685,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/UserContent/WebUserContentControllerProxy.messages.in
 
     WebProcess/WebProcess.messages.in
-
-    WebProcess/ApplicationCache/WebApplicationCacheManager.messages.in
 
     WebProcess/Battery/WebBatteryManager.messages.in
 
@@ -719,8 +708,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Plugins/PluginProcessConnection.messages.in
     WebProcess/Plugins/PluginProcessConnectionManager.messages.in
     WebProcess/Plugins/PluginProxy.messages.in
-
-    WebProcess/ResourceCache/WebResourceCacheManager.messages.in
 
     WebProcess/Storage/StorageAreaMap.messages.in
 

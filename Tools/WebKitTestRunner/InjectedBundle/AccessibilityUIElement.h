@@ -44,7 +44,7 @@ typedef struct objc_object* PlatformUIElement;
 #elif HAVE(ACCESSIBILITY) && (PLATFORM(GTK) || PLATFORM(EFL))
 #include "AccessibilityNotificationHandlerAtk.h"
 #include <atk/atk.h>
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/glib/GRefPtr.h>
 typedef GRefPtr<AtkObject> PlatformUIElement;
 #else
 typedef void* PlatformUIElement;
@@ -262,6 +262,18 @@ public:
     bool addNotificationListener(JSValueRef functionCallback);
     // Make sure you call remove, because you can't rely on objects being deallocated in a timely fashion.
     bool removeNotificationListener();
+    
+    JSRetainPtr<JSStringRef> identifier();
+    JSRetainPtr<JSStringRef> traits();
+    int elementTextPosition();
+    int elementTextLength();
+    JSRetainPtr<JSStringRef> stringForSelection();
+    JSValueRef elementsForRange(unsigned location, unsigned length);
+    void increaseTextSelection();
+    void decreaseTextSelection();
+    PassRefPtr<AccessibilityUIElement> linkedElement();
+    PassRefPtr<AccessibilityUIElement> headerElementAtIndex(unsigned index);
+    void assistiveTechnologySimulatedFocus();
     
 private:
     AccessibilityUIElement(PlatformUIElement);

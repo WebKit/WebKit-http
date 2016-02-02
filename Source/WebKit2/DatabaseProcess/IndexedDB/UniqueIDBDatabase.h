@@ -40,11 +40,17 @@
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
+namespace IPC {
+class DataReference;
+}
+
 namespace WebCore {
 class SharedBuffer;
 
 struct IDBDatabaseMetadata;
+struct IDBGetResult;
 struct IDBKeyData;
+struct IDBKeyRangeData;
 }
 
 namespace WebKit {
@@ -62,9 +68,9 @@ enum class UniqueIDBDatabaseShutdownType {
 
 class UniqueIDBDatabase : public ThreadSafeRefCounted<UniqueIDBDatabase> {
 public:
-    static PassRefPtr<UniqueIDBDatabase> create(const UniqueIDBDatabaseIdentifier& identifier)
+    static Ref<UniqueIDBDatabase> create(const UniqueIDBDatabaseIdentifier& identifier)
     {
-        return adoptRef(new UniqueIDBDatabase(identifier));
+        return adoptRef(*new UniqueIDBDatabase(identifier));
     }
 
     ~UniqueIDBDatabase();

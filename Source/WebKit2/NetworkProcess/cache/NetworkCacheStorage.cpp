@@ -32,7 +32,6 @@
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheFileSystem.h"
 #include "NetworkCacheIOChannel.h"
-#include <wtf/PageBlock.h>
 #include <wtf/RandomNumber.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -222,6 +221,8 @@ void Storage::synchronize()
 
         m_blobStorage.synchronize();
 
+        deleteEmptyRecordsDirectories(recordsPath());
+
         LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed size=%zu count=%d", recordsSize, count);
     });
 }
@@ -270,16 +271,6 @@ String Storage::bodyPathForKey(const Key& key) const
     return bodyPathForRecordPath(recordPathForKey(key));
 }
 
-static unsigned hashData(const Data& data)
-{
-    StringHasher hasher;
-    data.apply([&hasher](const uint8_t* data, size_t size) {
-        hasher.addCharacters(data, size);
-        return true;
-    });
-    return hasher.hash();
-}
-
 struct RecordMetaData {
     RecordMetaData() { }
     explicit RecordMetaData(const Key& key)
@@ -291,12 +282,14 @@ struct RecordMetaData {
     Key key;
     // FIXME: Add encoder/decoder for time_point.
     std::chrono::milliseconds epochRelativeTimeStamp;
-    unsigned headerChecksum;
-    uint64_t headerOffset;
+    SHA1::Digest headerHash;
     uint64_t headerSize;
     SHA1::Digest bodyHash;
     uint64_t bodySize;
     bool isBodyInline;
+
+    // Not encoded as a field. Header starts immediately after meta data.
+    uint64_t headerOffset;
 };
 
 static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
@@ -310,7 +303,7 @@ static bool decodeRecordMetaData(RecordMetaData& metaData, const Data& fileData)
             return false;
         if (!decoder.decode(metaData.epochRelativeTimeStamp))
             return false;
-        if (!decoder.decode(metaData.headerChecksum))
+        if (!decoder.decode(metaData.headerHash))
             return false;
         if (!decoder.decode(metaData.headerSize))
             return false;
@@ -342,7 +335,7 @@ static bool decodeRecordHeader(const Data& fileData, RecordMetaData& metaData, D
     }
 
     headerData = fileData.subrange(metaData.headerOffset, metaData.headerSize);
-    if (metaData.headerChecksum != hashData(headerData)) {
+    if (metaData.headerHash != computeSHA1(headerData)) {
         LOG(NetworkCacheStorage, "(NetworkProcess) header checksum mismatch");
         return false;
     }
@@ -392,7 +385,7 @@ static Data encodeRecordMetaData(const RecordMetaData& metaData)
     encoder << metaData.cacheStorageVersion;
     encoder << metaData.key;
     encoder << metaData.epochRelativeTimeStamp;
-    encoder << metaData.headerChecksum;
+    encoder << metaData.headerHash;
     encoder << metaData.headerSize;
     encoder << metaData.bodyHash;
     encoder << metaData.bodySize;
@@ -434,7 +427,7 @@ Data Storage::encodeRecord(const Record& record, Optional<BlobStorage::Blob> blo
 
     RecordMetaData metaData(record.key);
     metaData.epochRelativeTimeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(record.timeStamp.time_since_epoch());
-    metaData.headerChecksum = hashData(record.header);
+    metaData.headerHash = computeSHA1(record.header);
     metaData.headerSize = record.header.size();
     metaData.bodyHash = blob ? blob.value().hash : computeSHA1(record.body);
     metaData.bodySize = record.body.size();
@@ -858,8 +851,6 @@ void Storage::shrink()
                 m_blobStorage.remove(bodyPath);
             }
         });
-
-        deleteEmptyRecordsDirectories(recordsPath);
 
         RunLoop::main().dispatch([this] {
             m_shrinkInProgress = false;

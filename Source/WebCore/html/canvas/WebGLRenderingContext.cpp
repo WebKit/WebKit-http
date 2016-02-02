@@ -901,7 +901,7 @@ bool WebGLRenderingContext::validateTexFuncData(const char* functionName, GC3Din
     }
     if (pixels->byteLength() < totalBytesRequired) {
         if (m_unpackAlignment != 1) {
-            error = m_context->computeImageSizeInBytes(format, type, width, height, 1, &totalBytesRequired, 0);
+            m_context->computeImageSizeInBytes(format, type, width, height, 1, &totalBytesRequired, 0);
             if (pixels->byteLength() == totalBytesRequired) {
                 synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "ArrayBufferView not big enough for request with UNPACK_ALIGNMENT > 1");
                 return false;
@@ -953,7 +953,7 @@ WebGLGetInfo WebGLRenderingContext::getParameter(GC3Denum pname, ExceptionCode& 
     case GraphicsContext3D::COLOR_WRITEMASK:
         return getBooleanArrayParameter(pname);
     case GraphicsContext3D::COMPRESSED_TEXTURE_FORMATS:
-        return WebGLGetInfo(Uint32Array::create(m_compressedTextureFormats.data(), m_compressedTextureFormats.size()));
+        return WebGLGetInfo(Uint32Array::create(m_compressedTextureFormats.data(), m_compressedTextureFormats.size()).release());
     case GraphicsContext3D::CULL_FACE:
         return getBooleanParameter(pname);
     case GraphicsContext3D::CULL_FACE_MODE:

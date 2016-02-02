@@ -1,3 +1,105 @@
+2015-06-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspector Scripts evaluated in the page should not be searchable
+        https://bugs.webkit.org/show_bug.cgi?id=146040
+
+        Reviewed by Darin Adler.
+
+        Any script with a __WebInspector source URL will be hidden by the tools.
+        There were a number of ways the inspector could evaluate script on the page
+        without getting the sourceURL and therefore not getting hidden. Audit
+        all cases of Runtime.evaluate, Runtime.callFunctionOn, and
+        Debugger.evaluateOnCallFrame, to ensure we have an appropriate source URL.
+
+        * UserInterface/Base/Utilities.js:
+        (appendWebInspectorSourceURL):
+        Helper to append a __WebInspectorInternal__ sourceURL to a string that may
+        be evaluated directly on the inspected context.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.domNodeResolved):
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptTextCommitted): Deleted.
+        * UserInterface/Controllers/RuntimeManager.js:
+        * UserInterface/Models/DOMTree.js:
+        (WebInspector.DOMTree.prototype._requestRootDOMNode):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptExpression):
+        Ensure all cases that evaluate directly on the inspected page / context
+        have the intenral source URL.
+
+2015-06-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r171645): up/down key navigation of timeline sidebar tree elements is broken when scope bar filters are applied
+        https://bugs.webkit.org/show_bug.cgi?id=142315
+
+        Reviewed by Timothy Hatcher.
+
+        TreeOutline's element traversal algorithms have been rewritten to correctly skip over unrevealed tree elements.
+        Previously traversal would halt after encountering a hidden element. We now use an iterative approach, with
+        each iteration producing the next (or previous) element, with respect to the last candidate element. Iteration
+        begins with the current node, and halts once a valid element is found or candidate elements are exhausted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement.shouldSkip):
+        (WebInspector.TreeElement.prototype.traverseNextTreeElement):
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement.shouldSkip):
+        (WebInspector.TreeElement.prototype.traversePreviousTreeElement):
+
+2015-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Stylize Node Previews
+        https://bugs.webkit.org/show_bug.cgi?id=145990
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createElementForNodePreview):
+        Style a node preview like a DOMNode. It is a simple small snippet.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPropertyPreviews):
+        Use node previews in ObjectPreviewViews.
+
+2015-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve some cases of "Object?" Type Annotations
+        https://bugs.webkit.org/show_bug.cgi?id=145954
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TypeTokenView.js:
+        (WebInspector.TypeTokenView.prototype._displayTypeName):
+        The TypeSet inclusions cover all types, so we can use the leastCommonAncestor
+        name as long as the type set is just object or object and null/undefined.
+        If the typeset includes other primitives then it will gracefully go down
+        below to become something like Object or (many). 
+
+2015-06-14  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Web Inspector: Update icon so Rendering Frames timeline distinguish between layout and painting
+        https://bugs.webkit.org/show_bug.cgi?id=145956
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg:
+        Changed to use green color.
+
+2015-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table() with a list of objects no longer works
+        https://bugs.webkit.org/show_bug.cgi?id=145952
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsTable):
+        Don't allow expanding a cosole.table message, and don't output the total
+        object even if the table preview was lossless, as the experience is poor.
+
 2015-06-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: CSS Regions not displaying DOM Trees in inspector

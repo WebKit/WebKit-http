@@ -32,7 +32,6 @@
 #include "CodeBlock.h"
 #include "DebuggerEvalEnabler.h"
 #include "DebuggerScope.h"
-#include "Exception.h"
 #include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -88,7 +87,7 @@ DebuggerCallFrame::DebuggerCallFrame(CallFrame* callFrame)
     m_position = positionForCallFrame(m_callFrame);
 }
 
-PassRefPtr<DebuggerCallFrame> DebuggerCallFrame::callerFrame()
+RefPtr<DebuggerCallFrame> DebuggerCallFrame::callerFrame()
 {
     ASSERT(isValid());
     if (!isValid())
@@ -102,7 +101,7 @@ PassRefPtr<DebuggerCallFrame> DebuggerCallFrame::callerFrame()
 
     CallFrame* callerFrame = functor.getCallerFrame();
     if (!callerFrame)
-        return 0;
+        return nullptr;
 
     m_caller = DebuggerCallFrame::create(callerFrame);
     return m_caller;
@@ -177,10 +176,9 @@ JSValue DebuggerCallFrame::thisValue() const
 }
 
 // Evaluate some JavaScript code in the scope of this frame.
-JSValue DebuggerCallFrame::evaluate(const String& script, Exception*& exception)
+JSValue DebuggerCallFrame::evaluate(const String& script, NakedPtr<Exception>& exception)
 {
     ASSERT(isValid());
-    exception = nullptr;
     CallFrame* callFrame = m_callFrame;
     if (!callFrame)
         return jsNull();

@@ -1273,7 +1273,7 @@ unsigned ByteCodeParser::inliningCost(CallVariant callee, int argumentCountInclu
         dataLog("    Inlining should be possible.\n");
     
     // It might be possible to inline.
-    return codeBlock->instructionCount() * pow(1 + codeBlock->numberOfExitSites(), Options::exitSitePowerForInlineCost());
+    return codeBlock->instructionCount();
 }
 
 template<typename ChecksFunctor>
@@ -1487,8 +1487,10 @@ bool ByteCodeParser::attemptToInlineCall(Node* callTargetNode, int resultOperand
     if (myInliningCost > inliningBalance)
         return false;
 
+    Instruction* savedCurrentInstruction = m_currentInstruction;
     inlineCall(callTargetNode, resultOperand, callee, registerOffset, argumentCountIncludingThis, nextOffset, kind, callerLinkability, insertChecks);
     inliningBalance -= myInliningCost;
+    m_currentInstruction = savedCurrentInstruction;
     return true;
 }
 
@@ -3397,6 +3399,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             
         case op_call:
             handleCall(currentInstruction, Call, CodeForCall);
+            // Verify that handleCall(), which could have inlined the callee, didn't trash m_currentInstruction
+            ASSERT(m_currentInstruction == currentInstruction);
             NEXT_OPCODE(op_call);
             
         case op_construct:

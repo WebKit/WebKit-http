@@ -23,14 +23,14 @@
 #include <WebCore/IntPoint.h>
 #include <functional>
 #include <wtf/Noncopyable.h>
-#include <wtf/gobject/GRefPtr.h>
+#include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 typedef struct _GdkEventKey GdkEventKey;
 typedef struct _GtkIMContext GtkIMContext;
 
 namespace WebCore {
-class CompositionResults;
+struct CompositionResults;
 class IntRect;
 }
 

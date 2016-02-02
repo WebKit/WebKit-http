@@ -337,7 +337,6 @@ list(APPEND WebKit2_SOURCES
     WebProcess/gtk/WebGtkInjectedBundleMain.cpp
     WebProcess/gtk/WebProcessMainGtk.cpp
 
-    WebProcess/soup/WebKitSoupRequestGeneric.cpp
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
 )
@@ -485,8 +484,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/soup"
     "${WEBKIT2_DIR}/WebProcess/WebPage/atk"
     "${WEBKIT2_DIR}/WebProcess/WebPage/gtk"
-    "${WTF_DIR}/wtf/gtk/"
-    "${WTF_DIR}/wtf/gobject"
+    "${WTF_DIR}/wtf/gtk"
+    "${WTF_DIR}/wtf/glib"
     "${WTF_DIR}"
 )
 

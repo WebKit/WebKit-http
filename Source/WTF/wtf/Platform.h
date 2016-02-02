@@ -992,7 +992,7 @@
 #endif
 
 #if USE(GLIB)
-#include <wtf/gobject/GTypedefs.h>
+#include <wtf/glib/GTypedefs.h>
 #endif
 
 #if PLATFORM(EFL)

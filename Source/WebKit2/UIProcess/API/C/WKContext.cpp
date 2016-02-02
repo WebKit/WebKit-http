@@ -45,14 +45,11 @@
 #include <wtf/text/WTFString.h>
 
 // Supplements
-#include "WebApplicationCacheManagerProxy.h"
 #include "WebCookieManagerProxy.h"
 #include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
-#include "WebKeyValueStorageManager.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
-#include "WebResourceCacheManagerProxy.h"
 #if ENABLE(BATTERY_STATUS)
 #include "WebBatteryManagerProxy.h"
 #endif
@@ -417,9 +414,9 @@ WKWebsiteDataStoreRef WKContextGetWebsiteDataStore(WKContextRef context)
     return toAPI(toImpl(context)->websiteDataStore());
 }
 
-WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef contextRef)
+WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef context)
 {
-    return toAPI(toImpl(contextRef)->supplement<WebApplicationCacheManagerProxy>());
+    return reinterpret_cast<WKApplicationCacheManagerRef>(WKContextGetWebsiteDataStore(context));
 }
 
 WKBatteryManagerRef WKContextGetBatteryManager(WKContextRef contextRef)
@@ -447,9 +444,9 @@ WKIconDatabaseRef WKContextGetIconDatabase(WKContextRef contextRef)
     return toAPI(toImpl(contextRef)->iconDatabase());
 }
 
-WKKeyValueStorageManagerRef WKContextGetKeyValueStorageManager(WKContextRef contextRef)
+WKKeyValueStorageManagerRef WKContextGetKeyValueStorageManager(WKContextRef context)
 {
-    return toAPI(toImpl(contextRef)->supplement<WebKeyValueStorageManager>());
+    return reinterpret_cast<WKKeyValueStorageManagerRef>(WKContextGetWebsiteDataStore(context));
 }
 
 WKMediaCacheManagerRef WKContextGetMediaCacheManager(WKContextRef contextRef)
@@ -465,16 +462,16 @@ WKNotificationManagerRef WKContextGetNotificationManager(WKContextRef contextRef
 WKPluginSiteDataManagerRef WKContextGetPluginSiteDataManager(WKContextRef context)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    return reinterpret_cast<WKPluginSiteDataManagerRef>(toAPI(toImpl(context)->websiteDataStore()));
+    return reinterpret_cast<WKPluginSiteDataManagerRef>(WKContextGetWebsiteDataStore(context));
 #else
     UNUSED_PARAM(context);
     return nullptr;
 #endif
 }
 
-WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef contextRef)
+WKResourceCacheManagerRef WKContextGetResourceCacheManager(WKContextRef context)
 {
-    return toAPI(toImpl(contextRef)->supplement<WebResourceCacheManagerProxy>());
+    return reinterpret_cast<WKResourceCacheManagerRef>(WKContextGetWebsiteDataStore(context));
 }
 
 WKOriginDataManagerRef WKContextGetOriginDataManager(WKContextRef context)

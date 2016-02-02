@@ -118,6 +118,7 @@ enum AccessibilityRole {
     DescriptionListRole,
     DescriptionListTermRole,
     DescriptionListDetailRole,
+    DetailsRole,
     DirectoryRole,
     DisclosureTriangleRole,
     DivRole,
@@ -177,6 +178,11 @@ enum AccessibilityRole {
     RadioGroupRole,
     RowHeaderRole,
     RowRole,
+    RubyBaseRole,
+    RubyBlockRole,
+    RubyInlineRole,
+    RubyRunRole,
+    RubyTextRole,
     RulerRole,
     RulerMarkerRole,
     ScrollAreaRole,
@@ -190,6 +196,7 @@ enum AccessibilityRole {
     SplitGroupRole,
     SplitterRole,
     StaticTextRole,
+    SummaryRole,
     SwitchRole,
     SystemWideRole,
     SVGRootRole,
@@ -606,7 +613,8 @@ public:
     bool ariaPressedIsPresent() const;
     bool ariaIsMultiline() const;
     String invalidStatus() const;
-    bool supportsARIAExpanded() const;
+    bool supportsARIAPressed() const;
+    bool supportsExpanded() const;
     bool supportsChecked() const;
     AccessibilitySortDirection sortDirection() const;
     virtual bool canvasHasFallbackContent() const { return false; }

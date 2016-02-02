@@ -38,7 +38,6 @@
 #include "StatisticsData.h"
 #include "TextChecker.h"
 #include "WKContextPrivate.h"
-#include "WebApplicationCacheManagerProxy.h"
 #include "WebCertificateInfo.h"
 #include "WebContextSupplement.h"
 #include "WebCookieManagerProxy.h"
@@ -46,7 +45,6 @@
 #include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
-#include "WebKeyValueStorageManager.h"
 #include "WebKit2Initialize.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebMemorySampler.h"
@@ -57,7 +55,6 @@
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxy.h"
-#include "WebResourceCacheManagerProxy.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Language.h>
@@ -193,13 +190,10 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     // NOTE: These sub-objects must be initialized after m_messageReceiverMap..
     m_iconDatabase = WebIconDatabase::create(this);
 
-    addSupplement<WebApplicationCacheManagerProxy>();
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
-    addSupplement<WebKeyValueStorageManager>();
     addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
-    addSupplement<WebResourceCacheManagerProxy>();
     addSupplement<WebDatabaseManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
