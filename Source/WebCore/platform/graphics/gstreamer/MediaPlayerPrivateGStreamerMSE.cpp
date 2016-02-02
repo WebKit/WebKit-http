@@ -1544,6 +1544,7 @@ void AppendPipeline::setAppendStage(AppendStage newAppendStage)
         case NotStarted:
             ok = true;
             if (m_pendingBuffer) {
+                TRACE_MEDIA_MESSAGE("pushing pending buffer %p", m_pendingBuffer.get());
                 gst_app_src_push_buffer(GST_APP_SRC(appsrc()), m_pendingBuffer.leakRef());
                 markEndOfAppendData();
                 nextAppendStage = Ongoing;
@@ -1813,6 +1814,8 @@ void AppendPipeline::receiveEndOfAppendData()
 {
     ASSERT(WTF::isMainThread());
 
+    TRACE_MEDIA_MESSAGE("end of append data mark was received");
+
     switch (m_appendStage) {
     case Ongoing:
         TRACE_MEDIA_MESSAGE("DataStarve");
@@ -1994,6 +1997,7 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
         result = GST_FLOW_OK;
     } else {
         setAppendStage(AppendPipeline::Ongoing);
+        TRACE_MEDIA_MESSAGE("pushing new buffer %p", buffer);
         result = gst_app_src_push_buffer(GST_APP_SRC(appsrc()), buffer);
         markEndOfAppendData();
     }
@@ -2005,6 +2009,8 @@ void AppendPipeline::markEndOfAppendData()
 {
     GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty("end-of-append-data-mark"));
     m_appendIdMarkedInSrc = guint64(gst_event_get_seqnum(event));
+
+    TRACE_MEDIA_MESSAGE("marking end of append with id %" G_GUINT64_FORMAT, m_appendIdMarkedInSrc);
 
     gst_element_send_event(m_appsrc, event);
 
@@ -2176,6 +2182,7 @@ void AppendPipeline::connectToAppSink(GstPad* demuxerSrcPad)
     }
 
     // The previous mark has probably been lost because appsink was disconnected. Mark again.
+    TRACE_MEDIA_MESSAGE("previous append end mark lost, reinsterting");
     markEndOfAppendData();
 
     g_cond_signal(&m_padAddRemoveCondition);
