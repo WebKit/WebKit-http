@@ -195,7 +195,8 @@ handleKeyEvent(WaylandDisplay::SeatData& seatData, uint32_t key, uint32_t state,
     uint32_t keysym = xkb_state_key_get_one_sym(xkb.state, key);
     uint32_t unicode = xkb_state_key_get_utf32(xkb.state, key);
 
-    if (state == WL_KEYBOARD_KEY_STATE_PRESSED
+    if (xkb.composeState
+        && state == WL_KEYBOARD_KEY_STATE_PRESSED
         && xkb_compose_state_feed(xkb.composeState, keysym) == XKB_COMPOSE_FEED_ACCEPTED
         && xkb_compose_state_get_status(xkb.composeState) == XKB_COMPOSE_COMPOSED)
     {
