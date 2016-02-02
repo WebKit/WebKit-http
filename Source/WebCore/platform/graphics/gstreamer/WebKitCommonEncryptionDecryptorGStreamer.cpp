@@ -103,6 +103,9 @@ static void webkit_media_common_encryption_decrypt_init(WebKitMediaCommonEncrypt
 
     g_mutex_init(&self->mutex);
     g_cond_init(&self->condition);
+
+    if (!webkit_media_aes_ctr_decrypt_initialize())
+        GST_ERROR_OBJECT(self, "Libgcrypt failed to initialize");
 }
 
 static void webkit_media_common_encryption_decrypt_dispose(GObject* object)
@@ -273,7 +276,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
 
     // Unencrypted sample.
     if (!ivSize || !encrypted)
-        goto beach;
+        goto release;
 
     GST_DEBUG_OBJECT(base, "protection meta: %" GST_PTR_FORMAT, protectionMeta->info);
     if (!gst_structure_get_uint(protectionMeta->info, "subsample_count", &subSampleCount)) {
@@ -354,21 +357,19 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             if (!webkit_media_aes_ctr_decrypt_ip(state, map.data + position, nBytesEncrypted)) {
                 result = GST_FLOW_NOT_SUPPORTED;
                 GST_ERROR_OBJECT(self, "decryption failed");
-                goto beach;
+                goto release;
             }
             position += nBytesEncrypted;
         }
     }
 
-beach:
-
+release:
     if (bufferMapped)
         gst_buffer_unmap(buffer, &map);
 
     if (state)
         webkit_media_aes_ctr_decrypt_unref(state);
 
-release:
     if (reader)
         gst_byte_reader_free(reader);
 

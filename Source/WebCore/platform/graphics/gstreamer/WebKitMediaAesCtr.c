@@ -21,6 +21,7 @@
 
 #include <gcrypt.h>
 #include <glib-object.h>
+#include <gst/gst.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -33,6 +34,39 @@ struct _AesCtrState {
     gcry_cipher_hd_t handle;
 };
 
+gboolean webkit_media_aes_ctr_decrypt_initialize()
+{
+    if (!gcry_check_version(GCRYPT_VERSION))
+        return FALSE;
+
+    // We don't want to see any warnings, e.g. because we have not yet
+    // parsed program options which might be used to suppress such
+    // warnings.
+    gcry_control(GCRYCTL_SUSPEND_SECMEM_WARN);
+
+    // ... If required, other initialization goes here.  Note that the
+    // process might still be running with increased privileges and that
+    // the secure memory has not been initialized.
+
+    // Allocate a pool of 16k secure memory.  This make the secure memory
+    //   available and also drops privileges where needed.
+    gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
+
+    // It is now okay to let Libgcrypt complain when there was/is
+    //   a problem with the secure memory.
+    gcry_control(GCRYCTL_RESUME_SECMEM_WARN);
+
+    // Tell Libgcrypt that initialization has completed.
+    gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+
+    return TRUE;
+}
+
+#define fail(format, ...) \
+    do { \
+        GST_ERROR(format, ##__VA_ARGS__); \
+    } while (0)
+
 AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv)
 {
     const uint8_t* ivBuffer;
@@ -40,6 +74,7 @@ AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv)
     gsize ivSize, keySize;
     AesCtrState* state;
     uint8_t ctr[KEY_SIZE];
+    gcry_error_t error;
 
     if (!key || !iv)
         return NULL;
@@ -48,11 +83,20 @@ AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv)
     if (!state)
         return NULL;
 
+    state->refCount = 1;
+    error = gcry_cipher_open(&(state->handle), GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CTR, GCRY_CIPHER_SECURE);
+    if (error) {
+        fail("gcry_cipher_open failed: %s", gpg_strerror(error));
+        return NULL;
+    }
+
     keyBuffer = (const uint8_t*) g_bytes_get_data(key, &keySize);
     g_assert(keySize == KEY_SIZE);
-
-    gcry_cipher_open(&(state->handle), GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CTR, 0);
-    gcry_cipher_setkey(state->handle, keyBuffer, keySize);
+    error = gcry_cipher_setkey(state->handle, keyBuffer, keySize);
+    if (error) {
+        fail("gcry_cipher_setkey failed: %s", gpg_strerror(error));
+        return NULL;
+    }
 
     ivBuffer = (const uint8_t*) g_bytes_get_data(iv, &ivSize);
     if (ivSize == 8) {
@@ -60,14 +104,23 @@ AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv)
         memcpy(ctr, ivBuffer, 8);
     } else
         memcpy(ctr, ivBuffer, KEY_SIZE);
-    gcry_cipher_setctr(state->handle, ctr, KEY_SIZE);
+    error = gcry_cipher_setctr(state->handle, ctr, KEY_SIZE);
+    if (error) {
+        fail("gcry_cipher_setctr failed: %s", gpg_strerror(error));
+        return NULL;
+    }
 
     return state;
 }
 
 gboolean webkit_media_aes_ctr_decrypt_ip(AesCtrState* state, unsigned char* data, int length)
 {
-    gcry_cipher_decrypt(state->handle, data, length, 0, 0);
+    gcry_error_t error = gcry_cipher_decrypt(state->handle, data, length, 0, 0);
+    if (error) {
+        fail("gcry_cipher_decrypt failed: %s", gpg_strerror(error));
+        return FALSE;
+    }
+
     return TRUE;
 }
 

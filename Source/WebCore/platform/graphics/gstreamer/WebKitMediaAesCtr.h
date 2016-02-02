@@ -29,6 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _AesCtrState AesCtrState;
 
+gboolean webkit_media_aes_ctr_decrypt_initialize();
 AesCtrState* webkit_media_aes_ctr_decrypt_new(GBytes* key, GBytes* iv);
 AesCtrState* webkit_media_aes_ctr_decrypt_ref(AesCtrState* state);
 void webkit_media_aes_ctr_decrypt_unref(AesCtrState* state);
