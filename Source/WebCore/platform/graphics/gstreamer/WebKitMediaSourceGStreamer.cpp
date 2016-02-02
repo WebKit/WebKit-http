@@ -1273,8 +1273,6 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
-    double timestampOffset = stream->sourceBuffer->timestampOffset();
-
     if (!m_webKitMediaSrc->priv->mediaPlayerPrivate->seeking()) {
         LOG_MEDIA_MESSAGE("flushAndEnqueueNonDisplayingSamples: trackId=%s pipeline needs flushing.", trackId.string().utf8().data());
     }
@@ -1289,7 +1287,6 @@ void PlaybackPipeline::flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSa
             lastEnqueuedTime = sample->presentationTime();
 
             GST_BUFFER_FLAG_SET(buffer, GST_BUFFER_FLAG_DECODE_ONLY);
-            GST_BUFFER_PTS(buffer) = GST_BUFFER_PTS(buffer) + toGstClockTime(static_cast<float>(timestampOffset));
             push_sample(GST_APP_SRC(appsrc), gstsample);
             // gst_app_src_push_sample() uses transfer-none for gstsample
 
@@ -1327,7 +1324,6 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
     GstElement* appsrc = stream->appsrc;
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
-    double timestampOffset = stream->sourceBuffer->timestampOffset();
 
     GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(rsample.get());
     if (sample->sample() && gst_sample_get_buffer(sample->sample())) {
@@ -1336,7 +1332,6 @@ void PlaybackPipeline::enqueueSample(PassRefPtr<MediaSample> prsample)
         lastEnqueuedTime = sample->presentationTime();
 
         GST_BUFFER_FLAG_UNSET(buffer, GST_BUFFER_FLAG_DECODE_ONLY);
-        GST_BUFFER_PTS(buffer) = GST_BUFFER_PTS(buffer) + toGstClockTime(static_cast<float>(timestampOffset));
         push_sample(GST_APP_SRC(appsrc), gstsample);
         // gst_app_src_push_sample() uses transfer-none for gstsample
 
