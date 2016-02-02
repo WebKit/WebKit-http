@@ -557,13 +557,14 @@ void ChromeClientQt::reachedMaxAppCacheSize(int64_t)
 void ChromeClientQt::reachedApplicationCacheOriginQuota(SecurityOrigin* origin, int64_t totalSpaceNeeded)
 {
     int64_t quota;
-    quint64 defaultOriginQuota = WebCore::cacheStorage().defaultOriginQuota();
+    auto& applicationCacheStorage = ApplicationCacheStorage::singleton();
+    quint64 defaultOriginQuota = applicationCacheStorage.defaultOriginQuota();
 
     QWebSecurityOriginPrivate* priv = new QWebSecurityOriginPrivate(origin);
     QWebSecurityOrigin* securityOrigin = new QWebSecurityOrigin(priv);
 
-    if (!WebCore::cacheStorage().calculateQuotaForOrigin(origin, quota))
-        WebCore::cacheStorage().storeUpdatedQuotaForOrigin(origin, defaultOriginQuota);
+    if (!applicationCacheStorage.calculateQuotaForOrigin(origin, quota))
+        applicationCacheStorage.storeUpdatedQuotaForOrigin(origin, defaultOriginQuota);
 
     m_webPage->applicationCacheQuotaExceeded(securityOrigin, defaultOriginQuota, static_cast<quint64>(totalSpaceNeeded));
 }

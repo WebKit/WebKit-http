@@ -292,7 +292,7 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::SiteSpecificQuirksEnabled));
         settings->setNeedsSiteSpecificQuirks(value);
 
-        settings->setUsesPageCache(WebCore::pageCache()->capacity());
+        settings->setUsesPageCache(WebCore::PageCache::singleton().maxSize());
     } else {
         QList<QWebSettingsPrivate*> settings = *::allSettings();
         for (int i = 0; i < settings.count(); ++i)
@@ -829,29 +829,34 @@ QPixmap QWebSettings::webGraphic(WebGraphic type)
 void QWebSettings::clearMemoryCaches()
 {
     WebCore::initializeWebCoreQt();
+
+    //FIXME: This code is very similar to QtTestSupport::clearMemoryCaches().
+
     // Turn the cache on and off.  Disabling the object cache will remove all
     // resources from the cache.  They may still live on if they are referenced
     // by some Web page though.
-    if (!WebCore::memoryCache()->disabled()) {
-        WebCore::memoryCache()->setDisabled(true);
-        WebCore::memoryCache()->setDisabled(false);
+    auto& memoryCache = WebCore::MemoryCache::singleton();
+    if (!memoryCache.disabled()) {
+        memoryCache.setDisabled(true);
+        memoryCache.setDisabled(false);
     }
 
-    int pageCapacity = WebCore::pageCache()->capacity();
+    auto& pageCache = WebCore::PageCache::singleton();
+    int pageCacheMaxSize = pageCache.maxSize();
     // Setting size to 0, makes all pages be released.
-    WebCore::pageCache()->setCapacity(0);
-    WebCore::pageCache()->setCapacity(pageCapacity);
+    pageCache.setMaxSize(0);
+    pageCache.setMaxSize(pageCacheMaxSize);
 
     // Invalidating the font cache and freeing all inactive font data.
-    WebCore::fontCache()->invalidate();
+    WebCore::FontCache::singleton().invalidate();
 
     // Empty the Cross-Origin Preflight cache
-    WebCore::CrossOriginPreflightResultCache::shared().empty();
+    WebCore::CrossOriginPreflightResultCache::singleton().empty();
 
     // Drop JIT compiled code from ExecutableAllocator.
-    WebCore::gcController().discardAllCompiledCode();
+    WebCore::GCController::singleton().deleteAllCode();
     // Garbage Collect to release the references of CachedResource from dead objects.
-    WebCore::gcController().garbageCollectNow();
+    WebCore::GCController::singleton().garbageCollectNow();
 
     // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
     WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads();
@@ -874,7 +879,7 @@ void QWebSettings::clearMemoryCaches()
 void QWebSettings::setMaximumPagesInCache(int pages)
 {
     QWebSettingsPrivate* global = QWebSettings::globalSettings()->d;
-    WebCore::pageCache()->setCapacity(qMax(0, pages));
+    WebCore::PageCache::singleton().setMaxSize(qMax(0, pages));
     global->apply();
 }
 
@@ -884,7 +889,7 @@ void QWebSettings::setMaximumPagesInCache(int pages)
 int QWebSettings::maximumPagesInCache()
 {
     WebCore::initializeWebCoreQt();
-    return WebCore::pageCache()->capacity();
+    return WebCore::PageCache::singleton().maxSize();
 }
 
 /*!
@@ -907,12 +912,14 @@ void QWebSettings::setObjectCacheCapacities(int cacheMinDeadCapacity, int cacheM
 {
     WebCore::initializeWebCoreQt();
     bool disableCache = !cacheMinDeadCapacity && !cacheMaxDead && !totalCapacity;
-    WebCore::memoryCache()->setDisabled(disableCache);
+    auto& memoryCache = WebCore::MemoryCache::singleton();
+    memoryCache.setDisabled(disableCache);
 
-    WebCore::memoryCache()->setCapacities(qMax(0, cacheMinDeadCapacity),
-                                    qMax(0, cacheMaxDead),
-                                    qMax(0, totalCapacity));
-    WebCore::memoryCache()->setDeadDecodedDataDeletionInterval(disableCache ? 0 : 60);
+    memoryCache.setCapacities(qMax(0, cacheMinDeadCapacity),
+                              qMax(0, cacheMaxDead),
+                              qMax(0, totalCapacity));
+    memoryCache.setDeadDecodedDataDeletionInterval(disableCache ? std::chrono::seconds{0}
+                                                                : std::chrono::seconds{60});
 }
 
 /*!
@@ -1123,7 +1130,7 @@ qint64 QWebSettings::offlineStorageDefaultQuota()
 void QWebSettings::setOfflineWebApplicationCachePath(const QString& path)
 {
     WebCore::initializeWebCoreQt();
-    WebCore::cacheStorage().setCacheDirectory(path);
+    WebCore::ApplicationCacheStorage::singleton().setCacheDirectory(path);
 }
 
 /*!
@@ -1137,7 +1144,7 @@ void QWebSettings::setOfflineWebApplicationCachePath(const QString& path)
 QString QWebSettings::offlineWebApplicationCachePath()
 {
     WebCore::initializeWebCoreQt();
-    return WebCore::cacheStorage().cacheDirectory();
+    return WebCore::ApplicationCacheStorage::singleton().cacheDirectory();
 }
 
 /*!
@@ -1149,9 +1156,10 @@ QString QWebSettings::offlineWebApplicationCachePath()
 void QWebSettings::setOfflineWebApplicationCacheQuota(qint64 maximumSize)
 {
     WebCore::initializeWebCoreQt();
-    WebCore::cacheStorage().empty();
-    WebCore::cacheStorage().vacuumDatabaseFile();
-    WebCore::cacheStorage().setMaximumSize(maximumSize);
+    auto& applicationCacheStorage = WebCore::ApplicationCacheStorage::singleton();
+    applicationCacheStorage.empty();
+    applicationCacheStorage.vacuumDatabaseFile();
+    applicationCacheStorage.setMaximumSize(maximumSize);
 }
 
 /*!
@@ -1162,7 +1170,7 @@ void QWebSettings::setOfflineWebApplicationCacheQuota(qint64 maximumSize)
 qint64 QWebSettings::offlineWebApplicationCacheQuota()
 {
     WebCore::initializeWebCoreQt();
-    return WebCore::cacheStorage().maximumSize();
+    return WebCore::ApplicationCacheStorage::singleton().maximumSize();
 }
 
 /*!

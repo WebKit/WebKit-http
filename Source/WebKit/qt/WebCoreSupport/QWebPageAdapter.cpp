@@ -842,7 +842,8 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
 #endif
     } else if (event->propertyName() == "_q_deadDecodedDataDeletionInterval") {
         double interval = obj->property("_q_deadDecodedDataDeletionInterval").toDouble();
-        memoryCache()->setDeadDecodedDataDeletionInterval(interval);
+        MemoryCache::singleton().setDeadDecodedDataDeletionInterval(
+                std::chrono::milliseconds { static_cast<std::chrono::milliseconds::rep>(interval * 1000) });
     }  else if (event->propertyName() == "_q_useNativeVirtualKeyAsDOMKey") {
         m_useNativeVirtualKeyAsDOMKey = obj->property("_q_useNativeVirtualKeyAsDOMKey").toBool();
     }
@@ -977,7 +978,7 @@ void QWebPageAdapter::_q_cleanupLeakMessages()
 {
 #ifndef NDEBUG
     // Need this to make leak messages accurate.
-    memoryCache()->setCapacities(0, 0, 0);
+    MemoryCache::singleton().setCapacities(0, 0, 0);
 #endif
 }
 
