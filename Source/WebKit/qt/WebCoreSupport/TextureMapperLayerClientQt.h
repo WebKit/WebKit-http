@@ -27,7 +27,6 @@ class QWebFrameAdapter;
 #include "TextureMapper.h"
 #include "TextureMapperFPSCounter.h"
 #include "Timer.h"
-#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -53,7 +52,7 @@ private:
     std::unique_ptr<GraphicsLayer> m_rootGraphicsLayer;
     Timer<TextureMapperLayerClientQt> m_syncTimer;
     WebCore::TextureMapperLayer* m_rootTextureMapperLayer;
-    OwnPtr<WebCore::TextureMapper> m_textureMapper;
+    std::unique_ptr<WebCore::TextureMapper> m_textureMapper;
     WebCore::TextureMapperFPSCounter m_fpsCounter;
 };
 #endif

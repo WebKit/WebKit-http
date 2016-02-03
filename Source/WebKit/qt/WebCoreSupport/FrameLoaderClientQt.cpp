@@ -89,7 +89,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QStringList>
-#include <wtf/OwnPtr.h>
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(ICONDATABASE)

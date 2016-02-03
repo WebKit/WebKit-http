@@ -34,7 +34,6 @@
 #include "qwebkitplatformplugin.h"
 
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
 
 
 namespace WebCore {
@@ -61,7 +60,7 @@ private:
 
 private:
     QtPlatformPlugin m_platformPlugin;
-    OwnPtr<QWebSpellChecker> m_spellChecker;
+    std::unique_ptr<QWebSpellChecker> m_spellChecker;
 };
 
 }

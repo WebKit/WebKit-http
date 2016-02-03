@@ -1776,9 +1776,9 @@ QColor QWebPagePrivate::colorSelectionRequested(const QColor &selectedColor)
     return ret;
 }
 
-QWebSelectMethod *QWebPagePrivate::createSelectPopup()
+std::unique_ptr<QWebSelectMethod> QWebPagePrivate::createSelectPopup()
 {
-    return new QtFallbackWebPopup(this);
+    return std::make_unique<QtFallbackWebPopup>(this);
 }
 
 QRect QWebPagePrivate::viewRectRelativeToWindow()

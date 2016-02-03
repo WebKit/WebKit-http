@@ -44,7 +44,6 @@
 #include <QUrl>
 #include <qobject.h>
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
 
 #if !PLUGIN_VIEW_IS_BROKEN

@@ -22,7 +22,6 @@
 #define QtPlatformPlugin_h
 
 #include <QPluginLoader>
-#include <wtf/PassOwnPtr.h>
 
 class QWebSelectMethod;
 class QWebKitPlatformPlugin;
@@ -47,14 +46,14 @@ public:
 
     ~QtPlatformPlugin();
 
-    PassOwnPtr<QWebSelectMethod> createSelectInputMethod();
-    PassOwnPtr<QWebNotificationPresenter> createNotificationPresenter();
-    PassOwnPtr<QWebHapticFeedbackPlayer> createHapticFeedbackPlayer();
-    PassOwnPtr<QWebTouchModifier> createTouchModifier();
+    std::unique_ptr<QWebSelectMethod> createSelectInputMethod();
+    std::unique_ptr<QWebNotificationPresenter> createNotificationPresenter();
+    std::unique_ptr<QWebHapticFeedbackPlayer> createHapticFeedbackPlayer();
+    std::unique_ptr<QWebTouchModifier> createTouchModifier();
 #if ENABLE(VIDEO) && USE(QT_MULTIMEDIA)
-    PassOwnPtr<QWebFullScreenVideoHandler> createFullScreenVideoHandler();
+    std::unique_ptr<QWebFullScreenVideoHandler> createFullScreenVideoHandler();
 #endif
-    PassOwnPtr<QWebSpellChecker> createSpellChecker();
+    std::unique_ptr<QWebSpellChecker> createSpellChecker();
 
     QWebKitPlatformPlugin* plugin();
 

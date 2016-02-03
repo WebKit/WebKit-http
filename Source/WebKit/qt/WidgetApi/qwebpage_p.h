@@ -97,7 +97,7 @@ public:
     QWebFrameAdapter* mainFrameAdapter() override;
     QStringList chooseFiles(QWebFrameAdapter*, bool allowMultiple, const QStringList& suggestedFileNames) override;
     QColor colorSelectionRequested(const QColor& selectedColor) override;
-    QWebSelectMethod* createSelectPopup() override;
+    std::unique_ptr<QWebSelectMethod> createSelectPopup() override;
     QRect viewRectRelativeToWindow() override;
     void geolocationPermissionRequested(QWebFrameAdapter*) override;
     void geolocationPermissionRequestCancelled(QWebFrameAdapter*) override;

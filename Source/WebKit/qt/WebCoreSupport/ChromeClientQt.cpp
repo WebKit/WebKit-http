@@ -70,7 +70,6 @@
 #include <qeventloop.h>
 #include <qwindow.h>
 #include <wtf/CurrentTime.h>
-#include <wtf/OwnPtr.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "GraphicsLayer.h"
@@ -570,7 +569,7 @@ void ChromeClientQt::reachedApplicationCacheOriginQuota(SecurityOrigin* origin, 
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassOwnPtr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserClient* client, const Color& color)
+std::unique_ptr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserClient* client, const Color& color)
 {
     const QColor selectedColor = m_webPage->colorSelectionRequested(QColor(color));
     client->didChooseColor(selectedColor);
@@ -622,7 +621,7 @@ void ChromeClientQt::setCursor(const Cursor& cursor)
 void ChromeClientQt::scheduleAnimation()
 {
     if (!m_refreshAnimation)
-        m_refreshAnimation = adoptPtr(new RefreshAnimation(this));
+        m_refreshAnimation = std::make_unique<RefreshAnimation>(this);
     m_refreshAnimation->scheduleAnimation();
 }
 
@@ -714,14 +713,14 @@ void ChromeClientQt::exitFullscreenForNode(Node* node)
 } 
 #endif
 
-PassOwnPtr<QWebSelectMethod> ChromeClientQt::createSelectPopup() const
+std::unique_ptr<QWebSelectMethod> ChromeClientQt::createSelectPopup() const
 {
-    OwnPtr<QWebSelectMethod> result = m_platformPlugin.createSelectInputMethod();
+    std::unique_ptr<QWebSelectMethod> result = m_platformPlugin.createSelectInputMethod();
     if (result)
-        return result.release();
+        return result;
 
 #if !defined(QT_NO_COMBOBOX)
-    return adoptPtr(m_webPage->createSelectPopup());
+    return m_webPage->createSelectPopup();
 #else
     return nullptr;
 #endif

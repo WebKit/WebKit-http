@@ -37,8 +37,6 @@
 #include <QObject>
 #include <QString>
 #include <wtf/Forward.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 class QWebPageAdapter;
 class QWebPage;
@@ -81,7 +79,7 @@ private:
 
 class InspectorFrontendClientQt : public InspectorFrontendClientLocal {
 public:
-    InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, PassOwnPtr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt*);
+    InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt*);
     virtual ~InspectorFrontendClientQt();
 
     virtual void frontendLoaded();
@@ -106,7 +104,7 @@ private:
     void updateWindowTitle();
     void destroyInspectorView(bool notifyInspectorController);
     QWebPageAdapter* m_inspectedWebPage;
-    OwnPtr<QObject> m_inspectorView;
+    std::unique_ptr<QObject> m_inspectorView;
     QString m_inspectedURL;
     bool m_destroyingInspectorView;
     InspectorClientQt* m_inspectorClient;

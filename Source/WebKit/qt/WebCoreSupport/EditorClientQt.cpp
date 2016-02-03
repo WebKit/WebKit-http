@@ -56,7 +56,6 @@
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <stdio.h>
-#include <wtf/OwnPtr.h>
 
 
 static QString dumpPath(WebCore::Node *node)

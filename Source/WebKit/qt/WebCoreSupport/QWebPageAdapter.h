@@ -170,7 +170,7 @@ public:
     virtual void setToolTip(const QString&) = 0;
     virtual QStringList chooseFiles(QWebFrameAdapter*, bool allowMultiple, const QStringList& suggestedFileNames) = 0;
     virtual QColor colorSelectionRequested(const QColor& selectedColor) = 0;
-    virtual QWebSelectMethod* createSelectPopup() = 0;
+    virtual std::unique_ptr<QWebSelectMethod> createSelectPopup() = 0;
     virtual QRect viewRectRelativeToWindow() = 0;
 
 #if USE(QT_MULTIMEDIA)

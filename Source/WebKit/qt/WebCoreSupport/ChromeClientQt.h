@@ -33,7 +33,6 @@
 #include "FloatRect.h"
 #include "URL.h"
 #include "QtPlatformPlugin.h"
-#include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -168,7 +167,7 @@ public:
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&);
+    virtual std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&);
 #endif
 
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
@@ -193,7 +192,7 @@ public:
     virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
     virtual void populateVisitedLinks();
 
-    PassOwnPtr<QWebSelectMethod> createSelectPopup() const;
+    std::unique_ptr<QWebSelectMethod> createSelectPopup() const;
 
     virtual void dispatchViewportPropertiesDidChange(const ViewportArguments&) const;
 
@@ -212,7 +211,7 @@ public:
     bool menuBarVisible;
     QEventLoop* m_eventLoop;
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
-    OwnPtr<RefreshAnimation> m_refreshAnimation;
+    std::unique_ptr<RefreshAnimation> m_refreshAnimation;
 #endif
 
 #if ENABLE(VIDEO) && (USE(GSTREAMER) || USE(QT_MULTIMEDIA))
@@ -224,7 +223,7 @@ public:
     mutable QtPlatformPlugin m_platformPlugin;
 
 #if USE(ACCELERATED_COMPOSITING)
-    OwnPtr<TextureMapperLayerClientQt> m_textureMapperLayerClient;
+    std::unique_ptr<TextureMapperLayerClientQt> m_textureMapperLayerClient;
 #endif
 };
 }
