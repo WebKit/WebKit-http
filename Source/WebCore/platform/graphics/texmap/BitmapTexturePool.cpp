@@ -30,6 +30,8 @@
 #if USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
 #include "GLContext.h"
+#else
+#include "BitmapTextureImageBuffer.h"
 #endif
 
 namespace WebCore {

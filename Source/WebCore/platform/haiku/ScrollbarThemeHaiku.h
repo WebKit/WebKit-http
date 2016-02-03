@@ -39,16 +39,13 @@ public:
 
     int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) override;
 
-    bool hasButtons(ScrollbarThemeClient*) override;
-    bool hasThumb(ScrollbarThemeClient*) override;
+    bool hasButtons(Scrollbar&) override;
+    bool hasThumb(Scrollbar&) override;
 
-    IntRect backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting) override;
-    IntRect forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting) override;
-    IntRect trackRect(ScrollbarThemeClient*, bool painting) override;
+    IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool painting) override;
+    IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool painting) override;
+    IntRect trackRect(Scrollbar&, bool painting) override;
 
-    void paintScrollbarBackground(GraphicsContext*, ScrollbarThemeClient*) override;
-    void paintButton(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart) override;
-    void paintThumb(GraphicsContext*, ScrollbarThemeClient*, const IntRect&) override;
     void paintScrollCorner(ScrollView*, GraphicsContext*, const IntRect&t) override;
 
 private:

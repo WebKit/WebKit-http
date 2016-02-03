@@ -297,20 +297,9 @@ void ChromeClientHaiku::setStatusbarText(const String& message)
     m_webPage->setStatusMessage(BString(message));
 }
 
-bool ChromeClientHaiku::shouldInterruptJavaScript()
-{
-    notImplemented();
-    return false;
-}
-
 KeyboardUIMode ChromeClientHaiku::keyboardUIMode()
 {
     return KeyboardAccessFull;
-}
-
-IntRect ChromeClientHaiku::windowResizerRect() const
-{
-    return IntRect();
 }
 
 void ChromeClientHaiku::invalidateRootView(const IntRect& rect)

@@ -99,12 +99,9 @@ namespace WebCore {
         bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
         std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
 
-        bool shouldInterruptJavaScript() override;
         KeyboardUIMode keyboardUIMode() override;
 
         void setStatusbarText(const String&) override;
-
-        IntRect windowResizerRect() const override;
 
         void invalidateRootView(const IntRect&) override;
         void invalidateContentsAndRootView(const IntRect&) override;
