@@ -34,6 +34,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Pasteboard/Wayland"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland/Protocols"
     ${GLIB_INCLUDE_DIRS}
     ${LIBXKBCOMMON_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
@@ -94,11 +95,13 @@ endif ()
 if (USE_WPE_BACKEND_WAYLAND)
     list(APPEND WPE_SOURCES
         Source/Pasteboard/Wayland/PasteboardWayland.cpp
+
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
-        Source/ViewBackend/Wayland/ivi-application-protocol.c
-        Source/ViewBackend/Wayland/wayland-drm-protocol.c
-        Source/ViewBackend/Wayland/xdg-shell-protocol.c
+
+        Source/ViewBackend/Wayland/Protocols/ivi-application-protocol.c
+        Source/ViewBackend/Wayland/Protocols/wayland-drm-protocol.c
+        Source/ViewBackend/Wayland/Protocols/xdg-shell-protocol.c
     )
 endif ()
 
