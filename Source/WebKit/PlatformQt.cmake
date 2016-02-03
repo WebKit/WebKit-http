@@ -137,6 +137,8 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Storage"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
+    "${WEBKIT_DIR}/qt/WidgetApi"
+    "${WEBKIT_DIR}/qt/WidgetSupport"
 
     "${WTF_DIR}"
 )
@@ -204,9 +206,14 @@ if (ENABLE_ACCESSIBILITY)
     )
 endif ()
 
+set(WebKit_OUTPUT_NAME Qt5WebKit)
+
+# FIXME: Split out libQt5WebKitWidgets
+
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
 list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Network_INCLUDE_DIRS}
 )
 # Build the include path with duplicates removed
@@ -215,6 +222,7 @@ list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
 list(APPEND WebKit_LIBRARIES
     ${Qt5Core_LIBRARIES}
     ${Qt5Gui_LIBRARIES}
+    ${Qt5Widgets_LIBRARIES}
     ${Qt5Network_LIBRARIES}
 )
 
