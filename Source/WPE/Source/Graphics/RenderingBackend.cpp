@@ -39,6 +39,10 @@
 #include "RenderingBackendBCMRPiBM.h"
 #endif
 
+#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
+#include "RenderingBackendBCMNexusBM.h"
+#endif
+
 namespace WPE {
 
 namespace Graphics {
@@ -51,6 +55,10 @@ std::unique_ptr<RenderingBackend> RenderingBackend::create()
 
 #if WPE_BUFFER_MANAGEMENT(BCM_RPI)
     return std::unique_ptr<RenderingBackendBCMRPiBM>(new RenderingBackendBCMRPiBM);
+#endif
+
+#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
+    return std::unique_ptr<RenderingBackendBCMNexusBM>(new RenderingBackendBCMNexusBM);
 #endif
 
 #if WPE_BACKEND(BCM_NEXUS)

@@ -48,6 +48,10 @@ if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
     add_definitions(-DWPE_BUFFER_MANAGEMENT_BCM_RPI=1)
 endif ()
 
+if (USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS)
+    add_definitions(-DWPE_BUFFER_MANAGEMENT_BCM_NEXUS=1)
+endif ()
+
 set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Headers"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source"
@@ -158,6 +162,16 @@ if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
     )
 endif ()
 
+if (USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS)
+    list(APPEND WPE_INCLUDE_DIRECTORIES
+        "${CMAKE_SOURCE_DIR}/Source/WPE/Source/Graphics/BCMNexusBM"
+    )
+
+    list(APPEND WPE_SOURCES
+        Source/Graphics/BCMNexusBM/RenderingBackendBCMNexusBM.cpp
+    )
+endif ()
+
 if (USE_WPE_BACKEND_DRM)
     list(APPEND WPE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
@@ -197,6 +211,12 @@ if (USE_WPE_BACKEND_WAYLAND)
     if (USE_WPE_BUFFER_MANAGEMENT_BCM_RPI)
         list(APPEND WPE_SOURCES
             Source/Graphics/Wayland/BufferFactoryBCMRPi.cpp
+        )
+    endif ()
+
+    if (USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS)
+        list(APPEND WPE_SOURCES
+            Source/Graphics/Wayland/BufferFactoryBCMNexus.cpp
         )
     endif ()
 endif ()

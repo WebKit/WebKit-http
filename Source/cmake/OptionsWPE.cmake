@@ -40,6 +40,7 @@ WEBKIT_OPTION_DEFINE(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for th
 WEBKIT_OPTION_DEFINE(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_GBM "Whether to enable support for the GBM WPE rendering backend" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_RPI "Whether to enable support for the BCM RPi rendering backend" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_WPE_BUFFER_MANAGEMENT_BCM_NEXUS "Whether to enable support for the BCM_NEXUS rendering backend" PUBLIC OFF)
 WEBKIT_OPTION_END()
 
 if (ENABLE_DXDRM)
