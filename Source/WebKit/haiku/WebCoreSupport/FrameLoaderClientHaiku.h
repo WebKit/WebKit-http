@@ -220,6 +220,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void registerForIconNotification(bool listen) override;
 
     PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
+    void updateCachedDocumentLoader(WebCore::DocumentLoader&) override { }
 
  private:
     bool isTertiaryMouseButton(const NavigationAction& action) const;
