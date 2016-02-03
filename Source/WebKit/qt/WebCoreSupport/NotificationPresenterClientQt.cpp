@@ -68,22 +68,22 @@ NotificationPresenterClientQt* NotificationPresenterClientQt::notificationPresen
 #endif
 
 NotificationWrapper::NotificationWrapper()
-    : m_closeTimer(this, &NotificationWrapper::close)
-    , m_displayEventTimer(this, &NotificationWrapper::sendDisplayEvent)
+    : m_closeTimer(*this, &NotificationWrapper::close)
+    , m_displayEventTimer(*this, &NotificationWrapper::sendDisplayEvent)
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     m_presenter = nullptr;
 #endif
 }
 
-void NotificationWrapper::close(Timer<NotificationWrapper>*)
+void NotificationWrapper::close()
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->cancel(this);
 #endif
 }
 
-void NotificationWrapper::sendDisplayEvent(Timer<NotificationWrapper>*)
+void NotificationWrapper::sendDisplayEvent()
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     NotificationPresenterClientQt::notificationPresenter()->sendDisplayEvent(this);

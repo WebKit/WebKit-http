@@ -57,8 +57,7 @@ public:
     ~NotificationWrapper() { }
 
     void close();
-    void close(Timer<NotificationWrapper>*);
-    void sendDisplayEvent(Timer<NotificationWrapper>*);
+    void sendDisplayEvent();
     const QString title() const;
     const QString message() const;
     const QUrl iconUrl() const;
@@ -70,8 +69,8 @@ public Q_SLOTS:
 
 private:
     OwnPtr<QWebNotificationPresenter> m_presenter;
-    Timer<NotificationWrapper> m_closeTimer;
-    Timer<NotificationWrapper> m_displayEventTimer;
+    Timer m_closeTimer;
+    Timer m_displayEventTimer;
 
     friend class NotificationPresenterClientQt;
 };
