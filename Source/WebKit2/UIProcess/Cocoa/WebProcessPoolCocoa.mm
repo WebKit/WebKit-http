@@ -82,7 +82,6 @@ static NSString * const WebKit2HTTPSProxyDefaultsKey = @"WebKit2HTTPSProxy";
 
 #if ENABLE(NETWORK_CACHE)
 static NSString * const WebKitNetworkCacheEnabledDefaultsKey = @"WebKitNetworkCacheEnabled";
-static NSString * const WebKitNetworkCacheTemporarilyDisabledForTestingKey = @"WebKitNetworkCacheTemporarilyDisabledForTesting"; // Temporary setting for <rdar://problem/20315669>.
 static NSString * const WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey = @"WebKitNetworkCacheEfficacyLoggingEnabled";
 #endif
 
@@ -118,7 +117,7 @@ static void registerUserDefaultsIfNeeded()
 void WebProcessPool::updateProcessSuppressionState()
 {
 #if ENABLE(NETWORK_PROCESS)
-    if (m_usesNetworkProcess && m_networkProcess)
+    if (usesNetworkProcess() && m_networkProcess)
         m_networkProcess->setProcessSuppressionEnabled(processSuppressionEnabled());
 #endif
 
@@ -192,7 +191,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
 
 #if ENABLE(NETWORK_PROCESS)
-    if (!m_usesNetworkProcess) {
+    if (!usesNetworkProcess()) {
 #endif
         for (const auto& scheme : globalURLSchemesWithCustomProtocolHandlers())
             parameters.urlSchemesRegisteredForCustomProtocols.append(scheme);
@@ -408,7 +407,7 @@ bool WebProcessPool::isNetworkCacheEnabled()
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-    bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey] && ![defaults boolForKey:WebKitNetworkCacheTemporarilyDisabledForTestingKey];
+    bool networkCacheEnabledByDefaults = [defaults boolForKey:WebKitNetworkCacheEnabledDefaultsKey];
 
     return networkCacheEnabledByDefaults && linkedOnOrAfter(LibraryVersion::FirstWithNetworkCache);
 #else

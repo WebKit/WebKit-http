@@ -87,6 +87,10 @@
 #import <WebCore/MediaPlaybackTargetContext.h>
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+#include <WebCore/MediaSessionMetadata.h>
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -1446,6 +1450,32 @@ bool ArgumentCoder<UserStyleSheet>::decode(ArgumentDecoder& decoder, UserStyleSh
     return true;
 }
 
+#if ENABLE(MEDIA_SESSION)
+void ArgumentCoder<MediaSessionMetadata>::encode(ArgumentEncoder& encoder, const MediaSessionMetadata& result)
+{
+    encoder << result.artist();
+    encoder << result.album();
+    encoder << result.title();
+    encoder << result.artworkURL();
+}
+
+bool ArgumentCoder<MediaSessionMetadata>::decode(ArgumentDecoder& decoder, MediaSessionMetadata& result)
+{
+    String artist, album, title;
+    URL artworkURL;
+    if (!decoder.decode(artist))
+        return false;
+    if (!decoder.decode(album))
+        return false;
+    if (!decoder.decode(title))
+        return false;
+    if (!decoder.decode(artworkURL))
+        return false;
+    result = MediaSessionMetadata(title, artist, album, artworkURL);
+    return true;
+}
+#endif
+
 void ArgumentCoder<UserScript>::encode(ArgumentEncoder& encoder, const UserScript& userScript)
 {
     encoder << userScript.source();
@@ -2102,6 +2132,7 @@ void ArgumentCoder<TextIndicatorData>::encode(ArgumentEncoder& encoder, const Te
     encoder << textIndicatorData.textBoundingRectInRootViewCoordinates;
     encoder << textIndicatorData.textRectsInBoundingRectCoordinates;
     encoder << textIndicatorData.contentImageScaleFactor;
+    encoder << textIndicatorData.wantsMargin;
     encoder.encodeEnum(textIndicatorData.presentationTransition);
 
     bool hasImage = textIndicatorData.contentImage;
@@ -2127,6 +2158,9 @@ bool ArgumentCoder<TextIndicatorData>::decode(ArgumentDecoder& decoder, TextIndi
         return false;
 
     if (!decoder.decode(textIndicatorData.contentImageScaleFactor))
+        return false;
+
+    if (!decoder.decode(textIndicatorData.wantsMargin))
         return false;
 
     if (!decoder.decodeEnum(textIndicatorData.presentationTransition))

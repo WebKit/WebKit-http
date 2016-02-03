@@ -34,6 +34,7 @@
 #import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
+#import "SafariServicesSPI.h"
 #import "SmartMagnificationController.h"
 #import "TextInputSPI.h"
 #import "UIKitSPI.h"
@@ -3124,14 +3125,21 @@ static bool isAssistableInputType(InputType type)
     if (absoluteLinkURL.isEmpty() || !WebCore::protocolIsInHTTPFamily(absoluteLinkURL))
         return nil;
 
-    _highlightLongPressCanClick = NO;
-
     NSURL *targetURL = [NSURL URLWithString:_positionInformation.url];
     id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
-    if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)])
+    if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)]) {
+        _highlightLongPressCanClick = NO;
         return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL];
+    }
 
-    return WKGetPreviewViewController(targetURL);
+#if HAVE(SAFARI_SERVICES_FRAMEWORK)
+    SFSafariViewController *previewViewController = [allocSFSafariViewControllerInstance() initWithURL:targetURL];
+    previewViewController._showingLinkPreview = YES;
+    _highlightLongPressCanClick = NO;
+    return previewViewController;
+#else
+    return nil;
+#endif
 }
 
 - (void)commitPreviewViewController:(UIViewController *)viewController
@@ -3142,17 +3150,25 @@ static bool isAssistableInputType(InputType type)
         return;
     }
 
-    UIViewController *presentingViewController = viewController.presentingViewController ?: self.window.rootViewController;
-    WKWillCommitPreviewViewController(viewController);
+#if HAVE(SAFARI_SERVICES_FRAMEWORK)
+    if (![viewController isKindOfClass:getSFSafariViewControllerClass()])
+        return;
+
+    SFSafariViewController *safariViewController = (SFSafariViewController *)viewController;
+    safariViewController._showingLinkPreview = NO;
 
     viewController.transitioningDelegate = nil;
     viewController.modalPresentationStyle = UIModalPresentationFullScreen;
+
+    UIViewController *presentingViewController = viewController.presentingViewController ?: self.window.rootViewController;
     [presentingViewController presentViewController:viewController animated:NO completion:nil];
+#endif
 }
 
 - (void)willPresentPreviewViewController:(UIViewController *)viewController forPosition:(CGPoint)position inSourceView:(UIView *)sourceView
 {
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
+    [self removeGestureRecognizer:_longPressGestureRecognizer.get()];
 
     [self _cancelInteraction];
     [[viewController presentationController] setSourceRect:_positionInformation.bounds];
@@ -3161,6 +3177,7 @@ static bool isAssistableInputType(InputType type)
 - (void)didDismissPreviewViewController:(UIViewController *)viewController committing:(BOOL)committing
 {
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
+    [self addGestureRecognizer:_longPressGestureRecognizer.get()];
 
     id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     if ([uiDelegate respondsToSelector:@selector(_webView:didDismissPreviewViewController:)])

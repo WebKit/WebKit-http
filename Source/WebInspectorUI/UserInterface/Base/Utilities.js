@@ -748,6 +748,55 @@ Object.defineProperty(String.prototype, "removeWordBreakCharacters",
     }
 });
 
+Object.defineProperty(String.prototype, "getMatchingIndexes",
+{
+    value: function(needle)
+    {
+        var indexesOfNeedle = [];
+        var index = this.indexOf(needle);
+
+        while (index >= 0) {
+            indexesOfNeedle.push(index);
+            index = this.indexOf(needle, index + 1);
+        }
+
+        return indexesOfNeedle;
+    }
+});
+
+Object.defineProperty(String.prototype, "levenshteinDistance",
+{
+    value: function(s)
+    {
+        var m = this.length;
+        var n = s.length;
+        var d = new Array(m + 1);
+
+        for (var i = 0; i <= m; ++i) {
+            d[i] = new Array(n + 1);
+            d[i][0] = i;
+        }
+
+        for (var j = 0; j <= n; ++j)
+            d[0][j] = j;
+
+        for (var j = 1; j <= n; ++j) {
+            for (var i = 1; i <= m; ++i) {
+                if (this[i - 1] === s[j - 1])
+                    d[i][j] = d[i - 1][j - 1];
+                else {
+                    var deletion = d[i - 1][j] + 1;
+                    var insertion = d[i][j - 1] + 1;
+                    var substitution = d[i - 1][j - 1] + 1;
+                    d[i][j] = Math.min(deletion, insertion, substitution);
+                }
+            }
+        }
+
+        return d[m][n];
+    }
+});
+
 Object.defineProperty(Number, "constrain",
 {
     value: function(num, min, max)

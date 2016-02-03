@@ -309,6 +309,9 @@
     <ClCompile Include="..\..\win\Plugins\PluginDebug.cpp">
       <Filter>Sources\Plugins</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\win\Plugins\PluginMainThreadScheduler.cpp">
+      <Filter>Sources\Plugins</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\win\Plugins\PluginMessageThrottlerWin.cpp">
       <Filter>Sources\Plugins</Filter>
     </ClCompile>
@@ -331,9 +334,6 @@
       <Filter>Sources\Plugins</Filter>
     </ClCompile>
     <ClCompile Include="..\..\win\WebKitMessageLoop.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\WebCoreSupport\WebViewGroup.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -615,6 +615,9 @@
     <ClInclude Include="..\..\win\Plugins\PluginView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\win\Plugins\PluginMainThreadScheduler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\win\Plugins\PluginMessageThrottlerWin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -655,9 +658,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\win\WebKitMessageLoop.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\WebCoreSupport\WebViewGroup.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

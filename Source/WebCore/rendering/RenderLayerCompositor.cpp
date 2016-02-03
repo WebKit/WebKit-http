@@ -467,12 +467,18 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
-        rootLayer->flushCompositingState(frameView.exposedContentRect());
+        FloatRect exposedRect = frameView.exposedContentRect();
+        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %.2f, %.2f, %.2fx%.2f", this, isFlushRoot,
+            exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height());
+        rootLayer->flushCompositingState(exposedRect);
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
         if (!frameView.exposedRect().isInfinite())
             visibleRect.intersect(IntRect(frameView.exposedRect()));
+
+        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %d, %d, %dx%d", this, isFlushRoot,
+            visibleRect.x(), visibleRect.y(), visibleRect.width(), visibleRect.height());
         rootLayer->flushCompositingState(visibleRect);
 #endif
     }
@@ -3933,6 +3939,8 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Lay
                 scrollingGeometry.horizontalSnapOffsets = *offsets;
             if (const Vector<LayoutUnit>* offsets = layer.verticalSnapOffsets())
                 scrollingGeometry.verticalSnapOffsets = *offsets;
+            scrollingGeometry.currentHorizontalSnapPointIndex = layer.currentHorizontalSnapPointIndex();
+            scrollingGeometry.currentVerticalSnapPointIndex = layer.currentVerticalSnapPointIndex();
 #endif
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }

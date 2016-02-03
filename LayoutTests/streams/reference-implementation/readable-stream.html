@@ -166,7 +166,7 @@ test2.step(function()
     }));
 });
 
-var test3 = async_test('ReadableStream start should be able to return a promise and reject it', { timeout: 100 });
+var test3 = async_test('ReadableStream start should be able to return a promise and reject it');
 test3.step(function()
 {
     var theError = new Error('rejected!');
@@ -224,7 +224,7 @@ test4.step(function() {
     }));
 });
 
-var test5 = async_test('ReadableStream: if pull rejects, it should error the stream', { timeout: 50 });
+var test5 = async_test('ReadableStream: if pull rejects, it should error the stream');
 test5.step(function() {
     var error = new Error('pull failure');
     var rs = new ReadableStream({

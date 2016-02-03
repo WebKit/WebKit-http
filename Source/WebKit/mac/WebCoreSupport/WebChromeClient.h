@@ -89,9 +89,6 @@ public:
     virtual void runJavaScriptAlert(WebCore::Frame*, const WTF::String&) override;
     virtual bool runJavaScriptConfirm(WebCore::Frame*, const WTF::String&) override;
     virtual bool runJavaScriptPrompt(WebCore::Frame*, const WTF::String& message, const WTF::String& defaultValue, WTF::String& result) override;
-    virtual bool shouldInterruptJavaScript() override;
-
-    virtual WebCore::IntRect windowResizerRect() const override;
 
     virtual bool supportsImmediateInvalidation() override;
     virtual void invalidateRootView(const WebCore::IntRect&) override;

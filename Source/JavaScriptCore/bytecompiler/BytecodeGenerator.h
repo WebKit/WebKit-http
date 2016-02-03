@@ -546,7 +546,8 @@ namespace JSC {
         RegisterID* emitIsObject(RegisterID* dst, RegisterID* src);
         RegisterID* emitIsUndefined(RegisterID* dst, RegisterID* src);
 
-        void emitIteratorClose(RegisterID* iterator, ThrowableExpressionData* node);
+        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node);
+        void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node);
 
         void emitReadOnlyExceptionIfNeeded();
 

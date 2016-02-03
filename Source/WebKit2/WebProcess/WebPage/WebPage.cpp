@@ -515,6 +515,8 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     if (parameters.viewScaleFactor != 1)
         scaleView(parameters.viewScaleFactor);
+
+    m_page->setUserContentExtensionsEnabled(parameters.userContentExtensionsEnabled);
 }
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
@@ -1537,6 +1539,8 @@ void WebPage::setUseFixedLayout(bool fixed)
     view->setUseFixedLayout(fixed);
     if (!fixed)
         setFixedLayoutSize(IntSize());
+
+    send(Messages::WebPageProxy::UseFixedLayoutDidChange(fixed));
 }
 
 void WebPage::setFixedLayoutSize(const IntSize& size)
@@ -1546,6 +1550,8 @@ void WebPage::setFixedLayoutSize(const IntSize& size)
         return;
 
     view->setFixedLayoutSize(size);
+
+    send(Messages::WebPageProxy::FixedLayoutSizeDidChange(size));
 }
 
 IntSize WebPage::fixedLayoutSize() const
@@ -2317,20 +2323,6 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-void WebPage::setWindowResizerSize(const IntSize& windowResizerSize)
-{
-    if (m_windowResizerSize == windowResizerSize)
-        return;
-
-    m_windowResizerSize = windowResizerSize;
-
-    for (Frame* coreFrame = m_mainFrame->coreFrame(); coreFrame; coreFrame = coreFrame->tree().traverseNext()) {
-        FrameView* view = coreFrame->view();
-        if (view)
-            view->windowResizerRectChanged();
-    }
-}
-
 void WebPage::setCanStartMediaTimerFired()
 {
     if (m_page)
@@ -2500,21 +2492,6 @@ IntRect WebPage::rootViewToAccessibilityScreen(const IntRect& rect)
     return screenRect;
 }
 #endif
-
-IntRect WebPage::windowResizerRect() const
-{
-    if (m_windowResizerSize.isEmpty())
-        return IntRect();
-
-    IntSize frameViewSize;
-    if (Frame* coreFrame = m_mainFrame->coreFrame()) {
-        if (FrameView* view = coreFrame->view())
-            frameViewSize = view->size();
-    }
-
-    return IntRect(frameViewSize.width() - m_windowResizerSize.width(), frameViewSize.height() - m_windowResizerSize.height(), 
-                   m_windowResizerSize.width(), m_windowResizerSize.height());
-}
 
 KeyboardUIMode WebPage::keyboardUIMode()
 {
@@ -2795,7 +2772,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
     settings.setRequiresUserGestureForMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForMediaPlaybackKey()));
     settings.setAllowsInlineMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackKey()));
-    settings.setAllowsAlternateFullscreen(store.getBoolValueForKey(WebPreferencesKey::allowsAlternateFullscreenKey()));
+    settings.setAllowsPictureInPictureMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey()));
     settings.setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
     settings.setHyperlinkAuditingEnabled(store.getBoolValueForKey(WebPreferencesKey::hyperlinkAuditingEnabledKey()));
     settings.setRequestAnimationFrameEnabled(store.getBoolValueForKey(WebPreferencesKey::requestAnimationFrameEnabledKey()));
@@ -5016,6 +4993,14 @@ void WebPage::setShouldScaleViewToFitDocument(bool shouldScaleViewToFitDocument)
         return;
 
     m_drawingArea->setShouldScaleViewToFitDocument(shouldScaleViewToFitDocument);
+}
+
+void WebPage::setUserContentExtensionsEnabled(bool userContentExtensionsEnabled)
+{
+    if (!m_page)
+        return;
+
+    m_page->setUserContentExtensionsEnabled(userContentExtensionsEnabled);
 }
 
 } // namespace WebKit

@@ -29,9 +29,12 @@
 #if ENABLE(MEDIA_SESSION)
 
 #include "MediaRemoteControls.h"
+#include "MediaSessionMetadata.h"
 
 namespace WebCore {
 
+class Dictionary;
+class Document;
 class HTMLMediaElement;
 
 class MediaSession final : public RefCounted<MediaSession> {
@@ -41,7 +44,7 @@ public:
         Active,
         Interrupted
     };
-    
+
     static Ref<MediaSession> create(ScriptExecutionContext& context, const String& kind)
     {
         return adoptRef(*new MediaSession(context, kind));
@@ -50,10 +53,12 @@ public:
     MediaSession(ScriptExecutionContext&, const String&);
     ~MediaSession();
 
-    String kind() const { return m_kind; }
+    String kind() const;
     MediaRemoteControls* controls(bool& isNull);
     
     State currentState() const { return m_currentState; }
+
+    void setMetadata(const Dictionary&);
 
     void releaseSession();
     
@@ -61,22 +66,37 @@ public:
     bool invoke();
 
     void togglePlayback();
+    void skipToNextTrack();
+    void skipToPreviousTrack();
 
 private:
     friend class HTMLMediaElement;
+
+    enum class Kind {
+        Content,
+        Transient,
+        TransientSolo,
+        Ambient
+    };
+
+    static Kind parseKind(const String&);
 
     void addMediaElement(HTMLMediaElement&);
     void removeMediaElement(HTMLMediaElement&);
 
     void addActiveMediaElement(HTMLMediaElement&);
 
+    void releaseInternal();
+
     State m_currentState { State::Idle };
     Vector<HTMLMediaElement*> m_participatingElements;
     HashSet<HTMLMediaElement*> m_activeParticipatingElements;
     HashSet<HTMLMediaElement*>* m_iteratedActiveParticipatingElements { nullptr };
 
-    const String m_kind;
+    Document& m_document;
+    const Kind m_kind;
     RefPtr<MediaRemoteControls> m_controls;
+    MediaSessionMetadata m_metadata;
 };
 
 } // namespace WebCore

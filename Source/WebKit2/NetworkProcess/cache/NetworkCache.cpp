@@ -377,8 +377,8 @@ void Cache::retrieve(const WebCore::ResourceRequest& originalRequest, uint64_t w
         };
 
 #if !LOG_DISABLED
-        auto elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
-        LOG(NetworkCache, "(NetworkProcess) retrieve complete useDecision=%d priority=%u time=%lldms", useDecision, originalRequest.priority(), elapsedMS);
+        auto elapsedMS = static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count());
+        LOG(NetworkCache, "(NetworkProcess) retrieve complete useDecision=%d priority=%u time=%" PRIi64 "ms", useDecision, originalRequest.priority(), elapsedMS);
 #endif
         completionHandler(WTF::move(entry));
 
@@ -545,7 +545,6 @@ void Cache::deleteDumpFile()
 void Cache::clear(std::chrono::system_clock::time_point modifiedSince, std::function<void ()>&& completionHandler)
 {
     LOG(NetworkCache, "(NetworkProcess) clearing cache");
-    deleteDumpFile();
 
     if (m_statistics)
         m_statistics->clear();
@@ -555,11 +554,23 @@ void Cache::clear(std::chrono::system_clock::time_point modifiedSince, std::func
         return;
     }
     m_storage->clear(modifiedSince, WTF::move(completionHandler));
+
+    deleteDumpFile();
 }
 
 void Cache::clear()
 {
     clear(std::chrono::system_clock::time_point::min(), nullptr);
+}
+
+void Cache::handleMemoryPressureNotification(WebCore::Critical critical)
+{
+    if (critical != WebCore::Critical::Yes)
+        return;
+    // There can be substantial amount of memory in the write queue and we don't know how long it will take to write it out.
+    // We may also be about to suspend the process.
+    if (m_storage)
+        m_storage->clearWriteQueue();
 }
 
 String Cache::recordsPath() const

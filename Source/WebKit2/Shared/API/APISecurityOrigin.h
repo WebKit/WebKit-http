@@ -44,10 +44,8 @@ public:
         return create(WebCore::SecurityOrigin::create(protocol, host, port));
     }
 
-    static RefPtr<SecurityOrigin> create(PassRefPtr<WebCore::SecurityOrigin> securityOrigin)
+    static RefPtr<SecurityOrigin> create(const WebCore::SecurityOrigin& securityOrigin)
     {
-        if (!securityOrigin)
-            return nullptr;
         return adoptRef(new SecurityOrigin(securityOrigin));
     }
 
@@ -56,6 +54,11 @@ public:
 private:
     SecurityOrigin(PassRefPtr<WebCore::SecurityOrigin> securityOrigin)
         : m_securityOrigin(securityOrigin)
+    {
+    }
+
+    SecurityOrigin(const WebCore::SecurityOrigin& securityOrigin)
+        : m_securityOrigin(securityOrigin.isolatedCopy())
     {
     }
 

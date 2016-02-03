@@ -45,6 +45,12 @@
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
+#if ENABLE(MEDIA_SESSION)
+namespace WebCore {
+struct MediaSessionMetadata;
+}
+#endif
+
 #if PLATFORM(IOS)
 #include "PlatformLayer.h"
 #define NSResponder WAKResponder
@@ -146,10 +152,7 @@ public:
     virtual bool runJavaScriptConfirm(Frame*, const String&) = 0;
     virtual bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) = 0;
     virtual void setStatusbarText(const String&) = 0;
-    virtual bool shouldInterruptJavaScript() = 0;
     virtual KeyboardUIMode keyboardUIMode() = 0;
-
-    virtual IntRect windowResizerRect() const = 0;
 
     // Methods used by HostWindow.
     virtual bool supportsImmediateInvalidation() { return false; }
@@ -414,6 +417,10 @@ public:
     virtual bool shouldUseTiledBackingForFrameView(const FrameView*) const { return false; }
 
     virtual void isPlayingMediaDidChange(MediaProducer::MediaStateFlags) { }
+
+#if ENABLE(MEDIA_SESSION)
+    virtual void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&) { }
+#endif
 
     virtual void setPageActivityState(PageActivityState::Flags) { }
 

@@ -184,6 +184,8 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
 
     m_webPageProxyForBackForwardListForCurrentSwipe = m_alternateBackForwardListSourceView.get() ? m_alternateBackForwardListSourceView.get()->_page : &m_webPageProxy;
     m_webPageProxyForBackForwardListForCurrentSwipe->navigationGestureDidBegin();
+    if (&m_webPageProxy != m_webPageProxyForBackForwardListForCurrentSwipe)
+        m_webPageProxy.navigationGestureDidBegin();
 
     auto& backForwardList = m_webPageProxyForBackForwardListForCurrentSwipe->backForwardList();
 
@@ -285,6 +287,8 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
         RefPtr<WebPageProxy> webPageProxyForBackForwardListForCurrentSwipe = m_webPageProxyForBackForwardListForCurrentSwipe;
         removeSwipeSnapshot();
         webPageProxyForBackForwardListForCurrentSwipe->navigationGestureDidEnd(false, *targetItem);
+        if (&m_webPageProxy != webPageProxyForBackForwardListForCurrentSwipe)
+            m_webPageProxy.navigationGestureDidEnd();
         return;
     }
 
@@ -293,6 +297,9 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
         m_snapshotRemovalTargetRenderTreeSize = snapshot->renderTreeSize() * swipeSnapshotRemovalRenderTreeSizeTargetFraction;
 
     m_webPageProxyForBackForwardListForCurrentSwipe->navigationGestureDidEnd(true, *targetItem);
+    if (&m_webPageProxy != m_webPageProxyForBackForwardListForCurrentSwipe)
+        m_webPageProxy.navigationGestureDidEnd();
+
     m_webPageProxyForBackForwardListForCurrentSwipe->goToBackForwardItem(targetItem);
 
     if (auto drawingArea = m_webPageProxy.drawingArea()) {
@@ -303,7 +310,7 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
             if (gestureControllerIter != viewGestureControllersForAllPages().end() && gestureControllerIter->value->m_gesturePendingSnapshotRemoval == gesturePendingSnapshotRemoval)
                 gestureControllerIter->value->willCommitPostSwipeTransitionLayerTree(error == CallbackBase::Error::None);
         });
-        drawingArea->hideContentUntilNextUpdate();
+        drawingArea->hideContentUntilPendingUpdate();
     } else {
         removeSwipeSnapshot();
         return;
@@ -391,6 +398,9 @@ void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNa
         return;
 
     // This is nearly equivalent to didFinishLoad in the same document navigation case.
+    if (!m_swipeWaitingForDidFinishLoad)
+        return;
+
     m_swipeWaitingForDidFinishLoad = false;
 
     if (type != SameDocumentNavigationSessionStateReplace && type != SameDocumentNavigationSessionStatePop)
@@ -402,6 +412,9 @@ void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNa
 void ViewGestureController::activeLoadMonitoringTimerFired()
 {
     if (m_webPageProxy.pageLoadState().isLoading())
+        return;
+
+    if (!m_swipeWaitingForSubresourceLoads)
         return;
 
     m_swipeWaitingForSubresourceLoads = false;

@@ -54,6 +54,14 @@ function isUInt32(obj)
     return "" + (obj >>> 0) === obj;
 }
 
+function endsWith(str, suffix)
+{
+    var position = str.length - suffix.length;
+    if (position < 0)
+        return false;
+    return str.indexOf(suffix, position) === position;
+}
+
 function isSymbol(obj)
 {
     return typeof obj === "symbol";
@@ -680,8 +688,10 @@ InjectedScript.prototype = {
                     continue;
                 }
 
-                if (descriptor.hasOwnProperty("get") && descriptor.hasOwnProperty("set") && !descriptor.get && !descriptor.set) {
-                    // FIXME: <https://webkit.org/b/140575> Web Inspector: Native Bindings Descriptors are Incomplete
+                if (endsWith(String(descriptor.get), "[native code]\n}") || 
+                     (!descriptor.get && descriptor.hasOwnProperty("get") && !descriptor.set && descriptor.hasOwnProperty("set"))) {
+                    // FIXME: Some Native Bindings Descriptors are Incomplete
+                    // <https://webkit.org/b/141585> Some IDL attributes appear on the instances instead of on prototypes
                     // Developers may create such a descriptors, so we should be resilient:
                     // var x = {}; Object.defineProperty(x, "p", {get:undefined}); Object.getOwnPropertyDescriptor(x, "p")
                     var fakeDescriptor = createFakeValueDescriptor(name, symbol, descriptor, isOwnProperty, true);
@@ -698,12 +708,34 @@ InjectedScript.prototype = {
             }
         }
 
-        // Iterate prototype chain.
+        function arrayIndexPropertyNames(o, length)
+        {
+            var array = new Array(length);
+            for (var i = 0; i < length; ++i) {
+                if (i in o)
+                    array.push("" + i);
+            }
+            return array;
+        }
+
+        // FIXME: <https://webkit.org/b/143589> Web Inspector: Better handling for large collections in Object Trees
+        // For array types with a large length we attempt to skip getOwnPropertyNames and instead just sublist of indexes.
+        var isArrayTypeWithLargeLength = false;
+        try {
+            isArrayTypeWithLargeLength = injectedScript._subtype(object) === "array" && isFinite(object.length) && object.length > 100;
+        } catch(e) {}
+
         for (var o = object; this._isDefined(o); o = o.__proto__) {
             var isOwnProperty = o === object;
-            processProperties(o, Object.getOwnPropertyNames(o), isOwnProperty);
-            if (Object.getOwnPropertySymbols)
-                processProperties(o, Object.getOwnPropertySymbols(o), isOwnProperty);
+
+            if (isArrayTypeWithLargeLength && isOwnProperty)
+                processProperties(o, arrayIndexPropertyNames(o, 100), isOwnProperty);
+            else {
+                processProperties(o, Object.getOwnPropertyNames(o), isOwnProperty);
+                if (Object.getOwnPropertySymbols)
+                    processProperties(o, Object.getOwnPropertySymbols(o), isOwnProperty);
+            }
+
             if (collectionMode === InjectedScript.CollectionMode.OwnProperties)
                 break;
         }

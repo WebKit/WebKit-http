@@ -1,3 +1,99 @@
+2015-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.9.3 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2015-06-22  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Hyphenation is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=89830
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake: Added an option for LibHyphen.
+
+2015-06-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add support for building with various sanitizer tools
+        https://bugs.webkit.org/show_bug.cgi?id=131941
+
+        Reviewed by Martin Robinson.
+
+        * Source/PlatformGTK.cmake: Don't generate any documentation
+        when compiling with sanitizers enabled.
+        * Source/cmake/OptionsCommon.cmake: Allow linking with
+        undefined symbols when compiling with sanitizers enabled.
+
+2015-06-21  Philip Chimento  <philip.chimento@gmail.com>
+
+        libwebkit2gtk fails to link without opengl
+        https://bugs.webkit.org/show_bug.cgi?id=138332
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: USE(TEXTURE_MAPPER) must be
+        enabled regardless of whether OpenGL is, because certain symbols
+        such as WebCore::GraphicsLayer::create() need to be built.
+
+2015-06-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [EFL][GTK] Define GLIB_VERSION_MIN_REQUIRED and require glib 2.36 for GTK
+        https://bugs.webkit.org/show_bug.cgi?id=146181
+
+        Reviewed by Martin Robinson.
+
+        Bump our GLib requirement to 2.36 to reflect reality, since we are using GTask.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2015-06-20  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Do not consider test directories when DEVELOPER_MODE is OFF
+        https://bugs.webkit.org/show_bug.cgi?id=146171
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Exposed ENABLE_DEVELOPER_MODE to Compiler and CMake definition when DEVELOPER_MODE is ON.
+
+2015-06-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] FindGTK3.cmake should not modify the values of build options
+        https://bugs.webkit.org/show_bug.cgi?id=144613
+
+        Reviewed by Martin Robinson.
+
+        * Source/cmake/FindGTK3.cmake: Do not check or set the value of ENABLE_X11_TARGET and
+        ENABLE_WAYLAND_TARGET. Instead, simply define the variables GTK3_SUPPORTS_X11 and
+        GTK3_SUPPORTS_WAYLAND as appropriate. Also, rename GTK_SUPPORTS_GESTURES to
+        GTK3_SUPPORTS_GESTURES for consistency.
+        * Source/cmake/OptionsGTK.cmake: Fail the build if the appropriate GTK+ backend is not
+        available. It's not possible to automatically select a backend correctly anymore, since all
+        options are set at the same time.
+
+2015-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove unnecessary svn:executable flags
+        https://bugs.webkit.org/show_bug.cgi?id=146107
+
+        Reviewed by Alexey Proskuryakov.
+
+        * ManualTests/iframe_notifications/iframe-reparenting-close-window-child.html: Removed property svn:executable.
+        * ManualTests/iframe_notifications/iframe-reparenting-close-window-iframe.html: Removed property svn:executable.
+        * ManualTests/iframe_notifications/iframe-reparenting-close-window.html: Removed property svn:executable.
+        * ManualTests/select-menu-list-wrongly-positioned.html: Removed property svn:executable.
+        * ManualTests/svg-text-float-not-removed-crash.html: Removed property svn:executable.
+
+2015-06-18  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Use SET_AND_EXPOSE_TO_BUILD instead of definitions
+        https://bugs.webkit.org/show_bug.cgi?id=146108
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/OptionsEfl.cmake:
+
 2015-06-16  Ryuan Choi  <ryuan.choi@navercorp.com>
 
         [EFL] Remove duplicated PUBLIC argument in OptionsEfl.cmake

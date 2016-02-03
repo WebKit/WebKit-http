@@ -469,7 +469,7 @@ LayoutUnit RenderGrid::computeUsedBreadthOfMaxLength(GridTrackSizingDirection di
 LayoutUnit RenderGrid::computeUsedBreadthOfSpecifiedLength(GridTrackSizingDirection direction, const Length& trackLength) const
 {
     ASSERT(trackLength.isSpecified());
-    return valueForLength(trackLength, direction == ForColumns ? logicalWidth() : std::max(LayoutUnit(), computeContentLogicalHeight(style().logicalHeight())));
+    return valueForLength(trackLength, direction == ForColumns ? logicalWidth() : std::max(LayoutUnit(), computeContentLogicalHeight(style().logicalHeight(), -1)));
 }
 
 double RenderGrid::computeNormalizedFractionBreadth(Vector<GridTrack>& tracks, const GridSpan& tracksSpan, GridTrackSizingDirection direction, LayoutUnit spaceToFill) const
@@ -1306,7 +1306,7 @@ void RenderGrid::applyStretchAlignmentToChildIfNeeded(RenderBox& child, LayoutUn
     // FIXME: grid track sizing and positioning do not support orthogonal modes yet.
     if (!hasOrthogonalWritingMode) {
         LayoutUnit stretchedLogicalHeight = availableAlignmentSpaceForChildBeforeStretching(gridAreaBreadthForChild, child);
-        LayoutUnit desiredLogicalHeight = child.constrainLogicalHeightByMinMax(stretchedLogicalHeight);
+        LayoutUnit desiredLogicalHeight = child.constrainLogicalHeightByMinMax(stretchedLogicalHeight, -1);
 
         // FIXME: Can avoid laying out here in some cases. See https://webkit.org/b/87905.
         bool childNeedsRelayout = desiredLogicalHeight != child.logicalHeight();
@@ -1413,17 +1413,18 @@ LayoutUnit RenderGrid::rowPositionForChild(const RenderBox& child) const
 {
     const GridCoordinate& coordinate = cachedGridCoordinate(child);
     LayoutUnit startOfRow = m_rowPositions[coordinate.rows.resolvedInitialPosition.toInt()];
-    LayoutUnit endOfRow = m_rowPositions[coordinate.rows.resolvedFinalPosition.next().toInt()];
     LayoutUnit startPosition = startOfRow + marginBeforeForChild(child);
-    LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveAlignmentOverflow(style(), child.style()), endOfRow - startOfRow, child.logicalHeight() + child.marginLogicalHeight());
 
-    switch (columnAxisPositionForChild(child)) {
+    GridAxisPosition axisPosition = columnAxisPositionForChild(child);
+    switch (axisPosition) {
     case GridAxisStart:
         return startPosition;
     case GridAxisEnd:
-        return startPosition + offsetFromStartPosition;
-    case GridAxisCenter:
-        return startPosition + offsetFromStartPosition / 2;
+    case GridAxisCenter: {
+        LayoutUnit endOfRow = m_rowPositions[coordinate.rows.resolvedFinalPosition.next().toInt()];
+        LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveAlignmentOverflow(style(), child.style()), endOfRow - startOfRow, child.logicalHeight() + child.marginLogicalHeight());
+        return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
+    }
     }
 
     ASSERT_NOT_REACHED();
@@ -1435,17 +1436,18 @@ LayoutUnit RenderGrid::columnPositionForChild(const RenderBox& child) const
 {
     const GridCoordinate& coordinate = cachedGridCoordinate(child);
     LayoutUnit startOfColumn = m_columnPositions[coordinate.columns.resolvedInitialPosition.toInt()];
-    LayoutUnit endOfColumn = m_columnPositions[coordinate.columns.resolvedFinalPosition.next().toInt()];
     LayoutUnit startPosition = startOfColumn + marginStartForChild(child);
-    LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveJustificationOverflow(style(), child.style()), endOfColumn - startOfColumn, child.logicalWidth() + child.marginLogicalWidth());
 
-    switch (rowAxisPositionForChild(child)) {
+    GridAxisPosition axisPosition = rowAxisPositionForChild(child);
+    switch (axisPosition) {
     case GridAxisStart:
         return startPosition;
     case GridAxisEnd:
-        return startPosition + offsetFromStartPosition;
-    case GridAxisCenter:
-        return startPosition + offsetFromStartPosition / 2;
+    case GridAxisCenter: {
+        LayoutUnit endOfColumn = m_columnPositions[coordinate.columns.resolvedFinalPosition.next().toInt()];
+        LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveJustificationOverflow(style(), child.style()), endOfColumn - startOfColumn, child.logicalWidth() + child.marginLogicalWidth());
+        return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
+    }
     }
 
     ASSERT_NOT_REACHED();

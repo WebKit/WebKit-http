@@ -48,6 +48,9 @@ set(WebKitTestRunner_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}/InjectedBundle
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
+)
+
+set(WebKitTestRunner_SYSTEM_INCLUDE_DIRECTORIES
     ${LIBSOUP_INCLUDE_DIRS}
 )
 
@@ -100,6 +103,7 @@ foreach(inc ${WebKitTestRunner_LOCAL_INCLUDE_DIRECTORIES})
     ADD_DEFINITIONS(-iquote ${inc})
 endforeach(inc)
 include_directories(${WebKitTestRunner_INCLUDE_DIRECTORIES})
+include_directories(SYSTEM ${WebKitTestRunner_SYSTEM_INCLUDE_DIRECTORIES})
 
 add_library(TestRunnerInjectedBundle SHARED ${WebKitTestRunnerInjectedBundle_SOURCES})
 target_link_libraries(TestRunnerInjectedBundle ${WebKitTestRunnerInjectedBundle_LIBRARIES})

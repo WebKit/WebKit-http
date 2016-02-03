@@ -287,14 +287,18 @@ PluginView::PluginView(PassRefPtr<HTMLPlugInElement> pluginElement, PassRefPtr<P
     , m_isWaitingUntilMediaCanStart(false)
     , m_isBeingDestroyed(false)
     , m_pluginProcessHasCrashed(false)
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     , m_didPlugInStartOffScreen(false)
+#endif
     , m_pendingURLRequestsTimer(RunLoop::main(), this, &PluginView::pendingURLRequestsTimerFired)
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_npRuntimeObjectMap(this)
 #endif
     , m_manualStreamState(StreamStateInitial)
     , m_pluginSnapshotTimer(*this, &PluginView::pluginSnapshotTimerFired, pluginSnapshotTimerDelay)
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC) || PLATFORM(COCOA)
     , m_countSnapshotRetries(0)
+#endif
     , m_didReceiveUserInteraction(false)
     , m_pageScaleFactor(1)
     , m_pluginIsPlayingAudio(false)
@@ -1513,14 +1517,6 @@ void PluginView::pluginProcessCrashed()
     downcast<RenderEmbeddedObject>(*m_pluginElement->renderer()).setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
     
     Widget::invalidate();
-}
-
-void PluginView::willSendEventToPlugin()
-{
-    // If we're sending an event to a plug-in, we can't control how long the plug-in
-    // takes to process it (e.g. it may display a context menu), so we tell the UI process
-    // to stop the responsiveness timer in this case.
-    m_webPage->send(Messages::WebPageProxy::StopResponsivenessTimer());
 }
 
 #if PLATFORM(COCOA)

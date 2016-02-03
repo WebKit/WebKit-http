@@ -29,6 +29,7 @@
 #if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
 
 #import "FrameView.h"
+#import "LayoutSize.h"
 #import "Logging.h"
 #import "NSScrollerImpDetails.h"
 #import "PlatformWheelEvent.h"
@@ -136,6 +137,12 @@ void ScrollingTreeFrameScrollingNodeMac::updateBeforeChildren(const ScrollingSta
 
     if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::VerticalSnapOffsets))
         m_scrollController.updateScrollSnapPoints(ScrollEventAxis::Vertical, convertToLayoutUnits(scrollingStateNode.verticalSnapOffsets()));
+
+    if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::CurrentHorizontalSnapOffsetIndex))
+        m_scrollController.setActiveScrollSnapIndexForAxis(ScrollEventAxis::Horizontal, scrollingStateNode.currentHorizontalSnapPointIndex());
+    
+    if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::CurrentVerticalSnapOffsetIndex))
+        m_scrollController.setActiveScrollSnapIndexForAxis(ScrollEventAxis::Vertical, scrollingStateNode.currentVerticalSnapPointIndex());
 #endif
 
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ExpectsWheelEventTestTrigger))
@@ -552,7 +559,7 @@ static void logThreadedScrollingMode(unsigned synchronousScrollingReasons)
         WTFLogAlways("SCROLLING: Switching to threaded scrolling mode. Time: %f\n", WTF::monotonicallyIncreasingTime());
 }
 
-#if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
+#if ENABLE(CSS_SCROLL_SNAP)
 LayoutUnit ScrollingTreeFrameScrollingNodeMac::scrollOffsetOnAxis(ScrollEventAxis axis) const
 {
     const FloatPoint& currentPosition = scrollPosition();
@@ -586,6 +593,11 @@ void ScrollingTreeFrameScrollingNodeMac::stopScrollSnapTimer(ScrollEventAxis axi
     ScrollEventAxis otherAxis = (axis == ScrollEventAxis::Horizontal) ? ScrollEventAxis::Vertical : ScrollEventAxis::Horizontal;
     if (!m_scrollController.hasActiveScrollSnapTimerForAxis(otherAxis))
         scrollingTree().setMainFrameIsScrollSnapping(false);
+}
+    
+LayoutSize ScrollingTreeFrameScrollingNodeMac::scrollExtent() const
+{
+    return LayoutSize(totalContentsSize());
 }
 #endif
 

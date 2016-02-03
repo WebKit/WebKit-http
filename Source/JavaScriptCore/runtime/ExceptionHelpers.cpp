@@ -82,32 +82,16 @@ JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
     
 JSString* errorDescriptionForValue(ExecState* exec, JSValue v)
 {
-    VM& vm = exec->vm();
-    if (v.isNull())
-        return vm.smallStrings.nullString();
-    if (v.isUndefined())
-        return vm.smallStrings.undefinedString();
-    if (v.isInt32())
-        return jsString(&vm, vm.numericStrings.add(v.asInt32()));
-    if (v.isDouble())
-        return jsString(&vm, vm.numericStrings.add(v.asDouble()));
-    if (v.isTrue())
-        return vm.smallStrings.trueString();
-    if (v.isFalse())
-        return vm.smallStrings.falseString();
     if (v.isString())
-        return jsNontrivialString(&vm, makeString('"',  asString(v)->value(exec), '"'));
+        return jsNontrivialString(exec, makeString('"',  asString(v)->value(exec), '"'));
     if (v.isObject()) {
         CallData callData;
         JSObject* object = asObject(v);
         if (object->methodTable()->getCallData(object, callData) != CallTypeNone)
-            return vm.smallStrings.functionString();
+            return exec->vm().smallStrings.functionString();
         return jsString(exec, JSObject::calculatedClassName(object));
     }
-    
-    // The JSValue should never be empty, so this point in the code should never be reached.
-    ASSERT_NOT_REACHED();
-    return vm.smallStrings.emptyString();
+    return v.toString(exec);
 }
     
 static String defaultApproximateSourceError(const String& originalMessage, const String& sourceText)
@@ -127,8 +111,14 @@ static String defaultSourceAppender(const String& originalMessage, const String&
 static String functionCallBase(const String& sourceText)
 { 
     // This function retrieves the 'foo.bar' substring from 'foo.bar(baz)'.
-    unsigned idx = sourceText.length() - 1;
-    if (sourceText[idx] != ')') {
+    // FIXME: This function has simple processing of /* */ style comments.
+    // It doesn't properly handle embedded comments of string literals that contain
+    // parenthesis or comment constructs, e.g. foo.bar("/abc\)*/").
+    // https://bugs.webkit.org/show_bug.cgi?id=146304
+
+    unsigned sourceLength = sourceText.length();
+    unsigned idx = sourceLength - 1;
+    if (sourceLength < 2 || sourceText[idx] != ')') {
         // For function calls that have many new lines in between their open parenthesis
         // and their closing parenthesis, the text range passed into the message appender 
         // will not inlcude the text in between these parentheses, it will just be the desired
@@ -144,7 +134,7 @@ static String functionCallBase(const String& sourceText)
     while (parenStack > 0) {
         UChar curChar = sourceText[idx];
         if (isInMultiLineComment)  {
-            if (curChar == '*' && sourceText[idx - 1] == '/') {
+            if (idx > 0 && curChar == '*' && sourceText[idx - 1] == '/') {
                 isInMultiLineComment = false;
                 idx -= 1;
             }
@@ -152,10 +142,13 @@ static String functionCallBase(const String& sourceText)
             parenStack -= 1;
         else if (curChar == ')')
             parenStack += 1;
-        else if (curChar == '/' && sourceText[idx - 1] == '*') {
+        else if (idx > 0 && curChar == '/' && sourceText[idx - 1] == '*') {
             isInMultiLineComment = true;
             idx -= 1;
         }
+
+        if (!idx)
+            break;
 
         idx -= 1;
     }

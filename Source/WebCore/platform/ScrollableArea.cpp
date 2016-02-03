@@ -190,7 +190,7 @@ bool ScrollableArea::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
         return false;
 
     bool handledEvent = scrollAnimator().handleWheelEvent(wheelEvent);
-#if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
+#if ENABLE(CSS_SCROLL_SNAP)
     if (scrollAnimator().activeScrollSnapIndexDidChange()) {
         setCurrentHorizontalSnapPointIndex(scrollAnimator().activeScrollSnapIndexForAxis(ScrollEventAxis::Horizontal));
         setCurrentVerticalSnapPointIndex(scrollAnimator().activeScrollSnapIndexForAxis(ScrollEventAxis::Vertical));
@@ -339,14 +339,14 @@ void ScrollableArea::setScrollbarOverlayStyle(ScrollbarOverlayStyle overlayStyle
     m_scrollbarOverlayStyle = overlayStyle;
 
     if (horizontalScrollbar()) {
-        ScrollbarTheme::theme()->updateScrollbarOverlayStyle(horizontalScrollbar());
+        ScrollbarTheme::theme()->updateScrollbarOverlayStyle(*horizontalScrollbar());
         horizontalScrollbar()->invalidate();
         if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
             scrollAnimator->invalidateScrollbarPartLayers(horizontalScrollbar());
     }
     
     if (verticalScrollbar()) {
-        ScrollbarTheme::theme()->updateScrollbarOverlayStyle(verticalScrollbar());
+        ScrollbarTheme::theme()->updateScrollbarOverlayStyle(*verticalScrollbar());
         verticalScrollbar()->invalidate();
         if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
             scrollAnimator->invalidateScrollbarPartLayers(verticalScrollbar());
@@ -461,10 +461,8 @@ IntPoint ScrollableArea::nearestActiveSnapPoint(const IntPoint& currentPosition)
 
 void ScrollableArea::updateScrollSnapState()
 {
-#if PLATFORM(MAC)
     if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
-        scrollAnimator->updateScrollAnimatorsAndTimers();
-#endif
+        scrollAnimator->updateScrollSnapState();
 
     if (isScrollSnapInProgress())
         return;

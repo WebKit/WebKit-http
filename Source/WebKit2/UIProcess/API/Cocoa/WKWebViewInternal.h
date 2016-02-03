@@ -98,10 +98,13 @@ struct PrintInfo;
 - (void)_didFinishLoadForMainFrame;
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType;
 
-- (BOOL)_isShowingVideoOptimized;
-- (BOOL)_mayAutomaticallyShowVideoOptimized;
+- (BOOL)_isShowingVideoPictureInPicture;
+- (BOOL)_mayAutomaticallyShowVideoPictureInPicture;
 
 - (void)_updateScrollViewBackground;
+
+- (void)_navigationGestureDidBegin;
+- (void)_navigationGestureDidEnd;
 
 @property (nonatomic, readonly) UIEdgeInsets _computedContentInset;
 #else

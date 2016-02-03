@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ScrollController.h"
 
+#include "LayoutSize.h"
 #include "PlatformWheelEvent.h"
 #include "WebCoreSystemInterface.h"
 #include "WheelEventTestTrigger.h"
@@ -37,8 +38,9 @@
 #include "ScrollableArea.h"
 #endif
 
-#if ENABLE(RUBBER_BANDING)
+#if ENABLE(RUBBER_BANDING) || ENABLE(CSS_SCROLL_SNAP)
 
+#if PLATFORM(MAC)
 static NSTimeInterval systemUptime()
 {
     if ([[NSProcessInfo processInfo] respondsToSelector:@selector(systemUptime)])
@@ -61,13 +63,15 @@ static NSTimeInterval systemUptime()
     }
     return 0;
 }
-
+#endif
 
 namespace WebCore {
 
+#if ENABLE(RUBBER_BANDING)
 static const float scrollVelocityZeroingTimeout = 0.10f;
 static const float rubberbandDirectionLockStretchRatio = 1;
 static const float rubberbandMinimumRequiredDeltaBeforeStretch = 10;
+#endif
 
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
 static const float snapMagnitudeMax = 25;
@@ -84,6 +88,7 @@ static const float maxTargetWheelDelta = 7;
 static const float minTargetWheelDelta = 3.5;
 #endif
 
+#if PLATFORM(MAC)
 enum class WheelEventStatus {
     UserScrollBegin,
     UserScrolling,
@@ -120,12 +125,13 @@ static float scrollWheelMultiplier()
     }
     return multiplier;
 }
+#endif
 
 ScrollController::ScrollController(ScrollControllerClient& client)
     : m_client(client)
-    , m_lastMomentumScrollTimestamp(0)
-    , m_startTime(0)
+#if ENABLE(RUBBER_BANDING)
     , m_snapRubberbandTimer(RunLoop::current(), this, &ScrollController::snapRubberBandTimerFired)
+#endif
 #if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
     , m_horizontalScrollSnapTimer(RunLoop::current(), this, &ScrollController::horizontalScrollSnapTimerFired)
     , m_verticalScrollSnapTimer(RunLoop::current(), this, &ScrollController::verticalScrollSnapTimerFired)
@@ -133,9 +139,10 @@ ScrollController::ScrollController(ScrollControllerClient& client)
 {
 }
 
+#if PLATFORM(MAC)
 bool ScrollController::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
 {
-#if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
+#if ENABLE(CSS_SCROLL_SNAP)
     if (!processWheelEventForScrollSnap(wheelEvent))
         return false;
 #endif
@@ -319,7 +326,9 @@ bool ScrollController::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
 
     return true;
 }
+#endif
 
+#if ENABLE(RUBBER_BANDING)
 static inline float roundTowardZero(float num)
 {
     return num > 0 ? ceilf(num - 0.5f) : floorf(num + 0.5f);
@@ -395,13 +404,18 @@ void ScrollController::snapRubberBandTimerFired()
             stopSnapRubberbandTimer();
     }
 }
+#endif
 
 bool ScrollController::isRubberBandInProgress() const
 {
+#if ENABLE(RUBBER_BANDING) && PLATFORM(MAC)
     if (!m_inScrollGesture && !m_momentumScrollInProgress && !m_snapRubberbandTimerIsActive)
         return false;
 
     return !m_client.stretchAmount().isZero();
+#else
+    return false;
+#endif
 }
 
 bool ScrollController::isScrollSnapInProgress() const
@@ -413,6 +427,7 @@ bool ScrollController::isScrollSnapInProgress() const
     return false;
 }
 
+#if ENABLE(RUBBER_BANDING)
 void ScrollController::startSnapRubberbandTimer()
 {
     m_client.startSnapRubberbandTimer();
@@ -459,8 +474,9 @@ bool ScrollController::shouldRubberBandInHorizontalDirection(const PlatformWheel
 
     return true;
 }
+#endif
 
-#if ENABLE(CSS_SCROLL_SNAP) && PLATFORM(MAC)
+#if ENABLE(CSS_SCROLL_SNAP)
 ScrollSnapAnimatorState& ScrollController::scrollSnapPointState(ScrollEventAxis axis)
 {
     ASSERT(axis != ScrollEventAxis::Horizontal || m_horizontalScrollSnapState);
@@ -477,6 +493,7 @@ const ScrollSnapAnimatorState& ScrollController::scrollSnapPointState(ScrollEven
     return (axis == ScrollEventAxis::Horizontal) ? *m_horizontalScrollSnapState : *m_verticalScrollSnapState;
 }
 
+#if PLATFORM(MAC)
 bool ScrollController::hasActiveScrollSnapTimerForAxis(ScrollEventAxis axis) const
 {
     return (axis == ScrollEventAxis::Horizontal) ? m_horizontalScrollSnapTimer.isActive() : m_verticalScrollSnapTimer.isActive();
@@ -596,8 +613,9 @@ bool ScrollController::processWheelEventForScrollSnap(const PlatformWheelEvent& 
 
     return true;
 }
+#endif
 
-void ScrollController::updateScrollAnimatorsAndTimers(const ScrollableArea& scrollableArea)
+void ScrollController::updateScrollSnapState(const ScrollableArea& scrollableArea)
 {
     // FIXME: Currently, scroll snap animators are recreated even though the snap offsets alone can be updated.
     if (scrollableArea.horizontalSnapOffsets())
@@ -621,6 +639,7 @@ void ScrollController::updateScrollSnapPoints(ScrollEventAxis axis, const Vector
         m_verticalScrollSnapState = !snapPoints.isEmpty() ? std::make_unique<ScrollSnapAnimatorState>(ScrollEventAxis::Vertical, snapPoints) : nullptr;
 }
 
+#if PLATFORM(MAC)
 void ScrollController::startScrollSnapTimer(ScrollEventAxis axis)
 {
     RunLoop::Timer<ScrollController>& scrollSnapTimer = axis == ScrollEventAxis::Horizontal ? m_horizontalScrollSnapTimer : m_verticalScrollSnapTimer;
@@ -698,6 +717,7 @@ void ScrollController::initializeGlideParameters(ScrollEventAxis axis, bool shou
     snapState.m_glideMagnitude = (snapState.m_glideInitialWheelDelta + targetFinalWheelDelta) / 2;
     snapState.m_glidePhaseShift = acos((snapState.m_glideInitialWheelDelta - targetFinalWheelDelta) / (snapState.m_glideInitialWheelDelta + targetFinalWheelDelta));
 }
+#endif
 
 unsigned ScrollController::activeScrollSnapIndexForAxis(ScrollEventAxis axis) const
 {
@@ -744,6 +764,7 @@ void ScrollController::setActiveScrollSnapIndicesForOffset(int x, int y)
         setNearestScrollSnapIndexForAxisAndOffset(ScrollEventAxis::Vertical, y);
 }
 
+#if PLATFORM(MAC)
 void ScrollController::beginScrollSnapAnimation(ScrollEventAxis axis, ScrollSnapState newState)
 {
     ASSERT(newState == ScrollSnapState::Gliding || newState == ScrollSnapState::Snapping);
@@ -752,18 +773,24 @@ void ScrollController::beginScrollSnapAnimation(ScrollEventAxis axis, ScrollSnap
 
     LayoutUnit offset = m_client.scrollOffsetOnAxis(axis);
     float initialWheelDelta = newState == ScrollSnapState::Gliding ? snapState.averageInitialWheelDelta() : 0;
-    LayoutUnit projectedScrollDestination = newState == ScrollSnapState::Gliding ? snapState.m_beginTrackingWheelDeltaOffset + LayoutUnit(projectedInertialScrollDistance(initialWheelDelta)) : offset;
+    LayoutUnit scaledProjectedScrollDestination = newState == ScrollSnapState::Gliding ? snapState.m_beginTrackingWheelDeltaOffset + LayoutUnit(projectedInertialScrollDistance(initialWheelDelta)) : offset;
     if (snapState.m_snapOffsets.isEmpty())
         return;
 
     float scaleFactor = m_client.pageScaleFactor();
+    LayoutUnit originalProjectedScrollDestination = scaledProjectedScrollDestination / scaleFactor;
     
-    projectedScrollDestination = std::min(std::max(LayoutUnit(projectedScrollDestination / scaleFactor), snapState.m_snapOffsets.first()), snapState.m_snapOffsets.last());
+    LayoutUnit clampedScrollDestination = std::min(std::max(originalProjectedScrollDestination, snapState.m_snapOffsets.first()), snapState.m_snapOffsets.last());
     snapState.m_initialOffset = offset;
     m_activeScrollSnapIndexDidChange = false;
-    snapState.m_targetOffset = scaleFactor * closestSnapOffset<LayoutUnit, float>(snapState.m_snapOffsets, projectedScrollDestination, initialWheelDelta, snapState.m_activeSnapIndex);
+    snapState.m_targetOffset = scaleFactor * closestSnapOffset<LayoutUnit, float>(snapState.m_snapOffsets, clampedScrollDestination, initialWheelDelta, snapState.m_activeSnapIndex);
     if (snapState.m_initialOffset == snapState.m_targetOffset)
         return;
+
+    LayoutUnit scrollExtent = (axis == ScrollEventAxis::Horizontal) ? m_client.scrollExtent().width() : m_client.scrollExtent().height();
+    LayoutUnit projectedScrollDestination = clampedScrollDestination;
+    if (originalProjectedScrollDestination < 0 || originalProjectedScrollDestination > scrollExtent)
+        projectedScrollDestination = originalProjectedScrollDestination;
     
     m_activeScrollSnapIndexDidChange = true;
     snapState.m_currentState = newState;
@@ -878,6 +905,7 @@ float ScrollController::computeGlideDelta(ScrollEventAxis axis) const
     
     return glideDelta;
 }
+#endif
 #endif
 
 } // namespace WebCore

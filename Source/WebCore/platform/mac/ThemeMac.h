@@ -26,7 +26,7 @@
 #ifndef ThemeMac_h
 #define ThemeMac_h
 
-#include "Theme.h"
+#include "ThemeCocoa.h"
 
 @interface NSFont(WebCoreTheme)
 - (NSString*)webCoreFamilyName;
@@ -34,26 +34,26 @@
 
 namespace WebCore {
 
-class ThemeMac : public Theme {
+class ThemeMac : public ThemeCocoa {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     ThemeMac() { }
     virtual ~ThemeMac() { }
     
-    virtual int baselinePositionAdjustment(ControlPart) const;
+    virtual int baselinePositionAdjustment(ControlPart) const override;
 
-    virtual Optional<FontDescription> controlFont(ControlPart, const FontCascade&, float zoomFactor) const;
+    virtual Optional<FontDescription> controlFont(ControlPart, const FontCascade&, float zoomFactor) const override;
     
-    virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float zoomFactor) const;
-    virtual LengthSize minimumControlSize(ControlPart, const FontCascade&, float zoomFactor) const;
+    virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float zoomFactor) const override;
+    virtual LengthSize minimumControlSize(ControlPart, const FontCascade&, float zoomFactor) const override;
 
-    virtual LengthBox controlPadding(ControlPart, const FontCascade&, const LengthBox& zoomedBox, float zoomFactor) const;
-    virtual LengthBox controlBorder(ControlPart, const FontCascade&, const LengthBox& zoomedBox, float zoomFactor) const;
+    virtual LengthBox controlPadding(ControlPart, const FontCascade&, const LengthBox& zoomedBox, float zoomFactor) const override;
+    virtual LengthBox controlBorder(ControlPart, const FontCascade&, const LengthBox& zoomedBox, float zoomFactor) const override;
 
-    virtual bool controlRequiresPreWhiteSpace(ControlPart part) const { return part == PushButtonPart; }
+    virtual bool controlRequiresPreWhiteSpace(ControlPart part) const override { return part == PushButtonPart; }
 
     virtual void paint(ControlPart, ControlStates*, GraphicsContext*, const FloatRect&, float zoomFactor, ScrollView*) override;
-    virtual void inflateControlPaintRect(ControlPart, const ControlStates*, FloatRect&, float zoomFactor) const;
+    virtual void inflateControlPaintRect(ControlPart, const ControlStates*, FloatRect&, float zoomFactor) const override;
 
     // FIXME: Once RenderThemeMac is converted over to use Theme then this can be internal to ThemeMac.
     static NSView* ensuredView(ScrollView*, const ControlStates*, bool useUnparentedView = false);

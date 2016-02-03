@@ -80,11 +80,32 @@ using namespace WebCore;
 #if ENABLE(CSS_SCROLL_SNAP)
 - (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
 {
-    unsigned ignore;
-    if (!_scrollingTreeNode->horizontalSnapOffsets().isEmpty())
-        targetContentOffset->x = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->horizontalSnapOffsets(), targetContentOffset->x, velocity.x, ignore);
-    if (!_scrollingTreeNode->verticalSnapOffsets().isEmpty())
-        targetContentOffset->y = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->verticalSnapOffsets(), targetContentOffset->y, velocity.y, ignore);
+    CGFloat horizontalTarget = targetContentOffset->x;
+    CGFloat verticalTarget = targetContentOffset->y;
+
+    unsigned originalHorizontalSnapPosition = _scrollingTreeNode->currentHorizontalSnapPointIndex();
+    unsigned originalVerticalSnapPosition = _scrollingTreeNode->currentVerticalSnapPointIndex();
+
+    if (!_scrollingTreeNode->horizontalSnapOffsets().isEmpty()) {
+        unsigned index;
+        float potentialSnapPosition = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->horizontalSnapOffsets(), horizontalTarget, velocity.x, index);
+        _scrollingTreeNode->setCurrentHorizontalSnapPointIndex(index);
+        if (horizontalTarget >= 0 && horizontalTarget <= scrollView.contentSize.width)
+            targetContentOffset->x = potentialSnapPosition;
+    }
+
+    if (!_scrollingTreeNode->verticalSnapOffsets().isEmpty()) {
+        unsigned index;
+        float potentialSnapPosition = closestSnapOffset<float, CGFloat>(_scrollingTreeNode->verticalSnapOffsets(), verticalTarget, velocity.y, index);
+        _scrollingTreeNode->setCurrentVerticalSnapPointIndex(index);
+        if (verticalTarget >= 0 && verticalTarget <= scrollView.contentSize.height)
+            targetContentOffset->y = potentialSnapPosition;
+    }
+
+    if (originalHorizontalSnapPosition != _scrollingTreeNode->currentHorizontalSnapPointIndex()
+        || originalVerticalSnapPosition != _scrollingTreeNode->currentVerticalSnapPointIndex()) {
+        _scrollingTreeNode->currentSnapPointIndicesDidChange(_scrollingTreeNode->currentHorizontalSnapPointIndex(), _scrollingTreeNode->currentVerticalSnapPointIndex());
+    }
 }
 #endif
 
@@ -278,6 +299,14 @@ void ScrollingTreeOverflowScrollingNodeIOS::scrollViewDidScroll(const FloatPoint
         return;
 
     scrollingTree().scrollPositionChangedViaDelegatedScrolling(scrollingNodeID(), scrollPosition, inUserInteration);
+}
+
+void ScrollingTreeOverflowScrollingNodeIOS::currentSnapPointIndicesDidChange(unsigned horizontal, unsigned vertical)
+{
+    if (m_updatingFromStateNode)
+        return;
+    
+    scrollingTree().currentSnapPointIndicesDidChange(scrollingNodeID(), horizontal, vertical);
 }
 
 } // namespace WebCore

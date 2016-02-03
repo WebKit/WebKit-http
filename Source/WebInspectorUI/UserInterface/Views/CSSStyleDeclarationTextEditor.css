@@ -53,6 +53,11 @@
     text-indent: 0;
 }
 
+.css-style-text-editor.read-only,
+.css-style-text-editor.read-only > .CodeMirror {
+    background-color: transparent;
+}
+
 .css-style-text-editor.read-only > .CodeMirror pre {
     text-indent: 0;
 }
@@ -71,6 +76,22 @@
 .css-style-text-editor > .CodeMirror .CodeMirror-lines pre > span span:not(.css-style-declaration-property, .CodeMirror-widget, .cm-comment, .cm-tab),
 .css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.invalid {
     -webkit-text-stroke-color: rgba(255, 0, 0, 0.6);
+}
+
+.css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker {
+    position: relative;
+    top: 1px; 
+    width: 9px;
+    height: 9px;
+    margin: 0 2px 0 0;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    background-image: url(../Images/Warning.svg);
+}
+
+.css-style-text-editor > .CodeMirror .CodeMirror-lines .invalid-warning-marker.clickable:hover {
+    -webkit-filter: brightness(0.9);
 }
 
 .computed .css-style-text-editor > .CodeMirror .CodeMirror-lines .css-style-declaration-property.implicit,

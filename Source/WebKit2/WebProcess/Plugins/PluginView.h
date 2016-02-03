@@ -207,7 +207,6 @@ private:
     virtual void setStatusbarText(const String&) override;
     virtual bool isAcceleratedCompositingEnabled() override;
     virtual void pluginProcessCrashed() override;
-    virtual void willSendEventToPlugin() override;
 #if PLATFORM(COCOA)
     virtual void pluginFocusOrWindowFocusChanged(bool pluginHasFocusAndWindowHasFocus) override;
     virtual void setComplexTextInputState(PluginComplexTextInputState) override;
@@ -245,13 +244,16 @@ private:
     RefPtr<Plugin> m_plugin;
     WebPage* m_webPage;
     Plugin::Parameters m_parameters;
-    
+
     bool m_isInitialized;
     bool m_isWaitingForSynchronousInitialization;
     bool m_isWaitingUntilMediaCanStart;
     bool m_isBeingDestroyed;
     bool m_pluginProcessHasCrashed;
+
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     bool m_didPlugInStartOffScreen;
+#endif
 
     // Pending URLRequests that the plug-in has made.
     Deque<RefPtr<URLRequest>> m_pendingURLRequests;
@@ -282,12 +284,14 @@ private:
     WebCore::ResourceResponse m_manualStreamResponse;
     WebCore::ResourceError m_manualStreamError;
     RefPtr<WebCore::SharedBuffer> m_manualStreamData;
-    
+
     // This snapshot is used to avoid side effects should the plugin run JS during painting.
     RefPtr<ShareableBitmap> m_transientPaintingSnapshot;
     // This timer is used when plugin snapshotting is enabled, to capture a plugin placeholder.
     WebCore::DeferrableOneShotTimer m_pluginSnapshotTimer;
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC) || PLATFORM(COCOA)
     unsigned m_countSnapshotRetries;
+#endif
     bool m_didReceiveUserInteraction;
 
     double m_pageScaleFactor;

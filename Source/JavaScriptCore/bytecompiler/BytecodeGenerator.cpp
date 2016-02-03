@@ -2789,18 +2789,7 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
 
         emitLabel(scope->continueTarget());
         {
-            {
-                RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
-                CallArguments nextArguments(*this, nullptr);
-                emitMove(nextArguments.thisRegister(), iterator.get());
-                emitCall(value.get(), next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd());
-            }
-            {
-                RefPtr<Label> typeIsObject = newLabel();
-                emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), typeIsObject.get());
-                emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
-                emitLabel(typeIsObject.get());
-            }
+            emitIteratorNext(value.get(), iterator.get(), node);
             emitJumpIfTrue(emitGetById(newTemporary(), value.get(), propertyNames().done), loopDone.get());
             emitGetById(value.get(), value.get(), propertyNames().value);
             emitJump(loopStart.get());
@@ -2933,7 +2922,24 @@ RegisterID* BytecodeGenerator::emitIsUndefined(RegisterID* dst, RegisterID* src)
     return dst;
 }
 
-void BytecodeGenerator::emitIteratorClose(RegisterID* iterator, ThrowableExpressionData* node)
+RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node)
+{
+    {
+        RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator, propertyNames().next);
+        CallArguments nextArguments(*this, nullptr);
+        emitMove(nextArguments.thisRegister(), iterator);
+        emitCall(dst, next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd());
+    }
+    {
+        RefPtr<Label> typeIsObject = newLabel();
+        emitJumpIfTrue(emitIsObject(newTemporary(), dst), typeIsObject.get());
+        emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
+        emitLabel(typeIsObject.get());
+    }
+    return dst;
+}
+
+void BytecodeGenerator::emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node)
 {
     RefPtr<Label> done = newLabel();
     RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator, propertyNames().returnKeyword);

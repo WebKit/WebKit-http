@@ -35,7 +35,7 @@ namespace TestWebKitAPI {
 static bool testDone;
 static std::unique_ptr<PlatformWebView> openedWebView;
 
-static void runJavaScriptAlert(WKPageRef page, WKStringRef alertText, WKFrameRef frame, const void* clientInfo)
+static void runJavaScriptAlert(WKPageRef page, WKStringRef alertText, WKFrameRef frame, WKSecurityOriginRef, const void* clientInfo)
 {
     // FIXME: Check that the alert text matches the storage.
     testDone = true;

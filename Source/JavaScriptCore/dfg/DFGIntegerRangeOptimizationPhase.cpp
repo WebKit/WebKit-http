@@ -54,11 +54,11 @@ template<typename... Args>
 int clampedSum(Args... args)
 {
     int64_t result = clampedSumImpl(args...);
-    return std::min(
+    return static_cast<int>(std::min(
         static_cast<int64_t>(std::numeric_limits<int>::max()),
         std::max(
             static_cast<int64_t>(std::numeric_limits<int>::min()),
-            result));
+            result)));
 }
 
 class Relationship {
@@ -114,10 +114,7 @@ public:
     
     typedef void* (Relationship::*UnspecifiedBoolType);
 
-    operator UnspecifiedBoolType*() const
-    {
-        return m_left ? reinterpret_cast<UnspecifiedBoolType*>(1) : 0;
-    }
+    explicit operator bool() const { return m_left; }
     
     Node* left() const { return m_left; }
     Node* right() const { return m_right; }

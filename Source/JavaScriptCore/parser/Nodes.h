@@ -1780,30 +1780,41 @@ namespace JSC {
         DeconstructionPatternNode();
     };
 
-    class ArrayPatternNode : public DeconstructionPatternNode {
+    class ArrayPatternNode : public DeconstructionPatternNode, public ThrowableExpressionData {
     public:
+        enum class BindingType {
+            Elision,
+            Element,
+            RestElement
+        };
+
         static Ref<ArrayPatternNode> create();
-        void appendIndex(const JSTokenLocation&, DeconstructionPatternNode* node)
+        void appendIndex(BindingType bindingType, const JSTokenLocation&, DeconstructionPatternNode* node, ExpressionNode* defaultValue)
         {
-            m_targetPatterns.append(node);
+            m_targetPatterns.append({ bindingType, node, defaultValue });
         }
 
     private:
+        struct Entry {
+            BindingType bindingType;
+            RefPtr<DeconstructionPatternNode> pattern;
+            ExpressionNode* defaultValue;
+        };
         ArrayPatternNode();
         virtual void collectBoundIdentifiers(Vector<Identifier>&) const override;
         virtual void bindValue(BytecodeGenerator&, RegisterID*) const override;
         virtual RegisterID* emitDirectBinding(BytecodeGenerator&, RegisterID* dst, ExpressionNode*) override;
         virtual void toString(StringBuilder&) const override;
 
-        Vector<RefPtr<DeconstructionPatternNode>> m_targetPatterns;
+        Vector<Entry> m_targetPatterns;
     };
     
     class ObjectPatternNode : public DeconstructionPatternNode {
     public:
         static Ref<ObjectPatternNode> create();
-        void appendEntry(const JSTokenLocation&, const Identifier& identifier, bool wasString, DeconstructionPatternNode* pattern)
+        void appendEntry(const JSTokenLocation&, const Identifier& identifier, bool wasString, DeconstructionPatternNode* pattern, ExpressionNode* defaultValue)
         {
-            m_targetPatterns.append(Entry(identifier, wasString, pattern));
+            m_targetPatterns.append(Entry{ identifier, wasString, pattern, defaultValue });
         }
         
     private:
@@ -1812,15 +1823,10 @@ namespace JSC {
         virtual void bindValue(BytecodeGenerator&, RegisterID*) const override;
         virtual void toString(StringBuilder&) const override;
         struct Entry {
-            Entry(const Identifier& propertyName, bool wasString, DeconstructionPatternNode* pattern)
-                : propertyName(propertyName)
-                , wasString(wasString)
-                , pattern(pattern)
-            {
-            }
             Identifier propertyName;
             bool wasString;
             RefPtr<DeconstructionPatternNode> pattern;
+            ExpressionNode* defaultValue;
         };
         Vector<Entry> m_targetPatterns;
     };

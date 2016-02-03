@@ -414,28 +414,28 @@ private:
     virtual void refAuthenticationClient() override { ref(); }
     virtual void derefAuthenticationClient() override { deref(); }
 
-    virtual void receivedCredential(const AuthenticationChallenge&, const Credential& credential)
+    virtual void receivedCredential(const AuthenticationChallenge&, const Credential& credential) override
     {
         [[m_challenge sender] useCredential:credential.nsCredential() forAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) override
     {
         [[m_challenge sender] continueWithoutCredentialForAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedCancellation(const AuthenticationChallenge&)
+    virtual void receivedCancellation(const AuthenticationChallenge&) override
     {
         [[m_challenge sender] cancelAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+    virtual void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&) override
     {
         if ([[m_challenge sender] respondsToSelector:@selector(performDefaultHandlingForAuthenticationChallenge:)])
             [[m_challenge sender] performDefaultHandlingForAuthenticationChallenge:m_challenge.get()];
     }
 
-    virtual void receivedChallengeRejection(const AuthenticationChallenge&)
+    virtual void receivedChallengeRejection(const AuthenticationChallenge&) override
     {
         if ([[m_challenge sender] respondsToSelector:@selector(rejectProtectionSpaceAndContinueWithChallenge:)])
             [[m_challenge sender] rejectProtectionSpaceAndContinueWithChallenge:m_challenge.get()];
@@ -693,8 +693,8 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
         [m_videoLayer setFrame:m_videoInlineLayer.get().bounds];
     }
-    if ([m_videoLayer respondsToSelector:@selector(setEnterOptimizedFullscreenModeEnabled:)])
-        [m_videoLayer setEnterOptimizedFullscreenModeEnabled:(player()->fullscreenMode() & MediaPlayer::VideoFullscreenModeOptimized)];
+    if ([m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
+        [m_videoLayer setPIPModeEnabled:(player()->fullscreenMode() & MediaPlayer::VideoFullscreenModePictureInPicture)];
 #else
     [m_videoLayer setFrame:CGRectMake(0, 0, defaultSize.width(), defaultSize.height())];
 #endif
@@ -1105,38 +1105,25 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenLayer(PlatformLayer* 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     
-    CALayer *oldRootLayer = videoFullscreenLayer;
-    while (oldRootLayer.superlayer)
-        oldRootLayer = oldRootLayer.superlayer;
-
-    CALayer *newRootLayer = nil;
+    CAContext *oldContext = [m_videoLayer context];
+    CAContext *newContext = nil;
     
     if (m_videoFullscreenLayer && m_videoLayer) {
         [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
         [m_videoLayer removeFromSuperlayer];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        newRootLayer = m_videoFullscreenLayer.get();
+        newContext = [m_videoFullscreenLayer context];
     } else if (m_videoInlineLayer && m_videoLayer) {
         [m_videoLayer setFrame:[m_videoInlineLayer bounds]];
         [m_videoLayer removeFromSuperlayer];
         [m_videoInlineLayer insertSublayer:m_videoLayer.get() atIndex:0];
-        newRootLayer = m_videoInlineLayer.get();
+        newContext = [m_videoInlineLayer context];
     } else if (m_videoLayer)
         [m_videoLayer removeFromSuperlayer];
 
-    while (newRootLayer.superlayer)
-        newRootLayer = newRootLayer.superlayer;
-
-    if (oldRootLayer && newRootLayer && oldRootLayer != newRootLayer) {
-        mach_port_t fencePort = 0;
-        for (CAContext *context in [CAContext allContexts]) {
-            if (context.layer == oldRootLayer || context.layer == newRootLayer) {
-                if (!fencePort)
-                    fencePort = [context createFencePort];
-                else
-                    [context setFencePort:fencePort];
-            }
-        }
+    if (oldContext && newContext && oldContext != newContext) {
+        mach_port_t fencePort = [oldContext createFencePort];
+        [newContext setFencePort:fencePort];
         mach_port_deallocate(mach_task_self(), fencePort);
     }
     [CATransaction commit];
@@ -1186,8 +1173,8 @@ void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenGravity(MediaPlayer::
 
 void MediaPlayerPrivateAVFoundationObjC::setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode mode)
 {
-    if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setEnterOptimizedFullscreenModeEnabled:)])
-        [m_videoLayer setEnterOptimizedFullscreenModeEnabled:(mode & MediaPlayer::VideoFullscreenModeOptimized)];
+    if (m_videoLayer && [m_videoLayer respondsToSelector:@selector(setPIPModeEnabled:)])
+        [m_videoLayer setPIPModeEnabled:(mode & MediaPlayer::VideoFullscreenModePictureInPicture)];
 }
 
 NSArray *MediaPlayerPrivateAVFoundationObjC::timedMetadata() const
@@ -1543,77 +1530,6 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithImageGenerator(GraphicsContext
         CGContextDrawImage(context->platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), image.get());
         image = 0;
     }
-}
-
-static bool isUnsupportedMIMEType(const String& type)
-{
-    String lowerCaseType = type.convertToASCIILowercase();
-
-    // AVFoundation will return non-video MIME types which it claims to support, but which we
-    // do not support in the <video> element. Reject all non video/, audio/, and application/ types.
-    if (!lowerCaseType.startsWith("video/") && !lowerCaseType.startsWith("audio/") && !lowerCaseType.startsWith("application/"))
-        return true;
-
-    // Reject types we know AVFoundation does not support that sites commonly ask about.
-    if (lowerCaseType == "video/webm" || lowerCaseType == "audio/webm" || lowerCaseType == "video/x-webm")
-        return true;
-
-    if (lowerCaseType == "video/x-flv")
-        return true;
-
-    if (lowerCaseType == "audio/ogg" || lowerCaseType == "video/ogg" || lowerCaseType == "application/ogg")
-        return true;
-
-    if (lowerCaseType == "video/h264")
-        return true;
-
-    return false;
-}
-
-static const HashSet<String>& staticMIMETypeList()
-{
-    static NeverDestroyed<HashSet<String>> cache = [] () {
-        HashSet<String> types;
-
-        static const char* typeNames[] = {
-            "application/vnd.apple.mpegurl",
-            "application/x-mpegurl",
-            "audio/3gpp",
-            "audio/aac",
-            "audio/aacp",
-            "audio/aiff",
-            "audio/basic",
-            "audio/mp3",
-            "audio/mp4",
-            "audio/mpeg",
-            "audio/mpeg3",
-            "audio/mpegurl",
-            "audio/mpg",
-            "audio/wav",
-            "audio/wave",
-            "audio/x-aac",
-            "audio/x-aiff",
-            "audio/x-m4a",
-            "audio/x-mpegurl",
-            "audio/x-wav",
-            "video/3gpp",
-            "video/3gpp2",
-            "video/mp4",
-            "video/mpeg",
-            "video/mpeg2",
-            "video/mpg",
-            "video/quicktime",
-            "video/x-m4v",
-            "video/x-mpeg",
-            "video/x-mpg",
-        };
-        for (size_t i = 0; i < WTF_ARRAY_LENGTH(typeNames); ++i)
-            types.add(typeNames[i]);
-
-        return types;
-    }();
-
-    return cache;
 }
 
 static const HashSet<String>& avfMIMETypes()

@@ -30,11 +30,21 @@
 #include "config.h"
 #include "ReadableStreamReader.h"
 
+#include "ExceptionCode.h"
 #include <runtime/JSCJSValueInlines.h>
 
 #if ENABLE(STREAMS_API)
 
 namespace WebCore {
+
+void ReadableStreamReader::cancel(JSC::JSValue reason, ReadableStream::CancelPromise&& promise)
+{
+    if (m_stream.isReadable() && m_stream.reader() != this) {
+        promise.resolve(nullptr);
+        return;
+    }
+    m_stream.cancelNoCheck(reason, WTF::move(promise));
+}
 
 void ReadableStreamReader::closed(ReadableStream::ClosedSuccessCallback&& successCallback, ReadableStream::FailureCallback&& failureCallback)
 {
@@ -52,6 +62,17 @@ void ReadableStreamReader::read(ReadableStream::ReadSuccessCallback&& successCal
         return;
     }
     m_stream.read(WTF::move(successCallback), WTF::move(endCallback), WTF::move(failureCallback));
+}
+
+void ReadableStreamReader::releaseLock(ExceptionCode& ec)
+{
+    if (m_stream.reader() != this)
+        return;
+    if (m_stream.hasReadPendingRequests()) {
+        ec = TypeError;
+        return;
+    }
+    m_stream.releaseReader();
 }
 
 }

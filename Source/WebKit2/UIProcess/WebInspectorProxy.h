@@ -101,6 +101,7 @@ public:
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
     void windowFrameDidChange();
+    void windowFullScreenDidChange();
     NSWindow* inspectorWindow() const { return m_inspectorWindow.get(); }
 
     void setInspectorWindowFrame(WKRect&);
@@ -130,6 +131,8 @@ public:
     void setAttachedWindowHeight(unsigned);
     void setAttachedWindowWidth(unsigned);
     void setToolbarHeight(unsigned height) { platformSetToolbarHeight(height); }
+
+    void startWindowDrag();
 
     bool isProfilingPage() const { return m_isProfilingPage; }
     void togglePageProfiling();
@@ -176,6 +179,7 @@ private:
     void platformSetAttachedWindowHeight(unsigned);
     void platformSetAttachedWindowWidth(unsigned);
     void platformSetToolbarHeight(unsigned);
+    void platformStartWindowDrag();
     void platformSave(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void platformAppend(const String& filename, const String& content);
 

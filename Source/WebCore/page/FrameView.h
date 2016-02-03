@@ -228,8 +228,6 @@ public:
     virtual IntRect windowClipRect() const override;
     WEBCORE_EXPORT IntRect windowClipRectForFrameOwner(const HTMLFrameOwnerElement*, bool clipToLayerContents) const;
 
-    virtual IntRect windowResizerRect() const override;
-
     virtual float visibleContentScaleFactor() const override;
 
 #if USE(COORDINATED_GRAPHICS)
@@ -545,6 +543,8 @@ public:
     virtual float adjustScrollStepForFixedContent(float step, ScrollbarOrientation, ScrollGranularity) override;
 
     void didChangeScrollOffset();
+
+    void show() override;
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;

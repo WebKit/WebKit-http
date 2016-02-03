@@ -32,6 +32,8 @@
     readonly attribute MediaSessionKind kind;
     readonly attribute MediaRemoteControls? controls;
 
+    void setMetadata(Dictionary metadata);
+
     void releaseSession();
 };
 

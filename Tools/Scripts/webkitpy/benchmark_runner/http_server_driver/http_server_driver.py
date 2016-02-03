@@ -4,18 +4,23 @@ from abc import abstractmethod
 
 
 class HTTPServerDriver(object):
+    name = None
     @abstractmethod
     def serve(self, webRoot):
         pass
 
     @abstractmethod
-    def fetchResult(self):
+    def fetch_result(self):
         pass
 
     @abstractmethod
-    def killServer(self):
+    def kill_server(self):
         pass
 
     @abstractmethod
-    def getReturnCode(self):
+    def get_return_code(self):
+        pass
+
+    @abstractmethod
+    def set_device_id(self, deviceID):
         pass

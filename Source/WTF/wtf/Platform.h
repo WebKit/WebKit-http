@@ -82,7 +82,7 @@
 
 /* CPU(MIPS) - MIPS 32-bit and 64-bit */
 #if (defined(mips) || defined(__mips__) || defined(MIPS) || defined(_MIPS_) || defined(__mips64))
-#if defined(_MIPS_SIM_ABI64) && (_MIPS_SIM == _MIPS_SIM_ABI64)
+#if defined(_ABI64) && (_MIPS_SIM == _ABI64)
 #define WTF_CPU_MIPS64 1
 #define WTF_MIPS_ARCH __mips64
 #else
@@ -497,13 +497,18 @@
 #define USE_WEBP 1
 #endif
 
+#if PLATFORM(EFL)
+#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_38
+#elif PLATFORM(GTK)
+#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_36
+#endif
+
 #if PLATFORM(GTK) && !defined(GTK_API_VERSION_2)
 #define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_6
 #endif
 
-
-#if PLATFORM(HAIKU)
-#define WTF_USE_WEBP 1
+#if USE(SOUP)
+#define SOUP_VERSION_MIN_REQUIRED SOUP_VERSION_2_42
 #endif
 
 /* On Windows, use QueryPerformanceCounter by default */
@@ -587,9 +592,10 @@
 #endif
 
 #if PLATFORM(HAIKU)
-#define WTF_USE_HAIKU 1
-#define WTF_USE_PTHREADS 1
-#define WTF_USE_FREETYPE 1
+#define USE_HAIKU 1
+#define USE_PTHREADS 1
+#define USE_FREETYPE 1
+#define USE_WEBP 1
 
 #define HAVE_ERRNO_H 1
 #define HAVE_LANGINFO_H 1

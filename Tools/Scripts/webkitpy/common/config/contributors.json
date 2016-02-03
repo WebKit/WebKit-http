@@ -736,6 +736,14 @@
             "diegohcg"
          ]
       },
+      "Diego Pino Garcia" : {
+         "emails" : [
+            "dpino@igalia.com"
+         ],
+         "nicks" : [
+            "dpino"
+         ]
+      },
       "Dinu Jacob" : {
          "emails" : [
             "dinu.s.jacob@intel.com"
@@ -1884,6 +1892,14 @@
       "Matt Perry" : {
          "emails" : [
             "mpcomplete@chromium.org"
+         ]
+      },
+      "Matt Rajca" : {
+         "emails" : [
+            "mrajca@apple.com"
+         ],
+         "nicks" : [
+            "mrajca"
          ]
       },
       "Matthew Mirman" : {
@@ -3306,6 +3322,14 @@
          ],
          "nicks" : [
             "hmartin"
+         ]
+      },
+      "Matt Daiter" : {
+         "emails" : [
+            "mdaiter@apple.com"
+         ],
+         "nicks" : [
+            "mdaiter"
          ]
       },
       "Mihai Balan" : {
