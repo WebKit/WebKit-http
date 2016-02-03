@@ -1446,7 +1446,7 @@ public:
         QRect clipRect;
         if (parentScrollView) {
             ASSERT_WITH_SECURITY_IMPLICATION(parentScrollView->isFrameView());
-            clipRect = toFrameView(parentScrollView)->windowClipRect();
+            clipRect = downcast<FrameView>(parentScrollView)->windowClipRect();
             clipRect.translate(-windowRect.x(), -windowRect.y());
         }
         widget->setGeometryAndClip(windowRect, clipRect, isVisible());

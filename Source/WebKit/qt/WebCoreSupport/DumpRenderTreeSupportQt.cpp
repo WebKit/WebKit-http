@@ -273,7 +273,7 @@ void DumpRenderTreeSupportQt::setValueForUser(const QWebElement& element, const 
     WebCore::Element* webElement = element.m_element;
     if (!webElement)
         return;
-    HTMLInputElement* inputElement = webElement->toInputElement();
+    HTMLInputElement* inputElement = downcast<HTMLInputElement>(webElement);
     if (!inputElement)
         return;
 

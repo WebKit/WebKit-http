@@ -113,7 +113,7 @@ FullScreenVideoQt::~FullScreenVideoQt()
 void FullScreenVideoQt::enterFullScreenForNode(Node* node)
 {
     Q_ASSERT(node);
-    m_videoElement = toHTMLVideoElement(node);
+    m_videoElement = downcast<HTMLVideoElement>(node);
 
 #if USE(QT_MULTIMEDIA)
     Q_ASSERT(m_FullScreenVideoHandler);
