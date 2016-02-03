@@ -279,8 +279,10 @@ void QWebFrameAdapter::setContent(const QByteArray &data, const QString &mimeTyp
         actualMimeType = extractMIMETypeFromMediaType(mimeType);
         encoding = extractCharsetFromMediaType(mimeType);
     }
-    WebCore::SubstituteData substituteData(buffer, WTF::String(actualMimeType), encoding, URL());
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request, substituteData));
+    WebCore::ResourceResponse response(URL(), WTF::String(actualMimeType), buffer->size(), encoding);
+    // FIXME: visibility?
+    WebCore::SubstituteData substituteData(buffer, URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
+    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
 }
 
 void QWebFrameAdapter::setHtml(const QString &html, const QUrl &baseUrl)
@@ -289,8 +291,10 @@ void QWebFrameAdapter::setHtml(const QString &html, const QUrl &baseUrl)
     WebCore::ResourceRequest request(kurl);
     const QByteArray utf8 = html.toUtf8();
     WTF::RefPtr<WebCore::SharedBuffer> data = WebCore::SharedBuffer::create(utf8.constData(), utf8.length());
-    WebCore::SubstituteData substituteData(data, WTF::String("text/html"), WTF::String("utf-8"), URL());
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request, substituteData));
+    WebCore::ResourceResponse response(URL(), ASCIILiteral("text/html"), data->size(), ASCIILiteral("utf-8"));
+    // FIXME: visibility?
+    WebCore::SubstituteData substituteData(data, URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
+    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
 }
 
 QMultiMap<QString, QString> QWebFrameAdapter::metaData() const

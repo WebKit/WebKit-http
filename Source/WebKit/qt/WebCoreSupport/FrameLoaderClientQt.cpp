@@ -1170,8 +1170,10 @@ bool FrameLoaderClientQt::callErrorPageExtension(const WebCore::ResourceError& e
 
     WebCore::ResourceRequest request(baseUrl);
     WTF::RefPtr<WebCore::SharedBuffer> buffer = WebCore::SharedBuffer::create(output.content.constData(), output.content.length());
-    WebCore::SubstituteData substituteData(buffer, output.contentType, output.encoding, failingUrl);
-    m_frame->loader().load(WebCore::FrameLoadRequest(m_frame, request, substituteData));
+    WebCore::ResourceResponse response(failingUrl, output.contentType, buffer->size(), output.encoding);
+    // FIXME: visibility?
+    WebCore::SubstituteData substituteData(buffer, failingUrl, response, SubstituteData::SessionHistoryVisibility::Hidden);
+    m_frame->loader().load(WebCore::FrameLoadRequest(m_frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
     return true;
 }
 
