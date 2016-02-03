@@ -79,7 +79,6 @@
 #import <JavaScriptCore/JSContext.h>
 #import <JavaScriptCore/JSValue.h>
 #import <WebCore/IOSurface.h>
-#import <WebCore/WebCoreSystemInterface.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
@@ -110,6 +109,7 @@
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
 - (BOOL)_isScrollingToTop;
 - (BOOL)_isInterruptingDeceleration;
+- (CGPoint)_animatedTargetOffset;
 @end
 
 @interface UIPeripheralHost(UIKitInternal)
@@ -1028,6 +1028,16 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     }
 }
 
+- (void)_couldNotRestorePageState
+{
+    // The gestureController may be waiting for the scroll position to be restored
+    // in order to remove the swipe snapshot. Since the scroll position could not be
+    // restored, tell the gestureController it was restored so that it no longer waits
+    // for it.
+    if (_gestureController)
+        _gestureController->didRestoreScrollPosition();
+}
+
 - (void)_restorePageStateToExposedRect:(WebCore::FloatRect)exposedRect scale:(double)scale
 {
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
@@ -1195,6 +1205,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     [_scrollView setContentOffset:([_scrollView contentOffset] + scrollViewOffsetDelta) animated:YES];
     return true;
+}
+
+- (void)_scrollByOffset:(WebCore::FloatPoint)offset
+{
+    CGPoint currentOffset = ([_scrollView _isAnimatingScroll]) ? [_scrollView _animatedTargetOffset] : [_scrollView contentOffset];
+
+    CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), currentOffset + offset);
+    
+    if (CGPointEqualToPoint(boundedOffset, currentOffset))
+        return;
+    [_contentView willStartZoomOrScroll];
+    [_scrollView setContentOffset:boundedOffset animated:YES];
 }
 
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated
@@ -1561,6 +1583,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (_needsResetViewStateAfterCommitLoadForMainFrame)
         return;
 
+    if ([_scrollView isZoomBouncing])
+        return;
+
     CGRect fullViewRect = self.bounds;
     CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:fullViewRect toView:_contentView.get()];
 
@@ -1569,7 +1594,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     CGFloat scaleFactor = contentZoomScale(self);
 
-    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView isZoomBouncing] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
+    BOOL isStableState = !(_isChangingObscuredInsetsInteractively || [_scrollView isDragging] || [_scrollView isDecelerating] || [_scrollView isZooming] || [_scrollView _isAnimatingZoom] || [_scrollView _isScrollingToTop] || [self _scrollViewIsRubberBanding]);
 
     // FIXME: this can be made static after we stop supporting iOS 8.x.
     if (isStableState && [_scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
@@ -1606,6 +1631,12 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     if (_gestureController)
         _gestureController->didFinishLoadForMainFrame();
+}
+
+- (void)_didFailLoadForMainFrame
+{
+    if (_gestureController)
+        _gestureController->didFailLoadForMainFrame();
 }
 
 - (void)_didSameDocumentNavigationForMainFrame:(WebKit::SameDocumentNavigationType)navigationType
@@ -2337,6 +2368,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     }
 #endif
     _page->hideFindUI();
+}
+
+- (void)_saveBackForwardSnapshotForItem:(WKBackForwardListItem *)item
+{
+    _page->recordNavigationSnapshot(item._item);
 }
 
 - (id <_WKFormDelegate>)_formDelegate

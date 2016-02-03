@@ -1,3 +1,146 @@
+2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=90906
+
+        Reviewed by Benjamin Poulain.
+
+        * Scripts/webkitperl/FeatureList.pm: add ENABLE_INTL flag
+
+2015-06-30  Jonathan Davis  <jond@apple.com>
+
+        Unreviewed. Added myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-06-30  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * Scripts/update-webkit-dependency: Try to build even if we cannot connect
+        to developer.apple.com to get update libraries.
+
+2015-06-29  Jake Nielsen  <jacob_nielsen@apple.com>
+
+        Add timeout in run-webkit-tests for launching the simulator
+        https://bugs.webkit.org/show_bug.cgi?id=146371
+
+        Reviewed by Darin Adler.
+
+        Adds a default 5-minute timeout using the timeout class in webkitpy.benchmark_runner.utils
+        for the otherwise infinitely patient wait_until_device_is_in_state method.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator.DeviceState):
+        (Simulator):
+        (Simulator.wait_until_device_is_in_state):
+        (Simulator.device_state):
+
+2015-06-29  Benjamin Poulain  <benjamin@webkit.org>
+
+        Make the NFA transitions range-based
+        https://bugs.webkit.org/show_bug.cgi?id=146338
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        Test some new interesting cases.
+
+2015-06-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Use the same environment for command-line and IDE builds
+        https://bugs.webkit.org/show_bug.cgi?id=146401
+
+        Reviewed by Anders Carlsson.
+
+        * Scripts/webkitdirs.pm:
+        (XcodeOptions): Set the UseSanitizedBuildSystemEnvironment user default to YES, which makes
+        xcodebuild use the same environment Xcode uses.
+
+2015-06-28  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r185915): Source-incompatible change in WKPageUIClient
+        https://bugs.webkit.org/show_bug.cgi?id=146396
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WebKit2/DocumentStartUserScriptAlertCrash.cpp:
+        (TestWebKitAPI::runJavaScriptAlert): Removed _deprecatedForUseWithV0 suffix from the name.
+        (TestWebKitAPI::TEST): Updated for renames.
+        * TestWebKitAPI/Tests/mac/FullscreenZoomInitialFrame.mm:
+        (runJavaScriptAlert): Removed suffix.
+        (TestWebKitAPI::FullscreenZoomInitialFrame::initializeView): Updated.
+        * TestWebKitAPI/Tests/mac/PageVisibilityStateWithWindowChanges.mm:
+        (runJavaScriptAlert): Removed suffix.
+        (TestWebKitAPI::PageVisibilityStateWithWindowChanges::initializeView): Updated.
+
+2015-06-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][SOUP] Implement WebCore::PublicSuffix for soup and enable PUBLIC_SUFFIX_LIST for GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=146318
+
+        Reviewed by Sergio Villar Senin.
+
+        Copy mac PublicSuffix test to the common directory and add it to
+        the GTK+ build.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebCore/PublicSuffix.cpp: Added.
+        (TestWebKitAPI::TEST_F):
+
+2015-06-26  Per Arne Vollan  <peavo@outlook.com>
+
+        WinLauncher fails to download files.
+        https://bugs.webkit.org/show_bug.cgi?id=146242
+
+        Reviewed by Alex Christensen.
+
+        Added WinLauncher download delegate.
+
+        * WinLauncher/Common.cpp:
+        * WinLauncher/WebDownloadDelegate.cpp: Added.
+        (WebDownloadDelegate::WebDownloadDelegate):
+        (WebDownloadDelegate::~WebDownloadDelegate):
+        (WebDownloadDelegate::QueryInterface):
+        (WebDownloadDelegate::AddRef):
+        (WebDownloadDelegate::Release):
+        (WebDownloadDelegate::decideDestinationWithSuggestedFilename):
+        (WebDownloadDelegate::didCancelAuthenticationChallenge):
+        (WebDownloadDelegate::didCreateDestination):
+        (WebDownloadDelegate::didFailWithError):
+        (WebDownloadDelegate::didReceiveAuthenticationChallenge):
+        (WebDownloadDelegate::didReceiveDataOfLength):
+        (WebDownloadDelegate::didReceiveResponse):
+        (WebDownloadDelegate::shouldDecodeSourceDataOfMIMEType):
+        (WebDownloadDelegate::willResumeWithResponse):
+        (WebDownloadDelegate::willSendRequest):
+        (WebDownloadDelegate::didBegin):
+        (WebDownloadDelegate::didFinish):
+        * WinLauncher/WebDownloadDelegate.h: Added.
+        * WinLauncher/WinLauncher.cpp:
+        (WinLauncher::setAccessibilityDelegate):
+        (WinLauncher::setResourceLoadDelegate):
+        (WinLauncher::setDownloadDelegate):
+        (WinLauncher::mainFrame):
+        * WinLauncher/WinLauncher.h:
+        (WinLauncher::standardPreferences):
+        (WinLauncher::privatePreferences):
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj.filters:
+        * WinLauncher/WinMain.cpp:
+        (wWinMain):
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [EFL] Bump libseccomp version to 2.2.1
+        https://bugs.webkit.org/show_bug.cgi?id=146341
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules:
+        * efl/jhbuildrc: Enabled libseccomp build on AArch64.
+        * efl/patches/libseccomp-pick-up-CC.patch: Removed, we don't need it anymore.
+
 2015-06-25  Alex Christensen  <achristensen@webkit.org>
 
         [Content Extensions] Add a way to match a domain but not subdomains

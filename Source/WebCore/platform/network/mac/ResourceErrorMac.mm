@@ -182,9 +182,12 @@ static RetainPtr<NSError> createNSErrorFromResourceErrorBase(const ResourceError
         [userInfo.get() setValue:resourceError.localizedDescription() forKey:NSLocalizedDescriptionKey];
 
     if (!resourceError.failingURL().isEmpty()) {
+        // FIXEME: We normally create an NSURL from a string by using URL::createNSURL, which handles
+        // cases correctly that initWithString: handles incorrectly.
         RetainPtr<NSURL> cocoaURL = adoptNS([[NSURL alloc] initWithString:resourceError.failingURL()]);
         [userInfo.get() setValue:resourceError.failingURL() forKey:@"NSErrorFailingURLStringKey"];
-        [userInfo.get() setValue:cocoaURL.get() forKey:@"NSErrorFailingURLKey"];
+        if (cocoaURL)
+            [userInfo.get() setValue:cocoaURL.get() forKey:@"NSErrorFailingURLKey"];
     }
 
     return adoptNS([[NSError alloc] initWithDomain:resourceError.domain() code:resourceError.errorCode() userInfo:userInfo.get()]);

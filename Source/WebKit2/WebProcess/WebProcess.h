@@ -178,6 +178,10 @@ public:
 
     void nonVisibleProcessCleanupTimerFired();
 
+#if PLATFORM(COCOA)
+    void destroyRenderingResources();
+#endif
+
     void updateActivePages();
 
 #if USE(SOUP)

@@ -51,7 +51,7 @@ class WebView : public API::ObjectImpl<API::Object::Type::View>, public PageClie
 public:
     virtual ~WebView();
 
-    static PassRefPtr<WebView> create(WebProcessPool*, WebPageGroup*);
+    static Ref<WebView> create(WebProcessPool*, WebPageGroup*);
 
     void initialize();
 
@@ -207,6 +207,7 @@ protected:
     virtual void willRecordNavigationSnapshot(WebBackForwardListItem&) override { };
 
     virtual void didChangeBackgroundColor() override { }
+    virtual void didFailLoadForMainFrame() override { }
 
     WebViewClient m_client;
     RefPtr<WebPageProxy> m_page;

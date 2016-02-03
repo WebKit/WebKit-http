@@ -188,10 +188,6 @@ FrameView::FrameView(Frame& frame)
 #if PLATFORM(IOS)
     , m_useCustomFixedPositionLayoutRect(false)
     , m_useCustomSizeForResizeEvent(false)
-    , m_horizontalVelocity(0)
-    , m_verticalVelocity(0)
-    , m_scaleChangeRate(0)
-    , m_lastVelocityUpdateTime(0)
 #endif
     , m_hasOverrideViewportSize(false)
     , m_shouldAutoSize(false)
@@ -290,6 +286,7 @@ void FrameView::reset()
     m_visuallyNonEmptyPixelCount = 0;
     m_isVisuallyNonEmpty = false;
     m_firstVisuallyNonEmptyLayoutCallbackPending = true;
+    m_viewportIsStable = true;
     m_maintainScrollPositionAnchor = nullptr;
 }
 
@@ -1082,6 +1079,8 @@ bool FrameView::isEnclosedInCompositingLayer() const
 
 bool FrameView::flushCompositingStateIncludingSubframes()
 {
+    InspectorInstrumentation::willComposite(frame());
+
     bool allFramesFlushed = flushCompositingStateForThisFrame(&frame());
 
     for (Frame* child = frame().tree().firstRenderedChild(); child; child = child->tree().traverseNextRendered(m_frame.ptr())) {
@@ -1139,6 +1138,9 @@ inline void FrameView::forceLayoutParentViewIfNeeded()
 void FrameView::layout(bool allowSubtree)
 {
     if (isInLayout())
+        return;
+
+    if (layoutDisallowed())
         return;
 
     // Protect the view from being deleted during layout (in recalcStyle).
@@ -3764,9 +3766,6 @@ void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
         parentView = parentView->parentFrameView();
 
     parentView->layout(allowSubtree);
-
-    RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
-    ASSERT_UNUSED(root, !root->needsLayout());
 }
 
 void FrameView::updateControlTints()

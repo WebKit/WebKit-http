@@ -1312,7 +1312,7 @@ void WebProcess::nonVisibleProcessCleanupTimerFired()
         return;
 
 #if PLATFORM(COCOA)
-    wkDestroyRenderingResources();
+    destroyRenderingResources();
 #endif
 }
 

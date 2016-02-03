@@ -1040,6 +1040,10 @@
 		26F0C89F1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F0C89D1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp */; };
 		26F0C8A01A2EC3BE002794F8 /* ContentExtensionsBackend.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F0C89E1A2EC3BE002794F8 /* ContentExtensionsBackend.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		26F40D4A14904A6300CA67C4 /* EventLoopIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 26F40D4914904A6300CA67C4 /* EventLoopIOS.mm */; };
+		26F756B01B3B65AC0005DD79 /* MutableRange.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F756AE1B3B65AC0005DD79 /* MutableRange.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		26F756B11B3B65AC0005DD79 /* MutableRangeList.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F756AF1B3B65AC0005DD79 /* MutableRangeList.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		26F756B31B3B66F70005DD79 /* ImmutableNFA.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F756B21B3B66F70005DD79 /* ImmutableNFA.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		26F756B51B3B68F20005DD79 /* ImmutableNFANodeBuilder.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F756B41B3B68F20005DD79 /* ImmutableNFANodeBuilder.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		26F9A83818A046AC00AEB88A /* ViewportConfiguration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F9A83618A046AC00AEB88A /* ViewportConfiguration.cpp */; };
 		26F9A83918A046AC00AEB88A /* ViewportConfiguration.h in Headers */ = {isa = PBXBuildFile; fileRef = 26F9A83718A046AC00AEB88A /* ViewportConfiguration.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		26FAE4CC1852E3A5004C8C46 /* ResourceHandleCFURLConnectionDelegate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26FAE4C81852E3A5004C8C46 /* ResourceHandleCFURLConnectionDelegate.cpp */; };
@@ -3784,11 +3788,13 @@
 		9B417064125662B3006B28FC /* ApplyBlockElementCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = 9B417062125662B3006B28FC /* ApplyBlockElementCommand.h */; };
 		9B417065125662B3006B28FC /* ApplyBlockElementCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9B417063125662B3006B28FC /* ApplyBlockElementCommand.cpp */; };
 		9B50B1DE17CD4C0F0087F63C /* FormNamedItem.h in Headers */ = {isa = PBXBuildFile; fileRef = 9B50B1DC17CD4C0F0087F63C /* FormNamedItem.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9B55EEE91B3E8898005342BC /* EditorCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9B55EEE81B3E8898005342BC /* EditorCocoa.mm */; };
 		9B6C41531344949000085B62 /* StringWithDirection.h in Headers */ = {isa = PBXBuildFile; fileRef = 9B6C41521344949000085B62 /* StringWithDirection.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9BA273F4172206BB0097CE47 /* LogicalSelectionOffsetCaches.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BA273F3172206BB0097CE47 /* LogicalSelectionOffsetCaches.h */; };
 		9BAB6C6C12550631001626D4 /* EditingStyle.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BAB6C6A12550631001626D4 /* EditingStyle.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9BAB6C6D12550631001626D4 /* EditingStyle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9BAB6C6B12550631001626D4 /* EditingStyle.cpp */; };
 		9BAF3B2412C1A39800014BF1 /* WritingDirection.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BAF3B2312C1A39800014BF1 /* WritingDirection.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9BB737651B41C03500AE13EB /* NSAttributedStringSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BB737641B41C03500AE13EB /* NSAttributedStringSPI.h */; };
 		9BC6C21B13CCC97B008E0337 /* HTMLTextFormControlElement.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BC6C21913CCC97B008E0337 /* HTMLTextFormControlElement.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9BC6C21C13CCC97B008E0337 /* HTMLTextFormControlElement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9BC6C21A13CCC97B008E0337 /* HTMLTextFormControlElement.cpp */; };
 		9BD0BF9312A42BF50072FD43 /* ScopedEventQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BD0BF9112A42BF50072FD43 /* ScopedEventQueue.h */; };
@@ -5685,7 +5691,6 @@
 		C5EBDD84105EDDEC0056816F /* StorageEventDispatcher.h in Headers */ = {isa = PBXBuildFile; fileRef = C5EBDD81105EDDEC0056816F /* StorageEventDispatcher.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		C65046A9167BFB5500CC2A4D /* TemplateContentDocumentFragment.h in Headers */ = {isa = PBXBuildFile; fileRef = C65046A8167BFB5500CC2A4D /* TemplateContentDocumentFragment.h */; };
 		C6A703325C9D0B6CDCBC4D77 /* JSEventTarget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C6A703325C9D0B6CDCBC4D78 /* JSEventTarget.cpp */; };
-		C6B31B2E14F841FB0089F23F /* ScrollbarThemeClient.h in Headers */ = {isa = PBXBuildFile; fileRef = C691614714F6EBA70046375C /* ScrollbarThemeClient.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		C6D74AD509AA282E000B0A52 /* ModifySelectionListLevel.h in Headers */ = {isa = PBXBuildFile; fileRef = C6D74AD309AA282E000B0A52 /* ModifySelectionListLevel.h */; };
 		C6D74AE409AA290A000B0A52 /* ModifySelectionListLevel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C6D74AE309AA290A000B0A52 /* ModifySelectionListLevel.cpp */; };
 		C6F08FBC1430FE8F00685849 /* MutationRecord.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C6F08FB91430FE8F00685849 /* MutationRecord.cpp */; };
@@ -5902,7 +5907,6 @@
 		CE1252451A16C22500864480 /* DynamicLinkerSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE1252441A16C22500864480 /* DynamicLinkerSPI.h */; };
 		CE1252471A16C2C200864480 /* NSPointerFunctionsSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE1252461A16C2C200864480 /* NSPointerFunctionsSPI.h */; };
 		CE1252491A16C3BC00864480 /* MobileGestaltSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE1252481A16C3BC00864480 /* MobileGestaltSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		CE12524B1A16C79B00864480 /* DispatchSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE12524A1A16C79B00864480 /* DispatchSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CE12524D1A1A77DE00864480 /* IOPMLibSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE12524C1A1A77DE00864480 /* IOPMLibSPI.h */; };
 		CE12524F1A1A78D200864480 /* MachVMSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE12524E1A1A78D200864480 /* MachVMSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CE1252511A1BEBD800864480 /* NSCalendarDateSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = CE1252501A1BEBD800864480 /* NSCalendarDateSPI.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -8183,6 +8187,10 @@
 		26F0C89D1A2EC3BE002794F8 /* ContentExtensionsBackend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ContentExtensionsBackend.cpp; sourceTree = "<group>"; };
 		26F0C89E1A2EC3BE002794F8 /* ContentExtensionsBackend.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContentExtensionsBackend.h; sourceTree = "<group>"; };
 		26F40D4914904A6300CA67C4 /* EventLoopIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventLoopIOS.mm; sourceTree = "<group>"; };
+		26F756AE1B3B65AC0005DD79 /* MutableRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MutableRange.h; sourceTree = "<group>"; };
+		26F756AF1B3B65AC0005DD79 /* MutableRangeList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MutableRangeList.h; sourceTree = "<group>"; };
+		26F756B21B3B66F70005DD79 /* ImmutableNFA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImmutableNFA.h; sourceTree = "<group>"; };
+		26F756B41B3B68F20005DD79 /* ImmutableNFANodeBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImmutableNFANodeBuilder.h; sourceTree = "<group>"; };
 		26F9A83618A046AC00AEB88A /* ViewportConfiguration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ViewportConfiguration.cpp; sourceTree = "<group>"; };
 		26F9A83718A046AC00AEB88A /* ViewportConfiguration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewportConfiguration.h; sourceTree = "<group>"; };
 		26FAE4C81852E3A5004C8C46 /* ResourceHandleCFURLConnectionDelegate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResourceHandleCFURLConnectionDelegate.cpp; sourceTree = "<group>"; };
@@ -11109,11 +11117,14 @@
 		9B417062125662B3006B28FC /* ApplyBlockElementCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApplyBlockElementCommand.h; sourceTree = "<group>"; };
 		9B417063125662B3006B28FC /* ApplyBlockElementCommand.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ApplyBlockElementCommand.cpp; sourceTree = "<group>"; };
 		9B50B1DC17CD4C0F0087F63C /* FormNamedItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FormNamedItem.h; sourceTree = "<group>"; };
+		9B55EEE81B3E8898005342BC /* EditorCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EditorCocoa.mm; sourceTree = "<group>"; };
+		9B55EEEA1B3F3FEF005342BC /* EditorCocoa.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EditorCocoa.h; sourceTree = "<group>"; };
 		9B6C41521344949000085B62 /* StringWithDirection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StringWithDirection.h; sourceTree = "<group>"; };
 		9BA273F3172206BB0097CE47 /* LogicalSelectionOffsetCaches.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogicalSelectionOffsetCaches.h; sourceTree = "<group>"; };
 		9BAB6C6A12550631001626D4 /* EditingStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EditingStyle.h; sourceTree = "<group>"; };
 		9BAB6C6B12550631001626D4 /* EditingStyle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EditingStyle.cpp; sourceTree = "<group>"; };
 		9BAF3B2312C1A39800014BF1 /* WritingDirection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WritingDirection.h; sourceTree = "<group>"; };
+		9BB737641B41C03500AE13EB /* NSAttributedStringSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSAttributedStringSPI.h; sourceTree = "<group>"; };
 		9BC6C21913CCC97B008E0337 /* HTMLTextFormControlElement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HTMLTextFormControlElement.h; sourceTree = "<group>"; };
 		9BC6C21A13CCC97B008E0337 /* HTMLTextFormControlElement.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HTMLTextFormControlElement.cpp; sourceTree = "<group>"; };
 		9BD0BF9112A42BF50072FD43 /* ScopedEventQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScopedEventQueue.h; sourceTree = "<group>"; };
@@ -13262,7 +13273,6 @@
 		C5F765B414E1D414006C899B /* PasteboardStrategy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PasteboardStrategy.h; sourceTree = "<group>"; };
 		C5F765BA14E1ECF4006C899B /* PlatformPasteboardMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = PlatformPasteboardMac.mm; sourceTree = "<group>"; };
 		C65046A8167BFB5500CC2A4D /* TemplateContentDocumentFragment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TemplateContentDocumentFragment.h; sourceTree = "<group>"; };
-		C691614714F6EBA70046375C /* ScrollbarThemeClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScrollbarThemeClient.h; sourceTree = "<group>"; };
 		C6A703325C9D0B6CDCBC4D78 /* JSEventTarget.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = JSEventTarget.cpp; sourceTree = "<group>"; };
 		C6D74AD309AA282E000B0A52 /* ModifySelectionListLevel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ModifySelectionListLevel.h; sourceTree = "<group>"; };
 		C6D74AE309AA290A000B0A52 /* ModifySelectionListLevel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ModifySelectionListLevel.cpp; sourceTree = "<group>"; };
@@ -13541,7 +13551,6 @@
 		CE1252441A16C22500864480 /* DynamicLinkerSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DynamicLinkerSPI.h; sourceTree = "<group>"; };
 		CE1252461A16C2C200864480 /* NSPointerFunctionsSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSPointerFunctionsSPI.h; sourceTree = "<group>"; };
 		CE1252481A16C3BC00864480 /* MobileGestaltSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MobileGestaltSPI.h; sourceTree = "<group>"; };
-		CE12524A1A16C79B00864480 /* DispatchSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DispatchSPI.h; sourceTree = "<group>"; };
 		CE12524C1A1A77DE00864480 /* IOPMLibSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOPMLibSPI.h; sourceTree = "<group>"; };
 		CE12524E1A1A78D200864480 /* MachVMSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MachVMSPI.h; sourceTree = "<group>"; };
 		CE1252501A1BEBD800864480 /* NSCalendarDateSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSCalendarDateSPI.h; sourceTree = "<group>"; };
@@ -15692,6 +15701,10 @@
 				26A517FB1AB92238006335DF /* DFAMinimizer.cpp */,
 				26A517FC1AB92238006335DF /* DFAMinimizer.h */,
 				267725F91A5B3AD9003C24DD /* DFANode.h */,
+				26F756B21B3B66F70005DD79 /* ImmutableNFA.h */,
+				26F756B41B3B68F20005DD79 /* ImmutableNFANodeBuilder.h */,
+				26F756AE1B3B65AC0005DD79 /* MutableRange.h */,
+				26F756AF1B3B65AC0005DD79 /* MutableRangeList.h */,
 				269397251A4A5FBD00E8349D /* NFA.cpp */,
 				269397231A4A5B6400E8349D /* NFA.h */,
 				269397201A4A412F00E8349D /* NFANode.h */,
@@ -16621,7 +16634,6 @@
 				CD4097FF1A8C855F004C65E9 /* CFNSURLConnectionSPI.h */,
 				1C5E980F1A02CEFA002DB55F /* CoreTextSPI.h */,
 				935E2B4D1AFF06CA00976F9F /* DataDetectorsCoreSPI.h */,
-				CE12524A1A16C79B00864480 /* DispatchSPI.h */,
 				CE1252441A16C22500864480 /* DynamicLinkerSPI.h */,
 				CE12524C1A1A77DE00864480 /* IOPMLibSPI.h */,
 				44DEF6421A6FF92700D45EEC /* IOReturnSPI.h */,
@@ -16629,6 +16641,7 @@
 				44EFF6421A6FF92700D45EEC /* IOTypesSPI.h */,
 				CE12524E1A1A78D200864480 /* MachVMSPI.h */,
 				A19D93441A9FEC7200B46C24 /* NEFilterSourceSPI.h */,
+				9BB737641B41C03500AE13EB /* NSAttributedStringSPI.h */,
 				CE1252501A1BEBD800864480 /* NSCalendarDateSPI.h */,
 				31DF63561AF187DD0078FD91 /* NSColorSPI.h */,
 				2DDB97F319F9AECA002025D8 /* NSExtensionSPI.h */,
@@ -17162,6 +17175,8 @@
 		7C3E510718DF8F1200C112F7 /* cocoa */ = {
 			isa = PBXGroup;
 			children = (
+				9B55EEEA1B3F3FEF005342BC /* EditorCocoa.h */,
+				9B55EEE81B3E8898005342BC /* EditorCocoa.mm */,
 				7C3E510818DF8F3500C112F7 /* HTMLConverter.h */,
 				7C3E510918DF8F3500C112F7 /* HTMLConverter.mm */,
 			);
@@ -21908,7 +21923,6 @@
 				BC7B2AF80450824100A8000F /* Scrollbar.h */,
 				0FE71415142189FC00DB33BA /* ScrollbarTheme.cpp */,
 				BC8B854A0E7C7F5600AB6984 /* ScrollbarTheme.h */,
-				C691614714F6EBA70046375C /* ScrollbarThemeClient.h */,
 				BC1402880E83680800319717 /* ScrollbarThemeComposite.cpp */,
 				BC1402890E83680800319717 /* ScrollbarThemeComposite.h */,
 				93C09C850B0657AA005ABD4D /* ScrollTypes.h */,
@@ -24246,6 +24260,7 @@
 				62CD325A1157E57C0063B0A7 /* CustomEvent.h in Headers */,
 				A8CB413E0E8633FD0032C4F0 /* DashArray.h in Headers */,
 				A80E6D0B0A1989CA007FB8C5 /* DashboardRegion.h in Headers */,
+				26F756B01B3B65AC0005DD79 /* MutableRange.h in Headers */,
 				97BC6A211505F081001B74AC /* Database.h in Headers */,
 				97BC6A241505F081001B74AC /* DatabaseAuthorizer.h in Headers */,
 				FE16CFD4169D1DED00D3A0C7 /* DatabaseBackend.h in Headers */,
@@ -24321,7 +24336,6 @@
 				937FF3D51A1012D6008EBA31 /* DictionaryLookup.h in Headers */,
 				FDAF19991513D131008DB0C3 /* DirectConvolver.h in Headers */,
 				7EDAAFC919A2CCDC0034DFD1 /* DiskCacheMonitorCocoa.h in Headers */,
-				CE12524B1A16C79B00864480 /* DispatchSPI.h in Headers */,
 				49AF2D6914435D050016A784 /* DisplayRefreshMonitor.h in Headers */,
 				2D29ECC6192ECC8300984B78 /* DisplayRefreshMonitorClient.h in Headers */,
 				2D29ECCA192F1F1D00984B78 /* DisplayRefreshMonitorIOS.h in Headers */,
@@ -24407,6 +24421,7 @@
 				85909CE40ACC7A7E00DF01F1 /* DOMCSSUnknownRuleInternal.h in Headers */,
 				858C381C0AA8E29600B187A4 /* DOMCSSValue.h in Headers */,
 				85B498F30ADB336A00925CBB /* DOMCSSValueInternal.h in Headers */,
+				26F756B31B3B66F70005DD79 /* ImmutableNFA.h in Headers */,
 				858C383C0AA8ED8200B187A4 /* DOMCSSValueList.h in Headers */,
 				85909D2B0ACC7D5500DF01F1 /* DOMCSSValueListInternal.h in Headers */,
 				E10B9CCC0B747A44003ED890 /* DOMCustomXPathNSResolver.h in Headers */,
@@ -24680,6 +24695,7 @@
 				31C0FF4E0E4CEFDD007D6FE5 /* DOMWebKitTransitionEventInternal.h in Headers */,
 				85C7F5E70AAFBAFB004014DD /* DOMWheelEvent.h in Headers */,
 				85989DD10ACC8BBD00A0BC51 /* DOMWheelEventInternal.h in Headers */,
+				9BB737651B41C03500AE13EB /* NSAttributedStringSPI.h in Headers */,
 				1403B99709EB13AF00797C7F /* DOMWindow.h in Headers */,
 				FC9A0F75164094CF003D6B8D /* DOMWindowCSS.h in Headers */,
 				51FA2D78152132B300C1BA0B /* DOMWindowExtension.h in Headers */,
@@ -26241,6 +26257,7 @@
 				BCEA486E097D93020094C9E4 /* RenderDeprecatedFlexibleBox.h in Headers */,
 				D302754A12A5FE84004BD828 /* RenderDetailsMarker.h in Headers */,
 				A76E5F7F135E0DCF00A69837 /* RenderedDocumentMarker.h in Headers */,
+				26F756B51B3B68F20005DD79 /* ImmutableNFANodeBuilder.h in Headers */,
 				9B32CDA913DF7FA900F34D13 /* RenderedPosition.h in Headers */,
 				E43A023B17EB370A004CDD25 /* RenderElement.h in Headers */,
 				0F5B7A5510F65D7A00376302 /* RenderEmbeddedObject.h in Headers */,
@@ -26484,7 +26501,6 @@
 				BCAE1FA712939DB7004CB026 /* ScrollAnimatorMac.h in Headers */,
 				93F199B808245E59001E9ABC /* Scrollbar.h in Headers */,
 				BC8B854B0E7C7F5600AB6984 /* ScrollbarTheme.h in Headers */,
-				C6B31B2E14F841FB0089F23F /* ScrollbarThemeClient.h in Headers */,
 				BC14028B0E83680800319717 /* ScrollbarThemeComposite.h in Headers */,
 				44C991860F3D1EBE00586670 /* ScrollbarThemeIOS.h in Headers */,
 				BC8B853E0E7C7F1100AB6984 /* ScrollbarThemeMac.h in Headers */,
@@ -26866,6 +26882,7 @@
 				B2227A810D00BF220071B782 /* SVGPathSegList.h in Headers */,
 				8476C9E611DF6A0B00555B02 /* SVGPathSegListBuilder.h in Headers */,
 				084A0829128D7867002DB1F1 /* SVGPathSegListPropertyTearOff.h in Headers */,
+				26F756B11B3B65AC0005DD79 /* MutableRangeList.h in Headers */,
 				84B6B978120F13E500B8EFAF /* SVGPathSegListSource.h in Headers */,
 				83C1D435178D5AB500141E68 /* SVGPathSegMovetoAbs.h in Headers */,
 				83C1D436178D5AB500141E68 /* SVGPathSegMovetoRel.h in Headers */,
@@ -29615,6 +29632,7 @@
 				FE9E89FB16E2DC0500A908F8 /* OriginLock.cpp in Sources */,
 				FD581FAE1520F91F003A7A75 /* OscillatorNode.cpp in Sources */,
 				1A0D57360A5C77FE007EDD4C /* OverflowEvent.cpp in Sources */,
+				9B55EEE91B3E8898005342BC /* EditorCocoa.mm in Sources */,
 				65FEA86909833ADE00BED4AB /* Page.cpp in Sources */,
 				1477E7760BF4134A00152872 /* PageCache.cpp in Sources */,
 				CD5E5B611A15F156000C609E /* PageConfiguration.cpp in Sources */,

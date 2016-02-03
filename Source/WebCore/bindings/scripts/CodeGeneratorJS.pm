@@ -3868,6 +3868,7 @@ sub JSValueToNative
     }
 
     if ($type eq "any") {
+        AddToImplIncludes("<bindings/ScriptValue.h>");
         return "{ exec->vm(), $value }";
     }
 
@@ -3934,6 +3935,13 @@ sub NativeToJSValue
 
     # Need to check Date type before IsPrimitiveType().
     if ($type eq "Date") {
+        my $conv = $signature->extendedAttributes->{"TreatReturnedNaNDateAs"};
+        if (defined $conv) {
+            return "jsDateOrNull(exec, $value)" if $conv eq "Null";
+            return "jsDateOrNaN(exec, $value)" if $conv eq "NaN";
+            
+            die "Unknown value for TreatReturnedNaNDateAs extended attribute";
+        }
         return "jsDateOrNull(exec, $value)";
     }
 

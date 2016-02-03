@@ -88,6 +88,8 @@ namespace WebCore {
 
         virtual bool usesAsyncCallbacks() { return false; }
 
+        virtual bool loadingSynchronousXHR() { return false; }
+
         // Client will pass an updated request using ResourceHandle::continueWillSendRequest() when ready.
         WEBCORE_EXPORT virtual void willSendRequestAsync(ResourceHandle*, const ResourceRequest&, const ResourceResponse& redirectResponse);
 

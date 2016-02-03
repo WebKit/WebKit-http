@@ -37,6 +37,7 @@
 
 namespace WebCore {
 
+static const char* defaultKind = "";
 static const char* ambientKind = "ambient";
 static const char* transientKind = "transient";
 static const char* transientSoloKind = "transient-solo";
@@ -54,6 +55,12 @@ MediaSession::Kind MediaSession::parseKind(const String& kind)
     if (kind == transientSoloKind)
         return MediaSession::Kind::TransientSolo;
     return MediaSession::Kind::Content;
+}
+
+MediaSession::MediaSession(Document& document)
+    : m_document(document)
+{
+    MediaSessionManager::singleton().addMediaSession(*this);
 }
 
 MediaSession::MediaSession(ScriptExecutionContext& context, const String& kind)
@@ -77,6 +84,8 @@ MediaSession::~MediaSession()
 String MediaSession::kind() const
 {
     switch (m_kind) {
+    case MediaSession::Kind::Default:
+        return defaultKind;
     case MediaSession::Kind::Ambient:
         return ambientKind;
     case MediaSession::Kind::Transient:
@@ -98,18 +107,32 @@ MediaRemoteControls* MediaSession::controls(bool& isNull)
 void MediaSession::addMediaElement(HTMLMediaElement& element)
 {
     ASSERT(!m_participatingElements.contains(&element));
-    m_participatingElements.append(&element);
+    m_participatingElements.add(&element);
 }
 
 void MediaSession::removeMediaElement(HTMLMediaElement& element)
 {
     ASSERT(m_participatingElements.contains(&element));
-    m_participatingElements.remove(m_participatingElements.find(&element));
+    m_participatingElements.remove(&element);
+
+    m_activeParticipatingElements.remove(&element);
+    if (m_iteratedActiveParticipatingElements)
+        m_iteratedActiveParticipatingElements->remove(&element);
 }
 
 void MediaSession::addActiveMediaElement(HTMLMediaElement& element)
 {
     m_activeParticipatingElements.add(&element);
+}
+
+bool MediaSession::isMediaElementActive(HTMLMediaElement& element)
+{
+    return m_activeParticipatingElements.contains(&element);
+}
+
+bool MediaSession::hasActiveMediaElements()
+{
+    return !m_activeParticipatingElements.isEmpty();
 }
 
 void MediaSession::setMetadata(const Dictionary& metadata)

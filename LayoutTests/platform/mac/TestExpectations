@@ -995,6 +995,10 @@ webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 
 webkit.org/b/140639 http/tests/media/video-play-waiting.html [ Pass Timeout ]
 
+# ENABLE(MEDIA_SESSION) is disabled
+media/session/controls-existence.html
+media/session/default-session.html
+
 # This test requires generation of progress events during loading
 webkit.org/b/100984 media/progress-events-generated-correctly.html [ Failure ]
 
@@ -1279,14 +1283,9 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 [ ElCapitan+ ] http/tests/media/video-play-stall.html [ Failure ]
 
 # <rdar://problem/21263363>
-[ ElCapitan+ ] http/tests/media/remove-while-loading.html [ Skip ]
-[ ElCapitan+ ] http/tests/media/video-accept-encoding.html [ Failure ]
-[ ElCapitan+ ] http/tests/media/video-cancel-load.html [ Skip ]
-[ ElCapitan+ ] http/tests/media/video-served-as-text.html [ Failure ]
-[ ElCapitan+ ] http/tests/media/video-throttled-load-metadata.html [ Failure ]
-[ ElCapitan+ ] http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
-
-# <rdar://problem/21486062>
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-complex.html [ Pass Failure ]
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-simple.html [ Pass Failure ]
-[ ElCapitan+ Debug ] fast/text/justify-ideograph-vertical.html [ Pass Failure ]
+http/tests/media/remove-while-loading.html [ Skip ]
+http/tests/media/video-accept-encoding.html [ Failure ]
+http/tests/media/video-cancel-load.html [ Skip ]
+http/tests/media/video-served-as-text.html [ Failure ]
+http/tests/media/video-throttled-load-metadata.html [ Failure ]
+http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]

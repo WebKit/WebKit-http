@@ -1,3 +1,207 @@
+2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=90906
+
+        Reviewed by Benjamin Poulain.
+
+        * CMakeLists.txt: add IntlObject.cpp
+        * Configurations/FeatureDefines.xcconfig: add ENABLE_INTL flag
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj: add IntlObject
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: add IntlObject
+        * JavaScriptCore.xcodeproj/project.pbxproj: add IntlObject
+        * runtime/CommonIdentifiers.h: add "Intl" name
+        * runtime/IntlObject.cpp: Added.
+        (JSC::IntlObject::IntlObject):
+        (JSC::IntlObject::create):
+        (JSC::IntlObject::finishCreation):
+        (JSC::IntlObject::createStructure):
+        * runtime/IntlObject.h: Added.
+        * runtime/JSGlobalObject.cpp: Add global Intl
+        (JSC::JSGlobalObject::init):
+
+2015-06-30  Basile Clement  <basile_clement@apple.com>
+
+        Allow object allocation sinking through GetScope, GetExecutable and SkipScope nodes
+        https://bugs.webkit.org/show_bug.cgi?id=146431
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isFunctionAllocation):
+        (JSC::DFG::Node::isPhantomFunctionAllocation):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        (JSC::DFG::ObjectAllocationSinkingPhase::handleNode):
+        * dfg/DFGPromoteHeapAccess.h:
+        (JSC::DFG::promoteHeapAccess):
+
+2015-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Reduce rendering frames "Other" time by instrumenting compositing
+        https://bugs.webkit.org/show_bug.cgi?id=146168
+
+        Reviewed by Brian Burg.
+
+        * inspector/protocol/Timeline.json:
+        New timeline record type for compositing events.
+
+2015-06-29  Dean Jackson  <dino@apple.com>
+
+        Temporarily disable PICTURE_SIZES
+        https://bugs.webkit.org/show_bug.cgi?id=146435
+        <rdar://problem/21087013>
+
+        Reviewed by Tim Horton.
+
+        Temporarily disable PICTURE_SIZES because it causes problems with out
+        of date <picture> polyfills.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-06-29  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Binding generator should allow using JSC::Value for "any" parameter in lieu of ScriptValue
+        https://bugs.webkit.org/show_bug.cgi?id=146403
+
+        Reviewed by Darin Adler.
+
+        * bindings/ScriptValue.h: Added implicit conversion to JSC::JSValue.
+
+2015-06-28 Aleksandr Skachkov   <gskachkov@gmail.com>
+
+        [ES6] Implement ES6 arrow function syntax. No Line terminator between function parameters and =>
+        https://bugs.webkit.org/show_bug.cgi?id=146394
+
+        Reviewed by Yusuke Suzuki.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2015-06-27  Darin Adler  <darin@apple.com>
+
+        Make converting JSString to StringView idiomatically safe
+        https://bugs.webkit.org/show_bug.cgi?id=146387
+
+        Reviewed by Anders Carlsson.
+
+        * jsc.cpp:
+        (functionPrint): Add explicit call to SafeView::get, needed since there
+        is no StringView temporary.
+        (functionDebug): Ditto.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::holesMustForwardToPrototype): Refactored into helper function.
+        (JSC::join): Refactored so that StringView is a function argument, making
+        the lifetime simpler.
+        (JSC::arrayProtoFuncJoin): Ditto.
+        (JSC::arrayProtoFuncReverse): Use new holesMustForwardToPrototype helper.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::encode): Add explicit call to SafeView::get.
+
+        * runtime/JSString.h: Moved declarations of functions to the top of the
+        file instead of mixing them in with the function definitions. Changed
+        return type of the view function to return a JSString::SafeView so that
+        the JSString's lifetime will last as long as the StringView does in
+        typical coding idioms.
+        (JSC::JSString::getIndex): Use unsafeView so we can index into the
+        view; could also have used view.get but here in this class this seems fine.
+        (JSC::JSRopeString::unsafeView): Renamed existing view function to this.
+        (JSC::JSString::unsafeView): Ditto.
+        (JSC::JSString::SafeView::SafeView): Contains reference to an ExecState
+        and a JSString. The ExecState is needed to create the StringView, and the
+        JSString needs to be kept alive as long as the StringView is.
+        (JSC::JSString::SafeView::operator StringView): Call unsafeView.
+        (JSC::JSString::SafeView::get): Convenience for when we want to call
+        StringView member functions.
+        (JSC::JSString::view): Added. Returns a SafeView.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncIndexOf): Add explicit call to SafeView::get.
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ARMv7Assembler.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=146340
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARMv7Assembler.cpp: Removed.
+
+2015-06-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(ES6_ARROWFUNCTION_SYNTAX) build after r185989
+        https://bugs.webkit.org/show_bug.cgi?id=146344
+
+        Reviewed by Yusuke Suzuki.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseSourceElements):
+
+2015-06-26 Aleksandr Skachkov  <gskachkov@gmail.com>
+
+         [ES6] Implement ES6 arrow function syntax. Parser of arrow function with execution as common function. 
+         https://bugs.webkit.org/show_bug.cgi?id=144955
+
+         Reviewed by Yusuke Suzuki.
+
+         Added support of ES6 arrow function. Changes were made according to following spec http://wiki.ecmascript.org/doku.php?id=harmony:arrow_function_syntax. Patch does not include any arrow function specific behavior e.g. lexical bind this, arguments and etc.     
+        This patch implements the simplest cases of arrow function declaration:
+           parameters             () => 10 + 20
+           parameter               x => x + 20
+           parameters         (x, y) => x + y
+           function with block     x => { return x*10; }
+
+        Not implemented:
+           bind of the this, arguments, super and etc.
+           exception in case of trying to use 'new' with arrow function
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createArrowFunctionExpr):
+        (JSC::ASTBuilder::createGetterOrSetterProperty):
+        (JSC::ASTBuilder::createFuncDeclStatement):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::setTokenPosition):
+        (JSC::Lexer<T>::lex):
+        * parser/Lexer.h:
+        (JSC::Lexer::lastTokenLocation):
+        (JSC::Lexer::setTerminator):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseInner):
+        (JSC::Parser<LexerType>::parseSourceElements):
+        (JSC::Parser<LexerType>::parseArrowFunctionSingleExpressionBody):
+        (JSC::Parser<LexerType>::parseSwitchClauses):
+        (JSC::Parser<LexerType>::parseSwitchDefaultClause):
+        (JSC::Parser<LexerType>::parseBlockStatement):
+        (JSC::Parser<LexerType>::parseFunctionBody):
+        (JSC::stringForFunctionMode):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseFunctionDeclaration):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+        (JSC::Parser<LexerType>::parseGetterSetter):
+        (JSC::Parser<LexerType>::parseArrowFunctionExpression):
+        * parser/Parser.h:
+        (JSC::Parser::locationBeforeLastToken):
+        (JSC::Parser::isEndOfArrowFunction):
+        (JSC::Parser::isArrowFunctionParamters):
+        (JSC::Parser::setEndOfStatement):
+        * parser/ParserFunctionInfo.h:
+        * parser/ParserTokens.h:
+        * parser/SourceCode.h:
+        (JSC::SourceCode::subArrowExpression):
+        * parser/SourceProviderCacheItem.h:
+        (JSC::SourceProviderCacheItem::endFunctionToken):
+        (JSC::SourceProviderCacheItem::SourceProviderCacheItem):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createArrowFunctionExpr):
+        (JSC::SyntaxChecker::setFunctionNameStart):
+
 2015-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [ES6] Support rest element in destructuring assignments

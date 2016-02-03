@@ -40,8 +40,10 @@
 #import <WebCore/DebugPageOverlays.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
+#import <WebCore/InspectorController.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/PageOverlayController.h>
+#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/RenderLayerCompositor.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/Settings.h>
@@ -359,13 +361,19 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     FloatRect visibleRect(FloatPoint(), m_viewSize);
     visibleRect.intersect(m_scrolledExposedRect);
 
+#if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+    [CATransaction addCommitHandler:^{
+        m_webPage.corePage()->inspectorController().didComposite(m_webPage.mainFrameView()->frame());
+    } forPhase:kCATransactionPhasePostCommit];
+#endif
+
     m_webPage.mainFrameView()->flushCompositingStateIncludingSubframes();
 
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
     if (m_viewOverlayRootLayer)
-        m_viewOverlayRootLayer->flushCompositingState(visibleRect);
+        m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
 
-    m_rootLayer->flushCompositingStateForThisLayerOnly();
+    m_rootLayer->flushCompositingStateForThisLayerOnly(m_webPage.mainFrameView()->viewportIsStable());
 
     // FIXME: Minimize these transactions if nothing changed.
     RemoteLayerTreeTransaction layerTransaction;
