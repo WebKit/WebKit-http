@@ -30,6 +30,7 @@
 #if WPE_BACKEND(INTEL_CE)
 
 #include <EGL/egl.h>
+#include <libgdl.h>
 
 namespace WPE {
 
@@ -66,7 +67,7 @@ RenderingBackendIntelCE::Surface::~Surface() = default;
 
 EGLNativeWindowType RenderingBackendIntelCE::Surface::nativeWindow()
 {
-    return (EGLNativeWindowType)0x7; // GDL_PLANE_ID_UPP_C
+    return (EGLNativeWindowType)GDL_PLANE_ID_UPP_C;
 }
 
 void RenderingBackendIntelCE::Surface::resize(uint32_t, uint32_t)
