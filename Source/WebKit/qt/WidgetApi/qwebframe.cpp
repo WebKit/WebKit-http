@@ -910,10 +910,9 @@ void QWebFrame::print(QPrinter *printer) const
     Evaluates the JavaScript defined by \a scriptSource using this frame as context
     and returns the result of the last executed statement.
 
-    \note This method may be very inefficient if \a scriptSource returns
-
-    For example, evaluation of the next innocuously looking code may take a lot
-    of CPU and memory to execute:
+    \note This method may be very inefficient if \a scriptSource returns a DOM element
+    as a result. For example, evaluation of the next innocuously looking code may take
+    a lot of CPU and memory to execute:
 
     \code
         var img = document.createElement('img');
