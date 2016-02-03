@@ -26,7 +26,7 @@
 #include "IntRect.h"
 #include "QWebPageClient.h"
 #include "TextureMapperLayerClientQt.h"
-#include "TiledBackingStore.h"
+//#include "TiledBackingStore.h" FIXME
 #include "qgraphicswebview.h"
 #include "qwebframe.h"
 #include "qwebframe_p.h"

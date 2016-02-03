@@ -47,7 +47,9 @@
 #include "ScriptValue.h"
 #include "SubstituteData.h"
 #include "TextureMapperLayerClientQt.h"
+#if USE(TILED_BACKING_STORE)
 #include "TiledBackingStore.h"
+#endif
 #include "URL.h"
 #include "htmlediting.h"
 #include "markup.h"

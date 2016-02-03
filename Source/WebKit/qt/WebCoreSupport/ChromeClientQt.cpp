@@ -58,7 +58,9 @@
 #include "SearchPopupMenuQt.h"
 #include "SecurityOrigin.h"
 #include "TextureMapperLayerClientQt.h"
+#if USE(TILED_BACKING_STORE)
 #include "TiledBackingStore.h"
+#endif
 #include "ViewportArguments.h"
 #include "WindowFeatures.h"
 #include "qwebkitplatformplugin.h"
