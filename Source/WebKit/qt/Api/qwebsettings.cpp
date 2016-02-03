@@ -180,9 +180,6 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::CSSCompositingEnabled,
                                  global->attributes.value(QWebSettings::CSSCompositingEnabled));
         WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(value);
-        value = attributes.value(QWebSettings::CSSGridLayoutEnabled,
-                                 global->attributes.value(QWebSettings::CSSGridLayoutEnabled));
-        settings->setCSSGridLayoutEnabled(value);
 
         value = attributes.value(QWebSettings::HyperlinkAuditingEnabled,
                                  global->attributes.value(QWebSettings::HyperlinkAuditingEnabled));

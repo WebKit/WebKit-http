@@ -161,12 +161,12 @@ static inline WebCore::PageVisibilityState webPageVisibilityStateToWebCoreVisibi
     switch (state) {
     case QWebPageAdapter::VisibilityStatePrerender:
         return WebCore::PageVisibilityStatePrerender;
-    case QWebPageAdapter::VisibilityStateUnloaded:
-        return WebCore::PageVisibilityStateUnloaded;
     case QWebPageAdapter::VisibilityStateVisible:
         return WebCore::PageVisibilityStateVisible;
     case QWebPageAdapter::VisibilityStateHidden:
         return WebCore::PageVisibilityStateHidden;
+    case QWebPageAdapter::VisibilityStateUnloaded:
+        // FIXME: Decide what to do with removed VisibilityStateUnloaded
     default:
         ASSERT(false);
         return WebCore::PageVisibilityStateHidden;
@@ -178,8 +178,6 @@ static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVi
     switch (state) {
     case WebCore::PageVisibilityStatePrerender:
         return QWebPageAdapter::VisibilityStatePrerender;
-    case WebCore::PageVisibilityStateUnloaded:
-        return QWebPageAdapter::VisibilityStateUnloaded;
     case WebCore::PageVisibilityStateVisible:
         return QWebPageAdapter::VisibilityStateVisible;
     case WebCore::PageVisibilityStateHidden:
@@ -286,7 +284,8 @@ void QWebPageAdapter::initializeWebCorePage()
 
     history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForwardClient()));
 
-    PageGroup::setShouldTrackVisitedLinks(true);
+    // FIXME: Visited link tracking was removed in r176670
+    //PageGroup::setShouldTrackVisitedLinks(true);
 }
 
 QWebPageAdapter::~QWebPageAdapter()

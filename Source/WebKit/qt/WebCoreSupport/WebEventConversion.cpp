@@ -22,7 +22,7 @@
 #include "config.h"
 #include "WebEventConversion.h"
 
-#include "PlatformGestureEvent.h"
+//#include "PlatformGestureEvent.h" FIXME: GestureEvents were removed in r157316
 #include "PlatformMouseEvent.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformTouchPoint.h"
