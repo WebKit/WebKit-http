@@ -66,6 +66,7 @@ public:
 
     void setContextMenuContext(const ContextMenuContext& context) { m_context = context; }
     const ContextMenuContext& context() const { return m_context; }
+    void setHitTestResult(const HitTestResult& result) { m_context.setHitTestResult(result); }
     const HitTestResult& hitTestResult() const { return m_context.hitTestResult(); }
 
 #if USE(ACCESSIBILITY_CONTEXT_MENUS)

@@ -39,6 +39,7 @@ public:
     ContextMenuContext();
     ContextMenuContext(const HitTestResult&);
 
+    void setHitTestResult(const HitTestResult& result) { m_hitTestResult = result; }
     const HitTestResult& hitTestResult() const { return m_hitTestResult; }
 
     void setSelectedText(const String& selectedText) { m_selectedText = selectedText; }
