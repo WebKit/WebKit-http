@@ -61,19 +61,10 @@ find_package(LibXml2 2.8.0 REQUIRED)
 find_package(LibXslt 1.1.7 REQUIRED)
 find_package(PNG REQUIRED)
 find_package(Sqlite REQUIRED)
-find_package(Wayland 1.6.0 REQUIRED)
 find_package(WebP REQUIRED)
 
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
-
-if (USE_WPE_BACKEND_DRM)
-    find_package(LibDRM REQUIRED)
-endif ()
-
-if (USE_WPE_BUFFER_MANAGEMENT_GBM)
-    find_package(LibGBM REQUIRED)
-endif ()
 
 if (ENABLE_SUBTLE_CRYPTO)
     find_package(GnuTLS 3.0.0)

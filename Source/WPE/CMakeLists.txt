@@ -1,3 +1,5 @@
+find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+
 set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
 
 if (USE_KEY_INPUT_HANDLING_LINUX_INPUT)
@@ -8,6 +10,7 @@ else ()
 endif ()
 
 if (USE_WPE_BACKEND_DRM)
+    find_package(LibDRM REQUIRED)
     add_definitions(-DWPE_BACKEND_DRM=1)
 
     if (USE_WPE_BACKEND_DRM_TEGRA)
@@ -16,10 +19,12 @@ if (USE_WPE_BACKEND_DRM)
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
+    find_package(Wayland 1.6.0 REQUIRED)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
 endif ()
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+    find_package(LibGBM REQUIRED)
     add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
 endif ()
 
