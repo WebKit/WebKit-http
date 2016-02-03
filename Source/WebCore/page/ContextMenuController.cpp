@@ -392,6 +392,11 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
         else
             openNewWindow(m_context.hitTestResult().absoluteLinkURL(), frame, ShouldOpenExternalURLsPolicy::ShouldAllow);
         break;
+#if PLATFORM(QT)
+    case ContextMenuItemTagOpenLinkInThisWindow:
+        frame->loader().loadFrameRequest(FrameLoadRequest(frame->document()->securityOrigin(), ResourceRequest(m_context.hitTestResult().absoluteLinkURL(), frame->loader().outgoingReferrer()), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Suppress, ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes), nullptr, nullptr);
+        break;
+#endif
     case ContextMenuItemTagBold:
         frame->editor().command("ToggleBold").execute();
         break;
@@ -1314,6 +1319,9 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
 #endif
         case ContextMenuItemTagNoAction:
         case ContextMenuItemTagOpenLinkInNewWindow:
+#if PLATFORM(QT)
+        case ContextMenuItemTagOpenLinkInThisWindow:
+#endif
         case ContextMenuItemTagDownloadLinkToDisk:
         case ContextMenuItemTagCopyLinkToClipboard:
         case ContextMenuItemTagOpenImageInNewWindow:
