@@ -28,6 +28,7 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
+#include "CombinedFiltersAlphabet.h"
 #include "ContentExtensionsDebugging.h"
 #include "NFA.h"
 #include <wtf/Forward.h>
@@ -37,7 +38,6 @@ namespace WebCore {
 
 namespace ContentExtensions {
 
-class Term;
 struct PrefixTreeVertex;
 
 class WEBCORE_EXPORT CombinedURLFilters {
@@ -59,7 +59,9 @@ public:
 #endif
     
 private:
+    CombinedFiltersAlphabet m_alphabet;
     std::unique_ptr<PrefixTreeVertex> m_prefixTreeRoot;
+    HashMap<const PrefixTreeVertex*, ActionList> m_actions;
 };
 
 } // namespace ContentExtensions

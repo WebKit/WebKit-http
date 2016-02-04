@@ -86,8 +86,16 @@
     overflow: hidden;
 }
 
+body.window-inactive .data-grid th {
+    border-bottom-color: rgb(219, 219, 219);
+}
+
 .data-grid :matches(th, td):not(:last-child) {
     border-right: 1px solid rgb(179, 179, 179);
+}
+
+body.window-inactive .data-grid :matches(th, td):not(:last-child) {
+    border-right-color: rgb(219, 219, 219);
 }
 
 .data-grid th.sortable:active {
@@ -142,7 +150,7 @@
     overflow: hidden;
 }
 
-.data-grid:focus tr.selected td:not(:last-child) {
+.data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child) {
     border-right-color: rgb(0, 102, 204);
 }
 
@@ -230,11 +238,11 @@
     background-image: -webkit-canvas(disclosure-triangle-tiny-open-normal);
 }
 
-.data-grid:focus tr.parent.selected td.disclosure::before {
+.data-grid:matches(:focus, .force-focus) tr.parent.selected td.disclosure::before {
     background-image: -webkit-canvas(disclosure-triangle-tiny-closed-selected);
 }
 
-.data-grid:focus tr.parent.expanded.selected td.disclosure::before {
+.data-grid:matches(:focus, .force-focus) tr.parent.expanded.selected td.disclosure::before {
     background-image: -webkit-canvas(disclosure-triangle-tiny-open-selected);
 }
 
@@ -243,7 +251,7 @@
     color: inherit !important;
 }
 
-.data-grid:focus tr.selected {
+.data-grid:matches(:focus, .force-focus) tr.selected {
     background-color: rgb(0, 128, 252) !important;
     color: white !important;
 }
@@ -260,7 +268,7 @@
     content: " — ";
 }
 
-.data-grid:focus tr.selected td .subtitle {
+.data-grid:matches(:focus, .force-focus) tr.selected td .subtitle {
     color: rgba(255, 255, 255, 0.9);
 }
 

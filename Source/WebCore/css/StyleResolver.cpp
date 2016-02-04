@@ -133,7 +133,6 @@
 #include "VisitedLinkState.h"
 #include "WebKitCSSFilterValue.h"
 #include "WebKitCSSRegionRule.h"
-#include "WebKitCSSResourceValue.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
 #include "XMLNames.h"
@@ -239,7 +238,6 @@ inline void StyleResolver::State::clear()
     m_regionForStyling = nullptr;
     m_pendingImageProperties.clear();
     m_filtersWithPendingSVGDocuments.clear();
-    m_maskImagesWithPendingSVGDocuments.clear();
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
@@ -322,9 +320,8 @@ StyleResolver::StyleResolver(Document& document, bool matchAuthorAndUserStyles)
 #if ENABLE(SVG_FONTS)
     if (m_document.svgExtensions()) {
         const HashSet<SVGFontFaceElement*>& svgFontFaceElements = m_document.svgExtensions()->svgFontFaceElements();
-        HashSet<SVGFontFaceElement*>::const_iterator end = svgFontFaceElements.end();
-        for (HashSet<SVGFontFaceElement*>::const_iterator it = svgFontFaceElements.begin(); it != end; ++it)
-            m_document.fontSelector().addFontFaceRule((*it)->fontFaceRule());
+        for (auto* svgFontFaceElement : svgFontFaceElements)
+            m_document.fontSelector().addFontFaceRule(svgFontFaceElement->fontFaceRule(), svgFontFaceElement->isInUserAgentShadowTree());
     }
 #endif
 
@@ -1159,63 +1156,6 @@ void StyleResolver::adjustStyleForInterCharacterRuby()
         style->setWritingMode(LeftToRightWritingMode);
 }
 
-void StyleResolver::adjustStyleForMaskImages()
-{
-    // If we already have the same mask image objects loaded on the old style,
-    // use the old ones instead of loading new ones.
-    RenderStyle* newStyle = m_state.style();
-    RenderStyle* oldStyle = (m_state.element() ? m_state.element()->renderStyle() : nullptr);
-
-    if (newStyle && oldStyle) {
-        Vector<RefPtr<MaskImageOperation>> removedExternalResources;
-        
-        // Get all mask objects from the old style in a vector
-        // so we can remove them as we match them, making the following steps faster.
-        Vector<RefPtr<MaskImageOperation>> oldStyleMaskImages;
-        const FillLayer* oldMaskLayer = oldStyle->maskLayers();
-        while (oldMaskLayer) {
-            RefPtr<MaskImageOperation> oldMaskImage = oldMaskLayer->maskImage();
-            if (oldMaskImage.get())
-                oldStyleMaskImages.append(oldMaskImage);
-
-            oldMaskLayer = oldMaskLayer->next();
-        }
-
-        if (oldStyleMaskImages.isEmpty())
-            return;
-
-        // Try to match the new mask objects through the list from the old style.
-        // This should work perfectly and optimal when the list of masks remained
-        // the same and also work correctly (but slower) when they were reordered.
-        FillLayer* newMaskLayer = &newStyle->ensureMaskLayers();
-        int countOldStyleMaskImages = oldStyleMaskImages.size();
-        while (newMaskLayer && countOldStyleMaskImages) {
-            RefPtr<MaskImageOperation> newMaskImage = newMaskLayer->maskImage();
-            if (newMaskImage.get()) {
-                for (int i = 0; i < countOldStyleMaskImages; i++) {
-                    RefPtr<MaskImageOperation> oldMaskImage = oldStyleMaskImages[i];
-                    if (*oldMaskImage == *newMaskImage) {
-                        newMaskLayer->setMaskImage(oldMaskImage);
-                        if (newMaskImage->isExternalDocument())
-                            removedExternalResources.append(newMaskImage);
-
-                        oldStyleMaskImages.remove(i);
-                        countOldStyleMaskImages--;
-                        break;
-                    }
-                }
-            }
-
-            newMaskLayer = newMaskLayer->next();
-        }
-
-        Vector<RefPtr<MaskImageOperation>>& pendingResources = m_state.maskImagesWithPendingSVGDocuments();
-        pendingResources.removeAllMatching([&removedExternalResources] (const RefPtr<MaskImageOperation>& resource) {
-            return removedExternalResources.contains(resource);
-        });
-    }
-}
-
 void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& parentStyle, Element *e)
 {
     // Cache our original display.
@@ -1811,8 +1751,6 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     // There are some CSS properties that affect the same RenderStyle values,
     // so to preserve behavior, we queue them up during cascade and flush here.
     cascade.applyDeferredProperties(*this);
-    
-    adjustStyleForMaskImages();
 
     // Start loading resources referenced by this style.
     loadPendingResources();
@@ -2240,30 +2178,18 @@ void StyleResolver::loadPendingSVGDocuments()
     // style is NULL. We don't know exactly why this happens. Our guess is
     // reentering styleForElement().
     ASSERT(state.style());
-    if (!state.style())
+    if (!state.style() || !state.style()->hasFilter() || state.filtersWithPendingSVGDocuments().isEmpty())
         return;
-    
-    bool hasFilters = (state.style()->hasFilter() && !state.filtersWithPendingSVGDocuments().isEmpty());
-    bool hasMasks = (state.style()->hasMask() && !state.maskImagesWithPendingSVGDocuments().isEmpty());
-    
-    if (!hasFilters && !hasMasks)
-        return;
+
+    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    options.setContentSecurityPolicyImposition(m_state.element() && m_state.element()->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
 
     CachedResourceLoader& cachedResourceLoader = state.document().cachedResourceLoader();
     
-    if (hasFilters) {
-        for (auto& filterOperation : state.filtersWithPendingSVGDocuments())
-            filterOperation->getOrCreateCachedSVGDocumentReference()->load(cachedResourceLoader);
+    for (auto& filterOperation : state.filtersWithPendingSVGDocuments())
+        filterOperation->getOrCreateCachedSVGDocumentReference()->load(cachedResourceLoader, options);
 
-        state.filtersWithPendingSVGDocuments().clear();
-    }
-    
-    if (hasMasks) {
-        for (auto& maskImageOperation : state.maskImagesWithPendingSVGDocuments())
-            maskImageOperation->ensureCachedSVGDocumentReference()->load(cachedResourceLoader);
-
-        state.maskImagesWithPendingSVGDocuments().clear();
-    }
+    state.filtersWithPendingSVGDocuments().clear();
 }
 
 bool StyleResolver::createFilterOperations(CSSValue& inValue, FilterOperations& outOperations)
@@ -2408,12 +2334,12 @@ PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& 
         return imageValue->cachedImage(m_state.document().cachedResourceLoader(), options);
 
     if (auto imageGeneratorValue = pendingImage.cssImageGeneratorValue()) {
-        imageGeneratorValue->loadSubimages(m_state.document().cachedResourceLoader());
+        imageGeneratorValue->loadSubimages(m_state.document().cachedResourceLoader(), options);
         return StyleGeneratedImage::create(*imageGeneratorValue);
     }
 
     if (auto cursorImageValue = pendingImage.cssCursorImageValue())
-        return cursorImageValue->cachedImage(m_state.document().cachedResourceLoader());
+        return cursorImageValue->cachedImage(m_state.document().cachedResourceLoader(), options);
 
 #if ENABLE(CSS_IMAGE_SET)
     if (auto imageSetValue = pendingImage.cssImageSetValue())
@@ -2425,7 +2351,9 @@ PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& 
 
 PassRefPtr<StyleImage> StyleResolver::loadPendingImage(const StylePendingImage& pendingImage)
 {
-    return loadPendingImage(pendingImage, CachedResourceLoader::defaultCachedResourceOptions());
+    ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
+    options.setContentSecurityPolicyImposition(m_state.element() && m_state.element()->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
+    return loadPendingImage(pendingImage, options);
 }
 
 #if ENABLE(CSS_SHAPES)
@@ -2443,6 +2371,7 @@ void StyleResolver::loadPendingShapeImage(ShapeValue* shapeValue)
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
     options.setRequestOriginPolicy(PotentiallyCrossOriginEnabled);
     options.setAllowCredentials(DoNotAllowStoredCredentials);
+    options.setContentSecurityPolicyImposition(m_state.element() && m_state.element()->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
 
     shapeValue->setImage(loadPendingImage(pendingImage, options));
 }
@@ -2523,10 +2452,9 @@ void StyleResolver::loadPendingImages()
         }
         case CSSPropertyWebkitMaskImage: {
             for (FillLayer* maskLayer = &m_state.style()->ensureMaskLayers(); maskLayer; maskLayer = maskLayer->next()) {
-                RefPtr<MaskImageOperation> maskImage = maskLayer->maskImage();
-                auto* styleImage = maskImage.get() ? maskImage->image() : nullptr;
+                auto* styleImage = maskLayer->image();
                 if (is<StylePendingImage>(styleImage))
-                    maskImage->setImage(loadPendingImage(downcast<StylePendingImage>(*styleImage)));
+                    maskLayer->setImage(loadPendingImage(downcast<StylePendingImage>(*styleImage)));
             }
             break;
         }

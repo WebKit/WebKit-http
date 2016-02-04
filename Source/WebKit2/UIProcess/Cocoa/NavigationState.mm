@@ -63,6 +63,7 @@
 #import "_WKRenderingProgressEventsInternal.h"
 #import "_WKSameDocumentNavigationTypeInternal.h"
 #import <WebCore/Credential.h>
+#import <WebCore/URL.h>
 #import <wtf/NeverDestroyed.h>
 
 #if HAVE(APP_LINKS)
@@ -72,6 +73,8 @@
 #if USE(QUICK_LOOK)
 #import "QuickLookDocumentData.h"
 #endif
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -221,6 +224,18 @@ void NavigationState::willRecordNavigationSnapshot(WebBackForwardListItem& item)
     [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webView:m_webView willSnapshotBackForwardListItem:wrapper(item)];
 }
 
+void NavigationState::didFirstPaint()
+{
+    if (!m_navigationDelegateMethods.webViewRenderingProgressDidChange)
+        return;
+
+    auto navigationDelegate = m_navigationDelegate.get();
+    if (!navigationDelegate)
+        return;
+
+    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate) _webView:m_webView renderingProgressDidChange:_WKRenderingProgressEventFirstPaint];
+}
+
 NavigationState::NavigationClient::NavigationClient(NavigationState& navigationState)
     : m_navigationState(navigationState)
 {
@@ -230,33 +245,35 @@ NavigationState::NavigationClient::~NavigationClient()
 {
 }
 
-static void tryAppLink(RefPtr<API::NavigationAction> navigationAction, std::function<void (bool)> completionHandler)
+static void tryAppLink(RefPtr<API::NavigationAction> navigationAction, const String& currentMainFrameURL, std::function<void (bool)> completionHandler)
 {
 #if HAVE(APP_LINKS)
-    bool mainFrameNavigation = !navigationAction->targetFrame() || navigationAction->targetFrame()->isMainFrame();
-    bool isProcessingUserGesture = navigationAction->isProcessingUserGesture();
-    if (mainFrameNavigation && isProcessingUserGesture) {
-        auto* localCompletionHandler = new std::function<void (bool)>(WTF::move(completionHandler));
-        [LSAppLink openWithURL:navigationAction->request().url() completionHandler:[localCompletionHandler](BOOL success, NSError *) {
-            dispatch_async(dispatch_get_main_queue(), [localCompletionHandler, success] {
-                (*localCompletionHandler)(success);
-                delete localCompletionHandler;
-            });
-        }];
+    if (!navigationAction->shouldOpenAppLinks()) {
+        completionHandler(false);
         return;
     }
-#endif
 
+    auto* localCompletionHandler = new std::function<void (bool)>(WTF::move(completionHandler));
+    [LSAppLink openWithURL:navigationAction->request().url() completionHandler:[localCompletionHandler](BOOL success, NSError *) {
+        dispatch_async(dispatch_get_main_queue(), [localCompletionHandler, success] {
+            (*localCompletionHandler)(success);
+            delete localCompletionHandler;
+        });
+    }];
+#else
     completionHandler(false);
+#endif
 }
 
-void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageProxy&, API::NavigationAction& navigationAction, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData)
+void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageProxy& webPageProxy, API::NavigationAction& navigationAction, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData)
 {
+    String mainFrameURLString = webPageProxy.mainFrame()->url();
+
     if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler) {
         RefPtr<API::NavigationAction> localNavigationAction = &navigationAction;
         RefPtr<WebFramePolicyListenerProxy> localListener = WTF::move(listener);
 
-        tryAppLink(localNavigationAction, [localListener, localNavigationAction] (bool followedLinkToApp) {
+        tryAppLink(localNavigationAction, mainFrameURLString, [localListener, localNavigationAction] (bool followedLinkToApp) {
             if (followedLinkToApp) {
                 localListener->ignore();
                 return;
@@ -292,12 +309,12 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     RefPtr<API::NavigationAction> localNavigationAction = &navigationAction;
     RefPtr<WebFramePolicyListenerProxy> localListener = WTF::move(listener);
     RefPtr<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(webView:decidePolicyForNavigationAction:decisionHandler:));
-    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:[localListener, localNavigationAction, checker](WKNavigationActionPolicy actionPolicy) {
+    [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:[localListener, localNavigationAction, checker, mainFrameURLString](WKNavigationActionPolicy actionPolicy) {
         checker->didCallCompletionHandler();
 
         switch (actionPolicy) {
         case WKNavigationActionPolicyAllow:
-            tryAppLink(localNavigationAction, [localListener](bool followedLinkToApp) {
+            tryAppLink(localNavigationAction, mainFrameURLString, [localListener](bool followedLinkToApp) {
                 if (followedLinkToApp) {
                     localListener->ignore();
                     return;

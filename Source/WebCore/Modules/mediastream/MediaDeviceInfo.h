@@ -42,18 +42,22 @@ public:
     
     virtual ~MediaDeviceInfo() { }
     
-    const String& label() const {return m_label; }
-    const String& deviceId() const {return m_deviceId; }
-    const String& groupId() const {return m_groupId; }
-    const String& kind() const {return m_kind; }
-    
+    const String& label() const { return m_label; }
+    const String& deviceId() const { return m_deviceId; }
+    const String& groupId() const { return m_groupId; }
+    const String& kind() const { return m_kind; }
+
+    static const AtomicString& audioInputType();
+    static const AtomicString& audioOutputType();
+    static const AtomicString& videoInputType();
+
 private:
     MediaDeviceInfo(ScriptExecutionContext*, const String&, const String&, const String&, const String&);
 
-    const String& m_label;
-    const String& m_deviceId;
-    const String& m_groupId;
-    const String& m_kind;
+    const String m_label;
+    const String m_deviceId;
+    const String m_groupId;
+    const String m_kind;
 };
 
 }

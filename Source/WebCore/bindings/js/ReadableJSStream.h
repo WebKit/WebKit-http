@@ -54,7 +54,7 @@ typedef int ExceptionCode;
 
 class ReadableJSStream: public ReadableStream {
 public:
-    static RefPtr<ReadableJSStream> create(JSC::ExecState&, ScriptExecutionContext&);
+    static RefPtr<ReadableJSStream> create(JSC::ExecState&, JSC::JSValue, const Dictionary&);
 
     JSC::JSValue jsController(JSC::ExecState&, JSDOMGlobalObject*);
     void close(ExceptionCode&);
@@ -62,13 +62,13 @@ public:
     void storeError(JSC::ExecState&, JSC::JSValue);
     JSC::JSValue error() override { return m_error.get(); }
 
-    void enqueue(JSC::ExecState&);
-    void error(JSC::ExecState&, ExceptionCode&);
+    void enqueue(JSC::ExecState&, JSC::JSValue);
+    void error(JSC::ExecState&, JSC::JSValue, ExceptionCode&);
 
     double desiredSize() const { return m_highWaterMark - m_totalQueueSize; }
 
 private:
-    ReadableJSStream(ScriptExecutionContext&, JSC::ExecState&, JSC::JSObject*, double, JSC::JSFunction*);
+    ReadableJSStream(JSC::ExecState&, JSC::JSObject*, double, JSC::JSFunction*);
 
     void doStart(JSC::ExecState&);
 

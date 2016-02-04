@@ -49,12 +49,12 @@ namespace WebKit {
 // The plug-in that we're currently calling NPP_New for.
 static NetscapePlugin* currentNPPNewPlugin;
 
-PassRefPtr<NetscapePlugin> NetscapePlugin::create(PassRefPtr<NetscapePluginModule> pluginModule)
+RefPtr<NetscapePlugin> NetscapePlugin::create(PassRefPtr<NetscapePluginModule> pluginModule)
 {
     if (!pluginModule)
-        return 0;
+        return nullptr;
 
-    return adoptRef(new NetscapePlugin(pluginModule));
+    return adoptRef(*new NetscapePlugin(pluginModule));
 }
     
 NetscapePlugin::NetscapePlugin(PassRefPtr<NetscapePluginModule> pluginModule)
@@ -277,7 +277,7 @@ void NetscapePlugin::cancelStreamLoad(NetscapePluginStream* pluginStream)
 void NetscapePlugin::removePluginStream(NetscapePluginStream* pluginStream)
 {
     if (pluginStream == m_manualStream) {
-        m_manualStream = 0;
+        m_manualStream = nullptr;
         return;
     }
 

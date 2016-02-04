@@ -36,8 +36,10 @@ WebInspector.TimelineDataGrid = function(treeOutline, columns, delegate, editCal
     // Check if any of the cells can be filtered.
     for (var [identifier, column] of this.columns) {
         var scopeBar = column.scopeBar;
+
         if (!scopeBar)
             continue;
+
         this._filterableColumns.push(identifier);
         scopeBar.columnIdentifier = identifier;
         scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectedItemsDidChange, this);
@@ -46,16 +48,6 @@ WebInspector.TimelineDataGrid = function(treeOutline, columns, delegate, editCal
     if (this._filterableColumns.length > 1) {
         console.error("Creating a TimelineDataGrid with more than one filterable column is not yet supported.");
         return;
-    }
-
-    if (this._filterableColumns.length) {
-        var items = [new WebInspector.FlexibleSpaceNavigationItem, this.columns.get(this._filterableColumns[0]).scopeBar, new WebInspector.FlexibleSpaceNavigationItem];
-        this._navigationBar = new WebInspector.NavigationBar(null, items);
-        var container = this.element.appendChild(document.createElement("div"));
-        container.className = "navigation-bar-container";
-        container.appendChild(this._navigationBar.element);
-
-        this._updateScopeBarForcedVisibility();
     }
 
     this.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridSelectedNodeChanged, this);
@@ -85,9 +77,10 @@ WebInspector.TimelineDataGrid.createColumnScopeBar = function(prefix, map)
         scopeBarItems.push(item);
     }
 
-    scopeBarItems.unshift(new WebInspector.ScopeBarItem(prefix + "type-all", WebInspector.UIString("All"), true));
+    var allItem = new WebInspector.ScopeBarItem(prefix + "type-all", WebInspector.UIString("All"));
+    scopeBarItems.unshift(allItem);
 
-    return new WebInspector.ScopeBar(prefix + "scope-bar", scopeBarItems, scopeBarItems[0]);
+    return new WebInspector.ScopeBar(prefix + "scope-bar", scopeBarItems, allItem, true);
 };
 
 WebInspector.TimelineDataGrid.prototype = {
@@ -136,14 +129,6 @@ WebInspector.TimelineDataGrid.prototype = {
     {
         // Implemented by subclasses.
         return null;
-    },
-
-    updateLayout: function()
-    {
-        WebInspector.DataGrid.prototype.updateLayout.call(this);
-
-        if (this._navigationBar)
-            this._navigationBar.updateLayout();
     },
 
     treeElementMatchesActiveScopeFilters: function(treeElement)
@@ -244,8 +229,13 @@ WebInspector.TimelineDataGrid.prototype = {
             var treeElement = this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode(dataGridNode);
             console.assert(treeElement);
 
-            treeOutline.removeChild(treeElement);
-            this.removeChild(dataGridNode);
+            console.assert(!treeElement.parent || treeElement.parent === treeOutline);
+            if (treeElement.parent === treeOutline)
+                treeOutline.removeChild(treeElement);
+
+            console.assert(!dataGridNode.parent || dataGridNode.parent === this);
+            if (dataGridNode.parent === this)
+                this.removeChild(dataGridNode);
 
             var insertionIndex = insertionIndexForObjectInListSortedByFunction(dataGridNode, this.children, sortComparator);
             treeOutline.insertChild(treeElement, insertionIndex);

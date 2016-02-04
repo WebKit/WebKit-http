@@ -93,6 +93,7 @@
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
+#include "ResourceLoadInfo.h"
 #include "ResourceRequest.h"
 #include "SVGDocument.h"
 #include "SVGLocatable.h"
@@ -111,6 +112,7 @@
 #include "Settings.h"
 #include "SubframeLoader.h"
 #include "TextResourceDecoder.h"
+#include "UserContentController.h"
 #include "WindowFeatures.h"
 #include "XMLDocumentParser.h"
 #include <wtf/CurrentTime.h>
@@ -274,7 +276,7 @@ void FrameLoader::initForSynthesizedDocument(const URL&)
     // FrameLoader::checkCompleted() will overwrite the URL of the document to be activeDocumentLoader()->documentURL().
 
     RefPtr<DocumentLoader> loader = m_client.createDocumentLoader(ResourceRequest(URL(ParsedURLString, emptyString())), SubstituteData());
-    loader->setFrame(&m_frame);
+    loader->attachToFrame(m_frame);
     loader->setResponse(ResourceResponse(URL(), ASCIILiteral("text/html"), 0, String()));
     loader->setCommitted(true);
     setDocumentLoader(loader.get());
@@ -690,7 +692,7 @@ void FrameLoader::didBeginDocument(bool dispatch)
 
     if (m_pendingStateObject) {
         m_frame.document()->statePopped(m_pendingStateObject.get());
-        m_pendingStateObject.clear();
+        m_pendingStateObject = nullptr;
     }
 
     if (dispatch)
@@ -816,7 +818,7 @@ void FrameLoader::checkCompleted()
 
     // OK, completed.
     m_isComplete = true;
-    m_requestedHistoryItem = 0;
+    m_requestedHistoryItem = nullptr;
     m_frame.document()->setReadyState(Document::Complete);
 
 #if PLATFORM(IOS)
@@ -1135,7 +1137,7 @@ void FrameLoader::setupForReplace()
     m_client.revertToProvisionalState(m_documentLoader.get());
     setState(FrameStateProvisional);
     m_provisionalDocumentLoader = m_documentLoader;
-    m_documentLoader = 0;
+    m_documentLoader = nullptr;
     detachChildren();
 }
 
@@ -1695,7 +1697,7 @@ void FrameLoader::setPolicyDocumentLoader(DocumentLoader* loader)
         return;
 
     if (loader)
-        loader->setFrame(&m_frame);
+        loader->attachToFrame(m_frame);
     if (m_policyDocumentLoader
             && m_policyDocumentLoader != m_provisionalDocumentLoader
             && m_policyDocumentLoader != m_documentLoader)
@@ -1935,7 +1937,7 @@ void FrameLoader::transitionToCommitted(CachedPage* cachedPage)
             if (cachedPage) {
                 DocumentLoader* cachedDocumentLoader = cachedPage->documentLoader();
                 ASSERT(cachedDocumentLoader);
-                cachedDocumentLoader->setFrame(&m_frame);
+                cachedDocumentLoader->attachToFrame(m_frame);
                 m_client.transitionToCommittedFromCachedFrame(cachedPage->cachedMainFrame());
             } else
                 m_client.transitionToCommittedForNewPage();
@@ -2278,8 +2280,13 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (AXObjectCache* cache = m_frame.document()->existingAXObjectCache())
                 cache->frameLoadingEventNotification(&m_frame, loadingEvent);
 
-            if (page && m_frame.isMainFrame())
-                page->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingResultPass : DiagnosticLoggingResultFail, ShouldSample::Yes);
+            // The above calls to dispatchDidFinishLoad() might have detached the Frame
+            // from its Page and also might have caused Page to be deleted.
+            // Don't assume 'page' is still available to use.
+            if (m_frame.isMainFrame() && m_frame.page()) {
+                ASSERT(&m_frame.page()->mainFrame() == &m_frame);
+                m_frame.page()->mainFrame().diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageLoadedKey(), emptyString(), error.isNull() ? DiagnosticLoggingResultPass : DiagnosticLoggingResultFail, ShouldSample::Yes);
+            }
 
             return;
         }
@@ -2690,6 +2697,23 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
     unsigned long identifier = 0;    
     ResourceRequest newRequest(initialRequest);
     requestFromDelegate(newRequest, identifier, error);
+
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (error.isNull()) {
+        if (m_documentLoader) {
+            if (auto* page = m_frame.page()) {
+                if (auto* controller = page->userContentController())
+                    controller->processContentExtensionRulesForLoad(*page, newRequest, ResourceType::Raw, *m_documentLoader);
+            }
+        }
+        
+        if (newRequest.isNull()) {
+            error = ResourceError(errorDomainWebKitInternal, 0, initialRequest.url().string(), emptyString());
+            response = ResourceResponse();
+            data = nullptr;
+        }
+    }
+#endif
 
     if (error.isNull()) {
         ASSERT(!newRequest.isNull());

@@ -170,15 +170,20 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
         }
 
         var pseudoElements = this.nodeStyles.pseudoElements;
-        for (var pseudoIdentifier in pseudoElements) {
-            var pseudoElement = pseudoElements[pseudoIdentifier];
-            var orderedStyles = uniqueOrderedStyles(pseudoElement.orderedStyles);
-            for (var style of orderedStyles)
-                appendStyleSection.call(this, style);
+        var pseudoElementsStyle = [];
 
-            if (previousSection)
-                previousSection.lastInGroup = true;
-        }
+        for (var pseudoIdentifier in pseudoElements)
+            pseudoElementsStyle = pseudoElementsStyle.concat(pseudoElements[pseudoIdentifier].orderedStyles);
+
+        var orderedPseudoStyles = uniqueOrderedStyles(pseudoElementsStyle);
+        var pseudoElementSelectors = [];
+
+        for (var style of orderedPseudoStyles)
+            pseudoElementSelectors.push({ style, selectorText: style.ownerRule.selectorText.replace(/:{1,2}[\w-]+\s*/g, " ").trimRight() });
+
+        // Reverse the array to allow ensure that splicing the array will not mess with the order.
+        if (pseudoElementSelectors.length)
+            pseudoElementSelectors.reverse();
 
         var addedNewRuleButton = false;
         this._ruleMediaAndInherticanceList = [];
@@ -258,7 +263,34 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
 
             this._ruleMediaAndInherticanceList.push(hasMediaOrInherited);
 
+            var ownerRule = style.ownerRule;
+
+            if (pseudoElementSelectors.length && ownerRule) {
+                for (var j = pseudoElementSelectors.length - 1; j >= 0; --j) {
+                    var pseudoElement = pseudoElementSelectors[j];
+                    var matchedSelectorText = ownerRule.matchedSelectorText;
+
+                    if (ownerRule.type === WebInspector.CSSRule.Type.UserAgent || style.inerhited
+                    || (pseudoElement.lastMatchingSelector && pseudoElement.lastMatchingSelector !== matchedSelectorText)) {
+                        appendStyleSection.call(this, pseudoElement.style);
+                        pseudoElementSelectors.splice(j, 1);
+                        this._ruleMediaAndInherticanceList.push(hasMediaOrInherited);
+
+                        continue;
+                    }
+
+                    if (matchedSelectorText.includes(pseudoElement.selectorText) || !ownerRule.selectorIsGreater(pseudoElement.style.ownerRule.selectors))
+                        pseudoElement.lastMatchingSelector = matchedSelectorText;
+                }
+            }
+
             appendStyleSection.call(this, style);
+        }
+
+        // Just in case there are any pseudo-selectors left that haven't been added.
+        if (pseudoElementSelectors.length) {
+            for (var i = pseudoElementSelectors.length - 1; i >= 0; --i)
+                appendStyleSection.call(this, pseudoElementSelectors[i].style);
         }
 
         if (!addedNewRuleButton)

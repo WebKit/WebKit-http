@@ -1,3 +1,321 @@
+2015-07-09  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Quick fix for run_benchmark script that AppKit.NSRunningApplication does not work properly
+        https://bugs.webkit.org/show_bug.cgi?id=146820
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver):
+        (OSXBrowserDriver.close_browsers):
+        (OSXBrowserDriver._terminiate_processes):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver):
+        (OSXChromeCanaryDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver):
+        (OSXFirefoxNightlyDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver):
+
+2015-07-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] pango should be included in the default jhbuild moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=146683
+
+        Reviewed by Martin Robinson.
+
+        Recent releases of pango 1.36 use functions that are only provided by fontconfig 2.12 when
+        compiled against sufficiently-new versions of fontconfig. Since we depend on both pango and
+        fontconfig, and pango depends on fontconfig, we must either add pango to our jhbuild
+        moduleset or else upgrade fontconfig to a recent unstable release (knowing that we will have
+        the same problem again the next time pango wants to use a new fontconfig feature), or remove
+        fontconfig (which would make it hard to keep tests working). On the balance, adding pango is
+        best.
+
+        * gtk/jhbuild-optional.modules: Remove pango
+        * gtk/jhbuild.modules: Add pango and update to latest 1.36.8
+
+2015-07-09  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed.  Added myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2015-07-09  Timothy Horton  <timothy_horton@apple.com>
+
+        Add a way to set the default URL from Minibrowser UI
+        https://bugs.webkit.org/show_bug.cgi?id=146780
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate didChangeSettings]):
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController fetch:]):
+        (-[BrowserWindowController reload:]):
+        (-[BrowserWindowController forceRepaint:]):
+        (-[BrowserWindowController goBack:]):
+        (-[BrowserWindowController goForward:]):
+        (-[BrowserWindowController showHideWebView:]):
+        (-[BrowserWindowController removeReinsertWebView:]):
+        (-[BrowserWindowController zoomIn:]):
+        (-[BrowserWindowController zoomOut:]):
+        (-[BrowserWindowController resetZoom:]):
+        (-[BrowserWindowController canZoomIn]):
+        (-[BrowserWindowController canZoomOut]):
+        (-[BrowserWindowController canResetZoom]):
+        (-[BrowserWindowController toggleZoomMode:]):
+        (-[BrowserWindowController setScale:]):
+        (-[BrowserWindowController toggleShrinkToFit:]):
+        (-[BrowserWindowController dumpSourceToConsole:]):
+        (-[BrowserWindowController find:]):
+        (-[BrowserWindowController didChangeSettings]):
+        (-[BrowserWindowController currentURL]):
+        Get rid of the BrowserController protocol. It was a bad idea and confused
+        Interface Builder more than I thought possible.
+
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController setDefaultURLToCurrentURL:]):
+        If we have a BrowserWindowController, grab its URL and set the relevant default.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.h:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController currentURL]):
+        * MiniBrowser/mac/WK2BrowserWindowController.h:
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController currentURL]):
+        Retrieve the current URL from the WKView/WebView.
+
+2015-07-09  Timothy Horton  <timothy_horton@apple.com>
+
+        Increase MiniBrowser location bar maximum width
+        https://bugs.webkit.org/show_bug.cgi?id=146779
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        Have an enormous maximum width on the location bar, so that it doesn't
+        stop expanding with the window at 800px.
+
+2015-07-08  Brady Eidson  <beidson@apple.com>
+
+        Crash calling [WebView close] in didFinishLoadForFrame callback.
+        <rdar://problem/21690765> and https://bugs.webkit.org/show_bug.cgi?id=146773
+
+        Reviewed by David Kilzer.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        
+        * TestWebKitAPI/Tests/mac/WebViewCloseInsideDidFinishLoadForFrame.mm: Added.
+        (-[WebViewCloseFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2015-07-08  Hyungwook Lee  <hyungwook.lee@navercorp.com>
+
+        Fix ASSERTION FAILED: !m_pendingNavigationID in WebPage::reload().
+        https://bugs.webkit.org/show_bug.cgi?id=146546
+
+        Reviewed by Darin Adler.
+
+        We did't reset pendingNavigationID value when request url is empty.
+        Hence we need to ignore ASSERT check in this case.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+        (TestWebKitAPI::TEST):
+
+2015-07-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        [Content Extensions] Fuse undistinguishable actions as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=146762
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        Test that combinations and flags still work as expected.
+
+2015-07-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] [Wayland] Allow building and testing the Wayland target with the default JHBuild moduleset.
+        https://bugs.webkit.org/show_bug.cgi?id=146056
+
+        Reviewed by Martin Robinson.
+
+        * gtk/install-dependencies: libepoxy is now required for building GTK+.
+        * gtk/jhbuild-wayland.modules: Removed. Not longer needed.
+        * gtk/jhbuild.modules: Upgrade GTK+ (3.16.4) and required dependencies for building:
+        Cairo (1.14.2), Gdk-Pixbuf (2.30.8) and GLib (2.44.1).
+        * gtk/patches/cairo-1.12.8-add_disable-lto.patch: Removed. Not longer needed.
+        Cairo removed support for LTO on (1.14). Upstream commit: c7ff9bb.
+        * gtk/patches/gtk-3.6-do-not-shutdown-accessibility.patch: Removed. Not longer needed.
+        GTK+ merged this patch on GTK+-3.10. Upstream commit: 8d83d98.
+
+2015-07-06  Matt Rajca  <mrajca@apple.com>
+
+        Media Session: propagate metadata changes to UI clients
+        https://bugs.webkit.org/show_bug.cgi?id=146660
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp: Build fixes for updated PageUIClient.
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+
+2015-07-07  Brady Eidson  <beidson@apple.com>
+
+        HTTP Auth cached after disabling private browsing/reset.
+        <rdar://problem/8293055> and https://bugs.webkit.org/show_bug.cgi?id=146654
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting): Clear in-memory credentials in between test runs.
+
+2015-07-06  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Remove memory page reporting
+        https://bugs.webkit.org/show_bug.cgi?id=146659
+
+        Reviewed by Benjamin Poulain.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2015-07-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        [Content Extensions] Make the DFA transitions ranges instead of characters
+        https://bugs.webkit.org/show_bug.cgi?id=146575
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        * TestWebKitAPI/Tests/WebCore/DFAMinimizer.cpp:
+        Since the minimizer is perfect, we get the minimal solution now,
+        which is really cool!
+
+2015-07-06  Brady Eidson  <beidson@apple.com>
+
+        ShouldOpenExternalURLsPolicy should default to "Allow" for WK2 API loads.
+        <rdar://problem/21640050> and https://bugs.webkit.org/show_bug.cgi?id=146563
+
+        Reviewed by Geoff Garen.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke): For testing purposes, all pages should start with the 
+          ShouldOpenExternalURLsPolicy set to "ShouldNotAllow"
+
+2015-07-06  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r170639.
+
+        Broke using webkit-patch apply-attachment to apply an
+        attachment from a security bug. The patch incorrectly assumed
+        that Bugzilla returns a non-HTTP 200 status code in its HTTP
+        response when authentication is required.
+
+        Reverted changeset:
+
+        "webkit-patch apply-from-bug / apply-attachment should not ask
+        for credentials if none are required"
+        https://bugs.webkit.org/show_bug.cgi?id=40095
+        http://trac.webkit.org/changeset/170639
+
+2015-07-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop RefPtr::clear() method
+        https://bugs.webkit.org/show_bug.cgi?id=146556
+
+        Reviewed by Brady Eidson.
+
+        Drop RefPtr::clear() method in favor of "= nullptr;" pattern.
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the iOS build.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (+[EventSendingController isSelectorExcludedFromWebScript:]):
+        (+[EventSendingController webScriptNameForSelector:]):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: Enabled GCC_NO_COMMON_BLOCKS,
+        ENABLE_STRICT_OBJC_MSGSEND, CLANG_WARN_BOOL_CONVERSION, CLANG_WARN_CONSTANT_CONVERSION,
+        CLANG_WARN_EMPTY_BODY, CLANG_WARN_ENUM_CONVERSION, CLANG_WARN_INT_CONVERSION,
+        CLANG_WARN_UNREACHABLE_CODE, GCC_WARN_ABOUT_RETURN_TYPE,
+        GCC_WARN_UNINITIALIZED_AUTOS, and GCC_WARN_UNDECLARED_SELECTOR.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (+[EventSendingController webScriptNameForSelector:]): Removed check for setDragMode:,
+        which was removed in r19101.
+
+        * DumpRenderTree/mac/TextInputController.m:
+        (-[TextInputController interpretKeyEvents:withSender:]): Suppressed -Wundeclared-selector
+        around used of a selector not that is not declared anywhere.
+
+        * MiniBrowser/Configurations/Base.xcconfig: Enabled GCC_NO_COMMON_BLOCKS.
+
+        * MiniBrowser/MiniBrowser.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig: Enabled GCC_NO_COMMON_BLOCKS,
+        ENABLE_STRICT_OBJC_MSGSEND, CLANG_WARN_BOOL_CONVERSION, CLANG_WARN_CONSTANT_CONVERSION,
+        CLANG_WARN_EMPTY_BODY, CLANG_WARN_ENUM_CONVERSION, CLANG_WARN_INT_CONVERSION,
+        CLANG_WARN_UNREACHABLE_CODE, GCC_WARN_ABOUT_RETURN_TYPE,
+        GCC_WARN_UNINITIALIZED_AUTOS, and GCC_WARN_UNDECLARED_SELECTOR.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+2015-07-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add WebKitSystemInterface for iOS 8.4
+        https://bugs.webkit.org/show_bug.cgi?id=146548
+
+        Rubber-stamped by Zalan Bujtas.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2015-07-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebSQL doesn't work because openDatabase always fails with DOM Exception 18
+        https://bugs.webkit.org/show_bug.cgi?id=146234
+
+        Reviewed by Sergio Villar Senin.
+
+        Enable the WebSQL directory test that was disabled because of this bug.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextConfiguration):
+
+2015-07-01  Matthew Daiter  <mdaiter@apple.com>
+
+        Enabled MEDIA_STREAM flag
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        <rdar://problem/21365829>
+        
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+
+2015-06-30  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] REGRESSION(r183936): Test /webkit2/WebKitWebContext/spell-checker fails since r183936
+        https://bugs.webkit.org/show_bug.cgi?id=144828
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/gtk/main.cpp:
+        (main): Use the new WKTextChecker API to set the spell checking languages
+        when the process is starting up.
+
 2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
 
         Implement ECMAScript Internationalization API

@@ -1,3 +1,651 @@
+2015-07-09  Mark Lam  <mark.lam@apple.com>
+
+        SymbolTable::entryFor() should do a bounds check before indexing into the localToEntry vector.
+        https://bugs.webkit.org/show_bug.cgi?id=146807
+
+        Reviewed by Filip Pizlo.
+
+        When we capture an argument by name and we use "arguments", we put all of the
+        arguments into the scope.  But destructured arguments are put into the scope
+        anonymously i.e. the SymbolTable knows that the scope offset is in use via
+        SymbolTable::m_maxScopeOffset, but that ScopeOffset won't appear in
+        SymbolTable::m_map.
+
+        The SymbolTable's m_localToEntry vector is synthesized from its m_map, and will
+        have a size which is based on the largest ScopeOffset in the m_map.  If we have a
+        scenario where the anonymous argument is at a higher ScopeOffset than all the
+        named arguments, then the m_localsToEntry vector will not have an entry for it
+        i.e. the m_localsToEntry vector will have a size that is <= the ScopeOffset of
+        the anonymous argument.
+
+        Hence, SymbolTable::entryFor() should ensure that the requested ScopeOffset is
+        within the bounds of the m_localToEntry vector before indexing into it.
+
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::entryFor):
+
+2015-07-09  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r180248): Repro Crash: com.apple.WebKit.WebContent at com.apple.JavaScriptCore: JSC::createRangeError + 20
+        https://bugs.webkit.org/show_bug.cgi?id=146767
+
+        Reviewed by Geoffrey Garen.
+
+        If the stack check fails at the top most frame, we must use that frame to
+        generate the exception.  Reverted the code to always use the current frame to
+        throw an out of stack exception.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2015-07-03  Filip Pizlo  <fpizlo@apple.com>
+
+        OSR exit fuzzing should allow us to select a static exit site
+        https://bugs.webkit.org/show_bug.cgi?id=146601
+
+        Reviewed by Geoffrey Garen.
+        
+        The original implementation of the fuzzer allows us to trigger an exit based on its index
+        in the dynamic sequence of exit sites encountered. But there are usually millions of
+        dynamically encountered exit sites, even if the program only has thousands of static exit
+        sites. That means that we would at best be able to do a random sampling of exits, and
+        those would be biased to the hottest exit sites.
+        
+        This change allows us to also select exit sites based on their index in the static
+        sequence of exit sites that the compiler compiled. Then, once that static exit site is
+        selected, we can select which dynamic exit at that exit site we should trigger. Since the
+        number of static exit sites is usually smallish (it's bounded by program size), we can do
+        an exhaustive search over all exit sites in most programs.
+
+        * dfg/DFGOSRExitFuzz.cpp:
+        (JSC::numberOfStaticOSRExitFuzzChecks):
+        (JSC::numberOfOSRExitFuzzChecks):
+        * dfg/DFGOSRExitFuzz.h:
+        (JSC::DFG::doOSRExitFuzzing):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitOSRExitFuzzCheck):
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExit):
+        * jsc.cpp:
+        (jscmain):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.h:
+
+2015-07-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix grammar issue in TypeError attempting to change an unconfigurable property
+        https://bugs.webkit.org/show_bug.cgi?id=146774
+
+        Reviewed by Brent Fulgham.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::defineOwnNonIndexProperty):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::defineOwnProperty):
+
+2015-07-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove the unused HeapBlock.h
+        https://bugs.webkit.org/show_bug.cgi?id=146580
+
+        Reviewed by Andreas Kling.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/CopiedBlock.h:
+        * heap/CopiedSpace.h:
+        * heap/CopiedSpaceInlines.h:
+        * heap/HandleBlock.h:
+        * heap/HeapBlock.h: Removed.
+        * heap/MarkedBlock.h:
+
+2015-07-06  Saam barati  <saambarati1@gmail.com>
+
+        JSC's parser should follow the ES6 spec with respect to parsing Declarations
+        https://bugs.webkit.org/show_bug.cgi?id=146621
+
+        Reviewed by Mark Lam.
+
+        There were a few locations where JSC would allow declaration statements
+        in incorrect ways. JSC didn't distinguish between 'Statement' and
+        'StatementListItem' grammar productions. The relevant grammar is here:
+        http://www.ecma-international.org/ecma-262/6.0/index.html#sec-statements
+
+        From the ECMA Script 6.0 spec:
+        1. Section 13.6 The if Statement (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-if-statement) 
+         says that IfStatements only takes Statements for the "then-else" clauses, not StatementListItems.
+         (Same with 'while/for/do-while' loop bodies).
+        2. Section 13 ECMAScript Language: Statements and Declarations 
+         (http://www.ecma-international.org/ecma-262/6.0/index.html#sec-ecmascript-language-statements-and-declarations)
+         defines the syntax of Statements, and they do not include ClassDeclarations and LexicalDeclarations 
+         (const, let, see 13.3.1 Let and Const Declarations).
+         Declarations can only be in the “then-else” clauses when embedded in a StatementListItem in a BlockStatement (see 13.2).
+
+        Hence, the following style of declarations are no longer allowed:
+            'if/for/while (condition) const x = 40;'
+            'if/for/while (condition) class C { }'
+
+        Instead, we mandate such declaration constructs are within a StatementList 
+       (which is the production that JSC's Parser::parseSourceElements function parses):
+           'if/for/while (condition) { const x = 40; }'
+           'if/for/while (condition) { class C { } }'
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseSourceElements):
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parseVarDeclaration):
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::parseExpressionStatement):
+        * parser/Parser.h:
+        (JSC::Parser::getLabel):
+
+2015-07-06  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed debug build fix after r186358.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::fastConcatWith):
+        Pass vm parameter to fastConcatType.
+
+2015-07-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Array.concat should be fast for integer or double arrays
+        https://bugs.webkit.org/show_bug.cgi?id=146260
+
+        Reviewed by Darin Adler.
+
+        Added a fast path to Array.prototype.concat. When concatenating two Int32, Double, or Contiguous
+        arrays, simply memcopy the arrays into a new uninitialized buffer.
+
+        This improves huffman encoding in CompressionBench by 3.7x on a Mid 2014 MacBookPro.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncConcat):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::fastConcatWith): Added.
+        * runtime/JSArray.h:
+        (JSC::JSArray::fastConcatType): Added. Returns the resultant array's indexing type if we can use
+        the fact path. Returns NonArray otherwise.
+
+2015-07-06  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Streams API] Remove ReadableStream custom constructor
+        https://bugs.webkit.org/show_bug.cgi?id=146547
+
+        Reviewed by Darin Adler.
+
+        Adding helper function to throw range errors.
+
+        * runtime/Error.h:
+        (JSC::throwRangeError):
+        (JSC::throwVMRangeError):
+
+2015-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement the latest Promise spec in JS
+        https://bugs.webkit.org/show_bug.cgi?id=146229
+
+        Reviewed by Sam Weinig.
+
+        Updated the Promise implementation to meet to the ES6 spec.
+        This patch
+        1. Implement ES6 Promise and related abstract operations in builtins JS
+        2. Expose @enqueueJob private function to JS world to post the microtask
+
+        Updated implementation has one-on-one correspondence to the ES6 spec description.
+        And keep the JSPromiseDeferred because it is the interface used from the WebCore.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/Array.prototype.js:
+        (reduce):
+        (reduceRight):
+        (every):
+        (forEach):
+        (filter):
+        (map):
+        (some):
+        (fill):
+        (find):
+        (findIndex):
+        (includes):
+        (copyWithin):
+        ToInteger / ToLength are renamed to toInteger and toLength.
+        * builtins/ArrayConstructor.js:
+        (from):
+        ToInteger / ToLength are renamed to toInteger and toLength.
+        * builtins/GlobalObject.js:
+        (toInteger):
+        (toLength):
+        (isObject):
+        (ToInteger): Deleted.
+        (ToLength): Deleted.
+        ToInteger / ToLength are renamed to toInteger and toLength.
+        Add new abstract operation, isObject.
+        * builtins/Operations.Promise.js: Added.
+        (isPromise):
+        (newPromiseReaction):
+        (newPromiseDeferred):
+        (newPromiseCapability.executor):
+        (newPromiseCapability):
+        (triggerPromiseReactions):
+        (rejectPromise):
+        (fulfillPromise):
+        (createResolvingFunctions.resolve):
+        (createResolvingFunctions.reject):
+        (createResolvingFunctions):
+        (promiseReactionJob):
+        (promiseResolveThenableJob):
+        (initializePromise):
+        Added Promise related abstract operations.
+        * builtins/Promise.prototype.js:
+        (catch):
+        (.onFulfilled):
+        (.onRejected):
+        (then):
+        Promise#then implementation in JS.
+        * builtins/PromiseConstructor.js: Added.
+        (all.newResolveElement):
+        (all):
+        (race):
+        (reject):
+        (resolve):
+        Promise static functions implementations in JS.
+        * builtins/StringConstructor.js:
+        (raw):
+        ToInteger / ToLength are renamed to toInteger and toLength.
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::enqueueJob):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::initializePromiseFunction):
+        (JSC::JSGlobalObject::newPromiseDeferredFunction):
+        * runtime/JSJob.cpp: Renamed from Source/JavaScriptCore/runtime/JSPromiseReaction.h.
+        (JSC::createJSJob):
+        (JSC::JSJobMicrotask::run):
+        * runtime/JSJob.h: Renamed from Source/JavaScriptCore/runtime/JSPromiseFunctions.h.
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::create):
+        (JSC::JSPromise::JSPromise):
+        (JSC::JSPromise::finishCreation):
+        (JSC::JSPromise::result):
+        (JSC::JSPromise::destroy): Deleted.
+        (JSC::JSPromise::visitChildren): Deleted.
+        (JSC::JSPromise::reject): Deleted.
+        (JSC::JSPromise::resolve): Deleted.
+        (JSC::JSPromise::appendResolveReaction): Deleted.
+        (JSC::JSPromise::appendRejectReaction): Deleted.
+        (JSC::triggerPromiseReactions): Deleted.
+        * runtime/JSPromise.h:
+        (JSC::JSPromise::status): Deleted.
+        (JSC::JSPromise::result): Deleted.
+        (JSC::JSPromise::constructor): Deleted.
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::constructPromise):
+        (JSC::JSPromiseConstructorFuncResolve): Deleted.
+        (JSC::JSPromiseConstructorFuncReject): Deleted.
+        (JSC::performPromiseRaceLoop): Deleted.
+        (JSC::JSPromiseConstructorFuncRace): Deleted.
+        (JSC::performPromiseAll): Deleted.
+        (JSC::JSPromiseConstructorFuncAll): Deleted.
+        * runtime/JSPromiseDeferred.cpp:
+        (JSC::JSPromiseDeferred::create):
+        (JSC::createJSPromiseDeferredFromConstructor): Deleted.
+        (JSC::updateDeferredFromPotentialThenable): Deleted.
+        (JSC::performDeferredResolve): Deleted.
+        (JSC::performDeferredReject): Deleted.
+        (JSC::abruptRejection): Deleted.
+        * runtime/JSPromiseDeferred.h:
+        * runtime/JSPromiseFunctions.cpp: Removed.
+        (JSC::deferredConstructionFunction): Deleted.
+        (JSC::createDeferredConstructionFunction): Deleted.
+        (JSC::identifyFunction): Deleted.
+        (JSC::createIdentifyFunction): Deleted.
+        (JSC::promiseAllCountdownFunction): Deleted.
+        (JSC::createPromiseAllCountdownFunction): Deleted.
+        (JSC::promiseResolutionHandlerFunction): Deleted.
+        (JSC::createPromiseResolutionHandlerFunction): Deleted.
+        (JSC::rejectPromiseFunction): Deleted.
+        (JSC::createRejectPromiseFunction): Deleted.
+        (JSC::resolvePromiseFunction): Deleted.
+        (JSC::createResolvePromiseFunction): Deleted.
+        (JSC::throwerFunction): Deleted.
+        (JSC::createThrowerFunction): Deleted.
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototypeFuncThen): Deleted.
+        * runtime/JSPromiseReaction.cpp: Removed.
+        (JSC::createExecutePromiseReactionMicrotask): Deleted.
+        (JSC::ExecutePromiseReactionMicrotask::run): Deleted.
+        (JSC::JSPromiseReaction::create): Deleted.
+        (JSC::JSPromiseReaction::JSPromiseReaction): Deleted.
+        (JSC::JSPromiseReaction::finishCreation): Deleted.
+        (JSC::JSPromiseReaction::visitChildren): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM): Deleted.
+        * runtime/VM.h:
+
+2015-07-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop RefPtr::clear() method
+        https://bugs.webkit.org/show_bug.cgi?id=146556
+
+        Reviewed by Brady Eidson.
+
+        Drop RefPtr::clear() method in favor of "= nullptr;" pattern.
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Just give up on -Wunreachable-code in JavaScriptCore.
+
+        * Configurations/Base.xcconfig:
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        Fixed the LLINT CLoop build.
+
+        * llint/LowLevelInterpreter.cpp:
+        (JSC::CLoop::execute):
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_UNREACHABLE_CODE and
+        GCC_NO_COMMON_BLOCKS. Removed GCC_MODEL_TUNING.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Updated LastUpgradeCheck.
+
+        * dfg/DFGGraph.h: Tweaked the definition of DFG_CRASH to suppress unreachable code warnings.
+
+2015-07-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Relax builtin JS restriction about try-catch
+        https://bugs.webkit.org/show_bug.cgi?id=146555
+
+        Reviewed by Sam Weinig.
+
+        When retrieving the captured variables from the full activated scope,
+        it swapped the given vector with the stored declared variables vector.
+        This is because retrieving the captured variables are executed in the
+        last sequence of the parser, so declared variables are no longer used.
+        However, in builtins functions case, after retrieving the captured
+        variables, we check the variables by using declared variables vector.
+        So at that time, the declared variables vector becomes empty and it
+        raises assertion failures when the builtins function contains the full
+        activated scope. try-catch's catch scope requires the upper scope full
+        activated, so JS code in the builtins cannot use the try-catch.
+
+        This patch relaxes this restriction. When retrieving the captured
+        variables from the scope, just copy to the given vector.
+
+        * parser/Parser.h:
+        (JSC::Scope::getCapturedVariables):
+
+2015-07-02  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should have an OSR exit fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=146562
+
+        Reviewed by Benjamin Poulain.
+        
+        Adds a basic OSR exit fuzzer to JSC. This isn't hooked into any test harnesses yet, but I
+        spot-checked it on v8-earley-boyer.js and so far found no bugs. I'd like to figure out how
+        to harness this after I land it.
+        
+        Since it's turned off by default, it should have no effect on behavior.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOSRExitFuzz.cpp: Added.
+        (JSC::numberOfOSRExitFuzzChecks):
+        * dfg/DFGOSRExitFuzz.h: Added.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitGetArgumentStart):
+        (JSC::DFG::SpeculativeJIT::emitOSRExitFuzzCheck):
+        (JSC::DFG::SpeculativeJIT::speculationCheck):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::appendOSRExit):
+        * jsc.cpp:
+        (jscmain):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.h:
+
+2015-07-02  Saam barati  <saambarati1@gmail.com>
+
+        Rename "Deconstruction" to "Destructuring" throughout JSC
+        https://bugs.webkit.org/show_bug.cgi?id=146100
+
+        Reviewed by Mark Lam.
+
+        It is good to use the same naming conventions as the ES6 
+        spec because it is the de facto way of speaking about these 
+        language features. This also has the benefit of improving JSC's
+        hackability because it improves code readability for newcomers 
+        to JSC or newcomers to this part of the code base.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeNextParameter):
+        (JSC::BytecodeGenerator::visibleNameForParameter):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::registerFor):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ForInNode::tryGetBoundLocal):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::ClassExprNode::emitBytecode):
+        (JSC::DestructuringAssignmentNode::emitBytecode):
+        (JSC::DestructuringPatternNode::~DestructuringPatternNode):
+        (JSC::ArrayPatternNode::collectBoundIdentifiers):
+        (JSC::DeconstructingAssignmentNode::emitBytecode): Deleted.
+        (JSC::DeconstructionPatternNode::~DeconstructionPatternNode): Deleted.
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createElementList):
+        (JSC::ASTBuilder::createFormalParameterList):
+        (JSC::ASTBuilder::createClause):
+        (JSC::ASTBuilder::createClauseList):
+        (JSC::ASTBuilder::createForInLoop):
+        (JSC::ASTBuilder::createForOfLoop):
+        (JSC::ASTBuilder::isBindingNode):
+        (JSC::ASTBuilder::isResolve):
+        (JSC::ASTBuilder::createDestructuringAssignment):
+        (JSC::ASTBuilder::createArrayPattern):
+        (JSC::ASTBuilder::appendArrayPatternSkipEntry):
+        (JSC::ASTBuilder::appendArrayPatternEntry):
+        (JSC::ASTBuilder::appendArrayPatternRestEntry):
+        (JSC::ASTBuilder::createObjectPattern):
+        (JSC::ASTBuilder::appendObjectPatternEntry):
+        (JSC::ASTBuilder::createDeconstructingAssignment): Deleted.
+        * parser/NodeConstructors.h:
+        (JSC::TryNode::TryNode):
+        (JSC::ParameterNode::ParameterNode):
+        (JSC::ForOfNode::ForOfNode):
+        (JSC::DestructuringPatternNode::DestructuringPatternNode):
+        (JSC::ArrayPatternNode::ArrayPatternNode):
+        (JSC::ArrayPatternNode::create):
+        (JSC::ObjectPatternNode::ObjectPatternNode):
+        (JSC::BindingNode::create):
+        (JSC::BindingNode::BindingNode):
+        (JSC::DestructuringAssignmentNode::DestructuringAssignmentNode):
+        (JSC::DeconstructionPatternNode::DeconstructionPatternNode): Deleted.
+        (JSC::DeconstructingAssignmentNode::DeconstructingAssignmentNode): Deleted.
+        * parser/Nodes.cpp:
+        (JSC::FunctionParameters::create):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isResolveNode):
+        (JSC::ExpressionNode::isBracketAccessorNode):
+        (JSC::ExpressionNode::isDotAccessorNode):
+        (JSC::ExpressionNode::isDestructuringNode):
+        (JSC::ExpressionNode::isFuncExprNode):
+        (JSC::ExpressionNode::isCommaNode):
+        (JSC::ExpressionNode::isSimpleArray):
+        (JSC::ParameterNode::pattern):
+        (JSC::ParameterNode::nextParam):
+        (JSC::FunctionParameters::size):
+        (JSC::FunctionParameters::at):
+        (JSC::FunctionParameters::patterns):
+        (JSC::DestructuringPatternNode::isBindingNode):
+        (JSC::DestructuringPatternNode::emitDirectBinding):
+        (JSC::ArrayPatternNode::appendIndex):
+        (JSC::ObjectPatternNode::appendEntry):
+        (JSC::BindingNode::boundProperty):
+        (JSC::DestructuringAssignmentNode::bindings):
+        (JSC::ExpressionNode::isDeconstructionNode): Deleted.
+        (JSC::DeconstructionPatternNode::isBindingNode): Deleted.
+        (JSC::DeconstructionPatternNode::emitDirectBinding): Deleted.
+        (JSC::DeconstructingAssignmentNode::bindings): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseVarDeclaration):
+        (JSC::Parser<LexerType>::parseWhileStatement):
+        (JSC::Parser<LexerType>::parseVarDeclarationList):
+        (JSC::Parser<LexerType>::createBindingPattern):
+        (JSC::Parser<LexerType>::tryParseDestructuringPatternExpression):
+        (JSC::Parser<LexerType>::parseDestructuringPattern):
+        (JSC::Parser<LexerType>::parseDefaultValueForDestructuringPattern):
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        (JSC::Parser<LexerType>::parseFunctionParameters):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::tryParseDeconstructionPatternExpression): Deleted.
+        (JSC::Parser<LexerType>::parseDeconstructionPattern): Deleted.
+        (JSC::Parser<LexerType>::parseDefaultValueForDeconstructionPattern): Deleted.
+        * parser/Parser.h:
+        (JSC::isEvalNode):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createPropertyList):
+        (JSC::SyntaxChecker::createElementList):
+        (JSC::SyntaxChecker::createFormalParameterList):
+        (JSC::SyntaxChecker::createClause):
+        (JSC::SyntaxChecker::createClauseList):
+        (JSC::SyntaxChecker::operatorStackPop):
+        * tests/stress/reserved-word-with-escape.js:
+        * tests/stress/rest-elements.js:
+
+2015-07-02  Mark Lam  <mark.lam@apple.com>
+
+        Build fix for Win EWS bot.
+        https://bugs.webkit.org/show_bug.cgi?id=146551
+
+        Not reviewed.
+
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionCrash):
+
+2015-07-02  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/21429613> [iOS] Stop making symlinks from PrivateFrameworks to Frameworks
+        https://bugs.webkit.org/show_bug.cgi?id=146542
+
+        Reviewed by Sam Weinig.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Removed the build phase that makes the symlink.
+
+2015-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Aggregate profile call information on the backend to drastically reduce profile sizes
+        https://bugs.webkit.org/show_bug.cgi?id=146536
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Timeline.json:
+        Change a CPUProfile from sending a required "calls" param to sending a required
+        "callInfo" param which includes aggregated information about the calls.
+
+2015-06-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::freezeFragile should register the frozen value's structure
+        https://bugs.webkit.org/show_bug.cgi?id=136055
+        rdar://problem/21042120
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+        
+        This fixes weird concurrency bugs where the constant folding phase tries to convert
+        something to a constant but then crashes because the constant's structure wasn't
+        registered. The AI was registering the structure of any value it saw, but constant folding
+        wasn't - and that's fine so long as there ain't no concurrency.
+        
+        The best fix is to just make it impossible to introduce a constant into the IR without
+        registering its structure. That's what this change does. This is not only a great
+        concurrency fix - it also makes the compiler somewhat easier to hack on because it's one
+        less case of structure registering that you have to remember about.
+        
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::setOSREntryValue): No need to register.
+        (JSC::DFG::AbstractValue::set): We still call register, but just to get the watchpoint state.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::freezeFragile): Register the structure.
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run): Assert that these are all registered.
+
+2015-07-01  Matthew Mirman  <mmirman@apple.com>
+
+        Unreviewed, rolling out r185889
+        https://bugs.webkit.org/show_bug.cgi?id=146528
+        rdar://problem/21573959
+
+        Patch breaks chromeexperiments.com
+        
+        Reverted changeset:
+        
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/InjectedScriptSource.js:
+        (.):
+        * runtime/JSBoundSlotBaseFunction.cpp: Removed.
+        * runtime/JSBoundSlotBaseFunction.h: Removed.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): Deleted.
+        (JSC::JSGlobalObject::visitChildren): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::boundSlotBaseFunctionStructure): Deleted.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        (JSC::getBoundSlotBaseFunctionForGetterSetter): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM): Deleted.
+        * runtime/VM.h:
+
+2015-07-01  Dean Jackson  <dino@apple.com>
+
+        Disable the experimental WebGL2 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=146526
+        <rdar://problem/21641235>
+
+        Reviewed by Myles Maxfield.
+
+        Add (and disable) an ENABLE_WEBGL2 flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-07-01  Matthew Daiter  <mdaiter@apple.com>
+
+        Enable MEDIA_STREAM flag
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        <rdar://problem/21365829>
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig: Added MEDIA_STREAM flag
+
 2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
 
         Implement ECMAScript Internationalization API

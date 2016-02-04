@@ -88,10 +88,9 @@ namespace WebCore {
         }
         WEBCORE_EXPORT virtual ~DocumentLoader();
 
-        WEBCORE_EXPORT void setFrame(Frame*);
+        void attachToFrame(Frame&);
         Frame* frame() const { return m_frame; }
 
-        WEBCORE_EXPORT virtual void attachToFrame();
         WEBCORE_EXPORT virtual void detachFromFrame();
 
         WEBCORE_EXPORT FrameLoader* frameLoader() const;
@@ -281,6 +280,8 @@ namespace WebCore {
     protected:
         WEBCORE_EXPORT DocumentLoader(const ResourceRequest&, const SubstituteData&);
 
+        WEBCORE_EXPORT virtual void attachToFrame();
+
         bool m_deferMainResourceDataLoad;
 
     private:
@@ -447,6 +448,9 @@ namespace WebCore {
         HashMap<String, std::pair<String, uint32_t>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
 
+#ifndef NDEBUG
+        bool m_hasEverBeenAttached { false };
+#endif
     };
 
     inline void DocumentLoader::recordMemoryCacheLoadForFutureClientNotification(const ResourceRequest& request)

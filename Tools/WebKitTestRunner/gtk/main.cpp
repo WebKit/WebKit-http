@@ -26,12 +26,21 @@
 #include "config.h"
 
 #include "TestController.h"
+#include <WebKit/WKTextCheckerGtk.h>
 #include <gtk/gtk.h>
+#include <wtf/glib/GRefPtr.h>
 
 int main(int argc, char** argv)
 {
     gtk_init(&argc, &argv);
+
+    GRefPtr<GPtrArray> languages = adoptGRef(g_ptr_array_new());
+    g_ptr_array_add(languages.get(), const_cast<gpointer>(static_cast<const void*>("en_US")));
+    g_ptr_array_add(languages.get(), nullptr);
+    WKTextCheckerSetSpellCheckingLanguages(reinterpret_cast<const char* const*>(languages->pdata));
+
     // Prefer the not installed web and plugin processes.
     WTR::TestController controller(argc, const_cast<const char**>(argv));
+
     return 0;
 }

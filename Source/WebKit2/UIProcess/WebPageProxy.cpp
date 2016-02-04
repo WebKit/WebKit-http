@@ -159,6 +159,11 @@
 #include <WebCore/WebMediaSessionManager.h>
 #endif
 
+#if ENABLE(MEDIA_SESSION)
+#include "WebMediaSessionMetadata.h"
+#include <WebCore/MediaSessionMetadata.h>
+#endif
+
 // This controls what strategy we use for mouse wheel coalescing.
 #define MERGE_WHEEL_EVENTS 1
 
@@ -303,6 +308,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit(false)
     , m_dynamicViewportSizeUpdateLayerTreeTransactionID(0)
     , m_layerTreeTransactionIdAtLastTouchStart(0)
+    , m_hasNetworkRequestsOnSuspended(false)
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
@@ -3249,7 +3255,9 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         else if (originatingFrame)
             sourceFrameInfo = API::FrameInfo::create(*originatingFrame, originatingFrameSecurityOrigin.securityOrigin());
 
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url());
+        bool shouldOpenAppLinks = (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !protocolHostAndPortAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
+
+        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks);
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
@@ -3278,7 +3286,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
         if (frame)
             sourceFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
 
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url());
+        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), true);
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTF::move(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -3705,7 +3713,7 @@ void WebPageProxy::runOpenPanel(uint64_t frameID, const FileChooserSettings& set
 {
     if (m_openPanelResultListener) {
         m_openPanelResultListener->invalidate();
-        m_openPanelResultListener = 0;
+        m_openPanelResultListener = nullptr;
     }
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
@@ -3807,7 +3815,7 @@ void WebPageProxy::showColorPicker(const WebCore::Color& initialColor, const Int
 #if ENABLE(INPUT_TYPE_COLOR_POPOVER)
     // A new popover color well needs to be created (and the previous one destroyed) for
     // each activation of a color element.
-    m_colorPicker = 0;
+    m_colorPicker = nullptr;
 #endif
     if (!m_colorPicker)
         m_colorPicker = m_pageClient.createColorPicker(this, initialColor, elementRect);
@@ -4299,7 +4307,7 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
     m_process->send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs), m_pageID);
 
     m_openPanelResultListener->invalidate();
-    m_openPanelResultListener = 0;
+    m_openPanelResultListener = nullptr;
 }
 
 void WebPageProxy::didCancelForOpenPanel()
@@ -4310,7 +4318,7 @@ void WebPageProxy::didCancelForOpenPanel()
     m_process->send(Messages::WebPage::DidCancelForOpenPanel(), m_pageID);
     
     m_openPanelResultListener->invalidate();
-    m_openPanelResultListener = 0;
+    m_openPanelResultListener = nullptr;
 }
 
 void WebPageProxy::advanceToNextMisspelling(bool startBeforeSelection)
@@ -4766,7 +4774,7 @@ void WebPageProxy::printFinishedCallback(const ResourceError& printError, uint64
 void WebPageProxy::focusedFrameChanged(uint64_t frameID)
 {
     if (!frameID) {
-        m_focusedFrame = 0;
+        m_focusedFrame = nullptr;
         return;
     }
 
@@ -4779,7 +4787,7 @@ void WebPageProxy::focusedFrameChanged(uint64_t frameID)
 void WebPageProxy::frameSetLargestFrameChanged(uint64_t frameID)
 {
     if (!frameID) {
-        m_frameSetLargestFrame = 0;
+        m_frameSetLargestFrame = nullptr;
         return;
     }
 
@@ -4833,6 +4841,27 @@ void WebPageProxy::processDidCrash()
     else
         m_loaderClient->processDidCrash(*this);
 }
+
+#if PLATFORM(IOS)
+void WebPageProxy::processWillBecomeSuspended()
+{
+    ASSERT(m_isValid);
+
+    m_hasNetworkRequestsOnSuspended = m_pageLoadState.networkRequestsInProgress();
+    if (m_hasNetworkRequestsOnSuspended)
+        setNetworkRequestsInProgress(false);
+}
+
+void WebPageProxy::processWillBecomeForeground()
+{
+    ASSERT(m_isValid);
+
+    if (m_hasNetworkRequestsOnSuspended) {
+        setNetworkRequestsInProgress(true);
+        m_hasNetworkRequestsOnSuspended = false;
+    }
+}
+#endif
 
 void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
@@ -4903,6 +4932,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
     m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
     m_layerTreeTransactionIdAtLastTouchStart = 0;
+    m_hasNetworkRequestsOnSuspended = false;
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
@@ -5781,8 +5811,15 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state)
 }
 
 #if ENABLE(MEDIA_SESSION)
+void WebPageProxy::hasMediaSessionWithActiveMediaElementsDidChange(bool state)
+{
+    m_hasMediaSessionWithActiveMediaElements = state;
+}
+
 void WebPageProxy::mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata& metadata)
 {
+    Ref<WebMediaSessionMetadata> webMetadata = WebMediaSessionMetadata::create(metadata);
+    m_uiClient->mediaSessionMetadataDidChange(*this, webMetadata.ptr());
 }
 #endif
 

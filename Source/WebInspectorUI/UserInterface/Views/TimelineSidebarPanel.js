@@ -31,11 +31,19 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         this.contentBrowser = contentBrowser;
 
-        this._timelineEventsTitleBarElement = document.createElement("div");
-        this._timelineEventsTitleBarElement.classList.add(WebInspector.TimelineSidebarPanel.TitleBarStyleClass);
-        this._timelineEventsTitleBarElement.classList.add(WebInspector.TimelineSidebarPanel.TimelineEventsTitleBarStyleClass);
+        var timelineEventsTitleBarContainer = document.createElement("div");
+        timelineEventsTitleBarContainer.classList.add(WebInspector.TimelineSidebarPanel.TitleBarStyleClass);
+        timelineEventsTitleBarContainer.classList.add(WebInspector.TimelineSidebarPanel.TimelineEventsTitleBarStyleClass);
 
-        this.element.insertBefore(this._timelineEventsTitleBarElement, this.element.firstChild);
+        this._timelineEventsTitleBarElement = document.createElement("div");
+        this._timelineEventsTitleBarElement.classList.add(WebInspector.TimelineSidebarPanel.TitleBarTextStyleClass);
+        timelineEventsTitleBarContainer.appendChild(this._timelineEventsTitleBarElement);
+
+        this._timelineEventsTitleBarScopeContainer = document.createElement("div");
+        this._timelineEventsTitleBarScopeContainer.classList.add(WebInspector.TimelineSidebarPanel.TitleBarScopeBarStyleClass);
+        timelineEventsTitleBarContainer.appendChild(this._timelineEventsTitleBarScopeContainer);
+
+        this.element.insertBefore(timelineEventsTitleBarContainer, this.element.firstChild);
 
         this.contentTreeOutlineLabel = "";
 
@@ -105,6 +113,7 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         this._recordGlyphElement = document.createElement("div");
         this._recordGlyphElement.className = WebInspector.TimelineSidebarPanel.RecordGlyphStyleClass;
+        this._recordGlyphElement.title = WebInspector.UIString("Click or press the spacebar to record.")
         this._recordGlyphElement.addEventListener("mouseover", this._recordGlyphMousedOver.bind(this));
         this._recordGlyphElement.addEventListener("mouseout", this._recordGlyphMousedOut.bind(this));
         this._recordGlyphElement.addEventListener("click", this._recordGlyphClicked.bind(this));
@@ -155,6 +164,12 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         if (WebInspector.timelineManager.activeRecording)
             this._recordingLoaded();
+
+        this._toggleRecordingShortcut = new WebInspector.KeyboardShortcut(null, WebInspector.KeyboardShortcut.Key.Space, this._toggleRecordingOnSpacebar.bind(this));
+        this._toggleRecordingShortcut.implicitlyPreventsDefault = false;
+
+        this._toggleNewRecordingShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Space, this._toggleNewRecordingOnSpacebar.bind(this));
+        this._toggleNewRecordingShortcut.implicitlyPreventsDefault = false;
     }
 
     // Public
@@ -168,6 +183,17 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         if (this.viewMode === WebInspector.TimelineSidebarPanel.ViewMode.RenderingFrames)
             this._refreshFrameSelectionChart();
+
+        this._toggleRecordingShortcut.disabled = false;
+        this._toggleNewRecordingShortcut.disabled = false;
+    }
+
+    hidden()
+    {
+        super.hidden();
+
+        this._toggleRecordingShortcut.disabled = true;
+        this._toggleNewRecordingShortcut.disabled = true;
     }
 
     closed()
@@ -279,6 +305,21 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
 
         this._timelineEventsTitleBarElement.textContent = label;
         this.filterBar.placeholder = WebInspector.UIString("Filter %s").format(label);
+    }
+
+    get contentTreeOutlineScopeBar()
+    {
+        return this._timelineEventsTitleBarScopeContainer.children;
+    }
+
+    set contentTreeOutlineScopeBar(scopeBar)
+    {
+        this._timelineEventsTitleBarScopeContainer.removeChildren();
+
+        if (!scopeBar || !scopeBar.element)
+            return;
+
+        this._timelineEventsTitleBarScopeContainer.appendChild(scopeBar.element);
     }
 
     showTimelineOverview()
@@ -438,6 +479,37 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
     }
 
     // Private
+
+    _toggleRecordingOnSpacebar(event)
+    {
+        if (WebInspector.isEventTargetAnEditableField(event))
+            return;
+
+        this._toggleRecording();
+    }
+
+    _toggleNewRecordingOnSpacebar(event)
+    {
+        if (WebInspector.isEventTargetAnEditableField(event))
+            return;
+
+        this._toggleRecording(true);
+    }
+
+    _toggleRecording(shouldCreateRecording)
+    {
+        if (WebInspector.timelineManager.isCapturing()) {
+            WebInspector.timelineManager.stopCapturing();
+
+            this._recordGlyphElement.title = WebInspector.UIString("Click or press the spacebar to record.")
+        } else {
+            WebInspector.timelineManager.startCapturing(shouldCreateRecording);
+            // Show the timeline to which events will be appended.
+            this._recordingLoaded();
+
+            this._recordGlyphElement.title = WebInspector.UIString("Click or press the spacebar to stop recording.")
+        }
+    }
 
     _treeElementGoToArrowWasClicked(event)
     {
@@ -693,15 +765,7 @@ WebInspector.TimelineSidebarPanel = class TimelineSidebarPanel extends WebInspec
         // Add forced class to prevent the glyph from showing a confusing status after click.
         this._recordGlyphElement.classList.add(WebInspector.TimelineSidebarPanel.RecordGlyphRecordingForcedStyleClass);
 
-        var shouldCreateRecording = event.shiftKey;
-
-        if (WebInspector.timelineManager.isCapturing())
-            WebInspector.timelineManager.stopCapturing();
-        else {
-            WebInspector.timelineManager.startCapturing(shouldCreateRecording);
-            // Show the timeline to which events will be appended.
-            this._recordingLoaded();
-        }
+        this._toggleRecording(event.shiftKey);
     }
 
     _viewModeSelected(event)
@@ -900,6 +964,8 @@ WebInspector.TimelineSidebarPanel.RecordGlyphRecordingStyleClass = "recording";
 WebInspector.TimelineSidebarPanel.RecordGlyphRecordingForcedStyleClass = "forced";
 WebInspector.TimelineSidebarPanel.RecordStatusStyleClass = "record-status";
 WebInspector.TimelineSidebarPanel.TitleBarStyleClass = "title-bar";
+WebInspector.TimelineSidebarPanel.TitleBarTextStyleClass = "title-bar-text";
+WebInspector.TimelineSidebarPanel.TitleBarScopeBarStyleClass = "title-bar-scope-bar";
 WebInspector.TimelineSidebarPanel.TimelinesTitleBarStyleClass = "timelines";
 WebInspector.TimelineSidebarPanel.TimelineEventsTitleBarStyleClass = "timeline-events";
 WebInspector.TimelineSidebarPanel.TimelinesContentContainerStyleClass = "timelines-content";

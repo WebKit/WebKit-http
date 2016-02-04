@@ -124,6 +124,7 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
+#include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
@@ -851,8 +852,8 @@ void WebView::deleteBackingStore()
         KillTimer(m_viewWindow, DeleteBackingStoreTimer);
         m_deleteBackingStoreTimerActive = false;
     }
-    m_backingStoreBitmap.clear();
-    m_backingStoreDirtyRegion.clear();
+    m_backingStoreBitmap = nullptr;
+    m_backingStoreDirtyRegion = nullptr;
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 }
 
@@ -1079,7 +1080,7 @@ void WebView::updateBackingStore(FrameView* frameView, HDC dc, bool backingStore
         if (m_uiDelegatePrivate)
             m_uiDelegatePrivate->webViewPainted(this);
 
-        m_backingStoreDirtyRegion.clear();
+        m_backingStoreDirtyRegion = nullptr;
     }
 
     if (!dc)
@@ -1732,7 +1733,7 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
 
         break;
     case GID_END:
-        m_gestureTargetNode = 0;
+        m_gestureTargetNode = nullptr;
         break;
     case GID_PAN: {
         if (gi.dwFlags & GF_BEGIN) {
@@ -2815,6 +2816,8 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
         WebKitInitializeWebDatabasesIfNecessary();
         WebKitSetApplicationCachePathIfNecessary();
+
+        MemoryPressureHandler::singleton().install();
 
         didOneTimeInitialization = true;
      }
@@ -6628,7 +6631,7 @@ void WebView::setAcceleratedCompositing(bool accelerated)
         ASSERT(m_layerTreeHost);
         m_layerTreeHost->setClient(0);
         m_layerTreeHost->setWindow(0);
-        m_layerTreeHost = 0;
+        m_layerTreeHost = nullptr;
         m_backingLayer = nullptr;
         m_isAcceleratedCompositing = false;
     }

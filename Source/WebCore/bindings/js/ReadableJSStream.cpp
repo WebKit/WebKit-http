@@ -33,11 +33,13 @@
 #if ENABLE(STREAMS_API)
 
 #include "DOMWrapperWorld.h"
+#include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "JSDOMPromise.h"
 #include "JSReadableStream.h"
 #include "JSReadableStreamController.h"
 #include "ScriptExecutionContext.h"
+#include "ScriptState.h"
 #include <runtime/Error.h>
 #include <runtime/Exception.h>
 #include <runtime/JSCJSValueInlines.h>
@@ -199,66 +201,43 @@ bool ReadableJSStream::doCancel(JSValue reason)
     return !promise;
 }
 
-static inline double normalizeHighWaterMark(ExecState& exec, JSObject& strategy)
+RefPtr<ReadableJSStream> ReadableJSStream::create(JSC::ExecState& state, JSC::JSValue source, const Dictionary& strategy)
 {
-    JSValue jsHighWaterMark = getPropertyFromObject(exec, strategy, "highWaterMark");
-
-    if (exec.hadException())
-        return 0;
-
-    if (jsHighWaterMark.isUndefined())
-        return 1;
-
-    double highWaterMark = jsHighWaterMark.toNumber(&exec);
-
-    if (exec.hadException())
-        return 0;
-
-    if (std::isnan(highWaterMark)) {
-        throwVMError(&exec, createTypeError(&exec, ASCIILiteral("Value is NaN")));
-        return 0;
-    }
-    if (highWaterMark < 0) {
-        throwVMError(&exec, createRangeError(&exec, ASCIILiteral("Not a positive value")));
-        return 0;
-    }
-    return highWaterMark;
-}
-
-RefPtr<ReadableJSStream> ReadableJSStream::create(ExecState& state, ScriptExecutionContext& scriptExecutionContext)
-{
-    // FIXME: We should consider reducing the binding code herei (using Dictionary/regular binding constructor and/or improving the IDL generator). 
     JSObject* jsSource;
-    JSValue value = state.argument(0);
-    if (value.isObject())
-        jsSource = value.getObject();
-    else if (!value.isUndefined()) {
-        throwVMError(&state, createTypeError(&state, ASCIILiteral("First argument, if any, should be an object")));
+    if (source.isObject())
+        jsSource = source.getObject();
+    else if (!source.isUndefined()) {
+        throwVMTypeError(&state, "Argument 1 of ReadableStream constructor must be an object");
         return nullptr;
     } else
         jsSource = JSFinalObject::create(state.vm(), JSFinalObject::createStructure(state.vm(), state.callee()->globalObject(), jsNull(), 1));
 
     double highWaterMark = 1;
     JSFunction* sizeFunction = nullptr;
-    value = state.argument(1);
-    if (value.isObject()) {
-        JSObject& strategyObject = *value.getObject();
-        highWaterMark = normalizeHighWaterMark(state, strategyObject);
-        if (state.hadException())
+    if (!strategy.isUndefinedOrNull()) {
+        if (strategy.get("highWaterMark", highWaterMark)) {
+            if (std::isnan(highWaterMark)) {
+                throwVMTypeError(&state, "'highWaterMark' of Argument 2 of ReadableStream constructor cannot be NaN");
+                return nullptr;
+            }
+            if (highWaterMark < 0) {
+                throwVMRangeError(&state, "'highWaterMark' of Argument 2 of ReadableStream constructor cannot be negative");
+                return nullptr;
+            }
+
+        } else if (state.hadException())
             return nullptr;
 
-        if (!(sizeFunction = jsDynamicCast<JSFunction*>(getPropertyFromObject(state, strategyObject, "size")))) {
-            if (!state.hadException())
-                throwVMError(&state, createTypeError(&state, ASCIILiteral("size parameter should be a function")));
+        if (strategy.get("size", sizeFunction)) {
+            if (!sizeFunction) {
+                throwVMTypeError(&state, "'size' of Argument 2 of ReadableStream constructor must be a function");
+                return nullptr;
+            }
+        } else if (state.hadException())
             return nullptr;
-        }
-        
-    } else if (!value.isUndefined()) {
-        throwVMError(&state, createTypeError(&state, ASCIILiteral("Second argument, if any, should be an object")));
-        return nullptr;
     }
 
-    RefPtr<ReadableJSStream> readableStream = adoptRef(*new ReadableJSStream(scriptExecutionContext, state, jsSource, highWaterMark, sizeFunction));
+    RefPtr<ReadableJSStream> readableStream = adoptRef(*new ReadableJSStream(state, jsSource, highWaterMark, sizeFunction));
     readableStream->doStart(state);
 
     if (state.hadException())
@@ -267,8 +246,8 @@ RefPtr<ReadableJSStream> ReadableJSStream::create(ExecState& state, ScriptExecut
     return readableStream;
 }
 
-ReadableJSStream::ReadableJSStream(ScriptExecutionContext& scriptExecutionContext, ExecState& state, JSObject* source, double highWaterMark, JSFunction* sizeFunction)
-    : ReadableStream(scriptExecutionContext)
+ReadableJSStream::ReadableJSStream(ExecState& state, JSObject* source, double highWaterMark, JSFunction* sizeFunction)
+    : ReadableStream(*scriptExecutionContextFromExecState(&state))
     , m_highWaterMark(highWaterMark)
 {
     m_source.set(state.vm(), source);
@@ -298,13 +277,13 @@ void ReadableJSStream::close(ExceptionCode& ec)
     changeStateToClosed();
 }
 
-void ReadableJSStream::error(JSC::ExecState& state, ExceptionCode& ec)
+void ReadableJSStream::error(JSC::ExecState& state, JSC::JSValue value, ExceptionCode& ec)
 {
     if (!isReadable()) {
         ec = TypeError;
         return;
     }
-    storeError(state, state.argument(0));
+    storeError(state, value);
 }
 
 void ReadableJSStream::storeException(JSC::ExecState& state)
@@ -338,24 +317,27 @@ JSValue ReadableJSStream::read()
     return chunk.value.get();
 }
 
-void ReadableJSStream::enqueue(ExecState& state)
+void ReadableJSStream::enqueue(JSC::ExecState& state, JSC::JSValue chunk)
 {
-    ASSERT(!isCloseRequested());
-
+    if (isErrored()) {
+        throwVMError(&state, error());
+        return;
+    }
+    if (isCloseRequested()) {
+        throwVMError(&state, createDOMException(&state, TypeError));
+        return;
+    }
     if (!isReadable())
         return;
 
-    JSValue chunk = state.argument(0);
     if (resolveReadCallback(chunk)) {
         pull();
         return;
     }
 
     double size = retrieveChunkSize(state, chunk);
-    if (state.hadException()) {
-        storeError(state, state.exception()->value());
+    if (state.hadException())
         return;
-    }
 
     m_chunkQueue.append({ JSC::Strong<JSC::Unknown>(state.vm(), chunk), size });
     m_totalQueueSize += size;
@@ -372,15 +354,20 @@ double ReadableJSStream::retrieveChunkSize(ExecState& state, JSValue chunk)
     arguments.append(chunk);
 
     JSValue sizeValue = callFunction(state, m_sizeFunction.get(), jsUndefined(), arguments);
-    if (state.hadException())
+    if (state.hadException()) {
+        storeError(state, state.exception()->value());
         return 0;
+    }
 
     double size = sizeValue.toNumber(&state);
-    if (state.hadException())
+    if (state.hadException()) {
+        storeError(state, state.exception()->value());
         return 0;
+    }
 
     if (!std::isfinite(size) || size < 0) {
-        throwVMError(&state, createRangeError(&state, ASCIILiteral("Incorrect double value")));
+        storeError(state, createDOMException(&state, RangeError));
+        throwVMError(&state, error());
         return 0;
     }
 

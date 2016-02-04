@@ -81,16 +81,17 @@ WebMouseEvent::Button InjectedBundleNavigationAction::mouseButtonForNavigationAc
 }
 
 
-PassRefPtr<InjectedBundleNavigationAction> InjectedBundleNavigationAction::create(WebFrame* frame, const NavigationAction& action, PassRefPtr<FormState> formState)
+Ref<InjectedBundleNavigationAction> InjectedBundleNavigationAction::create(WebFrame* frame, const NavigationAction& action, PassRefPtr<FormState> formState)
 {
-    return adoptRef(new InjectedBundleNavigationAction(frame, action, formState));
+    return adoptRef(*new InjectedBundleNavigationAction(frame, action, formState));
 }
 
 InjectedBundleNavigationAction::InjectedBundleNavigationAction(WebFrame* frame, const NavigationAction& navigationAction, PassRefPtr<FormState> prpFormState)
     : m_navigationType(navigationAction.type())
     , m_modifiers(modifiersForNavigationAction(navigationAction))
     , m_mouseButton(WebMouseEvent::NoButton)
-    , m_shouldOpenExternalURLs(navigationAction.shouldOpenExternalURLsPolicy() == ShouldOpenExternalURLsPolicy::ShouldAllow)
+    , m_shouldOpenExternalURLs(navigationAction.shouldOpenExternalURLsPolicy() == ShouldOpenExternalURLsPolicy::ShouldAllow || navigationAction.shouldOpenExternalURLsPolicy() == ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes)
+    , m_shouldTryAppLinks(navigationAction.shouldOpenExternalURLsPolicy() == ShouldOpenExternalURLsPolicy::ShouldAllow)
 {
     if (const MouseEvent* mouseEvent = mouseEventForNavigationAction(navigationAction)) {
         m_hitTestResult = InjectedBundleHitTestResult::create(frame->coreFrame()->eventHandler().hitTestResultAtPoint(mouseEvent->absoluteLocation()));

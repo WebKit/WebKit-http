@@ -39,19 +39,22 @@
 #include "MediaStreamTrackPrivate.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class MediaStreamTrackPrivate;
 
-class MediaStreamPrivateClient {
+class MediaStreamPrivateClient : public RefCounted<MediaStreamPrivateClient> {
 public:
     virtual ~MediaStreamPrivateClient() { }
 
     virtual void activeStatusChanged() = 0;
     virtual void didAddTrackToPrivate(MediaStreamTrackPrivate&) = 0;
     virtual void didRemoveTrackFromPrivate(MediaStreamTrackPrivate&) = 0;
+    virtual Vector<RefPtr<MediaStreamTrack>> getVideoTracks() = 0;
+    virtual Vector<RefPtr<MediaStreamTrack>> getAudioTracks() = 0;
 };
 
 class MediaStreamPrivate : public RefCounted<MediaStreamPrivate> {

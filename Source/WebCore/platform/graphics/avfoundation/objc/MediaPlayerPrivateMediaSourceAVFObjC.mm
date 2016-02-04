@@ -210,9 +210,9 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::isAvailable()
         && class_getInstanceMethod(getAVSampleBufferAudioRendererClass(), @selector(setMuted:));
 }
 
-static HashSet<String> mimeTypeCache()
+static const HashSet<String>& mimeTypeCache()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
+    static NeverDestroyed<HashSet<String>> cache;
     static bool typeListInitialized = false;
 
     if (typeListInitialized)
@@ -221,7 +221,7 @@ static HashSet<String> mimeTypeCache()
 
     NSArray *types = [getAVURLAssetClass() audiovisualMIMETypes];
     for (NSString *mimeType in types)
-        cache.add(mimeType);
+        cache.get().add(mimeType);
     
     return cache;
 } 
@@ -236,7 +236,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
     // This engine does not support non-media-source sources.
     if (!parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
-
+#if ENABLE(MEDIA_STREAM)
+    if (parameters.isMediaStream)
+        return MediaPlayer::IsNotSupported;
+#endif
     if (!mimeTypeCache().contains(parameters.type))
         return MediaPlayer::IsNotSupported;
 
@@ -264,6 +267,11 @@ void MediaPlayerPrivateMediaSourceAVFObjC::load(const String& url, MediaSourcePr
     UNUSED_PARAM(url);
 
     m_mediaSourcePrivate = MediaSourcePrivateAVFObjC::create(this, client);
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::load(MediaStreamPrivate*)
+{
+    setNetworkState(MediaPlayer::FormatError);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::cancelLoad()

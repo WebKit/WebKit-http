@@ -47,6 +47,7 @@ class JSValue;
 
 namespace WebCore {
 
+class Dictionary;
 class ReadableStreamReader;
 class ScriptExecutionContext;
 
@@ -64,6 +65,7 @@ public:
         Errored
     };
 
+    static RefPtr<ReadableStream> create(JSC::ExecState&, JSC::JSValue, const Dictionary&);
     virtual ~ReadableStream();
 
     ReadableStreamReader* getReader(ExceptionCode&);
@@ -87,8 +89,6 @@ public:
     void notifyCancelSucceeded();
     void notifyCancelFailed();
 
-    typedef std::function<void(JSC::JSValue)> FailureCallback;
-
     typedef DOMPromise<std::nullptr_t, JSC::JSValue> CancelPromise;
     void cancel(JSC::JSValue, CancelPromise&&, ExceptionCode&);
     void cancelNoCheck(JSC::JSValue, CancelPromise&&);
@@ -96,9 +96,8 @@ public:
     typedef DOMPromise<std::nullptr_t, JSC::JSValue> ClosedPromise;
     void closed(ClosedPromise&&);
 
-    typedef std::function<void(JSC::JSValue)> ReadSuccessCallback;
-    typedef std::function<void()> ReadEndCallback;
-    void read(ReadSuccessCallback&&, ReadEndCallback&&, FailureCallback&&);
+    typedef DOMPromiseIteratorWithCallback<JSC::JSValue, JSC::JSValue> ReadPromise;
+    void read(ReadPromise&&);
 
 protected:
     explicit ReadableStream(ScriptExecutionContext&);
@@ -126,12 +125,7 @@ private:
     Optional<CancelPromise> m_cancelPromise;
     Optional<ClosedPromise> m_closedPromise;
 
-    struct ReadCallbacks {
-        ReadSuccessCallback successCallback;
-        ReadEndCallback endCallback;
-        FailureCallback failureCallback;
-    };
-    Deque<ReadCallbacks> m_readRequests;
+    Deque<ReadPromise> m_readRequests;
 
     bool m_isStarted { false };
     bool m_isPulling { false };

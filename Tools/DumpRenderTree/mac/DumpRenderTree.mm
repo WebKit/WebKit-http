@@ -1823,6 +1823,8 @@ static void resetWebViewToConsistentStateBeforeTesting()
     [[webView window] setAutodisplay:NO];
 #endif
     [webView setTracksRepaints:NO];
+
+    [WebCache clearCachedCredentials];
     
     resetWebPreferencesToConsistentValues();
 
@@ -2064,7 +2066,7 @@ static void runTest(const string& inputLine)
     ASSERT(CFArrayGetCount(openWindowsRef) == 1);
     ASSERT(CFArrayGetValueAtIndex(openWindowsRef, 0) == [[mainFrame webView] window]);
 
-    gTestRunner.clear();
+    gTestRunner = nullptr;
 
     if (ignoreWebCoreNodeLeaks)
         [WebCoreStatistics stopIgnoringWebCoreNodeLeaks];

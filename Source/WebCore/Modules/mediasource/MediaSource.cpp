@@ -394,7 +394,7 @@ void MediaSource::setReadyState(const AtomicString& state)
     LOG(MediaSource, "MediaSource::setReadyState(%p) : %s -> %s", this, oldState.string().ascii().data(), state.string().ascii().data());
 
     if (state == closedKeyword()) {
-        m_private.clear();
+        m_private = nullptr;
         m_mediaElement = nullptr;
         m_duration = MediaTime::invalidTime();
     }
@@ -736,7 +736,7 @@ bool MediaSource::isTypeSupported(const String& type)
     String codecs = contentType.parameter("codecs");
 
     // 2. If type does not contain a valid MIME type string, then return false.
-    if (contentType.type().isEmpty() || codecs.isEmpty())
+    if (contentType.type().isEmpty())
         return false;
 
     // 3. If type contains a media type or media subtype that the MediaSource does not support, then return false.
@@ -747,7 +747,12 @@ bool MediaSource::isTypeSupported(const String& type)
     parameters.type = contentType.type();
     parameters.codecs = codecs;
     parameters.isMediaSource = true;
-    return MediaPlayer::supportsType(parameters, 0) != MediaPlayer::IsNotSupported;
+    MediaPlayer::SupportsType supported = MediaPlayer::supportsType(parameters, 0);
+
+    if (codecs.isEmpty())
+        return supported != MediaPlayer::IsNotSupported;
+
+    return supported == MediaPlayer::IsSupported;
 }
 
 bool MediaSource::isOpen() const
@@ -806,7 +811,7 @@ void MediaSource::stop()
     m_asyncEventQueue.close();
     if (!isClosed())
         setReadyState(closedKeyword());
-    m_private.clear();
+    m_private = nullptr;
 }
 
 bool MediaSource::canSuspendForPageCache() const

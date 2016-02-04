@@ -42,7 +42,7 @@ ChildProcessProxy::~ChildProcessProxy()
 
     if (m_processLauncher) {
         m_processLauncher->invalidate();
-        m_processLauncher = 0;
+        m_processLauncher = nullptr;
     }
 }
 
@@ -118,6 +118,11 @@ void ChildProcessProxy::addMessageReceiver(IPC::StringReference messageReceiverN
 void ChildProcessProxy::removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID)
 {
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName, destinationID);
+}
+
+void ChildProcessProxy::removeMessageReceiver(IPC::StringReference messageReceiverName)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
 }
 
 bool ChildProcessProxy::dispatchMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)

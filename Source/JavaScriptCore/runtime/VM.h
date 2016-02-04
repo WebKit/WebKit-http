@@ -76,7 +76,6 @@ class BuiltinExecutables;
 class CodeBlock;
 class CodeCache;
 class CommonIdentifiers;
-class CustomGetterSetter;
 class ExecState;
 class Exception;
 class HandleStack;
@@ -84,7 +83,6 @@ class TypeProfiler;
 class TypeProfilerLog;
 class Identifier;
 class Interpreter;
-class JSBoundSlotBaseFunction;
 class JSGlobalObject;
 class JSObject;
 class Keywords;
@@ -279,7 +277,6 @@ public:
     Strong<Structure> exceptionStructure;
 #if ENABLE(PROMISES)
     Strong<Structure> promiseDeferredStructure;
-    Strong<Structure> promiseReactionStructure;
 #endif
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
@@ -292,7 +289,6 @@ public:
     NumericStrings numericStrings;
     DateInstanceCache dateInstanceCache;
     WTF::SimpleStats machineCodeBytesPerBytecodeWordForBaselineJIT;
-    WeakGCMap<std::pair<CustomGetterSetter*, int>, JSBoundSlotBaseFunction> customGetterSetterFunctionMap;
     WeakGCMap<StringImpl*, JSString, PtrHash<StringImpl*>> stringCache;
     Strong<JSString> lastCachedString;
 

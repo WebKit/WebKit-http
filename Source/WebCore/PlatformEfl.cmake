@@ -249,6 +249,7 @@ list(APPEND WebCore_SOURCES
     platform/posix/FileSystemPOSIX.cpp
     platform/posix/SharedBufferPOSIX.cpp
 
+    platform/soup/PublicSuffixSoup.cpp
     platform/soup/SharedBufferSoup.cpp
     platform/soup/URLSoup.cpp
 

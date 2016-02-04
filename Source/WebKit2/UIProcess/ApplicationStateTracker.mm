@@ -30,26 +30,19 @@
 
 #import "AssertionServicesSPI.h"
 #import "UIKitSPI.h"
-#import <UIKit/UIApplication.h>
+#import "WKContentView.h"
 #import <WebCore/SecuritySPI.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/ObjcRuntimeExtras.h>
 
+@interface UIWindow (WKDetails)
+- (BOOL)_isHostedInAnotherProcess;
+@end
+
 namespace WebKit {
-
-ApplicationStateTracker& ApplicationStateTracker::singleton()
-{
-    static NeverDestroyed<ApplicationStateTracker> applicationStateTracker;
-
-    return applicationStateTracker;
-}
 
 static bool hasEntitlement(NSString *entitlement)
 {
-#if PLATFORM(IOS_SIMULATOR)
-    // The simulator doesn't support entitlements.
-    return true;
-#else
     auto task = adoptCF(SecTaskCreateFromSelf(CFAllocatorGetDefault()));
     if (!task)
         return false;
@@ -62,18 +55,25 @@ static bool hasEntitlement(NSString *entitlement)
         return false;
 
     return CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()));
-#endif
 }
 
-static bool isViewService()
+enum class ApplicationType {
+    Application,
+    ViewService,
+    Extension,
+};
+
+static ApplicationType applicationType(UIWindow *window)
 {
+    ASSERT(window);
+
     if (_UIApplicationIsExtension())
-        return true;
+        return ApplicationType::Extension;
 
-    if (hasEntitlement(@"com.apple.UIKit.vends-view-services"))
-        return true;
+    if (hasEntitlement(@"com.apple.UIKit.vends-view-services") && window._isHostedInAnotherProcess)
+        return ApplicationType::ViewService;
 
-    return false;
+    return ApplicationType::Application;
 }
 
 static bool isBackgroundState(BKSApplicationState state)
@@ -88,14 +88,77 @@ static bool isBackgroundState(BKSApplicationState state)
     }
 }
 
-ApplicationStateTracker::ApplicationStateTracker()
+ApplicationStateTracker::ApplicationStateTracker(WKContentView *view, SEL didEnterBackgroundSelector, SEL willEnterForegroundSelector)
+    : m_view(view)
+    , m_didEnterBackgroundSelector(didEnterBackgroundSelector)
+    , m_willEnterForegroundSelector(willEnterForegroundSelector)
+    , m_isInBackground(true)
+    , m_weakPtrFactory(this)
+    , m_didEnterBackgroundObserver(nullptr)
+    , m_willEnterForegroundObserver(nullptr)
 {
-    if (isViewService()) {
-        BKSApplicationStateMonitor *applicationStateMonitor = [[BKSApplicationStateMonitor alloc] init];
+    ASSERT([m_view.get() respondsToSelector:m_didEnterBackgroundSelector]);
+    ASSERT([m_view.get() respondsToSelector:m_willEnterForegroundSelector]);
 
-        m_isInBackground = isBackgroundState([applicationStateMonitor mostElevatedApplicationStateForPID:getpid()]);
+    UIWindow *window = [m_view.get() window];
+    ASSERT(window);
 
-        applicationStateMonitor.handler = [this](NSDictionary *userInfo) {
+    switch (applicationType(window)) {
+    case ApplicationType::Application: {
+        UIApplication *application = [UIApplication sharedApplication];
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+
+        m_isInBackground = application.applicationState == UIApplicationStateBackground;
+
+        m_didEnterBackgroundObserver = [notificationCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
+            applicationDidEnterBackground();
+        }];
+
+        m_willEnterForegroundObserver = [notificationCenter addObserverForName:UIApplicationWillEnterForegroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
+            applicationWillEnterForeground();
+        }];
+        break;
+    }
+
+    case ApplicationType::ViewService: {
+        UIViewController *serviceViewController = nil;
+
+        for (UIView *view = m_view.get().get(); view; view = view.superview) {
+            UIViewController *viewController = [UIViewController viewControllerForView:view];
+
+            if (viewController._hostProcessIdentifier) {
+                serviceViewController = viewController;
+                break;
+            }
+        }
+
+        ASSERT(serviceViewController);
+
+        pid_t applicationPID = serviceViewController._hostProcessIdentifier;
+        ASSERT(applicationPID);
+
+        auto applicationStateMonitor = adoptNS([[BKSApplicationStateMonitor alloc] init]);
+        m_isInBackground = isBackgroundState([m_applicationStateMonitor mostElevatedApplicationStateForPID:applicationPID]);
+
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+        m_didEnterBackgroundObserver = [notificationCenter addObserverForName:@"_UIViewServiceHostDidEnterBackgroundNotificationName" object:serviceViewController queue:nil usingBlock:[this](NSNotification *) {
+            applicationDidEnterBackground();
+        }];
+
+        m_willEnterForegroundObserver = [notificationCenter addObserverForName:@"_UIViewServiceHostWillEnterForegroundNotificationName" object:serviceViewController queue:nil usingBlock:[this](NSNotification *) {
+            applicationWillEnterForeground();
+        }];
+
+        break;
+    }
+
+    case ApplicationType::Extension: {
+        m_applicationStateMonitor = adoptNS([[BKSApplicationStateMonitor alloc] init]);
+
+        m_isInBackground = isBackgroundState([m_applicationStateMonitor mostElevatedApplicationStateForPID:getpid()]);
+
+        auto weakThis = m_weakPtrFactory.createWeakPtr();
+        [m_applicationStateMonitor setHandler:[weakThis](NSDictionary *userInfo) {
             pid_t pid = [userInfo[BKSApplicationStateProcessIDKey] integerValue];
             if (pid != getpid())
                 return;
@@ -103,80 +166,47 @@ ApplicationStateTracker::ApplicationStateTracker()
             BKSApplicationState newState = (BKSApplicationState)[userInfo[BKSApplicationStateMostElevatedStateForProcessIDKey] unsignedIntValue];
             bool newInBackground = isBackgroundState(newState);
 
-            dispatch_async(dispatch_get_main_queue(), [this, newInBackground] {
-                if (!m_isInBackground && newInBackground)
-                    applicationDidEnterBackground();
-                else if (m_isInBackground && !newInBackground)
-                    applicationWillEnterForeground();
+            dispatch_async(dispatch_get_main_queue(), [weakThis, newInBackground] {
+                auto applicationStateTracker = weakThis.get();
+                if (!applicationStateTracker)
+                    return;
+
+                if (!applicationStateTracker->m_isInBackground && newInBackground)
+                    applicationStateTracker->applicationDidEnterBackground();
+                else if (applicationStateTracker->m_isInBackground && !newInBackground)
+                    applicationStateTracker->applicationWillEnterForeground();
             });
-        };
-    } else {
-        UIApplication *application = [UIApplication sharedApplication];
-        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-
-        m_isInBackground = application.applicationState == UIApplicationStateBackground;
-
-        [notificationCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
-            applicationDidEnterBackground();
         }];
-
-        [notificationCenter addObserverForName:UIApplicationWillEnterForegroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
-            applicationWillEnterForeground();
-        }];
+    }
     }
 }
 
-void ApplicationStateTracker::addListener(id object, SEL willEnterForegroundSelector, SEL didEnterBackgroundSelector)
+ApplicationStateTracker::~ApplicationStateTracker()
 {
-    ASSERT([object respondsToSelector:willEnterForegroundSelector]);
-    ASSERT([object respondsToSelector:didEnterBackgroundSelector]);
+    if (m_applicationStateMonitor) {
+        [m_applicationStateMonitor invalidate];
+        return;
+    }
 
-    m_listeners.append({ object, willEnterForegroundSelector, didEnterBackgroundSelector });
+    NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+    [notificationCenter removeObserver:m_didEnterBackgroundObserver];
+    [notificationCenter removeObserver:m_willEnterForegroundObserver];
 }
 
 void ApplicationStateTracker::applicationDidEnterBackground()
 {
     m_isInBackground = true;
 
-    invokeListeners(&Listener::didEnterBackgroundSelector);
+    if (auto view = m_view.get())
+        wtfObjcMsgSend<void>(view.get(), m_didEnterBackgroundSelector);
 }
 
 void ApplicationStateTracker::applicationWillEnterForeground()
 {
     m_isInBackground = false;
 
-    invokeListeners(&Listener::willEnterForegroundSelector);
-}
-
-void ApplicationStateTracker::invokeListeners(SEL Listener::* selector)
-{
-    bool shouldPruneListeners = false;
-
-    for (auto& listener : m_listeners) {
-        auto object = listener.object.get();
-        if (!object) {
-            shouldPruneListeners = true;
-            continue;
-        }
-
-        wtfObjcMsgSend<void>(object.get(), listener.*selector);
-    }
-
-    if (shouldPruneListeners)
-        pruneListeners();
-}
-
-void ApplicationStateTracker::pruneListeners()
-{
-    auto listeners = WTF::move(m_listeners);
-    ASSERT(m_listeners.isEmpty());
-
-    for (auto& listener : listeners) {
-        if (!listener.object)
-            continue;
-
-        m_listeners.append(WTF::move(listener));
-    }
+    if (auto view = m_view.get())
+        wtfObjcMsgSend<void>(view.get(), m_willEnterForegroundSelector);
 }
 
 }

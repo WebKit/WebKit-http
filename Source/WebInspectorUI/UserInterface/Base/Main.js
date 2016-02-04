@@ -146,7 +146,7 @@ WebInspector.loaded = function()
     this._showingSplitConsoleSetting = new WebInspector.Setting("showing-split-console", false);
     this._splitConsoleHeightSetting = new WebInspector.Setting("split-console-height", 150);
 
-    this._openTabsSetting = new WebInspector.Setting("open-tabs", ["elements", "resources", "timeline", "debugger", "storage", "console"]);
+    this._openTabsSetting = new WebInspector.Setting("open-tab-types", ["elements", "network", "resources", "timeline", "debugger", "storage", "console"]);
     this._selectedTabIndexSetting = new WebInspector.Setting("selected-tab-index", 0);
 
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", false);
@@ -383,6 +383,8 @@ WebInspector.isTabTypeAllowed = function(tabType)
     switch (tabType) {
     case WebInspector.ElementsTabContentView.Type:
         return !!window.DOMAgent;
+    case WebInspector.NetworkTabContentView.Type:
+        return !!window.NetworkAgent && !!window.PageAgent;
     case WebInspector.StorageTabContentView.Type:
         return !!window.DOMStorageAgent || !!window.DatabaseAgent || !!window.IndexedDBAgent;
     case WebInspector.TimelineTabContentView.Type:
@@ -401,6 +403,8 @@ WebInspector._tabContentViewForType = function(tabType)
         return new WebInspector.DebuggerTabContentView;
     case WebInspector.ElementsTabContentView.Type:
         return new WebInspector.ElementsTabContentView;
+    case WebInspector.NetworkTabContentView.Type:
+        return new WebInspector.NetworkTabContentView;
     case WebInspector.NewTabContentView.Type:
         return new WebInspector.NewTabContentView;
     case WebInspector.ResourcesTabContentView.Type:
@@ -439,7 +443,8 @@ WebInspector._updateNewTabButtonState = function(event)
 {
     var newTabAllowed = this.isNewTabWithTypeAllowed(WebInspector.ConsoleTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.ElementsTabContentView.Type)
         || this.isNewTabWithTypeAllowed(WebInspector.ResourcesTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.StorageTabContentView.Type)
-        || this.isNewTabWithTypeAllowed(WebInspector.TimelineTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.DebuggerTabContentView.Type);
+        || this.isNewTabWithTypeAllowed(WebInspector.TimelineTabContentView.Type) || this.isNewTabWithTypeAllowed(WebInspector.DebuggerTabContentView.Type)
+        || this.isNewTabWithTypeAllowed(WebInspector.NetworkTabContentView.Type);
     this.tabBar.newTabItem.disabled = !newTabAllowed;
 };
 
@@ -805,6 +810,14 @@ WebInspector.showStorageTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WebInspector.showNetworkTab = function()
+{
+    var tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.NetworkTabContentView);
+    if (!tabContentView)
+        tabContentView = new WebInspector.NetworkTabContentView;
+    this.tabBrowser.showTabForContentView(tabContentView);
+};
+
 WebInspector.showTimelineTab = function()
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.TimelineTabContentView);
@@ -918,33 +931,31 @@ WebInspector.tabContentViewForRepresentedObject = function(representedObject)
     return tabContentView;
 };
 
-WebInspector.showRepresentedObject = function(representedObject, cookie, forceShowTab)
+WebInspector.showRepresentedObject = function(representedObject, cookie)
 {
     var tabContentView = this.tabContentViewForRepresentedObject(representedObject);
     console.assert(tabContentView);
     if (!tabContentView)
         return;
 
-    if (window.event || forceShowTab)
-        this.tabBrowser.showTabForContentView(tabContentView);
-
+    this.tabBrowser.showTabForContentView(tabContentView);
     tabContentView.showRepresentedObject(representedObject, cookie);
 };
 
-WebInspector.showMainFrameDOMTree = function(nodeToSelect, forceShowTab)
+WebInspector.showMainFrameDOMTree = function(nodeToSelect)
 {
     console.assert(WebInspector.frameResourceManager.mainFrame);
     if (!WebInspector.frameResourceManager.mainFrame)
         return;
-    this.showRepresentedObject(WebInspector.frameResourceManager.mainFrame.domTree, {nodeToSelect}, forceShowTab);
+    this.showRepresentedObject(WebInspector.frameResourceManager.mainFrame.domTree, {nodeToSelect});
 };
 
-WebInspector.showContentFlowDOMTree = function(contentFlow, nodeToSelect, forceShowTab)
+WebInspector.showContentFlowDOMTree = function(contentFlow, nodeToSelect)
 {
-    this.showRepresentedObject(contentFlow, {nodeToSelect}, forceShowTab);
+    this.showRepresentedObject(contentFlow, {nodeToSelect});
 };
 
-WebInspector.showSourceCodeForFrame = function(frameIdentifier, forceShowTab)
+WebInspector.showSourceCodeForFrame = function(frameIdentifier)
 {
     var frame = WebInspector.frameResourceManager.frameForIdentifier(frameIdentifier);
     if (!frame) {
@@ -954,10 +965,10 @@ WebInspector.showSourceCodeForFrame = function(frameIdentifier, forceShowTab)
 
     this._frameIdentifierToShowSourceCodeWhenAvailable = undefined;
 
-    this.showRepresentedObject(frame, null, forceShowTab);
+    this.showRepresentedObject(frame);
 };
 
-WebInspector.showSourceCode = function(sourceCode, positionToReveal, textRangeToSelect, forceUnformatted, forceShowTab)
+WebInspector.showSourceCode = function(sourceCode, positionToReveal, textRangeToSelect, forceUnformatted)
 {
     console.assert(!positionToReveal || positionToReveal instanceof WebInspector.SourceCodePosition, positionToReveal);
     var representedObject = sourceCode;
@@ -968,33 +979,33 @@ WebInspector.showSourceCode = function(sourceCode, positionToReveal, textRangeTo
     }
 
     var cookie = positionToReveal ? {lineNumber: positionToReveal.lineNumber, columnNumber: positionToReveal.columnNumber} : {};
-    this.showRepresentedObject(representedObject, cookie, forceShowTab);
+    this.showRepresentedObject(representedObject, cookie);
 };
 
-WebInspector.showSourceCodeLocation = function(sourceCodeLocation, forceShowTab)
+WebInspector.showSourceCodeLocation = function(sourceCodeLocation)
 {
-    this.showSourceCode(sourceCodeLocation.displaySourceCode, sourceCodeLocation.displayPosition(), null, false, forceShowTab);
+    this.showSourceCode(sourceCodeLocation.displaySourceCode, sourceCodeLocation.displayPosition());
 };
 
-WebInspector.showOriginalUnformattedSourceCodeLocation = function(sourceCodeLocation, forceShowTab)
+WebInspector.showOriginalUnformattedSourceCodeLocation = function(sourceCodeLocation)
 {
     this.showSourceCode(sourceCodeLocation.sourceCode, sourceCodeLocation.position(), null, true);
 };
 
-WebInspector.showOriginalOrFormattedSourceCodeLocation = function(sourceCodeLocation, forceShowTab)
+WebInspector.showOriginalOrFormattedSourceCodeLocation = function(sourceCodeLocation)
 {
-    this.showSourceCode(sourceCodeLocation.sourceCode, sourceCodeLocation.formattedPosition(), null, false, forceShowTab);
+    this.showSourceCode(sourceCodeLocation.sourceCode, sourceCodeLocation.formattedPosition());
 };
 
-WebInspector.showOriginalOrFormattedSourceCodeTextRange = function(sourceCodeTextRange, forceShowTab)
+WebInspector.showOriginalOrFormattedSourceCodeTextRange = function(sourceCodeTextRange)
 {
     var textRangeToSelect = sourceCodeTextRange.formattedTextRange;
-    this.showSourceCode(sourceCodeTextRange.sourceCode, textRangeToSelect.startPosition(), textRangeToSelect, false, forceShowTab);
+    this.showSourceCode(sourceCodeTextRange.sourceCode, textRangeToSelect.startPosition(), textRangeToSelect);
 };
 
-WebInspector.showResourceRequest = function(resource, forceShowTab)
+WebInspector.showResourceRequest = function(resource)
 {
-    this.showRepresentedObject(resource, {[WebInspector.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WebInspector.ResourceClusterContentView.RequestIdentifier}, forceShowTab);
+    this.showRepresentedObject(resource, {[WebInspector.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WebInspector.ResourceClusterContentView.RequestIdentifier});
 };
 
 WebInspector.debuggerToggleBreakpoints = function(event)
@@ -1130,7 +1141,7 @@ WebInspector._frameWasAdded = function(event)
 
     function delayedWork()
     {
-        this.showSourceCodeForFrame(frame.id, true);
+        this.showSourceCodeForFrame(frame.id);
     }
 
     // Delay showing the frame since FrameWasAdded is called before MainFrameChanged.
@@ -1527,7 +1538,7 @@ WebInspector._domNodeWasInspected = function(event)
     InspectorFrontendHost.bringToFront();
 
     this.showElementsTab();
-    this.showMainFrameDOMTree(event.data.node, true);
+    this.showMainFrameDOMTree(event.data.node);
 };
 
 WebInspector._inspectModeStateChanged = function(event)

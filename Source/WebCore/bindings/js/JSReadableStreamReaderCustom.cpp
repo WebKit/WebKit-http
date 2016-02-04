@@ -44,28 +44,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSValue JSReadableStreamReader::read(ExecState* exec)
-{
-    JSPromiseDeferred* promiseDeferred = JSPromiseDeferred::create(exec, globalObject());
-    DeferredWrapper wrapper(exec, globalObject(), promiseDeferred);
-
-    auto successCallback = [wrapper](JSValue value) mutable {
-        JSValue result = createIteratorResultObject(wrapper.promise()->globalObject()->globalExec(), value, false);
-        wrapper.resolve(result);
-    };
-    auto endCallback = [wrapper]() mutable {
-        JSValue result = createIteratorResultObject(wrapper.promise()->globalObject()->globalExec(), JSC::jsUndefined(), true);
-        wrapper.resolve(result);
-    };
-    auto failureCallback = [wrapper](JSValue value) mutable {
-        wrapper.reject(value);
-    };
-
-    impl().read(WTF::move(successCallback), WTF::move(endCallback), WTF::move(failureCallback));
-
-    return promiseDeferred->promise();
-}
-
 JSValue JSReadableStreamReader::closed(ExecState* exec) const
 {
     if (m_closedPromiseDeferred)
@@ -75,14 +53,6 @@ JSValue JSReadableStreamReader::closed(ExecState* exec) const
     impl().closed(DeferredWrapper(exec, globalObject(), m_closedPromiseDeferred.get()));
 
     return m_closedPromiseDeferred->promise();
-}
-
-JSValue JSReadableStreamReader::cancel(ExecState* exec)
-{
-    // FIXME: We should be able to remove this custom binding, once we can pass a JSValue or a ScriptValue.
-    JSPromiseDeferred& promiseDeferred = *JSPromiseDeferred::create(exec, globalObject());
-    impl().cancel(exec->argument(0), DeferredWrapper(exec, globalObject(), &promiseDeferred));
-    return promiseDeferred.promise();
 }
 
 EncodedJSValue JSC_HOST_CALL constructJSReadableStreamReader(ExecState* exec)

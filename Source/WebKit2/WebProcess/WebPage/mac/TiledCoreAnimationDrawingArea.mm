@@ -391,8 +391,12 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
             m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
 
 #if (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
-        [CATransaction addCommitHandler:^{
-            m_webPage.corePage()->inspectorController().didComposite(m_webPage.mainFrameView()->frame());
+        RefPtr<WebPage> retainedPage = &m_webPage;
+        [CATransaction addCommitHandler:[retainedPage] {
+            if (Page* corePage = retainedPage->corePage()) {
+                if (Frame* coreFrame = retainedPage->mainFrame())
+                    corePage->inspectorController().didComposite(*coreFrame);
+            }
         } forPhase:kCATransactionPhasePostCommit];
 #endif
 
@@ -497,7 +501,7 @@ void TiledCoreAnimationDrawingArea::updateScrolledExposedRect()
     frameView->setExposedRect(m_scrolledExposedRect);
 }
 
-void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition, bool flushSynchronously)
+void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, const IntSize& layerPosition, bool flushSynchronously, const WebCore::MachSendRight& fencePort)
 {
     m_inUpdateGeometry = true;
 
@@ -531,12 +535,19 @@ void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize, cons
 
     if (flushSynchronously) {
         [CATransaction flush];
+#if !HAVE(COREANIMATION_FENCES)
+        // We can't synchronize here if we're using fences or we'll blow the fence every time (and we don't need to).
         [CATransaction synchronize];
+#endif
     }
 
     m_webPage.send(Messages::DrawingAreaProxy::DidUpdateGeometry());
 
     m_inUpdateGeometry = false;
+
+#if HAVE(COREANIMATION_FENCES)
+    m_layerHostingContext->setFencePort(fencePort.sendRight());
+#endif
 }
 
 void TiledCoreAnimationDrawingArea::setDeviceScaleFactor(float deviceScaleFactor)
@@ -789,7 +800,7 @@ void TiledCoreAnimationDrawingArea::commitTransientZoom(double scale, FloatPoint
 
     if (shadowCALayer) {
         FloatRect shadowBounds = shadowLayerBoundsForFrame(frameView, scale);
-        RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect(shadowBounds, NULL)).get();
+        RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect(shadowBounds, NULL));
 
         RetainPtr<CABasicAnimation> shadowBoundsAnimation = transientZoomSnapAnimationForKeyPath("bounds");
         [shadowBoundsAnimation setToValue:[NSValue valueWithRect:shadowBounds]];

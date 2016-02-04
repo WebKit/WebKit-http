@@ -52,6 +52,7 @@
 #import "WebIOSEventFactory.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
+#import "_WKActivatedElementInfoInternal.h"
 #import "_WKFormDelegate.h"
 #import "_WKFormInputSession.h"
 #import <CoreText/CTFont.h>
@@ -831,7 +832,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius)
 {
     // A long-press gesture can not be recognized while panning, but a pan can be recognized
     // during a long-press gesture.
-    BOOL shouldNotPreventScrollViewGestures = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer || preventingGestureRecognizer == _previewGestureRecognizer;
+    BOOL shouldNotPreventScrollViewGestures = preventingGestureRecognizer == _highlightLongPressGestureRecognizer || preventingGestureRecognizer == _longPressGestureRecognizer;
     return !(shouldNotPreventScrollViewGestures
         && ([preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")] || [preventedGestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPinchGestureRecognizer")]));
 }
@@ -2638,6 +2639,9 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     static const unsigned kWebDeleteForwardKey = 0xF728;
     static const unsigned kWebSpaceKey = 0x20;
 
+    if (!self.isFirstResponder)
+        return NO;
+
     if (!_page->editorState().isContentEditable && event.isTabKey)
         return NO;
 
@@ -3213,10 +3217,18 @@ static bool isAssistableInputType(InputType type)
         canShowLinkPreview = NO;
     }
 
+    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+
     if (canShowLinkPreview) {
         _previewType = PreviewElementType::Link;
         NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
-        id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+        if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:defaultActions:elementInfo:)]) {
+            _highlightLongPressCanClick = NO;
+            RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+            _page->startInteractionWithElementAtPosition(_positionInformation.point);
+            return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:[_actionSheetAssistant defaultActionsForLinkSheet].get() elementInfo:elementInfo.get()];
+        }
+
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)]) {
             _highlightLongPressCanClick = NO;
             return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL];
@@ -3232,8 +3244,19 @@ static bool isAssistableInputType(InputType type)
     }
 
     if (canShowImagePreview) {
+        if (![uiDelegate respondsToSelector:@selector(_webView:commitPreviewedImageWithURL:)])
+            return nil;
+
+        String absoluteImageURL = _positionInformation.imageURL;
+        if (absoluteImageURL.isEmpty() || !(WebCore::protocolIsInHTTPFamily(absoluteImageURL) || WebCore::protocolIs(absoluteImageURL, "data")))
+            return nil;
         _previewType = PreviewElementType::Image;
-        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy()] autorelease];
+        NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.imageURL];
+        if ([uiDelegate respondsToSelector:@selector(_webView:willPreviewImageWithURL:)])
+            [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];
+        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+        _page->startInteractionWithElementAtPosition(_positionInformation.point);
+        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy() defaultActions:[_actionSheetAssistant defaultActionsForImageSheet] elementInfo:elementInfo] autorelease];
     }
 
     return nil;
@@ -3241,10 +3264,18 @@ static bool isAssistableInputType(InputType type)
 
 - (void)commitPreviewViewController:(UIViewController *)viewController
 {
-    if (_previewType != PreviewElementType::Link)
+    id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    if (_previewType == PreviewElementType::Image) {
+        if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewedImageWithURL:)]) {
+            String absoluteImageURL = _positionInformation.imageURL;
+            if (absoluteImageURL.isEmpty() || !(WebCore::protocolIsInHTTPFamily(absoluteImageURL) || WebCore::protocolIs(absoluteImageURL, "data")))
+                return;
+            [uiDelegate _webView:_webView commitPreviewedImageWithURL:[NSURL _web_URLWithWTFString:absoluteImageURL]];
+            return;
+        }
         return;
+    }
 
-    id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     if ([uiDelegate respondsToSelector:@selector(_webView:commitPreviewedViewController:)]) {
         [uiDelegate _webView:_webView commitPreviewedViewController:viewController];
         return;
@@ -3276,6 +3307,7 @@ static bool isAssistableInputType(InputType type)
 - (void)didDismissPreviewViewController:(UIViewController *)viewController committing:(BOOL)committing
 {
     [self _addDefaultGestureRecognizers];
+    _page->stopInteraction();
 
     id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     if ([uiDelegate respondsToSelector:@selector(_webView:didDismissPreviewViewController:)])

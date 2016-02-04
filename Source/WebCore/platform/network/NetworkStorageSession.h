@@ -26,6 +26,8 @@
 #ifndef NetworkStorageSession_h
 #define NetworkStorageSession_h
 
+#include "CredentialStorage.h"
+
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -47,9 +49,7 @@ public:
 
     WEBCORE_EXPORT static void switchToNewTestingSession();
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
-    bool isPrivateBrowsingSession() const { return m_isPrivate; }
-#endif
+    CredentialStorage& credentialStorage() { return m_credentialStorage; }
 
 #if PLATFORM(COCOA) || USE(CFNETWORK)
     NetworkStorageSession(RetainPtr<CFURLStorageSessionRef>);
@@ -77,9 +77,7 @@ private:
     RefPtr<NetworkingContext> m_context;
 #endif
 
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(SOUP)
-    bool m_isPrivate;
-#endif
+    CredentialStorage m_credentialStorage;
 };
 
 }

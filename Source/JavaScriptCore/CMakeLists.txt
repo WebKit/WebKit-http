@@ -208,6 +208,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGOSRExitCompiler32_64.cpp
     dfg/DFGOSRExitCompiler64.cpp
     dfg/DFGOSRExitCompilerCommon.cpp
+    dfg/DFGOSRExitFuzz.cpp
     dfg/DFGOSRExitJumpPlaceholder.cpp
     dfg/DFGOSRExitPreparation.cpp
     dfg/DFGObjectAllocationSinkingPhase.cpp
@@ -476,7 +477,6 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/IteratorOperations.cpp
     runtime/IteratorPrototype.cpp
     runtime/JSAPIValueWrapper.cpp
-    runtime/JSBoundSlotBaseFunction.cpp
     runtime/JSArray.cpp
     runtime/JSArrayBuffer.cpp
     runtime/JSArrayBufferConstructor.cpp
@@ -498,6 +498,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSGlobalObject.cpp
     runtime/JSGlobalObjectDebuggable.cpp
     runtime/JSGlobalObjectFunctions.cpp
+    runtime/JSJob.cpp
     runtime/JSLexicalEnvironment.cpp
     runtime/JSLock.cpp
     runtime/JSMap.cpp
@@ -509,9 +510,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSPromise.cpp
     runtime/JSPromiseConstructor.cpp
     runtime/JSPromiseDeferred.cpp
-    runtime/JSPromiseFunctions.cpp
     runtime/JSPromisePrototype.cpp
-    runtime/JSPromiseReaction.cpp
     runtime/JSPropertyNameEnumerator.cpp
     runtime/JSProxy.cpp
     runtime/JSScope.cpp

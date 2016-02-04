@@ -103,7 +103,7 @@ void InspectorTimelineAgent::didCreateFrontendAndBackend(Inspector::FrontendChan
 void InspectorTimelineAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason reason)
 {
     m_frontendDispatcher = nullptr;
-    m_backendDispatcher.clear();
+    m_backendDispatcher = nullptr;
 
     m_instrumentingAgents->setPersistentInspectorTimelineAgent(nullptr);
 
@@ -139,11 +139,6 @@ void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
         m_maxCallStackDepth = *maxCallStackDepth;
     else
         m_maxCallStackDepth = 5;
-
-    // If the debugger is paused the environment's stopwatch will be stopped, and shouldn't be
-    // restarted until the debugger continues.
-    if (!m_scriptDebugServer->isPaused())
-        m_instrumentingAgents->inspectorEnvironment().executionStopwatch()->start();
 
     m_instrumentingAgents->setInspectorTimelineAgent(this);
 
@@ -197,11 +192,6 @@ void InspectorTimelineAgent::internalStop()
 {
     if (!m_enabled)
         return;
-
-    // The environment's stopwatch could be already stopped if the debugger has paused.
-    auto stopwatch = m_instrumentingAgents->inspectorEnvironment().executionStopwatch();
-    if (stopwatch->isActive())
-        stopwatch->stop();
 
     m_instrumentingAgents->setInspectorTimelineAgent(nullptr);
 

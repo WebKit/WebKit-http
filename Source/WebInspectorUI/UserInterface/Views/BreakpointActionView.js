@@ -113,7 +113,7 @@ WebInspector.BreakpointActionView = class BreakpointActionView extends WebInspec
 
     _appendActionButtonClicked(event)
     {
-        var newAction = this._action.breakpoint.createAction(WebInspector.Breakpoint.DefaultBreakpointActionType, this._action);
+        var newAction = this._action.breakpoint.createAction(this._action.type, this._action);
         this._delegate.breakpointActionViewAppendActionView(this, newAction);
     }
 
@@ -192,12 +192,7 @@ WebInspector.BreakpointActionView = class BreakpointActionView extends WebInspec
     _codeMirrorBlurred(event)
     {
         // Throw away the expression if it's just whitespace.
-        var data = (this._codeMirror.getValue() || "").trim();
-
-        if (!data.length)
-            this._removeAction();
-        else
-            this._action.data = data;
+        this._action.data = (this._codeMirror.getValue() || "").trim();
     }
 
     _codeMirrorViewportChanged(event)

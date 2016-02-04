@@ -1,3 +1,140 @@
+2015-07-07  Brady Eidson  <beidson@apple.com>
+
+        HTTP Auth cached after disabling private browsing/reset.
+        <rdar://problem/8293055> and https://bugs.webkit.org/show_bug.cgi?id=146654
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebCache.h:
+        * Misc/WebCache.mm:
+        (+[WebCache clearCachedCredentials]): Clear the global CredentialStorage as well as the
+          storages belonging to each main frame of each WebView. This method is for DRT.
+        
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal download:didReceiveAuthenticationChallenge:]):
+        
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (WebKit::getAuthenticationInfo):
+        
+        * WebView/WebView.mm:
+        (-[WebView _clearCredentials]): Clear the storage belonging to the current networking session
+          of the main frame of this WebView.
+        * WebView/WebViewInternal.h:
+
+2015-07-04  Chris Dumez  <cdumez@apple.com>
+
+        Drop RefPtr::clear() method
+        https://bugs.webkit.org/show_bug.cgi?id=146556
+
+        Reviewed by Brady Eidson.
+
+        Drop RefPtr::clear() method in favor of "= nullptr;" pattern.
+
+2015-07-03  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Update some build settings as recommended by Xcode 7
+        https://bugs.webkit.org/show_bug.cgi?id=146597
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_UNREACHABLE_CODE,
+        GCC_WARN_UNDECLARED_SELECTOR and GCC_NO_COMMON_BLOCKS. Removed GCC_MODEL_TUNING.
+
+2015-07-02  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        Rubber-stamped by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        Http, not HTTP, for settings generator reasons.
+
+2015-07-02  Brady Eidson  <beidson@apple.com>
+
+        Add preference to disable all http-equiv.
+        <rdar://problem/9091261> and https://bugs.webkit.org/show_bug.cgi?id=146553
+
+        Reviewed by Sam Weinig.
+        
+        * WebView/WebPreferenceKeysPrivate.h:
+        
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setMetaRefreshEnabled:]): Still expose this SPI, but have it affect
+          the "httpEquivEnabled" setting.
+        (-[WebPreferences metaRefreshEnabled]): Ditto.
+        (-[WebPreferences setHTTPEquivEnabled:]):
+        (-[WebPreferences httpEquivEnabled]):
+        * WebView/WebPreferencesPrivate.h:
+        
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+        (-[WebView _preferencesChanged:]):
+
+2015-07-02  Timothy Horton  <timothy_horton@apple.com>
+
+        iOS WebKitLegacy should match WebKit2's viewport behavior
+        https://bugs.webkit.org/show_bug.cgi?id=146540
+        <rdar://problem/20574017>
+
+        Reviewed by Dan Bernstein.
+
+        A number of changes have been made to WebKit2's viewport behavior
+        to make it possible to scale "responsive" sites that misbehave (lay out
+        in a non-responsive way).
+
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+        Add the plumbing required to implement these new behaviors in WebKit1.
+
+2015-07-01  Dean Jackson  <dino@apple.com>
+
+        Disable the experimental WebGL2 implementation
+        https://bugs.webkit.org/show_bug.cgi?id=146526
+        <rdar://problem/21641235>
+
+        Reviewed by Myles Maxfield.
+
+        Add (and disable) an ENABLE_WEBGL2 flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-07-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the iOS build.
+
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (-[WebUserMediaPolicyListener denyOnlyThisRequest]): Remove ASSERT_NOT_REACHED, 
+        because it caused the compiler to warn about noreturn.
+
+2015-07-01  Matthew Daiter  <mdaiter@apple.com>
+
+        Enable MEDIA_STREAM flag
+        https://bugs.webkit.org/show_bug.cgi?id=145947
+        <rdar://problem/21365829>
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig: Added MEDIA_STREAM flag
+        * WebCoreSupport/WebUserMediaClient.h: Changed signatures
+        * WebCoreSupport/WebUserMediaClient.mm: Changed signatures
+        (WebUserMediaClient::requestPermission):
+        (WebUserMediaClient::cancelRequest):
+        (-[WebUserMediaPolicyListener denyOnlyThisRequest]):
+        (-[WebUserMediaPolicyListener shouldClearCache]):
+
+2015-07-01  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (185319): Reproducible crash in WebHistoryItem launching FluidApp.
+        <rdar://problem/21598293> and https://bugs.webkit.org/show_bug.cgi?id=146494
+
+        Reviewed by Darin Adler.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]): Don’t reference members of a Vector
+          that don’t exist.
+
 2015-06-30  Andy VanWagoner  <thetalecrafter@gmail.com>
 
         Implement ECMAScript Internationalization API

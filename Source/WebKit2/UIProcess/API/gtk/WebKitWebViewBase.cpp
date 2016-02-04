@@ -1100,7 +1100,7 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebPro
     // FIXME: Accelerated compositing under Wayland is not yet supported.
     // https://bugs.webkit.org/show_bug.cgi?id=115803
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
-        preferences->setAcceleratedCompositingEnabled(false);
+        configuration.preferences->setAcceleratedCompositingEnabled(false);
 #endif
 
     priv->pageProxy = context->createWebPage(*priv->pageClient, WTF::move(configuration));
@@ -1383,6 +1383,26 @@ void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase* webkitWe
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
     if (priv->redirectedWindow)
         priv->redirectedWindow->resize(IntSize());
+#else
+    UNUSED_PARAM(webkitWebViewBase);
+#endif
+}
+
+void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase* webkitWebViewBase)
+{
+#if PLATFORM(X11)
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+    ASSERT(drawingArea);
+#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (!priv->redirectedWindow)
+        return;
+    drawingArea->setNativeSurfaceHandleForCompositing(priv->redirectedWindow->windowID());
+#else
+    if (!gtk_widget_get_realized(GTK_WIDGET(webkitWebViewBase)))
+        return;
+    drawingArea->setNativeSurfaceHandleForCompositing(GDK_WINDOW_XID(gtk_widget_get_window(GTK_WIDGET(webkitWebViewBase))));
+#endif
 #else
     UNUSED_PARAM(webkitWebViewBase);
 #endif

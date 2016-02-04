@@ -221,6 +221,8 @@ webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
 
 webkit.org/b/141122 editing/selection/programmatic-selection-on-mac-is-directionless.html [ Pass Failure ]
 
+webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -419,6 +421,9 @@ fast/dynamic/window-resize-scrollbars-test.html [ Failure ]
 # This test is not the cause of the problem, just the one that happens to currently be the victim.
 svg/filters/filter-hidden-content.svg [ Pass Failure ]
 
+# No good way to test private browsing in WKTR right now
+http/tests/security/private-browsing-http-auth.html
+
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
 
@@ -562,6 +567,9 @@ http/tests/loading/pdf-commit-load-callbacks.html
 # Times out unexpectedly.
 http/tests/security/feed-urls-from-remote.html
 
+# First two lines are reversed when test is flaky.
+fast/preloader/document-write-2.html [ Pass Failure ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -680,6 +688,14 @@ fast/text/shaping
 
 # WebKit2 should always have IndexedDB enabled
 storage/indexeddb/properties-disabled-at-runtime.html [ Skip ]
+
+# WebKitTestRunner testRunner.setPrivateBrowsingEnabled doesn't work with NetworkProcess.
+# We explicitly Skip the following tests instead of marking them as Failure because some of these tests will naturally pass
+# as a consequence of testRunner.setPrivateBrowsingEnabled() effectively being a no-op as of the time of writing (07/08/2015).
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-enabled.html [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-cross-origin-no-cookies-when-private-browsing-toggled.html [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-no-cookies-when-private-browsing-toggled.html [ Skip ]
+webkit.org/b/115274 http/tests/security/contentSecurityPolicy/report-same-origin-with-cookies-when-private-browsing-enabled.html [ Skip ]
 
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################

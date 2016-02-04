@@ -348,7 +348,7 @@ void InspectorPageAgent::didCreateFrontendAndBackend(Inspector::FrontendChannel*
 void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
     m_frontendDispatcher = nullptr;
-    m_backendDispatcher.clear();
+    m_backendDispatcher = nullptr;
 
     ErrorString unused;
     disable(unused);
@@ -367,6 +367,10 @@ void InspectorPageAgent::enable(ErrorString&)
     m_enabled = true;
     m_instrumentingAgents->setInspectorPageAgent(this);
 
+    auto stopwatch = m_instrumentingAgents->inspectorEnvironment().executionStopwatch();
+    stopwatch->reset();
+    stopwatch->start();
+
     if (Frame* frame = mainFrame())
         m_originalScriptExecutionDisabled = !frame->settings().isScriptEnabled();
 }
@@ -374,7 +378,7 @@ void InspectorPageAgent::enable(ErrorString&)
 void InspectorPageAgent::disable(ErrorString&)
 {
     m_enabled = false;
-    m_scriptsToEvaluateOnLoad.clear();
+    m_scriptsToEvaluateOnLoad = nullptr;
     m_instrumentingAgents->setInspectorPageAgent(nullptr);
 
     ErrorString unused;
@@ -819,6 +823,12 @@ void InspectorPageAgent::loaderDetachedFromFrame(DocumentLoader& loader)
 
 void InspectorPageAgent::frameStartedLoading(Frame& frame)
 {
+    if (frame.isMainFrame()) {
+        auto stopwatch = m_instrumentingAgents->inspectorEnvironment().executionStopwatch();
+        stopwatch->reset();
+        stopwatch->start();
+    }
+
     m_frontendDispatcher->frameStartedLoading(frameId(&frame));
 }
 

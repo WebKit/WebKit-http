@@ -33,6 +33,8 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
 
+        this._persistentNetworkTimeline = new WebInspector.NetworkTimeline;
+
         this._isCapturing = false;
         this._isCapturingPageReload = false;
         this._autoCapturingMainResource = null;
@@ -62,9 +64,24 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         return this._activeRecording;
     }
 
+    get persistentNetworkTimeline()
+    {
+        return this._persistentNetworkTimeline;
+    }
+
     get recordings()
     {
         return this._recordings.slice();
+    }
+
+    get autoCaptureOnPageLoad()
+    {
+        return this._autoCaptureOnPageLoad;
+    }
+
+    set autoCaptureOnPageLoad(autoCapture)
+    {
+        this._autoCaptureOnPageLoad = autoCapture;
     }
 
     isCapturing()
@@ -497,6 +514,9 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     _startAutoCapturing(event)
     {
+        if (!this._autoCaptureOnPageLoad)
+            return false;
+
         if (!event.target.isMainFrame() || (this._isCapturing && !this._autoCapturingMainResource))
             return false;
 
@@ -549,6 +569,14 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     _mainResourceDidChange(event)
     {
+        if (event.target.isMainFrame())
+            this._persistentNetworkTimeline.reset();
+
+        var mainResource = event.target.mainResource;
+        var record = new WebInspector.ResourceTimelineRecord(mainResource);
+        if (!isNaN(record.startTime))
+            this._persistentNetworkTimeline.addRecord(record);
+
         // Ignore resource events when there isn't a main frame yet. Those events are triggered by
         // loading the cached resources when the inspector opens, and they do not have timing information.
         if (!WebInspector.frameResourceManager.mainFrame)
@@ -560,15 +588,18 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         if (!this._isCapturing)
             return;
 
-        var mainResource = event.target.mainResource;
         if (mainResource === this._autoCapturingMainResource)
             return;
 
-        this._addRecord(new WebInspector.ResourceTimelineRecord(mainResource));
+        this._addRecord(record);
     }
 
     _resourceWasAdded(event)
     {
+        var record = new WebInspector.ResourceTimelineRecord(event.data.resource);
+        if (!isNaN(record.startTime))
+            this._persistentNetworkTimeline.addRecord(record);
+
         // Ignore resource events when there isn't a main frame yet. Those events are triggered by
         // loading the cached resources when the inspector opens, and they do not have timing information.
         if (!WebInspector.frameResourceManager.mainFrame)
@@ -577,7 +608,7 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
         if (!this._isCapturing)
             return;
 
-        this._addRecord(new WebInspector.ResourceTimelineRecord(event.data.resource));
+        this._addRecord(record);
     }
 };
 

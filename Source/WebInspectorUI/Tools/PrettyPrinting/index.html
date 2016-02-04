@@ -50,6 +50,11 @@
         lineNumbers: true,
     });
 
+    // In the frontend, keywords are added to the css mode to force the parser to recognize them as values.
+    // Here, the "calc" keyword is added to allow the css-rule tests to perform as they would in the frontend.
+    var modeSpec = CodeMirror.resolveMode("text/css");
+    modeSpec.valueKeywords["calc"] = true;
+
     // Initial values from URL.
     var queryParams = {};
     if (window.location.search.length > 0) {
@@ -248,6 +253,7 @@
     function runCssRuleTests(callback) {
         _runTests(callback, [
             "css-rule-tests/invalid-property-is-not-removed.css",
+            "css-rule-tests/remove-newline-between-values.css",
             "css-rule-tests/remove-whitespace-before-colon.css",
             "css-rule-tests/remove-whitespace-before-semicolon.css",
             "css-rule-tests/remove-whitespace-before-property.css",
@@ -267,9 +273,12 @@
             "css-rule-tests/split-invalid-property-followed-by-invalid-property.css",
             "css-rule-tests/split-invalid-property-followed-by-comment.css",
             "css-rule-tests/split-property-without-semicolon-followed-by-comment-and-property.css",
+            "css-rule-tests/add-whitespace-between-values.css",
+            "css-rule-tests/add-whitespace-between-rules.css",
             "css-rule-tests/add-whitespace-after-colon.css",
             "css-rule-tests/add-whitespace-after-comma.css",
             "css-rule-tests/do-not-append-semicolon.css",
+            "css-rule-tests/do-not-add-whitespace-before-prefixed-property-value.css",
             "css-rule-tests/keep-prefixed-value.css",
         ]);
     }

@@ -899,14 +899,16 @@ void DocumentLoader::checkLoadComplete()
     m_frame->document()->domWindow()->finishedLoading();
 }
 
-void DocumentLoader::setFrame(Frame* frame)
+void DocumentLoader::attachToFrame(Frame& frame)
 {
-    if (m_frame == frame)
-        return;
-    ASSERT(frame && !m_frame);
-    m_frame = frame;
-    m_writer.setFrame(frame);
+    ASSERT(!m_frame);
+    m_frame = &frame;
+    m_writer.setFrame(&frame);
     attachToFrame();
+
+#ifndef NDEBUG
+    m_hasEverBeenAttached = true;
+#endif
 }
 
 void DocumentLoader::attachToFrame()
@@ -916,7 +918,12 @@ void DocumentLoader::attachToFrame()
 
 void DocumentLoader::detachFromFrame()
 {
-    ASSERT(m_frame);
+#ifndef NDEBUG
+    if (m_hasEverBeenAttached)
+        ASSERT_WITH_MESSAGE(m_frame, "detachFromFrame() is being called on a DocumentLoader twice without an attachToFrame() inbetween");
+    else
+        ASSERT_WITH_MESSAGE(m_frame, "detachFromFrame() is being called on a DocumentLoader that has never attached to any Frame");
+#endif
     RefPtr<Frame> protectFrame(m_frame);
     Ref<DocumentLoader> protectLoader(*this);
 
@@ -930,7 +937,14 @@ void DocumentLoader::detachFromFrame()
 #endif
 
     m_applicationCacheHost->setDOMApplicationCache(nullptr);
-    InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
+
+    // Even though we ASSERT at the top of this method that we have an m_frame, we're seeing crashes where m_frame is null.
+    // This means either that a DocumentLoader is detaching twice, or is detaching before ever having attached.
+    // Until we figure out how that is happening, null check m_frame before dereferencing it here.
+    // <rdar://problem/21293082> and https://bugs.webkit.org/show_bug.cgi?id=146786
+    if (m_frame)
+        InspectorInstrumentation::loaderDetachedFromFrame(*m_frame, *this);
+
     m_frame = nullptr;
     // The call to stopLoading() above should have canceled any pending content policy check.
     ASSERT_WITH_MESSAGE(!m_waitingForContentPolicy, "The content policy callback needs a valid frame.");
@@ -1406,7 +1420,7 @@ void DocumentLoader::startLoadingMainResource()
     // If this is a reload the cache layer might have made the previous request conditional. DocumentLoader can't handle 304 responses itself.
     request.makeUnconditional();
 
-    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo);
+    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForAllCredentials, SkipSecurityCheck, UseDefaultOriginRestrictionsForType, IncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck);
     CachedResourceRequest cachedResourceRequest(request, mainResourceLoadOptions);
     cachedResourceRequest.setInitiator(*this);
     m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
@@ -1524,7 +1538,7 @@ void DocumentLoader::getIconLoadDecisionForIconURL(const String& urlString)
 void DocumentLoader::continueIconLoadWithDecision(IconLoadDecision decision)
 {
     ASSERT(m_iconLoadDecisionCallback);
-    m_iconLoadDecisionCallback = 0;
+    m_iconLoadDecisionCallback = nullptr;
     if (m_frame)
         m_frame->loader().icon().continueLoadWithDecision(decision);
 }
