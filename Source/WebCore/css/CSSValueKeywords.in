@@ -832,6 +832,17 @@ content-box
 padding
 padding-box
 
+//
+// CSS_PROP_BREAK_BEFORE/AFTER/INSIDE
+//
+avoid-column
+avoid-page
+avoid-region
+page
+recto
+region
+verso
+
 // CSS_SHAPES
 margin-box
 
@@ -1180,3 +1191,9 @@ contents
 // touch-action
 manipulation
 #endif
+
+// hanging-punctuation
+allow-end
+first
+force-end
+last

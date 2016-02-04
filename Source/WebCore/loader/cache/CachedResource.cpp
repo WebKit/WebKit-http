@@ -159,7 +159,7 @@ CachedResource::~CachedResource()
     ASSERT(canDelete());
     ASSERT(!inCache());
     ASSERT(!m_deleted);
-    ASSERT(url().isNull() || MemoryCache::singleton().resourceForRequest(resourceRequest(), sessionID()) != this);
+    ASSERT(url().isNull() || !allowsCaching() || MemoryCache::singleton().resourceForRequest(resourceRequest(), sessionID()) != this);
 
 #ifndef NDEBUG
     m_deleted = true;
@@ -174,7 +174,7 @@ void CachedResource::failBeforeStarting()
 {
     // FIXME: What if resources in other frames were waiting for this revalidation?
     LOG(ResourceLoading, "Cannot start loading '%s'", url().string().latin1().data());
-    if (m_resourceToRevalidate) 
+    if (allowsCaching() && m_resourceToRevalidate)
         MemoryCache::singleton().revalidationFailed(*this);
     error(CachedResource::LoadError);
 }
@@ -452,7 +452,7 @@ bool CachedResource::addClientToSet(CachedResourceClient* client)
         else
             m_preloadResult = PreloadReferenced;
     }
-    if (!hasClients() && inCache())
+    if (allowsCaching() && !hasClients() && inCache())
         MemoryCache::singleton().addToLiveResourcesSize(*this);
 
     if ((m_type == RawResource || m_type == MainResource) && !m_response.isNull() && !m_proxyResource) {
@@ -482,26 +482,30 @@ void CachedResource::removeClient(CachedResourceClient* client)
         didRemoveClient(client);
     }
 
-    bool deleted = deleteIfPossible();
-    if (!deleted && !hasClients()) {
-        auto& memoryCache = MemoryCache::singleton();
-        if (inCache()) {
-            memoryCache.removeFromLiveResourcesSize(*this);
-            memoryCache.removeFromLiveDecodedResourcesList(*this);
-        }
-        if (!m_switchingClientsToRevalidatedResource)
-            allClientsRemoved();
-        destroyDecodedDataIfNeeded();
-        if (response().cacheControlContainsNoStore() && url().protocolIs("https")) {
-            // RFC2616 14.9.2:
-            // "no-store: ... MUST make a best-effort attempt to remove the information from volatile storage as promptly as possible"
-            // "... History buffers MAY store such responses as part of their normal operation."
-            // We allow non-secure content to be reused in history, but we do not allow secure content to be reused.
-            memoryCache.remove(*this);
-        }
-        memoryCache.pruneSoon();
+    if (deleteIfPossible()) {
+        // `this` object is dead here.
+        return;
     }
-    // This object may be dead here.
+
+    if (!allowsCaching() || hasClients())
+        return;
+
+    auto& memoryCache = MemoryCache::singleton();
+    if (inCache()) {
+        memoryCache.removeFromLiveResourcesSize(*this);
+        memoryCache.removeFromLiveDecodedResourcesList(*this);
+    }
+    if (!m_switchingClientsToRevalidatedResource)
+        allClientsRemoved();
+    destroyDecodedDataIfNeeded();
+    if (response().cacheControlContainsNoStore() && url().protocolIs("https")) {
+        // RFC2616 14.9.2:
+        // "no-store: ... MUST make a best-effort attempt to remove the information from volatile storage as promptly as possible"
+        // "... History buffers MAY store such responses as part of their normal operation."
+        // We allow non-secure content to be reused in history, but we do not allow secure content to be reused.
+        memoryCache.remove(*this);
+    }
+    memoryCache.pruneSoon();
 }
 
 void CachedResource::destroyDecodedDataIfNeeded()
@@ -541,12 +545,12 @@ void CachedResource::setDecodedSize(unsigned size)
 
     // The object must be moved to a different queue, since its size has been changed.
     // Remove before updating m_decodedSize, so we find the resource in the correct LRU list.
-    if (inCache())
+    if (allowsCaching() && inCache())
         MemoryCache::singleton().removeFromLRUList(*this);
     
     m_decodedSize = size;
    
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         // Now insert into the new LRU list.
         memoryCache.insertInLRUList(*this);
@@ -578,12 +582,12 @@ void CachedResource::setEncodedSize(unsigned size)
 
     // The object must be moved to a different queue, since its size has been changed.
     // Remove before updating m_encodedSize, so we find the resource in the correct LRU list.
-    if (inCache())
+    if (allowsCaching() && inCache())
         MemoryCache::singleton().removeFromLRUList(*this);
 
     m_encodedSize = size;
 
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         memoryCache.insertInLRUList(*this);
         memoryCache.adjustSize(hasClients(), delta);
@@ -594,7 +598,7 @@ void CachedResource::didAccessDecodedData(double timeStamp)
 {
     m_lastDecodedAccessTime = timeStamp;
     
-    if (inCache()) {
+    if (allowsCaching() && inCache()) {
         auto& memoryCache = MemoryCache::singleton();
         if (memoryCache.inLiveDecodedResourcesList(*this)) {
             memoryCache.removeFromLiveDecodedResourcesList(*this);

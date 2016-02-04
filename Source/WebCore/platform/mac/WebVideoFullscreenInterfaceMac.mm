@@ -24,13 +24,57 @@
  */
 
 #import "config.h"
-#import "WebVideoFullscreenInterface.h"
+#import "WebVideoFullscreenInterfaceMac.h"
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 
-bool WebCore::supportsPictureInPicture()
+#import "IntRect.h"
+#import "WebVideoFullscreenChangeObserver.h"
+#import "WebVideoFullscreenModel.h"
+
+namespace WebCore {
+
+WebVideoFullscreenInterfaceMac::~WebVideoFullscreenInterfaceMac()
+{
+}
+
+void WebVideoFullscreenInterfaceMac::setWebVideoFullscreenModel(WebVideoFullscreenModel* model)
+{
+    m_videoFullscreenModel = model;
+}
+
+void WebVideoFullscreenInterfaceMac::setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver* observer)
+{
+    m_fullscreenChangeObserver = observer;
+}
+
+void WebVideoFullscreenInterfaceMac::setMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
+{
+    HTMLMediaElementEnums::VideoFullscreenMode newMode = m_mode | mode;
+    if (m_mode == newMode)
+        return;
+
+    m_mode = newMode;
+    if (m_videoFullscreenModel)
+        m_videoFullscreenModel->fullscreenModeChanged(m_mode);
+}
+
+void WebVideoFullscreenInterfaceMac::clearMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
+{
+    HTMLMediaElementEnums::VideoFullscreenMode newMode = m_mode & ~mode;
+    if (m_mode == newMode)
+        return;
+
+    m_mode = newMode;
+    if (m_videoFullscreenModel)
+        m_videoFullscreenModel->fullscreenModeChanged(m_mode);
+}
+
+bool supportsPictureInPicture()
 {
     return false;
+}
+
 }
 
 #endif

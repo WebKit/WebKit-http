@@ -125,7 +125,9 @@ public:
     WTF_EXPORT_STRING_API bool endsWith(const StringView&) const;
     WTF_EXPORT_STRING_API bool endsWithIgnoringASCIICase(const StringView&) const;
 
+    int toInt() const;
     int toInt(bool& isValid) const;
+    int toIntStrict(bool& isValid) const;
     float toFloat(bool& isValid) const;
 
     static void invalidate(const StringImpl&);
@@ -162,13 +164,9 @@ template<typename CharacterType, size_t inlineCapacity> void append(Vector<Chara
 bool equal(StringView, StringView);
 bool equal(StringView, const LChar*);
 bool equal(StringView, const char*);
+
 bool equalIgnoringASCIICase(StringView, StringView);
-WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(StringView a, const char* b, unsigned bLength);
-template<unsigned charactersCount>
-bool equalIgnoringASCIICase(StringView a, const char (&b)[charactersCount])
-{
-    return equalIgnoringASCIICase(a, b, charactersCount - 1);
-}
+bool equalIgnoringASCIICase(StringView, const char*);
 
 template<unsigned length> bool equalLettersIgnoringASCIICase(StringView, const char (&lowercaseLetters)[length]);
 
@@ -458,11 +456,24 @@ inline float StringView::toFloat(bool& isValid) const
     return charactersToFloat(characters16(), length(), &isValid);
 }
 
+inline int StringView::toInt() const
+{
+    bool isValid;
+    return toInt(isValid);
+}
+
 inline int StringView::toInt(bool& isValid) const
 {
     if (is8Bit())
         return charactersToInt(characters8(), m_length, &isValid);
     return charactersToInt(characters16(), length(), &isValid);
+}
+
+inline int StringView::toIntStrict(bool& isValid) const
+{
+    if (is8Bit())
+        return charactersToIntStrict(characters8(), m_length, &isValid);
+    return charactersToIntStrict(characters16(), length(), &isValid);
 }
 
 inline String StringView::toStringWithoutCopying() const
@@ -535,6 +546,11 @@ inline bool equal(StringView a, const char* b)
 }
 
 inline bool equalIgnoringASCIICase(StringView a, StringView b)
+{
+    return equalIgnoringASCIICaseCommon(a, b);
+}
+
+inline bool equalIgnoringASCIICase(StringView a, const char* b)
 {
     return equalIgnoringASCIICaseCommon(a, b);
 }

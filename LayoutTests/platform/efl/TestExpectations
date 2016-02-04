@@ -79,6 +79,11 @@ fast/text/arabic-times-new-roman.html [ Skip ]
 # Need to implement font feature seeting for EFL port since r188146.
 css3/font-feature-settings-rendering.html [ Skip ]
 
+# Requires MEDIA_STREAM support.
+webkit.org/b/87662 fast/mediastream [ Skip ]
+webkit.org/b/87662 fast/events/constructors/media-stream-event-constructor.html [ Skip ]
+webkit.org/b/87662 http/tests/media/media-stream [ Skip ]
+
 # ----------------------------------------
 # Tests which also fail in other platforms
 # ----------------------------------------
@@ -1470,10 +1475,6 @@ webkit.org/b/138307 media/encrypted-media/encrypted-media-can-play-type.html [ S
 webkit.org/b/88080 pointer-lock [ Skip ]
 webkit.org/b/88080 http/tests/pointer-lock [ Skip ]
 
-# Requires MEDIA_STREAM support.
-webkit.org/b/87662 fast/mediastream [ Skip ]
-webkit.org/b/87662 fast/events/constructors/media-stream-event-constructor.html [ Skip ]
-
 # Requires INDIE_UI support
 webkit.org/b/111446 indieui [ Skip ]
 
@@ -2274,6 +2275,9 @@ compositing/tiling/transform-origin-tiled.html [ Failure ]
 webkit.org/b/144737 inspector [ Skip ]
 webkit.org/b/144737 http/tests/inspector [ Skip ]
 
+# Requires ENABLE(RESOURCE_USAGE).
+inspector/memory [ Skip ]
+
 webkit.org/b/145632 fast/animation/request-animation-frame-throttle-subframe.html [ Timeout ]
 
 # Below tests are failed since efl buildbot disable USE_NATIVE_XDISPLAY.
@@ -2728,3 +2732,5 @@ webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gest
 webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gesture-window-open-with-flag.html [ Crash ]
 webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag-from-subframe.html [ Crash ]
 webkit.org/b/152602 loader/navigation-policy/should-open-external-urls/user-gesture-window-open-without-flag.html [ Crash ]
+
+webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]

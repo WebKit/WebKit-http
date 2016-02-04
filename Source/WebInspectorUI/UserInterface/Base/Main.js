@@ -70,6 +70,8 @@ WebInspector.loaded = function()
         InspectorBackend.registerDebuggerDispatcher(new WebInspector.DebuggerObserver);
     if (InspectorBackend.registerHeapDispatcher)
         InspectorBackend.registerHeapDispatcher(new WebInspector.HeapObserver);
+    if (InspectorBackend.registerMemoryDispatcher)
+        InspectorBackend.registerMemoryDispatcher(new WebInspector.MemoryObserver);
     if (InspectorBackend.registerDatabaseDispatcher)
         InspectorBackend.registerDatabaseDispatcher(new WebInspector.DatabaseObserver);
     if (InspectorBackend.registerDOMStorageDispatcher)
@@ -390,10 +392,17 @@ WebInspector.contentLoaded = function()
 
     this._pendingOpenTabs = [];
 
+    // Previously we may have stored duplicates in this setting. Avoid creating duplicate tabs.
     let openTabTypes = this._openTabsSetting.value;
+    let seenTabTypes = new Set;
 
     for (let i = 0; i < openTabTypes.length; ++i) {
         let tabType = openTabTypes[i];
+
+        if (seenTabTypes.has(tabType))
+            continue;
+        seenTabTypes.add(tabType);
+
         if (!this.isTabTypeAllowed(tabType)) {
             this._pendingOpenTabs.push({tabType, index: i});
             continue;
@@ -467,6 +476,7 @@ WebInspector._createTabContentViewForType = function(tabType)
 
 WebInspector._rememberOpenTabs = function()
 {
+    let seenTabTypes = new Set;
     let openTabs = [];
 
     for (let tabBarItem of this.tabBar.tabBarItems) {
@@ -477,11 +487,16 @@ WebInspector._rememberOpenTabs = function()
             continue;
         console.assert(tabContentView.type, "Tab type can't be null, undefined, or empty string", tabContentView.type, tabContentView);
         openTabs.push(tabContentView.type);
+        seenTabTypes.add(tabContentView.type);
     }
 
     // Keep currently unsupported tabs in the setting at their previous index.
-    for (let {tabType, index} of this._pendingOpenTabs)
+    for (let {tabType, index} of this._pendingOpenTabs) {
+        if (seenTabTypes.has(tabType))
+            continue;
         openTabs.insertAtIndex(tabType, index);
+        seenTabTypes.add(tabType);
+    }
 
     this._openTabsSetting.value = openTabs;
 };
@@ -1328,8 +1343,8 @@ WebInspector._windowBlurred = function(event)
 
 WebInspector._windowResized = function(event)
 {
-    this.toolbar.updateLayout();
-    this.tabBar.updateLayout();
+    this.toolbar.updateLayout(WebInspector.View.LayoutReason.Resize);
+    this.tabBar.updateLayout(WebInspector.View.LayoutReason.Resize);
     this._tabBrowserSizeDidChange();
 };
 
@@ -1441,14 +1456,14 @@ WebInspector._updateDockNavigationItems = function()
 
 WebInspector._tabBrowserSizeDidChange = function()
 {
-    this.tabBrowser.updateLayout();
-    this.splitContentBrowser.updateLayout();
-    this.quickConsole.updateLayout();
+    this.tabBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
+    this.splitContentBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
+    this.quickConsole.updateLayout(WebInspector.View.LayoutReason.Resize);
 };
 
 WebInspector._quickConsoleDidResize = function(event)
 {
-    this.tabBrowser.updateLayout();
+    this.tabBrowser.updateLayout(WebInspector.View.LayoutReason.Resize);
 };
 
 WebInspector._sidebarWidthDidChange = function(event)

@@ -39,4 +39,17 @@
     --syntax-highlight-string-color: hsl(1, 79%, 42%);
     --syntax-highlight-regexp-color: hsl(20, 100%, 44%);
     --syntax-highlight-symbol-color: hsl(172, 45%, 45%);
+
+    --memory-active-divider-color: hsl(0, 0%, 70%);
+    --memory-inactive-divider-color: hsl(0, 0%, 85%);
+    --memory-javascript-fill-color: hsl(269, 65%, 75%);
+    --memory-javascript-stroke-color: hsl(269, 33%, 50%);
+    --memory-images-fill-color: hsl(0, 65%, 75%);
+    --memory-images-stroke-color: hsl(0, 54%, 50%);
+    --memory-layers-fill-color: hsl(76, 49%, 75%);
+    --memory-layers-stroke-color: hsl(79, 45%, 50%);
+    --memory-page-fill-color: hsl(22, 60%, 70%);
+    --memory-page-stroke-color: hsl(22, 40%, 50%);
+    --memory-max-comparison-fill-color: hsl(220, 10%, 75%);
+    --memory-max-comparison-stroke-color: hsl(220, 10%, 55%);
 }

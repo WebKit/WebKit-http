@@ -249,8 +249,10 @@ public:
     WebInspectorUI* inspectorUI();
     bool isInspectorPage() { return !!m_inspectorUI; }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     WebVideoFullscreenManager* videoFullscreenManager();
+#endif
+#if PLATFORM(IOS)
     void setAllowsMediaDocumentInlinePlayback(bool);
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
 #endif
@@ -398,7 +400,8 @@ public:
     void setPaginationBehavesLikeColumns(bool);
     void setPageLength(double);
     void setGapBetweenPages(double);
-
+    void setPaginationLineGridEnabled(bool);
+    
     void postInjectedBundleMessage(const String& messageName, const UserData&);
     void postSynchronousInjectedBundleMessage(const String& messageName, const UserData&);
 
@@ -1282,8 +1285,10 @@ private:
 
     RefPtr<WebInspector> m_inspector;
     RefPtr<WebInspectorUI> m_inspectorUI;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+#endif
+#if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };
 #endif
 #if ENABLE(FULLSCREEN_API)
@@ -1390,7 +1395,7 @@ private:
     WebCore::Timer m_volatilityTimer;
 #endif
 
-    HashSet<String, CaseFoldingHash> m_mimeTypesWithCustomContentProviders;
+    HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;
 
     HashSet<unsigned> m_activeRenderingSuppressionTokens;

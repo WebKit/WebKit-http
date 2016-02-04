@@ -46,26 +46,10 @@
 
 #if USE(GSTREAMER_GL)
 #define GST_USE_UNSTABLE_API
-#include <gst/gl/gstglmemory.h>
-#undef GST_USE_UNSTABLE_API
-#endif
-
-#if GST_CHECK_VERSION(1, 1, 0) && USE(TEXTURE_MAPPER_GL)
-#include "BitmapTextureGL.h"
-#include "BitmapTexturePool.h"
-#include "TextureMapperGL.h"
-#endif
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#include "TextureMapperPlatformLayerBuffer.h"
-#endif
-
-#if USE(GSTREAMER_GL)
-#include "GLContext.h"
-
-#define GST_USE_UNSTABLE_API
 #include <gst/gl/gl.h>
 #undef GST_USE_UNSTABLE_API
 
+#include "GLContext.h"
 #if USE(GLX)
 #include "GLContextGLX.h"
 #include <gst/gl/x11/gstgldisplay_x11.h>
@@ -84,8 +68,17 @@
 // defines None, breaking MediaPlayer::None enum
 #if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
 #undef None
-#endif
+#endif // PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
 #endif // USE(GSTREAMER_GL)
+
+#if GST_CHECK_VERSION(1, 1, 0) && USE(TEXTURE_MAPPER_GL)
+#include "BitmapTextureGL.h"
+#include "BitmapTexturePool.h"
+#include "TextureMapperGL.h"
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerBuffer.h"
+#endif
 
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
 #include <cairo-gl.h>
@@ -166,7 +159,7 @@ private:
     GLuint m_textureID;
     bool m_isValid { false };
 };
-#endif
+#endif // USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
 
 MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* player)
     : m_player(player)
@@ -220,17 +213,17 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         return false;
 
     if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-        GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
-        gst_context_set_gl_display(displayContext, m_glDisplay.get());
-        gst_element_set_context(GST_ELEMENT(message->src), displayContext);
+        GRefPtr<GstContext> displayContext = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
+        gst_context_set_gl_display(displayContext.get(), m_glDisplay.get());
+        gst_element_set_context(GST_ELEMENT(message->src), displayContext.get());
         return true;
     }
 
     if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-        GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
-        GstStructure* structure = gst_context_writable_structure(appContext);
+        GRefPtr<GstContext> appContext = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
+        GstStructure* structure = gst_context_writable_structure(appContext.get());
         gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
-        gst_element_set_context(GST_ELEMENT(message->src), appContext);
+        gst_element_set_context(GST_ELEMENT(message->src), appContext.get());
         return true;
     }
 #else

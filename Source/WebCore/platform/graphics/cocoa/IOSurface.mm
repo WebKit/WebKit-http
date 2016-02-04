@@ -28,6 +28,7 @@
 
 #if USE(IOSURFACE)
 
+#import "CoreGraphicsSPI.h"
 #import "GraphicsContextCG.h"
 #import "IOSurfacePool.h"
 #import "IOSurfaceSPI.h"
@@ -36,11 +37,10 @@
 #import "MachSendRight.h"
 #import <wtf/Assertions.h>
 
-extern "C" {
-CGContextRef CGIOSurfaceContextCreate(IOSurfaceRef, size_t, size_t, size_t, size_t, CGColorSpaceRef, CGBitmapInfo);
-CGImageRef CGIOSurfaceContextCreateImage(CGContextRef);
-CGImageRef CGIOSurfaceContextCreateImageReference(CGContextRef);
-}
+#if PLATFORM(IOS)
+// Move this into the SPI header once it's possible to put inside the APPLE_INTERNAL_SDK block.
+NSString * const WebIOSurfaceAcceleratorUnwireSurfaceKey = @"UnwireSurface";
+#endif
 
 using namespace WebCore;
 
@@ -410,7 +410,9 @@ void IOSurface::convertToFormat(std::unique_ptr<WebCore::IOSurface>&& inSurface,
         delete callback;
     };
 
-    IOReturn ret = IOSurfaceAcceleratorTransformSurface(accelerator, inSurface->surface(), destinationIOSurfaceRef, nullptr, nullptr, &completion, nullptr, nullptr);
+    NSDictionary *options = @{ WebIOSurfaceAcceleratorUnwireSurfaceKey : @YES };
+
+    IOReturn ret = IOSurfaceAcceleratorTransformSurface(accelerator, inSurface->surface(), destinationIOSurfaceRef, (CFDictionaryRef)options, nullptr, &completion, nullptr, nullptr);
     ASSERT_UNUSED(ret, ret == kIOReturnSuccess);
 }
 #endif // PLATFORM(IOS)

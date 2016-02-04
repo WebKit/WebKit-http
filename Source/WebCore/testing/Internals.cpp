@@ -356,6 +356,7 @@ void Internals::resetToConsistentState(Page* page)
 
     page->setPageScaleFactor(1, IntPoint(0, 0));
     page->setPagination(Pagination());
+    page->setPaginationLineGridEnabled(false);
 
     page->setDefersLoading(false);
     
@@ -1197,6 +1198,17 @@ void Internals::setPagination(const String& mode, int gap, int pageLength, Excep
     page->setPagination(pagination);
 }
 
+void Internals::setPaginationLineGridEnabled(bool enabled, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    Page* page = document->page();
+    page->setPaginationLineGridEnabled(enabled);
+}
+
 String Internals::configurationForViewport(float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode& ec)
 {
     Document* document = contextDocument();
@@ -1776,6 +1788,18 @@ void Internals::setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCod
 #else
     UNUSED_PARAM(enabled);
 #endif
+}
+
+void Internals::handleAcceptedCandidate(const String& candidate, ExceptionCode&)
+{
+    if (!contextDocument() || !contextDocument()->frame())
+        return;
+
+    TextCheckingResult result;
+    result.type = TextCheckingTypeNone;
+    result.length = candidate.length();
+    result.replacement = candidate;
+    contextDocument()->frame()->editor().handleAcceptedCandidate(result);
 }
 
 bool Internals::isOverwriteModeEnabled(ExceptionCode&)
@@ -2784,6 +2808,8 @@ void Internals::setCaptionDisplayMode(const String& mode, ExceptionCode& ec)
         captionPreferences->setCaptionDisplayMode(CaptionUserPreferences::ForcedOnly);
     else if (equalLettersIgnoringASCIICase(mode, "alwayson"))
         captionPreferences->setCaptionDisplayMode(CaptionUserPreferences::AlwaysOn);
+    else if (equalLettersIgnoringASCIICase(mode, "manual"))
+        captionPreferences->setCaptionDisplayMode(CaptionUserPreferences::Manual);
     else
         ec = SYNTAX_ERR;
 #else

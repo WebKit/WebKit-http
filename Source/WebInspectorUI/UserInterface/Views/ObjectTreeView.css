@@ -25,9 +25,6 @@
 
 .object-tree {
     position: relative;
-
-    display: inline-block;
-
     color: black;
     font-family: Menlo, monospace;
     font-size: 11px;
@@ -72,6 +69,10 @@
     width: 0px;
 }
 
+.object-tree .object-tree {
+    display: inline-block;
+}
+
 .object-tree .tree-outline.object {
     display: none;
 }
@@ -86,6 +87,10 @@
     list-style: none;
     min-height: 18px;
     outline: none;
+}
+
+.object-tree .tree-outline.object.compact {
+    margin-top: 1px;
 }
 
 .tree-outline.object .item,

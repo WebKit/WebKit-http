@@ -97,6 +97,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirSpecial.cpp
     b3/air/AirSpillEverything.cpp
     b3/air/AirStackSlot.cpp
+    b3/air/AirStackSlotKind.cpp
     b3/air/AirTmp.cpp
     b3/air/AirTmpWidth.cpp
     b3/air/AirValidate.cpp
@@ -151,7 +152,6 @@ set(JavaScriptCore_SOURCES
     b3/B3StackmapGenerationParams.cpp
     b3/B3StackmapSpecial.cpp
     b3/B3StackmapValue.cpp
-    b3/B3StackSlotKind.cpp
     b3/B3StackSlot.cpp
     b3/B3SwitchCase.cpp
     b3/B3SwitchValue.cpp
@@ -163,6 +163,8 @@ set(JavaScriptCore_SOURCES
     b3/B3Value.cpp
     b3/B3ValueKey.cpp
     b3/B3ValueRep.cpp
+    b3/B3Variable.cpp
+    b3/B3VariableValue.cpp
 
     bindings/ScriptFunctionCall.cpp
     bindings/ScriptObject.cpp
@@ -511,6 +513,7 @@ set(JavaScriptCore_SOURCES
     jit/JITSubGenerator.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
+    jit/PCToCodeOriginMap.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
     jit/RegisterAtOffset.cpp
@@ -652,6 +655,7 @@ set(JavaScriptCore_RUNTIME_SOURCES
     runtime/JSArrayBufferView.cpp
     runtime/JSArrayIterator.cpp
     runtime/JSBoundFunction.cpp
+    runtime/JSBoundSlotBaseFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
     runtime/JSCell.cpp
@@ -987,35 +991,10 @@ list(APPEND JavaScriptCore_SOURCES
     llint/LowLevelInterpreter.cpp
 )
 
-
 if (ENABLE_FTL_JIT)
-    # Configure llvmForJSC.so
-    set(llvmForJSC_SOURCES
-        llvm/library/LLVMAnchor.cpp
-        llvm/library/LLVMExports.cpp
-        llvm/library/LLVMOverrides.cpp
-    )
-    set(llvmForJSC_INCLUDE_DIRECTORIES
-        ${LLVM_INCLUDE_DIRS}
-        "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    )
-
-    add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
-        COMMAND ${CMAKE_COMMAND} -E touch ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
-        VERBATIM)
-
-    # Added extra items for JavaScriptCore
-    list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${LLVM_INCLUDE_DIRS}
-    )
-
     list(APPEND JavaScriptCore_SOURCES
         dfg/DFGToFTLDeferredCompilationCallback.cpp
         dfg/DFGToFTLForOSREntryDeferredCompilationCallback.cpp
-
-        disassembler/LLVMDisassembler.cpp
-        disassembler/X86Disassembler.cpp
 
         ftl/FTLAbstractHeap.cpp
         ftl/FTLAbstractHeapRepository.cpp
@@ -1067,12 +1046,41 @@ if (ENABLE_FTL_JIT)
         ftl/FTLThunks.cpp
         ftl/FTLUnwindInfo.cpp
         ftl/FTLValueRange.cpp
+    )
+endif ()
 
+if (USE_LLVM_DISASSEMBLER)
+    # Configure llvmForJSC.so
+    set(llvmForJSC_SOURCES
+        llvm/library/LLVMAnchor.cpp
+        llvm/library/LLVMExports.cpp
+        llvm/library/LLVMOverrides.cpp
+    )
+    set(llvmForJSC_INCLUDE_DIRECTORIES
+        ${LLVM_INCLUDE_DIRS}
+        "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
+    )
+
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
+        COMMAND ${CMAKE_COMMAND} -E touch ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WebKitLLVMLibraryToken.h
+        VERBATIM)
+
+    # Added extra items for JavaScriptCore
+    list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${LLVM_INCLUDE_DIRS}
+    )
+
+    list(APPEND JavaScriptCore_SOURCES
         llvm/InitializeLLVM.cpp
-        llvm/InitializeLLVMLinux.cpp
-        llvm/InitializeLLVMPOSIX.cpp
         llvm/LLVMAPI.cpp
     )
+    if (NOT WIN32)
+        list(APPEND JavaScriptCore_SOURCES
+            llvm/InitializeLLVMLinux.cpp
+            llvm/InitializeLLVMPOSIX.cpp
+        )
+    endif ()
 endif ()
 
 set(HASH_LUT_GENERATOR ${CMAKE_CURRENT_SOURCE_DIR}/create_hash_table)
@@ -1188,6 +1196,12 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
 if (ENABLE_INDEXED_DATABASE)
     list(APPEND JavaScriptCore_INSPECTOR_DOMAINS
         ${JAVASCRIPTCORE_DIR}/inspector/protocol/IndexedDB.json
+    )
+endif ()
+
+if (ENABLE_RESOURCE_USAGE)
+    list(APPEND JavaScriptCore_INSPECTOR_DOMAINS
+        ${JAVASCRIPTCORE_DIR}/inspector/protocol/Memory.json
     )
 endif ()
 
@@ -1352,12 +1366,12 @@ endif ()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
-if (ENABLE_FTL_JIT)
+if (USE_LLVM_DISASSEMBLER AND NOT WIN32)
     if (NOT llvmForJSC_LIBRARIES)
         set(llvmForJSC_LIBRARIES ${LLVM_STATIC_LIBRARIES})
     endif ()
     if (NOT llvmForJSC_LIBRARIES)
-        message(FATAL_ERROR "No LLVM libs found, but FTL is enabled. Stopping build.")
+        message(FATAL_ERROR "No LLVM libs found, but LLVM disassembler is enabled. Stopping build.")
     endif ()
 
     WEBKIT_WRAP_SOURCELIST(${llvmForJSC_SOURCES})
@@ -1402,7 +1416,7 @@ if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
     install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
 endif ()
 
-if (ENABLE_FTL_JIT)
+if (USE_LLVM_DISASSEMBLER)
     add_dependencies(JavaScriptCore llvmForJSC)
 endif ()
 

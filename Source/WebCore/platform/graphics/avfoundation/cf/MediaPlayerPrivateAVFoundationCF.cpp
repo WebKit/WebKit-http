@@ -873,33 +873,30 @@ void MediaPlayerPrivateAVFoundationCF::paint(GraphicsContext& context, const Flo
 }
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE) && ENABLE(ENCRYPTED_MEDIA_V2)
+
 static bool keySystemIsSupported(const String& keySystem)
 {
-    if (equalIgnoringCase(keySystem, "com.apple.fps") || equalIgnoringCase(keySystem, "com.apple.fps.1_0"))
-        return true;
-    return false;
+    return equalLettersIgnoringASCIICase(keySystem, "com.apple.fps")
+        || equalLettersIgnoringASCIICase(keySystem, "com.apple.fps.1_0");
 }
+
 #endif
 
-static const HashSet<String>& avfMIMETypes()
+static const HashSet<String, ASCIICaseInsensitiveHash>& avfMIMETypes()
 {
-    static NeverDestroyed<HashSet<String>> cache = []() {
-        HashSet<String> types;
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache = []() {
+        HashSet<String, ASCIICaseInsensitiveHash> types;
         RetainPtr<CFArrayRef> avTypes = adoptCF(AVCFURLAssetCopyAudiovisualMIMETypes());
-
         CFIndex typeCount = CFArrayGetCount(avTypes.get());
-        for (CFIndex i = 0; i < typeCount; ++i) {
-            String mimeType = (CFStringRef)(CFArrayGetValueAtIndex(avTypes.get(), i));
-            types.add(mimeType.lower());
-        }
-
+        for (CFIndex i = 0; i < typeCount; ++i)
+            types.add((CFStringRef)CFArrayGetValueAtIndex(avTypes.get(), i));
         return types;
     }();
 
     return cache;
 }
 
-void MediaPlayerPrivateAVFoundationCF::getSupportedTypes(HashSet<String>& supportedTypes)
+void MediaPlayerPrivateAVFoundationCF::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& supportedTypes)
 {
     supportedTypes = avfMIMETypes();
 }

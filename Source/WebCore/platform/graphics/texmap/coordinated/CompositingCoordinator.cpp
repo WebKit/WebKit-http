@@ -62,7 +62,7 @@ CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinato
 
 CompositingCoordinator::~CompositingCoordinator()
 {
-    TemporaryChange<bool> destructing(m_isDestructing, true);
+    m_isDestructing = true;
 
     purgeBackingStores();
 

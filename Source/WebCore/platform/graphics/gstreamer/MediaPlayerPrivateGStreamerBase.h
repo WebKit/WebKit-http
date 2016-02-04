@@ -123,7 +123,7 @@ public:
 #endif
 
 #if USE(GSTREAMER_GL)
-    virtual PassNativeImagePtr nativeImageForCurrentTime();
+    virtual PassNativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
 protected:

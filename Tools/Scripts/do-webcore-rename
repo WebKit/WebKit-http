@@ -98,7 +98,7 @@ sub wanted
 my $isDOMTypeRename = 0;
 my %renames = (
     # Renames go here in the form of:
-    "deleteAllValues" => "deprecatedDeleteAllValues",
+    "CaseFoldingHash" => "ASCIICaseInsensitiveHash",
 );
 
 my %renamesContemplatedForTheFuture = (
@@ -127,8 +127,6 @@ my %renamesContemplatedForTheFuture = (
     "runtime_method" => "BridgedFunction",
     "runtime_object" => "BridgedObject",
     "objc_runtime" => "ObjCBridge",
-
-    "equalIgnoringCase" => "equalFoldingCase",
 
     "WTF_UNICODE_H" => "Unicode_h",
     "WTF_UNICODE_ICU_H" => "UnicodeICU_h",

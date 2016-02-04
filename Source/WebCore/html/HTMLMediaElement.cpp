@@ -108,6 +108,10 @@
 #include "MediaElementAudioSourceNode.h"
 #endif
 
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#include "WebVideoFullscreenInterface.h"
+#endif
+
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecksIOS.h"
 #include "WebVideoFullscreenInterfaceAVKit.h"
@@ -336,7 +340,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_lastTimeUpdateEventMovieTime(MediaTime::positiveInfiniteTime())
     , m_loadState(WaitingForSource)
     , m_videoFullscreenMode(VideoFullscreenModeNone)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     , m_videoFullscreenGravity(MediaPlayer::VideoGravityResizeAspect)
 #endif
     , m_preload(MediaPlayer::Auto)
@@ -916,7 +920,7 @@ String HTMLMediaElement::canPlayType(const String& mimeType, const String& keySy
 {
     MediaEngineSupportParameters parameters;
     ContentType contentType(mimeType);
-    parameters.type = contentType.type().lower();
+    parameters.type = contentType.type().convertToASCIILowercase();
     parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
     parameters.url = url;
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -2146,6 +2150,7 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
     if (m_readyState >= HAVE_METADATA && oldState < HAVE_METADATA) {
         prepareMediaFragmentURI();
         scheduleEvent(eventNames().durationchangeEvent);
+        scheduleResizeEvent();
         scheduleEvent(eventNames().loadedmetadataEvent);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         if (hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent))
@@ -3571,9 +3576,13 @@ void HTMLMediaElement::addTextTrack(PassRefPtr<TextTrack> track)
 
     if (!m_requireCaptionPreferencesChangedCallbacks) {
         m_requireCaptionPreferencesChangedCallbacks = true;
-        document().registerForCaptionPreferencesChangedCallbacks(this);
+        Document& document = this->document();
+        document.registerForCaptionPreferencesChangedCallbacks(this);
+        if (Page* page = document.page())
+            m_captionDisplayMode = page->group().captionPreferences()->captionDisplayMode();
     }
 
+    track->setManualSelectionMode(m_captionDisplayMode == CaptionUserPreferences::Manual);
     textTracks()->append(track);
 
     closeCaptionTracksChanged();
@@ -4167,7 +4176,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
 #endif
             MediaEngineSupportParameters parameters;
             ContentType contentType(type);
-            parameters.type = contentType.type().lower();
+            parameters.type = contentType.type().convertToASCIILowercase();
             parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
             parameters.url = mediaURL;
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -4492,6 +4501,8 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
         downcast<MediaDocument>(document()).mediaElementNaturalSizeChanged(expandedIntSize(m_player->naturalSize()));
 
     beginProcessingMediaPlayerCallback();
+    if (m_readyState > HAVE_NOTHING)
+        scheduleResizeEventIfSizeChanged();
     if (renderer())
         renderer()->updateFromElement();
     endProcessingMediaPlayerCallback();
@@ -4546,7 +4557,7 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
     }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (!m_player)
         return;
     m_player->setVideoFullscreenFrame(m_videoFullscreenFrame);
@@ -5364,7 +5375,7 @@ PlatformLayer* HTMLMediaElement::platformLayer() const
     return m_player ? m_player->platformLayer() : nullptr;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer)
 {
     m_videoFullscreenLayer = platformLayer;
@@ -5715,6 +5726,11 @@ void HTMLMediaElement::captionPreferencesChanged()
     CaptionUserPreferences::CaptionDisplayMode displayMode = document().page()->group().captionPreferences()->captionDisplayMode();
     if (m_captionDisplayMode == displayMode)
         return;
+
+    if (m_captionDisplayMode == CaptionUserPreferences::Manual || displayMode == CaptionUserPreferences::Manual) {
+        for (unsigned i = 0; i < m_textTracks->length(); ++i)
+            m_textTracks->item(i)->setManualSelectionMode(displayMode == CaptionUserPreferences::Manual);
+    }
 
     m_captionDisplayMode = displayMode;
     setWebkitClosedCaptionsVisible(m_captionDisplayMode == CaptionUserPreferences::AlwaysOn);
@@ -6556,7 +6572,7 @@ bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMedia
 #endif
     if (m_videoFullscreenMode & VideoFullscreenModePictureInPicture)
         return true;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (m_videoFullscreenMode == VideoFullscreenModeStandard && supportsPictureInPicture() && isPlaying())
         return true;
 #endif
