@@ -2,6 +2,8 @@ list(APPEND WTF_SOURCES
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
     qt/WorkQueueQt.cpp
+
+    text/qt/StringQt.cpp
 )
 
 list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
