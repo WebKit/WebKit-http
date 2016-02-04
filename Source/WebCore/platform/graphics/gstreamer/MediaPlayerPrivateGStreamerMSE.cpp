@@ -1453,7 +1453,7 @@ void AppendPipeline::handleEndOfAppendDataMarkReceived(const GstStructure* struc
     ASSERT(m_appendIdReceivedInSink);
 
     TRACE_MEDIA_MESSAGE("received end of append id %" G_GUINT64_FORMAT " in the sink", m_appendIdReceivedInSink);
-    if (m_appendStage == Sampling)
+    if (m_appendStage == Sampling || m_appendStage == Ongoing)
         checkEndOfAppendDataMarkReceived();
 }
 
