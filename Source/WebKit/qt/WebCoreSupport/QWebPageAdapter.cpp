@@ -56,6 +56,7 @@
 #include "NetworkingContext.h"
 #include "NodeList.h"
 #include "NotificationPresenterClientQt.h"
+#include "PageConfiguration.h"
 #include "PageGroup.h"
 #include "Pasteboard.h"
 #include "PlatformKeyboardEvent.h"
@@ -237,14 +238,14 @@ void QWebPageAdapter::initializeWebCorePage()
 #if ENABLE(GEOLOCATION) || ENABLE(DEVICE_ORIENTATION)
     const bool useMock = QWebPageAdapter::drtRun;
 #endif
-    Page::PageClients pageClients;
-    pageClients.chromeClient = new ChromeClientQt(this);
-    pageClients.contextMenuClient = new ContextMenuClientQt();
-    pageClients.editorClient = new EditorClientQt(this);
-    pageClients.dragClient = new DragClientQt(pageClients.chromeClient);
-    pageClients.inspectorClient = new InspectorClientQt(this);
-    pageClients.loaderClientForMainFrame = new FrameLoaderClientQt();
-    page = new Page(pageClients);
+    PageConfiguration pageConfiguration;
+    pageConfiguration.chromeClient = new ChromeClientQt(this);
+    pageConfiguration.contextMenuClient = new ContextMenuClientQt();
+    pageConfiguration.editorClient = new EditorClientQt(this);
+    pageConfiguration.dragClient = new DragClientQt(pageConfiguration.chromeClient);
+    pageConfiguration.inspectorClient = new InspectorClientQt(this);
+    pageConfiguration.loaderClientForMainFrame = new FrameLoaderClientQt();
+    page = new Page(pageConfiguration);
 
 #if ENABLE(GEOLOCATION)
     if (useMock) {
