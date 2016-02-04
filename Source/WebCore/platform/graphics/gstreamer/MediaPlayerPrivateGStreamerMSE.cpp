@@ -178,7 +178,7 @@ private:
     // This is the last id received by the probe in the appsink sink pad
     guint64 m_appendIdReceivedInSink;
 
-    gulong m_endOfDataProbeId;
+    gulong m_appsinkDataEnteringProbeId;
     gulong m_appsrcDataLeavingProbeId;
 
     // Some appended data are only headers and don't generate any
@@ -1211,7 +1211,7 @@ static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad*, AppendPipeline
 static gboolean appendPipelineDemuxerConnectToAppSinkMainThread(PadInfo*);
 static gboolean appendPipelineDemuxerDisconnectFromAppSinkMainThread(PadInfo*);
 static void appendPipelineAppSinkCapsChanged(GObject*, GParamSpec*, AppendPipeline*);
-static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *pad, GstPadProbeInfo *info, AppendPipeline* ap);
+static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo*, AppendPipeline*);
 static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInfo*, AppendPipeline*);
 static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
@@ -1284,7 +1284,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     GRefPtr<GstPad> appSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
     g_signal_connect(appSinkPad.get(), "notify::caps", G_CALLBACK(appendPipelineAppSinkCapsChanged), this);
 
-    m_endOfDataProbeId = gst_pad_add_probe(appSinkPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppSinkEvent), this, nullptr);
+    m_appsinkDataEnteringProbeId = gst_pad_add_probe(appSinkPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkDataEntering), this, nullptr);
 
     GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
     m_appsrcDataLeavingProbeId = gst_pad_add_probe(appsrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsrcDataLeaving), this, nullptr);
@@ -1367,7 +1367,7 @@ AppendPipeline::~AppendPipeline()
         g_signal_handlers_disconnect_by_func(m_appsink, (gpointer)appendPipelineAppSinkNewSample, this);
         g_signal_handlers_disconnect_by_func(m_appsink, (gpointer)appendPipelineAppSinkEOS, this);
 
-        gst_pad_remove_probe(appSinkPad.get(), m_endOfDataProbeId);
+        gst_pad_remove_probe(appSinkPad.get(), m_appsinkDataEnteringProbeId);
 
         gst_object_unref(m_appsink);
         m_appsink = NULL;
@@ -2278,7 +2278,7 @@ static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInf
     return GST_PAD_PROBE_OK;
 }
 
-static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *, GstPadProbeInfo *info, AppendPipeline* ap)
+static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo* info, AppendPipeline* appendPipeline)
 {
     GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
     if (GST_EVENT_TYPE(event) != GST_EVENT_CUSTOM_DOWNSTREAM)
@@ -2292,7 +2292,7 @@ static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *, GstPadProbeInfo *i
 
     TRACE_MEDIA_MESSAGE("id=%" G_GUINT64_FORMAT, id);
 
-    ap->reportEndOfAppendDataMarkReceived(id);
+    appendPipeline->reportEndOfAppendDataMarkReceived(id);
 
     return GST_PAD_PROBE_OK;
 }
