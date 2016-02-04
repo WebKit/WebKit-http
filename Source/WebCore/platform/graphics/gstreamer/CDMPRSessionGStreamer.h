@@ -41,16 +41,17 @@ private:
 
 public:
     CDMPRSessionGStreamer();
-    virtual ~CDMPRSessionGStreamer() override;
+    ~CDMPRSessionGStreamer() override;
 
     // CDMSession interface.
-    virtual CDMSessionType type() override;
-    virtual void setClient(CDMSessionClient* client) override;
-    virtual const String& sessionId() const override;
-    virtual RefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode) override;
-    virtual void releaseKeys() override;
-    virtual bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode) override;
-    virtual RefPtr<ArrayBuffer> cachedKeyForKeyID(const String&) const;
+    CDMSessionType type() override;
+    void setClient(CDMSessionClient* client) override;
+    const String& sessionId() const override;
+    RefPtr<Uint8Array> generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode) override;
+    void releaseKeys() override;
+    bool update(Uint8Array*, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode) override;
+    RefPtr<ArrayBuffer> cachedKeyForKeyID(const String&) const;
+
 
 private:
     CDMSessionClient* m_client;

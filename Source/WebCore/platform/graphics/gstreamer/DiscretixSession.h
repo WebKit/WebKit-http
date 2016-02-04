@@ -43,8 +43,8 @@ public:
     DiscretixSession();
     ~DiscretixSession();
 
-    RefPtr<Uint8Array> dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode);
-    bool dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode);
+    RefPtr<Uint8Array> dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode);
+    bool dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode);
 
     bool keyRequested() const { return m_keyRequested; }
     bool ready() const { return m_ready; }

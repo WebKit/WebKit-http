@@ -96,7 +96,7 @@ DiscretixSession::~DiscretixSession()
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-RefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, unsigned long& systemCode)
+RefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     RefPtr<Uint8Array> result;
 
@@ -141,7 +141,7 @@ RefPtr<Uint8Array> DiscretixSession::dxdrmGenerateKeyRequest(Uint8Array* initDat
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, unsigned long& systemCode)
+bool DiscretixSession::dxdrmProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
 {
     GST_MEMDUMP("response received :", key->data(), key->byteLength());
 
