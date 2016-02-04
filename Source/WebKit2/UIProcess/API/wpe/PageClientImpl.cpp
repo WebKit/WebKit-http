@@ -289,11 +289,15 @@ bool PageClientImpl::isFullScreen()
 
 void PageClientImpl::enterFullScreen()
 {
+	m_view.page().fullScreenManager()->willEnterFullScreen();
+	m_view.page().fullScreenManager()->didEnterFullScreen();
 	return;
 }
 
 void PageClientImpl::exitFullScreen()
 {
+	m_view.page().fullScreenManager()->willExitFullScreen();
+	m_view.page().fullScreenManager()->didExitFullScreen();
 	return;
 }
 
