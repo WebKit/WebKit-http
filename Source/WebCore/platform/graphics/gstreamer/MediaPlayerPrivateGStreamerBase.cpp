@@ -1087,13 +1087,13 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
     LOG_MEDIA_MESSAGE("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    if (equalIgnoringCase(keySystem, "org.w3.clearkey"))
+    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         return true;
 #endif
 
 #if USE(DXDRM) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
-        || equalIgnoringCase(keySystem, "com.youtube.playready"))
+    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
+        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return true;
 #endif
 
@@ -1140,8 +1140,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     LOG_MEDIA_MESSAGE("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
 #if USE(DXDRM)
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
-        || equalIgnoringCase(keySystem, "com.youtube.playready")) {
+    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
+        || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
         RefPtr<Uint8Array> nextMessage;
         unsigned short errorCode;
@@ -1160,7 +1160,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     }
 #endif
 
-    if (!equalIgnoringCase(keySystem, "org.w3.clearkey"))
+    if (!equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         return MediaPlayer::KeySystemNotSupported;
 
     GstBuffer* buffer = gst_buffer_new_wrapped(g_memdup(keyData, keyLength), keyLength);
@@ -1173,8 +1173,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
 {
     LOG_MEDIA_MESSAGE("generating key request for system: %s", keySystem.utf8().data());
 #if USE(DXDRM)
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
-        || equalIgnoringCase(keySystem, "com.youtube.playready")) {
+    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
+        || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
         if (!m_dxdrmSession)
             m_dxdrmSession = new DiscretixSession();
         unsigned short errorCode;
@@ -1191,7 +1191,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
     }
 #endif
 
-    if (!equalIgnoringCase(keySystem, "org.w3.clearkey"))
+    if (!equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         return MediaPlayer::KeySystemNotSupported;
 
     m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
@@ -1225,8 +1225,8 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 
     LOG_MEDIA_MESSAGE("creating key session for %s", keySystem.utf8().data());
 #if USE(DXDRM)
-    if (equalIgnoringCase(keySystem, "com.microsoft.playready")
-        || equalIgnoringCase(keySystem, "com.youtube.playready"))
+    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
+        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
         return std::make_unique<CDMPRSessionGStreamer>();
 #endif
 

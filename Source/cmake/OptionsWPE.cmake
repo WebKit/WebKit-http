@@ -79,6 +79,10 @@ find_package(WebP REQUIRED)
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
 
+if (USE_WPE_BACKEND_BCM_RPI)
+    find_package(BCMHost REQUIRED)
+endif ()
+
 if (ENABLE_SUBTLE_CRYPTO)
     find_package(GnuTLS 3.0.0)
     if (NOT GNUTLS_FOUND)

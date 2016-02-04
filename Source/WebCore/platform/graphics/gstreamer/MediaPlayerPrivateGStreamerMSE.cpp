@@ -850,31 +850,25 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
     }
 }
 
-static HashSet<String> mimeTypeCache()
+static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 {
-    initializeGStreamerAndRegisterWebKitMESElement();
-
-    DEPRECATED_DEFINE_STATIC_LOCAL(HashSet<String>, cache, ());
-    static bool typeListInitialized = false;
-
-    if (typeListInitialized)
-        return cache;
-
-    const char* mimeTypes[] = {
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache = []() {
+        initializeGStreamerAndRegisterWebKitMESElement();
+        HashSet<String, ASCIICaseInsensitiveHash> set;
+        const char* mimeTypes[] = {
 #if !USE(HOLE_PUNCH_EXTERNAL)
-        "video/mp4",
+            "video/mp4",
 #endif
-        "audio/mp4"
-    };
-
-    for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
-        cache.add(String(mimeTypes[i]));
-
-    typeListInitialized = true;
+            "audio/mp4"
+        };
+        for (auto& type : mimeTypes)
+            set.add(type);
+        return set;
+    }();
     return cache;
 }
 
-void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String>& types)
+void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
     types = mimeTypeCache();
 }
