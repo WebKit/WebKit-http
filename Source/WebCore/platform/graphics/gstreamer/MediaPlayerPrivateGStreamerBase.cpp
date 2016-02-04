@@ -1145,7 +1145,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
         RefPtr<Uint8Array> nextMessage;
         unsigned short errorCode;
-        unsigned long systemCode;
+        uint32_t systemCode;
 
         bool result = m_dxdrmSession->dxdrmProcessKey(key.get(), nextMessage, errorCode, systemCode);
         if (errorCode || !result) {
@@ -1178,7 +1178,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         if (!m_dxdrmSession)
             m_dxdrmSession = new DiscretixSession();
         unsigned short errorCode;
-        unsigned long systemCode;
+        uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
         String destinationURL;
         RefPtr<Uint8Array> result = m_dxdrmSession->dxdrmGenerateKeyRequest(initData.get(), destinationURL, errorCode, systemCode);
