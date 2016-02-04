@@ -28,10 +28,6 @@
 
 #if PLATFORM(WPE)
 
-#if PLATFORM(GBM)
-#include <gbm.h>
-#endif
-
 #include <WPE/Graphics/RenderingBackend.h>
 #include "PlatformDisplay.h"
 

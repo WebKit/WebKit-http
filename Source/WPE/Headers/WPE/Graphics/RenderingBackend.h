@@ -27,8 +27,9 @@
 #ifndef WPE_Graphics_RenderingBackend_h
 #define WPE_Graphics_RenderingBackend_h
 
-#include <EGL/eglplatform.h>
 #include <WPE/WPE.h>
+
+#include <EGL/eglplatform.h>
 #include <memory>
 #include <tuple>
 

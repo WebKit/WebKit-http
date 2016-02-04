@@ -41,7 +41,11 @@ void StackSlot::setOffsetFromFP(intptr_t value)
 
 void StackSlot::dump(PrintStream& out) const
 {
-    out.print("stack", m_index);
+    if (isSpill())
+        out.print("spill");
+    else
+        out.print("stack");
+    out.print(m_index);
 }
 
 void StackSlot::deepDump(PrintStream& out) const
@@ -51,9 +55,8 @@ void StackSlot::deepDump(PrintStream& out) const
         out.print(", b3Slot = ", *m_b3Slot, ": (", B3::deepDump(m_b3Slot), ")");
 }
 
-StackSlot::StackSlot(unsigned byteSize, unsigned index, StackSlotKind kind, B3::StackSlot* b3Slot)
+StackSlot::StackSlot(unsigned byteSize, StackSlotKind kind, B3::StackSlot* b3Slot)
     : m_byteSize(byteSize)
-    , m_index(index)
     , m_offsetFromFP(b3Slot ? b3Slot->offsetFromFP() : 0)
     , m_kind(kind)
     , m_b3Slot(b3Slot)

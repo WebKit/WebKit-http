@@ -311,6 +311,8 @@ public:
     // FrameView.
     const Pagination& pagination() const { return m_pagination; }
     WEBCORE_EXPORT void setPagination(const Pagination&);
+    bool paginationLineGridEnabled() const { return m_paginationLineGridEnabled; }
+    WEBCORE_EXPORT void setPaginationLineGridEnabled(bool flag);
 
     WEBCORE_EXPORT unsigned pageCount() const;
 
@@ -521,7 +523,7 @@ private:
     void hiddenPageDOMTimerThrottlingStateChanged();
     void setTimerThrottlingEnabled(bool);
     bool canTabSuspend();
-    void scheduleTabSuspension(bool);
+    void updateTabSuspensionState();
     void tabSuspensionTimerFired();
 
     const std::unique_ptr<Chrome> m_chrome;
@@ -588,6 +590,7 @@ private:
     unsigned m_horizontalScrollElasticity : 2; // ScrollElasticity    
 
     Pagination m_pagination;
+    bool m_paginationLineGridEnabled { false };
 
     String m_userStyleSheetPath;
     mutable String m_userStyleSheet;
@@ -663,7 +666,7 @@ private:
     SessionID m_sessionID;
 
     bool m_isClosing;
-    bool m_shouldTabSuspend { false };
+    bool m_isTabSuspended { false };
     Timer m_tabSuspensionTimer;
 
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };

@@ -680,6 +680,9 @@
     <ClCompile Include="..\page\csp\ContentSecurityPolicy.cpp">
       <Filter>page\csp</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\csp\ContentSecurityPolicyResponseHeaders.cpp">
+      <Filter>page\csp</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\ContextMenuController.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -1770,6 +1773,9 @@
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\NetworkStorageSessionStub.cpp">
+      <Filter>platform\network</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\network\ParsedContentRange.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\ParsedContentType.cpp">
@@ -7666,6 +7672,9 @@
     <ClInclude Include="..\page\csp\ContentSecurityPolicy.h">
       <Filter>page\csp</Filter>
     </ClInclude>
+    <ClInclude Include="..\page\csp\ContentSecurityPolicyResponseHeaders.h">
+      <Filter>page\csp</Filter>
+    </ClInclude>
     <ClInclude Include="..\page\ContextMenuClient.h">
       <Filter>page</Filter>
     </ClInclude>
@@ -8777,6 +8786,9 @@
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\NetworkStorageSession.h">
+      <Filter>platform\network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\network\ParsedContenRange.h">
       <Filter>platform\network</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\network\ParsedContentType.h">

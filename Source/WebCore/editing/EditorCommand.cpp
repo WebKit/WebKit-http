@@ -77,7 +77,7 @@ public:
     bool allowExecutionWhenDisabled;
 };
 
-typedef HashMap<String, const EditorInternalCommand*, CaseFoldingHash> CommandMap;
+typedef HashMap<String, const EditorInternalCommand*, ASCIICaseInsensitiveHash> CommandMap;
 
 static const bool notTextInsertion = false;
 static const bool isTextInsertion = true;
@@ -411,7 +411,7 @@ static bool executeForeColor(Frame& frame, Event*, EditorCommandSource source, c
 
 static bool executeFormatBlock(Frame& frame, Event*, EditorCommandSource, const String& value)
 {
-    String tagName = value.lower();
+    String tagName = value.convertToASCIILowercase();
     if (tagName[0] == '<' && tagName[tagName.length() - 1] == '>')
         tagName = tagName.substring(1, tagName.length() - 2);
 

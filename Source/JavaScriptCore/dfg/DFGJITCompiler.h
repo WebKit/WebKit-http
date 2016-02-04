@@ -43,6 +43,7 @@
 #include "JITInlineCacheGenerator.h"
 #include "LinkBuffer.h"
 #include "MacroAssembler.h"
+#include "PCToCodeOriginMap.h"
 #include "TempRegisterSet.h"
 
 namespace JSC {
@@ -118,6 +119,7 @@ public:
     // Methods to set labels for the disassembler.
     void setStartOfCode()
     {
+        m_pcToCodeOriginMapBuilder.appendItem(labelIgnoringWatchpoints(), CodeOrigin(0, nullptr));
         if (LIKELY(!m_disassembler))
             return;
         m_disassembler->setStartOfCode(labelIgnoringWatchpoints());
@@ -137,19 +139,8 @@ public:
         m_disassembler->setForNode(node, labelIgnoringWatchpoints());
     }
     
-    void setEndOfMainPath()
-    {
-        if (LIKELY(!m_disassembler))
-            return;
-        m_disassembler->setEndOfMainPath(labelIgnoringWatchpoints());
-    }
-    
-    void setEndOfCode()
-    {
-        if (LIKELY(!m_disassembler))
-            return;
-        m_disassembler->setEndOfCode(labelIgnoringWatchpoints());
-    }
+    void setEndOfMainPath();
+    void setEndOfCode();
     
     CallSiteIndex addCallSite(CodeOrigin codeOrigin)
     {
@@ -265,6 +256,8 @@ public:
 
     CallSiteIndex recordCallSiteAndGenerateExceptionHandlingOSRExitIfNeeded(const CodeOrigin&, unsigned eventStreamIndex);
 
+    PCToCodeOriginMapBuilder& pcToCodeOriginMapBuilder() { return m_pcToCodeOriginMapBuilder; }
+
 private:
     friend class OSRExitJumpPlaceholder;
     
@@ -279,7 +272,7 @@ private:
     void linkOSRExits();
     void disassemble(LinkBuffer&);
 
-    void appendExceptionHandlingOSRExit(unsigned eventStreamIndex, CodeOrigin, HandlerInfo* exceptionHandler, CallSiteIndex, MacroAssembler::JumpList jumpsToFail = MacroAssembler::JumpList());
+    void appendExceptionHandlingOSRExit(ExitKind, unsigned eventStreamIndex, CodeOrigin, HandlerInfo* exceptionHandler, CallSiteIndex, MacroAssembler::JumpList jumpsToFail = MacroAssembler::JumpList());
 
     // The dataflow graph currently being generated.
     Graph& m_graph;
@@ -328,6 +321,7 @@ private:
     Call m_callArityFixup;
     Label m_arityCheck;
     std::unique_ptr<SpeculativeJIT> m_speculative;
+    PCToCodeOriginMapBuilder m_pcToCodeOriginMapBuilder;
 };
 
 } } // namespace JSC::DFG

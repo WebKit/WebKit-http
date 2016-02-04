@@ -46,8 +46,8 @@ TextureMapper::TextureMapper()
     : m_context(0)
     , m_interpolationQuality(InterpolationDefault)
     , m_textDrawingMode(TextModeFill)
-    , m_wrapMode(StretchWrap)
     , m_isMaskMode(false)
+    , m_wrapMode(StretchWrap)
 { }
 
 TextureMapper::~TextureMapper()

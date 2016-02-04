@@ -29,4 +29,9 @@
 
 #define WPE_EXPORT __attribute__((visibility("default")))
 
+// FIXME: This should be automatically generated during the configuration.
+#ifndef __GBM__
+#define __GBM__
+#endif
+
 #endif // WPE_WPE_h

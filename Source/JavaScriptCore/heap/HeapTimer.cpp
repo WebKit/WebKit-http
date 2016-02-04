@@ -199,7 +199,6 @@ void HeapTimer::timerDidFire()
 }
 
 #else
-
 HeapTimer::HeapTimer(VM* vm)
     : m_vm(vm)
 {

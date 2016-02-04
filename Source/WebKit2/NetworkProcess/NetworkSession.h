@@ -35,7 +35,9 @@ OBJC_CLASS WKNetworkSessionDelegate;
 
 #include "DownloadID.h"
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/ResourceHandleTypes.h>
 #include <WebCore/SessionID.h>
+#include <WebCore/Timer.h>
 #include <wtf/HashMap.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -77,15 +79,20 @@ public:
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
     virtual void didBecomeDownload() = 0;
     virtual void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) = 0;
+    virtual void wasBlocked() = 0;
+    virtual void cannotShowURL() = 0;
 
     virtual ~NetworkSessionTaskClient() { }
 };
 
-class NetworkDataTask {
+class NetworkDataTask : public RefCounted<NetworkDataTask> {
     friend class NetworkSession;
 public:
-    explicit NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, const WebCore::ResourceRequest&);
-
+    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkSessionTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials)
+    {
+        return adoptRef(*new NetworkDataTask(session, client, request, storedCredentials));
+    }
+    
     void suspend();
     void cancel();
     void resume();
@@ -113,6 +120,18 @@ public:
     bool tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler);
     
 private:
+    NetworkDataTask(NetworkSession&, NetworkSessionTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials);
+
+    enum FailureType {
+        NoFailure,
+        BlockedFailure,
+        InvalidURLFailure
+    };
+    FailureType m_scheduledFailureType { NoFailure };
+    WebCore::Timer m_failureTimer;
+    void failureTimerFired();
+    void scheduleFailure(FailureType);
+    
     NetworkSession& m_session;
     NetworkSessionTaskClient& m_client;
     PendingDownload* m_pendingDownload { nullptr };
@@ -146,7 +165,8 @@ private:
     HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMap;
     HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
 #if PLATFORM(COCOA)
-    RetainPtr<NSURLSession> m_session;
+    RetainPtr<NSURLSession> m_sessionWithCredentialStorage;
+    RetainPtr<NSURLSession> m_sessionWithoutCredentialStorage;
     RetainPtr<WKNetworkSessionDelegate> m_sessionDelegate;
 #endif
 };

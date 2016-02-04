@@ -4,6 +4,7 @@ find_library(CARBON_LIBRARY Carbon)
 find_library(QUARTZ_LIBRARY Quartz)
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 add_definitions(-iframework ${CARBON_LIBRARY}/Frameworks)
+add_definitions(-DWK_XPC_SERVICE_SUFFIX=".Development")
 
 list(APPEND WebKit2_LIBRARIES
     WebKit
@@ -83,6 +84,7 @@ list(APPEND WebKit2_SOURCES
     Shared/Cocoa/APIDataCocoa.mm
     Shared/Cocoa/APIObject.mm
     Shared/Cocoa/CompletionHandlerCallChecker.mm
+    Shared/Cocoa/DataDetectionResult.mm
     Shared/Cocoa/WKNSArray.mm
     Shared/Cocoa/WKNSData.mm
     Shared/Cocoa/WKNSDictionary.mm
@@ -339,6 +341,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mac"
     "${WEBCORE_DIR}/platform/network/cf"
     "${WEBCORE_DIR}/platform/network/cocoa"
+    "${WEBCORE_DIR}/platform/spi/cocoa"
     "${WEBCORE_DIR}/platform/spi/mac"
     "${WEBCORE_DIR}/platform/graphics/ca"
     "${WEBCORE_DIR}/platform/graphics/cg"
@@ -370,6 +373,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/mac"
     "${WEBKIT2_DIR}/Shared/Plugins/mac"
     "${WEBKIT2_DIR}/Shared/Scrolling"
+    "${WEBKIT2_DIR}/WebProcess/cocoa"
     "${WEBKIT2_DIR}/WebProcess/mac"
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/Cocoa"
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/mac"
@@ -397,7 +401,7 @@ set(WEBKIT2_EXTRA_DEPENDENCIES
 
 set(XPCService_SOURCES
     Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm
-    Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.Development.mm
+    Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm
 )
 
 set(WebProcess_SOURCES
@@ -434,6 +438,8 @@ list(APPEND WebKit2_MESSAGES_IN_FILES
     Shared/API/Cocoa/RemoteObjectRegistry.messages.in
 
     Shared/mac/SecItemShim.messages.in
+
+    UIProcess/Cocoa/WebVideoFullscreenManagerProxy.messages.in
 
     UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.messages.in
     UIProcess/mac/SecItemShimProxy.messages.in

@@ -72,6 +72,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, Wo
     , m_topOrigin(topOrigin)
 {
     setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::create(url)));
+    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
 }
 
 WorkerGlobalScope::~WorkerGlobalScope()
@@ -85,10 +86,9 @@ WorkerGlobalScope::~WorkerGlobalScope()
     thread().workerReportingProxy().workerGlobalScopeDestroyed();
 }
 
-void WorkerGlobalScope::applyContentSecurityPolicyFromString(const String& policy, ContentSecurityPolicy::HeaderType contentSecurityPolicyType)
+void WorkerGlobalScope::applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders)
 {
-    setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
-    contentSecurityPolicy()->didReceiveHeader(policy, contentSecurityPolicyType);
+    contentSecurityPolicy()->didReceiveHeaders(contentSecurityPolicyResponseHeaders);
 }
 
 URL WorkerGlobalScope::completeURL(const String& url) const

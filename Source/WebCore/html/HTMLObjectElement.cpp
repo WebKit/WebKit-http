@@ -112,7 +112,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
     if (name == formAttr)
         formAttributeChanged();
     else if (name == typeAttr) {
-        m_serviceType = value.string().left(value.find(';')).lower();
+        m_serviceType = value.string().left(value.find(';')).convertToASCIILowercase();
         invalidateRenderer = !fastHasAttribute(classidAttr);
         setNeedsWidgetUpdate(true);
     } else if (name == dataAttr) {
@@ -166,7 +166,7 @@ static bool shouldNotPerformURLAdjustment()
 // FIXME: This function should not deal with url or serviceType!
 void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues, String& url, String& serviceType)
 {
-    HashSet<StringImpl*, CaseFoldingHash> uniqueParamNames;
+    HashSet<StringImpl*, ASCIICaseInsensitiveHash> uniqueParamNames;
     String urlParameter;
     
     // Scan the PARAM children and store their name/value pairs.

@@ -41,6 +41,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestOverrideBuiltinsPrototypeFunctionNamedIt
 // Attributes
 
 JSC::EncodedJSValue jsTestOverrideBuiltinsConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);
+void setJSTestOverrideBuiltinsConstructor(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
 class JSTestOverrideBuiltinsPrototype : public JSC::JSNonFinalObject {
 public:
@@ -69,20 +70,6 @@ private:
 
 typedef JSDOMConstructorNotConstructable<JSTestOverrideBuiltins> JSTestOverrideBuiltinsConstructor;
 
-/* Hash table */
-
-static const struct CompactHashIndex JSTestOverrideBuiltinsTableIndex[2] = {
-    { -1, -1 },
-    { 0, -1 },
-};
-
-
-static const HashTableValue JSTestOverrideBuiltinsTableValues[] =
-{
-    { "constructor", DontEnum | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestOverrideBuiltinsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-};
-
-static const HashTable JSTestOverrideBuiltinsTable = { 1, 1, true, JSTestOverrideBuiltinsTableValues, JSTestOverrideBuiltinsTableIndex };
 template<> void JSTestOverrideBuiltinsConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
     putDirect(vm, vm.propertyNames->prototype, JSTestOverrideBuiltins::getPrototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
@@ -96,6 +83,7 @@ template<> const ClassInfo JSTestOverrideBuiltinsConstructor::s_info = { "TestOv
 
 static const HashTableValue JSTestOverrideBuiltinsPrototypeTableValues[] =
 {
+    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestOverrideBuiltinsConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestOverrideBuiltinsConstructor) } },
     { "namedItem", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestOverrideBuiltinsPrototypeFunctionNamedItem), (intptr_t) (0) } },
 };
 
@@ -107,7 +95,7 @@ void JSTestOverrideBuiltinsPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestOverrideBuiltinsPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestOverrideBuiltins::s_info = { "TestOverrideBuiltins", &Base::s_info, &JSTestOverrideBuiltinsTable, CREATE_METHOD_TABLE(JSTestOverrideBuiltins) };
+const ClassInfo JSTestOverrideBuiltins::s_info = { "TestOverrideBuiltins", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestOverrideBuiltins) };
 
 JSTestOverrideBuiltins::JSTestOverrideBuiltins(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestOverrideBuiltins>&& impl)
     : JSDOMWrapper<TestOverrideBuiltins>(structure, globalObject, WTFMove(impl))
@@ -141,7 +129,7 @@ bool JSTestOverrideBuiltins::getOwnPropertySlot(JSObject* object, ExecState* sta
             return true;
         }
     }
-    if (getStaticValueSlot<JSTestOverrideBuiltins, Base>(state, JSTestOverrideBuiltinsTable, thisObject, propertyName, slot))
+    if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot))
         return true;
     return false;
 }
@@ -161,12 +149,25 @@ bool JSTestOverrideBuiltins::getOwnPropertySlotByIndex(JSObject* object, ExecSta
     return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
 }
 
-EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, JSObject*, EncodedJSValue thisValue, PropertyName)
+EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue, PropertyName)
 {
-    JSTestOverrideBuiltins* domObject = jsDynamicCast<JSTestOverrideBuiltins*>(JSValue::decode(thisValue));
+    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(baseValue);
     if (!domObject)
         return throwVMTypeError(state);
     return JSValue::encode(JSTestOverrideBuiltins::getConstructor(state->vm(), domObject->globalObject()));
+}
+
+void setJSTestOverrideBuiltinsConstructor(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    JSValue value = JSValue::decode(encodedValue);
+    UNUSED_PARAM(thisValue);
+    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(baseValue);
+    if (UNLIKELY(!domObject)) {
+        throwVMTypeError(state);
+        return;
+    }
+    // Shadowing a built-in constructor
+    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
 }
 
 void JSTestOverrideBuiltins::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)

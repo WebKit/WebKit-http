@@ -39,7 +39,7 @@
 #include "WorkerThread.h"
 #include <wtf/CurrentTime.h>
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
 #include <glib.h>
 #endif
 
@@ -146,7 +146,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
     ASSERT(context);
     ASSERT(context->thread().threadID() == currentThread());
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     GMainContext* mainContext = g_main_context_get_thread_default();
     if (g_main_context_pending(mainContext))
         g_main_context_iteration(mainContext, FALSE);

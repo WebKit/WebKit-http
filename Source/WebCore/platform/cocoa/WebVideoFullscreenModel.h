@@ -27,9 +27,10 @@
 #ifndef WebVideoFullscreenModel_h
 #define WebVideoFullscreenModel_h
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 #include <WebCore/FloatRect.h>
+#include <WebCore/HTMLMediaElementEnums.h>
 
 namespace WebCore {
 

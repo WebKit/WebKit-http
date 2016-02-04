@@ -208,6 +208,11 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         this.needsLayout();
     }
 
+    get scrollContainerWidth()
+    {
+        return this._cachedScrollContainerWidth;
+    }
+
     get visibleDuration()
     {
         if (isNaN(this._cachedScrollContainerWidth)) {
@@ -248,6 +253,14 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         this._timelineRuler.selectionEndTime = this._timelineRuler.selectionStartTime + x;
     }
 
+    get height()
+    {
+        let height = 0;
+        for (let graph of this._timelineOverviewGraphsMap.values())
+            height += graph.height;
+        return height;
+    }
+
     get visible()
     {
         return this._visible;
@@ -257,12 +270,10 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
     {
         this._visible = true;
 
-        this._timelineRuler.resize()
-
         for (var timelineOverviewGraph of this._timelineOverviewGraphsMap.values())
             timelineOverviewGraph.shown();
 
-        this.updateLayout();
+        this.updateLayout(WebInspector.View.LayoutReason.Resize);
     }
 
     hidden()
@@ -312,13 +323,6 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         overviewGraph.selectedRecord = record;
     }
 
-    updateLayoutForResize()
-    {
-        this._cachedScrollContainerWidth = NaN;
-        this._timelineRuler.resize()
-        this.updateLayout();
-    }
-
     updateLayoutIfNeeded()
     {
         if (this.layoutPending) {
@@ -345,8 +349,11 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         console.error("Needs to be implemented by a subclass.");
     }
 
-    layout()
+    layout(layoutReason)
     {
+        if (layoutReason === WebInspector.View.LayoutReason.Resize)
+            this._cachedScrollContainerWidth = NaN;
+
         // Calculate the required width based on the duration and seconds per pixel.
         let duration = this._endTime - this._startTime;
         let newWidth = Math.ceil(duration / this._durationPerPixel);

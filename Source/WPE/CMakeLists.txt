@@ -1,3 +1,7 @@
+find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
+find_package(Libinput REQUIRED)
+find_package(Libudev REQUIRED)
+
 set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
 
 if (USE_KEY_INPUT_HANDLING_LINUX_INPUT)
@@ -8,6 +12,7 @@ else ()
 endif ()
 
 if (USE_WPE_BACKEND_DRM)
+    find_package(LibDRM REQUIRED)
     add_definitions(-DWPE_BACKEND_DRM=1)
 
     if (USE_WPE_BACKEND_DRM_TEGRA)
@@ -16,6 +21,7 @@ if (USE_WPE_BACKEND_DRM)
 endif ()
 
 if (USE_WPE_BACKEND_WAYLAND)
+    find_package(Wayland 1.6.0 REQUIRED)
     add_definitions(-DWPE_BACKEND_WAYLAND=1)
 endif ()
 
@@ -24,14 +30,17 @@ if (USE_WPE_BACKEND_BCM_NEXUS)
 endif ()
 
 if (USE_WPE_BACKEND_BCM_RPI)
+    find_package(BCMHost REQUIRED)
     add_definitions(-DWPE_BACKEND_BCM_RPI=1)
 endif ()
 
 if (USE_WPE_BACKEND_INTEL_CE)
+    find_package(GDL REQUIRED)
     add_definitions(-DWPE_BACKEND_INTEL_CE=1)
 endif ()
 
 if (USE_WPE_BUFFER_MANAGEMENT_GBM)
+    find_package(LibGBM REQUIRED)
     add_definitions(-DWPE_BUFFER_MANAGEMENT_GBM=1)
 endif ()
 
@@ -58,6 +67,7 @@ set(WPE_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/DRM"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/IntelCE"
     "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland"
+    "${CMAKE_SOURCE_DIR}/Source/WPE/Source/ViewBackend/Wayland/Protocols"
     ${BCM_HOST_INCLUDE_DIRS}
     ${GDL_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -172,9 +182,10 @@ if (USE_WPE_BACKEND_WAYLAND)
 
         Source/ViewBackend/Wayland/ViewBackendWayland.cpp
         Source/ViewBackend/Wayland/WaylandDisplay.cpp
-        Source/ViewBackend/Wayland/ivi-application-protocol.c
-        Source/ViewBackend/Wayland/wayland-drm-protocol.c
-        Source/ViewBackend/Wayland/xdg-shell-protocol.c
+
+        Source/ViewBackend/Wayland/Protocols/ivi-application-protocol.c
+        Source/ViewBackend/Wayland/Protocols/wayland-drm-protocol.c
+        Source/ViewBackend/Wayland/Protocols/xdg-shell-protocol.c
     )
 
     if (USE_WPE_BUFFER_MANAGEMENT_GBM)

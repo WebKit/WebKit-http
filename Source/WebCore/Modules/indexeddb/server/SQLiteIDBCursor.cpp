@@ -83,8 +83,15 @@ SQLiteIDBCursor::SQLiteIDBCursor(SQLiteIDBTransaction& transaction, const uint64
     , m_indexID(indexID ? indexID : IDBIndexMetadata::InvalidId)
     , m_cursorDirection(IndexedDB::CursorDirection::Next)
     , m_keyRange(range)
+    , m_backingStoreCursor(true)
 {
     ASSERT(m_objectStoreID);
+}
+
+SQLiteIDBCursor::~SQLiteIDBCursor()
+{
+    if (m_backingStoreCursor)
+        m_transaction->closeCursor(*this);
 }
 
 void SQLiteIDBCursor::currentData(IDBGetResult& result)
@@ -216,10 +223,27 @@ void SQLiteIDBCursor::resetAndRebindStatement()
 
     // Otherwise update the lower key or upper key used for the cursor range.
     // This is so the cursor can pick up where we left off.
-    if (m_cursorDirection == IndexedDB::CursorDirection::Next || m_cursorDirection == IndexedDB::CursorDirection::NextNoDuplicate)
+    // We might also have to change the statement from closed to open so we don't refetch the current key a second time.
+    if (m_cursorDirection == IndexedDB::CursorDirection::Next || m_cursorDirection == IndexedDB::CursorDirection::NextNoDuplicate) {
         m_currentLowerKey = m_currentKey;
-    else
+        if (!m_keyRange.lowerOpen) {
+            m_keyRange.lowerOpen = true;
+            m_keyRange.lowerKey = m_currentLowerKey;
+            m_statement = nullptr;
+        }
+    } else {
         m_currentUpperKey = m_currentKey;
+        if (!m_keyRange.upperOpen) {
+            m_keyRange.upperOpen = true;
+            m_keyRange.upperKey = m_currentUpperKey;
+            m_statement = nullptr;
+        }
+    }
+
+    if (!m_statement && !establishStatement()) {
+        LOG_ERROR("Unable to establish new statement for cursor iteration");
+        return;
+    }
 
     if (m_statement->reset() != SQLITE_OK) {
         LOG_ERROR("Could not reset cursor statement to respond to object store changes");
@@ -231,6 +255,8 @@ void SQLiteIDBCursor::resetAndRebindStatement()
 
 bool SQLiteIDBCursor::bindArguments()
 {
+    LOG(IndexedDB, "Cursor is binding lower key '%s' and upper key '%s'", m_currentLowerKey.loggingString().utf8().data(), m_currentUpperKey.loggingString().utf8().data());
+
     if (m_statement->bindInt64(1, m_boundID) != SQLITE_OK) {
         LOG_ERROR("Could not bind id argument (bound ID)");
         return false;
@@ -329,16 +355,6 @@ SQLiteIDBCursor::AdvanceResult SQLiteIDBCursor::internalAdvanceOnce()
         m_errored = true;
         return AdvanceResult::Failure;
     }
-
-    int64_t recordID = m_statement->getColumnInt64(0);
-
-    // If the recordID of the record just fetched is the same as the current record ID
-    // then this statement must have been re-prepared in response to an object store change.
-    // We don't want to re-use the current record so we'll move on to the next one.
-    if (recordID == m_currentRecordID)
-        return AdvanceResult::ShouldAdvanceAgain;
-
-    m_currentRecordID = recordID;
 
     Vector<uint8_t> keyData;
     m_statement->getColumnBlobAsVector(1, keyData);

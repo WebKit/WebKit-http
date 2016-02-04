@@ -61,6 +61,9 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
         if (timelineType === WebInspector.TimelineRecord.Type.RenderingFrame)
             return new WebInspector.RenderingFrameTimelineOverviewGraph(timeline, timelineOverview);
 
+        if (timelineType === WebInspector.TimelineRecord.Type.Memory)
+            return new WebInspector.MemoryTimelineOverviewGraph(timeline, timelineOverview);
+
         throw new Error("Can't make a graph for an unknown timeline.");
     }
 
@@ -159,6 +162,12 @@ WebInspector.TimelineOverviewGraph = class TimelineOverviewGraph extends WebInsp
         this._selectedRecordChanged = true;
 
         this._needsSelectedRecordLayout();
+    }
+
+    get height()
+    {
+        // Overridden by sub-classes if needed.
+        return 36;
     }
 
     shown()

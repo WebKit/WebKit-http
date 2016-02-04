@@ -1,4 +1,4 @@
-# Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+# Copyright (C) 2014-2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -257,6 +257,8 @@ class IOSSimulatorPort(Port):
             try:
                 subprocess.call([self.LSREGISTER_PATH, "-v", "-u", self.get_simulator_path(i)])
                 shutil.rmtree(self.get_simulator_path(i), ignore_errors=True)
+                shutil.rmtree(os.path.join(os.path.expanduser("~"), "Library/Logs/CoreSimulator/",
+                    self.testing_device(i).udid), ignore_errors=True)
                 Simulator().delete_device(self.testing_device(i).udid)
             except:
                 _log.warning('Unable to remove Simulator' + str(i))
@@ -266,8 +268,10 @@ class IOSSimulatorPort(Port):
         if server_name == self.driver_name():
             if self.get_option('leaks'):
                 env['MallocStackLogging'] = '1'
+                env['__XPC_MallocStackLogging'] = '1'
             if self.get_option('guard_malloc'):
                 self._append_value_colon_separated(env, 'DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
+                self._append_value_colon_separated(env, '__XPC_DYLD_INSERT_LIBRARIES', '/usr/lib/libgmalloc.dylib')
             self._append_value_colon_separated(env, 'DYLD_INSERT_LIBRARIES', self._build_path("libWebCoreTestShim.dylib"))
         env['XML_CATALOG_FILES'] = ''  # work around missing /etc/catalog <rdar://problem/4292995>
         return env

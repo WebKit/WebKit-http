@@ -41,6 +41,7 @@ use webkitdirs;
 my $launcherPath;
 my @jhbuildWrapper;
 
+prohibitUnknownPort();
 setConfiguration();
 
 if (isGtk() || isEfl()) {

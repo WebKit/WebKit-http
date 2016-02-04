@@ -65,7 +65,7 @@ Extensions3DOpenGLCommon::Extensions3DOpenGLCommon(GraphicsContext3D* context)
     m_renderer = String(reinterpret_cast<const char*>(::glGetString(GL_RENDERER)));
 
     Vector<String> vendorComponents;
-    m_vendor.lower().split(' ', vendorComponents);
+    m_vendor.convertToASCIILowercase().split(' ', vendorComponents);
     if (vendorComponents.contains("nvidia"))
         m_isNVIDIA = true;
     if (vendorComponents.contains("ati") || vendorComponents.contains("amd"))
@@ -92,6 +92,12 @@ bool Extensions3DOpenGLCommon::supports(const String& name)
 {
     if (!m_initializedAvailableExtensions)
         initializeAvailableExtensions();
+
+    // We explicitly do not support this extension until
+    // we fix the following bug:
+    // https://bugs.webkit.org/show_bug.cgi?id=149734
+    if (name == "GL_ANGLE_translated_shader_source")
+        return false;
 
     return supportsExtension(name);
 }

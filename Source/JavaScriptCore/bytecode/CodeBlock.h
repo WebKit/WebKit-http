@@ -84,6 +84,7 @@ class LLIntOffsetsExtractor;
 class RegisterAtOffsetList;
 class TypeLocation;
 class JSModuleEnvironment;
+class PCToCodeOriginMap;
 
 enum ReoptimizationMode { DontCountReoptimization, CountReoptimization };
 
@@ -122,7 +123,6 @@ protected:
 #endif
 
     WriteBarrier<JSGlobalObject> m_globalObject;
-    Heap* m_heap;
 
 public:
     JS_EXPORT_PRIVATE ~CodeBlock();
@@ -274,7 +274,7 @@ public:
     {
         return m_jitCodeMap.get();
     }
-    
+
     unsigned bytecodeOffset(Instruction* returnAddress)
     {
         RELEASE_ASSERT(returnAddress >= instructions().begin() && returnAddress < instructions().end());
@@ -296,8 +296,8 @@ public:
     
     void setJITCode(PassRefPtr<JITCode> code)
     {
-        ASSERT(m_heap->isDeferred());
-        m_heap->reportExtraMemoryAllocated(code->size());
+        ASSERT(heap()->isDeferred());
+        heap()->reportExtraMemoryAllocated(code->size());
         ConcurrentJITLocker locker(m_lock);
         WTF::storeStoreFence(); // This is probably not needed because the lock will also do something similar, but it's good to be paranoid.
         m_jitCode = code;
@@ -323,7 +323,7 @@ public:
 
     DFG::CapabilityLevel computeCapabilityLevel();
     DFG::CapabilityLevel capabilityLevel();
-    DFG::CapabilityLevel capabilityLevelState() { return m_capabilityLevelState; }
+    DFG::CapabilityLevel capabilityLevelState() { return static_cast<DFG::CapabilityLevel>(m_capabilityLevelState); }
 
     bool hasOptimizedReplacement(JITCode::JITType typeToReplace);
     bool hasOptimizedReplacement(); // the typeToReplace is my JITType
@@ -352,32 +352,10 @@ public:
     {
         return m_scopeRegister;
     }
-
-    void setActivationRegister(VirtualRegister activationRegister)
-    {
-        m_lexicalEnvironmentRegister = activationRegister;
-    }
-
-    VirtualRegister activationRegister() const
-    {
-        ASSERT(m_lexicalEnvironmentRegister.isValid());
-        return m_lexicalEnvironmentRegister;
-    }
-
-    VirtualRegister uncheckedActivationRegister()
-    {
-        return m_lexicalEnvironmentRegister;
-    }
-
-    bool needsActivation() const
-    {
-        ASSERT(m_lexicalEnvironmentRegister.isValid() == m_needsActivation);
-        return m_needsActivation;
-    }
     
     CodeType codeType() const
     {
-        return m_codeType;
+        return static_cast<CodeType>(m_codeType);
     }
 
     PutPropertySlot::Context putByIdContext() const
@@ -460,7 +438,9 @@ public:
             m_resultProfiles.append(ResultProfile(bytecodeOffset));
             profile = &m_resultProfiles.last();
             ASSERT(&m_resultProfiles.last() == &m_resultProfiles[m_resultProfiles.size() - 1]);
-            m_bytecodeOffsetToResultProfileIndexMap.add(bytecodeOffset, m_resultProfiles.size() - 1);
+            if (!m_bytecodeOffsetToResultProfileIndexMap)
+                m_bytecodeOffsetToResultProfileIndexMap = std::make_unique<BytecodeOffsetToResultProfileIndexMap>();
+            m_bytecodeOffsetToResultProfileIndexMap->add(bytecodeOffset, m_resultProfiles.size() - 1);
         }
         return profile;
     }
@@ -610,7 +590,7 @@ public:
         return constantBufferAsVector(index).data();
     }
 
-    Heap* heap() const { return m_heap; }
+    Heap* heap() const { return &m_vm->heap; }
     JSGlobalObject* globalObject() { return m_globalObject.get(); }
 
     JSGlobalObject* globalObjectFor(CodeOrigin);
@@ -862,10 +842,8 @@ public:
     
     // FIXME: Make these remaining members private.
 
-    int m_numLocalRegistersForCalleeSaves;
     int m_numCalleeLocals;
     int m_numVars;
-    bool m_isConstructor : 1;
     
     // This is intentionally public; it's the responsibility of anyone doing any
     // of the following to hold the lock:
@@ -884,12 +862,22 @@ public:
     // without holding any locks, because the GC is guaranteed to wait until any
     // concurrent compilation threads finish what they're doing.
     mutable ConcurrentJITLock m_lock;
-    
+
+    Atomic<bool> m_visitWeaklyHasBeenCalled;
+
     bool m_shouldAlwaysBeInlined; // Not a bitfield because the JIT wants to store to it.
+
+#if ENABLE(JIT)
+    unsigned m_capabilityLevelState : 2; // DFG::CapabilityLevel
+#endif
+
     bool m_allTransitionsHaveBeenMarked : 1; // Initialized and used on every GC.
-    
+
     bool m_didFailFTLCompilation : 1;
     bool m_hasBeenCompiledWithFTL : 1;
+    bool m_isConstructor : 1;
+    bool m_isStrictMode : 1;
+    unsigned m_codeType : 2; // CodeType
 
     // Internal methods for use by validation code. It would be private if it wasn't
     // for the fact that we use it from anonymous namespaces.
@@ -926,6 +914,11 @@ public:
     }
 
     CallSiteIndex newExceptionHandlingCallSiteIndex(CallSiteIndex originalCallSite);
+
+#if ENABLE(JIT)
+    void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
+    Optional<CodeOrigin> findPC(void* pc);
+#endif
 
 protected:
     void finalizeLLIntInlineCaches();
@@ -1029,19 +1022,13 @@ private:
     RefCountedArray<Instruction> m_instructions;
     VirtualRegister m_thisRegister;
     VirtualRegister m_scopeRegister;
-    VirtualRegister m_lexicalEnvironmentRegister;
-
-    bool m_isStrictMode;
-    bool m_needsActivation;
-
-    Atomic<bool> m_visitWeaklyHasBeenCalled;
+    mutable CodeBlockHash m_hash;
 
     RefPtr<SourceProvider> m_source;
     unsigned m_sourceOffset;
     unsigned m_firstLineColumnOffset;
-    CodeType m_codeType;
 
-    Vector<LLIntCallLinkInfo> m_llintCallLinkInfos;
+    RefCountedArray<LLIntCallLinkInfo> m_llintCallLinkInfos;
     SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
     RefPtr<JITCode> m_jitCode;
 #if ENABLE(JIT)
@@ -1051,6 +1038,7 @@ private:
     Bag<CallLinkInfo> m_callLinkInfos;
     SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
     SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
+    std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
 #endif
     std::unique_ptr<CompactJITCodeMap> m_jitCodeMap;
 #if ENABLE(DFG_JIT)
@@ -1059,14 +1047,15 @@ private:
     DFG::ExitProfile m_exitProfile;
     CompressedLazyOperandValueProfileHolder m_lazyOperandValueProfiles;
 #endif
-    Vector<ValueProfile> m_argumentValueProfiles;
-    Vector<ValueProfile> m_valueProfiles;
+    RefCountedArray<ValueProfile> m_argumentValueProfiles;
+    RefCountedArray<ValueProfile> m_valueProfiles;
     SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
     SegmentedVector<ResultProfile, 8> m_resultProfiles;
-    HashMap<unsigned, unsigned, IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_bytecodeOffsetToResultProfileIndexMap;
-    Vector<ArrayAllocationProfile> m_arrayAllocationProfiles;
+    typedef HashMap<unsigned, unsigned, IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> BytecodeOffsetToResultProfileIndexMap;
+    std::unique_ptr<BytecodeOffsetToResultProfileIndexMap> m_bytecodeOffsetToResultProfileIndexMap;
+    RefCountedArray<ArrayAllocationProfile> m_arrayAllocationProfiles;
     ArrayProfileVector m_arrayProfiles;
-    Vector<ObjectAllocationProfile> m_objectAllocationProfiles;
+    RefCountedArray<ObjectAllocationProfile> m_objectAllocationProfiles;
 
     // Constant Pool
     COMPILE_ASSERT(sizeof(Register) == sizeof(WriteBarrier<Unknown>), Register_must_be_same_size_as_WriteBarrier_Unknown);
@@ -1074,29 +1063,23 @@ private:
     // it, so we're stuck with it for now.
     Vector<WriteBarrier<Unknown>> m_constantRegisters;
     Vector<SourceCodeRepresentation> m_constantsSourceCodeRepresentation;
-    Vector<WriteBarrier<FunctionExecutable>> m_functionDecls;
-    Vector<WriteBarrier<FunctionExecutable>> m_functionExprs;
+    RefCountedArray<WriteBarrier<FunctionExecutable>> m_functionDecls;
+    RefCountedArray<WriteBarrier<FunctionExecutable>> m_functionExprs;
 
     WriteBarrier<CodeBlock> m_alternative;
     
     BaselineExecutionCounter m_llintExecuteCounter;
 
     BaselineExecutionCounter m_jitExecuteCounter;
-    int32_t m_totalJITExecutions;
     uint32_t m_osrExitCounter;
     uint16_t m_optimizationDelayCounter;
     uint16_t m_reoptimizationRetryCounter;
 
     std::chrono::steady_clock::time_point m_creationTime;
 
-    mutable CodeBlockHash m_hash;
-
     std::unique_ptr<BytecodeLivenessAnalysis> m_livenessAnalysis;
 
     std::unique_ptr<RareData> m_rareData;
-#if ENABLE(JIT)
-    DFG::CapabilityLevel m_capabilityLevelState;
-#endif
 
     UnconditionalFinalizer m_unconditionalFinalizer;
     WeakReferenceHarvester m_weakReferenceHarvester;

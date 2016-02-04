@@ -56,9 +56,7 @@ IncrementalSweeper::IncrementalSweeper(Heap* heap, CFRunLoopRef runLoop)
     , m_blocksToSweep(heap->m_blockSnapshot)
 {
 }
-#endif
 
-#if USE(CF)
 void IncrementalSweeper::scheduleTimer()
 {
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + (sweepTimeSlice * sweepTimeMultiplier));

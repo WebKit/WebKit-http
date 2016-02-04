@@ -665,19 +665,10 @@ sub InterfaceRequiresAttributesOnInstance
 {
     my $interface = shift;
     my $interfaceName = $interface->name;
-    my $namedGetterFunction = GetNamedGetterFunction($interface);
-    my $indexedGetterFunction = GetIndexedGetterFunction($interface);
 
     # FIXME: All these return 1 if ... should ideally be removed.
     # Some of them are unavoidable due to DOM weirdness, in which case we should
     # add an IDL attribute for them
-
-    # FIXME: We should rearrange how custom named getters and getOwnPropertySlot
-    # overrides are handled so that we get the correct semantics and lookup ordering
-    my $hasImpureNamedGetter = $namedGetterFunction
-        || $interface->extendedAttributes->{"CustomNamedGetter"};
-    return 1 if $hasImpureNamedGetter
-        || $interface->extendedAttributes->{"CustomGetOwnPropertySlot"};
 
     # FIXME: These two should be fixed by removing the custom override of message, etc
     return 1 if $interfaceName =~ "Exception";
@@ -687,17 +678,15 @@ sub InterfaceRequiresAttributesOnInstance
 
     return 1 if InterfaceRequiresAttributesOnInstanceForCompatibility($interface);
 
-    #FIXME: We currently clobber performance for a number of the list types
-    return 1 if $interfaceName =~ "List" && !($interfaceName =~ "Element");
-
     return 0;
 }
 
 sub ConstructorShouldBeOnInstance
 {
     my $interface = shift;
+
     return 1 if $interface->extendedAttributes->{"CheckSecurity"};
-    return HasComplexGetOwnProperty($interface);
+    return 0;
 }
 
 sub AttributeShouldBeOnInstanceForCompatibility
@@ -715,8 +704,6 @@ sub AttributeShouldBeOnInstance
 
     return 1 if InterfaceRequiresAttributesOnInstance($interface);
     return 1 if $attribute->signature->type =~ /Constructor$/;
-    return 1 if HasCustomGetter($attribute->signature->extendedAttributes);
-    return 1 if HasCustomSetter($attribute->signature->extendedAttributes);
 
     # [Unforgeable] attributes should be on the instance.
     # https://heycam.github.io/webidl/#Unforgeable
@@ -1367,13 +1354,15 @@ sub GenerateAttributesHashTable
             push(@$hashKeys, "constructor");
             my $getter = "js" . $interfaceName . "Constructor";
             push(@$hashValue1, $getter);
-            if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-                my $setter = "setJS" . $interfaceName . "Constructor";
-                push(@$hashValue2, $setter);
+
+            my $setter = "setJS" . $interfaceName . "Constructor";
+            push(@$hashValue2, $setter);
+
+            # FIXME: Do we really need to special-case DOMWindow?
+            if ($interfaceName eq "DOMWindow") {
                 push(@$hashSpecials, "DontEnum | DontDelete");
             } else {
-                push(@$hashValue2, "0");
-                push(@$hashSpecials, "DontEnum | ReadOnly");
+                push(@$hashSpecials, "DontEnum");
             }
         }
     }
@@ -1859,10 +1848,8 @@ sub GenerateImplementation
             push(@implContent, "JSC::EncodedJSValue ${getter}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::PropertyName);\n");
         }
 
-        if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-            my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
-            push(@implContent, "void ${constructorFunctionName}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);\n");
-        }
+        my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
+        push(@implContent, "void ${constructorFunctionName}(JSC::ExecState*, JSC::JSObject*, JSC::EncodedJSValue, JSC::EncodedJSValue);\n");
 
         push(@implContent, "\n");
     }
@@ -2525,39 +2512,38 @@ sub GenerateImplementation
             push(@implContent, "}\n\n");
         }
 
-        if ($interface->extendedAttributes->{"ReplaceableConstructor"}) {
-            my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
+        my $constructorFunctionName = "setJS" . $interfaceName . "Constructor";
 
-            push(@implContent, "void ${constructorFunctionName}(ExecState* state, JSObject*, EncodedJSValue thisValue, EncodedJSValue encodedValue)\n");
-            push(@implContent, "{\n");
-            push(@implContent, "    JSValue value = JSValue::decode(encodedValue);");
-            if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
-                push(@implContent, "    ${className}* castedThis = to${className}(JSValue::decode(thisValue));\n");
-            } else {
-                push(@implContent, "    ${className}* castedThis = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
-            }
-            push(@implContent, "    if (UNLIKELY(!castedThis)) {\n");
-            push(@implContent, "        throwVMTypeError(state);\n");
-            push(@implContent, "        return;\n");
-            push(@implContent, "    }\n");
-            if ($interface->extendedAttributes->{"CheckSecurity"}) {
-                if ($interfaceName eq "DOMWindow") {
-                    push(@implContent, "    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, castedThis->wrapped()))\n");
-                } else {
-                    push(@implContent, "    if (!shouldAllowAccessToFrame(state, castedThis->wrapped().frame()))\n");
-                }
-                push(@implContent, "        return;\n");
-            }
-
-            push(@implContent, "    // Shadowing a built-in constructor\n");
-
-            if ($interfaceName eq "DOMWindow") {
-                push(@implContent, "    castedThis->putDirect(state->vm(), state->propertyNames().constructor, value);\n");
-            } else {
-                die "No way to handle interface with ReplaceableConstructor extended attribute: $interfaceName";
-            }
-            push(@implContent, "}\n\n");
+        push(@implContent, "void ${constructorFunctionName}(ExecState* state, JSObject* baseValue, EncodedJSValue thisValue, EncodedJSValue encodedValue)\n");
+        push(@implContent, "{\n");
+        push(@implContent, "    JSValue value = JSValue::decode(encodedValue);\n");
+        if ($interface->extendedAttributes->{"CustomProxyToJSObject"}) {
+            push(@implContent, "    UNUSED_PARAM(baseValue);\n");
+            push(@implContent, "    ${className}* domObject = to${className}(JSValue::decode(thisValue));\n");
+        } elsif (ConstructorShouldBeOnInstance($interface)) {
+            push(@implContent, "    UNUSED_PARAM(baseValue);\n");
+            push(@implContent, "    ${className}* domObject = " . GetCastingHelperForThisObject($interface) . "(JSValue::decode(thisValue));\n");
+        } else {
+            push(@implContent, "    UNUSED_PARAM(thisValue);\n");
+            push(@implContent, "    ${className}Prototype* domObject = jsDynamicCast<${className}Prototype*>(baseValue);\n");
         }
+        push(@implContent, "    if (UNLIKELY(!domObject)) {\n");
+        push(@implContent, "        throwVMTypeError(state);\n");
+        push(@implContent, "        return;\n");
+        push(@implContent, "    }\n");
+        if ($interface->extendedAttributes->{"CheckSecurity"}) {
+            if ($interfaceName eq "DOMWindow") {
+                push(@implContent, "    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, domObject->wrapped()))\n");
+            } else {
+                push(@implContent, "    if (!shouldAllowAccessToFrame(state, domObject->wrapped().frame()))\n");
+            }
+            push(@implContent, "        return;\n");
+        }
+
+        push(@implContent, "    // Shadowing a built-in constructor\n");
+
+        push(@implContent, "    domObject->putDirect(state->vm(), state->propertyNames().constructor, value);\n");
+        push(@implContent, "}\n\n");
     }
     my $hasCustomSetter = $interface->extendedAttributes->{"CustomNamedSetter"}
                           || $interface->extendedAttributes->{"CustomIndexedSetter"};

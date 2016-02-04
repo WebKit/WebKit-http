@@ -426,6 +426,12 @@
 
 /* Operating environments */
 
+/* Standard libraries */
+#if defined(HAVE_FEATURES_H) && HAVE_FEATURES_H
+/* If the included features.h is glibc's one, __GLIBC__ is defined. */
+#include <features.h>
+#endif
+
 /* FIXME: these are all mixes of OS, operating environment and policy choices. */
 /* PLATFORM(EFL) */
 /* PLATFORM(GTK) */
@@ -655,8 +661,6 @@
 #define HAVE_ALIGNED_MALLOC 1
 #define HAVE_ISDEBUGGERPRESENT 1
 
-#include <WTF/WTFHeaderDetection.h>
-
 #endif
 
 #if OS(WINDOWS)
@@ -712,10 +716,6 @@
 /* Do we have LLVM? */
 #if !defined(HAVE_LLVM) && OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK) && ENABLE(FTL_JIT) && (CPU(X86_64) || CPU(ARM64))
 #define HAVE_LLVM 1
-#endif
-
-#if PLATFORM(GTK) && HAVE(LLVM) && ENABLE(JIT) && !defined(ENABLE_FTL_JIT) && CPU(X86_64)
-#define ENABLE_FTL_JIT 1
 #endif
 
 /* The FTL *does not* work on 32-bit platforms. Disable it even if someone asked us to enable it. */
@@ -783,9 +783,8 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
-/* The B3 compiler is an experimental backend that is still in development. We will keep it building
-   on Mac/x86-64 for now, though it is unused except for tests. */
-#if (PLATFORM(MAC) || PLATFORM(IOS)) && (CPU(X86_64) || CPU(ARM64)) && ENABLE(FTL_JIT)
+/* This controls whether B3 is built. It will not be used unless FTL_USES_B3 is enabled. */
+#if (CPU(X86_64) || CPU(ARM64)) && ENABLE(FTL_JIT)
 #define ENABLE_B3_JIT 1
 #endif
 
@@ -800,8 +799,10 @@
 #endif
 
 /* The SamplingProfiler is the probabilistic and low-overhead profiler used by
- * JSC to measure where time is spent inside a JavaScript program. */
-#if (OS(DARWIN) || OS(WINDOWS)) && ENABLE(JIT)
+ * JSC to measure where time is spent inside a JavaScript program.
+ * In configurations other than Windows and Darwin, because layout of mcontext_t depends on standard libraries (like glibc),
+ * sampling profiler is enabled if WebKit uses pthreads and glibc. */
+#if (OS(DARWIN) || OS(WINDOWS) || (USE(PTHREADS) && defined(__GLIBC__))) && ENABLE(JIT)
 #define ENABLE_SAMPLING_PROFILER 1
 #else
 #define ENABLE_SAMPLING_PROFILER 0
@@ -1151,10 +1152,6 @@
 
 #if PLATFORM(COCOA)
 #define USE_MEDIATOOLBOX 1
-#endif
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
-#define ENABLE_VIDEO_PRESENTATION_MODE 1
 #endif
 
 /* While 10.10 has support for fences, it is missing some API important for our integration of them. */
