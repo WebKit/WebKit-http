@@ -213,7 +213,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
 @interface UIWebFormAccessory (StagingToRemove)
-- (UITextInputAssistantItem *)inputAssistantItem;
+- (id)initWithInputAssistantItem:(UITextInputAssistantItem *)inputAssistantItem;
 @end
 #endif
 
@@ -1256,32 +1256,21 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (UIView *)inputAccessoryView
 {
-    if (![self requiresAccessoryView])
-        return nil;
-
     if (!_formAccessoryView) {
-        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
+        if ([UIWebFormAccessory instancesRespondToSelector:@selector(initWithInputAssistantItem:)])
+            _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] initWithInputAssistantItem:[self inputAssistantItem]]);
+        else
+#endif
+            _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
         [_formAccessoryView setDelegate:self];
     }
+
+    if (![self requiresAccessoryView])
+        return nil;
     
     return _formAccessoryView.get();
 }
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 90000
-- (UITextInputAssistantItem *)inputAssistantItem
-{
-    if (!_formAccessoryView) {
-        _formAccessoryView = adoptNS([[UIWebFormAccessory alloc] init]);
-        [_formAccessoryView setDelegate:self];
-    }
-    return ([_formAccessoryView respondsToSelector:@selector(inputAssistantItem)]) ? [_formAccessoryView inputAssistantItem] : nil;
-}
-
-- (UITextInputAssistantItem *)_inputAssistantItem
-{
-    return [self inputAssistantItem];
-}
-#endif
 
 - (NSArray *)supportedPasteboardTypesForCurrentSelection
 {
@@ -3163,6 +3152,13 @@ static bool isAssistableInputType(InputType type)
     [self _attemptClickAtLocation:location];
 }
 
+#if HAVE(APP_LINKS)
+- (BOOL)actionSheetAssistant:(WKActionSheetAssistant *)assistant shouldIncludeAppLinkActionsForElement:(_WKActivatedElementInfo *)element
+{
+    return _page->uiClient().shouldIncludeAppLinkActionsForElement(element);
+}
+#endif
+
 - (RetainPtr<NSArray>)actionSheetAssistant:(WKActionSheetAssistant *)assistant decideActionsForElement:(_WKActivatedElementInfo *)element defaultActions:(RetainPtr<NSArray>)defaultActions
 {
     return _page->uiClient().actionsForElement(element, WTF::move(defaultActions));
@@ -3226,7 +3222,7 @@ static bool isAssistableInputType(InputType type)
             _highlightLongPressCanClick = NO;
             RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
             _page->startInteractionWithElementAtPosition(_positionInformation.point);
-            return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:[_actionSheetAssistant defaultActionsForLinkSheet].get() elementInfo:elementInfo.get()];
+            return [uiDelegate _webView:_webView previewViewControllerForURL:targetURL defaultActions:[_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()].get() elementInfo:elementInfo.get()];
         }
 
         if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForURL:)]) {
@@ -3256,7 +3252,7 @@ static bool isAssistableInputType(InputType type)
             [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];
         RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.point title:_positionInformation.title rect:_positionInformation.bounds image:_positionInformation.image.get()]);
         _page->startInteractionWithElementAtPosition(_positionInformation.point);
-        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy() defaultActions:[_actionSheetAssistant defaultActionsForImageSheet] elementInfo:elementInfo] autorelease];
+        return [[[WKImagePreviewViewController alloc] initWithCGImage:_positionInformation.image->makeCGImageCopy() defaultActions:[_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()] elementInfo:elementInfo] autorelease];
     }
 
     return nil;

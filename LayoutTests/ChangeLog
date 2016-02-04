@@ -1,3 +1,152 @@
+2015-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r186689 and r186710.
+        https://bugs.webkit.org/show_bug.cgi?id=146880
+
+        May have caused a PLT regression and broken a layout test
+        (Requested by cdumez on #webkit).
+
+        Reverted changesets:
+
+        "[WK2] Increase the QoS of some of our WorkQueues to match the
+        one of our processes"
+        https://bugs.webkit.org/show_bug.cgi?id=146855
+        http://trac.webkit.org/changeset/186689
+
+        "REGRESSION (r186689?): fast/frames/frame-limit.html timeout
+        on Mavericks {Release,Debug} WK2 bots"
+        https://bugs.webkit.org/show_bug.cgi?id=146876
+        http://trac.webkit.org/changeset/186710
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html crashes on Windows
+
+        <http://webkit-test-results.appspot.com/dashboards/flakiness_dashboard.html#showAllRuns=true&tests=http%2Ftests%2Fsecurity%2FXFrameOptions%2Fx-frame-options-deny-meta-tag-parent-same-origin-deny.html>
+
+        * platform/win/TestExpectations: Mark tests as crashing:
+        - http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186689?): fast/frames/frame-limit.html timeout on Mavericks {Release,Debug} WK2 bots
+
+        Fix tracked by: <http://webkit.org/b/146876>
+
+        * platform/mac-wk2/TestExpectations: Mark test as timing out:
+        - fast/frames/frame-limit.html
+
+2015-07-11  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r186697): Fix Yosemite, El Capitan test results for js/dom/global-constructors-attributes.html
+
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        - Move MediaStream results into alphabetical order to fix test
+          failures.
+
+2015-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Unskip some now-passing tests.
+
+        * platform/mac-wk2/TestExpectations:
+
+2015-07-10  Matthew Daiter  <mdaiter@apple.com>
+
+        Exposing webkitMediaStream as MediaStream
+        https://bugs.webkit.org/show_bug.cgi?id=146813
+        <rdar://problem/21754383>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-mavericks/js/dom/global-constructors-attributes-expected.txt:
+        Changed attributes from webkitMediaStream to MediaStream
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt:
+        Ditto
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+        Ditto
+
+2015-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION (r183133-r183138): Secondary clicking in whitespace selects preceding word
+        https://bugs.webkit.org/show_bug.cgi?id=146695
+        <rdar://problem/21441466>
+
+        Reviewed by Tim Horton.
+
+        Add a new test that checks for correct mac selection behavior for editable and read-only
+        text fields.
+
+        * platform/mac/editing/selection/context-menu-select-editability-expected.txt: Added.
+        * platform/mac/editing/selection/context-menu-select-editability.html: Added.
+
+2015-07-10  Nan Wang  <n_wang@apple.com>
+
+        Added tests for new role: table and cell.
+        https://bugs.webkit.org/show_bug.cgi?id=146011.
+
+        Reviewed by Chris Fleizach.
+
+        Added tests for table and cell role. Also modified other tests to fit the changes.
+
+        * accessibility/roles-computedRoleString-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+        * accessibilit/roles-table-and-cell-expected.txt: Added.
+        * accessibility/roles-table-and-cell.html: Added.
+        * platform/mac/accessibility/aria-table-hierarchy-expected.txt:
+        * platform/mac/accessibility/aria-tables-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2015-07-10  Daniel Bates  <dabates@apple.com>
+
+        Serialized declaration for background-size/-webkit-mask-size should preserve identical
+        values instead of coalescing them
+        https://bugs.webkit.org/show_bug.cgi?id=143191
+        <rdar://problem/21759393>
+
+        Reviewed by Darin Adler.
+
+        Inspired by Blink r172548:
+        <http://src.chromium.org/viewvc/blink?view=revision&revision=172548>
+
+        Update tests and test results to ensure we serialize background-size, -webkit-mask-size
+        correctly when identical values are present in their declarations.
+
+        * fast/backgrounds/size/parsing-background-size-values-expected.txt:
+        * fast/backgrounds/size/resources/parsing-background-size-values.js:
+        * fast/masking/parsing-mask-expected.txt:
+        * fast/masking/parsing-mask.html:
+
+2015-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Bidi-Isolate inlines break layout with collapsed whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=109624
+        <rdar://problem/21752834>
+
+        Reviewed by David Hyatt.
+
+        * fast/inline/crash-when-child-renderer-is-removed-and-line-stays-clean-expected.txt:
+        * fast/text/bidi-isolate-whitespace-collapse-expected.html: Added.
+        * fast/text/bidi-isolate-whitespace-collapse.html: Added.
+        * fast/text/international/embed-bidi-style-in-isolate-crash-expected.txt:
+        * fast/text/remove-text-node-linebox-not-dirty-crash-expected.txt:
+
+2015-07-10  Javier Fernandez  <jfernandez@igalia.com>
+
+        [CSS Grid Layout] Grid item's auto-margins are not applied correctly
+        https://bugs.webkit.org/show_bug.cgi?id=146581
+
+        Reviewed by Darin Adler.
+
+        Tests to verify auto-margins alignment works as expected with grid items.
+
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-lr.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment-vertical-rl.html: Added.
+        * fast/css-grid-layout/grid-item-auto-margins-alignment.html: Added.
+
 2015-07-10  Hunseop Jeong  <hs85.jeong@samsung.com>
 
         Fix typo in LayoutTests/platform/wk2/TestExpectation.

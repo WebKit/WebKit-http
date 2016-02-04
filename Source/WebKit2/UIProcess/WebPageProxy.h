@@ -418,7 +418,7 @@ public:
     void displayView();
     bool canScrollView();
     void scrollView(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset); // FIXME: CoordinatedGraphics should use requestScroll().
-    void requestScroll(const WebCore::FloatPoint& scrollPosition, bool isProgrammaticScroll);
+    void requestScroll(const WebCore::FloatPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin, bool isProgrammaticScroll);
     
     void setDelegatesScrolling(bool delegatesScrolling) { m_delegatesScrolling = delegatesScrolling; }
     bool delegatesScrolling() const { return m_delegatesScrolling; }
@@ -1060,6 +1060,9 @@ public:
     void logDiagnosticMessage(const String& message, const String& description, bool shouldSample);
     void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample);
     void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
+    void logSampledDiagnosticMessage(const String& message, const String& description);
+    void logSampledDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
+    void logSampledDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     void addPlaybackTargetPickerClient(uint64_t);

@@ -29,13 +29,14 @@
 #if PLATFORM(IOS)
 
 #import "APIUIClient.h"
+#import "SandboxUtilities.h"
 #import "TCCSPI.h"
 #import "UIKitSPI.h"
 #import "WKActionSheet.h"
 #import "WKContentViewInteraction.h"
+#import "WKNSURLExtras.h"
 #import "WeakObjCPtr.h"
 #import "WebPageProxy.h"
-#import "WKNSURLExtras.h"
 #import "_WKActivatedElementInfoInternal.h"
 #import "_WKElementActionInternal.h"
 #import <UIKit/UIView.h>
@@ -43,6 +44,10 @@
 #import <WebCore/SoftLinking.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <wtf/text/WTFString.h>
+
+#if HAVE(APP_LINKS)
+#import <WebCore/LaunchServicesSPI.h>
+#endif
 
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
 #import <SafariServices/SSReadingList.h>
@@ -55,6 +60,28 @@ SOFT_LINK(TCC, TCCAccessPreflight, TCCAccessPreflightResult, (CFStringRef servic
 SOFT_LINK_CONSTANT(TCC, kTCCServicePhotos, CFStringRef)
 
 using namespace WebKit;
+
+#if HAVE(APP_LINKS)
+static bool applicationHasAppLinkEntitlements()
+{
+    static bool hasEntitlement = processHasEntitlement(@"com.apple.private.canGetAppLinkInfo") && processHasEntitlement(@"com.apple.private.canModifyAppLinkPermissions");
+    return hasEntitlement;
+}
+
+static LSAppLink *appLinkForURL(NSURL *url)
+{
+    __block LSAppLink *syncAppLink = nil;
+
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    [LSAppLink getAppLinkWithURL:url completionHandler:^(LSAppLink *appLink, NSError *error) {
+        syncAppLink = [appLink retain];
+        dispatch_semaphore_signal(semaphore);
+    }];
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+
+    return [syncAppLink autorelease];
+}
+#endif
 
 @implementation WKActionSheetAssistant {
     WeakObjCPtr<id <WKActionSheetAssistantDelegate>> _delegate;
@@ -246,8 +273,8 @@ using namespace WebKit;
     const auto& positionInformation = [delegate positionInformationForActionSheetAssistant:self];
 
     NSURL *targetURL = [NSURL _web_URLWithWTFString:positionInformation.url];
-    auto defaultActions = [self defaultActionsForImageSheet];
     auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:positionInformation.point title:positionInformation.title rect:positionInformation.bounds image:positionInformation.image.get()]);
+    auto defaultActions = [self defaultActionsForImageSheet:elementInfo.get()];
 
     RetainPtr<NSArray> actions = [delegate actionSheetAssistant:self decideActionsForElement:elementInfo.get() defaultActions:WTF::move(defaultActions)];
 
@@ -264,7 +291,37 @@ using namespace WebKit;
         [self cleanupSheet];
 }
 
-- (RetainPtr<NSArray>)defaultActionsForLinkSheet
+- (void)_appendOpenActionsForURL:(NSURL *)url actions:(NSMutableArray *)defaultActions elementInfo:(_WKActivatedElementInfo *)elementInfo
+{
+#if HAVE(APP_LINKS)
+    ASSERT(_delegate);
+    if (applicationHasAppLinkEntitlements() && [_delegate.get() actionSheetAssistant:self shouldIncludeAppLinkActionsForElement:elementInfo]) {
+        LSAppLink *appLink = appLinkForURL(url);
+        if (appLink) {
+            NSString *title = WEB_UI_STRING("Open in Safari", "Title for Open in Safari Link action button");
+            _WKElementAction *openInDefaultBrowserAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInDefaultBrowser title:title actionHandler:^(_WKActivatedElementInfo *) {
+                [appLink openInWebBrowser:YES setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
+            }];
+            [defaultActions addObject:openInDefaultBrowserAction];
+
+            NSString *externalApplicationName = [appLink.targetApplicationProxy localizedNameForContext:nil];
+            if (externalApplicationName) {
+                NSString *title = [NSString stringWithFormat:WEB_UI_STRING("Open in “%@”", "Title for Open in External Application Link action button"), externalApplicationName];
+                _WKElementAction *openInExternalApplicationAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInExternalApplication title:title actionHandler:^(_WKActivatedElementInfo *) {
+                    [appLink openInWebBrowser:NO setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
+                }];
+                [defaultActions addObject:openInExternalApplicationAction];
+            }
+        } else
+            [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+    } else
+        [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+#else
+    [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+#endif
+}
+
+- (RetainPtr<NSArray>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo
 {
     auto delegate = _delegate.get();
     if (!delegate)
@@ -277,7 +334,8 @@ using namespace WebKit;
         return nil;
 
     auto defaultActions = adoptNS([[NSMutableArray alloc] init]);
-    [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+    [self _appendOpenActionsForURL:targetURL actions:defaultActions.get() elementInfo:elementInfo];
+
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
     if ([getSSReadingListClass() supportsURL:targetURL])
         [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeAddToReadingList assistant:self]];
@@ -288,7 +346,7 @@ using namespace WebKit;
     return defaultActions;
 }
 
-- (RetainPtr<NSArray>)defaultActionsForImageSheet
+- (RetainPtr<NSArray>)defaultActionsForImageSheet:(_WKActivatedElementInfo *)elementInfo
 {
     auto delegate = _delegate.get();
     if (!delegate)
@@ -299,7 +357,8 @@ using namespace WebKit;
 
     auto defaultActions = adoptNS([[NSMutableArray alloc] init]);
     if (!positionInformation.url.isEmpty())
-        [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+        [self _appendOpenActionsForURL:targetURL actions:defaultActions.get() elementInfo:elementInfo];
+
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
     if ([getSSReadingListClass() supportsURL:targetURL])
         [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeAddToReadingList assistant:self]];
@@ -327,9 +386,8 @@ using namespace WebKit;
     if (!targetURL)
         return;
 
-    auto defaultActions = [self defaultActionsForLinkSheet];
-    RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink
-        URL:targetURL location:positionInformation.point title:positionInformation.title rect:positionInformation.bounds image:positionInformation.image.get()]);
+    auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:positionInformation.point title:positionInformation.title rect:positionInformation.bounds image:positionInformation.image.get()]);
+    auto defaultActions = [self defaultActionsForLinkSheet:elementInfo.get()];
 
     RetainPtr<NSArray> actions = [delegate actionSheetAssistant:self decideActionsForElement:elementInfo.get() defaultActions:WTF::move(defaultActions)];
 

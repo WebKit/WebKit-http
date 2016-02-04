@@ -799,6 +799,7 @@ bool AccessibilityNodeObject::supportsRequiredAttribute() const
     case CheckBoxRole:
     case ComboBoxRole:
     case GridRole:
+    case GridCellRole:
     case IncrementorRole:
     case ListBoxRole:
     case PopUpButtonRole:
@@ -1612,9 +1613,9 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
 void AccessibilityNodeObject::setIsExpanded(bool expand)
 {
     if (is<HTMLDetailsElement>(node())) {
-        HTMLDetailsElement* details = downcast<HTMLDetailsElement>(node());
-        if ((expand && !details->isOpen()) || (!expand && details->isOpen()))
-            details->toggleOpen();
+        auto& details = downcast<HTMLDetailsElement>(*node());
+        if (expand != details.isOpen())
+            details.toggleOpen();
     }
 }
     
@@ -2061,6 +2062,7 @@ bool AccessibilityNodeObject::canSetSelectedAttribute() const
     // Elements that can be selected
     switch (roleValue()) {
     case CellRole:
+    case GridCellRole:
     case RadioButtonRole:
     case RowHeaderRole:
     case RowRole:
