@@ -35,6 +35,10 @@
 #include "BufferFactoryBCMRPi.h"
 #endif
 
+#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
+#include "BufferFactoryBCMNexus.h"
+#endif
+
 namespace WPE {
 
 namespace Graphics {
@@ -46,6 +50,9 @@ std::unique_ptr<BufferFactory> BufferFactory::create()
 #endif
 #if WPE_BUFFER_MANAGEMENT(BCM_RPI)
     return std::unique_ptr<BufferFactory>(new BufferFactoryBCMRPi);
+#endif
+#if WPE_BUFFER_MANAGEMENT(BCM_NEXUS)
+    return std::unique_ptr<BufferFactory>(new BufferFactoryBCMNexus);
 #endif
     return nullptr;
 }
