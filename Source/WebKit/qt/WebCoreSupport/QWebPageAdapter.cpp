@@ -21,6 +21,7 @@
 #include "config.h"
 #include "QWebPageAdapter.h"
 
+#include "BackForwardController.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSParser.h"
 #include "Chrome.h"
@@ -291,7 +292,7 @@ void QWebPageAdapter::initializeWebCorePage()
     WebCore::provideNotification(page, NotificationPresenterClientQt::notificationPresenter());
 #endif
 
-    history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForwardClient()));
+    history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForward().client()));
 
     // FIXME: Visited link tracking was removed in r176670
     //PageGroup::setShouldTrackVisitedLinks(true);
@@ -1035,10 +1036,10 @@ void QWebPageAdapter::updateActionInternal(QWebPageAdapter::MenuAction action, c
 
     switch (action) {
     case QWebPageAdapter::Back:
-        *enabled = page->canGoBackOrForward(-1);
+        *enabled = page->backForward().canGoBackOrForward(-1);
         break;
     case QWebPageAdapter::Forward:
-        *enabled = page->canGoBackOrForward(1);
+        *enabled = page->backForward().canGoBackOrForward(1);
         break;
     case QWebPageAdapter::Stop:
         *enabled = loader.isLoading();
@@ -1114,10 +1115,10 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         frame.loader().client().startDownload(WebCore::ResourceRequest(hitTestResult->linkUrl, frame.loader().outgoingReferrer()));
         break;
     case Back:
-        page->goBack();
+        page->backForward().goBack();
         break;
     case Forward:
-        page->goForward();
+        page->backForward().goForward();
         break;
     case Stop:
         mainFrameAdapter()->frame->loader().stopForUserCancel();

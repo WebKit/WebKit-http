@@ -25,6 +25,7 @@
 
 #include "APICast.h"
 #include "ApplicationCacheStorage.h"
+#include "BackForwardController.h"
 #include "ChromeClientQt.h"
 #include "ContainerNode.h"
 #include "ContextMenu.h"
@@ -660,7 +661,7 @@ void DumpRenderTreeSupportQt::goBack(QWebPageAdapter* adapter)
 {
     Page* corePage = adapter->page;
     if (corePage)
-        corePage->goBack();
+        corePage->backForward().goBack();
 }
 
 // API Candidate?
