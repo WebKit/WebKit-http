@@ -77,6 +77,13 @@ using namespace std;
 
 namespace WebCore {
 
+struct PadProbeInformation
+{
+    AppendPipeline* m_appendPipeline;
+    const char* m_description;
+    gulong m_probeId;
+};
+
 class AppendPipeline : public ThreadSafeRefCounted<AppendPipeline> {
 public:
     enum AppendStage { Invalid, NotStarted, Ongoing, KeyNegotiation, DataStarve, Sampling, LastSample, Aborting };
@@ -180,6 +187,11 @@ private:
 
     gulong m_appsinkDataEnteringProbeId;
     gulong m_appsrcDataLeavingProbeId;
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    struct PadProbeInformation m_demuxerDataEnteringPadProbeInformation;
+    struct PadProbeInformation m_typefindDataEnteringPadProbeInformation;
+    struct PadProbeInformation m_typefindDataLeavingPadProbeInformation;
+#endif
 
     // Some appended data are only headers and don't generate any
     // useful stream data for decoding. This is detected with a
@@ -1213,6 +1225,9 @@ static gboolean appendPipelineDemuxerDisconnectFromAppSinkMainThread(PadInfo*);
 static void appendPipelineAppSinkCapsChanged(GObject*, GParamSpec*, AppendPipeline*);
 static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo*, AppendPipeline*);
 static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInfo*, AppendPipeline*);
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadProbeInfo*, struct PadProbeInformation*);
+#endif
 static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
 static void appendPipelineAppSinkEOS(GstElement*, AppendPipeline*);
@@ -1284,10 +1299,35 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     GRefPtr<GstPad> appSinkPad = adoptGRef(gst_element_get_static_pad(m_appsink, "sink"));
     g_signal_connect(appSinkPad.get(), "notify::caps", G_CALLBACK(appendPipelineAppSinkCapsChanged), this);
 
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    m_appsinkDataEnteringProbeId = gst_pad_add_probe(appSinkPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM), reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkDataEntering), this, nullptr);
+#else
     m_appsinkDataEnteringProbeId = gst_pad_add_probe(appSinkPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkDataEntering), this, nullptr);
+#endif
 
     GRefPtr<GstPad> appsrcPad = adoptGRef(gst_element_get_static_pad(m_appsrc, "src"));
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    m_appsrcDataLeavingProbeId = gst_pad_add_probe(appsrcPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM), reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsrcDataLeaving), this, nullptr);
+#else
     m_appsrcDataLeavingProbeId = gst_pad_add_probe(appsrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsrcDataLeaving), this, nullptr);
+#endif
+
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    GRefPtr<GstPad> typefindSinkPad = adoptGRef(gst_element_get_static_pad(m_typefind, "sink"));
+    m_typefindDataEnteringPadProbeInformation.m_appendPipeline = this;
+    m_typefindDataEnteringPadProbeInformation.m_description = "typefind data entering";
+    m_typefindDataEnteringPadProbeInformation.m_probeId = gst_pad_add_probe(typefindSinkPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM), reinterpret_cast<GstPadProbeCallback>(appendPipelinePadProbeDebugInformation), &m_typefindDataEnteringPadProbeInformation, nullptr);
+
+    GRefPtr<GstPad> typefindSrcPad = adoptGRef(gst_element_get_static_pad(m_typefind, "src"));
+    m_typefindDataLeavingPadProbeInformation.m_appendPipeline = this;
+    m_typefindDataLeavingPadProbeInformation.m_description = "typefind data leaving";
+    m_typefindDataLeavingPadProbeInformation.m_probeId = gst_pad_add_probe(typefindSrcPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM), reinterpret_cast<GstPadProbeCallback>(appendPipelinePadProbeDebugInformation), &m_typefindDataLeavingPadProbeInformation, nullptr);
+
+    GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_qtdemux, "sink"));
+    m_demuxerDataEnteringPadProbeInformation.m_appendPipeline = this;
+    m_demuxerDataEnteringPadProbeInformation.m_description = "demuxer data entering";
+    m_demuxerDataEnteringPadProbeInformation.m_probeId = gst_pad_add_probe(demuxerPad.get(), static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM), reinterpret_cast<GstPadProbeCallback>(appendPipelinePadProbeDebugInformation), &m_demuxerDataEnteringPadProbeInformation, nullptr);
+#endif
 
     // These signals won't be connected outside of the lifetime of "this".
     g_signal_connect(m_qtdemux, "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
@@ -1345,11 +1385,22 @@ AppendPipeline::~AppendPipeline()
     }
 
     if (m_typefind) {
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+        GRefPtr<GstPad> sinkPad = adoptGRef(gst_element_get_static_pad(m_typefind, "sink"));
+        gst_pad_remove_probe(sinkPad.get(), m_typefindDataEnteringPadProbeInformation.m_probeId);
+        GRefPtr<GstPad> srcPad = adoptGRef(gst_element_get_static_pad(m_typefind, "src"));
+        gst_pad_remove_probe(srcPad.get(), m_typefindDataLeavingPadProbeInformation.m_probeId);
+#endif
         gst_object_unref(m_typefind);
         m_typefind = NULL;
     }
 
     if (m_qtdemux) {
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+        GRefPtr<GstPad> demuxerPad = adoptGRef(gst_element_get_static_pad(m_qtdemux, "sink"));
+        gst_pad_remove_probe(demuxerPad.get(), m_demuxerDataEnteringPadProbeInformation.m_probeId);
+#endif
+
         g_signal_handlers_disconnect_by_func(m_qtdemux, (gpointer)appendPipelineDemuxerPadAdded, this);
         g_signal_handlers_disconnect_by_func(m_qtdemux, (gpointer)appendPipelineDemuxerPadRemoved, this);
 
@@ -2269,33 +2320,100 @@ static void appendPipelineAppSinkCapsChanged(GObject*, GParamSpec*, AppendPipeli
 
 static GstPadProbeReturn appendPipelineAppsrcDataLeaving(GstPad*, GstPadProbeInfo* info, AppendPipeline* appendPipeline)
 {
-    TRACE_MEDIA_MESSAGE("buffer going thru");
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
+        GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+        gsize bufferSize = gst_buffer_get_size(buffer);
 
-    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-    if (gst_buffer_get_size(buffer) > 0)
-        appendPipeline->reportEndOfAppendDataMarkNeeded();
+        TRACE_MEDIA_MESSAGE("buffer of size %d going thru", bufferSize);
 
+        if (bufferSize > 0)
+            appendPipeline->reportEndOfAppendDataMarkNeeded();
+
+        return GST_PAD_PROBE_OK;
+    }
+
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+        GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+        if (GST_EVENT_TYPE(event) != GST_EVENT_CUSTOM_DOWNSTREAM)
+            return GST_PAD_PROBE_OK;
+
+        const GstStructure* structure = gst_event_get_structure(event);
+        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
+            return GST_PAD_PROBE_OK;
+
+        guint64 id = guint64(gst_event_get_seqnum(event));
+        TRACE_MEDIA_MESSAGE("custom downstream event id=%" G_GUINT64_FORMAT, id);
+
+        return GST_PAD_PROBE_OK;
+    }
+#endif
+
+    ASSERT_NOT_REACHED();
     return GST_PAD_PROBE_OK;
 }
 
 static GstPadProbeReturn appendPipelineAppsinkDataEntering(GstPad*, GstPadProbeInfo* info, AppendPipeline* appendPipeline)
 {
-    GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
-    if (GST_EVENT_TYPE(event) != GST_EVENT_CUSTOM_DOWNSTREAM)
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+        GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+        if (GST_EVENT_TYPE(event) != GST_EVENT_CUSTOM_DOWNSTREAM)
+            return GST_PAD_PROBE_OK;
+
+        const GstStructure* structure = gst_event_get_structure(event);
+        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
+            return GST_PAD_PROBE_OK;
+
+        guint64 id = guint64(gst_event_get_seqnum(event));
+
+        TRACE_MEDIA_MESSAGE("id=%" G_GUINT64_FORMAT, id);
+
+        appendPipeline->reportEndOfAppendDataMarkReceived(id);
+
         return GST_PAD_PROBE_OK;
+    }
 
-    const GstStructure* structure = gst_event_get_structure(event);
-    if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
+        GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+        TRACE_MEDIA_MESSAGE("buffer of size %d going thru", gst_buffer_get_size(buffer));
         return GST_PAD_PROBE_OK;
+    }
+#endif
 
-    guint64 id = guint64(gst_event_get_seqnum(event));
-
-    TRACE_MEDIA_MESSAGE("id=%" G_GUINT64_FORMAT, id);
-
-    appendPipeline->reportEndOfAppendDataMarkReceived(id);
-
+    ASSERT_NOT_REACHED();
     return GST_PAD_PROBE_OK;
 }
+
+#ifdef DEBUG_APPEND_PIPELINE_PADS
+static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation* padProbeInformation)
+{
+    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) != static_cast<GstPadProbeType>(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM));
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER) {
+        GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+        TRACE_MEDIA_MESSAGE("%s: buffer of size %d going thru", padProbeInformation->m_description, gst_buffer_get_size(buffer));
+        return GST_PAD_PROBE_OK;
+    }
+
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+        GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+        if (GST_EVENT_TYPE(event) != GST_EVENT_CUSTOM_DOWNSTREAM)
+            return GST_PAD_PROBE_OK;
+
+        const GstStructure* structure = gst_event_get_structure(event);
+        if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
+            return GST_PAD_PROBE_OK;
+
+        guint64 id = guint64(gst_event_get_seqnum(event));
+        TRACE_MEDIA_MESSAGE("%s: custom downstream event id=%" G_GUINT64_FORMAT, padProbeInformation->m_description, id);
+
+        return GST_PAD_PROBE_OK;
+    }
+
+    ASSERT_NOT_REACHED();
+    return GST_PAD_PROBE_OK;
+}
+#endif
 
 static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, AppendPipeline* ap)
 {
