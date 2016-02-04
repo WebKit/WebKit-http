@@ -30,6 +30,7 @@
 #include "FrameLoadRequest.h"
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
+#include "HTMLCollection.h"
 #include "HTMLMetaElement.h"
 #include "HTTPParsers.h"
 #include "HitTestResult.h"
@@ -175,7 +176,7 @@ void QWebFrameAdapter::load(const QNetworkRequest& req, QNetworkAccessManager::O
     if (!body.isEmpty())
         request.setHTTPBody(WebCore::FormData::create(body.constData(), body.size()));
 
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request));
+    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/));
 
     if (frame->tree().parent())
         pageAdapter->insideOpenCall = false;
@@ -208,7 +209,7 @@ QVariant QWebFrameAdapter::evaluateJavaScript(const QString &scriptSource)
     ScriptController& scriptController = frame->script();
     QVariant rc;
     int distance = 0;
-    ScriptValue value = scriptController.executeScript(ScriptSourceCode(scriptSource));
+    Deprecated::ScriptValue value = scriptController.executeScript(ScriptSourceCode(scriptSource));
     JSC::ExecState* exec = scriptController.globalObject(mainThreadNormalWorld())->globalExec();
     JSValueRef* ignoredException = 0;
     exec->vm().apiLock().lock();
@@ -252,7 +253,7 @@ QString QWebFrameAdapter::toHtml() const
 {
     if (!frame->document())
         return QString();
-    return createMarkup(frame->document());
+    return createMarkup(*frame->document());
 }
 
 QString QWebFrameAdapter::toPlainText() const
@@ -304,7 +305,7 @@ QMultiMap<QString, QString> QWebFrameAdapter::metaData() const
 
     QMultiMap<QString, QString> map;
     Document* doc = frame->document();
-    RefPtr<NodeList> list = doc->getElementsByTagName("meta");
+    auto list = doc->getElementsByTagName("meta");
     unsigned len = list->length();
     for (unsigned i = 0; i < len; i++) {
         HTMLMetaElement* meta = static_cast<HTMLMetaElement*>(list->item(i));
@@ -317,8 +318,8 @@ QPoint QWebFrameAdapter::scrollPosition() const
 {
     if (!frame || !frame->view())
         return QPoint();
-    IntSize ofs = frame->view()->scrollOffset();
-    return QPoint(ofs.width(), ofs.height());
+    return QPoint(frame->view()->scrollOffset(HorizontalScrollbar),
+                  frame->view()->scrollOffset(VerticalScrollbar));
 }
 
 QRect QWebFrameAdapter::frameRect() const
@@ -430,8 +431,8 @@ void QWebFrameAdapter::clearCoreFrame()
 {
     DocumentLoader* documentLoader = frame->loader().activeDocumentLoader();
     Q_ASSERT(documentLoader);
-    documentLoader->writer()->begin();
-    documentLoader->writer()->end();
+    documentLoader->writer().begin();
+    documentLoader->writer().end();
 }
 
 
@@ -544,19 +545,19 @@ void QWebFrameAdapter::renderRelativeCoords(QPainter* painter, int layers, const
             rect.translate(scrollX, scrollY);
             context.clip(view->visibleContentRect());
 
-            view->paintContents(&context, rect);
+            view->paintContents(context, rect);
 
             context.restore();
         }
 #if USE(ACCELERATED_COMPOSITING)
-        renderCompositedLayers(&context, IntRect(clipBoundingRect));
+        renderCompositedLayers(context, IntRect(clipBoundingRect));
 #endif
     }
     renderFrameExtras(&context, layers, clip);
 #if ENABLE(INSPECTOR)
-    if (frame->page()->inspectorController()->highlightedNode()) {
+    if (frame->page()->inspectorController().highlightedNode()) {
         context.save();
-        frame->page()->inspectorController()->drawHighlight(context);
+        frame->page()->inspectorController().drawHighlight(context);
         context.restore();
     }
 #endif
@@ -587,7 +588,7 @@ void QWebFrameAdapter::renderFrameExtras(WebCore::GraphicsContext* context, int 
             QRect rect = intersectedRect;
             context->translate(x, y);
             rect.translate(-x, -y);
-            view->paintScrollbars(context, rect);
+            view->paintScrollbars(*context, rect);
             context->translate(-x, -y);
         }
 
@@ -766,7 +767,7 @@ void QWebFrameAdapter::setScrollBarValue(Qt::Orientation orientation, int value)
             value = 0;
         else if (value > scrollBarMaximum(orientation))
             value = scrollBarMaximum(orientation);
-        sb->scrollableArea()->scrollToOffsetWithoutAnimation(orientation == Qt::Horizontal ? HorizontalScrollbar : VerticalScrollbar, value);
+        sb->scrollableArea().scrollToOffsetWithoutAnimation(orientation == Qt::Horizontal ? HorizontalScrollbar : VerticalScrollbar, value);
     }
 }
 

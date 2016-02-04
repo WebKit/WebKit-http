@@ -30,6 +30,8 @@
 
 #include <QList>
 #include <QNetworkAccessManager>
+#include <QPixmap>
+#include <QPointer>
 #include <QRect>
 #include <QSize>
 #include <QUrl>
@@ -41,6 +43,7 @@ namespace WebCore {
 class Frame;
 class GraphicsContext;
 class IntRect;
+class Scrollbar;
 class TextureMapperLayer;
 }
 

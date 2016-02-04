@@ -75,6 +75,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
+#include "SubresourceLoader.h"
 #include "ViewportArguments.h"
 #include "WebEventConversion.h"
 #include "qwebhistory.h"
@@ -247,7 +248,7 @@ void FrameLoaderClientQt::setFrame(QWebFrameAdapter* webFrame, Frame* frame)
 
 void FrameLoaderClientQt::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_frame->loader().policyChecker().*function)(action);
+    function(action);
 }
 
 bool FrameLoaderClientQt::hasWebView() const
@@ -444,7 +445,7 @@ void FrameLoaderClientQt::dispatchDidStartProvisionalLoad()
     if (dumpUserGestureInFrameLoaderCallbacks)
         printf("%s - in didStartProvisionalLoadForFrame\n", qPrintable(drtPrintFrameUserGestureStatus(m_frame)));
 
-    m_lastRequestedUrl = m_frame->loader().activeDocumentLoader()->requestURL();
+    m_lastRequestedUrl = m_frame->loader().activeDocumentLoader()->url();
 
     if (!m_webFrame)
         return;
@@ -634,7 +635,7 @@ bool FrameLoaderClientQt::canShowMIMETypeAsHTML(const String& MIMEType) const
 bool FrameLoaderClientQt::canShowMIMEType(const String& MIMEType) const
 {
     String type = MIMEType;
-    type.makeLower();
+    type.lower(); // FIXME: Use equalLettersIgnoringASCIICase
     if (MIMETypeRegistry::canShowMIMEType(type))
         return true;
 
@@ -1227,7 +1228,7 @@ void FrameLoaderClientQt::dispatchDecidePolicyForResponse(FramePolicyFunction fu
         return;
     }
 
-    if (WebCore::contentDispositionType(response.httpHeaderField("Content-Disposition")) == WebCore::ContentDispositionAttachment)
+    if (WebCore::contentDispositionType(response.httpHeaderField(HTTPHeaderName::ContentDisposition)) == WebCore::ContentDispositionAttachment)
         callPolicyFunction(function, PolicyDownload);
     else if (canShowMIMEType(response.mimeType()))
         callPolicyFunction(function, PolicyUse);
@@ -1349,7 +1350,7 @@ RefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& nam
     if (!frameData.frame->tree().parent())
         return 0;
 
-    return frameData.frame.release();
+    return frameData.frame;
 }
 
 ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const String& mimeTypeIn, bool shouldPreferPlugInsForImages)
@@ -1566,7 +1567,7 @@ RefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTML
             if (wmodeIndex == WTF::notFound) {
                 params.append("wmode");
                 values.append("opaque");
-            } else if (equalIgnoringCase(values[wmodeIndex], "window"))
+            } else if (equalLettersIgnoringASCIICase(values[wmodeIndex], "window"))
                 values[wmodeIndex] = "opaque";
         }
 

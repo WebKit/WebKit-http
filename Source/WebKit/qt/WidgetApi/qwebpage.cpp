@@ -22,7 +22,7 @@
 #include "config.h"
 #include "qwebpage.h"
 
-#include "DefaultFullScreenVideoHandler.h"
+//#include "DefaultFullScreenVideoHandler.h"
 #include "InitWebKitQt.h"
 #include "InspectorClientQt.h"
 #include "InspectorClientWebPage.h"

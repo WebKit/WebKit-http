@@ -58,11 +58,11 @@
 #include <stdio.h>
 
 
-static QString dumpPath(WebCore::Node *node)
+static QString dumpPath(WebCore::Node& node)
 {
-    QString str = node->nodeName();
+    QString str = node.nodeName();
 
-    WebCore::Node *parent = node->parentNode();
+    WebCore::Node *parent = node.parentNode();
     while (parent) {
         str.append(QLatin1String(" > "));
         str.append(parent->nodeName());
@@ -75,11 +75,10 @@ static QString dumpRange(WebCore::Range *range)
 {
     if (!range)
         return QLatin1String("(null)");
-    WebCore::ExceptionCode code;
 
     QString str = QString::fromLatin1("range from %1 of %2 to %3 of %4")
-        .arg(range->startOffset(code)).arg(dumpPath(range->startContainer(code)))
-        .arg(range->endOffset(code)).arg(dumpPath(range->endContainer(code)));
+        .arg(range->startOffset()).arg(dumpPath(range->startContainer()))
+        .arg(range->endOffset()).arg(dumpPath(range->endContainer()));
 
     return str;
 }
@@ -203,7 +202,7 @@ void EditorClientQt::respondToChangedSelection(Frame* frame)
 //     printf("%s\n", buffer);
 
     if (supportsGlobalSelection() && frame->selection().isRange())
-        Pasteboard::createForGlobalSelection()->writeSelection(frame->selection().toNormalizedRange().get(), frame->editor().canSmartCopyOrDelete(), frame);
+        Pasteboard::createForGlobalSelection()->writeSelection(*frame->selection().toNormalizedRange().get(), frame->editor().canSmartCopyOrDelete(), *frame);
 
     m_page->respondToChangedSelection();
     if (!frame->editor().ignoreCompositionSelectionChange())
@@ -311,7 +310,7 @@ bool EditorClientQt::shouldInsertNode(Node* node, Range* range, EditorInsertActi
             "WebViewInsertActionDropped",
         };
 
-        printf("EDITING DELEGATE: shouldInsertNode:%s replacingDOMRange:%s givenAction:%s\n", dumpPath(node).toUtf8().constData(),
+        printf("EDITING DELEGATE: shouldInsertNode:%s replacingDOMRange:%s givenAction:%s\n", dumpPath(*node).toUtf8().constData(),
             dumpRange(range).toUtf8().constData(), insertactionstring[action]);
     }
     return acceptsEditing;
@@ -419,7 +418,7 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
     if (!kevent || kevent->type() == PlatformEvent::KeyUp)
         return;
 
-    Node* start = frame.selection().start().containerNode();
+    Node* start = frame.selection().selection().start().containerNode();
     if (!start)
         return;
 

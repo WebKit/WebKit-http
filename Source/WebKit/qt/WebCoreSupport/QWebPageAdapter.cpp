@@ -34,7 +34,6 @@
 #include "DragClientQt.h"
 #include "DragController.h"
 #include "DragData.h"
-#include "DragSession.h"
 #include "Editor.h"
 #include "EditorClientQt.h"
 #include "EventHandler.h"
@@ -114,6 +113,8 @@
 #include "GeolocationClientQt.h"
 #endif
 #endif
+
+#define ENABLE_INSPECTOR 0
 
 // from text/qfont.cpp
 QT_BEGIN_NAMESPACE
@@ -1453,16 +1454,16 @@ bool QWebPageAdapter::swallowContextMenuEvent(QContextMenuEvent *event, QWebFram
             if (!scroll)
                 return true;
             if (direction == QWebPageAdapter::InvalidScrollDirection || granularity == QWebPageAdapter::InvalidScrollGranularity) {
-                ScrollbarTheme* theme = scrollBar->theme();
+                ScrollbarTheme& theme = scrollBar->theme();
                 // Set the pressed position to the middle of the thumb so that when we
                 // do move, the delta will be from the current pixel position of the
                 // thumb to the new position
-                int position = theme->trackPosition(scrollBar) + theme->thumbPosition(scrollBar) + theme->thumbLength(scrollBar) / 2;
+                int position = theme.trackPosition(*scrollBar) + theme.thumbPosition(*scrollBar) + theme.thumbLength(*scrollBar) / 2;
                 scrollBar->setPressedPos(position);
                 const QPoint pos = scrollBar->convertFromContainingWindow(event->pos());
                 scrollBar->moveThumb(horizontal ? pos.x() : pos.y());
             } else
-                scrollBar->scrollableArea()->scroll(WebCore::ScrollDirection(direction), WebCore::ScrollGranularity(granularity));
+                scrollBar->scrollableArea().scroll(WebCore::ScrollDirection(direction), WebCore::ScrollGranularity(granularity));
             return true;
         }
     }
