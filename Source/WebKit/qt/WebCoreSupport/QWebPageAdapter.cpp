@@ -191,7 +191,15 @@ static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVi
 static WebCore::FrameLoadRequest frameLoadRequest(const QUrl &url, WebCore::Frame *frame)
 {
     return WebCore::FrameLoadRequest(frame->document()->securityOrigin(),
-        WebCore::ResourceRequest(url, frame->loader().outgoingReferrer()));
+        WebCore::ResourceRequest(url, frame->loader().outgoingReferrer()),
+        LockHistory::No,
+        LockBackForwardList::No,
+        MaybeSendReferrer,
+        // FIXME: Are these arguments right for all call sites?
+        AllowNavigationToInvalidURL::Yes,
+        NewFrameOpenerPolicy::Allow,
+        ShouldOpenExternalURLsPolicy::ShouldAllow
+        );
 }
 
 static void openNewWindow(const QUrl& url, Frame* frame)
@@ -201,7 +209,7 @@ static void openNewWindow(const QUrl& url, Frame* frame)
         NavigationAction action;
         FrameLoadRequest request = frameLoadRequest(url, frame);
         if (Page* newPage = oldPage->chrome().createWindow(frame, request, features, action)) {
-            newPage->mainFrame().loader().loadFrameRequest(request, false, false, 0, 0, MaybeSendReferrer);
+            newPage->mainFrame().loader().loadFrameRequest(request, /*event*/ 0, /*FormState*/ 0);
             newPage->chrome().show();
         }
     }
@@ -1072,7 +1080,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
     switch (action) {
     case OpenLink:
         if (Frame* targetFrame = hitTestResult->webCoreFrame) {
-            targetFrame->loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, targetFrame), /*lockHistory*/ false, /*lockBackForwardList*/ false, /*event*/ 0, /*FormState*/ 0, MaybeSendReferrer);
+            targetFrame->loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, targetFrame), /*event*/ 0, /*FormState*/ 0);
             break;
         }
         // fall through
@@ -1080,7 +1088,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         openNewWindow(hitTestResult->linkUrl, &frame);
         break;
     case OpenLinkInThisWindow:
-        frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, &frame), /*lockHistory*/ false, /*lockBackForwardList*/ false, /*event*/ 0, /*FormState*/ 0, MaybeSendReferrer);
+        frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, &frame), /*event*/ 0, /*FormState*/ 0);
         break;
     case OpenFrameInNewWindow: {
         URL url = frame.loader().documentLoader()->unreachableURL();
