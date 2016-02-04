@@ -34,7 +34,7 @@
 #include "LayoutRect.h"
 #include "NodeList.h"
 #include "Timer.h"
-#include <inspector/InspectorProtocolObjects.h>
+#include "inspector/InspectorProtocolTypes.h"
 #include <wtf/Deque.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>

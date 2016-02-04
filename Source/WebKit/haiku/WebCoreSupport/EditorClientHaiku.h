@@ -73,6 +73,8 @@ public:
 
     void didBeginEditing() override;
     void didEndEditing() override;
+    void didApplyStyle() override {};
+
     void willWriteSelectionToPasteboard(WebCore::Range*) override;
     void didWriteSelectionToPasteboard() override;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;

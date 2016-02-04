@@ -143,5 +143,131 @@ void ScrollbarThemeHaiku::paintScrollCorner(ScrollView* scrollView, GraphicsCont
 }
 
 
+void ScrollbarThemeHaiku::paintScrollbarBackground(GraphicsContext& context, Scrollbar& scrollbar)
+{
+    if (!be_control_look)
+        return;
+
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    BRect rect = trackRect(scrollbar, false);
+    BView* view = context.platformContext();
+    view->SetHighColor(tint_color(base, B_DARKEN_2_TINT));
+
+    enum orientation orientation;
+    if (scrollbar.orientation() == HorizontalScrollbar) {
+        orientation = B_HORIZONTAL;
+        view->StrokeLine(rect.LeftTop(), rect.RightTop());
+        if (m_drawOuterFrame)
+            view->StrokeLine(rect.LeftBottom(), rect.RightBottom());
+        else
+            rect.bottom++;
+        rect.InsetBy(-1, 1);
+    } else {
+        orientation = B_VERTICAL;
+        view->StrokeLine(rect.LeftTop(), rect.LeftBottom());
+        if (m_drawOuterFrame)
+            view->StrokeLine(rect.RightTop(), rect.RightBottom());
+        else
+            rect.right++;
+        rect.InsetBy(1, -1);
+    }
+
+    uint32 flags = 0;
+    if (!scrollbar.enabled())
+        flags |= BControlLook::B_DISABLED;
+    be_control_look->DrawScrollBarBackground(view, rect, rect, base, flags, orientation);
+}
+
+
+void ScrollbarThemeHaiku::paintButton(GraphicsContext& context, Scrollbar& scrollbar, const IntRect& intRect, ScrollbarPart part)
+{
+    if (!be_control_look)
+        return;
+
+    BRect rect = BRect(intRect);
+    rect.right++;
+    rect.bottom++;
+
+    BView* view = context.platformContext();
+       bool down = scrollbar.pressedPart() == part;
+
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color dark2 = tint_color(base, B_DARKEN_2_TINT);
+
+    enum orientation orientation;
+    int arrowDirection;
+    if (scrollbar.orientation() == VerticalScrollbar) {
+        orientation = B_VERTICAL;
+        arrowDirection = part == BackButtonStartPart ? BControlLook::B_UP_ARROW : BControlLook::B_DOWN_ARROW;
+        view->SetHighColor(dark2);
+        view->StrokeRect(rect);
+    } else {
+        orientation = B_HORIZONTAL;
+        arrowDirection = part == BackButtonStartPart ? BControlLook::B_LEFT_ARROW : BControlLook::B_RIGHT_ARROW;
+        view->SetHighColor(dark2);
+        view->StrokeRect(rect);
+    }
+
+    BRect temp(rect);
+    temp.InsetBy(1, 1);
+    unsigned flags = 0;
+    if (down)
+        flags |= BControlLook::B_ACTIVATED;
+    if (!scrollbar.enabled())
+        flags |= BControlLook::B_DISABLED;
+
+    be_control_look->DrawButtonBackground(view, temp, rect, base, flags,
+        BControlLook::B_ALL_BORDERS, orientation);
+
+    temp.InsetBy(-1, -1);
+    be_control_look->DrawArrowShape(view, temp, rect,
+        base, arrowDirection, flags, B_DARKEN_MAX_TINT);
+}
+
+void ScrollbarThemeHaiku::paintThumb(GraphicsContext& context, Scrollbar& scrollbar, const IntRect& rect)
+{
+    if (!be_control_look)
+        return;
+
+    BRect drawRect = BRect(rect);
+    BView* view = context.platformContext();
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color dark2 = tint_color(base, B_DARKEN_2_TINT);
+    rgb_color dark3 = tint_color(base, B_DARKEN_3_TINT);
+
+    view->PushState();
+
+    enum orientation orientation;
+    if (scrollbar.orientation() == VerticalScrollbar) {
+        orientation = B_VERTICAL;
+        drawRect.InsetBy(1, -1);
+        if (!m_drawOuterFrame)
+            drawRect.right++;
+        view->SetHighColor(dark2);
+        view->StrokeLine(drawRect.LeftTop(), drawRect.RightTop());
+        view->SetHighColor(dark3);
+        view->StrokeLine(drawRect.LeftBottom(), drawRect.RightBottom());
+        drawRect.InsetBy(0, 1);
+    } else {
+        orientation = B_HORIZONTAL;
+        drawRect.InsetBy(-1, 1);
+        if (!m_drawOuterFrame)
+            drawRect.bottom++;
+        view->SetHighColor(dark2);
+        view->StrokeLine(drawRect.LeftTop(), drawRect.LeftBottom());
+        view->SetHighColor(dark3);
+        view->StrokeLine(drawRect.RightTop(), drawRect.RightBottom());
+        drawRect.InsetBy(1, 0);
+    }
+
+    uint32 flags = 0;
+    if (!scrollbar.enabled())
+        flags |= BControlLook::B_DISABLED;
+    be_control_look->DrawButtonBackground(view, drawRect, drawRect, base, flags, BControlLook::B_ALL_BORDERS, orientation);
+
+    view->PopState();
+}
+
+
 } // namespace WebCore
 
