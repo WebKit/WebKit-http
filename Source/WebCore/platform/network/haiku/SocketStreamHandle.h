@@ -33,6 +33,9 @@
 #define SocketStreamHandle_h
 
 #include "SocketStreamHandleBase.h"
+
+#include "NetworkingContext.h"
+
 #include <Socket.h>
 #include <set>
 #include <wtf/PassRefPtr.h>
@@ -46,7 +49,7 @@ namespace WebCore {
 
     class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
-        static 				PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(url, client)); }
+        static 				PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext& context) { return adoptRef(new SocketStreamHandle(url, client)); }
         virtual 			~SocketStreamHandle();
 
     protected:

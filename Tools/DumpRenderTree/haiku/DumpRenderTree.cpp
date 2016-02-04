@@ -739,7 +739,7 @@ void DumpRenderTreeApp::MessageReceived(BMessage* message)
         // TODO efl goes to "about:blank" here. But this triggers an extra
         // dump for us, confusing the test system.
 
-        gTestRunner.clear();
+        //gTestRunner.clear();
         sendPixelResultsEOF();
 
         if (m_fromStdin) {
