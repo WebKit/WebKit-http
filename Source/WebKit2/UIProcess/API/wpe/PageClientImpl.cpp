@@ -284,32 +284,28 @@ void PageClientImpl::closeFullScreenManager()
 
 bool PageClientImpl::isFullScreen()
 {
-	return true;
+    return false;
 }
 
 void PageClientImpl::enterFullScreen()
 {
-	m_view.page().fullScreenManager()->willEnterFullScreen();
-	m_view.page().fullScreenManager()->didEnterFullScreen();
-	return;
+    // m_view.page().fullScreenManager()->willEnterFullScreen();
+    // m_view.page().fullScreenManager()->didEnterFullScreen();
 }
 
 void PageClientImpl::exitFullScreen()
 {
-	m_view.page().fullScreenManager()->willExitFullScreen();
-	m_view.page().fullScreenManager()->didExitFullScreen();
-	return;
+    // m_view.page().fullScreenManager()->willExitFullScreen();
+    // m_view.page().fullScreenManager()->didExitFullScreen();
 }
 
 void PageClientImpl::beganEnterFullScreen(
-
-     const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
+        const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
 {
 }
 
 void PageClientImpl::beganExitFullScreen(
-
-     const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
+        const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
 {
 }
 

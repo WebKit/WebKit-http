@@ -121,13 +121,8 @@ private:
 
     virtual void didRestoreScrollPosition() override;
 
-    // Auxiliary Client Creation
 #if ENABLE(FULLSCREEN_API)
     virtual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
-#endif
-
-#if ENABLE(FULLSCREEN_API)
-    // WebFullScreenManagerProxyClient
     virtual void closeFullScreenManager() override;
     virtual bool isFullScreen() override;
     virtual void enterFullScreen() override;
