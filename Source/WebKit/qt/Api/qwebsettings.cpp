@@ -202,9 +202,13 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::PluginsEnabled));
         settings->setPluginsEnabled(value);
 
+// FIXME: setPrivateBrowsingEnabled was removed, instead we have Page::enableLegacyPrivateBrowsing
+//        and ephemeral sessions (and I guess it's better to use the latter)
+/*
         value = attributes.value(QWebSettings::PrivateBrowsingEnabled,
                                       global->attributes.value(QWebSettings::PrivateBrowsingEnabled));
         settings->setPrivateBrowsingEnabled(value);
+*/
 
         value = attributes.value(QWebSettings::SpatialNavigationEnabled,
                                       global->attributes.value(QWebSettings::SpatialNavigationEnabled));
