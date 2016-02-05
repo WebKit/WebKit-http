@@ -272,4 +272,43 @@ void PageClientImpl::didRestoreScrollPosition()
 {
 }
 
+#if ENABLE(FULLSCREEN_API)
+WebFullScreenManagerProxyClient& PageClientImpl::fullScreenManagerProxyClient()
+{
+    return *this;
+}
+
+void PageClientImpl::closeFullScreenManager()
+{
+}
+
+bool PageClientImpl::isFullScreen()
+{
+    return false;
+}
+
+void PageClientImpl::enterFullScreen()
+{
+    // m_view.page().fullScreenManager()->willEnterFullScreen();
+    // m_view.page().fullScreenManager()->didEnterFullScreen();
+}
+
+void PageClientImpl::exitFullScreen()
+{
+    // m_view.page().fullScreenManager()->willExitFullScreen();
+    // m_view.page().fullScreenManager()->didExitFullScreen();
+}
+
+void PageClientImpl::beganEnterFullScreen(
+        const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
+{
+}
+
+void PageClientImpl::beganExitFullScreen(
+        const WebCore::IntRect& /* initialFrame */, const WebCore::IntRect& /* finalFrame */)
+{
+}
+
+#endif // ENABLE(FULLSCREEN_API)
+
 } // namespace WebKit
