@@ -89,7 +89,7 @@
 #if GST_CHECK_VERSION(1, 3, 0)
 #if !USE(HOLE_PUNCH_GSTREAMER)
 #define GST_USE_UNSTABLE_API
-#include <gst/gl/egl/gstglmemoryegl.h>
+#include <gst/gl/egl/gsteglimagememory.h>
 #undef GST_USE_UNSTABLE_API
 #endif
 #endif
@@ -622,10 +622,11 @@ void MediaPlayerPrivateGStreamerBase::muteChangedCallback(MediaPlayerPrivateGStr
 void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, GstVideoInfo& videoInfo)
 {
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
+
 #if USE(OPENGL_ES_2) && GST_CHECK_VERSION(1, 1, 2) && !USE(HOLE_PUNCH_GSTREAMER)
     GstMemory *mem;
     if (gst_buffer_n_memory (buffer) >= 1) {
-        if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_gl_memory_egl (mem)) {
+        if ((mem = gst_buffer_peek_memory (buffer, 0)) && gst_is_egl_image_memory (mem)) {
             guint n, i;
 
             n = gst_buffer_n_memory (buffer);
@@ -635,7 +636,7 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
             for (i = 0; i < n; i++) {
                 mem = gst_buffer_peek_memory (buffer, i);
 
-                g_assert (gst_is_gl_memory_egl (mem));
+                g_assert (gst_is_egl_image_memory (mem));
 
                 if (i == 0)
                     glActiveTexture (GL_TEXTURE0);
@@ -646,9 +647,9 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 
                 glBindTexture (GL_TEXTURE_2D, texture.id());
                 glEGLImageTargetTexture2DOES (GL_TEXTURE_2D,
-                    gst_gl_memory_egl_get_image ((GstGLMemoryEGL *) mem));
+                    gst_egl_image_memory_get_image (mem));
 
-                m_orientation = gst_gl_memory_egl_get_orientation ((GstGLMemoryEGL *) mem);
+                m_orientation = gst_egl_image_memory_get_orientation (mem);
                 if (m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_NORMAL
                     && m_orientation != GST_VIDEO_GL_TEXTURE_ORIENTATION_X_NORMAL_Y_FLIP) {
                     LOG_ERROR("MediaPlayerPrivateGStreamerBase::updateTexture: invalid GstEGLImage orientation");
