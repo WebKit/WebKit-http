@@ -88,6 +88,7 @@ public:
     virtual ~AppendPipeline();
 
     void handleElementMessage(GstMessage*);
+    void handleApplicationMessage(GstMessage*);
 
     gint id();
     AppendStage appendStage() { return m_appendStage; }
@@ -125,12 +126,13 @@ public:
     void scheduleLastSampleTimer();
     void cancelLastSampleTimer();
 
-    void setAppendIdReceivedInSink(guint64 id);
+    void reportEndOfAppendDataMarkReceived(guint64 id);
     void receiveEndOfAppendData();
 
 private:
     void resetPipeline();
     void markEndOfAppendData();
+    void handleEndOfAppendDataMarkReceived(const GstStructure*);
 
 // TODO: Hide everything and use getters/setters.
 private:
@@ -1207,7 +1209,6 @@ static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad*, AppendPipeline
 static gboolean appendPipelineDemuxerConnectToAppSinkMainThread(PadInfo*);
 static gboolean appendPipelineDemuxerDisconnectFromAppSinkMainThread(PadInfo*);
 static void appendPipelineAppSinkCapsChanged(GObject*, GParamSpec*, AppendPipeline*);
-static gboolean receiveEndOfAppendDataFromMainThread(gpointer);
 static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *pad, GstPadProbeInfo *info, AppendPipeline* ap);
 static GstFlowReturn appendPipelineAppSinkNewSample(GstElement*, AppendPipeline*);
 static gboolean appendPipelineAppSinkNewSampleMainThread(NewSampleInfo*);
@@ -1219,6 +1220,11 @@ static gboolean appendPipelineLastSampleTimeout(gpointer);
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
 {
     ap->handleElementMessage(message);
+}
+
+static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
+{
+    appendPipeline->handleApplicationMessage(message);
 }
 
 AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSourceClient, PassRefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE* playerPrivate)
@@ -1249,6 +1255,7 @@ AppendPipeline::AppendPipeline(PassRefPtr<MediaSourceClientGStreamerMSE> mediaSo
     gst_bus_enable_sync_message_emission(m_bus.get());
 
     g_signal_connect(m_bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
+    g_signal_connect(m_bus.get(), "message::application", G_CALLBACK(appendPipelineApplicationMessageCallback), this);
 
     g_mutex_init(&m_newSampleMutex);
     g_cond_init(&m_newSampleCondition);
@@ -1411,6 +1418,30 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
     // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
     if (m_playerPrivate)
         m_playerPrivate->handleSyncMessage(message);
+}
+
+void AppendPipeline::handleApplicationMessage(GstMessage* message)
+{
+    ASSERT(WTF::isMainThread());
+
+    const GstStructure* structure = gst_message_get_structure(message);
+
+    if (gst_structure_has_name(structure, "end-of-append-data-mark-received")) {
+        handleEndOfAppendDataMarkReceived(structure);
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
+}
+
+void AppendPipeline::handleEndOfAppendDataMarkReceived(const GstStructure* structure)
+{
+    gst_structure_get(structure, "id", G_TYPE_UINT64, &m_appendIdReceivedInSink, NULL);
+    ASSERT(m_appendIdReceivedInSink);
+
+    TRACE_MEDIA_MESSAGE("received end of append id %" G_GUINT64_FORMAT " in the sink", m_appendIdReceivedInSink);
+    if (m_appendStage == Sampling)
+        receiveEndOfAppendData();
 }
 
 gint AppendPipeline::id()
@@ -1972,7 +2003,7 @@ GstFlowReturn AppendPipeline::pushNewBuffer(GstBuffer* buffer)
 
 void AppendPipeline::markEndOfAppendData()
 {
-    GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty("end-of-append-data"));
+    GstEvent* event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty("end-of-append-data-mark"));
     m_appendIdMarkedInSrc = guint64(gst_event_get_seqnum(event));
 
     gst_element_send_event(m_appsrc, event);
@@ -1982,18 +2013,12 @@ void AppendPipeline::markEndOfAppendData()
     gst_app_src_push_buffer(GST_APP_SRC(appsrc()), emptyBuffer);
 }
 
-void AppendPipeline::setAppendIdReceivedInSink(guint64 id)
+void AppendPipeline::reportEndOfAppendDataMarkReceived(guint64 id)
 {
-    m_appendIdReceivedInSink = id;
-
-    if (m_appendStage == Ongoing) {
-        if (WTF::isMainThread()) {
-            receiveEndOfAppendData();
-        } else {
-            ref();
-            g_timeout_add(0, receiveEndOfAppendDataFromMainThread, this);
-        }
-    }
+    GstStructure* structure = gst_structure_new("end-of-append-data-mark-received", "id", G_TYPE_UINT64, id, NULL);
+    GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsink), structure);
+    gst_bus_post(m_bus.get(), message);
+    TRACE_MEDIA_MESSAGE("received message with id %" G_GUINT64_FORMAT ", re-posted to bus", id);
 }
 
 GstFlowReturn AppendPipeline::handleNewSample(GstElement* appsink)
@@ -2216,14 +2241,6 @@ static void appendPipelineAppSinkCapsChanged(GObject*, GParamSpec*, AppendPipeli
     g_timeout_add(0, appSinkCapsChangedFromMainThread, ap);
 }
 
-static gboolean receiveEndOfAppendDataFromMainThread(gpointer data)
-{
-    AppendPipeline* ap = reinterpret_cast<AppendPipeline*>(data);
-    ap->receiveEndOfAppendData();
-    ap->deref();
-    return G_SOURCE_REMOVE;
-}
-
 static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *, GstPadProbeInfo *info, AppendPipeline* ap)
 {
     GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
@@ -2231,14 +2248,14 @@ static GstPadProbeReturn appendPipelineAppSinkEvent(GstPad *, GstPadProbeInfo *i
         return GST_PAD_PROBE_OK;
 
     const GstStructure* structure = gst_event_get_structure(event);
-    if (!gst_structure_has_name(structure, "end-of-append-data"))
+    if (!gst_structure_has_name(structure, "end-of-append-data-mark"))
         return GST_PAD_PROBE_OK;
 
     guint64 id = guint64(gst_event_get_seqnum(event));
 
     TRACE_MEDIA_MESSAGE("id=%" G_GUINT64_FORMAT, id);
 
-    ap->setAppendIdReceivedInSink(id);
+    ap->reportEndOfAppendDataMarkReceived(id);
 
     return GST_PAD_PROBE_OK;
 }
