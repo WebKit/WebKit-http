@@ -931,7 +931,7 @@ QWebHitTestResultPrivate* QWebPageAdapter::updatePositionDependentMenuActions(co
     page->contextMenuController().setHitTestResult(result);
 
 #if ENABLE(INSPECTOR)
-    if (page->inspectorController()->enabled())
+    if (page->inspectorController().enabled())
         page->contextMenuController().addInspectElementItem();
 #endif
 
@@ -1019,14 +1019,14 @@ bool QWebPageAdapter::supportsContentType(const QString& mimeType) const
 void QWebPageAdapter::didShowInspector()
 {
 #if ENABLE(INSPECTOR)
-    page->inspectorController()->show();
+    page->inspectorController().show();
 #endif
 }
 
 void QWebPageAdapter::didCloseInspector()
 {
 #if ENABLE(INSPECTOR)
-    page->inspectorController()->close();
+    page->inspectorController().close();
 #endif
 }
 
@@ -1141,7 +1141,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
 #if ENABLE(INSPECTOR)
     case InspectElement: {
         ASSERT(hitTestResult != &hitTest);
-        page->inspectorController()->inspect(hitTestResult->innerNonSharedNode);
+        page->inspectorController().inspect(hitTestResult->innerNonSharedNode);
         break;
     }
 #endif

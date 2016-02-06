@@ -194,10 +194,10 @@ WebCore::InspectorFrontendChannel* InspectorClientQt::openInspectorFrontend(WebC
     m_inspectedWebPage->setInspectorFrontend(inspectorView.get());
 
     // Is 'controller' the same object as 'inspectorController' (which appears to be unused)?
-    InspectorController* controller = inspectorPage->page->inspectorController();
+    InspectorController& controller = inspectorPage->page->inspectorController();
     OwnPtr<InspectorFrontendClientQt> frontendClient = adoptPtr(new InspectorFrontendClientQt(m_inspectedWebPage, inspectorView.release(), inspectorPage->page, this));
     m_frontendClient = frontendClient.get();
-    controller->setInspectorFrontendClient(frontendClient.release());
+    controller.setInspectorFrontendClient(frontendClient.release());
     m_frontendWebPage = inspectorPage;
 
     // Web Inspector should not belong to any other page groups since it is a specialized debugger window.
@@ -232,7 +232,7 @@ void InspectorClientQt::attachAndReplaceRemoteFrontend(InspectorServerRequestHan
 {
 #if ENABLE(INSPECTOR)
     m_remoteFrontEndChannel = channel;
-    m_inspectedWebPage->page->inspectorController()->connectFrontend(this);
+    m_inspectedWebPage->page->inspectorController().connectFrontend(this);
 #endif
 }
 
@@ -240,7 +240,7 @@ void InspectorClientQt::detachRemoteFrontend()
 {
 #if ENABLE(INSPECTOR)
     m_remoteFrontEndChannel = 0;
-    m_inspectedWebPage->page->inspectorController()->disconnectFrontend();
+    m_inspectedWebPage->page->inspectorController().disconnectFrontend();
 #endif
 }
 
@@ -365,7 +365,7 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
 
 #if ENABLE(INSPECTOR)
     if (notifyInspectorController)
-        m_inspectedWebPage->page->inspectorController()->disconnectFrontend();
+        m_inspectedWebPage->page->inspectorController().disconnectFrontend();
 #endif
     if (m_inspectorClient)
         m_inspectorClient->releaseFrontendPage();

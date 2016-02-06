@@ -354,8 +354,8 @@ void InspectorServerRequestHandlerQt::webSocketReadyRead()
         
 #if ENABLE(INSPECTOR)
         if (m_inspectorClient) {
-            InspectorController* inspectorController = m_inspectorClient->m_inspectedWebPage->page->inspectorController();
-            inspectorController->dispatchMessageFromFrontend(QString::fromUtf8(payload));
+            InspectorController& inspectorController = m_inspectorClient->m_inspectedWebPage->page->inspectorController();
+            inspectorController.dispatchMessageFromFrontend(QString::fromUtf8(payload));
         }
 #endif
 
