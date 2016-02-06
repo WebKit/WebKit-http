@@ -56,10 +56,12 @@ void QWebHistoryInterface::setDefaultInterface(QWebHistoryInterface* defaultInte
         delete default_interface;
 
     default_interface = defaultInterface;
+#if !HISTORY_IS_BROKEN
     WebCore::PageGroup::removeAllVisitedLinks();
 
     //### enable after the introduction of a version
     //WebCore::PageGroup::setShouldTrackVisitedLinks(true);
+#endif
 
     if (!gRoutineAdded) {
         qAddPostRoutine(gCleanupInterface);
