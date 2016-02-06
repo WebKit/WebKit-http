@@ -78,6 +78,13 @@ bool getFileModificationTime(const String& path, time_t& result)
     return info.exists();
 }
 
+bool getFileCreationTime(const String& path, time_t& result)
+{
+    QFileInfo info(path);
+    result = info.created().toTime_t();
+    return info.exists();
+}
+
 bool getFileMetadata(const String& path, FileMetadata& result)
 {
     QFileInfo info(path);
@@ -128,6 +135,16 @@ Vector<String> listDirectory(const String& path, const String& filter)
     }
 
     return entries;
+}
+
+CString fileSystemRepresentation(const String& path)
+{
+    // FIXME: Check if we need to handle escaping or encoding issues here
+    //
+    // Right now this function is used in SQLiteFileSystem::openDatabase where UTF8
+    // is *required* by sqlite_open, but it may need to return local encoding in other
+    // circumstances
+    return path.utf8();
 }
 
 String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)

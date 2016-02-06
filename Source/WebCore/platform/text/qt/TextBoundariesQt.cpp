@@ -38,17 +38,22 @@
 
 #include <qtextboundaryfinder.h>
 
+#include <wtf/text/StringView.h>
+
 namespace WebCore {
 
-int findNextWordFromIndex(UChar const* buffer, int len, int position, bool forward)
+int findNextWordFromIndex(StringView text, int position, bool forward)
 {
-    QString str(reinterpret_cast<QChar const*>(buffer), len);
+    // FIXME: Check if we can pass StringView or QStringRef further
+    // FIXME: Code with conversion to QChar may be inefficient
+    QString str(text.toStringWithoutCopying());
+    int len = str.length();
     QTextBoundaryFinder iterator(QTextBoundaryFinder::Word, str);
     iterator.setPosition(position >= len ? len - 1 : position);
     if (forward) {
         int pos = iterator.toNextBoundary();
         while (pos > 0) {
-            if (QChar(buffer[pos-1]).isLetterOrNumber())
+            if (QChar(text[pos-1]).isLetterOrNumber())
                 return pos;
             pos = iterator.toNextBoundary();
         }
@@ -56,7 +61,7 @@ int findNextWordFromIndex(UChar const* buffer, int len, int position, bool forwa
     } else {
         int pos = iterator.toPreviousBoundary();
         while (pos > 0) {
-            if (QChar(buffer[pos]).isLetterOrNumber())
+            if (QChar(text[pos]).isLetterOrNumber())
                 return pos;
             pos = iterator.toPreviousBoundary();
         }
@@ -64,9 +69,11 @@ int findNextWordFromIndex(UChar const* buffer, int len, int position, bool forwa
     }
 }
 
-void findWordBoundary(UChar const* buffer, int len, int position, int* start, int* end)
+void findWordBoundary(StringView text, int position, int* start, int* end)
 {
-    QString str(reinterpret_cast<QChar const*>(buffer), len);
+    // FIXME: Check if we can pass StringView or QStringRef further
+    QString str(text.toStringWithoutCopying());
+    int len = str.length();
     QTextBoundaryFinder iterator(QTextBoundaryFinder::Word, str);
     iterator.setPosition(position);
     *start = position > 0 ? iterator.toPreviousBoundary() : 0;

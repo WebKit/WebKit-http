@@ -85,6 +85,11 @@ bool screenIsMonochrome(Widget* w)
     return false;
 }
 
+bool screenHasInvertedColors()
+{
+    return false;
+}
+
 FloatRect screenRect(Widget* widget)
 {
     QRect r = QGuiApplication::screens().value(screenNumber(widget))->geometry();

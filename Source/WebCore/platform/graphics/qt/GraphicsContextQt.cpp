@@ -895,7 +895,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
     p->fillRect(platformRect, QColor(color));
 }
 
-void GraphicsContext::fillRoundedRect(const FloatRoundedRect& rect, const Color& color, BlendMode)
+void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, const Color& color)
 {
     if (paintingDisabled() || !color.isValid())
         return;
