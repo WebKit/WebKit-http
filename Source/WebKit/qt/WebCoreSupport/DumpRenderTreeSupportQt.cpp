@@ -254,7 +254,8 @@ void DumpRenderTreeSupportQt::webInspectorShow(QWebPageAdapter* adapter)
 void DumpRenderTreeSupportQt::webInspectorClose(QWebPageAdapter* adapter)
 {
 #if ENABLE(INSPECTOR)
-    adapter->page->inspectorController().close();
+    // FIXME: Call InspectorFrontendClientQt::closeWindow()
+    // adapter->page->inspectorController().close();
 #endif
 }
 

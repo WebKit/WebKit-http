@@ -114,8 +114,6 @@
 #endif
 #endif
 
-#define ENABLE_INSPECTOR 0
-
 // from text/qfont.cpp
 QT_BEGIN_NAMESPACE
 extern Q_GUI_EXPORT int qt_defaultDpi();
@@ -1026,7 +1024,8 @@ void QWebPageAdapter::didShowInspector()
 void QWebPageAdapter::didCloseInspector()
 {
 #if ENABLE(INSPECTOR)
-    page->inspectorController().close();
+    // FIXME: Call InspectorFrontendClientQt::closeWindow()
+    // page->inspectorController().close();
 #endif
 }
 

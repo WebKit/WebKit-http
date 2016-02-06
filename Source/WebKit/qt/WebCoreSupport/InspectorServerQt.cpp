@@ -45,7 +45,7 @@ namespace WebCore {
 static QByteArray generateWebSocketChallengeResponse(const QByteArray& key)
 {
     SHA1 sha1;
-    Vector<uint8_t, 20> digest;
+    SHA1::Digest digest;
     Vector<char> encoded;
     QByteArray toHash("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     toHash.prepend(key);

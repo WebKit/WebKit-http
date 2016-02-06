@@ -31,7 +31,7 @@
 #define InspectorClientQt_h
 
 #include "InspectorClient.h"
-#include "InspectorFrontendChannel.h"
+#include <inspector/InspectorFrontendChannel.h>
 #include "InspectorFrontendClientLocal.h"
 
 #include <QObject>
@@ -47,19 +47,20 @@ class InspectorFrontendClientQt;
 class InspectorServerRequestHandlerQt;
 class Page;
 
-class InspectorClientQt : public InspectorClient, public InspectorFrontendChannel {
+class InspectorClientQt : public InspectorClient, public Inspector::FrontendChannel {
 public:
     explicit InspectorClientQt(QWebPageAdapter*);
 
-    virtual void inspectorDestroyed();
+    void inspectedPageDestroyed() override;
 
-    virtual WebCore::InspectorFrontendChannel* openInspectorFrontend(WebCore::InspectorController*);
+    Inspector::FrontendChannel* openLocalFrontend(InspectorController*) override;
     virtual void closeInspectorFrontend();
     virtual void bringFrontendToFront();
 
     virtual void highlight();
     virtual void hideHighlight();
 
+    ConnectionType connectionType() const override;
     virtual bool sendMessageToFrontend(const String&);
 
     void releaseFrontendPage();
@@ -94,7 +95,6 @@ public:
 
     virtual void setAttachedWindowHeight(unsigned);
     virtual void setAttachedWindowWidth(unsigned);
-    void setToolbarHeight(unsigned) override;
 
     virtual void inspectedURLChanged(const String& newURL);
 

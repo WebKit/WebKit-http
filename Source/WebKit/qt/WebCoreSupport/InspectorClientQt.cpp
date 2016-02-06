@@ -33,7 +33,6 @@
 
 #include "FrameView.h"
 #include "InspectorController.h"
-#include "InspectorFrontend.h"
 #include "InspectorServerQt.h"
 #include "MainFrame.h"
 #include "NotImplemented.h"
@@ -146,23 +145,23 @@ InspectorClientQt::InspectorClientQt(QWebPageAdapter* page)
         webInspectorServer->registerClient(this);
 }
 
-void InspectorClientQt::inspectorDestroyed()
+void InspectorClientQt::inspectedPageDestroyed()
 {
-#if ENABLE(INSPECTOR)
-    closeInspectorFrontend();
-
-    InspectorServerQt* webInspectorServer = InspectorServerQt::server();
-    if (webInspectorServer)
-        webInspectorServer->unregisterClient(this);
-
-    delete this;
-#endif
+    // FIXME
+//#if ENABLE(INSPECTOR)
+//    closeInspectorFrontend();
+//
+//    InspectorServerQt* webInspectorServer = InspectorServerQt::server();
+//    if (webInspectorServer)
+//        webInspectorServer->unregisterClient(this);
+//
+//    delete this;
+//#endif
 }
 
-    
-WebCore::InspectorFrontendChannel* InspectorClientQt::openInspectorFrontend(WebCore::InspectorController* inspectorController)
+Inspector::FrontendChannel* InspectorClientQt::openLocalFrontend(WebCore::InspectorController* inspectorController)
 {
-    WebCore::InspectorFrontendChannel* frontendChannel = 0;
+    Inspector::FrontendChannel* frontendChannel = 0;
 #if ENABLE(INSPECTOR)
     QObject* view = 0;
     QWebPageAdapter* inspectorPage = 0;
@@ -240,7 +239,7 @@ void InspectorClientQt::detachRemoteFrontend()
 {
 #if ENABLE(INSPECTOR)
     m_remoteFrontEndChannel = 0;
-    m_inspectedWebPage->page->inspectorController().disconnectFrontend();
+    m_inspectedWebPage->page->inspectorController().disconnectFrontend(this);
 #endif
 }
 
@@ -255,6 +254,14 @@ void InspectorClientQt::hideHighlight()
     QRect rect = m_inspectedWebPage->mainFrameAdapter()->frameRect();
     if (!rect.isEmpty())
         frame.view()->invalidateRect(rect);
+}
+
+InspectorClientQt::ConnectionType InspectorClientQt::connectionType() const
+{
+    if (m_remoteFrontEndChannel)
+        return ConnectionType::Remote;
+
+    return ConnectionType::Local;
 }
 
 bool InspectorClientQt::sendMessageToFrontend(const String& message)
@@ -295,7 +302,7 @@ InspectorFrontendClientQt::~InspectorFrontendClientQt()
 void InspectorFrontendClientQt::frontendLoaded()
 {
     InspectorFrontendClientLocal::frontendLoaded();
-    setAttachedWindow(DOCKED_TO_BOTTOM);
+    setAttachedWindow(DockSide::Bottom);
 }
 
 String InspectorFrontendClientQt::localizedStringsURL()
@@ -334,11 +341,6 @@ void InspectorFrontendClientQt::setAttachedWindowWidth(unsigned)
     notImplemented();
 }
 
-void InspectorFrontendClientQt::setToolbarHeight(unsigned)
-{
-    notImplemented();
-}
-
 void InspectorFrontendClientQt::inspectedURLChanged(const String& newURL)
 {
     m_inspectedURL = newURL;
@@ -365,7 +367,7 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
 
 #if ENABLE(INSPECTOR)
     if (notifyInspectorController)
-        m_inspectedWebPage->page->inspectorController().disconnectFrontend();
+        m_inspectedWebPage->page->inspectorController().disconnectFrontend(m_inspectorClient);
 #endif
     if (m_inspectorClient)
         m_inspectorClient->releaseFrontendPage();
