@@ -21,10 +21,10 @@
 #ifndef QtPlatformPlugin_h
 #define QtPlatformPlugin_h
 
+#include "qwebkitplatformplugin.h"
 #include <QPluginLoader>
 
 class QWebSelectMethod;
-class QWebKitPlatformPlugin;
 class QWebNotificationPresenter;
 class QWebHapticFeedbackPlayer;
 class QWebSelectData;
@@ -64,6 +64,7 @@ private:
     bool load();
     bool load(const QString& file);
     bool loadStaticallyLinkedPlugin();
+    template<typename T> std::unique_ptr<T> createExtension(QWebKitPlatformPlugin::Extension);
 };
 
 }
