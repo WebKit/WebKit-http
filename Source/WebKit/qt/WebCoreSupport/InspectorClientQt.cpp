@@ -167,7 +167,7 @@ WebCore::InspectorFrontendChannel* InspectorClientQt::openInspectorFrontend(WebC
     QObject* view = 0;
     QWebPageAdapter* inspectorPage = 0;
     m_inspectedWebPage->createWebInspector(&view, &inspectorPage);
-    OwnPtr<QObject> inspectorView = adoptPtr(view);
+    std::unique_ptr<QObject> inspectorView(view);
 
     QObject* inspector = m_inspectedWebPage->inspectorHandle();
     // Remote frontend was attached.
@@ -191,11 +191,11 @@ WebCore::InspectorFrontendChannel* InspectorClientQt::openInspectorFrontend(WebC
         inspectorPage->handle()->setProperty("_q_inspectorJavaScriptWindowObjects", inspectorJavaScriptWindowObjects);
 #endif
     inspectorPage->mainFrameAdapter()->load(QNetworkRequest(inspectorUrl));
-    m_inspectedWebPage->setInspectorFrontend(inspectorView.get());
+    m_inspectedWebPage->setInspectorFrontend(view);
 
     // Is 'controller' the same object as 'inspectorController' (which appears to be unused)?
     InspectorController& controller = inspectorPage->page->inspectorController();
-    OwnPtr<InspectorFrontendClientQt> frontendClient = adoptPtr(new InspectorFrontendClientQt(m_inspectedWebPage, inspectorView.release(), inspectorPage->page, this));
+    std::unique_ptr<InspectorFrontendClientQt> frontendClient = std::make_unique<InspectorFrontendClientQt>(m_inspectedWebPage, WTFMove(inspectorView), inspectorPage->page, this);
     m_frontendClient = frontendClient.get();
     controller.setInspectorFrontendClient(frontendClient.release());
     m_frontendWebPage = inspectorPage;
@@ -276,10 +276,10 @@ bool InspectorClientQt::sendMessageToFrontend(const String& message)
 }
 
 #if ENABLE(INSPECTOR)
-InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, PassOwnPtr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
-    : InspectorFrontendClientLocal(inspectedWebPage->page->inspectorController(), inspectorPage, adoptPtr(new InspectorFrontendSettingsQt()))
+InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
+    : InspectorFrontendClientLocal(&inspectedWebPage->page->inspectorController(), inspectorPage, std::make_unique<InspectorFrontendSettingsQt>())
     , m_inspectedWebPage(inspectedWebPage)
-    , m_inspectorView(inspectorView)
+    , m_inspectorView(WTFMove(inspectorView))
     , m_destroyingInspectorView(false)
     , m_inspectorClient(inspectorClient)
 {
@@ -371,7 +371,8 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
         m_inspectorClient->releaseFrontendPage();
 
     // Clear pointer before deleting WebView to avoid recursive calls to its destructor.
-    OwnPtr<QObject> inspectorView = m_inspectorView.release();
+    // FIXME: Check what's going on here
+    m_inspectorView = nullptr;
 }
 
 void InspectorFrontendClientQt::inspectorClientDestroyed()
