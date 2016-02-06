@@ -228,8 +228,8 @@ namespace WebCore {
 
         void addSubresourceLoader(ResourceLoader*);
         void removeSubresourceLoader(ResourceLoader*);
-        WEBCORE_EXPORT void addPlugInStreamLoader(ResourceLoader*);
-        WEBCORE_EXPORT void removePlugInStreamLoader(ResourceLoader*);
+        void addPlugInStreamLoader(ResourceLoader&);
+        void removePlugInStreamLoader(ResourceLoader&);
 
         void subresourceLoaderFinishedLoadingOnePart(ResourceLoader*);
 
@@ -335,6 +335,8 @@ namespace WebCore {
         void substituteResourceDeliveryTimerFired();
 
         void clearMainResource();
+
+        void cancelPolicyCheckIfNeeded();
 
 #if ENABLE(CONTENT_FILTERING)
         void becomeMainResourceClientIfFilterAllows();
@@ -445,7 +447,7 @@ namespace WebCore {
 
 #if ENABLE(CONTENT_EXTENSIONS)
         HashMap<String, RefPtr<StyleSheetContents>> m_pendingNamedContentExtensionStyleSheets;
-        HashMap<String, std::pair<String, uint32_t>> m_pendingContentExtensionDisplayNoneSelectors;
+        HashMap<String, Vector<std::pair<String, uint32_t>>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
 
 #ifndef NDEBUG

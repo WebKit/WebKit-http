@@ -60,14 +60,14 @@ inline void Stopwatch::reset()
 
 inline void Stopwatch::start()
 {
-    ASSERT_WITH_MESSAGE(isnan(m_lastStartTime), "Tried to start the stopwatch, but it is already running.");
+    ASSERT_WITH_MESSAGE(std::isnan(m_lastStartTime), "Tried to start the stopwatch, but it is already running.");
 
     m_lastStartTime = monotonicallyIncreasingTime();
 }
 
 inline void Stopwatch::stop()
 {
-    ASSERT_WITH_MESSAGE(!isnan(m_lastStartTime), "Tried to stop the stopwatch, but it is not running.");
+    ASSERT_WITH_MESSAGE(!std::isnan(m_lastStartTime), "Tried to stop the stopwatch, but it is not running.");
 
     m_elapsedTime += monotonicallyIncreasingTime() - m_lastStartTime;
     m_lastStartTime = NAN;

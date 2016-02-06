@@ -93,7 +93,7 @@ public:
     void load(const String&, MediaSourcePrivateClient*) override { }
 #endif
 #if ENABLE(MEDIA_STREAM)
-    void load(MediaStreamPrivate*) override { }
+    void load(MediaStreamPrivate&) override { }
 #endif
     void cancelLoad() override { }
 
@@ -427,7 +427,7 @@ void MediaPlayer::loadWithNextMediaEngine(const MediaPlayerFactory* current)
 #endif
 #if ENABLE(MEDIA_STREAM)
         if (m_mediaStream)
-            m_private->load(m_mediaStream.get());
+            m_private->load(*m_mediaStream);
         else
 #endif
         m_private->load(m_url.string());

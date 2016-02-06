@@ -51,23 +51,8 @@ inline bool JSLexicalEnvironment::symbolTableGet(PropertyName propertyName, Prop
     if (!isValid(offset))
         return false;
 
-    slot.setValue(this, DontEnum, variableAt(offset).get());
-    return true;
-}
-
-inline bool JSLexicalEnvironment::symbolTableGet(PropertyName propertyName, PropertyDescriptor& descriptor)
-{
-    SymbolTableEntry entry = symbolTable()->inlineGet(propertyName.uid());
-    if (entry.isNull())
-        return false;
-
-    ScopeOffset offset = entry.scopeOffset();
-
-    // Defend against the inspector asking for a var after it has been optimized out.
-    if (!isValid(offset))
-        return false;
-
-    descriptor.setDescriptor(variableAt(offset).get(), entry.getAttributes());
+    JSValue result = variableAt(offset).get();
+    slot.setValue(this, DontEnum, result);
     return true;
 }
 
@@ -85,7 +70,7 @@ inline bool JSLexicalEnvironment::symbolTablePut(ExecState* exec, PropertyName p
             return false;
         ASSERT(!iter->value.isNull());
         if (iter->value.isReadOnly()) {
-            if (shouldThrow)
+            if (shouldThrow || isLexicalScope())
                 throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
             return true;
         }
@@ -114,7 +99,7 @@ void JSLexicalEnvironment::getOwnNonIndexPropertyNames(JSObject* object, ExecSta
                 continue;
             if (!thisObject->isValid(it->value.scopeOffset()))
                 continue;
-            if (it->key->isSymbol() && !mode.includeSymbolProperties())
+            if (it->key->isSymbol() && !propertyNames.includeSymbolProperties())
                 continue;
             propertyNames.add(Identifier::fromUid(exec, it->key.get()));
         }

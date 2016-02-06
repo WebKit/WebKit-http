@@ -44,6 +44,7 @@ class RemoteCommandListener;
 class PlatformMediaSessionManager : private RemoteCommandListenerClient, private SystemSleepListener::Client, private AudioHardwareListener::Client {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+    WEBCORE_EXPORT static PlatformMediaSessionManager* sharedManagerIfExists();
     WEBCORE_EXPORT static PlatformMediaSessionManager& sharedManager();
     virtual ~PlatformMediaSessionManager() { }
 
@@ -56,6 +57,7 @@ public:
 
     WEBCORE_EXPORT void applicationWillEnterForeground() const;
     WEBCORE_EXPORT void applicationWillEnterBackground() const;
+    WEBCORE_EXPORT void applicationDidEnterBackground(bool isSuspendedUnderLock) const;
 
     void stopAllMediaPlaybackForDocument(const Document*);
     WEBCORE_EXPORT void stopAllMediaPlaybackForProcess();

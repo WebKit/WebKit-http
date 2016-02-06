@@ -1599,7 +1599,6 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/aria-help.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-crash.html [ Skip ] # Crashing
-[ Debug ] accessibility/aria-hidden-hides-all-elements.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-update.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-hidden-updates-alldescendants.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-inherits-presentational.html [ Skip ] # Crashing
@@ -1614,7 +1613,6 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/paragraph-with-linebreaks.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/aria-presentational-role.html [ Skip ] # Crashing
 [ Debug ] accessibility/aria-roles.html [ Skip ] # Crashing
-[ Debug ] accessibility/aria-table-hierarchy.html [ Skip ] # Crashing
 [ Debug ] accessibility/iframe-bastardization.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/ignore-spacer-elements.html [ Skip ] # Debug assertion
 [ Debug ] accessibility/image-link-inline-cont.html [ Skip ] # Debug assertion
@@ -1658,6 +1656,10 @@ webkit.org/b/140869 [ Debug ] accessibility/aria-combobox.html [ Skip ]
 [ Debug ] accessibility/updating-attribute-in-table-causes-crash.html [ Skip ] # Debug assertion
 
 [ Debug ] platform/win/accessibility/option-element-selection-and-focus-events.html [ Skip ] # Debug Assertion
+
+webkit.org/b/146903 accessibility/aria-table-hierarchy.html [ Skip ]
+webkit.org/b/146903 accessibility/roles-table-and-cell.html [ Skip ]
+
 ################################################################################
 #######################   End Accessibility Issues   ###########################
 ################################################################################
@@ -2355,6 +2357,8 @@ inspector/dom/content-node-region-info.html [ Crash Pass Failure Timeout ]
 inspector/css/selector-specificity.html [ Skip ]
 inspector/css/pseudo-element-matches.html [ Skip ]
 
+webkit.org/b/147017 inspector/css/get-system-fonts.html [ Skip ]
+
 # Inspector Protocol
 webkit.org/b/140510 inspector-protocol/debugger/terminate-dedicated-worker-while-paused.html [ Skip ]  # Crashing
 inspector-protocol/debugger/pause-on-assert.html [ Skip ]
@@ -2372,8 +2376,11 @@ webkit.org/b/128979 [ Release ] inspector-protocol/dom/getAccessibilityPropertie
 inspector-protocol/debugger/removeBreakpoint.html [ Skip ] # Crashing
 inspector-protocol/debugger/searchInContent-linebreaks.html [ Pass Crash ] # Flaky
 
+webkit.org/b/143548 inspector/console/command-line-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-api.html [ Skip ] # Timeout
 webkit.org/b/143548 inspector/console/console-table.html [ Skip ] # Timeout
+
+webkit.org/b/147229 inspector/css/modify-rule-selector.html [ Skip ] # Timeout
 
 ################################################################################
 #################        End Inspector Issues               ####################
@@ -2593,7 +2600,6 @@ webkit.org/b/144718 fast/animation/request-animation-frame-throttle-subframe.htm
 [ Debug ] fast/regions/hover-content-inside-iframe-in-region.html [ Skip ] # Debug Assertion
 [ Debug ] fast/repaint/4774354.html [ Skip ] # Causes later tests to fail
 [ Debug ] fast/repaint/fixed-in-page-scale.html [ Skip ] # Debug assertion
-[ Debug ] fast/repaint/fixed-move-after-keyboard-scroll.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/fixed-move-after-scroll.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/fixed-position-transparency-with-overflow.html [ Skip ] # Debug assertion
 [ Debug ] fast/repaint/text-selection-rect-in-overflow-2.html [ Skip ] # Causes later tests to fail
@@ -3103,7 +3109,8 @@ http/tests/contentfiltering [ Skip ]
 loader/meta-refresh-disabled.html [ Skip ]
 
 # Started failing recently.
-webkit.org/b/143275 accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
+[ Debug ] accessibility/aria-hidden-hides-all-elements.html [ Skip ] # Crashing
+webkit.org/b/143275 [ Release ] accessibility/aria-hidden-hides-all-elements.html [ Pass Failure ]
 
 webkit.org/b/143420 fast/fixed-layout/fixed-layout.html [ Skip ]
 
@@ -3122,3 +3129,11 @@ fast/text/hangul-generic-font-families.html [ WontFix ]
 
 # New test for Bug 144830 (r186388) always fails.
 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Failure ]
+
+# <rdar://problem/21816197> large-js-program.php crashes (crashes slower on Debug)
+http/tests/misc/large-js-program.php [ Slow Crash ]
+
+# Slider thumb widget painting
+fast/repaint/block-inputrange-repaint.html [ Pass Failure ]
+
+fast/inline/padding-ellipsis-right.html [ Failure ]

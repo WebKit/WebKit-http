@@ -2358,11 +2358,18 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         // auto | alphabetic | under
         return parseTextUnderlinePosition(important);
 
-    case CSSPropertyZoom:          // normal | reset | document | <number> | <percentage> | inherit
+    case CSSPropertyZoom:
+        // normal | reset | document | <number> | <percentage> | inherit
         if (id == CSSValueNormal || id == CSSValueReset || id == CSSValueDocument)
             validPrimitive = true;
         else
             validPrimitive = (!id && validateUnit(valueWithCalculation, FNumber | FPercent | FNonNeg, CSSStrictMode));
+        break;
+    
+    case CSSPropertyWebkitTextZoom:
+        // normal | reset
+        if (id == CSSValueNormal || id == CSSValueReset)
+            validPrimitive = true;
         break;
 
     case CSSPropertySrc: // Only used within @font-face and @-webkit-filter, so cannot use inherit | initial or be !important. This is a list of urls or local references.
@@ -3397,7 +3404,7 @@ bool CSSParser::parseNonElementSnapPoints(CSSPropertyID propId, bool important)
             && value->function->args->size() == 1
             && equalIgnoringCase(value->function->name, "repeat(")) {
             ValueWithCalculation argumentWithCalculation(*value->function->args.get()->current());
-            if (validateUnit(argumentWithCalculation, FLength | FPercent)) {
+            if (validateUnit(argumentWithCalculation, FLength | FPercent | FNonNeg)) {
                 values->append(cssValuePool().createValue(LengthRepeat::create(createPrimitiveNumericValue(argumentWithCalculation))));
                 m_valueList->next();
                 if (m_valueList->current())

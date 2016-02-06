@@ -86,7 +86,7 @@ bool TestRunner::callShouldCloseOnWebView()
     if (FAILED(frame->webView(&webView)))
         return false;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return false;
 
@@ -106,8 +106,8 @@ void TestRunner::clearAllApplicationCaches()
 
 long long TestRunner::applicationCacheDiskUsageForOrigin(JSStringRef url)
 {
-    COMPtr<IWebSecurityOrigin> origin;
-    if (FAILED(WebKitCreateInstance(CLSID_WebSecurityOrigin, 0, IID_IWebSecurityOrigin, reinterpret_cast<void**>(&origin))))
+    COMPtr<IWebSecurityOrigin2> origin;
+    if (FAILED(WebKitCreateInstance(CLSID_WebSecurityOrigin, 0, IID_IWebSecurityOrigin2, reinterpret_cast<void**>(&origin))))
         return 0;
 
     COMPtr<IWebApplicationCache> applicationCache;
@@ -126,8 +126,8 @@ long long TestRunner::applicationCacheDiskUsageForOrigin(JSStringRef url)
 
 void TestRunner::clearApplicationCacheForOrigin(JSStringRef origin)
 {
-    COMPtr<IWebSecurityOrigin> securityOrigin;
-    if (FAILED(WebKitCreateInstance(CLSID_WebSecurityOrigin, 0, IID_IWebSecurityOrigin, reinterpret_cast<void**>(&securityOrigin))))
+    COMPtr<IWebSecurityOrigin2> securityOrigin;
+    if (FAILED(WebKitCreateInstance(CLSID_WebSecurityOrigin, 0, IID_IWebSecurityOrigin2, reinterpret_cast<void**>(&securityOrigin))))
         return;
 
     _bstr_t originBstr(JSStringCopyBSTR(origin), false);
@@ -418,7 +418,7 @@ void TestRunner::setDefersLoading(bool defers)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 
@@ -427,7 +427,7 @@ void TestRunner::setDefersLoading(bool defers)
 
 void TestRunner::setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme)
 {
-    COMPtr<IWebViewPrivate> webView;
+    COMPtr<IWebViewPrivate2> webView;
     if (FAILED(WebKitCreateInstance(__uuidof(WebView), 0, __uuidof(webView), reinterpret_cast<void**>(&webView))))
         return;
 
@@ -607,7 +607,7 @@ void TestRunner::setTabKeyCyclesThroughElements(bool shouldCycle)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 
@@ -788,7 +788,7 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef element, JSStr
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> webViewPrivate(Query, webView);
+    COMPtr<IWebViewPrivate2> webViewPrivate(Query, webView);
     if (!webViewPrivate)
         return;
 
@@ -816,7 +816,7 @@ void TestRunner::dispatchPendingLoadRequests()
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 
@@ -876,7 +876,7 @@ void TestRunner::setWindowIsKey(bool flag)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 
@@ -912,7 +912,7 @@ void TestRunner::execCommand(JSStringRef name, JSStringRef value)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 
@@ -966,7 +966,7 @@ static _bstr_t bstrT(JSStringRef jsString)
 
 void TestRunner::addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains)
 {
-    COMPtr<IWebViewPrivate> webView;
+    COMPtr<IWebViewPrivate2> webView;
     if (FAILED(WebKitCreateInstance(__uuidof(WebView), 0, __uuidof(webView), reinterpret_cast<void**>(&webView))))
         return;
 
@@ -975,7 +975,7 @@ void TestRunner::addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStrin
 
 void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains)
 {
-    COMPtr<IWebViewPrivate> webView;
+    COMPtr<IWebViewPrivate2> webView;
     if (FAILED(WebKitCreateInstance(__uuidof(WebView), 0, __uuidof(webView), reinterpret_cast<void**>(&webView))))
         return;
 
@@ -989,7 +989,7 @@ void TestRunner::setScrollbarPolicy(JSStringRef orientation, JSStringRef policy)
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
-    COMPtr<IWebViewPrivate> webView;
+    COMPtr<IWebViewPrivate2> webView;
     if (FAILED(WebKitCreateInstance(__uuidof(WebView), 0, __uuidof(webView), reinterpret_cast<void**>(&webView))))
         return;
 
@@ -997,12 +997,14 @@ void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFram
     if (FAILED(WebKitCreateInstance(__uuidof(WebScriptWorld), 0, __uuidof(world), reinterpret_cast<void**>(&world))))
         return;
 
-    webView->addUserScriptToGroup(_bstr_t(L"org.webkit.DumpRenderTree").GetBSTR(), world.get(), bstrT(source).GetBSTR(), 0, 0, 0, 0, 0, runAtStart ? WebInjectAtDocumentStart : WebInjectAtDocumentEnd);
+    webView->addUserScriptToGroup(_bstr_t(L"org.webkit.DumpRenderTree").GetBSTR(), world.get(), bstrT(source).GetBSTR(),
+        nullptr, 0, nullptr, 0, nullptr, runAtStart ? WebInjectAtDocumentStart : WebInjectAtDocumentEnd,
+        allFrames ? WebInjectInAllFrames : WebInjectInTopFrameOnly);
 }
 
 void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
 {
-    COMPtr<IWebViewPrivate> webView;
+    COMPtr<IWebViewPrivate2> webView;
     if (FAILED(WebKitCreateInstance(__uuidof(WebView), 0, __uuidof(webView), reinterpret_cast<void**>(&webView))))
         return;
 
@@ -1010,7 +1012,8 @@ void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
     if (FAILED(WebKitCreateInstance(__uuidof(WebScriptWorld), 0, __uuidof(world), reinterpret_cast<void**>(&world))))
         return;
 
-    webView->addUserStyleSheetToGroup(_bstr_t(L"org.webkit.DumpRenderTree").GetBSTR(), world.get(), bstrT(source).GetBSTR(), 0, 0, 0, 0, 0);
+    webView->addUserStyleSheetToGroup(_bstr_t(L"org.webkit.DumpRenderTree").GetBSTR(), world.get(), bstrT(source).GetBSTR(),
+        nullptr, 0, nullptr, 0, nullptr, allFrames ? WebInjectInAllFrames : WebInjectInTopFrameOnly);
 }
 
 void TestRunner::setDeveloperExtrasEnabled(bool enabled)
@@ -1036,7 +1039,7 @@ void TestRunner::showWebInspector()
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate(Query, webView);
+    COMPtr<IWebViewPrivate2> viewPrivate(Query, webView);
     if (!viewPrivate)
         return;
 
@@ -1051,7 +1054,7 @@ void TestRunner::closeWebInspector()
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate(Query, webView);
+    COMPtr<IWebViewPrivate2> viewPrivate(Query, webView);
     if (!viewPrivate)
         return;
 
@@ -1068,7 +1071,7 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate(Query, webView);
+    COMPtr<IWebViewPrivate2> viewPrivate(Query, webView);
     if (!viewPrivate)
         return;
 
@@ -1182,7 +1185,7 @@ void TestRunner::setSerializeHTTPLoads(bool serializeLoads)
     if (FAILED(frame->webView(&webView)))
         return;
 
-    COMPtr<IWebViewPrivate> viewPrivate;
+    COMPtr<IWebViewPrivate2> viewPrivate;
     if (FAILED(webView->QueryInterface(&viewPrivate)))
         return;
 

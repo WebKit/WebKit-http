@@ -32,6 +32,7 @@
 #include <WebCore/EventListener.h>
 #include <WebCore/HTMLMediaElementEnums.h>
 #include <WebCore/PlatformLayer.h>
+#include <WebCore/Timer.h>
 #include <WebCore/WebVideoFullscreenInterface.h>
 #include <functional>
 #include <objc/objc.h>
@@ -45,8 +46,8 @@ OBJC_CLASS UIViewController;
 OBJC_CLASS UIWindow;
 OBJC_CLASS UIView;
 OBJC_CLASS CALayer;
-OBJC_CLASS WebAVVideoLayer;
-OBJC_CLASS WebCALayerHostWrapper;
+OBJC_CLASS WebAVPlayerLayerView;
+OBJC_CLASS WebAVPlayerLayer;
 
 namespace WTF {
 class String;
@@ -75,7 +76,7 @@ public:
     {
         return adoptRef(*new WebVideoFullscreenInterfaceAVKit());
     }
-    virtual ~WebVideoFullscreenInterfaceAVKit() { }
+    virtual ~WebVideoFullscreenInterfaceAVKit();
     WEBCORE_EXPORT void setWebVideoFullscreenModel(WebVideoFullscreenModel*);
     WEBCORE_EXPORT void setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver*);
     
@@ -90,8 +91,9 @@ public:
     WEBCORE_EXPORT virtual void setAudioMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
     WEBCORE_EXPORT virtual void setLegibleMediaSelectionOptions(const Vector<WTF::String>& options, uint64_t selectedIndex) override;
     WEBCORE_EXPORT virtual void setExternalPlayback(bool enabled, ExternalPlaybackTargetType, WTF::String localizedDeviceName) override;
-    
-    WEBCORE_EXPORT virtual void setupFullscreen(PlatformLayer&, const IntRect& initialRect, UIView *, HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicturePlayback);
+    WEBCORE_EXPORT virtual void setWirelessVideoPlaybackDisabled(bool) override;
+
+    WEBCORE_EXPORT virtual void setupFullscreen(UIView&, const IntRect& initialRect, UIView *, HTMLMediaElementEnums::VideoFullscreenMode, bool allowsPictureInPicturePlayback);
     WEBCORE_EXPORT virtual void enterFullscreen();
     WEBCORE_EXPORT virtual void exitFullscreen(const IntRect& finalRect);
     WEBCORE_EXPORT virtual void cleanupFullscreen();
@@ -112,6 +114,7 @@ public:
     bool allowsPictureInPicturePlayback() const { return m_allowsPictureInPicturePlayback; }
     WEBCORE_EXPORT bool mayAutomaticallyShowVideoPictureInPicture() const;
     void fullscreenMayReturnToInline(std::function<void(bool)> callback);
+    bool wirelessVideoPlaybackDisabled() const;
 
     void willStartPictureInPicture();
     void didStartPictureInPicture();
@@ -130,12 +133,10 @@ protected:
     void beginSession();
     void enterPictureInPicture();
     void enterFullscreenStandard();
+    void watchdogTimerFired();
 
     RetainPtr<WebAVPlayerController> m_playerController;
     RetainPtr<AVPlayerViewController> m_playerViewController;
-    RetainPtr<CALayer> m_videoLayer;
-    RetainPtr<WebAVVideoLayer> m_videoLayerContainer;
-    RetainPtr<WebCALayerHostWrapper> m_layerHostWrapper;
     WebVideoFullscreenModel* m_videoFullscreenModel { nullptr };
     WebVideoFullscreenChangeObserver* m_fullscreenChangeObserver { nullptr };
 
@@ -144,12 +145,15 @@ protected:
     RetainPtr<UIViewController> m_viewController;
     RetainPtr<UIView> m_parentView;
     RetainPtr<UIWindow> m_parentWindow;
+    RetainPtr<WebAVPlayerLayerView> m_playerLayerView;
     HTMLMediaElementEnums::VideoFullscreenMode m_mode { HTMLMediaElementEnums::VideoFullscreenModeNone };
     std::function<void(bool)> m_prepareToInlineCallback;
+    Timer m_watchdogTimer;
     bool m_allowsPictureInPicturePlayback { false };
     bool m_exitRequested { false };
     bool m_exitCompleted { false };
     bool m_enterRequested { false };
+    bool m_wirelessVideoPlaybackDisabled { true };
 
     void doEnterFullscreen();
 };

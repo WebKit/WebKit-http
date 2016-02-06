@@ -126,6 +126,7 @@ typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_ESsiJI)(ExecState*, Struct
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZ)(ExecState*, int32_t);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZIcfZ)(ExecState*, int32_t, InlineCallFrame*, int32_t);
 typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZZ)(ExecState*, int32_t, int32_t);
+typedef EncodedJSValue JIT_OPERATION (*J_JITOperation_EZSymtabJ)(ExecState*, int32_t, SymbolTable*, EncodedJSValue);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_E)(ExecState*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EZ)(ExecState*, int32_t);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EC)(ExecState*, JSCell*);
@@ -148,7 +149,7 @@ typedef JSCell* JIT_OPERATION (*C_JITOperation_EL)(ExecState*, JSLexicalEnvironm
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EO)(ExecState*, JSObject*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EOZ)(ExecState*, JSObject*, int32_t);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_ESt)(ExecState*, Structure*);
-typedef JSCell* JIT_OPERATION (*C_JITOperation_EStJscSymtab)(ExecState*, Structure*, JSScope*, SymbolTable*);
+typedef JSCell* JIT_OPERATION (*C_JITOperation_EStJscSymtabJ)(ExecState*, Structure*, JSScope*, SymbolTable*, EncodedJSValue);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EStRZJsfL)(ExecState*, Structure*, Register*, int32_t, JSFunction*, JSLexicalEnvironment*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EStRZJsf)(ExecState*, Structure*, Register*, int32_t, JSFunction*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EStZ)(ExecState*, Structure*, int32_t);
@@ -266,13 +267,6 @@ EncodedJSValue JIT_OPERATION operationCallEval(ExecState*, ExecState*) WTF_INTER
 char* JIT_OPERATION operationLinkCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
 char* JIT_OPERATION operationLinkPolymorphicCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
 char* JIT_OPERATION operationVirtualCall(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationVirtualConstruct(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkConstruct(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkCallThatPreservesRegs(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkPolymorphicCallThatPreservesRegs(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationVirtualCallThatPreservesRegs(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationVirtualConstructThatPreservesRegs(ExecState*, CallLinkInfo*) WTF_INTERNAL;
-char* JIT_OPERATION operationLinkConstructThatPreservesRegs(ExecState*, CallLinkInfo*) WTF_INTERNAL;
 
 size_t JIT_OPERATION operationCompareLess(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationCompareLessEq(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
@@ -310,14 +304,12 @@ void JIT_OPERATION operationPutGetterById(ExecState*, JSCell*, Identifier*, JSCe
 void JIT_OPERATION operationPutSetterById(ExecState*, JSCell*, Identifier*, JSCell*) WTF_INTERNAL;
 void JIT_OPERATION operationPutGetterSetter(ExecState*, JSCell*, Identifier*, JSCell*, JSCell*) WTF_INTERNAL;
 #endif
-void JIT_OPERATION operationPushCatchScope(ExecState*, int32_t, SymbolTable*, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationPushFunctionNameScope(ExecState*, int32_t, SymbolTable*, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationPushWithScope(ExecState*, int32_t, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationPopScope(ExecState*, int32_t) WTF_INTERNAL;
 void JIT_OPERATION operationProfileDidCall(ExecState*, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationProfileWillCall(ExecState*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationCheckHasInstance(ExecState*, EncodedJSValue, EncodedJSValue baseVal) WTF_INTERNAL;
-JSCell* JIT_OPERATION operationCreateActivation(ExecState*, JSScope* currentScope) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValDefault(ExecState*, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ArrayProfile*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValGeneric(ExecState*, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript, ArrayProfile*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValString(ExecState*, EncodedJSValue encodedBase, EncodedJSValue encodedSubscript) WTF_INTERNAL;
@@ -355,68 +347,6 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
 
 } // extern "C"
-
-inline P_JITOperation_ECli operationLinkFor(
-    CodeSpecializationKind kind, RegisterPreservationMode registers)
-{
-    switch (kind) {
-    case CodeForCall:
-        switch (registers) {
-        case RegisterPreservationNotRequired:
-            return operationLinkCall;
-        case MustPreserveRegisters:
-            return operationLinkCallThatPreservesRegs;
-        }
-        break;
-    case CodeForConstruct:
-        switch (registers) {
-        case RegisterPreservationNotRequired:
-            return operationLinkConstruct;
-        case MustPreserveRegisters:
-            return operationLinkConstructThatPreservesRegs;
-        }
-        break;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
-}
-
-inline P_JITOperation_ECli operationVirtualFor(
-    CodeSpecializationKind kind, RegisterPreservationMode registers)
-{
-    switch (kind) {
-    case CodeForCall:
-        switch (registers) {
-        case RegisterPreservationNotRequired:
-            return operationVirtualCall;
-        case MustPreserveRegisters:
-            return operationVirtualCallThatPreservesRegs;
-        }
-        break;
-    case CodeForConstruct:
-        switch (registers) {
-        case RegisterPreservationNotRequired:
-            return operationVirtualConstruct;
-        case MustPreserveRegisters:
-            return operationVirtualConstructThatPreservesRegs;
-        }
-        break;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
-}
-
-inline P_JITOperation_ECli operationLinkPolymorphicCallFor(RegisterPreservationMode registers)
-{
-    switch (registers) {
-    case RegisterPreservationNotRequired:
-        return operationLinkPolymorphicCall;
-    case MustPreserveRegisters:
-        return operationLinkPolymorphicCallThatPreservesRegs;
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
-}
 
 } // namespace JSC
 

@@ -976,7 +976,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     return checkedReturn(result);
 }
 
-JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* constructor, ConstructType constructType, const ConstructData& constructData, const ArgList& args)
+JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* constructor, ConstructType constructType, const ConstructData& constructData, const ArgList& args, JSValue newTarget)
 {
     VM& vm = callFrame->vm();
     ASSERT(!callFrame->hadException());
@@ -1021,7 +1021,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         return throwTerminatedExecutionException(callFrame);
 
     ProtoCallFrame protoCallFrame;
-    protoCallFrame.init(newCodeBlock, constructor, constructor, argsCount, args.data());
+    protoCallFrame.init(newCodeBlock, constructor, newTarget, argsCount, args.data());
 
     if (LegacyProfiler* profiler = vm.enabledProfiler())
         profiler->willExecute(callFrame, constructor);
@@ -1135,12 +1135,18 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     } else {
         for (JSScope* node = scope; ; node = node->next()) {
             RELEASE_ASSERT(node);
-            if (node->isVariableObject()) {
-                ASSERT(!node->isNameScopeObject());
+            if (node->isGlobalObject()) {
                 variableObject = node;
                 break;
+            } 
+            if (JSLexicalEnvironment* lexicalEnvironment = jsDynamicCast<JSLexicalEnvironment*>(node)) {
+                if (lexicalEnvironment->symbolTable()->scopeType() == SymbolTable::ScopeType::VarScope) {
+                    variableObject = node;
+                    break;
+                }
             }
         }
+        ASSERT(!variableObject->isNameScopeObject());
     }
 
     JSObject* compileError = eval->prepareForExecution(callFrame, nullptr, scope, CodeForCall);

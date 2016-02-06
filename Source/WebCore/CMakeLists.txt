@@ -1067,6 +1067,8 @@ set(WebCore_SOURCES
     accessibility/AccessibilityTableColumn.cpp
     accessibility/AccessibilityTableHeaderContainer.cpp
     accessibility/AccessibilityTableRow.cpp
+    accessibility/AccessibilityTree.cpp
+    accessibility/AccessibilityTreeItem.cpp
 
     bindings/generic/ActiveDOMCallback.cpp
     bindings/generic/RuntimeEnabledFeatures.cpp
@@ -1092,6 +1094,7 @@ set(WebCore_SOURCES
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
+    bindings/js/JSCharacterDataCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
@@ -1100,6 +1103,7 @@ set(WebCore_SOURCES
     bindings/js/JSCryptoKeyPairCustom.cpp
     bindings/js/JSCryptoKeySerializationJWK.cpp
     bindings/js/JSCryptoOperationData.cpp
+    bindings/js/JSCustomEventCustom.cpp
     bindings/js/JSCustomSQLStatementErrorCallback.cpp
     bindings/js/JSCustomXPathNSResolver.cpp
     bindings/js/JSDOMBinding.cpp
@@ -1123,6 +1127,8 @@ set(WebCore_SOURCES
     bindings/js/JSDeviceOrientationEventCustom.cpp
     bindings/js/JSDictionary.cpp
     bindings/js/JSDocumentCustom.cpp
+    bindings/js/JSDocumentFragmentCustom.cpp
+    bindings/js/JSDocumentTypeCustom.cpp
     bindings/js/JSElementCustom.cpp
     bindings/js/JSErrorHandler.cpp
     bindings/js/JSEventCustom.cpp
@@ -1172,6 +1178,7 @@ set(WebCore_SOURCES
     bindings/js/JSNodeFilterCondition.cpp
     bindings/js/JSNodeFilterCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
+    bindings/js/JSNodeOrString.cpp
     bindings/js/JSNodeListCustom.cpp
     bindings/js/JSOscillatorNodeCustom.cpp
     bindings/js/JSPannerNodeCustom.cpp
@@ -1448,6 +1455,7 @@ set(WebCore_SOURCES
     dom/NodeFilter.cpp
     dom/NodeFilterCondition.cpp
     dom/NodeIterator.cpp
+    dom/NodeOrString.cpp
     dom/NodeRareData.cpp
     dom/NodeRenderingTraversal.cpp
     dom/NodeTraversal.cpp
@@ -1741,6 +1749,7 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
+    html/canvas/DOMPath.cpp
     html/canvas/EXTBlendMinMax.cpp
     html/canvas/EXTFragDepth.cpp
     html/canvas/EXTShaderTextureLOD.cpp
@@ -2170,6 +2179,7 @@ set(WebCore_SOURCES
     platform/graphics/NamedImageGeneratedImage.cpp
     platform/graphics/Path.cpp
     platform/graphics/PathTraversalState.cpp
+    platform/graphics/PathUtilities.cpp
     platform/graphics/Pattern.cpp
     platform/graphics/PlatformTimeRanges.cpp
     platform/graphics/Region.cpp
@@ -3510,6 +3520,7 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventFactory.cpp)
 
 GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventTargetFactory.in EventTargetInterfaces.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/EventNames.cpp EventTargetInterfaces.h)
+list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
 
 
 GENERATE_EXCEPTION_CODE_DESCRIPTION(${WEBCORE_DIR}/dom/DOMExceptions.in ExceptionCodeDescription.cpp)
@@ -3580,6 +3591,10 @@ include_directories(SYSTEM ${WebCore_SYSTEM_INCLUDE_DIRECTORIES})
 
 if (MSVC)
     ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
+    if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+        list(APPEND WebCore_SOURCES platform/win/makesafeseh.asm)
+        set_source_files_properties(platform/win/makesafeseh.asm PROPERTIES COMPILE_FLAGS "/safeseh")
+    endif ()
 endif ()
 
 add_library(WebCore ${WebCore_LIBRARY_TYPE} ${WebCore_SOURCES})

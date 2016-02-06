@@ -657,10 +657,13 @@ void WebProcess::didClose(IPC::Connection&)
     GCController::singleton().garbageCollectSoon();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
-#endif    
+#endif
 
+#if ENABLE(VIDEO)
     // FIXME(146657): This explicit media stop command should not be necessary
-    PlatformMediaSessionManager::sharedManager().stopAllMediaPlaybackForProcess();
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->stopAllMediaPlaybackForProcess();
+#endif
 
     // The UI process closed this connection, shut down.
     stopRunLoop();
@@ -1242,6 +1245,14 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
 
 void WebProcess::processWillSuspendImminently(bool& handled)
 {
+    if (parentProcessConnection()->inSendSync()) {
+        // Avoid reentrency bugs such as rdar://problem/21605505 by just bailing
+        // if we get an incoming ProcessWillSuspendImminently message when waiting for a
+        // reply to a sync message.
+        // FIXME: ProcessWillSuspendImminently should not be a sync message.
+        return;
+    }
+
     supplement<WebDatabaseManager>()->closeAllDatabases();
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     handled = true;

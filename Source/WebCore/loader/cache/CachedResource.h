@@ -260,6 +260,8 @@ public:
     virtual char* getOrCreateReadBuffer(size_t /* requestedSize */, size_t& /* actualSize */) { return nullptr; }
 #endif
 
+    unsigned long identifierForLoadWithoutResourceLoader() const { return m_identifierForLoadWithoutResourceLoader; }
+
 protected:
     void setEncodedSize(unsigned);
     void setDecodedSize(unsigned);
@@ -341,9 +343,14 @@ private:
     HashSet<CachedResourceHandleBase*> m_handlesToRevalidate;
 
     RedirectChainCacheStatus m_redirectChainCacheStatus;
+
+    unsigned long m_identifierForLoadWithoutResourceLoader { 0 };
 };
 
 class CachedResource::Callback {
+#if !COMPILER(MSVC)
+    WTF_MAKE_FAST_ALLOCATED;
+#endif
 public:
     Callback(CachedResource&, CachedResourceClient&);
 

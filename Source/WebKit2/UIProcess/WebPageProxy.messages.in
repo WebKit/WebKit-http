@@ -267,7 +267,7 @@ messages -> WebPageProxy {
     
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam messages
-    RequestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video)
+    RequestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String originIdentifier, bool audio, bool video, Vector<String> deviceUIDsVideo, Vector<String> deviceUIDsAudio)
 #endif
 
     # Notification messages
@@ -444,6 +444,14 @@ messages -> WebPageProxy {
     PlaybackTargetPickerClientStateDidChange(uint64_t contextId, unsigned mediaState)
 #endif
 
+#if ENABLE(VIDEO)
+    MediaDocumentNaturalSizeChanged(WebCore::IntSize newSize)
+#endif
+
     UseFixedLayoutDidChange(bool useFixedLayout)
     FixedLayoutSizeDidChange(WebCore::IntSize fixedLayoutSize)
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    RequestInstallMissingMediaPlugins(String details)
+#endif
 }

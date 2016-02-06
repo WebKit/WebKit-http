@@ -1449,13 +1449,12 @@ RenderLayer* RenderLayer::enclosingAncestorForPosition(EPosition position) const
     return curr;
 }
 
-static RenderLayer* parentLayerCrossFrame(const RenderLayer* layer)
+static RenderLayer* parentLayerCrossFrame(const RenderLayer& layer, LayoutRect* rect = nullptr)
 {
-    ASSERT(layer);
-    if (layer->parent())
-        return layer->parent();
+    if (layer.parent())
+        return layer.parent();
 
-    HTMLFrameOwnerElement* ownerElement = layer->renderer().document().ownerElement();
+    HTMLFrameOwnerElement* ownerElement = layer.renderer().document().ownerElement();
     if (!ownerElement)
         return nullptr;
 
@@ -1463,12 +1462,18 @@ static RenderLayer* parentLayerCrossFrame(const RenderLayer* layer)
     if (!ownerRenderer)
         return nullptr;
 
+    // Convert the rect into the coordinate space of the parent frame's document.
+    if (rect) {
+        IntRect viewRect = layer.renderer().frame().view()->convertToContainingView(enclosingIntRect(*rect));
+        *rect = ownerRenderer->frame().view()->viewToContents(viewRect);
+    }
+
     return ownerRenderer->enclosingLayer();
 }
 
-RenderLayer* RenderLayer::enclosingScrollableLayer() const
+RenderLayer* RenderLayer::enclosingScrollableLayer(LayoutRect* rect) const
 {
-    for (RenderLayer* nextLayer = parentLayerCrossFrame(this); nextLayer; nextLayer = parentLayerCrossFrame(nextLayer)) {
+    for (RenderLayer* nextLayer = parentLayerCrossFrame(*this, rect); nextLayer; nextLayer = parentLayerCrossFrame(*nextLayer, rect)) {
         if (is<RenderBox>(nextLayer->renderer()) && downcast<RenderBox>(nextLayer->renderer()).canBeScrolledAndHasScrollableArea())
             return nextLayer;
     }
@@ -1525,7 +1530,7 @@ inline bool RenderLayer::shouldRepaintAfterLayout() const
     return !isComposited() || backing()->paintsIntoCompositedAncestor();
 }
 
-static bool compositedWithOwnBackingStore(const RenderLayer* layer)
+bool compositedWithOwnBackingStore(const RenderLayer* layer)
 {
     return layer->isComposited() && !layer->backing()->paintsIntoCompositedAncestor();
 }
@@ -2531,7 +2536,7 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& rect, const ScrollAlignm
     }
     
     if (renderer().frame().eventHandler().autoscrollInProgress())
-        parentLayer = enclosingScrollableLayer();
+        parentLayer = enclosingScrollableLayer(&newRect);
 
     if (parentLayer)
         parentLayer->scrollRectToVisible(newRect, alignX, alignY);
@@ -3182,7 +3187,7 @@ bool RenderLayer::isScrollableOrRubberbandable()
 
 bool RenderLayer::hasScrollableOrRubberbandableAncestor()
 {
-    for (RenderLayer* nextLayer = parentLayerCrossFrame(this); nextLayer; nextLayer = parentLayerCrossFrame(nextLayer)) {
+    for (RenderLayer* nextLayer = parentLayerCrossFrame(*this); nextLayer; nextLayer = parentLayerCrossFrame(*nextLayer)) {
         if (nextLayer->isScrollableOrRubberbandable())
             return true;
     }
@@ -4275,7 +4280,8 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     if (localPaintingInfo.overlapTestRequests && isSelfPaintingLayer)
         performOverlapTests(*localPaintingInfo.overlapTestRequests, localPaintingInfo.rootLayer, this);
 
-    bool selectionOnly  = localPaintingInfo.paintBehavior & PaintBehaviorSelectionOnly;
+    bool selectionAndBackgroundsOnly = localPaintingInfo.paintBehavior & PaintBehaviorSelectionAndBackgroundsOnly;
+    bool selectionOnly = localPaintingInfo.paintBehavior & PaintBehaviorSelectionOnly;
     
     PaintBehavior paintBehavior = PaintBehaviorNormal;
     if (localPaintFlags & PaintLayerPaintingSkipRootBackground)
@@ -4314,7 +4320,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     if (isPaintingCompositedForeground) {
         if (shouldPaintContent)
             paintForegroundForFragments(layerFragments, context, transparencyLayerContext, paintingInfo.paintDirtyRect, haveTransparency,
-                localPaintingInfo, paintBehavior, subtreePaintRootForRenderer, selectionOnly);
+                localPaintingInfo, paintBehavior, subtreePaintRootForRenderer, selectionOnly || selectionAndBackgroundsOnly);
     }
 
     if (shouldPaintOutline)
@@ -4346,7 +4352,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
     // Make sure that we now use the original transparency context.
     ASSERT(transparencyLayerContext == context);
 
-    if (shouldPaintContent && !selectionOnly) {
+    if (shouldPaintContent && !(selectionOnly || selectionAndBackgroundsOnly)) {
         if (shouldPaintMask(paintingInfo.paintBehavior, localPaintFlags)) {
             // Paint the mask for the fragments.
             paintMaskForFragments(layerFragments, context, localPaintingInfo, subtreePaintRootForRenderer);

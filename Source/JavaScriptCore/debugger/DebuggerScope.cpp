@@ -86,7 +86,17 @@ bool DebuggerScope::getOwnPropertySlot(JSObject* object, ExecState* exec, Proper
     // does not presently need to distinguish between what's owned at each level in the
     // prototype chain. Hence, we'll invoke getPropertySlot() on the wrapped scope here
     // instead of getOwnPropertySlot().
-    return thisObject->getPropertySlot(exec, propertyName, slot);
+    bool result = thisObject->getPropertySlot(exec, propertyName, slot);
+    if (result && slot.isValue() && slot.getValue(exec, propertyName) == jsTDZValue()) {
+        // FIXME:
+        // We hit a scope property that has the TDZ empty value.
+        // Currently, we just lie to the inspector and claim that this property is undefined.
+        // This is not ideal and we should fix it.
+        // https://bugs.webkit.org/show_bug.cgi?id=144977
+        slot.setValue(slot.slotBase(), DontEnum, jsUndefined());
+        return true;
+    }
+    return result;
 }
 
 void DebuggerScope::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
@@ -157,7 +167,7 @@ void DebuggerScope::invalidateChain()
 
 bool DebuggerScope::isCatchScope() const
 {
-    return m_scope->isCatchScopeObject();
+    return m_scope->isCatchScope();
 }
 
 bool DebuggerScope::isFunctionNameScope() const
@@ -180,13 +190,20 @@ bool DebuggerScope::isFunctionOrEvalScope() const
     // In the current debugger implementation, every function or eval will create an
     // lexical environment object. Hence, a lexical environment object implies a
     // function or eval scope.
-    return m_scope->isActivationObject();
+    return m_scope->isActivationObject() && !isCatchScope();
 }
 
-JSValue DebuggerScope::caughtValue() const
+JSValue DebuggerScope::caughtValue(ExecState* exec) const
 {
     ASSERT(isCatchScope());
-    return reinterpret_cast<JSNameScope*>(m_scope.get())->value();
+    JSLexicalEnvironment* catchEnvironment = jsCast<JSLexicalEnvironment*>(m_scope.get());
+    SymbolTable* catchSymbolTable = catchEnvironment->symbolTable();
+    RELEASE_ASSERT(catchSymbolTable->size() == 1);
+    PropertyName errorName(catchSymbolTable->begin(catchSymbolTable->m_lock)->key.get());
+    PropertySlot slot(m_scope.get());
+    bool success = catchEnvironment->getOwnPropertySlot(catchEnvironment, exec, errorName, slot);
+    RELEASE_ASSERT(success && slot.isValue());
+    return slot.getValue(exec, errorName);
 }
 
 } // namespace JSC

@@ -52,15 +52,15 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createDefaultConstructor(Constru
     case ConstructorKind::None:
         break;
     case ConstructorKind::Base:
-        return createExecutableInternal(makeSource(baseConstructorCode), name, constructorKind);
+        return createExecutableInternal(makeSource(baseConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
     case ConstructorKind::Derived:
-        return createExecutableInternal(makeSource(derivedConstructorCode), name, constructorKind);
+        return createExecutableInternal(makeSource(derivedConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
     }
     ASSERT_NOT_REACHED();
     return nullptr;
 }
 
-UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const SourceCode& source, const Identifier& name, ConstructorKind constructorKind)
+UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const SourceCode& source, const Identifier& name, ConstructorKind constructorKind, ConstructAbility constructAbility)
 {
     JSTextPosition positionBeforeLastNewline;
     ParserError error;
@@ -69,10 +69,9 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const S
     UnlinkedFunctionKind kind = isParsingDefaultConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
     RefPtr<SourceProvider> sourceOverride = isParsingDefaultConstructor ? source.provider() : nullptr;
     std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
-        &m_vm, source, 0, Identifier(), builtinMode, 
-        JSParserStrictMode::NotStrict, 
-        JSParserCodeType::Program,
-        error, &positionBeforeLastNewline, constructorKind);
+        &m_vm, source, Identifier(), builtinMode, 
+        JSParserStrictMode::NotStrict, JSParserCodeType::Program, error, 
+        &positionBeforeLastNewline, FunctionParseMode::NotAFunctionMode, constructorKind);
 
     if (!program) {
         dataLog("Fatal error compiling builtin function '", name.string(), "': ", error.message());
@@ -103,7 +102,8 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutableInternal(const S
             continue;
     }
     body->overrideName(name);
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, kind, WTF::move(sourceOverride));
+    VariableEnvironment dummyTDZVariables;
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&m_vm, source, body, kind, constructAbility, dummyTDZVariables, WTF::move(sourceOverride));
     functionExecutable->m_nameValue.set(m_vm, functionExecutable, jsString(&m_vm, name.string()));
     return functionExecutable;
 }
@@ -117,7 +117,7 @@ void BuiltinExecutables::finalize(Handle<Unknown>, void* context)
 UnlinkedFunctionExecutable* BuiltinExecutables::name##Executable() \
 {\
     if (!m_##name##Executable)\
-        m_##name##Executable = Weak<UnlinkedFunctionExecutable>(createBuiltinExecutable(m_##name##Source, m_vm.propertyNames->builtinNames().functionName##PublicName()), this, &m_##name##Executable);\
+        m_##name##Executable = Weak<UnlinkedFunctionExecutable>(createBuiltinExecutable(m_##name##Source, m_vm.propertyNames->builtinNames().functionName##PublicName(), s_##name##ConstructAbility), this, &m_##name##Executable);\
     return m_##name##Executable.get();\
 }
 JSC_FOREACH_BUILTIN(DEFINE_BUILTIN_EXECUTABLES)

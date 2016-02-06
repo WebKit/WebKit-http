@@ -74,7 +74,7 @@ struct PendingDisplayNoneActions {
     Vector<String> selectors;
     Vector<unsigned> clientLocations;
 };
-typedef HashMap<uint32_t, PendingDisplayNoneActions, DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> PendingDisplayNoneActionsMap;
+typedef HashMap<Trigger, PendingDisplayNoneActions, TriggerHash, TriggerHashTraits> PendingDisplayNoneActionsMap;
 
 static void resolvePendingDisplayNoneActions(Vector<SerializedActionByte>& actions, Vector<unsigned>& actionLocations, PendingDisplayNoneActionsMap& pendingDisplayNoneActionsMap)
 {
@@ -167,7 +167,7 @@ static Vector<unsigned> serializeActions(const Vector<ContentExtensionRule>& rul
             break;
         }
         case ActionType::CSSDisplayNoneSelector: {
-            const auto addResult = cssDisplayNoneActionsMap.add(flags, PendingDisplayNoneActions());
+            const auto addResult = cssDisplayNoneActionsMap.add(rule.trigger(), PendingDisplayNoneActions());
             PendingDisplayNoneActions& pendingDisplayNoneActions = addResult.iterator->value;
             pendingDisplayNoneActions.selectors.append(rule.action().stringArgument());
             pendingDisplayNoneActions.clientLocations.append(actionLocations.size());
@@ -251,11 +251,9 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
     URLFilterParser filtersWithoutDomainParser(filtersWithoutDomains);
     URLFilterParser filtersWithDomainParser(filtersWithDomains);
     
-    bool ignorePreviousRulesSeen = false;
     for (unsigned ruleIndex = 0; ruleIndex < parsedRuleList.size(); ++ruleIndex) {
         const ContentExtensionRule& contentExtensionRule = parsedRuleList[ruleIndex];
         const Trigger& trigger = contentExtensionRule.trigger();
-        const Action& action = contentExtensionRule.action();
         ASSERT(trigger.urlFilter.length());
 
         // High bits are used for flags. This should match how they are used in DFABytecodeCompiler::compileNode.
@@ -267,11 +265,6 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
             ASSERT(trigger.domainCondition == Trigger::DomainCondition::None);
             status = filtersWithoutDomainParser.addPattern(trigger.urlFilter, trigger.urlFilterIsCaseSensitive, actionLocationAndFlags);
             if (status == URLFilterParser::MatchesEverything) {
-                if (!ignorePreviousRulesSeen
-                    && trigger.domainCondition == Trigger::DomainCondition::None
-                    && action.type() == ActionType::CSSDisplayNoneSelector
-                    && !trigger.flags)
-                    actionLocationAndFlags |= DisplayNoneStyleSheetFlag;
                 universalActionsWithoutDomains.add(actionLocationAndFlags);
                 status = URLFilterParser::Ok;
             }
@@ -300,9 +293,6 @@ std::error_code compileRuleList(ContentExtensionCompilationClient& client, Strin
                 domainFilters.addDomain(actionLocationAndFlags, domain);
         }
         ASSERT(status == URLFilterParser::Ok);
-        
-        if (action.type() == ActionType::IgnorePreviousRules)
-            ignorePreviousRulesSeen = true;
     }
     LOG_LARGE_STRUCTURES(parsedRuleList, parsedRuleList.capacity() * sizeof(ContentExtensionRule)); // Doesn't include strings.
     LOG_LARGE_STRUCTURES(actionLocations, actionLocations.capacity() * sizeof(unsigned));

@@ -325,7 +325,6 @@ public:
     
     StructureSet* addStructureSet(const StructureSet& structureSet)
     {
-        ASSERT(structureSet.size());
         m_structureSet.append(structureSet);
         return &m_structureSet.last();
     }
@@ -364,16 +363,6 @@ public:
     CodeBlock* baselineCodeBlockFor(const CodeOrigin& codeOrigin)
     {
         return baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, m_profiledBlock);
-    }
-    
-    SymbolTable* symbolTableFor(InlineCallFrame* inlineCallFrame)
-    {
-        return baselineCodeBlockFor(inlineCallFrame)->symbolTable();
-    }
-    
-    SymbolTable* symbolTableFor(const CodeOrigin& codeOrigin)
-    {
-        return symbolTableFor(codeOrigin.inlineCallFrame);
     }
     
     bool isStrictModeFor(CodeOrigin codeOrigin)

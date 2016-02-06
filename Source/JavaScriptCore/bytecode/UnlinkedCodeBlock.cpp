@@ -43,7 +43,7 @@
 
 namespace JSC {
 
-static_assert(sizeof(UnlinkedFunctionExecutable) <= 128, "UnlinkedFunctionExecutable should fit in a 128-byte cell.");
+static_assert(sizeof(UnlinkedFunctionExecutable) <= 256, "UnlinkedFunctionExecutable should fit in a 256-byte cell.");
 
 const ClassInfo UnlinkedFunctionExecutable::s_info = { "UnlinkedFunctionExecutable", 0, 0, CREATE_METHOD_TABLE(UnlinkedFunctionExecutable) };
 const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", 0, 0, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
@@ -60,31 +60,30 @@ static UnlinkedFunctionCodeBlock* generateFunctionCodeBlock(
     JSParserBuiltinMode builtinMode = executable->isBuiltinFunction() ? JSParserBuiltinMode::Builtin : JSParserBuiltinMode::NotBuiltin;
     JSParserStrictMode strictMode = executable->isInStrictContext() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
     std::unique_ptr<FunctionNode> function = parse<FunctionNode>(
-        &vm, source, executable->parameters(), executable->name(), builtinMode,
-        strictMode, JSParserCodeType::Function, error, 0);
+        &vm, source, executable->name(), builtinMode, strictMode, 
+        JSParserCodeType::Function, error, nullptr, executable->parseMode());
 
     if (!function) {
         ASSERT(error.isValid());
         return nullptr;
     }
 
-    function->finishParsing(executable->parameters(), executable->name(), executable->functionMode());
+    function->finishParsing(executable->name(), executable->functionMode());
     executable->recordParse(function->features(), function->hasCapturedVariables());
     
     UnlinkedFunctionCodeBlock* result = UnlinkedFunctionCodeBlock::create(&vm, FunctionCode,
         ExecutableInfo(function->needsActivation(), function->usesEval(), function->isStrictMode(), kind == CodeForConstruct, functionKind == UnlinkedBuiltinFunction, executable->constructorKind()));
-    auto generator(std::make_unique<BytecodeGenerator>(vm, function.get(), result, debuggerMode, profilerMode));
+    auto generator(std::make_unique<BytecodeGenerator>(vm, function.get(), result, debuggerMode, profilerMode, executable->parentScopeTDZVariables()));
     error = generator->generate();
     if (error.isValid())
         return nullptr;
     return result;
 }
 
-UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionBodyNode* node, UnlinkedFunctionKind kind)
+UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& source, RefPtr<SourceProvider>&& sourceOverride, FunctionBodyNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, VariableEnvironment& parentScopeTDZVariables)
     : Base(*vm, structure)
     , m_name(node->ident())
     , m_inferredName(node->inferredName())
-    , m_parameters(node->parameters())
     , m_sourceOverride(WTF::move(sourceOverride))
     , m_firstLineOffset(node->firstLine() - source.firstLine())
     , m_lineCount(node->lastLine() - node->firstLine())
@@ -96,19 +95,18 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_parametersStartOffset(node->parametersStart())
     , m_typeProfilingStartOffset(node->functionKeywordStart())
     , m_typeProfilingEndOffset(node->startStartOffset() + node->source().length() - 1)
+    , m_parameterCount(node->parameterCount())
+    , m_parseMode(node->parseMode())
     , m_features(0)
     , m_isInStrictContext(node->isInStrictContext())
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(kind == UnlinkedBuiltinFunction)
+    , m_constructAbility(static_cast<unsigned>(constructAbility))
     , m_constructorKind(static_cast<unsigned>(node->constructorKind()))
     , m_functionMode(node->functionMode())
 {
     ASSERT(m_constructorKind == static_cast<unsigned>(node->constructorKind()));
-}
-
-size_t UnlinkedFunctionExecutable::parameterCount() const
-{
-    return m_parameters->size();
+    m_parentScopeTDZVariables.swap(parentScopeTDZVariables);
 }
 
 void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -119,8 +117,6 @@ void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visito
     visitor.append(&thisObject->m_codeBlockForCall);
     visitor.append(&thisObject->m_codeBlockForConstruct);
     visitor.append(&thisObject->m_nameValue);
-    visitor.append(&thisObject->m_symbolTableForCall);
-    visitor.append(&thisObject->m_symbolTableForConstruct);
 }
 
 FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& ownerSource, int overrideLineNumber)
@@ -212,11 +208,9 @@ UnlinkedFunctionCodeBlock* UnlinkedFunctionExecutable::codeBlockFor(
     switch (specializationKind) {
     case CodeForCall:
         m_codeBlockForCall.set(vm, this, result);
-        m_symbolTableForCall.set(vm, this, result->symbolTable());
         break;
     case CodeForConstruct:
         m_codeBlockForConstruct.set(vm, this, result);
-        m_symbolTableForConstruct.set(vm, this, result->symbolTable());
         break;
     }
     return result;

@@ -1683,9 +1683,15 @@ void AccessibilityRenderObject::setFocused(bool on)
     if (document->focusedElement() == node)
         document->setFocusedElement(nullptr);
 
-    axObjectCache()->setIsSynchronizingSelection(true);
+    // When a node is told to set focus, that can cause it to be deallocated, which means that doing
+    // anything else inside this object will crash. To fix this, we added a RefPtr to protect this object
+    // long enough for duration. We can also locally cache the axObjectCache.
+    RefPtr<AccessibilityObject> protect(this);
+    AXObjectCache* cache = axObjectCache();
+    
+    cache->setIsSynchronizingSelection(true);
     downcast<Element>(*node).focus();
-    axObjectCache()->setIsSynchronizingSelection(false);
+    cache->setIsSynchronizingSelection(false);
 }
 
 void AccessibilityRenderObject::setSelectedRows(AccessibilityChildrenVector& selectedRows)
@@ -2491,7 +2497,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (!m_renderer)
         return UnknownRole;
 
-    if ((m_ariaRole = determineAriaRoleAttribute()) != UnknownRole)
+    // Sometimes we need to ignore the attribute role. Like if a tree is malformed,
+    // we want to ignore the treeitem's attribute role.
+    if ((m_ariaRole = determineAriaRoleAttribute()) != UnknownRole && !shouldIgnoreAttributeRole())
         return m_ariaRole;
     
     Node* node = m_renderer->node();

@@ -52,6 +52,7 @@
     [[WebPreferences standardPreferences] setDeveloperExtrasEnabled:YES];
     [[WebPreferences standardPreferences] setImageControlsEnabled:YES];
     [[WebPreferences standardPreferences] setServiceControlsEnabled:YES];
+    [[WebPreferences standardPreferences] setJavaScriptCanOpenWindowsAutomatically:YES];
 
     [_webView _listenForLayoutMilestones:WebDidFirstLayout | WebDidFirstVisuallyNonEmptyLayout | WebDidHitRelevantRepaintedObjectsAreaThreshold];
 
@@ -302,6 +303,24 @@
 {
 }
 
+- (void)updateTitle:(NSString *)title
+{
+    if (!title) {
+        NSURL *url = _webView.mainFrame.dataSource.request.URL;
+        title = url.lastPathComponent;
+    }
+    
+    [self.window setTitle:[title stringByAppendingString:@" [WK1]"]];
+}
+
+- (WebView *)webView:(WebView *)sender createWebViewWithRequest:(NSURLRequest *)request
+{
+    WK1BrowserWindowController *newBrowserWindowController = [[WK1BrowserWindowController alloc] initWithWindowNibName:@"BrowserWindow"];
+    [newBrowserWindowController.window makeKeyAndOrderFront:self];
+
+    return newBrowserWindowController->_webView;
+}
+
 - (void)webView:(WebView *)sender didCommitLoadForFrame:(WebFrame *)frame
 {
     if (frame != [sender mainFrame])
@@ -309,6 +328,8 @@
 
     NSURL *committedURL = [[[frame dataSource] request] URL];
     [urlText setStringValue:[committedURL absoluteString]];
+
+    [self updateTitle:nil];
 }
 
 - (void)webView:(WebView *)sender didReceiveTitle:(NSString *)title forFrame:(WebFrame *)frame
@@ -316,7 +337,7 @@
     if (frame != [sender mainFrame])
         return;
 
-    [self.window setTitle:[title stringByAppendingString:@" [WK1]"]];
+    [self updateTitle:title];
 }
 
 - (void)webView:(WebView *)sender runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WebFrame *)frame

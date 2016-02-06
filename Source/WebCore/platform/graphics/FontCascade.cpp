@@ -41,7 +41,7 @@ using namespace Unicode;
 
 namespace WebCore {
 
-static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription&, PassRefPtr<FontSelector>);
+static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription&, RefPtr<FontSelector>&&);
 
 const uint8_t FontCascade::s_roundingHackCharacterTable[256] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 1 /*\t*/, 1 /*\n*/, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -134,23 +134,6 @@ FontCascade::FontCascade(const FontPlatformData& fontData, FontSmoothingMode fon
 #endif
 }
 
-// FIXME: We should make this constructor platform-independent.
-#if PLATFORM(IOS)
-FontCascade::FontCascade(const FontPlatformData& fontData, PassRefPtr<FontSelector> fontSelector)
-    : m_weakPtrFactory(this)
-    , m_letterSpacing(0)
-    , m_wordSpacing(0)
-    , m_typesettingFeatures(computeTypesettingFeatures())
-{
-    CTFontRef primaryFont = fontData.font();
-    m_fontDescription.setSpecifiedSize(CTFontGetSize(primaryFont));
-    m_fontDescription.setComputedSize(CTFontGetSize(primaryFont));
-    m_fontDescription.setIsItalic(CTFontGetSymbolicTraits(primaryFont) & kCTFontTraitItalic);
-    m_fontDescription.setWeight((CTFontGetSymbolicTraits(primaryFont) & kCTFontTraitBold) ? FontWeightBold : FontWeightNormal);
-    m_fonts = retrieveOrAddCachedFonts(m_fontDescription, fontSelector.get());
-}
-#endif
-
 FontCascade::FontCascade(const FontCascade& other)
     : m_fontDescription(other.m_fontDescription)
     , m_fonts(other.m_fonts)
@@ -195,12 +178,10 @@ bool FontCascade::operator==(const FontCascade& other) const
 }
 
 struct FontCascadeCacheKey {
-    // This part of the key is shared with the lower level FontCache (caching FontData objects).
-    FontDescriptionFontDataCacheKey fontDescriptionCacheKey;
+    FontDescriptionKey fontDescriptionKey; // Shared with the lower level FontCache (caching Font objects)
     Vector<AtomicString, 3> families;
     unsigned fontSelectorId;
     unsigned fontSelectorVersion;
-    unsigned fontSelectorFlags;
 };
 
 struct FontCascadeCacheEntry {
@@ -218,9 +199,9 @@ typedef HashMap<unsigned, std::unique_ptr<FontCascadeCacheEntry>, AlreadyHashed>
 
 static bool operator==(const FontCascadeCacheKey& a, const FontCascadeCacheKey& b)
 {
-    if (a.fontDescriptionCacheKey != b.fontDescriptionCacheKey)
+    if (a.fontDescriptionKey != b.fontDescriptionKey)
         return false;
-    if (a.fontSelectorId != b.fontSelectorId || a.fontSelectorVersion != b.fontSelectorVersion || a.fontSelectorFlags != b.fontSelectorFlags)
+    if (a.fontSelectorId != b.fontSelectorId || a.fontSelectorVersion != b.fontSelectorVersion)
         return false;
     if (a.families.size() != b.families.size())
         return false;
@@ -248,32 +229,26 @@ void clearWidthCaches()
         value->fonts.get().widthCache().clear();
 }
 
-static unsigned makeFontSelectorFlags(const FontDescription& description)
-{
-    return static_cast<unsigned>(description.script()) << 1 | static_cast<unsigned>(description.smallCaps());
-}
-
 static FontCascadeCacheKey makeFontCascadeCacheKey(const FontDescription& description, FontSelector* fontSelector)
 {
     FontCascadeCacheKey key;
-    key.fontDescriptionCacheKey = FontDescriptionFontDataCacheKey(description);
+    key.fontDescriptionKey = FontDescriptionKey(description);
     for (unsigned i = 0; i < description.familyCount(); ++i)
         key.families.append(description.familyAt(i));
     key.fontSelectorId = fontSelector ? fontSelector->uniqueId() : 0;
     key.fontSelectorVersion = fontSelector ? fontSelector->version() : 0;
-    key.fontSelectorFlags = fontSelector && fontSelector->resolvesFamilyFor(description) ? makeFontSelectorFlags(description) : 0;
     return key;
 }
 
+// FIXME: Why can't we just teach HashMap about FontCascadeCacheKey instead of hashing a hash?
 static unsigned computeFontCascadeCacheHash(const FontCascadeCacheKey& key)
 {
     Vector<unsigned, 7> hashCodes;
     hashCodes.reserveInitialCapacity(4 + key.families.size());
 
-    hashCodes.uncheckedAppend(key.fontDescriptionCacheKey.computeHash());
+    hashCodes.uncheckedAppend(key.fontDescriptionKey.computeHash());
     hashCodes.uncheckedAppend(key.fontSelectorId);
     hashCodes.uncheckedAppend(key.fontSelectorVersion);
-    hashCodes.uncheckedAppend(key.fontSelectorFlags);
     for (unsigned i = 0; i < key.families.size(); ++i)
         hashCodes.uncheckedAppend(key.families[i].impl() ? CaseFoldingHash::hash(key.families[i]) : 0);
 
@@ -293,7 +268,7 @@ void pruneSystemFallbackFonts()
         entry->fonts->pruneSystemFallbacks();
 }
 
-static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription& fontDescription, PassRefPtr<FontSelector> fontSelector)
+static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription& fontDescription, RefPtr<FontSelector>&& fontSelector)
 {
     auto key = makeFontCascadeCacheKey(fontDescription, fontSelector.get());
 
@@ -303,7 +278,7 @@ static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription& fon
         return addResult.iterator->value->fonts.get();
 
     auto& newEntry = addResult.iterator->value;
-    newEntry = std::make_unique<FontCascadeCacheEntry>(WTF::move(key), FontCascadeFonts::create(fontSelector));
+    newEntry = std::make_unique<FontCascadeCacheEntry>(WTF::move(key), FontCascadeFonts::create(WTF::move(fontSelector)));
     Ref<FontCascadeFonts> glyphs = newEntry->fonts.get();
 
     static const unsigned unreferencedPruneInterval = 50;
@@ -318,9 +293,9 @@ static Ref<FontCascadeFonts> retrieveOrAddCachedFonts(const FontDescription& fon
     return glyphs;
 }
 
-void FontCascade::update(PassRefPtr<FontSelector> fontSelector) const
+void FontCascade::update(RefPtr<FontSelector>&& fontSelector) const
 {
-    m_fonts = retrieveOrAddCachedFonts(m_fontDescription, fontSelector.get());
+    m_fonts = retrieveOrAddCachedFonts(m_fontDescription, WTF::move(fontSelector));
     m_useBackslashAsYenSymbol = useBackslashAsYenSignForFamily(firstFamily());
     m_typesettingFeatures = computeTypesettingFeatures();
 }

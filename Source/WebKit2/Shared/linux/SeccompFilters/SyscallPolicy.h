@@ -34,7 +34,7 @@
 
 namespace WebKit {
 
-class WebProcessCreationParameters;
+struct WebProcessCreationParameters;
 
 class SyscallPolicy {
 public:
@@ -51,6 +51,8 @@ public:
     void addDirectoryPermission(const String& path, Permission);
 
     void addDefaultWebProcessPolicy(const WebProcessCreationParameters&);
+
+    static const char* permissionToString(Permission);
 
 private:
     typedef HashMap<String, int> PermissionMap;

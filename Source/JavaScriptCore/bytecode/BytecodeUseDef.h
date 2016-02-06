@@ -57,7 +57,6 @@ void computeUsesForBytecodeOffset(
     case op_get_scope:
     case op_to_this:
     case op_check_tdz:
-    case op_pop_scope:
     case op_profile_will_call:
     case op_profile_did_call:
     case op_profile_type:
@@ -113,15 +112,13 @@ void computeUsesForBytecodeOffset(
         functor(codeBlock, instruction, opcodeID, instruction[4].u.operand);
         return;
     }
-    case op_create_lexical_environment:
     case op_get_property_enumerator:
     case op_get_enumerable_length:
     case op_new_func_exp:
     case op_to_index_string:
-    case op_init_global_const_nop:
-    case op_init_global_const:
     case op_push_name_scope:
     case op_push_with_scope:
+    case op_create_lexical_environment:
     case op_resolve_scope:
     case op_get_from_scope:
     case op_to_primitive:
@@ -148,6 +145,7 @@ void computeUsesForBytecodeOffset(
     case op_del_by_id:
     case op_unsigned:
     case op_new_func:
+    case op_get_parent_scope:
     case op_create_scoped_arguments:
     case op_get_from_arguments: {
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
@@ -240,8 +238,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     OpcodeID opcodeID = interpreter->getOpcodeID(instruction->u.opcode);
     switch (opcodeID) {
     // These don't define anything.
-    case op_init_global_const:
-    case op_init_global_const_nop:
     case op_put_to_scope:
     case op_end:
     case op_profile_will_call:
@@ -297,9 +293,10 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
     case op_get_property_enumerator:
     case op_enumerator_structure_pname:
     case op_enumerator_generic_pname:
-    case op_pop_scope:
+    case op_get_parent_scope:
     case op_push_name_scope:
     case op_push_with_scope:
+    case op_create_lexical_environment:
     case op_resolve_scope:
     case op_strcat:
     case op_to_primitive:
@@ -373,8 +370,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, unsigned bytecodeOffset,
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
         return;
     }
-    case op_catch:
-    case op_create_lexical_environment: {
+    case op_catch: {
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
         return;

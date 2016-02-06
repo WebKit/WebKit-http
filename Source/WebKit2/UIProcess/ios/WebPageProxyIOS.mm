@@ -36,6 +36,7 @@
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #import "RemoteLayerTreeTransaction.h"
+#import "UIKitSPI.h"
 #import "UserData.h"
 #import "ViewUpdateDispatcherMessages.h"
 #import "WKBrowsingContextControllerInternal.h"
@@ -107,10 +108,10 @@ String WebPageProxy::stringSelectionForPasteboard()
     return String();
 }
 
-PassRefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const String&)
+RefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const String&)
 {
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 bool WebPageProxy::readSelectionFromPasteboard(const String&)
@@ -496,6 +497,18 @@ void WebPageProxy::updateSelectionWithExtentPoint(const WebCore::IntPoint point,
     
 }
 
+void WebPageProxy::updateSelectionWithExtentPointAndBoundary(const WebCore::IntPoint point, WebCore::TextGranularity granularity, std::function<void(uint64_t, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(0, CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTF::move(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::UpdateSelectionWithExtentPointAndBoundary(point, granularity, callbackID), m_pageID);
+    
+}
+
 void WebPageProxy::requestDictationContext(std::function<void (const String&, const String&, const String&, CallbackBase::Error)> callbackFunction)
 {
     if (!isValid()) {
@@ -594,7 +607,8 @@ void WebPageProxy::didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t fla
 
 void WebPageProxy::applicationDidEnterBackground()
 {
-    m_process->send(Messages::WebPage::ApplicationDidEnterBackground(), m_pageID);
+    bool isSuspendedUnderLock = [UIApp isSuspendedUnderLock];
+    m_process->send(Messages::WebPage::ApplicationDidEnterBackground(isSuspendedUnderLock), m_pageID);
 }
 
 void WebPageProxy::applicationWillEnterForeground()

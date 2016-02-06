@@ -4,8 +4,6 @@ list(APPEND WTF_SOURCES
     text/cf/StringImplCF.cpp
     text/cf/StringViewCF.cpp
 
-    threads/win/BinarySemaphoreWin.cpp
-
     win/MainThreadWin.cpp
     win/RunLoopWin.cpp
     win/WTFDLL.cpp
@@ -20,6 +18,10 @@ list(APPEND WTF_LIBRARIES
 if (${WTF_PLATFORM_WIN_CAIRO})
     list(APPEND WTF_LIBRARIES
         cflite
+    )
+else ()
+    list(APPEND WTF_LIBRARIES
+        CoreFoundation
     )
 endif ()
 

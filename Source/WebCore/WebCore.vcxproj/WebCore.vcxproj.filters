@@ -669,6 +669,12 @@
     <ClCompile Include="..\accessibility\AccessibilityTableRow.cpp">
       <Filter>accessibility</Filter>
     </ClCompile>
+    <ClCompile Include="..\accessibility\AccessibilityTree.cpp">
+      <Filter>accessibility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\accessibility\AccessibilityTreeItem.cpp">
+      <Filter>accessibility</Filter>
+    </ClCompile>
     <ClCompile Include="..\accessibility\AXObjectCache.cpp">
       <Filter>accessibility</Filter>
     </ClCompile>
@@ -1723,9 +1729,6 @@
       <Filter>platform\graphics\ca\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\ca\win\LayerChangesFlusher.cpp">
-      <Filter>platform\graphics\ca\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\graphics\ca\win\LegacyCACFLayerTreeHost.cpp">
       <Filter>platform\graphics\ca\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\ca\win\PlatformCAAnimationWin.cpp">
@@ -5722,6 +5725,9 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSScreen.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
+    <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSecurityPolicyViolationEvent.cpp">
+      <Filter>DerivedSources</Filter>
+    </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj$(PlatformArchitecture)\$(ProjectName)\DerivedSources\JSSQLError.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
@@ -7258,6 +7264,23 @@
     <ClCompile Include="..\platform\win\MemoryPressureHandlerWin.cpp">
       <Filter>platform\win</Filter>
     </ClCompile>
+    <ClCompile Include="..\dom\NodeOrString.cpp" />
+    <ClCompile Include="..\bindings\js\JSCharacterDataCustom.cpp" />
+    <ClCompile Include="..\bindings\js\JSDocumentFragmentCustom.cpp" />
+    <ClCompile Include="..\bindings\js\JSDocumentTypeCustom.cpp" />
+    <ClCompile Include="..\bindings\js\JSNodeOrString.cpp" />
+    <ClCompile Include="..\html\canvas\DOMPath.cpp">
+      <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\graphics\PathUtilities.cpp">
+      <Filter>platform\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\platform\win\GDIUtilities.cpp">
+      <Filter>platform\graphics\win</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\DOMSecurityPolicy.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Modules\geolocation\Coordinates.h">
@@ -7648,6 +7671,12 @@
       <Filter>accessibility</Filter>
     </ClInclude>
     <ClInclude Include="..\accessibility\AccessibilityTableRow.h">
+      <Filter>accessibility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\accessibility\AccessibilityTree.h">
+      <Filter>accessibility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\accessibility\AccessibilityTreeItem.h">
       <Filter>accessibility</Filter>
     </ClInclude>
     <ClInclude Include="..\accessibility\AXObjectCache.h">
@@ -8707,9 +8736,6 @@
       <Filter>platform\graphics\ca\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\ca\win\CACFLayerTreeHostClient.h">
-      <Filter>platform\graphics\ca\win</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\ca\win\LegacyCACFLayerTreeHost.h">
       <Filter>platform\graphics\ca\win</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\ca\win\PlatformCALayerWinInternal.h">
@@ -15238,6 +15264,20 @@
     </ClInclude>
     <ClInclude Include="..\platform\VNodeTracker.h">
       <Filter>platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dom\NodeOrString.h" />
+    <ClInclude Include="..\bindings\js\JSNodeOrString.h" />
+    <ClInclude Include="..\html\canvas\DOMPath.h">
+      <Filter>html\canvas</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\graphics\PathUtilities.h">
+      <Filter>platform\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\win\GDIUtilities.h">
+      <Filter>platform\graphics\win</Filter>
+    </ClInclude>
+    <ClInclude Include="..\page\DOMSecurityPolicy.h">
+      <Filter>page</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -26,5 +26,6 @@
 
 WebKitWebPage* webkitWebPageCreate(WebKit::WebPage*);
 void webkitWebPageDidReceiveMessage(WebKitWebPage*, const String& messageName, API::Dictionary& message);
+WebKit::WebPage* webkitWebPageGetPage(WebKitWebPage*);
 
 #endif // WebKitWebPagePrivate_h

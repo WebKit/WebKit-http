@@ -494,7 +494,7 @@ static const LChar singleCharacterEscapeValuesForASCII[128] = {
 
 template <typename T>
 Lexer<T>::Lexer(VM* vm, JSParserBuiltinMode builtinMode)
-    : m_isReparsing(false)
+    : m_isReparsingFunction(false)
     , m_vm(vm)
     , m_parsingBuiltinFunction(builtinMode == JSParserBuiltinMode::Builtin)
 {
@@ -1715,7 +1715,6 @@ bool Lexer<T>::nextTokenIsColon()
     return code < m_codeEnd && *code == ':';
 }
 
-#if ENABLE(ES6_ARROWFUNCTION_SYNTAX)
 template <typename T>
 void Lexer<T>::setTokenPosition(JSToken* tokenRecord)
 {
@@ -1725,7 +1724,6 @@ void Lexer<T>::setTokenPosition(JSToken* tokenRecord)
     tokenData->lineStartOffset = currentLineStartOffset();
     ASSERT(tokenData->offset >= tokenData->lineStartOffset);
 }
-#endif
 
 template <typename T>
 JSTokenType Lexer<T>::lex(JSToken* tokenRecord, unsigned lexerFlags, bool strictMode)
@@ -2130,9 +2128,8 @@ inNumberAfterDecimalPoint:
                 token = tokenTypeForIntegerLikeToken(tokenData->doubleValue);
         }
 
-        // No identifiers allowed directly after numeric literal, e.g. "3in" is bad.
         if (UNLIKELY(isIdentStart(m_current))) {
-            m_lexErrorMessage = ASCIILiteral("At least one digit must occur after a decimal point");
+            m_lexErrorMessage = ASCIILiteral("No identifiers allowed directly after numeric literal");
             token = atEnd() ? UNTERMINATED_NUMERIC_LITERAL_ERRORTOK : INVALID_NUMERIC_LITERAL_ERRORTOK;
             goto returnError;
         }
@@ -2411,7 +2408,7 @@ void Lexer<T>::clear()
     Vector<UChar> newBufferForRawTemplateString16;
     m_bufferForRawTemplateString16.swap(newBufferForRawTemplateString16);
 
-    m_isReparsing = false;
+    m_isReparsingFunction = false;
 }
 
 // Instantiate the two flavors of Lexer we need instead of putting most of this file in Lexer.h

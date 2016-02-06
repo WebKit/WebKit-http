@@ -39,6 +39,7 @@
 #include "ClientRectList.h"
 #include "ContentDistributor.h"
 #include "Cursor.h"
+#include "DOMPath.h"
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -87,6 +88,7 @@
 #include "Page.h"
 #include "PageCache.h"
 #include "PageOverlay.h"
+#include "PathUtilities.h"
 #include "PlatformMediaSessionManager.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
@@ -186,6 +188,11 @@
 
 #if ENABLE(WEB_AUDIO)
 #include "AudioContext.h"
+#endif
+
+#if ENABLE(MEDIA_SESSION)
+#include "MediaSession.h"
+#include "MediaSessionManager.h"
 #endif
 
 using JSC::CodeBlock;
@@ -297,7 +304,9 @@ void Internals::resetToConsistentState(Page* page)
 
     page->setPageScaleFactor(1, IntPoint(0, 0));
     page->setPagination(Pagination());
-
+    
+    page->mainFrame().setTextZoomFactor(1.0f);
+    
     FrameView* mainFrameView = page->mainFrame().view();
     if (mainFrameView) {
         mainFrameView->setHeaderHeight(0);
@@ -2005,6 +2014,17 @@ void Internals::setPageZoomFactor(float zoomFactor, ExceptionCode& ec)
     frame->setPageZoomFactor(zoomFactor);
 }
 
+void Internals::setTextZoomFactor(float zoomFactor, ExceptionCode& ec)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    Frame* frame = document->frame();
+    frame->setTextZoomFactor(zoomFactor);
+}
+
 void Internals::setUseFixedLayout(bool useFixedLayout, ExceptionCode& ec)
 {
     Document* document = contextDocument();
@@ -2355,6 +2375,16 @@ PassRefPtr<SerializedScriptValue> Internals::deserializeBuffer(PassRefPtr<ArrayB
     return SerializedScriptValue::adopt(bytes);
 }
 
+bool Internals::isFromCurrentWorld(Deprecated::ScriptValue value) const
+{
+    ASSERT(!value.hasNoValue());
+    
+    JSC::ExecState* exec = contextDocument()->vm().topCallFrame;
+    if (!value.isObject() || &worldForDOMObject(value.jsValue().getObject()) == &currentWorld(exec))
+        return true;
+    return false;
+}
+
 void Internals::setUsesOverlayScrollbars(bool enabled)
 {
     WebCore::Settings::setUsesOverlayScrollbars(enabled);
@@ -2603,6 +2633,12 @@ Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer* buffer, const 
 
     return buffer->bufferedSamplesForTrackID(trackID);
 }
+    
+void Internals::setShouldGenerateTimestamps(SourceBuffer* buffer, bool flag)
+{
+    if (buffer)
+        buffer->setShouldGenerateTimestamps(flag);
+}
 #endif
 
 #if ENABLE(VIDEO)
@@ -2746,6 +2782,59 @@ bool Internals::elementIsBlockingDisplaySleep(Element* element) const
 
 #endif // ENABLE(VIDEO)
 
+#if ENABLE(MEDIA_SESSION)
+static MediaSessionInterruptingCategory interruptingCategoryFromString(const String& interruptingCategoryString)
+{
+    if (interruptingCategoryString == "content")
+        return MediaSessionInterruptingCategory::Content;
+    if (interruptingCategoryString == "transient")
+        return MediaSessionInterruptingCategory::Transient;
+    if (interruptingCategoryString == "transient-solo")
+        return MediaSessionInterruptingCategory::TransientSolo;
+    ASSERT_NOT_REACHED();
+}
+
+void Internals::sendMediaSessionStartOfInterruptionNotification(const String& interruptingCategoryString)
+{
+    MediaSessionManager::singleton().didReceiveStartOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
+}
+
+void Internals::sendMediaSessionEndOfInterruptionNotification(const String& interruptingCategoryString)
+{
+    MediaSessionManager::singleton().didReceiveEndOfInterruptionNotification(interruptingCategoryFromString(interruptingCategoryString));
+}
+
+String Internals::mediaSessionCurrentState(MediaSession* session) const
+{
+    switch (session->currentState()) {
+    case MediaSession::State::Active:
+        return "active";
+    case MediaSession::State::Interrupted:
+        return "interrupted";
+    case MediaSession::State::Idle:
+        return "idle";
+    }
+}
+
+double Internals::mediaElementPlayerVolume(HTMLMediaElement* element) const
+{
+    ASSERT_ARG(element, element);
+    return element->playerVolume();
+}
+
+void Internals::sendMediaControlEvent(const String& event)
+{
+    if (event == "play-pause")
+        MediaSessionManager::singleton().togglePlayback();
+    else if (event == "next-track")
+        MediaSessionManager::singleton().skipToNextTrack();
+    else if (event == "previous-track")
+        MediaSessionManager::singleton().skipToPreviousTrack();
+    else
+        ASSERT_NOT_REACHED();
+}
+#endif // ENABLE(MEDIA_SESSION)
+
 #if ENABLE(WEB_AUDIO)
 void Internals::setAudioContextRestrictions(AudioContext* context, const String &restrictionsString, ExceptionCode &ec)
 {
@@ -2885,29 +2974,40 @@ String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
         return String();
 
     RenderBox& box = *element->renderBox();
-    if (!box.canBeScrolledAndHasScrollableArea()) {
-        ec = INVALID_ACCESS_ERR;
-        return String();
+    ScrollableArea* scrollableArea;
+    
+    if (box.isBody()) {
+        FrameView* frameView = box.frame().mainFrame().view();
+        if (!frameView || !frameView->isScrollable()) {
+            ec = INVALID_ACCESS_ERR;
+            return String();
+        }
+        scrollableArea = frameView;
+        
+    } else {
+        if (!box.canBeScrolledAndHasScrollableArea()) {
+            ec = INVALID_ACCESS_ERR;
+            return String();
+        }
+        scrollableArea = box.layer();
     }
 
-    if (!box.layer())
+    if (!scrollableArea)
         return String();
-    
-    ScrollableArea& scrollableArea = *box.layer();
     
     StringBuilder result;
 
-    if (scrollableArea.horizontalSnapOffsets()) {
+    if (scrollableArea->horizontalSnapOffsets()) {
         result.append("horizontal = ");
-        appendOffsets(result, *scrollableArea.horizontalSnapOffsets());
+        appendOffsets(result, *scrollableArea->horizontalSnapOffsets());
     }
 
-    if (scrollableArea.verticalSnapOffsets()) {
+    if (scrollableArea->verticalSnapOffsets()) {
         if (result.length())
             result.append(", ");
 
         result.append("vertical = ");
-        appendOffsets(result, *scrollableArea.verticalSnapOffsets());
+        appendOffsets(result, *scrollableArea->verticalSnapOffsets());
     }
 
     return result.toString();
@@ -2917,6 +3017,33 @@ String Internals::scrollSnapOffsets(Element* element, ExceptionCode& ec)
 bool Internals::testPreloaderSettingViewport()
 {
     return testPreloadScannerViewportSupport(contextDocument());
+}
+
+String Internals::pathStringWithShrinkWrappedRects(Vector<double> rectComponents, double radius, ExceptionCode& ec)
+{
+    if (rectComponents.size() % 4) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    Vector<FloatRect> rects;
+    while (!rectComponents.isEmpty()) {
+        double height = rectComponents.takeLast();
+        double width = rectComponents.takeLast();
+        double y = rectComponents.takeLast();
+        double x = rectComponents.takeLast();
+
+        rects.append(FloatRect(x, y, width, height));
+    }
+
+    rects.reverse();
+
+    Path path = PathUtilities::pathWithShrinkWrappedRects(rects, radius);
+
+    String pathString;
+    buildStringFromPath(path, pathString);
+
+    return pathString;
 }
 
 }

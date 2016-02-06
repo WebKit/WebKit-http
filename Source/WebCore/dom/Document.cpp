@@ -633,7 +633,10 @@ Document::~Document()
     if (m_cachedResourceLoader->document() == this)
         m_cachedResourceLoader->setDocument(nullptr);
 
-    PlatformMediaSessionManager::sharedManager().stopAllMediaPlaybackForDocument(this);
+#if ENABLE(VIDEO)
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->stopAllMediaPlaybackForDocument(this);
+#endif
     
     // We must call clearRareData() here since a Document class inherits TreeScope
     // as well as Node. See a comment on TreeScope.h for the reason.
@@ -1611,6 +1614,25 @@ bool Document::hidden() const
 {
     return pageVisibilityState() != PageVisibilityStateVisible;
 }
+
+
+#if ENABLE(VIDEO)
+void Document::registerForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement& element)
+{
+    m_allowsMediaDocumentInlinePlaybackElements.add(&element);
+}
+
+void Document::unregisterForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement& element)
+{
+    m_allowsMediaDocumentInlinePlaybackElements.remove(&element);
+}
+
+void Document::allowsMediaDocumentInlinePlaybackChanged()
+{
+    for (auto* element : m_allowsMediaDocumentInlinePlaybackElements)
+        element->allowsMediaDocumentInlinePlaybackChanged();
+}
+#endif
 
 #if ENABLE(CSP_NEXT)
 DOMSecurityPolicy& Document::securityPolicy()
@@ -3026,8 +3048,24 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
 {
     ASSERT(!equiv.isNull() && !content.isNull());
 
-    if (page() && !page()->settings().httpEquivEnabled())
+    HttpEquivPolicy policy = httpEquivPolicy();
+    if (policy != HttpEquivPolicy::Enabled) {
+        String reason;
+        switch (policy) {
+        case HttpEquivPolicy::Enabled:
+            ASSERT_NOT_REACHED();
+            break;
+        case HttpEquivPolicy::DisabledBySettings:
+            reason = "by the embedder.";
+            break;
+        case HttpEquivPolicy::DisabledByContentDispositionAttachmentSandbox:
+            reason = "for documents with Content-Disposition: attachment.";
+            break;
+        }
+        String message = "http-equiv '" + equiv + "' is disabled " + reason;
+        addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
         return;
+    }
 
     Frame* frame = this->frame();
 
@@ -4895,15 +4933,8 @@ void Document::initSecurityContext()
     setCookieURL(m_url);
     enforceSandboxFlags(m_frame->loader().effectiveSandboxFlags());
 
-#if PLATFORM(IOS)
-    // On iOS we display attachments inline regardless of whether the response includes
-    // the HTTP header "Content-Disposition: attachment". So, we enforce a unique
-    // security origin for such documents. As an optimization, we don't need to parse
-    // the responde header (i.e. call ResourceResponse::isAttachment()) for a synthesized
-    // document because such documents cannot be an attachment.
-    if (!m_isSynthesized && m_frame->loader().activeDocumentLoader()->response().isAttachment())
-        enforceSandboxFlags(SandboxOrigin);
-#endif
+    if (shouldEnforceContentDispositionAttachmentSandbox())
+        enforceSandboxFlags(SandboxAll);
 
     setSecurityOriginPolicy(SecurityOriginPolicy::create(isSandboxed(SandboxOrigin) ? SecurityOrigin::createUnique() : SecurityOrigin::create(m_url)));
     setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(this));
@@ -6002,6 +6033,15 @@ void Document::didAddWheelEventHandler(Node& node)
         DebugPageOverlays::didChangeEventHandlers(*frame);
 }
 
+HttpEquivPolicy Document::httpEquivPolicy() const
+{
+    if (shouldEnforceContentDispositionAttachmentSandbox())
+        return HttpEquivPolicy::DisabledByContentDispositionAttachmentSandbox;
+    if (page() && !page()->settings().httpEquivEnabled())
+        return HttpEquivPolicy::DisabledBySettings;
+    return HttpEquivPolicy::Enabled;
+}
+
 static bool removeHandlerFromSet(EventTargetSet& handlerSet, Node& node, EventHandlerRemoval removal)
 {
     switch (removal) {
@@ -6673,6 +6713,19 @@ ShouldOpenExternalURLsPolicy Document::shouldOpenExternalURLsPolicyToPropagate()
         return documentLoader->shouldOpenExternalURLsPolicyToPropagate();
 
     return ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+}
+
+bool Document::shouldEnforceContentDispositionAttachmentSandbox() const
+{
+    if (m_isSynthesized)
+        return false;
+
+    bool contentDispositionAttachmentSandboxEnabled = settings() && settings()->contentDispositionAttachmentSandboxEnabled();
+    bool responseIsAttachment = false;
+    if (DocumentLoader* documentLoader = m_frame ? m_frame->loader().activeDocumentLoader() : nullptr)
+        responseIsAttachment = documentLoader->response().isAttachment();
+
+    return contentDispositionAttachmentSandboxEnabled && responseIsAttachment;
 }
 
 } // namespace WebCore

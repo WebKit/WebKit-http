@@ -216,7 +216,7 @@ class Git(SCM, SVNRepository):
 
     def changed_files(self, git_commit=None):
         # FIXME: --diff-filter could be used to avoid the "extract_filenames" step.
-        status_command = [self.executable_name, 'diff', '-r', '--name-status', "--no-renames", "--no-ext-diff", "--full-index", self.merge_base(git_commit)]
+        status_command = [self.executable_name, 'diff', '-r', '--name-status', "--no-renames", "--no-ext-diff", "--full-index", self.merge_base(git_commit), '--']
         status_command.extend(self._patch_directories)
         # FIXME: I'm not sure we're returning the same set of files that SVN.changed_files is.
         # Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R)
@@ -321,7 +321,9 @@ class Git(SCM, SVNRepository):
         command += ["--"]
         if changed_files:
             command += changed_files
-        return self.prepend_svn_revision(self.run(command, decode_output=False, cwd=self.checkout_root))
+        return self.fix_changelog_patch(
+                self.prepend_svn_revision(
+                    self.run(command, decode_output=False, cwd=self.checkout_root)))
 
     def _run_git_svn_find_rev(self, revision_or_treeish, branch=None):
         # git svn find-rev requires SVN revisions to begin with the character 'r'.

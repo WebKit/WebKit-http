@@ -40,7 +40,6 @@
 #include "ElementAncestorIterator.h"
 #include "Frame.h"
 #include "HTMLElement.h"
-#include "LocaleToScriptMapping.h"
 #include "Rect.h"
 #include "RenderTheme.h"
 #include "SVGElement.h"
@@ -125,6 +124,7 @@ public:
 #if ENABLE(IOS_TEXT_AUTOSIZING)
     static void applyValueWebkitTextSizeAdjust(StyleResolver&, CSSValue&);
 #endif
+    static void applyValueWebkitTextZoom(StyleResolver&, CSSValue&);
     static void applyValueWebkitWritingMode(StyleResolver&, CSSValue&);
     static void applyValueAlt(StyleResolver&, CSSValue&);
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -690,14 +690,12 @@ inline void StyleBuilderCustom::applyValueClip(StyleResolver& styleResolver, CSS
 inline void StyleBuilderCustom::applyValueWebkitLocale(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
-
-    if (primitiveValue.getValueID() == CSSValueAuto)
-        styleResolver.style()->setLocale(nullAtom);
-    else
-        styleResolver.style()->setLocale(primitiveValue.getStringValue());
     
     FontDescription fontDescription = styleResolver.style()->fontDescription();
-    fontDescription.setScript(localeToScriptCodeForFontSelection(styleResolver.style()->locale()));
+    if (primitiveValue.getValueID() == CSSValueAuto)
+        fontDescription.setLocale(nullAtom);
+    else
+        fontDescription.setLocale(primitiveValue.getStringValue());
     styleResolver.setFontDescription(fontDescription);
 }
 
@@ -730,6 +728,16 @@ inline void StyleBuilderCustom::applyValueWebkitTextSizeAdjust(StyleResolver& st
     styleResolver.state().setFontDirty(true);
 }
 #endif
+
+inline void StyleBuilderCustom::applyValueWebkitTextZoom(StyleResolver& styleResolver, CSSValue& value)
+{
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.getValueID() == CSSValueNormal)
+        styleResolver.style()->setTextZoom(TextZoomNormal);
+    else if (primitiveValue.getValueID() == CSSValueReset)
+        styleResolver.style()->setTextZoom(TextZoomReset);
+    styleResolver.state().setFontDirty(true);
+}
 
 template <CSSPropertyID id>
 inline void StyleBuilderCustom::applyTextOrBoxShadowValue(StyleResolver& styleResolver, CSSValue& value)

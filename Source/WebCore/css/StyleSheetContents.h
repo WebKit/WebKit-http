@@ -38,6 +38,7 @@ class CachedCSSStyleSheet;
 class CachedResource;
 class Document;
 class Node;
+class SecurityOrigin;
 class StyleRuleBase;
 class StyleRuleImport;
 
@@ -62,7 +63,7 @@ public:
 
     const AtomicString& determineNamespace(const AtomicString& prefix);
 
-    void parseAuthorStyleSheet(const CachedCSSStyleSheet*);
+    void parseAuthorStyleSheet(const CachedCSSStyleSheet*, const SecurityOrigin*);
     WEBCORE_EXPORT bool parseString(const String&);
     bool parseStringAtPosition(const String&, const TextPosition&, bool createdByParser);
 

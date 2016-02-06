@@ -48,11 +48,11 @@ static NSString * const typeStringKey = @"typeString";
 
 static RefPtr<API::Dictionary> createEncodedObject(WKRemoteObjectEncoder *, id);
 
-@interface NSMethodSignature (Details)
+@interface NSMethodSignature ()
 - (NSString *)_typeString;
 @end
 
-@interface NSCoder (Details)
+@interface NSCoder ()
 - (void)validateClassSupportsSecureCoding:(Class)objectClass;
 @end
 
@@ -241,7 +241,7 @@ static void encodeObject(WKRemoteObjectEncoder *encoder, id object)
         return;
     }
 
-    if ([object isKindOfClass:[NSString class]]) {
+    if (objectClass == [NSString class] || objectClass == [NSMutableString class]) {
         encodeString(encoder, object);
         return;
     }
@@ -585,6 +585,9 @@ static id decodeObject(WKRemoteObjectDecoder *decoder)
 
     if (objectClass == [NSString class])
         return decodeString(decoder);
+
+    if (objectClass == [NSMutableString class])
+        return [NSMutableString stringWithString:decodeString(decoder)];
 
     id result = [objectClass allocWithZone:decoder.zone];
     if (!result)

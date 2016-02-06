@@ -63,6 +63,8 @@ private:
     const char* m_string;
 };
 
+class WatchpointSet;
+
 class Watchpoint : public BasicRawSentinelNode<Watchpoint> {
     WTF_MAKE_NONCOPYABLE(Watchpoint);
     WTF_MAKE_FAST_ALLOCATED;
@@ -73,10 +75,12 @@ public:
     
     virtual ~Watchpoint();
 
-    void fire(const FireDetail& detail) { fireInternal(detail); }
-    
 protected:
     virtual void fireInternal(const FireDetail&) = 0;
+
+private:
+    friend class WatchpointSet;
+    void fire(const FireDetail&);
 };
 
 enum WatchpointState {
@@ -182,6 +186,11 @@ public:
     void invalidate(const char* reason)
     {
         invalidate(StringFireDetail(reason));
+    }
+    
+    bool isBeingWatched() const
+    {
+        return m_setIsNotEmpty;
     }
     
     int8_t* addressOfState() { return &m_state; }
@@ -325,6 +334,13 @@ public:
     void touch(const char* reason)
     {
         touch(StringFireDetail(reason));
+    }
+    
+    bool isBeingWatched() const
+    {
+        if (isFat())
+            return fat()->isBeingWatched();
+        return false;
     }
     
 private:

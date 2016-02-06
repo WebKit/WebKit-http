@@ -232,7 +232,7 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
             if (input == AnimationStateInput::StartTimerFired) {
                 ASSERT(param >= 0);
                 // Start timer has fired, tell the animation to start and wait for it to respond with start time
-                LOG(Animations, "%p AnimationState %s -> StartWaitStyleAvailable", this, nameForState(m_animationState));
+                LOG(Animations, "%p AnimationState %s -> StartWaitStyleAvailable (time is %f)", this, nameForState(m_animationState), param);
                 m_animationState = AnimationState::StartWaitStyleAvailable;
                 m_compositeAnimation->animationController().addToAnimationsWaitingForStyle(this);
 
@@ -252,7 +252,7 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
 
             if (input == AnimationStateInput::StyleAvailable) {
                 // Start timer has fired, tell the animation to start and wait for it to respond with start time
-                LOG(Animations, "%p AnimationState %s -> StartWaitResponse", this, nameForState(m_animationState));
+                LOG(Animations, "%p AnimationState %s -> StartWaitResponse (time is %f)", this, nameForState(m_animationState), param);
                 m_animationState = AnimationState::StartWaitResponse;
 
                 overrideAnimations();
@@ -287,6 +287,8 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
 
             if (input == AnimationStateInput::StartTimeSet) {
                 ASSERT(param >= 0);
+                LOG(Animations, "%p AnimationState %s -> StartTimeSet (time is %f)", this, nameForState(m_animationState), param);
+
                 // We have a start time, set it, unless the startTime is already set
                 if (m_startTime <= 0) {
                     m_startTime = param;
@@ -318,6 +320,8 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
 
             if (input == AnimationStateInput::LoopTimerFired) {
                 ASSERT(param >= 0);
+                LOG(Animations, "%p AnimationState %s -> LoopTimerFired (time is %f)", this, nameForState(m_animationState), param);
+
                 // Loop timer fired, loop again or end.
                 onAnimationIteration(param);
 
@@ -337,12 +341,11 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
                 LOG_ERROR("State is AnimationState::Ending, but input is not AnimationStateInput::EndTimerFired or AnimationStateInput::PlayStatePaused. It is %s.", nameForStateInput(input));
 #endif
             if (input == AnimationStateInput::EndTimerFired) {
-
                 ASSERT(param >= 0);
                 // End timer fired, finish up
                 onAnimationEnd(param);
 
-                LOG(Animations, "%p AnimationState %s -> Done", this, nameForState(m_animationState));
+                LOG(Animations, "%p AnimationState %s -> Done (time is %f)", this, nameForState(m_animationState), param);
                 m_animationState = AnimationState::Done;
                 
                 if (m_object) {
@@ -435,7 +438,7 @@ void AnimationBase::updateStateMachine(AnimationStateInput input, double param)
                 
                 // We are paused but we got the callback that notifies us that an accelerated animation started.
                 // We ignore the start time and just move into the paused-run state.
-                LOG(Animations, "%p AnimationState %s -> PausedRun", this, nameForState(m_animationState));
+                LOG(Animations, "%p AnimationState %s -> PausedRun (time is %f)", this, nameForState(m_animationState), param);
                 m_animationState = AnimationState::PausedRun;
                 ASSERT(m_startTime == 0);
                 m_startTime = param;
@@ -618,22 +621,24 @@ double AnimationBase::progress(double scale, double offset, const TimingFunction
     if (preActive())
         return 0;
 
+    if (postActive() || !m_animation->duration())
+        return 1.0;
+
     double elapsedTime = getElapsedTime();
 
     double duration = m_animation->duration();
     if (m_animation->iterationCount() > 0)
         duration *= m_animation->iterationCount();
 
-    if (postActive() || !m_animation->duration())
-        return 1.0;
+    if (fillingForwards())
+        elapsedTime = duration;
+
+    double fractionalTime = this->fractionalTime(scale, elapsedTime, offset);
 
     if (m_animation->iterationCount() > 0 && elapsedTime >= duration) {
-        const int integralIterationCount = static_cast<int>(m_animation->iterationCount());
-        const bool iterationCountHasFractional = m_animation->iterationCount() - integralIterationCount;
-        return (integralIterationCount % 2 || iterationCountHasFractional) ? 1.0 : 0.0;
+        if (WTF::isIntegral(fractionalTime))
+            return fractionalTime;
     }
-
-    const double fractionalTime = this->fractionalTime(scale, elapsedTime, offset);
 
     if (!timingFunction)
         timingFunction = m_animation->timingFunction().get();
@@ -740,7 +745,7 @@ double AnimationBase::getElapsedTime() const
         return m_pauseTime - m_startTime;
     if (m_startTime <= 0)
         return 0;
-    if (postActive())
+    if (postActive() || fillingForwards())
         return 1;
 
     return beginAnimationUpdateTime() - m_startTime;

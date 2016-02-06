@@ -52,6 +52,7 @@
 #import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
+#import "PathUtilities.h"
 #import "RenderAttachment.h"
 #import "RenderLayer.h"
 #import "RenderMedia.h"
@@ -103,7 +104,7 @@
 @end
 #endif
 
-@interface NSServicesRolloverButtonCell (Details)
+@interface NSServicesRolloverButtonCell ()
 + (NSServicesRolloverButtonCell *)serviceRolloverButtonCellForStyle:(NSSharingServicePickerStyle)style;
 - (NSRect)rectForBounds:(NSRect)bounds preferredEdge:(NSRectEdge)preferredEdge;
 @end
@@ -176,7 +177,7 @@ const double progressAnimationNumFrames = 256;
 @end
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
-@interface NSSearchFieldCell(Details)
+@interface NSSearchFieldCell()
 @property (getter=isCenteredLook) BOOL centeredLook;
 @end
 #endif
@@ -1630,6 +1631,7 @@ void RenderThemeMac::setSearchCellState(const RenderObject& o, const IntRect&)
 {
     NSSearchFieldCell* search = this->search();
 
+    [search setPlaceholderString:@""];
     [search setControlSize:controlSizeForFont(o.style())];
 
     // Update the various states we respond to.
@@ -1933,11 +1935,6 @@ void RenderThemeMac::adjustSliderThumbSize(RenderStyle& style, Element*) const
         style.setWidth(Length(static_cast<int>(sliderThumbWidth * zoomLevel), Fixed));
         style.setHeight(Length(static_cast<int>(sliderThumbHeight * zoomLevel), Fixed));
     }
-}
-
-bool RenderThemeMac::shouldShowPlaceholderWhenFocused() const
-{
-    return true;
 }
 
 bool RenderThemeMac::shouldHaveCapsLockIndicator(HTMLInputElement& element) const
@@ -2379,135 +2376,15 @@ static void paintAttachmentIcon(const RenderAttachment& attachment, GraphicsCont
     icon->paint(context, layout.iconRect);
 }
 
-static void addAttachmentTitleBackgroundRightCorner(Path& path, const FloatRect* fromRect, const FloatRect* toRect)
-{
-    FloatSize horizontalRadius(attachmentTitleBackgroundRadius, 0);
-    FloatSize verticalRadius(0, attachmentTitleBackgroundRadius);
-
-    if (!fromRect) {
-        // For the first (top) rect:
-
-        path.moveTo(toRect->minXMinYCorner() + horizontalRadius);
-
-        // Across the top, towards the right.
-        path.addLineTo(toRect->maxXMinYCorner() - horizontalRadius);
-
-        // Arc the top corner.
-        path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
-
-        // Down the right.
-        path.addLineTo(toRect->maxXMaxYCorner() - verticalRadius);
-    } else if (!toRect) {
-        // For the last rect:
-
-        // Arc the bottom corner.
-        path.addArcTo(fromRect->maxXMaxYCorner(), fromRect->maxXMaxYCorner() - horizontalRadius, attachmentTitleBackgroundRadius);
-    } else {
-        // For middle rects:
-
-        float widthDifference = toRect->width() - fromRect->width();
-
-        // Skip over very similar-width rects, because we can't make
-        // sensible curves between them.
-        if (fabs(widthDifference) < std::numeric_limits<float>::epsilon())
-            return;
-
-        if (widthDifference < 0) {
-            // Arc the outer corner.
-            path.addArcTo(FloatPoint(fromRect->maxX(), toRect->y()), FloatPoint(fromRect->maxX(), toRect->y()) - horizontalRadius, attachmentTitleBackgroundRadius);
-
-            // Across the bottom, towards the left.
-            path.addLineTo(toRect->maxXMinYCorner() + horizontalRadius);
-
-            // Arc the inner corner.
-            path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
-        } else {
-            // Arc the inner corner.
-            path.addArcTo(FloatPoint(fromRect->maxX(), toRect->y()), FloatPoint(fromRect->maxX(), toRect->y()) + horizontalRadius, attachmentTitleBackgroundRadius);
-
-            // Across the bottom, towards the right.
-            path.addLineTo(toRect->maxXMinYCorner() - horizontalRadius);
-
-            // Arc the outer corner.
-            path.addArcTo(toRect->maxXMinYCorner(), toRect->maxXMinYCorner() + verticalRadius, attachmentTitleBackgroundRadius);
-        }
-
-        // Down the right.
-        path.addLineTo(toRect->maxXMaxYCorner() - verticalRadius);
-    }
-}
-
-static void addAttachmentTitleBackgroundLeftCorner(Path& path, const FloatRect* fromRect, const FloatRect* toRect)
-{
-    FloatSize horizontalRadius(attachmentTitleBackgroundRadius, 0);
-    FloatSize verticalRadius(0, attachmentTitleBackgroundRadius);
-
-    if (!fromRect) {
-        // For the first (bottom) rect:
-
-        // Across the bottom, towards the left.
-        path.addLineTo(toRect->minXMaxYCorner() + horizontalRadius);
-
-        // Arc the bottom corner.
-        path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
-
-        // Up the left.
-        path.addLineTo(toRect->minXMinYCorner() + verticalRadius);
-    } else if (!toRect) {
-        // For the last (top) rect:
-
-        // Arc the top corner.
-        path.addArcTo(fromRect->minXMinYCorner(), fromRect->minXMinYCorner() + horizontalRadius, attachmentTitleBackgroundRadius);
-    } else {
-        // For middle rects:
-        float widthDifference = toRect->width() - fromRect->width();
-
-        // Skip over very similar-width rects, because we can't make
-        // sensible curves between them.
-        if (fabs(widthDifference) < std::numeric_limits<float>::epsilon())
-            return;
-
-        if (widthDifference < 0) {
-            // Arc the inner corner.
-            path.addArcTo(FloatPoint(fromRect->x(), toRect->maxY()), FloatPoint(fromRect->x(), toRect->maxY()) + horizontalRadius, attachmentTitleBackgroundRadius);
-
-            // Across the bottom, towards the right.
-            path.addLineTo(toRect->minXMaxYCorner() - horizontalRadius);
-
-            // Arc the outer corner.
-            path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
-        } else {
-            // Arc the outer corner.
-            path.addArcTo(FloatPoint(fromRect->x(), toRect->maxY()), FloatPoint(fromRect->x(), toRect->maxY()) - horizontalRadius, attachmentTitleBackgroundRadius);
-
-            // Across the bottom, towards the left.
-            path.addLineTo(toRect->minXMaxYCorner() + horizontalRadius);
-
-            // Arc the inner corner.
-            path.addArcTo(toRect->minXMaxYCorner(), toRect->minXMaxYCorner() - verticalRadius, attachmentTitleBackgroundRadius);
-        }
-        
-        // Up the right.
-        path.addLineTo(toRect->minXMinYCorner() + verticalRadius);
-    }
-}
-
 static void paintAttachmentTitleBackground(const RenderAttachment& attachment, GraphicsContext& context, AttachmentLayout& layout)
 {
     if (layout.lines.isEmpty())
         return;
 
-    Path backgroundPath;
+    Vector<FloatRect> backgroundRects;
 
-    for (size_t i = 0; i <= layout.lines.size(); ++i)
-        addAttachmentTitleBackgroundRightCorner(backgroundPath, i ? &layout.lines[i - 1].backgroundRect : nullptr, i < layout.lines.size() ? &layout.lines[i].backgroundRect : nullptr);
-
-    for (size_t i = 0; i <= layout.lines.size(); ++i) {
-        size_t reverseIndex = layout.lines.size() - i;
-        addAttachmentTitleBackgroundLeftCorner(backgroundPath, reverseIndex < layout.lines.size() ? &layout.lines[reverseIndex].backgroundRect : nullptr, reverseIndex ? &layout.lines[reverseIndex - 1].backgroundRect : nullptr);
-    }
-
-    backgroundPath.closeSubpath();
+    for (size_t i = 0; i < layout.lines.size(); ++i)
+        backgroundRects.append(layout.lines[i].backgroundRect);
 
     Color backgroundColor;
     if (attachment.frame().selection().isFocusedAndActive())
@@ -2516,6 +2393,8 @@ static void paintAttachmentTitleBackground(const RenderAttachment& attachment, G
         backgroundColor = attachmentTitleInactiveBackgroundColor();
 
     context.setFillColor(backgroundColor, ColorSpaceDeviceRGB);
+
+    Path backgroundPath = PathUtilities::pathWithShrinkWrappedRects(backgroundRects, attachmentTitleBackgroundRadius);
     context.fillPath(backgroundPath);
 }
 

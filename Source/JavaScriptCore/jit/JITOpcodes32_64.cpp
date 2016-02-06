@@ -754,12 +754,6 @@ void JIT::emit_op_push_with_scope(Instruction* currentInstruction)
     callOperation(operationPushWithScope, dst, regT1, regT0);
 }
 
-void JIT::emit_op_pop_scope(Instruction* currentInstruction)
-{
-    int scope = currentInstruction[1].u.operand;
-    callOperation(operationPopScope, scope);
-}
-
 void JIT::emit_op_to_number(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
@@ -810,11 +804,6 @@ void JIT::emit_op_push_name_scope(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
     emitLoad(currentInstruction[2].u.operand, regT1, regT0);
-    if (currentInstruction[4].u.operand == JSNameScope::CatchScope) {
-        callOperation(operationPushCatchScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT1, regT0);
-        return;
-    }
-
     RELEASE_ASSERT(currentInstruction[4].u.operand == JSNameScope::FunctionNameScope);
     callOperation(operationPushFunctionNameScope, dst, jsCast<SymbolTable*>(getConstantOperand(currentInstruction[3].u.operand)), regT1, regT0);
 }
@@ -843,6 +832,20 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
 
     unsigned thrownValue = currentInstruction[2].u.operand;
     emitStore(thrownValue, regT1, regT0);
+}
+
+void JIT::emit_op_create_lexical_environment(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_lexical_environment);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_get_parent_scope(Instruction* currentInstruction)
+{
+    int currentScope = currentInstruction[2].u.operand;
+    emitLoadPayload(currentScope, regT0);
+    loadPtr(Address(regT0, JSScope::offsetOfNext()), regT0);
+    emitStoreCell(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emit_op_switch_imm(Instruction* currentInstruction)
@@ -919,17 +922,6 @@ void JIT::emit_op_enter(Instruction* currentInstruction)
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_enter);
     slowPathCall.call();
-}
-
-void JIT::emit_op_create_lexical_environment(Instruction* currentInstruction)
-{
-    int lexicalEnvironment = currentInstruction[1].u.operand;
-    int scope = currentInstruction[2].u.operand;
-
-    emitLoadPayload(currentInstruction[2].u.operand, regT0);
-    callOperation(operationCreateActivation, regT0);
-    emitStoreCell(lexicalEnvironment, returnValueGPR);
-    emitStoreCell(scope, returnValueGPR);
 }
 
 void JIT::emit_op_get_scope(Instruction* currentInstruction)
@@ -1251,6 +1243,8 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     emitLoadTag(valueToProfile, regT3);
 
     JumpList jumpToEnd;
+
+    jumpToEnd.append(branch32(Equal, regT3, TrustedImm32(JSValue::EmptyValueTag)));
 
     // Compile in a predictive type check, if possible, to see if we can skip writing to the log.
     // These typechecks are inlined to match those of the 32-bit JSValue type checks.

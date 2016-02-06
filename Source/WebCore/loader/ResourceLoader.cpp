@@ -104,7 +104,7 @@ void ResourceLoader::releaseResources()
         // Clear out the ResourceHandle's client so that it doesn't try to call
         // us back after we release it, unless it has been replaced by someone else.
         if (m_handle->client() == this)
-            m_handle->setClient(nullptr);
+            m_handle->clearClient();
         m_handle = nullptr;
     }
 
@@ -314,9 +314,6 @@ void ResourceLoader::willSendRequest(ResourceRequest& request, const ResourceRes
         }
     }
 #endif
-    
-    if (isPlugInStreamLoader())
-        documentLoader()->addPlugInStreamLoader(this);
 
     if (request.isNull()) {
         didFail(cannotShowURLError());

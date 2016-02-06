@@ -31,6 +31,7 @@
 #include "Page.h"
 #include "PageConsoleClient.h"
 #include "RuleSet.h"
+#include "SecurityOrigin.h"
 #include "StyleProperties.h"
 #include "StyleRule.h"
 #include "StyleRuleImport.h"
@@ -236,7 +237,11 @@ bool StyleSheetContents::wrapperInsertRule(PassRefPtr<StyleRuleBase> rule, unsig
     if (is<StyleRuleImport>(*rule))
         return false;
     childVectorIndex -= m_importRules.size();
- 
+
+    // If the number of selectors would overflow RuleData, we drop the operation.
+    if (is<StyleRule>(*rule) && downcast<StyleRule>(*rule).selectorList().componentCount() > RuleData::maximumSelectorComponentCount)
+        return false;
+
     m_childRules.insert(childVectorIndex, rule);
     return true;
 }
@@ -286,16 +291,22 @@ const AtomicString& StyleSheetContents::determineNamespace(const AtomicString& p
     return it->value;
 }
 
-void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cachedStyleSheet)
+void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cachedStyleSheet, const SecurityOrigin* securityOrigin)
 {
+    bool isSameOriginRequest = securityOrigin && securityOrigin->canRequest(baseURL());
+    CachedCSSStyleSheet::MIMETypeCheck mimeTypeCheck = isStrictParserMode(m_parserContext.mode) || !isSameOriginRequest ? CachedCSSStyleSheet::MIMETypeCheck::Strict : CachedCSSStyleSheet::MIMETypeCheck::Lax;
     bool hasValidMIMEType = true;
-    String sheetText = cachedStyleSheet->sheetText(&hasValidMIMEType);
+    String sheetText = cachedStyleSheet->sheetText(mimeTypeCheck, &hasValidMIMEType);
 
     if (!hasValidMIMEType) {
         ASSERT(sheetText.isNull());
         if (auto* document = singleOwnerDocument()) {
-            if (auto* page = document->page())
-                page->console().addMessage(MessageSource::Security, MessageLevel::Error, "Did not parse stylesheet at '" + cachedStyleSheet->url().stringCenterEllipsizedToLength() + "' because its MIME type was invalid.");
+            if (auto* page = document->page()) {
+                if (isStrictParserMode(m_parserContext.mode))
+                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, "Did not parse stylesheet at '" + cachedStyleSheet->url().stringCenterEllipsizedToLength() + "' because non CSS MIME types are not allowed in strict mode.");
+                else
+                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, "Did not parse stylesheet at '" + cachedStyleSheet->url().stringCenterEllipsizedToLength() + "' because non CSS MIME types are not allowed for cross-origin stylesheets.");
+            }
         }
         return;
     }

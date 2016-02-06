@@ -168,7 +168,7 @@ void RealtimeMediaSourceCenterOwr::mediaSourcesAvailable(GList* sources)
     }
 
     // TODO: Make sure contraints are actually validated by checking source types.
-    m_client->constraintsValidated();
+    m_client->constraintsValidated(Vector<RefPtr<RealtimeMediaSource>>(), Vector<RefPtr<RealtimeMediaSource>>());
 }
 
 PassRefPtr<RealtimeMediaSource> RealtimeMediaSourceCenterOwr::firstSource(RealtimeMediaSource::Type type)
@@ -182,6 +182,15 @@ PassRefPtr<RealtimeMediaSource> RealtimeMediaSourceCenterOwr::firstSource(Realti
     return nullptr;
 }
 
+RefPtr<TrackSourceInfo> RealtimeMediaSourceCenterOwr::sourceWithUID(const String& UID, RealtimeMediaSource::Type, MediaConstraints*)
+{
+    for (auto& source : m_sourceMap.values()) {
+        if (source->id() == UID)
+            return TrackSourceInfo::create(source->id(), source->type() == RealtimeMediaSource::Type::Video ? TrackSourceInfo::SourceKind::Video : TrackSourceInfo::SourceKind::Audio , source->name());
+    }
+
+    return nullptr;
+}
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)

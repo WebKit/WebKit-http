@@ -145,7 +145,6 @@ public:
         , m_parameterSlots(0)
         , m_numPassedVarArgs(0)
         , m_inlineStackTop(0)
-        , m_haveBuiltOperandMaps(false)
         , m_currentInstruction(0)
         , m_hasDebuggerEnabled(graph.hasDebuggerEnabled())
     {
@@ -838,8 +837,6 @@ private:
             argument->mergeShouldNeverUnbox(true);
     }
     
-    void buildOperandMapsIfNecessary();
-    
     VM* m_vm;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
@@ -989,12 +986,6 @@ private:
     
     Vector<DelayedSetLocal, 2> m_setLocalQueue;
 
-    // Have we built operand maps? We initialize them lazily, and only when doing
-    // inlining.
-    bool m_haveBuiltOperandMaps;
-    // Mapping between identifier names and numbers.
-    BorrowedIdentifierMap m_identifierMap;
-    
     CodeBlock* m_dfgCodeBlock;
     CallLinkStatus::ContextMap m_callContextMap;
     StubInfoMap m_dfgStubInfos;
@@ -1074,25 +1065,6 @@ void ByteCodeParser::handleCall(
             m_graph.compilation()->noticeInlinedCall();
         return;
     }
-    
-#if ENABLE(FTL_NATIVE_CALL_INLINING)
-    if (isFTL(m_graph.m_plan.mode) && Options::optimizeNativeCalls() && callLinkStatus.size() == 1 && !callLinkStatus.couldTakeSlowPath()) {
-        CallVariant callee = callLinkStatus[0];
-        JSFunction* function = callee.function();
-        CodeSpecializationKind specializationKind = InlineCallFrame::specializationKindFor(kind);
-        if (function && function->isHostFunction()) {
-            emitFunctionChecks(callee, callTarget, virtualRegisterForArgument(0, registerOffset));
-            callOpInfo = OpInfo(m_graph.freeze(function));
-
-            if (op == Call)
-                op = NativeCall;
-            else {
-                ASSERT(op == Construct);
-                op = NativeConstruct;
-            }
-        }
-    }
-#endif
     
     addCall(result, op, callOpInfo, callTarget, argumentCountIncludingThis, registerOffset, prediction);
 }
@@ -2903,8 +2875,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_check_tdz: {
-            Node* op = get(VirtualRegister(currentInstruction[1].u.operand));
-            addToGraph(CheckNotEmpty, op);
+            addToGraph(CheckNotEmpty, get(VirtualRegister(currentInstruction[1].u.operand)));
             NEXT_OPCODE(op_check_tdz);
         }
 
@@ -3151,20 +3122,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             
             handlePutById(base, identifierNumber, value, putByIdStatus, direct);
             NEXT_OPCODE(op_put_by_id);
-        }
-
-        case op_init_global_const_nop: {
-            NEXT_OPCODE(op_init_global_const_nop);
-        }
-
-        case op_init_global_const: {
-            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
-            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
-            addToGraph(
-                PutGlobalVar,
-                OpInfo(globalObject->assertVariableIsInThisObject(currentInstruction[1].u.variablePointer)),
-                weakJSConstant(globalObject), value);
-            NEXT_OPCODE(op_init_global_const);
         }
 
         case op_profile_type: {
@@ -3728,13 +3685,25 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_create_lexical_environment: {
-            FrozenValue* symbolTable = m_graph.freezeStrong(m_graph.symbolTableFor(currentNodeOrigin().semantic));
-            Node* lexicalEnvironment = addToGraph(CreateActivation, OpInfo(symbolTable), get(VirtualRegister(currentInstruction[2].u.operand)));
+            VirtualRegister symbolTableRegister(currentInstruction[3].u.operand);
+            VirtualRegister initialValueRegister(currentInstruction[4].u.operand);
+            ASSERT(symbolTableRegister.isConstant() && initialValueRegister.isConstant());
+            FrozenValue* symbolTable = m_graph.freezeStrong(m_inlineStackTop->m_codeBlock->getConstant(symbolTableRegister.offset()));
+            FrozenValue* initialValue = m_graph.freezeStrong(m_inlineStackTop->m_codeBlock->getConstant(initialValueRegister.offset()));
+            Node* scope = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* lexicalEnvironment = addToGraph(CreateActivation, OpInfo(symbolTable), OpInfo(initialValue), scope);
             set(VirtualRegister(currentInstruction[1].u.operand), lexicalEnvironment);
-            set(VirtualRegister(currentInstruction[2].u.operand), lexicalEnvironment);
             NEXT_OPCODE(op_create_lexical_environment);
         }
-            
+
+        case op_get_parent_scope: {
+            Node* currentScope = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* newScope = addToGraph(SkipScope, currentScope);
+            set(VirtualRegister(currentInstruction[1].u.operand), newScope);
+            addToGraph(Phantom, currentScope);
+            NEXT_OPCODE(op_get_parent_scope);
+        }
+
         case op_get_scope: {
             // Help the later stages a bit by doing some small constant folding here. Note that this
             // only helps for the first basic block. It's extremely important not to constant fold
@@ -3964,17 +3933,6 @@ void ByteCodeParser::linkBlocks(Vector<UnlinkedBlock>& unlinkedBlocks, Vector<Ba
     }
 }
 
-void ByteCodeParser::buildOperandMapsIfNecessary()
-{
-    if (m_haveBuiltOperandMaps)
-        return;
-    
-    for (size_t i = 0; i < m_codeBlock->numberOfIdentifiers(); ++i)
-        m_identifierMap.add(m_codeBlock->identifier(i).impl(), i);
-    
-    m_haveBuiltOperandMaps = true;
-}
-
 ByteCodeParser::InlineStackEntry::InlineStackEntry(
     ByteCodeParser* byteCodeParser,
     CodeBlock* codeBlock,
@@ -4023,13 +3981,9 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         
         m_inlineCallFrame = byteCodeParser->m_graph.m_plan.inlineCallFrames->add();
         byteCodeParser->m_graph.freeze(codeBlock->ownerExecutable());
-        initializeLazyWriteBarrierForInlineCallFrameExecutable(
-            byteCodeParser->m_graph.m_plan.writeBarriers,
-            m_inlineCallFrame->executable,
-            byteCodeParser->m_codeBlock,
-            m_inlineCallFrame,
-            byteCodeParser->m_codeBlock->ownerExecutable(),
-            codeBlock->ownerExecutable());
+        // The owner is the machine code block, and we already have a barrier on that when the
+        // plan finishes.
+        m_inlineCallFrame->executable.setWithoutWriteBarrier(codeBlock->ownerExecutable());
         m_inlineCallFrame->setStackOffset(inlineCallFrameStart.offset() - JSStack::CallFrameHeaderSize);
         if (callee) {
             m_inlineCallFrame->calleeRecovery = ValueRecovery::constant(callee);
@@ -4040,18 +3994,14 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         m_inlineCallFrame->arguments.resizeToFit(argumentCountIncludingThis); // Set the number of arguments including this, but don't configure the value recoveries, yet.
         m_inlineCallFrame->kind = kind;
         
-        byteCodeParser->buildOperandMapsIfNecessary();
-        
         m_identifierRemap.resize(codeBlock->numberOfIdentifiers());
         m_constantBufferRemap.resize(codeBlock->numberOfConstantBuffers());
         m_switchRemap.resize(codeBlock->numberOfSwitchJumpTables());
 
         for (size_t i = 0; i < codeBlock->numberOfIdentifiers(); ++i) {
             UniquedStringImpl* rep = codeBlock->identifier(i).impl();
-            BorrowedIdentifierMap::AddResult result = byteCodeParser->m_identifierMap.add(rep, byteCodeParser->m_graph.identifiers().numberOfIdentifiers());
-            if (result.isNewEntry)
-                byteCodeParser->m_graph.identifiers().addLazily(rep);
-            m_identifierRemap[i] = result.iterator->value;
+            unsigned index = byteCodeParser->m_graph.identifiers().ensure(rep);
+            m_identifierRemap[i] = index;
         }
         for (unsigned i = 0; i < codeBlock->numberOfConstantBuffers(); ++i) {
             // If we inline the same code block multiple times, we don't want to needlessly

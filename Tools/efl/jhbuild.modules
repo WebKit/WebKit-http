@@ -73,7 +73,7 @@
   </autotools>
 
   <autotools id="pixman" autogen-sh="configure"
-             autogenargs="--enable-gtk=no">
+             autogenargs="--enable-gtk=no --disable-arm-iwmmxt">
     <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
             repo="cairographics.org"
             hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"
@@ -302,9 +302,9 @@
   </autotools>
 
   <autotools id="libseccomp" autogen-sh="configure">
-      <branch module="seccomp/libseccomp/releases/download/v2.2.1/libseccomp-2.2.1.tar.gz" version="2.2.1"
+      <branch module="seccomp/libseccomp/releases/download/v2.2.3/libseccomp-2.2.3.tar.gz" version="2.2.3"
           repo="github.com"
-          hash="sha256:0ba1789f54786c644af54cdffc9fd0dd0a8bb2b2ee153933f658855d2851a740">
+          hash="sha256:d9b400b703cab7bb04b84b9b6e52076a630b673819d7541757bcc16467b6d49e">
       </branch>
   </autotools>
 

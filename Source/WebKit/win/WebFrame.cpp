@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2009, 2011, 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2009, 2011, 2013-2015 Apple Inc. All rights reserved.
  * Copyright (C) Research In Motion Limited 2009. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -336,6 +336,8 @@ HRESULT WebFrame::paintDocumentRectToContext(RECT rect, HDC deviceContext)
     dirtyRect.setHeight(height);
     gc.clip(dirtyRect);
     gc.translate(-rect.left, -rect.top);
+    float scaleFactor = webView()->deviceScaleFactor();
+    gc.scale(WebCore::FloatSize(scaleFactor, scaleFactor));
     view->paintContents(&gc, rect);
     gc.restore();
 
@@ -360,6 +362,8 @@ HRESULT WebFrame::paintScrollViewRectToContextAtPoint(RECT rect, POINT pt, HDC d
     gc.save();
     IntRect dirtyRect(rect);
     dirtyRect.move(-pt.x, -pt.y);
+    float scaleFactor = webView()->deviceScaleFactor();
+    gc.scale(WebCore::FloatSize(scaleFactor, scaleFactor));
     view->paint(&gc, dirtyRect);
     gc.restore();
 
@@ -2097,6 +2101,7 @@ void WebFrame::updateBackground()
     coreFrame->view()->updateBackgroundRecursively(backgroundColor, webView()->transparent());
 }
 
+// IWebFrame2
 HRESULT WebFrame::isMainFrame(BOOL* value)
 {
     if (!value)

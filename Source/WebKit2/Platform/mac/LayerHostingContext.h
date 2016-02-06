@@ -41,7 +41,7 @@ class MachSendRight;
 namespace WebKit {
 
 class LayerHostingContext {
-    WTF_MAKE_NONCOPYABLE(LayerHostingContext);
+    WTF_MAKE_NONCOPYABLE(LayerHostingContext); WTF_MAKE_FAST_ALLOCATED;
 public:
     static std::unique_ptr<LayerHostingContext> createForPort(const WebCore::MachSendRight& serverPort);
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
@@ -61,6 +61,11 @@ public:
 
     void setColorSpace(CGColorSpaceRef);
     CGColorSpaceRef colorSpace() const;
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+    void setColorMatchUntaggedContent(bool);
+    bool colorMatchUntaggedContent() const;
+#endif
 
     // Fences only work on iOS and OS 10.10+.
     void setFencePort(mach_port_t);

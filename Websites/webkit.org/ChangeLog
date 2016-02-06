@@ -1,3 +1,87 @@
+2015-07-28  Geoffrey Garen  <ggaren@apple.com>
+
+        SunSpider is no longer maintained
+        https://bugs.webkit.org/show_bug.cgi?id=147370
+
+        Reviewed by Michael Saboff.
+
+        Add an indicator to show that SunSpider is no longer maintained.
+
+        * perf/sunspider/sunspider.css:
+        (#logo):
+        (.topbox):
+        (.bottombox):
+        * perf/sunspider/sunspider.html:
+
+2015-07-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add image for a blog post
+
+        * blog-files/el-capitan-system-font.png: Added.
+
+2015-07-23  Timothy Hatcher  <timothy@apple.com>
+
+        Change some images for a blog post and add 2x images.
+
+        * blog-files/inspector-elements-tab-2x.png: Added.
+        * blog-files/inspector-elements-tab.png: Updated.
+        * blog-files/inspector-network-tab-2x.png: Added.
+        * blog-files/inspector-network-tab.png: Updated.
+        * blog-files/inspector-tab-bar-2x.png: Added.
+        * blog-files/inspector-tab-bar.png: Updated.
+
+2015-07-23  Timothy Hatcher  <timothy@apple.com>
+
+        Change some images for a blog post.
+
+        * blog-files/inspector-elements-tab.png:
+        * blog-files/inspector-network-tab.png:
+
+2015-07-23  Timothy Hatcher  <timothy@apple.com>
+
+        Add and change some images for a blog post.
+
+        * blog-files/inspector-elements-network-tabs.png: Removed.
+        * blog-files/inspector-elements-tab.png: Added.
+        * blog-files/inspector-network-tab.png: Added.
+        * blog-files/inspector-tab-bar.png:
+
+2015-07-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct rest of the images to match.
+
+        * blog-files/backdrop-filters/backdrop_correct_1x.jpg:
+        * blog-files/backdrop-filters/backdrop_correct_2x.jpg:
+        * blog-files/backdrop-filters/backdrop_invert_1x.jpg:
+        * blog-files/backdrop-filters/backdrop_invert_2x.jpg:
+        * blog-files/backdrop-filters/backdrop_mixed_1x.jpg:
+
+2015-07-23  Brent Fulgham  <bfulgham@apple.com>
+
+        Adjust image sizes to avoid page scaling.
+
+        * blog-files/backdrop-filters/Screen_OSX_Yosemite_Finder-iCloud-WaterBg_1x.jpg:
+        * blog-files/backdrop-filters/Screen_OSX_Yosemite_Finder-iCloud-WaterBg_2x.jpg:
+        * blog-files/backdrop-filters/Screen_V_iOS8_ControlCenter_BlueGradient_1x.jpg:
+        * blog-files/backdrop-filters/Screen_V_iOS8_ControlCenter_BlueGradient_2x.jpg:
+        * blog-files/backdrop-filters/backdrop_mixed_2x.jpg:
+
+2015-07-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Add some images needed for an upcoming blog post.
+
+        * blog-files/backdrop-filters: Added.
+        * blog-files/backdrop-filters/Screen_OSX_Yosemite_Finder-iCloud-WaterBg_1x.jpg: Added.
+        * blog-files/backdrop-filters/Screen_OSX_Yosemite_Finder-iCloud-WaterBg_2x.jpg: Added.
+        * blog-files/backdrop-filters/Screen_V_iOS8_ControlCenter_BlueGradient_1x.jpg: Added.
+        * blog-files/backdrop-filters/Screen_V_iOS8_ControlCenter_BlueGradient_2x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_correct_1x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_correct_2x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_invert_1x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_invert_2x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_mixed_1x.jpg: Added.
+        * blog-files/backdrop-filters/backdrop_mixed_2x.jpg: Added.
+
 2015-07-11  Timothy Hatcher  <timothy@apple.com>
 
         Add some images for a blog post.

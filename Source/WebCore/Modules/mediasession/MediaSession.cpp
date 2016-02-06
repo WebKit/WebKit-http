@@ -238,21 +238,69 @@ bool MediaSession::invoke()
     return true;
 }
 
+void MediaSession::handleDuckInterruption()
+{
+    for (auto* element : m_activeParticipatingElements)
+        element->setShouldDuck(true);
+
+    m_currentState = State::Interrupted;
+}
+
+void MediaSession::handleUnduckInterruption()
+{
+    for (auto* element : m_activeParticipatingElements)
+        element->setShouldDuck(false);
+
+    m_currentState = State::Active;
+}
+
+void MediaSession::handleIndefinitePauseInterruption()
+{
+    safelyIterateActiveMediaElements([](HTMLMediaElement* element) {
+        element->pause();
+    });
+
+    m_activeParticipatingElements.clear();
+    m_currentState = State::Idle;
+}
+
+void MediaSession::handlePauseInterruption()
+{
+    m_currentState = State::Interrupted;
+
+    safelyIterateActiveMediaElements([](HTMLMediaElement* element) {
+        element->pause();
+    });
+}
+
+void MediaSession::handleUnpauseInterruption()
+{
+    m_currentState = State::Active;
+
+    safelyIterateActiveMediaElements([](HTMLMediaElement* element) {
+        element->play();
+    });
+}
+
 void MediaSession::togglePlayback()
+{
+    safelyIterateActiveMediaElements([](HTMLMediaElement* element) {
+        if (element->paused())
+            element->play();
+        else
+            element->pause();
+    });
+}
+
+void MediaSession::safelyIterateActiveMediaElements(std::function<void(HTMLMediaElement*)> handler)
 {
     ASSERT(!m_iteratedActiveParticipatingElements);
 
     HashSet<HTMLMediaElement*> activeParticipatingElementsCopy = m_activeParticipatingElements;
     m_iteratedActiveParticipatingElements = &activeParticipatingElementsCopy;
 
-    while (!activeParticipatingElementsCopy.isEmpty()) {
-        HTMLMediaElement* element = activeParticipatingElementsCopy.takeAny();
-
-        if (element->paused())
-            element->play();
-        else
-            element->pause();
-    }
+    while (!activeParticipatingElementsCopy.isEmpty())
+        handler(activeParticipatingElementsCopy.takeAny());
 
     m_iteratedActiveParticipatingElements = nullptr;
 }

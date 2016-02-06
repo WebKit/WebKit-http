@@ -55,6 +55,8 @@
 #include "AccessibilityTableColumn.h"
 #include "AccessibilityTableHeaderContainer.h"
 #include "AccessibilityTableRow.h"
+#include "AccessibilityTree.h"
+#include "AccessibilityTreeItem.h"
 #include "Document.h"
 #include "Editor.h"
 #include "ElementIterator.h"
@@ -91,6 +93,7 @@ using namespace HTMLNames;
 
 // Post value change notifications for password fields or elements contained in password fields at a 40hz interval to thwart analysis of typing cadence
 static double AccessibilityPasswordValueChangeNotificationInterval = 0.025;
+static double AccessibilityLiveRegionChangedNotificationInterval = 0.020;
 
 AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID id) const
 {
@@ -132,12 +135,14 @@ AXObjectCache::AXObjectCache(Document& document)
     : m_document(document)
     , m_notificationPostTimer(*this, &AXObjectCache::notificationPostTimerFired)
     , m_passwordNotificationPostTimer(*this, &AXObjectCache::passwordNotificationPostTimerFired)
+    , m_liveRegionChangedPostTimer(*this, &AXObjectCache::liveRegionChangedNotificationPostTimerFired)
 {
 }
 
 AXObjectCache::~AXObjectCache()
 {
     m_notificationPostTimer.stop();
+    m_liveRegionChangedPostTimer.stop();
 
     for (const auto& object : m_objects.values()) {
         detachWrapper(object.get(), CacheDestroyed);
@@ -287,6 +292,12 @@ static Ref<AccessibilityObject> createFromRenderer(RenderObject* renderer)
         return AccessibilityARIAGridRow::create(renderer);
     if (nodeHasRole(node, "gridcell") || nodeHasRole(node, "cell") || nodeHasRole(node, "columnheader") || nodeHasRole(node, "rowheader"))
         return AccessibilityARIAGridCell::create(renderer);
+
+    // aria tree
+    if (nodeHasRole(node, "tree"))
+        return AccessibilityTree::create(renderer);
+    if (nodeHasRole(node, "treeitem"))
+        return AccessibilityTreeItem::create(renderer);
 
 #if ENABLE(VIDEO)
     // media controls
@@ -1142,6 +1153,29 @@ void AXObjectCache::frameLoadingEventNotification(Frame* frame, AXLoadingEvent l
 
     AccessibilityObject* obj = getOrCreate(contentRenderer);
     frameLoadingEventPlatformNotification(obj, loadingEvent);
+}
+
+void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject* object)
+{
+    if (m_liveRegionChangedPostTimer.isActive())
+        m_liveRegionChangedPostTimer.stop();
+
+    if (!m_liveRegionObjectsSet.contains(object))
+        m_liveRegionObjectsSet.add(object);
+
+    m_liveRegionChangedPostTimer.startOneShot(AccessibilityLiveRegionChangedNotificationInterval);
+}
+
+void AXObjectCache::liveRegionChangedNotificationPostTimerFired()
+{
+    m_liveRegionChangedPostTimer.stop();
+
+    if (m_liveRegionObjectsSet.isEmpty())
+        return;
+
+    for (auto& object : m_liveRegionObjectsSet)
+        postNotification(object.get(), object->document(), AXObjectCache::AXLiveRegionChanged);
+    m_liveRegionObjectsSet.clear();
 }
 
 void AXObjectCache::handleScrollbarUpdate(ScrollView* view)

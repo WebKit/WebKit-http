@@ -235,6 +235,36 @@ TEST_F(ContentExtensionTest, Basic)
     testRequest(backend, mainDocumentRequest("http://webkit.org/"), { ContentExtensions::ActionType::BlockLoad });
 }
 
+TEST_F(ContentExtensionTest, SingleCharacter)
+{
+    auto matchBackend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^z\"}}]");
+    testRequest(matchBackend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(matchBackend, mainDocumentRequest("zttp://webkit.org/"), { ContentExtensions::ActionType::BlockLoad });
+
+    auto searchBackend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"y\"}}]");
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/ywebkit"), { ContentExtensions::ActionType::BlockLoad });
+}
+
+TEST_F(ContentExtensionTest, SingleCharacterDisjunction)
+{
+    auto matchBackend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^z\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"^c\"}}]");
+    testRequest(matchBackend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(matchBackend, mainDocumentRequest("bttp://webkit.org/"), { });
+    testRequest(matchBackend, mainDocumentRequest("cttp://webkit.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(matchBackend, mainDocumentRequest("dttp://webkit.org/"), { });
+    testRequest(matchBackend, mainDocumentRequest("zttp://webkit.org/"), { ContentExtensions::ActionType::BlockLoad });
+
+    auto searchBackend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"x\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"y\"}}]");
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/dwebkit"), { });
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/xwebkit"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/ywebkit"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(searchBackend, mainDocumentRequest("http://webkit.org/zwebkit"), { });
+}
+
 TEST_F(ContentExtensionTest, RangeBasic)
 {
     auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"w[0-9]c\", \"url-filter-is-case-sensitive\":true}},"
@@ -442,6 +472,142 @@ TEST_F(ContentExtensionTest, DuplicatedMatchAllTermsInVariousFormat)
     testRequest(backend, mainDocumentRequest("https://post.org/pre"), { });
     testRequest(backend, mainDocumentRequest("https://pre.org/pre"), { });
     testRequest(backend, mainDocumentRequest("https://post.org/post"), { });
+}
+
+TEST_F(ContentExtensionTest, UndistinguishableActionInsidePrefixTree)
+{
+    // In this case, the two actions are undistinguishable. The actions of "prefix" appear inside the prefixtree
+    // ending at "suffix".
+    auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"prefix\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"prefixsuffix\"}}]");
+
+    testRequest(backend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://prefix.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/prefix"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/aaaprefixaaa"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://prefixsuffix.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/prefixsuffix"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/bbbprefixsuffixbbb"), { ContentExtensions::ActionType::BlockLoad });
+
+    testRequest(backend, mainDocumentRequest("http://suffix.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/suffix"), { });
+}
+
+TEST_F(ContentExtensionTest, DistinguishableActionInsidePrefixTree)
+{
+    // In this case, the two actions are distinguishable.
+    auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"prefix\"}},"
+        "{\"action\":{\"type\":\"block-cookies\"},\"trigger\":{\"url-filter\":\"prefixsuffix\"}}]");
+
+    testRequest(backend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://prefix.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/prefix"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/aaaprefixaaa"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://prefixsuffix.org/"), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/prefixsuffix"), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/bbbprefixsuffixbbb"), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+
+    testRequest(backend, mainDocumentRequest("http://suffix.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://webkit.org/suffix"), { });
+}
+
+TEST_F(ContentExtensionTest, DistinguishablePrefixAreNotMerged)
+{
+    auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"foo\\\\.org\"}},"
+        "{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"bar\\\\.org\"}}]");
+
+    testRequest(backend, mainDocumentRequest("http://webkit.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://foo.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://bar.org/"), { ContentExtensions::ActionType::BlockLoad });
+
+    testRequest(backend, mainDocumentRequest("http://foor.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://fooar.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://fooba.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://foob.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://foor.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://foar.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://foba.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://fob.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://barf.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://barfo.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://baroo.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://baro.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://baf.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://bafo.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://baoo.org/"), { });
+    testRequest(backend, mainDocumentRequest("http://bao.org/"), { });
+
+    testRequest(backend, mainDocumentRequest("http://foo.orgbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://oo.orgbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://o.orgbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://.orgbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://rgbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://gbar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.orgar.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.orgr.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.org.org/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.orgorg/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.orgrg/"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend, mainDocumentRequest("http://foo.orgg/"), { ContentExtensions::ActionType::BlockLoad });
+}
+
+static void compareContents(const ContentExtensions::DFABytecodeInterpreter::Actions& a, const Vector<uint64_t>& b)
+{
+    EXPECT_EQ(a.size(), b.size());
+    for (unsigned i = 0; i < b.size(); ++i)
+        EXPECT_TRUE(a.contains(b[i]));
+}
+
+TEST_F(ContentExtensionTest, SearchSuffixesWithIdenticalActionAreMerged)
+{
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("foo\\.org", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("ba\\.org", false, 0));
+
+    Vector<ContentExtensions::NFA> nfas = createNFAs(combinedURLFilters);
+    EXPECT_EQ(1ul, nfas.size());
+    EXPECT_EQ(12ul, nfas.first().nodes.size());
+
+    ContentExtensions::DFA dfa = ContentExtensions::NFAToDFA::convert(nfas.first());
+    Vector<ContentExtensions::DFABytecode> bytecode;
+    ContentExtensions::DFABytecodeCompiler compiler(dfa, bytecode);
+    compiler.compile();
+    ContentExtensions::DFABytecodeInterpreter interpreter(bytecode.data(), bytecode.size());
+    compareContents(interpreter.interpret("foo.org", 0), { 0 });
+    compareContents(interpreter.interpret("ba.org", 0), { 0 });
+    compareContents(interpreter.interpret("bar.org", 0), { });
+
+    compareContents(interpreter.interpret("paddingfoo.org", 0), { 0 });
+    compareContents(interpreter.interpret("paddingba.org", 0), { 0 });
+    compareContents(interpreter.interpret("paddingbar.org", 0), { });
+}
+
+TEST_F(ContentExtensionTest, SearchSuffixesWithDistinguishableActionAreNotMerged)
+{
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("foo\\.org", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("ba\\.org", false, 1));
+
+    Vector<ContentExtensions::NFA> nfas = createNFAs(combinedURLFilters);
+
+    EXPECT_EQ(1ul, nfas.size());
+    EXPECT_EQ(17ul, nfas.first().nodes.size());
+
+    ContentExtensions::DFA dfa = ContentExtensions::NFAToDFA::convert(nfas.first());
+    Vector<ContentExtensions::DFABytecode> bytecode;
+    ContentExtensions::DFABytecodeCompiler compiler(dfa, bytecode);
+    compiler.compile();
+    ContentExtensions::DFABytecodeInterpreter interpreter(bytecode.data(), bytecode.size());
+    compareContents(interpreter.interpret("foo.org", 0), { 0 });
+    compareContents(interpreter.interpret("ba.org", 0), { 1 });
+    compareContents(interpreter.interpret("bar.org", 0), { });
+
+    compareContents(interpreter.interpret("paddingfoo.org", 0), { 0 });
+    compareContents(interpreter.interpret("paddingba.org", 0), { 1 });
+    compareContents(interpreter.interpret("paddingba.orgfoo.org", 0), { 1, 0 });
+    compareContents(interpreter.interpret("paddingbar.org", 0), { });
 }
 
 TEST_F(ContentExtensionTest, DomainTriggers)
@@ -756,6 +922,36 @@ TEST_F(ContentExtensionTest, TrailingTermsCarryingNoData)
     testRequest(backend, mainDocumentRequest("https://webkit.org/catso"), { });
 }
 
+TEST_F(ContentExtensionTest, UselessTermsMatchingEverythingAreEliminated)
+{
+    ContentExtensions::CombinedURLFilters combinedURLFilters;
+    ContentExtensions::URLFilterParser parser(combinedURLFilters);
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern(".*web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.*)web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.)*web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.+)*web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.?)*web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.+)?web", false, 0));
+    EXPECT_EQ(ContentExtensions::URLFilterParser::ParseStatus::Ok, parser.addPattern("(.?)+web", false, 0));
+
+    Vector<ContentExtensions::NFA> nfas = createNFAs(combinedURLFilters);
+    EXPECT_EQ(1ul, nfas.size());
+    EXPECT_EQ(7ul, nfas.first().nodes.size());
+
+    ContentExtensions::DFA dfa = ContentExtensions::NFAToDFA::convert(nfas.first());
+    Vector<ContentExtensions::DFABytecode> bytecode;
+    ContentExtensions::DFABytecodeCompiler compiler(dfa, bytecode);
+    compiler.compile();
+    ContentExtensions::DFABytecodeInterpreter interpreter(bytecode.data(), bytecode.size());
+    compareContents(interpreter.interpret("eb", 0), { });
+    compareContents(interpreter.interpret("we", 0), { });
+    compareContents(interpreter.interpret("weeb", 0), { });
+    compareContents(interpreter.interpret("web", 0), { 0 });
+    compareContents(interpreter.interpret("wweb", 0), { 0 });
+    compareContents(interpreter.interpret("wwebb", 0), { 0 });
+    compareContents(interpreter.interpret("http://theweb.com/", 0), { 0 });
+}
+
 TEST_F(ContentExtensionTest, LoadType)
 {
     auto backend = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"webkit.org\",\"load-type\":[\"third-party\"]}},"
@@ -853,13 +1049,6 @@ TEST_F(ContentExtensionTest, WideNFA)
 }
     
 #ifdef NDEBUG
-static void compareContents(const ContentExtensions::DFABytecodeInterpreter::Actions& a, const Vector<uint64_t>& b)
-{
-    EXPECT_EQ(a.size(), b.size());
-    for (unsigned i = 0; i < b.size(); ++i)
-        EXPECT_TRUE(a.contains(b[i]));
-}
-
 static uint64_t expectedIndex(char c, unsigned position)
 {
     uint64_t index = c - 'A';
@@ -1045,6 +1234,38 @@ TEST_F(ContentExtensionTest, MatchesEverything)
         "{\"action\":{\"type\":\"css-display-none\",\"selector\":\".hidden\"},\"trigger\":{\"url-filter\":\".*\"}}]");
     EXPECT_EQ(nullptr, backend5.globalDisplayNoneStyleSheet(ASCIILiteral("testFilter")));
     testRequest(backend5, mainDocumentRequest("http://webkit.org"), { ContentExtensions::ActionType::CSSDisplayNoneSelector }, true);
+    
+    auto backend6 = makeBackend("[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\".*\",\"if-domain\":[\"webkit.org\",\"*w3c.org\"],\"resource-type\":[\"document\",\"script\"]}},"
+        "{\"action\":{\"type\":\"ignore-previous-rules\"},\"trigger\":{\"url-filter\":\"ignore\",\"if-domain\":[\"*webkit.org\",\"w3c.org\"]}},"
+        "{\"action\":{\"type\":\"block-cookies\"},\"trigger\":{\"url-filter\":\".*\",\"unless-domain\":[\"webkit.org\",\"whatwg.org\"],\"resource-type\":[\"script\",\"image\"],\"load-type\":[\"third-party\"]}}]");
+    EXPECT_EQ(nullptr, backend6.globalDisplayNoneStyleSheet(ASCIILiteral("testFilter")));
+    testRequest(backend6, mainDocumentRequest("http://webkit.org"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, mainDocumentRequest("http://w3c.org"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, mainDocumentRequest("http://whatwg.org"), { });
+    testRequest(backend6, mainDocumentRequest("http://sub.webkit.org"), { });
+    testRequest(backend6, mainDocumentRequest("http://sub.w3c.org"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, mainDocumentRequest("http://sub.whatwg.org"), { });
+    testRequest(backend6, mainDocumentRequest("http://webkit.org/ignore"), { }, true);
+    testRequest(backend6, mainDocumentRequest("http://w3c.org/ignore"), { }, true);
+    testRequest(backend6, mainDocumentRequest("http://whatwg.org/ignore"), { });
+    testRequest(backend6, mainDocumentRequest("http://sub.webkit.org/ignore"), { }, true);
+    testRequest(backend6, mainDocumentRequest("http://sub.w3c.org/ignore"), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, mainDocumentRequest("http://sub.whatwg.org/ignore"), { });
+    testRequest(backend6, subResourceRequest("http://example.com/image.png", "http://webkit.org/", ResourceType::Image), { });
+    testRequest(backend6, subResourceRequest("http://example.com/image.png", "http://w3c.org/", ResourceType::Image), { ContentExtensions::ActionType::BlockCookies });
+    testRequest(backend6, subResourceRequest("http://example.com/doc.html", "http://webkit.org/", ResourceType::Document), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, subResourceRequest("http://example.com/script.js", "http://webkit.org/", ResourceType::Script), { ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, subResourceRequest("http://example.com/script.js", "http://w3c.org/", ResourceType::Script), { ContentExtensions::ActionType::BlockCookies, ContentExtensions::ActionType::BlockLoad });
+    testRequest(backend6, subResourceRequest("http://example.com/script.js", "http://example.com/", ResourceType::Script), { });
+    testRequest(backend6, subResourceRequest("http://example.com/ignore/image.png", "http://webkit.org/", ResourceType::Image), { }, true);
+    testRequest(backend6, subResourceRequest("http://example.com/ignore/image.png", "http://example.com/", ResourceType::Image), { });
+    testRequest(backend6, subResourceRequest("http://example.com/ignore/image.png", "http://example.org/", ResourceType::Image), { ContentExtensions::ActionType::BlockCookies });
+    testRequest(backend6, subResourceRequest("http://example.com/doc.html", "http://example.org/", ResourceType::Document), { });
+    testRequest(backend6, subResourceRequest("http://example.com/", "http://example.com/", ResourceType::Font), { });
+    testRequest(backend6, subResourceRequest("http://example.com/ignore", "http://webkit.org/", ResourceType::Image), { }, true);
+    testRequest(backend6, subResourceRequest("http://example.com/ignore", "http://webkit.org/", ResourceType::Font), { }, true);
+    testRequest(backend6, subResourceRequest("http://example.com/", "http://example.com/", ResourceType::Script), { });
+    testRequest(backend6, subResourceRequest("http://example.com/ignore", "http://example.com/", ResourceType::Script), { });
 }
     
 TEST_F(ContentExtensionTest, InvalidJSON)

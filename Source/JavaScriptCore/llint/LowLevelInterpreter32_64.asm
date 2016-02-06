@@ -720,12 +720,6 @@ _llint_op_enter:
     dispatch(1)
 
 
-_llint_op_create_lexical_environment:
-    traceExecution()
-    callSlowPath(_llint_slow_path_create_lexical_environment)
-    dispatch(3)
-
-
 _llint_op_get_scope:
     traceExecution()
     loadi Callee + PayloadOffset[cfr], t0
@@ -793,8 +787,9 @@ _llint_op_new_object:
 
 _llint_op_check_tdz:
     traceExecution()
-    loadpFromInstruction(1, t0)
-    bineq TagOffset[cfr, t0, 8], EmptyValueTag, .opNotTDZ
+    loadisFromInstruction(1, t0)
+    loadConstantOrVariableTag(t0, t1)
+    bineq t1, EmptyValueTag, .opNotTDZ
     callSlowPath(_slow_path_throw_tdz_error)
 
 .opNotTDZ:
@@ -1372,17 +1367,6 @@ macro storePropertyAtVariableOffset(propertyOffsetAsInt, objectAndStorage, tag, 
     storei tag, TagOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffsetAsInt, 8]
     storei payload, PayloadOffset + (firstOutOfLineOffset - 2) * 8[objectAndStorage, propertyOffsetAsInt, 8]
 end
-
-
-_llint_op_init_global_const:
-    traceExecution()
-    writeBarrierOnGlobalObject(2)
-    loadi 8[PC], t1
-    loadi 4[PC], t0
-    loadConstantOrVariable(t1, t2, t3)
-    storei t2, TagOffset[t0]
-    storei t3, PayloadOffset[t0]
-    dispatch(5)
 
 
 # We only do monomorphic get_by_id caching for now, and we do not modify the
@@ -2336,6 +2320,17 @@ _llint_op_put_to_arguments:
     dispatch(4)
 
 
+_llint_op_get_parent_scope:
+    traceExecution()
+    loadisFromInstruction(2, t0)
+    loadp PayloadOffset[cfr, t0, 8], t0
+    loadp JSScope::m_next[t0], t0
+    loadisFromInstruction(1, t1)
+    storei CellTag, TagOffset[cfr, t1, 8]
+    storei t0, PayloadOffset[cfr, t1, 8]
+    dispatch(3)
+
+
 _llint_op_profile_type:
     traceExecution()
     loadp CodeBlock[cfr], t1
@@ -2346,6 +2341,8 @@ _llint_op_profile_type:
     # t0 is holding the payload, t4 is holding the tag.
     loadisFromInstruction(1, t2)
     loadConstantOrVariable(t2, t4, t0)
+
+    bieq t4, EmptyValueTag, .opProfileTypeDone
 
     # t2 is holding the pointer to the current log entry.
     loadp TypeProfilerLog::m_currentLogEntryPtr[t1], t2

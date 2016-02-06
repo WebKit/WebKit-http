@@ -91,6 +91,10 @@ class SecurityOrigin;
 class ViewportConstraints;
 class Widget;
 
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+class MediaPlayerRequestInstallMissingPluginsCallback;
+#endif
+
 struct DateTimeChooserParameters;
 struct FrameLoadRequest;
 struct GraphicsDeviceAdapter;
@@ -375,8 +379,8 @@ public:
     virtual bool selectItemAlignmentFollowsMenuWritingDirection() = 0;
     // Checks if there is an opened popup, called by RenderMenuList::showPopup().
     virtual bool hasOpenedPopup() const = 0;
-    virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const = 0;
-    virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const = 0;
+    virtual RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const = 0;
+    virtual RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const = 0;
 
     virtual void postAccessibilityNotification(AccessibilityObject*, AXObjectCache::AXNotification) { }
 
@@ -447,6 +451,13 @@ public:
     virtual void removePlaybackTargetPickerClient(uint64_t /*contextId*/) { }
     virtual void showPlaybackTargetPicker(uint64_t /*contextId*/, const WebCore::IntPoint&, bool /* isVideo */) { }
     virtual void playbackTargetPickerClientStateDidChange(uint64_t /*contextId*/, MediaProducer::MediaStateFlags) { }
+#endif
+
+#if ENABLE(VIDEO)
+    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) { }
+#if USE(GSTREAMER)
+    virtual void requestInstallMissingMediaPlugins(const String& /*details*/, MediaPlayerRequestInstallMissingPluginsCallback&) { };
+#endif
 #endif
 
 protected:

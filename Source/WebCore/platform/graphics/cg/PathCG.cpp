@@ -182,12 +182,23 @@ bool Path::strokeContains(StrokeStyleApplier* applier, const FloatPoint& point) 
 
 void Path::translate(const FloatSize& size)
 {
-    CGAffineTransform translation = CGAffineTransformMake(1, 0, 0, 1, size.width(), size.height());
-    CGMutablePathRef newPath = CGPathCreateMutable();
-    // FIXME: This is potentially wasteful to allocate an empty path only to create a transformed copy.
-    CGPathAddPath(newPath, &translation, ensurePlatformPath());
+    transform(AffineTransform(1, 0, 0, 1, size.width(), size.height()));
+}
+
+void Path::transform(const AffineTransform& transform)
+{
+    if (transform.isIdentity() || isEmpty())
+        return;
+
+    CGAffineTransform transformCG = transform;
+#if PLATFORM(WIN)
+    CGMutablePathRef path = CGPathCreateMutable();
+    CGPathAddPath(path, &transformCG, m_path);
+#else
+    CGMutablePathRef path = CGPathCreateMutableCopyByTransformingPath(m_path, &transformCG);
+#endif
     CGPathRelease(m_path);
-    m_path = newPath;
+    m_path = path;
 }
 
 FloatRect Path::boundingRect() const
@@ -195,8 +206,7 @@ FloatRect Path::boundingRect() const
     if (isNull())
         return CGRectZero;
 
-    // CGPathGetBoundingBox includes the path's control points, CGPathGetPathBoundingBox
-    // does not, but only exists on 10.6 and above.
+    // CGPathGetBoundingBox includes the path's control points, CGPathGetPathBoundingBox does not.
 
     CGRect bound = CGPathGetPathBoundingBox(m_path);
     return CGRectIsNull(bound) ? CGRectZero : bound;
@@ -365,14 +375,9 @@ FloatPoint Path::currentPoint() const
     return CGPathGetCurrentPoint(m_path);
 }
 
-struct PathApplierInfo {
-    void* info;
-    PathApplierFunction function;
-};
-
-static void CGPathApplierToPathApplier(void *info, const CGPathElement *element)
+static void CGPathApplierToPathApplier(void* info, const CGPathElement* element)
 {
-    PathApplierInfo* pinfo = (PathApplierInfo*)info;
+    const PathApplierFunction& function = *(PathApplierFunction*)info;
     FloatPoint points[3];
     PathElement pelement;
     pelement.type = (PathElementType)element->type;
@@ -395,30 +400,15 @@ static void CGPathApplierToPathApplier(void *info, const CGPathElement *element)
     case kCGPathElementCloseSubpath:
         break;
     }
-    pinfo->function(pinfo->info, &pelement);
+    function(pelement);
 }
 
-void Path::apply(void* info, PathApplierFunction function) const
+void Path::apply(const PathApplierFunction& function) const
 {
     if (isNull())
         return;
 
-    PathApplierInfo pinfo;
-    pinfo.info = info;
-    pinfo.function = function;
-    CGPathApply(m_path, &pinfo, CGPathApplierToPathApplier);
-}
-
-void Path::transform(const AffineTransform& transform)
-{
-    if (transform.isIdentity() || isEmpty())
-        return;
-
-    CGMutablePathRef path = CGPathCreateMutable();
-    CGAffineTransform transformCG = transform;
-    CGPathAddPath(path, &transformCG, m_path);
-    CGPathRelease(m_path);
-    m_path = path;
+    CGPathApply(m_path, (void*)&function, CGPathApplierToPathApplier);
 }
 
 }

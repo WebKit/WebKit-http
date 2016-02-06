@@ -56,7 +56,6 @@
 #import "WAKWindow.h"
 #import "WKGraphics.h"
 #import "WebCoreThread.h"
-#import "WebTiledLayer.h"
 #else
 #import "ThemeMac.h"
 #endif
@@ -826,13 +825,6 @@ void PlatformCALayerCocoa::setContentsScale(float value)
     [m_layer setContentsScale:value];
 #if PLATFORM(IOS)
     [m_layer setRasterizationScale:value];
-
-    if (m_layerType == LayerTypeWebTiledLayer) {
-        // This will invalidate all the tiles so we won't end up with stale tiles with the wrong scale in the wrong place,
-        // see <rdar://problem/9434765> for more information.
-        static NSDictionary *optionsDictionary = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithBool:YES], kCATiledLayerRemoveImmediately, nil];
-        [(CATiledLayer *)m_layer.get() setNeedsDisplayInRect:[m_layer bounds] levelOfDetail:0 options:optionsDictionary];
-    }
 #endif
     END_BLOCK_OBJC_EXCEPTIONS
 }
@@ -998,16 +990,6 @@ void PlatformCALayer::setAnchorPointOnMainThread(FloatPoint3D value)
         [layer setAnchorPointZ:value.z()];
         END_BLOCK_OBJC_EXCEPTIONS
     });
-}
-
-void PlatformCALayer::setTileSize(const IntSize& tileSize)
-{
-    if (m_layerType != LayerTypeWebTiledLayer)
-        return;
-
-    BEGIN_BLOCK_OBJC_EXCEPTIONS
-    [static_cast<WebTiledLayer*>(m_layer.get()) setTileSize:tileSize];
-    END_BLOCK_OBJC_EXCEPTIONS
 }
 #endif // PLATFORM(IOS)
 

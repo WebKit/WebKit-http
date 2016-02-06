@@ -1048,10 +1048,10 @@ Ref<RenderStyle> StyleResolver::defaultStyleForElement()
 {
     m_state.setStyle(RenderStyle::create());
     // Make sure our fonts are initialized if we don't inherit them from our parent style.
-    if (Settings* settings = documentSettings()) {
-        initializeFontStyle(settings);
+    initializeFontStyle(documentSettings());
+    if (documentSettings())
         m_state.style()->fontCascade().update(&document().fontSelector());
-    } else
+    else
         m_state.style()->fontCascade().update(nullptr);
 
     return m_state.takeStyle();
@@ -1474,13 +1474,6 @@ Vector<RefPtr<StyleRule>> StyleResolver::pseudoStyleRulesForElement(Element* ele
     }
 
     return collector.matchedRuleList();
-}
-
-// -------------------------------------------------------------------------------------
-
-static Length convertToFloatLength(const CSSPrimitiveValue* primitiveValue, const CSSToLengthConversionData& conversionData)
-{
-    return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion>(conversionData) : Length(Undefined);
 }
 
 static bool shouldApplyPropertyInParseOrder(CSSPropertyID propertyID)
@@ -1991,7 +1984,7 @@ void StyleResolver::checkForZoomChange(RenderStyle* style, RenderStyle* parentSt
     if (!parentStyle)
         return;
     
-    if (style->effectiveZoom() == parentStyle->effectiveZoom())
+    if (style->effectiveZoom() == parentStyle->effectiveZoom() && style->textZoom() == parentStyle->textZoom())
         return;
 
     const FontDescription& childFont = style->fontDescription();
@@ -2035,7 +2028,8 @@ void StyleResolver::checkForGenericFamilyChange(RenderStyle* style, RenderStyle*
 void StyleResolver::initializeFontStyle(Settings* settings)
 {
     FontDescription fontDescription;
-    fontDescription.setRenderingMode(settings->fontRenderingMode());
+    if (settings)
+        fontDescription.setRenderingMode(settings->fontRenderingMode());
     fontDescription.setOneFamily(standardFamily);
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     setFontSize(fontDescription, Style::fontSizeForKeyword(CSSValueMedium, false, document()));

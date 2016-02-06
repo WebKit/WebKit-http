@@ -228,13 +228,17 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             switch (this._message.type) {
             case WebInspector.ConsoleMessage.MessageType.Trace:
                 // FIXME: We should use a better string then console.trace.
-                element.appendChild(document.createTextNode("console.trace()"));
+                element.append("console.trace()");
                 break;
 
             case WebInspector.ConsoleMessage.MessageType.Assert:
-                var args = [WebInspector.UIString("Assertion failed:")];
-                if (this._message.parameters)
-                    args.concat(this._message.parameters);
+                var args = [WebInspector.UIString("Assertion Failed")];
+                if (this._message.parameters) {
+                    if (this._message.parameters[0].type === "string")
+                        args = [WebInspector.UIString("Assertion Failed: %s")].concat(this._message.parameters);
+                    else
+                        args = args.concat(this._message.parameters);
+                }
                 this._appendFormattedArguments(element, args);
                 break;
 
@@ -251,8 +255,8 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
 
             case WebInspector.ConsoleMessage.MessageType.StartGroup:
             case WebInspector.ConsoleMessage.MessageType.StartGroupCollapsed:
-                var groupName = this._message.messageText || WebInspector.UIString("Group");
-                element.appendChild(document.createTextNode(groupName));
+                var args = this._message.parameters || [this._message.messageText || WebInspector.UIString("Group")];
+                this._formatWithSubstitutionString(args, element);
                 this._extraParameters = null;
                 break;
 
@@ -322,7 +326,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             return;
         }
 
-        if (this._message.parameters.length === 1) {
+        if (this._message.parameters && this._message.parameters.length === 1) {
             var parameter = this._createRemoteObjectIfNeeded(this._message.parameters[0]);
 
             parameter.findFunctionSourceCodeLocation().then(function(result) {
@@ -426,7 +430,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             this._extraParameters = parameters;
         } else {
             var defaultMessage = WebInspector.UIString("No message");
-            builderElement.appendChild(document.createTextNode(defaultMessage));
+            builderElement.append(defaultMessage);
         }
 
         // Trailing parameters.
@@ -455,7 +459,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
                     this._extraParameters = null;
             } else {
                 // Multiple objects. Show an indicator.
-                builderElement.appendChild(document.createTextNode(" "));
+                builderElement.append(" ");
                 var enclosedElement = builderElement.appendChild(document.createElement("span"));
                 enclosedElement.classList.add("console-message-enclosed");
                 enclosedElement.textContent = "(" + parameters.length + ")";
@@ -605,7 +609,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         {
             if (b instanceof Node)
                 a.appendChild(b);
-            else if (b) {
+            else if (b !== undefined) {
                 var toAppend = WebInspector.linkifyStringAsFragment(b.toString());
                 if (currentStyle) {
                     var wrapper = document.createElement("span");

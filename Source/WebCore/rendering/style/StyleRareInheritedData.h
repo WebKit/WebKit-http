@@ -124,6 +124,7 @@ public:
     unsigned m_textDecorationSkip : 5; // TextDecorationSkip
     unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
     unsigned m_rubyPosition : 2; // RubyPosition
+    unsigned m_textZoom: 1; // TextZoom
 
 #if PLATFORM(IOS)
     unsigned touchCalloutEnabled : 1;
@@ -137,8 +138,6 @@ public:
     short hyphenationLimitBefore;
     short hyphenationLimitAfter;
     short hyphenationLimitLines;
-
-    AtomicString locale;
 
     AtomicString textEmphasisCustomMark;
     RefPtr<QuotesData> quotes;

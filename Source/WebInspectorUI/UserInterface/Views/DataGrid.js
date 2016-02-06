@@ -1578,7 +1578,7 @@ WebInspector.DataGridNode.prototype = {
 
         var div = cellElement.createChild("div");
         var content = this.createCellContent(columnIdentifier, cellElement);
-        div.appendChild(content instanceof Node ? content : document.createTextNode(content));
+        div.append(content);
 
         if (columnIdentifier === this.dataGrid.disclosureColumnIdentifier) {
             cellElement.classList.add("disclosure");
@@ -1725,7 +1725,7 @@ WebInspector.DataGridNode.prototype = {
             return;
 
         if (this.dataGrid.selectedNode)
-            this.dataGrid.selectedNode.deselect();
+            this.dataGrid.selectedNode.deselect(true);
 
         this._selected = true;
         this.dataGrid.selectedNode = this;

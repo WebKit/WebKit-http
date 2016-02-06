@@ -236,9 +236,7 @@ VM::VM(VMType vmType, HeapType heapType)
     inferredValueStructure.set(*this, InferredValue::createStructure(*this, 0, jsNull()));
     functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
     exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
-#if ENABLE(PROMISES)
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
-#endif
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     smallStrings.initializeCommonStrings(*this);
 
@@ -822,6 +820,22 @@ void VM::dumpTypeProfilerData()
 
     typeProfilerLog()->processLogEntries(ASCIILiteral("VM Dump Types"));
     typeProfiler()->dumpTypeProfilerData(*this);
+}
+
+void VM::queueMicrotask(JSGlobalObject* globalObject, PassRefPtr<Microtask> task)
+{
+    m_microtaskQueue.append(std::make_unique<QueuedTask>(*this, globalObject, task));
+}
+
+void VM::drainMicrotasks()
+{
+    while (!m_microtaskQueue.isEmpty())
+        m_microtaskQueue.takeFirst()->run();
+}
+
+void QueuedTask::run()
+{
+    m_microtask->run(m_globalObject->globalExec());
 }
 
 void sanitizeStackForVM(VM* vm)

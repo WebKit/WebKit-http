@@ -563,6 +563,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
             || rareInheritedData->m_textIndentLine != other.rareInheritedData->m_textIndentLine
 #endif
             || rareInheritedData->m_effectiveZoom != other.rareInheritedData->m_effectiveZoom
+            || rareInheritedData->m_textZoom != other.rareInheritedData->m_textZoom
 #if ENABLE(IOS_TEXT_AUTOSIZING)
             || rareInheritedData->textSizeAdjust != other.rareInheritedData->textSizeAdjust
 #endif
@@ -575,7 +576,6 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
             || rareInheritedData->hyphenationLimitBefore != other.rareInheritedData->hyphenationLimitBefore
             || rareInheritedData->hyphenationLimitAfter != other.rareInheritedData->hyphenationLimitAfter
             || rareInheritedData->hyphenationString != other.rareInheritedData->hyphenationString
-            || rareInheritedData->locale != other.rareInheritedData->locale
             || rareInheritedData->m_rubyPosition != other.rareInheritedData->m_rubyPosition
             || rareInheritedData->textEmphasisMark != other.rareInheritedData->textEmphasisMark
             || rareInheritedData->textEmphasisPosition != other.rareInheritedData->textEmphasisPosition

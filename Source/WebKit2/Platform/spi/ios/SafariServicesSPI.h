@@ -27,15 +27,27 @@
 
 #import <WebCore/SoftLinking.h>
 
+@class _WKActivatedElementInfo;
+@class _WKElementAction;
+
 #if USE(APPLE_INTERNAL_SDK)
 
 #import <SafariServices/SFSafariViewControllerPrivate.h>
+
+@interface SFSafariViewController (WKBuildFix)
+
+@property (nonatomic, setter=_setPreviewActions:) NSArray<_WKElementAction *> *_previewActions;
+@property (nonatomic, setter=_setActivatedElementInfo:) _WKActivatedElementInfo *_activatedElementInfo;
+
+@end
 
 #else
 
 @interface SFSafariViewController ()
 
 @property (nonatomic, setter=_setShowingLinkPreview:) BOOL _showingLinkPreview;
+@property (nonatomic, setter=_setPreviewActions:) NSArray<_WKElementAction *> *_previewActions;
+@property (nonatomic, setter=_setActivatedElementInfo:) _WKActivatedElementInfo *_activatedElementInfo;
 
 @end
 

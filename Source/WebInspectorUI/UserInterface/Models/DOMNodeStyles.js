@@ -322,23 +322,78 @@ WebInspector.DOMNodeStyles = class DOMNodeStyles extends WebInspector.Object
         this._markAsNeedsRefresh();
     }
 
-    changeRuleSelector(rule, selector)
+    changeRule(rule, selector, text)
     {
+        if (!rule)
+            return;
+
         selector = selector || "";
+
+        function changeCompleted()
+        {
+            DOMAgent.markUndoableState();
+            this.refresh();
+        }
+
+        function styleChanged(error, stylePayload)
+        {
+            if (error)
+                return;
+
+            changeCompleted.call(this);
+        }
+
+        function changeText(styleId)
+        {
+            // COMPATIBILITY (iOS 6): CSSAgent.setStyleText was not available in iOS 6.
+            if (!text || !text.length || !CSSAgent.setStyleText) {
+                changeCompleted.call(this);
+                return;
+            }
+
+            CSSAgent.setStyleText(styleId, text, styleChanged.bind(this));
+        }
 
         function ruleSelectorChanged(error, rulePayload)
         {
-            DOMAgent.markUndoableState();
+            if (error)
+                return;
 
-            // Do a full refresh incase the rule no longer matches the node or the
-            // matched selector indices changed.
-            this.refresh();
+            changeText.call(this, rulePayload.style.styleId);
         }
 
         this._needsRefresh = true;
         this._ignoreNextContentDidChangeForStyleSheet = rule.ownerStyleSheet;
 
         CSSAgent.setRuleSelector(rule.id, selector, ruleSelectorChanged.bind(this));
+    }
+
+    changeRuleSelector(rule, selector)
+    {
+        selector = selector || "";
+        var result = new WebInspector.WrappedPromise;
+
+        function ruleSelectorChanged(error, rulePayload)
+        {
+            if (error) {
+                result.reject(error);
+                return;
+            }
+
+            DOMAgent.markUndoableState();
+
+            // Do a full refresh incase the rule no longer matches the node or the
+            // matched selector indices changed.
+            this.refresh();
+
+            result.resolve(rulePayload);
+        }
+
+        this._needsRefresh = true;
+        this._ignoreNextContentDidChangeForStyleSheet = rule.ownerStyleSheet;
+
+        CSSAgent.setRuleSelector(rule.id, selector, ruleSelectorChanged.bind(this));
+        return result.promise;
     }
 
     changeStyleText(style, text)

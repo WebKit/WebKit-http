@@ -441,16 +441,16 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& nativeWebtouc
 }
 #endif
 
-PassRefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
+RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
 {
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
-PassRefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*)
+RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy*)
 {
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, TextIndicatorLifetime)
@@ -737,6 +737,28 @@ void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigatio
 void PageClientImpl::didChangeBackgroundColor()
 {
     [m_webView _updateScrollViewBackground];
+}
+
+#if ENABLE(VIDEO)
+void PageClientImpl::mediaDocumentNaturalSizeChanged(const IntSize& newSize)
+{
+    [m_webView _mediaDocumentNaturalSizeChanged:newSize];
+}
+#endif
+
+
+void PageClientImpl::refView()
+{
+    [m_contentView retain];
+    [m_webView retain];
+    [m_wkView retain];
+}
+
+void PageClientImpl::derefView()
+{
+    [m_contentView release];
+    [m_webView release];
+    [m_wkView release];
 }
 
 } // namespace WebKit

@@ -28,6 +28,7 @@
 
 #include "NetworkingContext.h"
 #include "ResourceHandle.h"
+#include "ResourceHandleClient.h"
 #include "ResourceRequest.h"
 #include "AuthenticationChallenge.h"
 #include "Timer.h"
@@ -75,8 +76,6 @@ typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 
 namespace WebCore {
 
-    class ResourceHandleClient;
-
     class ResourceHandleInternal {
         WTF_MAKE_NONCOPYABLE(ResourceHandleInternal); WTF_MAKE_FAST_ALLOCATED;
     public:
@@ -88,6 +87,7 @@ namespace WebCore {
             , status(0)
             , m_defersLoading(defersLoading)
             , m_shouldContentSniff(shouldContentSniff)
+            , m_usesAsyncCallbacks(client && client->usesAsyncCallbacks())
 #if USE(CFNETWORK)
             , m_currentRequest(request)
 #endif
@@ -137,6 +137,7 @@ namespace WebCore {
 
         bool m_defersLoading;
         bool m_shouldContentSniff;
+        bool m_usesAsyncCallbacks;
 #if USE(CFNETWORK)
         RetainPtr<CFURLConnectionRef> m_connection;
         ResourceRequest m_currentRequest;

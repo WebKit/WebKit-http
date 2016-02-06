@@ -149,7 +149,7 @@ void MockRealtimeMediaSourceCenter::validateRequestConstraints(PassRefPtr<MediaS
         }
     }
 
-    client->constraintsValidated();
+    client->constraintsValidated(Vector<RefPtr<RealtimeMediaSource>>(), Vector<RefPtr<RealtimeMediaSource>>());
 }
 
 void MockRealtimeMediaSourceCenter::createMediaStream(PassRefPtr<MediaStreamCreationClient> prpQueryClient, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints)
@@ -210,6 +210,15 @@ bool MockRealtimeMediaSourceCenter::getMediaStreamTrackSources(PassRefPtr<MediaS
 
     requestClient->didCompleteRequest(sources);
     return true;
+}
+
+RefPtr<TrackSourceInfo> MockRealtimeMediaSourceCenter::sourceWithUID(const String& UID, RealtimeMediaSource::Type, MediaConstraints*)
+{
+    for (auto& source : mockSourceMap()) {
+        if (source.value->id() == UID)
+            return TrackSourceInfo::create(source.value->id(), source.value->type() == RealtimeMediaSource::Video ? TrackSourceInfo::Video : TrackSourceInfo::Audio, source.value->name());
+    }
+    return nullptr;
 }
 
 } // namespace WebCore

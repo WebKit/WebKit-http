@@ -63,6 +63,7 @@
 #import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLElementTypeHelpers.h>
 #import <WebCore/HTMLFormElement.h>
+#import <WebCore/HTMLImageElement.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLOptGroupElement.h>
 #import <WebCore/HTMLOptionElement.h>
@@ -88,6 +89,7 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StyleProperties.h>
+#import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WKContentObservation.h>
@@ -1734,9 +1736,8 @@ void WebPage::moveSelectionAtBoundaryWithDirection(uint32_t granularity, uint32_
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, uint64_t callbackID)
+PassRefPtr<Range> WebPage::rangeForGranularityAtPoint(const Frame& frame, const WebCore::IntPoint& point, uint32_t granularity)
 {
-    const Frame& frame = m_page->focusController().focusedOrMainFrame();
     VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
 
     RefPtr<Range> range;
@@ -1756,8 +1757,17 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
     default:
         break;
     }
+    return range;
+}
+
+void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, uint64_t callbackID)
+{
+    const Frame& frame = m_page->focusController().focusedOrMainFrame();
+    RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity);
+
     if (range)
         frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
+    m_initialSelection = range;
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
@@ -1766,7 +1776,36 @@ void WebPage::beginSelectionInDirection(uint32_t direction, uint64_t callbackID)
     m_selectionAnchor = (static_cast<SelectionDirection>(direction) == DirectionLeft) ? Start : End;
     send(Messages::WebPageProxy::UnsignedCallback(m_selectionAnchor == Start, callbackID));
 }
+
+void WebPage::updateSelectionWithExtentPointAndBoundary(const WebCore::IntPoint& point, uint32_t granularity, uint64_t callbackID)
+{
+    const Frame& frame = m_page->focusController().focusedOrMainFrame();
+    VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point);
+    RefPtr<Range> newRange = rangeForGranularityAtPoint(frame, point, granularity);
     
+    if (position.isNull() || !m_initialSelection || !newRange) {
+        send(Messages::WebPageProxy::UnsignedCallback(false, callbackID));
+        return;
+    }
+    
+    RefPtr<Range> range;
+    VisiblePosition selectionStart = m_initialSelection->startPosition();
+    VisiblePosition selectionEnd = m_initialSelection->endPosition();
+
+    if (position > m_initialSelection->endPosition())
+        selectionEnd = newRange->endPosition();
+    else if (position < m_initialSelection->startPosition())
+        selectionStart = newRange->startPosition();
+    
+    if (selectionStart.isNotNull() && selectionEnd.isNotNull())
+        range = Range::create(*frame.document(), selectionStart, selectionEnd);
+    
+    if (range)
+        frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
+    
+    send(Messages::WebPageProxy::UnsignedCallback(selectionStart == m_initialSelection->startPosition(), callbackID));
+}
+
 void WebPage::updateSelectionWithExtentPoint(const WebCore::IntPoint& point, uint64_t callbackID)
 {
     const Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -1957,7 +1996,7 @@ void WebPage::applyAutocorrection(const String& correction, const String& origin
 
 void WebPage::executeEditCommandWithCallback(const String& commandName, uint64_t callbackID)
 {
-    executeEditCommand(commandName);
+    executeEditCommand(commandName, String());
     if (commandName == "toggleBold" || commandName == "toggleItalic" || commandName == "toggleUnderline")
         send(Messages::WebPageProxy::EditorStateChanged(editorState()));
     send(Messages::WebPageProxy::VoidCallback(callbackID));
@@ -2105,6 +2144,19 @@ static Element* containingLinkElement(Element* element)
     return nullptr;
 }
 
+static bool shouldUseTextIndicatorForLink(Element& element)
+{
+    if (element.renderer() && !element.renderer()->isInline())
+        return false;
+
+    for (auto& child : descendantsOfType<Element>(element)) {
+        if (child.renderer() && !child.renderer()->isInline())
+            return false;
+    }
+
+    return true;
+}
+
 void WebPage::getPositionInformation(const IntPoint& point, InteractionInformationAtPosition& info)
 {
     FloatPoint adjustedPoint;
@@ -2155,19 +2207,33 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                     // Ensure that the image contains at most 600K pixels, so that it is not too big.
                     if (RefPtr<WebImage> snapshot = snapshotNode(*element, SnapshotOptionsShareable, 600 * 1024))
                         info.image = snapshot->bitmap();
+
+                    if (shouldUseTextIndicatorForLink(*linkElement)) {
+                        RefPtr<Range> linkRange = rangeOfContents(*linkElement);
+                        if (linkRange) {
+                            float deviceScaleFactor = corePage()->deviceScaleFactor();
+                            const float marginInPoints = 4;
+                            RefPtr<TextIndicator> textIndicator = TextIndicator::createWithRange(*linkRange, TextIndicatorPresentationTransition::None, marginInPoints * deviceScaleFactor);
+                            if (textIndicator)
+                                info.linkIndicator = textIndicator->data();
+                        }
+                    }
                 } else if (element->renderer() && element->renderer()->isRenderImage()) {
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
-                        info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
                         if (Image* image = renderImage.cachedImage()->imageForRenderer(&renderImage)) {
-                            FloatSize screenSizeInPixels = screenSize();
-                            screenSizeInPixels.scale(corePage()->deviceScaleFactor());
-                            FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
-                            FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
-                            if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
-                                auto graphicsContext = sharedBitmap->createGraphicsContext();
-                                graphicsContext->drawImage(image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
-                                info.image = sharedBitmap;
+                            if (image->width() > 1 && image->height() > 1) {
+                                info.imageURL = [(NSURL *)element->document().completeURL(renderImage.cachedImage()->url()) absoluteString];
+                                info.isAnimatedImage = image->isAnimated();
+                                FloatSize screenSizeInPixels = screenSize();
+                                screenSizeInPixels.scale(corePage()->deviceScaleFactor());
+                                FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
+                                FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
+                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
+                                    auto graphicsContext = sharedBitmap->createGraphicsContext();
+                                    graphicsContext->drawImage(image, ColorSpaceDeviceRGB, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
+                                    info.image = sharedBitmap;
+                                }
                             }
                         }
                     }
@@ -2186,6 +2252,11 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                     info.bounds = downcast<RenderImage>(*renderer).absoluteContentQuad().enclosingBoundingBox();
                 else
                     info.bounds = renderer->absoluteBoundingBoxRect();
+
+                if (!renderer->document().frame()->isMainFrame()) {
+                    FrameView *view = renderer->document().frame()->view();
+                    info.bounds = view->contentsToRootView(info.bounds);
+                }
             }
         }
     }
@@ -2466,10 +2537,11 @@ void WebPage::elementDidBlur(WebCore::Node* node)
 {
     if (m_assistedNode == node) {
         m_hasPendingBlurNotification = true;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (m_hasPendingBlurNotification)
-                send(Messages::WebPageProxy::StopAssistingNode());
-            m_hasPendingBlurNotification = false;
+        RefPtr<WebPage> protectedThis(this);
+        dispatch_async(dispatch_get_main_queue(), [protectedThis] {
+            if (protectedThis->m_hasPendingBlurNotification)
+                protectedThis->send(Messages::WebPageProxy::StopAssistingNode());
+            protectedThis->m_hasPendingBlurNotification = false;
         });
         m_hasFocusedDueToUserInteraction = false;
         m_assistedNode = nullptr;
@@ -2774,8 +2846,10 @@ void WebPage::volatilityTimerFired()
     m_volatilityTimer.stop();
 }
 
-void WebPage::applicationDidEnterBackground()
+void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
+    [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
+
     setLayerTreeStateIsFrozen(true);
     if (markLayersVolatileImmediatelyIfPossible())
         return;

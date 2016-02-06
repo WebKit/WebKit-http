@@ -58,6 +58,7 @@ class AudioSourceProviderGStreamer;
 class AudioTrackPrivateGStreamer;
 class InbandMetadataTextTrackPrivateGStreamer;
 class InbandTextTrackPrivateGStreamer;
+class MediaPlayerRequestInstallMissingPluginsCallback;
 class VideoTrackPrivateGStreamer;
 
 class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateGStreamerBase {
@@ -77,7 +78,7 @@ public:
     void load(const String& url, MediaSourcePrivateClient*) override;
 #endif
 #if ENABLE(MEDIA_STREAM)
-    void load(MediaStreamPrivate*) override;
+    void load(MediaStreamPrivate&) override;
 #endif
     void commitLoad();
     void cancelLoad() override;
@@ -234,7 +235,7 @@ private:
 #endif
     GstState m_requestedState;
     GRefPtr<GstElement> m_autoAudioSink;
-    bool m_missingPlugins;
+    RefPtr<MediaPlayerRequestInstallMissingPluginsCallback> m_missingPluginsCallback;
 #if ENABLE(VIDEO_TRACK)
     Vector<RefPtr<AudioTrackPrivateGStreamer>> m_audioTracks;
     Vector<RefPtr<InbandTextTrackPrivateGStreamer>> m_textTracks;

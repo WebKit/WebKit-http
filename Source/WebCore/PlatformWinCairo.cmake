@@ -10,7 +10,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/cf"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/network/curl"
-    "${WEBCORE_DIR}/platform/network/win"
 )
 
 list(APPEND WebCore_SOURCES
@@ -33,7 +32,6 @@ list(APPEND WebCore_SOURCES
 
     platform/cf/win/CertificateCFWin.cpp
 
-    platform/graphics/FontPlatformData.cpp
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsLayer.cpp
     platform/graphics/ImageSource.cpp
@@ -79,7 +77,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/FontCacheWin.cpp
     platform/graphics/win/FontCustomPlatformDataCairo.cpp
     platform/graphics/win/FontPlatformDataCairoWin.cpp
-    platform/graphics/win/FontPlatformDataWin.cpp
     platform/graphics/win/FontWin.cpp
     platform/graphics/win/FullScreenController.cpp
     platform/graphics/win/GlyphPageTreeNodeCairoWin.cpp
@@ -153,11 +150,6 @@ list(APPEND WebCore_SOURCES
     rendering/RenderThemeWin.cpp
 )
 
-list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
-    ${WEBCORE_DIR}/css/themeWin.css
-    ${WEBCORE_DIR}/css/themeWinQuirks.css
-)
-
 list(APPEND WebCore_LIBRARIES
     ${DirectX_LIBRARIES}
     CFLite
@@ -186,83 +178,8 @@ list(APPEND WebCoreTestSupport_LIBRARIES
     shlwapi
 )
 
-set(WebCore_FORWARDING_HEADERS_DIRECTORIES
-    accessibility
-    bindings
-    bridge
-    css
-    dom
-    editing
-    history
-    html
-    inspector
-    loader
-    page
-    platform
-    plugins
-    rendering
-    storage
-    svg
-    websockets
-    workers
-    xml
-
-    Modules/geolocation
-    Modules/notifications
-    Modules/webdatabase
-
-    accessibility/win
-
-    bindings/generic
-    bindings/js
-
-    bridge/jsc
-
-    history/cf
-
-    html/forms
-    html/parser
-
-    loader/appcache
-    loader/archive
-    loader/cache
-    loader/icon
-
-    loader/archive/cf
-
-    page/animation
-    page/win
-
-    platform/animation
-    platform/cf
-    platform/graphics
-    platform/mock
-    platform/network
-    platform/sql
-    platform/text
-    platform/win
-
-    platform/cf/win
-
+list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/graphics/cairo
-    platform/graphics/opentype
-    platform/graphics/transforms
-    platform/graphics/win
-
-    platform/graphics/ca/win
 
     platform/network/curl
-
-    platform/text/transcoder
-
-    rendering/style
-    rendering/svg
-
-    svg/animation
-    svg/graphics
-    svg/properties
-
-    svg/graphics/filters
 )
-
-WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES})

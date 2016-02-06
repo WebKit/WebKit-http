@@ -60,7 +60,7 @@ static void appendChildSnapOffsets(HTMLElement& parent, bool shouldAddHorizontal
             continue;
         
         LayoutRect viewSize = box->contentBoxRect();
-        FloatPoint position = box->localToContainerPoint(FloatPoint(), parent.renderBox());
+        FloatPoint position = box->localToContainerPoint(FloatPoint(parent.renderBox()->scrollLeft(), parent.renderBox()->scrollTop()), parent.renderBox());
         for (auto& coordinate : scrollSnapCoordinates) {
             LayoutUnit lastPotentialSnapPositionX = position.x() + valueForLength(coordinate.width(), viewSize.width());
             if (shouldAddHorizontalChildOffsets && lastPotentialSnapPositionX > 0)
@@ -87,7 +87,9 @@ static void updateFromStyle(Vector<LayoutUnit>& snapOffsets, const RenderStyle& 
 
     auto* points = (axis == ScrollEventAxis::Horizontal) ? style.scrollSnapPointsX() : style.scrollSnapPointsY();
     bool hasRepeat = points ? points->hasRepeat : false;
-    LayoutUnit repeatOffset = points ? valueForLength(points->repeatOffset, viewSize) : LayoutUnit();
+    LayoutUnit repeatOffset = points ? valueForLength(points->repeatOffset, viewSize) : LayoutUnit::fromPixel(1);
+    repeatOffset = std::max<LayoutUnit>(repeatOffset, LayoutUnit::fromPixel(1));
+    
     LayoutUnit destinationOffset = destinationOffsetForViewSize(axis, style.scrollSnapDestination(), viewSize);
     LayoutUnit curSnapPositionShift = 0;
     LayoutUnit maxScrollOffset = scrollSize - viewSize;

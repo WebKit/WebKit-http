@@ -32,7 +32,12 @@
 #include <QuartzCore/CARenderServer.h>
 
 #ifdef __OBJC__
+#import <QuartzCore/CALayerHost.h>
 #import <QuartzCore/CALayerPrivate.h>
+
+#if PLATFORM(IOS)
+#import <QuartzCore/CADisplay.h>
+#endif
 
 // FIXME: As a workaround for <rdar://problem/18985152>, we conditionally enclose the following
 // headers in an extern "C" linkage block to make it suitable for Objective-C++ use. Once this
@@ -58,7 +63,7 @@ extern "C" {
 @interface CAContext : NSObject
 @end
 
-@interface CAContext (Details)
+@interface CAContext ()
 + (NSArray *)allContexts;
 + (CAContext *)remoteContextWithOptions:(NSDictionary *)dict;
 + (id)objectForSlot:(uint32_t)name;
@@ -70,12 +75,15 @@ extern "C" {
 - (void)setFencePort:(mach_port_t)port;
 - (void)setFencePort:(mach_port_t)port commitHandler:(void(^)(void))block;
 #endif
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+@property BOOL colorMatchUntaggedContent;
+#endif
 @property (readonly) uint32_t contextId;
 @property (strong) CALayer *layer;
 @property CGColorSpaceRef colorSpace;
 @end
 
-@interface CALayer (Details)
+@interface CALayer ()
 - (CAContext *)context;
 - (CGSize)size;
 - (void *)regionBeingDrawn;
@@ -89,10 +97,25 @@ extern "C" {
 @property BOOL shadowPathIsBounds;
 @end
 
-@interface CATiledLayer (Details)
+@interface CATiledLayer ()
 - (void)displayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
 - (void)setNeedsDisplayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
 @end
+
+#if PLATFORM(IOS)
+@interface CADisplay : NSObject
+@end
+
+@interface CADisplay ()
+@property (nonatomic, readonly) NSString *name;
+@end
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+@interface CAOpenGLLayer ()
+@property CGColorSpaceRef colorspace;
+@end
+#endif
 
 struct CAColorMatrix {
     float m11, m12, m13, m14, m15;
@@ -109,7 +132,7 @@ typedef struct CAColorMatrix CAColorMatrix;
 @interface CAFilter : NSObject <NSCopying, NSMutableCopying, NSCoding>
 @end
 
-@interface CAFilter (Details)
+@interface CAFilter ()
 + (CAFilter *)filterWithType:(NSString *)type;
 @property (copy) NSString *name;
 @end
@@ -121,10 +144,16 @@ typedef enum {
     kCATransactionPhasePostCommit,
 } CATransactionPhase;
 
-@interface CATransaction (Details)
+@interface CATransaction ()
 + (void)addCommitHandler:(void(^)(void))block forPhase:(CATransactionPhase)phase;
 @end
 #endif
+
+@interface CALayerHost : CALayer
+@property uint32_t contextId;
+@property BOOL inheritsSecurity;
+@end
+
 #endif // __OBJC__
 
 #endif
@@ -134,6 +163,7 @@ EXTERN_C void CARenderServerCaptureLayerWithTransform(mach_port_t serverPort, ui
 
 #if USE(IOSURFACE)
 EXTERN_C void CARenderServerRenderLayerWithTransform(mach_port_t server_port, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix);
+EXTERN_C void CARenderServerRenderDisplayLayerWithTransformAndTimeOffset(mach_port_t server_port, CFStringRef display_name, uint32_t client_id, uint64_t layer_id, IOSurfaceRef iosurface, int32_t ox, int32_t oy, const CATransform3D *matrix, CFTimeInterval offset);
 #endif
 
 

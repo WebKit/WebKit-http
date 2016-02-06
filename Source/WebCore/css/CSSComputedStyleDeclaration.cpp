@@ -144,6 +144,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyClear,
     CSSPropertyClip,
     CSSPropertyColor,
+    CSSPropertyContent,
     CSSPropertyCursor,
     CSSPropertyDirection,
     CSSPropertyDisplay,
@@ -395,6 +396,7 @@ static const CSSPropertyID computedProperties[] = {
 #endif
     CSSPropertyWebkitTextStrokeColor,
     CSSPropertyWebkitTextStrokeWidth,
+    CSSPropertyWebkitTextZoom,
     CSSPropertyWebkitTransformStyle,
     CSSPropertyWebkitTransitionDelay,
     CSSPropertyWebkitTransitionDuration,
@@ -3178,6 +3180,8 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             return zoomAdjustedPixelValueForLength(style->svgStyle().x(), *style);
         case CSSPropertyY:
             return zoomAdjustedPixelValueForLength(style->svgStyle().y(), *style);
+        case CSSPropertyWebkitTextZoom:
+            return cssValuePool().createValue(style->textZoom());
 
         /* Unimplemented CSS 3 properties (including CSS3 shorthand properties) */
         case CSSPropertyAnimation:

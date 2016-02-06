@@ -33,6 +33,8 @@ webkit_web_context_new_with_website_data_manager
 webkit_web_context_get_website_data_manager
 webkit_web_context_get_cache_model
 webkit_web_context_set_cache_model
+webkit_web_context_get_web_process_count_limit
+webkit_web_context_set_web_process_count_limit
 webkit_web_context_clear_cache
 webkit_web_context_download_uri
 webkit_web_context_get_cookie_manager
@@ -144,6 +146,8 @@ WEBKIT_EDITING_COMMAND_PASTE
 WEBKIT_EDITING_COMMAND_SELECT_ALL
 WEBKIT_EDITING_COMMAND_UNDO
 WEBKIT_EDITING_COMMAND_REDO
+WEBKIT_EDITING_COMMAND_INSERT_IMAGE
+WEBKIT_EDITING_COMMAND_CREATE_LINK
 
 <SUBSECTION>
 webkit_web_view_new
@@ -185,6 +189,7 @@ webkit_web_view_get_zoom_level
 webkit_web_view_can_execute_editing_command
 webkit_web_view_can_execute_editing_command_finish
 webkit_web_view_execute_editing_command
+webkit_web_view_execute_editing_command_with_argument
 webkit_web_view_get_find_controller
 webkit_web_view_get_inspector
 webkit_web_view_get_javascript_global_context
@@ -205,6 +210,7 @@ webkit_web_view_set_background_color
 webkit_web_view_get_background_color
 webkit_web_view_set_editable
 webkit_web_view_is_editable
+webkit_web_view_get_editor_state
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -763,6 +769,26 @@ webkit_hit_test_result_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitEditorState</FILE>
+WebKitEditorState
+WebKitEditorTypingAttributes
+webkit_editor_state_get_typing_attributes
+
+<SUBSECTION Standard>
+WebKitEditorStateClass
+WEBKIT_TYPE_EDITOR_STATE
+WEBKIT_EDITOR_STATE
+WEBKIT_IS_EDITOR_STATE
+WEBKIT_EDITOR_STATE_CLASS
+WEBKIT_IS_EDITOR_STATE_CLASS
+WEBKIT_EDITOR_STATE_GET_CLASS
+
+<SUBSECTION Private>
+WebKitEditorStatePrivate
+webkit_editor_state_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitPrintOperation</FILE>
 WebKitPrintOperation
 WebKitPrintOperationResponse
@@ -1202,6 +1228,7 @@ webkit_web_page_get_dom_document
 webkit_web_page_get_id
 webkit_web_page_get_uri
 webkit_web_page_get_main_frame
+webkit_web_page_get_editor
 
 <SUBSECTION Standard>
 WebKitWebPageClass
@@ -1215,6 +1242,25 @@ WEBKIT_WEB_PAGE_GET_CLASS
 <SUBSECTION Private>
 WebKitWebPagePrivate
 webkit_web_page_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebEditor</FILE>
+WebKitWebEditor
+webkit_web_editor_get_page
+
+<SUBSECTION Standard>
+WebKitWebEditorClass
+WEBKIT_TYPE_WEB_EDITOR
+WEBKIT_WEB_EDITOR
+WEBKIT_IS_WEB_EDITOR
+WEBKIT_WEB_EDITOR_CLASS
+WEBKIT_IS_WEB_EDITOR_CLASS
+WEBKIT_WEB_EDITOR_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebEditorPrivate
+webkit_web_editor_get_type
 </SECTION>
 
 <SECTION>

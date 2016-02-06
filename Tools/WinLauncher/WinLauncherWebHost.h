@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006, 2014-2015 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,7 +76,9 @@ protected:
     HRESULT updateAddressBar(IWebView&);
 
 private:
-    HWND m_hURLBarWnd;
-    ULONG m_refCount;
-    WinLauncher* m_client;
+    HWND m_hURLBarWnd { 0 };
+    HGDIOBJ m_URLBarFont { 0 };
+    HGDIOBJ m_oldFont { 0 };
+    ULONG m_refCount { 0 };
+    WinLauncher* m_client { nullptr };
 };

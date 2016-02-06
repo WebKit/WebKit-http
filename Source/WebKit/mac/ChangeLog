@@ -1,3 +1,191 @@
+2015-07-31  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r174791): Returning a zombie NSImage from sharingService:transitionImageForShareItem:contentRect:
+        <rdar://problem/22060183> and https://bugs.webkit.org/show_bug.cgi?id=147497
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem): Don't return what is basically a temporary NSImage.
+          Instead do a [[retain] autorelease] on it while still valid.
+
+2015-07-29  Dean Jackson  <dino@apple.com>
+
+        Don't use (Details) when exposing SPI
+        https://bugs.webkit.org/show_bug.cgi?id=147426
+        <rdar://problem/22062407>
+
+        Reviewed by Dan Bernstein.
+
+        If we are declaring the interface without any implementation,
+        we should use class extensions.
+
+        * WebView/WebFrameView.mm:
+        * WebView/WebPDFView.mm:
+
+2015-07-29  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        Implement basic types for ECMAScript Internationalization API
+        https://bugs.webkit.org/show_bug.cgi?id=146926
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig: Enabled INTL.
+
+2015-07-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add ENABLE_ES6_MODULES compile time flag with the default value "false"
+        https://bugs.webkit.org/show_bug.cgi?id=147350
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-07-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove runtime flags for symbols
+        https://bugs.webkit.org/show_bug.cgi?id=147246
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferencesPrivate.h:
+
+2015-07-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Object.getOwnPropertySymbols on large list takes very long
+        https://bugs.webkit.org/show_bug.cgi?id=146137
+
+        Reviewed by Mark Lam.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::enumerate):
+
+2015-07-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove compile and runtime flags for promises.
+        https://bugs.webkit.org/show_bug.cgi?id=147244
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferencesPrivate.h:
+
+2015-07-22  Sukolsak Sakshuwong  <sukolsak@gmail.com>
+
+        Add ENABLE_WEBASSEMBLY feature flag for WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=147212
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2015-07-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: [Mac] "Open Image In New Window" context menu item does nothing on an image
+        https://bugs.webkit.org/show_bug.cgi?id=147175
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController webView:contextMenuItemsForElement:defaultMenuItems:]):
+        Remove default context menus that won't work in the inspector page.
+
+2015-07-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a logging channel for Layout, remove the LiveConnect channel
+        https://bugs.webkit.org/show_bug.cgi?id=147170
+
+        Reviewed by Zalan Bujtas.
+
+        Add a layout logging channel to WebCore, and remove the LiveConnect channel.
+
+        * Misc/WebKitLogging.h:
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage _tryLoad]): Deleted.
+
+2015-07-21  Brady Eidson  <beidson@apple.com>
+
+        Fix WebPreferences infinite recursion introduced in r186232.
+        <rdar://problem/9091261> and https://bugs.webkit.org/show_bug.cgi?id=147149
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences metaRefreshEnabled]):
+
+2015-07-18  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Reduce PassRefPtr in WebKit2 - 3
+        https://bugs.webkit.org/show_bug.cgi?id=146995
+
+        Reviewed by Daniel Bates.
+
+        To remove PassRefPtr, this patch reduces use of PassRefPtr in WebKit2.
+        Because some uses depend on WebCore, WebCore, WK1 ports are modified as well.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createDocumentLoader):
+
+2015-07-17  Andy Estes  <aestes@apple.com>
+
+        [iOS] Further tighten the sandbox around pages fetched with Content-Disposition: attachment
+        https://bugs.webkit.org/show_bug.cgi?id=147044
+        rdar://problem/21567820
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]): Enabled Content-Disposition: attachment sandbox on iOS.
+
+2015-07-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: [Mac] Save dialog not working when inspector is docked
+        https://bugs.webkit.org/show_bug.cgi?id=146991
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (-[WebInspectorWindowController webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+        When the window is nil (docked) use a non-window version of running the dialog.
+
+2015-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] Expose contentsSizeRespectingOverflow() via WebView so UIWebView can use it
+        https://bugs.webkit.org/show_bug.cgi?id=146924
+        WebKit part of rdar://problem/21802456
+
+        Reviewed by Tim Horton.
+
+        Expose the FrameView's contentsSizeRespectingOverflow() via WebView, for use
+        by UIKit.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsSizeRespectingOverflow]):
+        * WebView/WebViewPrivate.h:
+
+2015-07-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove wkPopupMenu from WebCoreSystemInterface; it's not called from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=146945
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2015-07-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Inspector should be able to be docked to the bottom of a narrow window
+        https://bugs.webkit.org/show_bug.cgi?id=146871
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+
 2015-07-07  Brady Eidson  <beidson@apple.com>
 
         HTTP Auth cached after disabling private browsing/reset.

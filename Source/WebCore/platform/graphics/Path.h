@@ -28,29 +28,41 @@
 #ifndef Path_h
 #define Path_h
 
+#include "FloatRect.h"
 #include "WindRule.h"
+#include <functional>
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
 
 #if USE(CG)
+
 #include <wtf/RetainPtr.h>
 #include <CoreGraphics/CGPath.h>
 typedef struct CGPath PlatformPath;
+
 #elif USE(CAIRO)
+
 namespace WebCore {
 class CairoPath;
 }
 typedef WebCore::CairoPath PlatformPath;
+
 #elif PLATFORM(HAIKU)
+
 class BShape;
 typedef BShape PlatformPath;
+
 #elif USE(WINGDI)
+
 namespace WebCore {
     class PlatformPath;
 }
 typedef WebCore::PlatformPath PlatformPath;
+
 #else
+
 typedef void PlatformPath;
+
 #endif
 
 typedef PlatformPath* PlatformPathPtr;
@@ -59,7 +71,6 @@ namespace WebCore {
 
     class AffineTransform;
     class FloatPoint;
-    class FloatRect;
     class FloatRoundedRect;
     class FloatSize;
     class GraphicsContext;
@@ -83,7 +94,7 @@ namespace WebCore {
         FloatPoint* points;
     };
 
-    typedef void (*PathApplierFunction)(void* info, const PathElement*);
+    typedef std::function<void (const PathElement&)> PathApplierFunction;
 
     class Path {
         WTF_MAKE_FAST_ALLOCATED;
@@ -147,9 +158,9 @@ namespace WebCore {
         // meaning Path::platformPath() can return null.
         PlatformPathPtr platformPath() const { return m_path; }
         // ensurePlatformPath() will allocate a PlatformPath if it has not yet been and will never return null.
-        PlatformPathPtr ensurePlatformPath();
+        WEBCORE_EXPORT PlatformPathPtr ensurePlatformPath();
 
-        WEBCORE_EXPORT void apply(void* info, PathApplierFunction) const;
+        WEBCORE_EXPORT void apply(const PathApplierFunction&) const;
         void transform(const AffineTransform&);
 
         void addBeziersForRoundedRect(const FloatRect&, const FloatSize& topLeftRadius, const FloatSize& topRightRadius, const FloatSize& bottomLeftRadius, const FloatSize& bottomRightRadius);

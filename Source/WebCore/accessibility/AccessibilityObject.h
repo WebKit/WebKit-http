@@ -772,6 +772,8 @@ public:
     virtual void addChildren() { }
     virtual void addChild(AccessibilityObject*) { }
     virtual void insertChild(AccessibilityObject*, unsigned) { }
+
+    virtual bool shouldIgnoreAttributeRole() const { return false; }
     
     virtual bool canHaveChildren() const { return true; }
     virtual bool hasChildren() const { return m_haveChildren; }
@@ -895,7 +897,13 @@ public:
     virtual void scrollToMakeVisibleWithSubFocus(const IntRect&) const;
     // Scroll this object to a given point in global coordinates of the top-level window.
     virtual void scrollToGlobalPoint(const IntPoint&) const;
-
+    
+    enum ScrollByPageDirection { Up, Down, Left, Right };
+    bool scrollByPage(ScrollByPageDirection) const;
+    IntPoint scrollPosition() const;
+    IntSize scrollContentsSize() const;    
+    IntRect scrollVisibleContentRect() const;
+    
     bool lastKnownIsIgnoredValue();
     void setLastKnownIsIgnoredValue(bool);
 
@@ -1016,7 +1024,9 @@ protected:
     // If this object itself scrolls, return its ScrollableArea.
     virtual ScrollableArea* getScrollableAreaIfScrollable() const { return nullptr; }
     virtual void scrollTo(const IntPoint&) const { }
-
+    ScrollableArea* scrollableAreaAncestor() const;
+    void scrollAreaAndAncestor(std::pair<ScrollableArea*, AccessibilityObject*>&) const;
+    
     static bool isAccessibilityObjectSearchMatchAtIndex(AccessibilityObject*, AccessibilitySearchCriteria*, size_t);
     static bool isAccessibilityObjectSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool isAccessibilityTextSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);

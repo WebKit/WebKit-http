@@ -43,7 +43,7 @@ class ResourceRequest;
 
 class SubresourceLoader final : public ResourceLoader {
 public:
-    WEBCORE_EXPORT static PassRefPtr<SubresourceLoader> create(Frame*, CachedResource*, const ResourceRequest&, const ResourceLoaderOptions&);
+    WEBCORE_EXPORT static RefPtr<SubresourceLoader> create(Frame*, CachedResource*, const ResourceRequest&, const ResourceLoaderOptions&);
 
     virtual ~SubresourceLoader();
 
@@ -106,6 +106,9 @@ private:
     };
 
     class RequestCountTracker {
+#if !COMPILER(MSVC)
+        WTF_MAKE_FAST_ALLOCATED;
+#endif
     public:
         RequestCountTracker(CachedResourceLoader&, CachedResource*);
         ~RequestCountTracker();

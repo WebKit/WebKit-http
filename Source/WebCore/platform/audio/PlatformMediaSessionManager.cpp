@@ -37,10 +37,18 @@
 namespace WebCore {
 
 #if !PLATFORM(IOS)
+static PlatformMediaSessionManager* platformMediaSessionManager = nullptr;
+
 PlatformMediaSessionManager& PlatformMediaSessionManager::sharedManager()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(PlatformMediaSessionManager, manager, ());
-    return manager;
+    if (!platformMediaSessionManager)
+        platformMediaSessionManager = new PlatformMediaSessionManager;
+    return *platformMediaSessionManager;
+}
+
+PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists()
+{
+    return platformMediaSessionManager;
 }
 #endif
 
@@ -280,6 +288,20 @@ void PlatformMediaSessionManager::applicationWillEnterBackground() const
     for (auto* session : sessions) {
         if (m_restrictions[session->mediaType()] & BackgroundProcessPlaybackRestricted)
             session->beginInterruption(PlatformMediaSession::EnteringBackground);
+    }
+}
+
+void PlatformMediaSessionManager::applicationDidEnterBackground(bool isSuspendedUnderLock) const
+{
+    LOG(Media, "PlatformMediaSessionManager::applicationDidEnterBackground");
+
+    if (!isSuspendedUnderLock)
+        return;
+
+    Vector<PlatformMediaSession*> sessions = m_sessions;
+    for (auto* session : sessions) {
+        if (m_restrictions[session->mediaType()] & BackgroundProcessPlaybackRestricted)
+            session->forceInterruption(PlatformMediaSession::EnteringBackground);
     }
 }
 

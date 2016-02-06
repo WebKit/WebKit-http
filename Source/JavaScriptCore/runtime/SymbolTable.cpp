@@ -84,6 +84,7 @@ SymbolTableEntry::FatEntry* SymbolTableEntry::inflateSlow()
 SymbolTable::SymbolTable(VM& vm)
     : JSCell(vm, vm.symbolTableStructure.get())
     , m_usesNonStrictEval(false)
+    , m_scopeType(VarScope)
 {
 }
 
@@ -141,6 +142,7 @@ SymbolTable* SymbolTable::cloneScopePart(VM& vm)
     SymbolTable* result = SymbolTable::create(vm);
     
     result->m_usesNonStrictEval = m_usesNonStrictEval;
+    result->m_scopeType = m_scopeType;
 
     for (auto iter = m_map.begin(), end = m_map.end(); iter != end; ++iter) {
         if (!iter->value.varOffset().isScope())

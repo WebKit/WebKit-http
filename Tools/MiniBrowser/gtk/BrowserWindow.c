@@ -53,6 +53,10 @@ struct _BrowserWindow {
     GtkWidget *forwardItem;
     GtkWidget *zoomInItem;
     GtkWidget *zoomOutItem;
+    GtkWidget *boldItem;
+    GtkWidget *italicItem;
+    GtkWidget *underlineItem;
+    GtkWidget *strikethroughItem;
     GtkWidget *statusLabel;
     GtkWidget *settingsDialog;
     WebKitWebView *webView;
@@ -696,6 +700,61 @@ static void editingCommandCallback(GtkWidget*widget, BrowserWindow *window)
     webkit_web_view_execute_editing_command(window->webView, gtk_widget_get_name(widget));
 }
 
+static void insertImageCommandCallback(GtkWidget*widget, BrowserWindow *window)
+{
+    GtkWidget *fileChooser = gtk_file_chooser_dialog_new("Insert Image", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
+        "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
+
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Images");
+    gtk_file_filter_add_pixbuf_formats(filter);
+    gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(fileChooser), filter);
+
+    if (gtk_dialog_run(GTK_DIALOG(fileChooser)) == GTK_RESPONSE_ACCEPT) {
+        char *uri = gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(fileChooser));
+        if (uri) {
+            webkit_web_view_execute_editing_command_with_argument(window->webView, WEBKIT_EDITING_COMMAND_INSERT_IMAGE, uri);
+            g_free(uri);
+        }
+    }
+
+    gtk_widget_destroy(fileChooser);
+}
+
+static void insertLinkCommandCallback(GtkWidget*widget, BrowserWindow *window)
+{
+    GtkWidget *dialog = gtk_dialog_new_with_buttons("Insert Link", GTK_WINDOW(window), GTK_DIALOG_MODAL, "Insert", GTK_RESPONSE_ACCEPT, NULL);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
+    GtkWidget *entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "URL");
+    gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
+    gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dialog))), entry);
+    gtk_widget_show(entry);
+
+    if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+        const char *url = gtk_entry_get_text(GTK_ENTRY(entry));
+        if (url && *url)
+            webkit_web_view_execute_editing_command_with_argument(window->webView, WEBKIT_EDITING_COMMAND_CREATE_LINK, url);
+    }
+
+    gtk_widget_destroy(dialog);
+}
+
+static void browserWindowEditingCommandToggleButtonSetActive(BrowserWindow *window, GtkWidget *button, gboolean active)
+{
+    g_signal_handlers_block_by_func(button, G_CALLBACK(editingCommandCallback), window);
+    gtk_toggle_tool_button_set_active(GTK_TOGGLE_TOOL_BUTTON(button), active);
+    g_signal_handlers_unblock_by_func(button, G_CALLBACK(editingCommandCallback), window);
+}
+
+static void typingAttributesChanged(WebKitEditorState *editorState, GParamSpec *spec, BrowserWindow *window)
+{
+    unsigned typingAttributes = webkit_editor_state_get_typing_attributes(editorState);
+    browserWindowEditingCommandToggleButtonSetActive(window, window->boldItem, typingAttributes & WEBKIT_EDITOR_TYPING_ATTRIBUTE_BOLD);
+    browserWindowEditingCommandToggleButtonSetActive(window, window->italicItem, typingAttributes & WEBKIT_EDITOR_TYPING_ATTRIBUTE_ITALIC);
+    browserWindowEditingCommandToggleButtonSetActive(window, window->underlineItem, typingAttributes & WEBKIT_EDITOR_TYPING_ATTRIBUTE_UNDERLINE);
+    browserWindowEditingCommandToggleButtonSetActive(window, window->strikethroughItem, typingAttributes & WEBKIT_EDITOR_TYPING_ATTRIBUTE_STRIKETHROUGH);
+}
 
 static void browserWindowFinalize(GObject *gObject)
 {
@@ -755,18 +814,21 @@ static void browserWindowSetupEditorToolbar(BrowserWindow *window)
     gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_BOTH_HORIZ);
 
     GtkToolItem *item = gtk_toggle_tool_button_new_from_stock(GTK_STOCK_BOLD);
+    window->boldItem = GTK_WIDGET(item);
     gtk_widget_set_name(GTK_WIDGET(item), "Bold");
     g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(editingCommandCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
     gtk_widget_show(GTK_WIDGET(item));
 
     item = gtk_toggle_tool_button_new_from_stock(GTK_STOCK_ITALIC);
+    window->italicItem = GTK_WIDGET(item);
     gtk_widget_set_name(GTK_WIDGET(item), "Italic");
     g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(editingCommandCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
     gtk_widget_show(GTK_WIDGET(item));
 
     item = gtk_toggle_tool_button_new_from_stock(GTK_STOCK_UNDERLINE);
+    window->underlineItem = GTK_WIDGET(item);
     gtk_widget_set_name(GTK_WIDGET(item), "Underline");
     g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(editingCommandCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
@@ -774,6 +836,7 @@ static void browserWindowSetupEditorToolbar(BrowserWindow *window)
 
     item = gtk_toggle_tool_button_new_from_stock(GTK_STOCK_STRIKETHROUGH);
     gtk_widget_set_name(GTK_WIDGET(item), "Strikethrough");
+    window->strikethroughItem = GTK_WIDGET(item);
     g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(editingCommandCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
     gtk_widget_show(GTK_WIDGET(item));
@@ -853,6 +916,22 @@ static void browserWindowSetupEditorToolbar(BrowserWindow *window)
     item = gtk_tool_button_new_from_stock(GTK_STOCK_UNINDENT);
     gtk_widget_set_name(GTK_WIDGET(item), "Outdent");
     g_signal_connect(G_OBJECT(item), "clicked", G_CALLBACK(editingCommandCallback), window);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
+    gtk_widget_show(GTK_WIDGET(item));
+
+    item = gtk_separator_tool_item_new();
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
+    gtk_widget_show(GTK_WIDGET(item));
+
+    item = gtk_tool_button_new(NULL, NULL);
+    gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(item), "insert-image");
+    g_signal_connect(G_OBJECT(item), "clicked", G_CALLBACK(insertImageCommandCallback), window);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
+    gtk_widget_show(GTK_WIDGET(item));
+
+    item = gtk_tool_button_new(NULL, NULL);
+    gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(item), "insert-link");
+    g_signal_connect(G_OBJECT(item), "clicked", G_CALLBACK(insertLinkCommandCallback), window);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), item, -1);
     gtk_widget_show(GTK_WIDGET(item));
 
@@ -1004,8 +1083,10 @@ static void browserWindowConstructed(GObject *gObject)
     BrowserWindow *window = BROWSER_WINDOW(gObject);
 
     browserWindowUpdateZoomActions(window);
-    if (webkit_web_view_is_editable(window->webView))
+    if (webkit_web_view_is_editable(window->webView)) {
         browserWindowSetupEditorToolbar(window);
+        g_signal_connect(webkit_web_view_get_editor_state(window->webView), "notify::typing-attributes", G_CALLBACK(typingAttributesChanged), window);
+    }
 
     g_signal_connect(window->webView, "notify::uri", G_CALLBACK(webViewURIChanged), window);
     g_signal_connect(window->webView, "notify::estimated-load-progress", G_CALLBACK(webViewLoadProgressChanged), window);
@@ -1062,7 +1143,7 @@ static void browserWindowConstructed(GObject *gObject)
     gtk_widget_show(GTK_WIDGET(window->webView));
 
     if (webkit_web_view_is_editable(window->webView))
-        webkit_web_view_load_html(window->webView, "<html></html>", NULL);
+        webkit_web_view_load_html(window->webView, "<html></html>", "file:///");
 }
 
 static void browser_window_class_init(BrowserWindowClass *klass)

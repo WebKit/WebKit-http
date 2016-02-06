@@ -45,6 +45,18 @@ enum ResourceLoadPriority {
     "ResourceLoadPriorityVeryHigh"
 };
 
+enum MediaSessionInterruptingCategory {
+    "content",
+    "transient",
+    "transient-solo"
+};
+
+enum MediaControlEvent {
+    "play-pause",
+    "next-track",
+    "previous-track"
+};
+
 [
     NoInterfaceObject,
 ] interface Internals {
@@ -247,6 +259,7 @@ enum ResourceLoadPriority {
 
     [RaisesException] void setPageScaleFactor(unrestricted float scaleFactor, long x, long y);
     [RaisesException] void setPageZoomFactor(unrestricted float zoomFactor);
+    [RaisesException] void setTextZoomFactor(unrestricted float zoomFactor);
 
     [RaisesException] void setUseFixedLayout(boolean useFixedLayout);
     [RaisesException] void setFixedLayoutSize(long width, long height);
@@ -311,6 +324,8 @@ enum ResourceLoadPriority {
     SerializedScriptValue deserializeBuffer(ArrayBuffer buffer);
     ArrayBuffer serializeObject(SerializedScriptValue obj);
 
+    boolean isFromCurrentWorld(any obj);
+
     void setUsesOverlayScrollbars(boolean enabled);
 
     void forceReload(boolean endToEnd);
@@ -346,9 +361,15 @@ enum ResourceLoadPriority {
 
     [Conditional=MEDIA_SOURCE] void initializeMockMediaSource();
     [Conditional=MEDIA_SOURCE] DOMString[] bufferedSamplesForTrackID(SourceBuffer buffer, DOMString trackID);
+    [Conditional=MEDIA_SOURCE] void setShouldGenerateTimestamps(SourceBuffer buffer, boolean flag);
 
     [Conditional=VIDEO] void beginMediaSessionInterruption();
     [Conditional=VIDEO] void endMediaSessionInterruption(DOMString flags);
+    [Conditional=MEDIA_SESSION] void sendMediaSessionStartOfInterruptionNotification(MediaSessionInterruptingCategory category);
+    [Conditional=MEDIA_SESSION] void sendMediaSessionEndOfInterruptionNotification(MediaSessionInterruptingCategory category);
+    [Conditional=MEDIA_SESSION] DOMString mediaSessionCurrentState(MediaSession session);
+    [Conditional=MEDIA_SESSION] double mediaElementPlayerVolume(HTMLMediaElement element);
+    [Conditional=MEDIA_SESSION] void sendMediaControlEvent(MediaControlEvent event);
     [Conditional=VIDEO] void applicationWillEnterForeground();
     [Conditional=VIDEO] void applicationWillEnterBackground();
     [Conditional=VIDEO, RaisesException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
@@ -375,4 +396,6 @@ enum ResourceLoadPriority {
 #if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
     [RaisesException] DOMString scrollSnapOffsets(Element element);
 #endif
+
+    [RaisesException] DOMString pathStringWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
 };

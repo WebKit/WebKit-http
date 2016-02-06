@@ -417,10 +417,8 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, std
 void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, uint64_t websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
 {
     if (websiteDataTypes & WebsiteDataTypeCookies) {
-        if (auto* networkStorageSession = SessionTracker::session(sessionID)) {
-            for (const auto& cookieHostName : cookieHostNames)
-                deleteCookiesForHostname(*networkStorageSession, cookieHostName);
-        }
+        if (auto* networkStorageSession = SessionTracker::session(sessionID))
+            deleteCookiesForHostnames(*networkStorageSession, cookieHostNames);
     }
 
     auto completionHandler = [this, callbackID] {
@@ -521,7 +519,10 @@ void NetworkProcess::prepareToSuspend()
 
 void NetworkProcess::cancelPrepareToSuspend()
 {
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCancelProcessSuspension(), 0);
+    // Although it is tempting to send a NetworkProcessProxy::DidCancelProcessSuspension message from here
+    // we do not because prepareToSuspend() already replied with a NetworkProcessProxy::ProcessReadyToSuspend
+    // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
+    // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
 }
 
 void NetworkProcess::processDidResume()

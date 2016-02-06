@@ -203,8 +203,8 @@ private:
     virtual bool selectItemWritingDirectionIsNatural() override;
     virtual bool selectItemAlignmentFollowsMenuWritingDirection() override;
     virtual bool hasOpenedPopup() const override;
-    virtual PassRefPtr<WebCore::PopupMenu> createPopupMenu(WebCore::PopupMenuClient*) const override;
-    virtual PassRefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient*) const override;
+    virtual RefPtr<WebCore::PopupMenu> createPopupMenu(WebCore::PopupMenuClient*) const override;
+    virtual RefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient*) const override;
 
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() const override;
     virtual void attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
@@ -321,6 +321,13 @@ private:
     virtual void removePlaybackTargetPickerClient(uint64_t /*contextId*/) override;
     virtual void showPlaybackTargetPicker(uint64_t contextId, const WebCore::IntPoint&, bool) override;
     virtual void playbackTargetPickerClientStateDidChange(uint64_t, WebCore::MediaProducer::MediaStateFlags) override;
+#endif
+
+#if ENABLE(VIDEO)
+    virtual void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&) override;
+#if USE(GSTREAMER)
+    virtual void requestInstallMissingMediaPlugins(const String&, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&) override;
+#endif
 #endif
 
     String m_cachedToolTip;

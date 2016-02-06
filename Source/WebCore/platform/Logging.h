@@ -40,7 +40,6 @@ namespace WebCore {
 #define WEBCORE_LOG_CHANNELS(M) \
     M(Animations) \
     M(Archives) \
-    M(BackForward) \
     M(Compositing) \
     M(ContentFiltering) \
     M(DOMTimers) \
@@ -53,7 +52,7 @@ namespace WebCore {
     M(Gamepad) \
     M(History) \
     M(IconDatabase) \
-    M(LiveConnect) \
+    M(Layout) \
     M(Loading) \
     M(Media) \
     M(MediaSource) \

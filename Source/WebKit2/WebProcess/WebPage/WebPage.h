@@ -139,6 +139,10 @@ struct Highlight;
 struct KeypressCommand;
 struct MediaPlaybackTargetContext;
 struct TextCheckingResult;
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+class MediaPlayerRequestInstallMissingPluginsCallback;
+#endif
 }
 
 namespace WebKit {
@@ -191,7 +195,7 @@ class WebTouchEvent;
 
 class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
 public:
-    static PassRefPtr<WebPage> create(uint64_t pageID, const WebPageCreationParameters&);
+    static Ref<WebPage> create(uint64_t pageID, const WebPageCreationParameters&);
     virtual ~WebPage();
 
     void reinitializeWebPage(const WebPageCreationParameters&);
@@ -236,6 +240,8 @@ public:
 
 #if PLATFORM(IOS)
     WebVideoFullscreenManager* videoFullscreenManager();
+    void setAllowsMediaDocumentInlinePlayback(bool);
+    bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -509,6 +515,7 @@ public:
     void selectPositionAtPoint(const WebCore::IntPoint&, uint64_t callbackID);
     void beginSelectionInDirection(uint32_t direction, uint64_t callbackID);
     void updateSelectionWithExtentPoint(const WebCore::IntPoint&, uint64_t callbackID);
+    void updateSelectionWithExtentPointAndBoundary(const WebCore::IntPoint&, uint32_t granularity, uint64_t callbackID);
 
     void elementDidFocus(WebCore::Node*);
     void elementDidBlur(WebCore::Node*);
@@ -797,7 +804,7 @@ public:
     bool scaleWasSetByUIProcess() const { return m_scaleWasSetByUIProcess; }
     void willStartUserTriggeredZooming();
     void applicationWillResignActive();
-    void applicationDidEnterBackground();
+    void applicationDidEnterBackground(bool isSuspendedUnderLock);
     void applicationWillEnterForeground();
     void applicationDidBecomeActive();
     void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
@@ -871,7 +878,7 @@ public:
     WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarOverlayStyle() { return m_scrollbarOverlayStyle; }
     void setScrollbarOverlayStyle(WTF::Optional<uint32_t /* WebCore::ScrollbarOverlayStyle */> scrollbarStyle);
 
-    PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
+    Ref<WebCore::DocumentLoader> createDocumentLoader(WebCore::Frame&, const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
     void updateCachedDocumentLoader(WebDocumentLoader&, WebCore::Frame&);
 
     void getBytecodeProfile(uint64_t callbackID);
@@ -894,6 +901,17 @@ public:
 
     void postMessage(const String& messageName, API::Object* messageBody);
     void postSynchronousMessage(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
+
+#if PLATFORM(GTK)
+    void setInputMethodState(bool);
+#endif
+
+#if ENABLE(VIDEO)
+    void mediaDocumentNaturalSizeChanged(const WebCore::IntSize&);
+#if USE(GSTREAMER)
+    void requestInstallMissingMediaPlugins(const String& details, WebCore::MediaPlayerRequestInstallMissingPluginsCallback&);
+#endif
+#endif
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
@@ -928,6 +946,7 @@ private:
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
     void resetTextAutosizingBeforeLayoutIfNeeded(const WebCore::FloatSize& oldSize, const WebCore::FloatSize& newSize);
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&);
+    PassRefPtr<WebCore::Range> rangeForGranularityAtPoint(const WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity);
     void volatilityTimerFired();
 #endif
 #if !PLATFORM(COCOA)
@@ -964,7 +983,7 @@ private:
     void updateIsInWindow(bool isInitialState = false);
     void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
-    void executeEditCommand(const String&);
+    void executeEditCommand(const String&, const String&);
     void setEditable(bool);
 
     void updateUserActivity();
@@ -1084,7 +1103,7 @@ private:
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
 #if ENABLE(MEDIA_STREAM)
-    WK_EXPORT void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed);
+    WK_EXPORT void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& deviceUIDVideo, const String& deviceUIDAudio);
 #endif
 
     void advanceToNextMisspelling(bool startBeforeSelection);
@@ -1115,7 +1134,7 @@ private:
 
 #if PLATFORM(MAC)
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);
-    PassRefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
+    RefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
     void immediateActionDidUpdate();
     void immediateActionDidCancel();
     void immediateActionDidComplete();
@@ -1140,6 +1159,10 @@ private:
     void setUserContentExtensionsEnabled(bool);
 
     void pageStoppedScrolling();
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    void didEndRequestInstallMissingMediaPlugins(uint32_t result);
+#endif
 
     uint64_t m_pageID;
 
@@ -1252,6 +1275,7 @@ private:
     RefPtr<WebInspectorUI> m_inspectorUI;
 #if PLATFORM(IOS)
     RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+    bool m_allowsMediaDocumentInlinePlayback { false };
 #endif
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManager> m_fullScreenManager;
@@ -1345,6 +1369,7 @@ private:
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     RefPtr<WebCore::Range> m_currentBlockSelection;
+    RefPtr<WebCore::Range> m_initialSelection;
     WebCore::IntSize m_blockSelectionDesiredSize;
     WebCore::FloatSize m_maximumUnobscuredSize;
     int32_t m_deviceOrientation;
@@ -1384,6 +1409,14 @@ private:
     bool m_mainFrameProgressCompleted;
     bool m_shouldDispatchFakeMouseMoveEvents;
     bool m_isEditorStateMissingPostLayoutData { false };
+
+#if PLATFORM(GTK)
+    bool m_inputMethodEnabled { false };
+#endif
+
+#if ENABLE(VIDEO) && USE(GSTREAMER)
+    RefPtr<WebCore::MediaPlayerRequestInstallMissingPluginsCallback> m_installMediaPluginsCallback;
+#endif
 };
 
 } // namespace WebKit
