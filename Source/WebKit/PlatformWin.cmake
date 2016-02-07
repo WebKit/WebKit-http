@@ -12,7 +12,9 @@ if (${WTF_PLATFORM_WIN_CAIRO})
     )
     list(APPEND WebKit_LIBRARIES
         PRIVATE libeay32.lib
+        PRIVATE mfuuid.lib
         PRIVATE ssleay32.lib
+        PRIVATE strmiids.lib
     )
 else ()
     list(APPEND WebKit_SOURCES_Classes
@@ -444,7 +446,11 @@ string(REPLACE " " "\;" CXX_LIBS ${CMAKE_CXX_STANDARD_LIBRARIES})
 list(APPEND WebKit_LIBRARIES ${CXX_LIBS})
 set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
+if (${WTF_PLATFORM_WIN_CAIRO})
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:LIBCMT")
+else ()
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
+endif ()
 
 # If this directory isn't created before midl runs and attempts to output WebKit.tlb,
 # It fails with an unusual error - midl failed - failed to save all changes

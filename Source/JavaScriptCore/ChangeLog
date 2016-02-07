@@ -1,3 +1,640 @@
+2015-08-11  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::ByteCodeParser shouldn't call tryGetConstantProperty() with some StructureSet if it isn't checking that the base has a structure in that StructureSet
+        https://bugs.webkit.org/show_bug.cgi?id=147891
+        rdar://problem/22129447
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetByOffset): Get rid of this.
+        (JSC::DFG::ByteCodeParser::load): Don't call the version of handleGetByOffset() that assumes that we had CheckStructure'd some StructureSet, since we may not have CheckStructure'd anything.
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::assertIsRegistered): Make this always assert even before the StructureRegistrationPhase.
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run): Add a FIXME that notes that we no longer believe that structures should be registered only at this phase. They should be registered before this phase and this phase should be removed.
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch Windows build to Visual Studio 2015
+        https://bugs.webkit.org/show_bug.cgi?id=147887
+        <rdar://problem/22235098>
+
+        Reviewed by Alex Christensen.
+
+        Update Visual Studio project file settings to use the current Visual
+        Studio and compiler. Continue targeting binaries to run on our minimum
+        supported configuration of Windows 7.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCoreGenerated.vcxproj:
+        * JavaScriptCore.vcxproj/LLInt/LLIntAssembly/LLIntAssembly.vcxproj:
+        * JavaScriptCore.vcxproj/LLInt/LLIntDesiredOffsets/LLIntDesiredOffsets.vcxproj:
+        * JavaScriptCore.vcxproj/LLInt/LLIntOffsetsExtractor/LLIntOffsetsExtractor.vcxproj:
+        * JavaScriptCore.vcxproj/jsc/jsc.vcxproj:
+        * JavaScriptCore.vcxproj/jsc/jscLauncher.vcxproj:
+        * JavaScriptCore.vcxproj/libllvmForJSC/libllvmForJSC.vcxproj:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpLauncher.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapiLauncher.vcxproj:
+
+2015-08-10  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a ParkingLot for parking sleeping threads, so that locks can fit in 1.6 bits
+        https://bugs.webkit.org/show_bug.cgi?id=147665
+
+        Reviewed by Mark Lam.
+
+        Replace ByteSpinLock with ByteLock.
+
+        * runtime/ConcurrentJITLock.h:
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Numeric setter on prototype doesn't get called.
+        https://bugs.webkit.org/show_bug.cgi?id=144252
+
+        Reviewed by Darin Adler.
+
+        When switching the blank indexing type to the other one in putByIndex,
+        if the `structure(vm)->needsSlowPutIndexing()` is true, we need to switch
+        it to the slow put indexing type and reloop the putByIndex since there may
+        be some indexing accessor in the prototype chain. Previously, we just set
+        the value into the allocated vector.
+
+        In the putDirectIndex case, we just store the value to the vector.
+        This is because putDirectIndex is the operation to store the own property
+        and it does not check the accessors in the prototype chain.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putByIndexBeyondVectorLength):
+        * tests/stress/injected-numeric-setter-on-prototype.js: Added.
+        (shouldBe):
+        (Trace):
+        (Trace.prototype.trace):
+        (Trace.prototype.get count):
+        (.):
+        * tests/stress/numeric-setter-on-prototype-non-blank-array.js: Added.
+        (shouldBe):
+        (Trace):
+        (Trace.prototype.trace):
+        (Trace.prototype.get count):
+        (.):
+        * tests/stress/numeric-setter-on-prototype.js: Added.
+        (shouldBe):
+        (Trace):
+        (Trace.prototype.trace):
+        (Trace.prototype.get count):
+        (.z.__proto__.set 3):
+        * tests/stress/numeric-setter-on-self.js: Added.
+        (shouldBe):
+        (Trace):
+        (Trace.prototype.trace):
+        (Trace.prototype.get count):
+        (.y.set 2):
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed gardening.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters: Add missing
+        file references so they appear in the proper IDE locations.
+
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed windows build fix for VS2015.
+
+        * bindings/ScriptValue.h: Add missing JSCJSValueInlines.h include.
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Reflect.has
+        https://bugs.webkit.org/show_bug.cgi?id=147875
+
+        Reviewed by Sam Weinig.
+
+        This patch implements Reflect.has[1].
+        Since the semantics is the same to the `in` operator in the JS[2],
+        we can implement it in builtin JS code.
+
+        [1]: http://www.ecma-international.org/ecma-262/6.0/#sec-reflect.has
+        [2]: http://www.ecma-international.org/ecma-262/6.0/#sec-relational-operators-runtime-semantics-evaluation
+
+        * builtins/ReflectObject.js:
+        (has):
+        * runtime/ReflectObject.cpp:
+        * tests/stress/reflect-has.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Implement Reflect.getPrototypeOf and Reflect.setPrototypeOf
+        https://bugs.webkit.org/show_bug.cgi?id=147874
+
+        Reviewed by Darin Adler.
+
+        This patch implements ES6 Reflect.{getPrototypeOf, setPrototypeOf}.
+        The difference from the Object.* one is
+
+        1. They dont not perform ToObject onto the non-object arguments. They make it as a TypeError.
+        2. Reflect.setPrototyeOf returns false when the operation is failed. In Object.setPrototypeOf, it raises a TypeError.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructorGetPrototypeOfFunctor::ObjectConstructorGetPrototypeOfFunctor):
+        (JSC::ObjectConstructorGetPrototypeOfFunctor::result):
+        (JSC::ObjectConstructorGetPrototypeOfFunctor::operator()):
+        (JSC::objectConstructorGetPrototypeOf):
+        * runtime/ObjectConstructor.h:
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectGetPrototypeOf):
+        (JSC::reflectObjectSetPrototypeOf):
+        * tests/stress/reflect-get-prototype-of.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (Base):
+        (Derived):
+        * tests/stress/reflect-set-prototype-of.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2015-08-11  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Fix debug build when optimization is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=147816
+
+        Reviewed by Alexey Proskuryakov.
+
+        * llint/LLIntEntrypoint.cpp:
+        * runtime/FunctionExecutableDump.cpp:
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Ensure that Reflect.enumerate does not produce the deleted keys
+        https://bugs.webkit.org/show_bug.cgi?id=147677
+
+        Reviewed by Darin Adler.
+
+        Add tests for Reflect.enumerate that delete the property keys during the enumeration.
+
+        * tests/stress/reflect-enumerate.js:
+
+2015-08-10  Geoffrey Garen  <ggaren@apple.com>
+
+        Start beating UnlinkedCodeBlock.h/.cpp with the "One Class per File" stick
+        https://bugs.webkit.org/show_bug.cgi?id=147856
+
+        Reviewed by Saam Barati.
+
+        Split out UnlinkedFunctionExecutable.h/.cpp and ExecutableInfo.h into separate files.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/ExecutableInfo.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::ExecutableInfo::ExecutableInfo):
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::needsFullScopeChain): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setActivationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::vm): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::activationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::hasActivationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        (JSC::generateFunctionCodeBlock): Deleted.
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable): Deleted.
+        (JSC::UnlinkedFunctionExecutable::visitChildren): Deleted.
+        (JSC::UnlinkedFunctionExecutable::link): Deleted.
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode): Deleted.
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor): Deleted.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::ExecutableInfo::ExecutableInfo): Deleted.
+        (JSC::ExecutableInfo::needsActivation): Deleted.
+        (JSC::ExecutableInfo::usesEval): Deleted.
+        (JSC::ExecutableInfo::isStrictMode): Deleted.
+        (JSC::ExecutableInfo::isConstructor): Deleted.
+        (JSC::ExecutableInfo::isBuiltinFunction): Deleted.
+        (JSC::ExecutableInfo::constructorKind): Deleted.
+        * bytecode/UnlinkedFunctionExecutable.cpp: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.cpp.
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::codeBlockFor):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::getLineAndColumn): Deleted.
+        (JSC::dumpLineColumnEntry): Deleted.
+        (JSC::UnlinkedCodeBlock::dumpExpressionRangeInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::~UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        (JSC::UnlinkedCodeBlock::setInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::instructions): Deleted.
+        * bytecode/UnlinkedFunctionExecutable.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::ExecutableInfo::ExecutableInfo): Deleted.
+        (JSC::ExecutableInfo::needsActivation): Deleted.
+        (JSC::ExecutableInfo::usesEval): Deleted.
+        (JSC::ExecutableInfo::isStrictMode): Deleted.
+        (JSC::ExecutableInfo::isConstructor): Deleted.
+        (JSC::ExecutableInfo::isBuiltinFunction): Deleted.
+        (JSC::ExecutableInfo::constructorKind): Deleted.
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::needsFullScopeChain): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setActivationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::vm): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::activationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::hasActivationRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * runtime/Executable.h:
+
+2015-08-10  Mark Lam  <mark.lam@apple.com>
+
+        Refactor LiveObjectList and LiveObjectData into their own files.
+        https://bugs.webkit.org/show_bug.cgi?id=147843
+
+        Reviewed by Saam Barati.
+
+        There is no behavior change in this patch.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/HeapVerifier.cpp:
+        (JSC::HeapVerifier::HeapVerifier):
+        (JSC::LiveObjectList::findObject): Deleted.
+        * heap/HeapVerifier.h:
+        (JSC::LiveObjectData::LiveObjectData): Deleted.
+        (JSC::LiveObjectList::LiveObjectList): Deleted.
+        (JSC::LiveObjectList::reset): Deleted.
+        * heap/LiveObjectData.h: Added.
+        (JSC::LiveObjectData::LiveObjectData):
+        * heap/LiveObjectList.cpp: Added.
+        (JSC::LiveObjectList::findObject):
+        * heap/LiveObjectList.h: Added.
+        (JSC::LiveObjectList::LiveObjectList):
+        (JSC::LiveObjectList::reset):
+
+2015-08-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Let's rename FunctionBodyNode
+        https://bugs.webkit.org/show_bug.cgi?id=147292
+
+        Reviewed by Mark Lam & Saam Barati.
+
+        FunctionBodyNode => FunctionMetadataNode
+
+        Make FunctionMetadataNode inherit from Node instead of StatementNode
+        because a FunctionMetadataNode can appear in expression context and does
+        not have a next statement.
+
+        (I decided to continue allocating FunctionMetadataNode in the AST arena,
+        and to retain "Node" in its name, because it really is a parsing
+        construct, and we transform its data before consuming it elsewhere.
+
+        There is still room for a future patch to distill and simplify the
+        metadata we track about functions between FunDeclNode/FuncExprNode,
+        FunctionMetadataNode, and UnlinkedFunctionExecutable. But this is a start.)
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createExecutableInternal):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::generateFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        * bytecode/UnlinkedCodeBlock.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitNewArray):
+        (JSC::BytecodeGenerator::emitNewFunction):
+        (JSC::BytecodeGenerator::emitNewFunctionExpression):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::makeFunction):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::EvalNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        (JSC::FunctionBodyNode::emitBytecode): Deleted.
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createFunctionExpr):
+        (JSC::ASTBuilder::createFunctionBody):
+        * parser/NodeConstructors.h:
+        (JSC::FunctionParameters::FunctionParameters):
+        (JSC::FuncExprNode::FuncExprNode):
+        (JSC::FuncDeclNode::FuncDeclNode):
+        * parser/Nodes.cpp:
+        (JSC::EvalNode::EvalNode):
+        (JSC::FunctionMetadataNode::FunctionMetadataNode):
+        (JSC::FunctionMetadataNode::finishParsing):
+        (JSC::FunctionMetadataNode::setEndPosition):
+        (JSC::FunctionBodyNode::FunctionBodyNode): Deleted.
+        (JSC::FunctionBodyNode::finishParsing): Deleted.
+        (JSC::FunctionBodyNode::setEndPosition): Deleted.
+        * parser/Nodes.h:
+        (JSC::FuncExprNode::body):
+        (JSC::FuncDeclNode::body):
+        * parser/Parser.h:
+        (JSC::Parser::isFunctionMetadataNode):
+        (JSC::Parser::next):
+        (JSC::Parser<LexerType>::parse):
+        (JSC::Parser::isFunctionBodyNode): Deleted.
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+        * runtime/CodeCache.h:
+
+2015-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r188105): Seems to have caused crashes during PLT on some iPads
+        https://bugs.webkit.org/show_bug.cgi?id=147818
+
+        Unreviewed, roll out r188105.
+
+        * bytecode/ByValInfo.h:
+        (JSC::ByValInfo::ByValInfo):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::getByValInfo):
+        (JSC::CodeBlock::setNumberOfByValInfos):
+        (JSC::CodeBlock::numberOfByValInfos):
+        (JSC::CodeBlock::byValInfo):
+        * bytecode/ExitKind.cpp:
+        (JSC::exitKindToString): Deleted.
+        * bytecode/ExitKind.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFor):
+        (JSC::GetByIdStatus::computeForStubInfo):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback): Deleted.
+        * bytecode/GetByIdStatus.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry): Deleted.
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize): Deleted.
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants): Deleted.
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC): Deleted.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode): Deleted.
+        (JSC::DFG::FixupPhase::observeUseKindOnNode): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasUidOperand): Deleted.
+        (JSC::DFG::Node::uidOperand): Deleted.
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate): Deleted.
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()): Deleted.
+        (JSC::DFG::safeToExecute): Deleted.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckIdent): Deleted.
+        (JSC::DFG::SpeculativeJIT::speculateSymbol): Deleted.
+        (JSC::DFG::SpeculativeJIT::speculate): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Deleted.
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal): Deleted.
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor): Deleted.
+        (JSC::DFG::isCell): Deleted.
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile): Deleted.
+        * ftl/FTLLowerDFGToLLVM.cpp:
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileNode): Deleted.
+        (JSC::FTL::DFG::LowerDFGToLLVM::compileCheckIdent): Deleted.
+        (JSC::FTL::DFG::LowerDFGToLLVM::lowSymbol): Deleted.
+        (JSC::FTL::DFG::LowerDFGToLLVM::speculate): Deleted.
+        (JSC::FTL::DFG::LowerDFGToLLVM::isNotSymbol): Deleted.
+        (JSC::FTL::DFG::LowerDFGToLLVM::speculateSymbol): Deleted.
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        * jit/JIT.h:
+        (JSC::ByValCompilationInfo::ByValCompilationInfo):
+        (JSC::JIT::compileGetByValWithCachedId): Deleted.
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation): Deleted.
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_has_indexed_property):
+        (JSC::JIT::emitSlow_op_has_indexed_property):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_has_indexed_property):
+        (JSC::JIT::emitSlow_op_has_indexed_property):
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::emitSlow_op_get_by_val):
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitSlow_op_put_by_val):
+        (JSC::JIT::emitGetByValWithCachedId): Deleted.
+        (JSC::JIT::privateCompileGetByVal): Deleted.
+        (JSC::JIT::privateCompileGetByValWithCachedId): Deleted.
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_val):
+        (JSC::JIT::emitSlow_op_get_by_val):
+        (JSC::JIT::emit_op_put_by_val):
+        (JSC::JIT::emitSlow_op_put_by_val):
+        (JSC::JIT::emitGetByValWithCachedId): Deleted.
+        * runtime/Symbol.h:
+        * tests/stress/get-by-val-with-string-constructor.js: Removed.
+        * tests/stress/get-by-val-with-string-exit.js: Removed.
+        * tests/stress/get-by-val-with-string-generated.js: Removed.
+        * tests/stress/get-by-val-with-string-getter.js: Removed.
+        * tests/stress/get-by-val-with-string.js: Removed.
+        * tests/stress/get-by-val-with-symbol-constructor.js: Removed.
+        * tests/stress/get-by-val-with-symbol-exit.js: Removed.
+        * tests/stress/get-by-val-with-symbol-getter.js: Removed.
+        * tests/stress/get-by-val-with-symbol.js: Removed.
+
+2015-08-07  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Reduce uses of PassRefPtr in bindings
+        https://bugs.webkit.org/show_bug.cgi?id=147781
+
+        Reviewed by Chris Dumez.
+
+        Use RefPtr when function can return null or an instance. If not, Ref is used.
+
+        * runtime/JSGenericTypedArrayView.h:
+        (JSC::toNativeTypedView):
+
 2015-08-07  Alex Christensen  <achristensen@webkit.org>
 
         Build more testing binaries with CMake on Windows

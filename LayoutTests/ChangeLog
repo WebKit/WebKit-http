@@ -1,3 +1,526 @@
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Agent commands do not actually return a promise when expected
+        https://bugs.webkit.org/show_bug.cgi?id=138665
+
+        Reviewed by Timothy Hatcher.
+
+        Add a new test that only checks for proper invocation return values.
+        Once the async test suite infrastructure is available for frontend tests,
+        more thorough tests of promises and callbacks will be added.
+
+        * inspector/protocol/inspector-backend-invocation-return-value-expected.txt: Added.
+        * inspector/protocol/inspector-backend-invocation-return-value.html: Added.
+        * inspector/protocol/protocol-promise-result-expected.txt: Removed.
+        * inspector/protocol/protocol-promise-result.html: Removed.
+        * platform/win/TestExpectations: Remove deleted test.
+
+2015-08-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        feMorphology is not rendered correctly on Retina display
+        https://bugs.webkit.org/show_bug.cgi?id=147589
+
+        Reviewed by Dean Jackson.
+
+        Ensure we take the filter scale factor into consideration when applying
+        the FEMorphology.
+
+        * fast/hidpi/filters-morphology-expected.html: Added.
+        * fast/hidpi/filters-morphology.html: Added.
+
+2015-08-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Numeric setter on prototype doesn't get called.
+        https://bugs.webkit.org/show_bug.cgi?id=144252
+
+        Reviewed by Darin Adler.
+
+        Update the test expectation file.
+
+        * js/class-syntax-string-and-numeric-names-expected.txt:
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: use different namespaces in test fixtures for protocol tests and frontend tests
+        https://bugs.webkit.org/show_bug.cgi?id=147787
+
+        Reviewed by Timothy Hatcher.
+
+        Refactor test methods to use three distinct namespaces to reflect their implementation:
+
+        - InspectorProtocol contains commands that are only used from within protocol tests.
+        This includes sending and receiving protocol messages and checking message errors.
+
+        - InspectorTest contains test methods for full inspector frontend tests.
+
+        - ProtocolTest contains test methods for protocol tests.
+
+        In a subsequent patch, most methods in InspectorTest and ProtocolTest namespaces
+        will be unified so that implementations of log, assert, etc. are no longer duplicated.
+        For now, at least make it obvious at each callsite what code is being invoked.
+
+        * http/tests/inspector/console/access-inspected-object.html:
+        * http/tests/inspector/dom/resources/InspectorDOMListener.js:
+        * http/tests/inspector/page/loading-iframe-document-node.html:
+        * http/tests/inspector/resources/ProtocolTestStub.js:
+        * http/tests/inspector/resources/console-test.js:
+        * http/tests/inspector/resources/probe-test.js:
+        * inspector/console/console-message.html:
+        * inspector/console/css-source-locations.html:
+        * inspector/console/js-source-locations.html:
+        * inspector/console/x-frame-options-message.html:
+        * inspector/css/getSupportedCSSProperties.html:
+        * inspector/debugger/breakpoint-action-detach.html:
+        * inspector/debugger/breakpoint-action-with-exception.html:
+        * inspector/debugger/breakpoint-condition-detach.html:
+        * inspector/debugger/breakpoint-condition-with-bad-script.html:
+        * inspector/debugger/breakpoint-condition-with-exception.html:
+        * inspector/debugger/breakpoint-eval-with-exception.html:
+        * inspector/debugger/breakpoint-inside-conditons-and-actions.html:
+        * inspector/debugger/call-frame-function-name.html:
+        * inspector/debugger/call-frame-this-host.html:
+        * inspector/debugger/call-frame-this-nonstrict.html:
+        * inspector/debugger/call-frame-this-strict.html:
+        * inspector/debugger/debugger-statement.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/hit-breakpoint-from-console.html:
+        * inspector/debugger/nested-inspectors.html:
+        * inspector/debugger/pause-dedicated-worker.html:
+        * inspector/debugger/pause-on-assert.html:
+        * inspector/debugger/regress-133182.html:
+        * inspector/debugger/removeBreakpoint.html:
+        * inspector/debugger/searchInContent-linebreaks.html:
+        * inspector/debugger/setBreakpoint-actions.html:
+        * inspector/debugger/setBreakpoint-autoContinue.html:
+        * inspector/debugger/setBreakpoint-column.html:
+        * inspector/debugger/setBreakpoint-condition.html:
+        * inspector/debugger/setBreakpoint-dfg-and-modify-local.html:
+        * inspector/debugger/setBreakpoint-dfg-callee-and-examine-dfg-local.html:
+        * inspector/debugger/setBreakpoint-dfg.html:
+        * inspector/debugger/setBreakpoint-options-exception.html:
+        * inspector/debugger/setBreakpoint.html:
+        * inspector/debugger/setBreakpointByUrl-sourceURL.html:
+        * inspector/debugger/setPauseOnExceptions-all.html:
+        * inspector/debugger/setPauseOnExceptions-none.html:
+        * inspector/debugger/setPauseOnExceptions-uncaught.html:
+        * inspector/debugger/setVariableValue.html:
+        * inspector/debugger/terminate-dedicated-worker-while-paused.html:
+        * inspector/dom-debugger/node-removed.html:
+        * inspector/dom/dom-remove-events.html:
+        * inspector/dom/dom-search-crash.html:
+        * inspector/dom/dom-search-with-context.html:
+        * inspector/dom/dom-search.html:
+        * inspector/dom/focus.html:
+        * inspector/dom/getAccessibilityPropertiesForNode.html:
+        * inspector/dom/getAccessibilityPropertiesForNode_liveRegion.html:
+        * inspector/dom/getAccessibilityPropertiesForNode_mouseEventNodeId.html:
+        * inspector/dom/highlight-flow-with-no-region.html:
+        * inspector/dom/remove-multiple-nodes.html:
+        * inspector/dom/request-child-nodes-depth.html:
+        * inspector/layers/layers-anonymous.html:
+        * inspector/layers/layers-blending-compositing-reasons.html:
+        * inspector/layers/layers-compositing-reasons.html:
+        * inspector/layers/layers-for-node.html:
+        * inspector/layers/layers-generated-content.html:
+        * inspector/layers/layers-reflected-content.html:
+        * inspector/page/archive.html:
+        * inspector/page/frameScheduledNavigation.html:
+        * inspector/page/frameStartedLoading.html:
+        * inspector/page/javascriptDialogEvents.html:
+        * inspector/page/setEmulatedMedia.html:
+        * inspector/runtime/getProperties.html:
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/sync-test-suite.html:
+
+2015-08-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Arabic letter Yeh is drawn in LastResort
+        https://bugs.webkit.org/show_bug.cgi?id=147862
+        <rdar://problem/22202935>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/arabic-glyph-cache-fill-combine-expected.html: Added.
+        * fast/text/arabic-glyph-cache-fill-combine.html: Added.
+        * platform/mac/TestExpectations: Mark test as iOS-specific
+        * platform/gtk/TestExpectations: Mark test as iOS-specific
+        * platform/efl/TestExpectations: Mark test as iOS-specific
+        * platform/efl/TestExpectations: Mark test as iOS-specific
+
+2015-08-11  Chris Dumez  <cdumez@apple.com>
+
+        The 'length' property on interface objects should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=147858
+
+        Reviewed by Daniel Bates.
+
+        Add layout test to check that the 'length' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }
+
+        * fast/dom/length-property-configurable-expected.txt: Added.
+        * fast/dom/length-property-configurable.html: Added.
+
+2015-08-11  Chris Dumez  <cdumez@apple.com>
+
+        [WebIDL] All interface objects must have a property named "name"
+        https://bugs.webkit.org/show_bug.cgi?id=147865
+
+        Reviewed by Darin Adler.
+
+        Add layout test to check that the 'name' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }
+
+        * fast/dom/interface-name-property-expected.txt: Added.
+        * fast/dom/interface-name-property.html: Added.
+        New test.
+
+        * media/track/track-cue-empty-cue-text-expected.txt:
+        Rebaseline, this is a progression.
+
+2015-08-10  Chris Dumez  <cdumez@apple.com>
+
+        The 'prototype' property on interface objects should not be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=147861
+
+        Reviewed by Darin Adler.
+
+        Add layout test to check that the 'prototype' property on interface
+        objects has the following attributes:
+        { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }
+
+        * fast/dom/prototype-property-not-enumerable-expected.txt: Added.
+        * fast/dom/prototype-property-not-enumerable.html: Added.
+
+2015-08-10  Antti Koivisto  <antti@apple.com>
+
+        http/tests/cache/disk-cache/disk-cache-validation.html has too many subtests
+        https://bugs.webkit.org/show_bug.cgi?id=147827
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        Also split the no-body variant of this.
+
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body.html:
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body-expected.txt: Added.
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body.html: Added.
+
+2015-08-10  Antti Koivisto  <antti@apple.com>
+
+        http/tests/cache/disk-cache/disk-cache-validation.html has too many subtests
+        https://bugs.webkit.org/show_bug.cgi?id=147827
+
+        Reviewed by Chris Dumez.
+
+        Looks like it occasionally times out because a bot is running slowly and 243 subtests take >30s.
+
+        * http/tests/cache/disk-cache/disk-cache-validation-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation.html:
+
+        Split Vary header cases to a separate test.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary.html:
+
+        Reduce test matrix size by no testing Expires header here.
+
+2015-08-10  James Craig  <jcraig@apple.com>
+
+        AX: Address follow-up comments in bug 145684
+        https://bugs.webkit.org/show_bug.cgi?id=147817
+
+        Reviewed by Dean Jackson.
+
+        Minor cleanup and style updates requested by Dean.
+
+        * http/tests/contentextensions/text-track-blocked-expected.txt:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.txt:
+
+2015-08-07  Antti Koivisto  <antti@apple.com>
+
+        Expand network cache tests to cover memory cache behavior
+        https://bugs.webkit.org/show_bug.cgi?id=147783
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add another round to existing cache tests with hot memory cache.
+        This add 691 individual cases worth of memory cache test coverage.
+
+        XHR (and main resource, CachedRawResource in general) behaves differently from other resource types. The added
+        coverage maps this behavior. The regular subresource behavior needs coverage too.
+
+        * http/tests/cache/disk-cache/disk-cache-204-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-302-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-307-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-404-status-code-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-disable-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-media-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-range-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-headers-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-request-max-stale-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-revalidation-new-expire-header-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-attachment-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-validation-no-body-expected.txt:
+        * http/tests/cache/disk-cache/resources/cache-test.js:
+        (loadResource):
+        (loadResourcesWithOptions):
+        (loadResources):
+        (.):
+        (runTests):
+
+2015-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Page cache doesn't work for pages actively using Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=147785
+        <rdar://problem/11147901>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage for page caching of pages actively using
+        the Geolocation API.
+
+        * fast/history/page-cache-geolocation-active-oneshot-expected.txt: Added.
+        * fast/history/page-cache-geolocation-active-oneshot.html: Added.
+        * fast/history/page-cache-geolocation-active-watcher-expected.txt: Added.
+        * fast/history/page-cache-geolocation-active-watcher.html: Added.
+
+2015-08-09  Nan Wang  <n_wang@apple.com>
+
+        AX: CSS table display styles can cause malformed, inaccessible AXTables to be exposed to the AX tree
+        https://bugs.webkit.org/show_bug.cgi?id=136415
+        <rdar://problem/22026625>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-table-with-presentational-elements-expected.txt:
+        * accessibility/aria-table-with-presentational-elements.html:
+        * accessibility/mac/malformed-table-expected.txt: Added.
+        * accessibility/mac/malformed-table.html: Added.
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/aria-table-hierarchy-expected.txt:
+        * platform/mac/accessibility/aria-tables-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2015-08-08  Darin Adler  <darin@apple.com>
+
+        Remove -webkit-color-correction CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=147812
+
+        Reviewed by Maciej Stachowiak.
+
+        Given that -webkit-color-correction had no effect on rendering on any platform in any
+        configuration we covered, it's amazing how many tests we had for it.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt: Removed expected results for
+        -webkit-color-correction property.
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Ditto.
+        * svg/css/getComputedStyle-basic-expected.txt: Ditto.
+
+        * fast/css/getComputedStyle/resources/property-names.js: Removed -webkit-color-correction.
+
+        * fast/css/color-correction-backgrounds-and-text.html: Removed.
+        * fast/css/color-correction-on-background-image.html: Removed.
+        * fast/css/color-correction-on-backgrounds.html: Removed.
+        * fast/css/color-correction-on-box-shadow.html: Removed.
+        * fast/css/color-correction-on-text-shadow.html: Removed.
+        * fast/css/color-correction-on-text.html: Removed.
+        * fast/css/color-correction-untagged-images.html: Removed.
+        * fast/css/color-correction.html: Removed.
+        * fast/css/parsing-color-correction-expected.txt: Removed.
+        * fast/css/parsing-color-correction.html: Removed.
+        * fast/css/resources/parsing-color-correction.js: Removed.
+        * platform/efl/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/efl/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/efl/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/gtk/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/gtk/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/ios-simulator-wk2/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/ios-simulator/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-backgrounds-and-text-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-background-image-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-backgrounds-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-box-shadow-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-text-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-on-text-shadow-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/mac/fast/css/color-correction-untagged-images-expected.png: Removed.
+        * platform/mac/fast/css/color-correction-untagged-images-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-backgrounds-and-text-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-background-image-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-backgrounds-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-box-shadow-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-text-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-on-text-shadow-expected.txt: Removed.
+        * platform/win/fast/css/color-correction-untagged-images-expected.txt: Removed.
+
+2015-08-09  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r188105): Seems to have caused crashes during PLT on some iPads
+        https://bugs.webkit.org/show_bug.cgi?id=147818
+
+        Unreviewed, roll out r188105.
+
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-string-bimorphic-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-string-chain-from-try-block-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-chain-from-try-block.html: Removed.
+        * js/regress/get-by-val-with-string-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-string-proto-or-self-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-proto-or-self.html: Removed.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-string-self-or-proto-expected.txt: Removed.
+        * js/regress/get-by-val-with-string-self-or-proto.html: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-symbol-bimorphic-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-chain-from-try-block.html: Removed.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-check-structure-elimination.html: Removed.
+        * js/regress/get-by-val-with-symbol-proto-or-self-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-proto-or-self.html: Removed.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.html: Removed.
+        * js/regress/get-by-val-with-symbol-self-or-proto-expected.txt: Removed.
+        * js/regress/get-by-val-with-symbol-self-or-proto.html: Removed.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-bimorphic-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-chain-from-try-block.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-proto-or-self.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-quadmorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-string-self-or-proto.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-bimorphic-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-chain-from-try-block.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-check-structure-elimination.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-proto-or-self.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-quadmorphic-check-structure-elimination-simple.js: Removed.
+        * js/regress/script-tests/get-by-val-with-symbol-self-or-proto.js: Removed.
+
+2015-08-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Crash in ComplexTextController when laying out obscure text
+        https://bugs.webkit.org/show_bug.cgi?id=147806
+        <rdar://problem/22102378>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/crash-obscure-text-expected.txt: Added.
+        * fast/text/crash-obscure-text.html: Added.
+
+2015-08-08  Dean Jackson  <dino@apple.com>
+
+        Remove the webkit prefix from CanvasRenderingContext2D imageSmoothingEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=147803
+        <rdar://problem/22200553>
+
+        Reviewed by Sam Weinig.
+
+        Use the standard version of imageSmoothingEnabled rather than
+        the prefixed version.
+
+        * fast/canvas/canvas-imageSmoothingEnabled-expected.txt:
+        * fast/canvas/canvas-imageSmoothingEnabled-patterns.html:
+        * fast/canvas/canvas-imageSmoothingEnabled-zero-size.html:
+        * fast/canvas/script-tests/canvas-imageSmoothingEnabled-repaint.js:
+        (draw):
+        * fast/canvas/script-tests/canvas-imageSmoothingEnabled.js: Add some tests
+        to make sure the prefixed version correctly maps to the standard version.
+
+2015-08-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r179871.
+        https://bugs.webkit.org/show_bug.cgi?id=147810
+
+        Breaks product images on http://www.apple.com/shop/buy-
+        mac/macbook (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Render: properly update body's background image"
+        https://bugs.webkit.org/show_bug.cgi?id=140183
+        http://trac.webkit.org/changeset/179871
+
+2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [El Capitan] Test Gardening
+
+        Unreviewed.
+
+        * platform/mac/css3/font-feature-settings-preinstalled-fonts-expected.txt: Added.
+
+2015-08-07  James Craig  <jcraig@apple.com>
+
+        REGRESSION(r184722) AX: WebKit video playback toolbar removed from DOM; no longer accessible to VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=145684
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/contentextensions/text-track-blocked-expected.txt: Minor update to test case expectation.
+        * media/video-controls-show-on-kb-or-ax-event-expected.txt: Added.
+        * media/video-controls-show-on-kb-or-ax-event.html: New test validates video controls can be displayed without the need for a mouse.
+        * platform/mac/media/track/track-cue-rendering-horizontal-expected.txt: Minor update to test case expectation.
+
 2015-08-07  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [Mac] Test gardening

@@ -29,6 +29,7 @@
 #include "config.h"
 #include "WebKitWebViewBase.h"
 
+#include "APIPageConfiguration.h"
 #include "DrawingAreaProxyImpl.h"
 #include "InputMethodFilter.h"
 #include "KeyBindingTranslator.h"
@@ -450,6 +451,7 @@ void webkitWebViewBaseChildMoveResize(WebKitWebViewBase* webView, GtkWidget* chi
 static void webkitWebViewBaseDispose(GObject* gobject)
 {
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(gobject);
+    g_cancellable_cancel(webView->priv->screenSaverInhibitCancellable.get());
     webkitWebViewBaseSetToplevelOnScreenWindow(webView, nullptr);
     webView->priv->pageProxy->close();
     G_OBJECT_CLASS(webkit_web_view_base_parent_class)->dispose(gobject);
@@ -1044,12 +1046,13 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
 WebKitWebViewBase* webkitWebViewBaseCreate(WebProcessPool* context, WebPreferences* preferences, WebPageGroup* pageGroup, WebUserContentControllerProxy* userContentController, WebPageProxy* relatedPage)
 {
     WebKitWebViewBase* webkitWebViewBase = WEBKIT_WEB_VIEW_BASE(g_object_new(WEBKIT_TYPE_WEB_VIEW_BASE, nullptr));
-    WebPageConfiguration webPageConfiguration;
-    webPageConfiguration.preferences = preferences;
-    webPageConfiguration.pageGroup = pageGroup;
-    webPageConfiguration.relatedPage = relatedPage;
-    webPageConfiguration.userContentController = userContentController;
-    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, WTF::move(webPageConfiguration));
+
+    auto pageConfiguration = API::PageConfiguration::create();
+    pageConfiguration->setPreferences(preferences);
+    pageConfiguration->setPageGroup(pageGroup);
+    pageConfiguration->setRelatedPage(relatedPage);
+    pageConfiguration->setUserContentController(userContentController);
+    webkitWebViewBaseCreateWebPage(webkitWebViewBase, context, WTF::move(pageConfiguration));
     return webkitWebViewBase;
 }
 
@@ -1070,7 +1073,7 @@ static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
 }
 #endif // HAVE(GTK_SCALE_FACTOR)
 
-void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebProcessPool* context, WebPageConfiguration&& configuration)
+void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebProcessPool* context, Ref<API::PageConfiguration>&& configuration)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
     priv->pageProxy = context->createWebPage(*priv->pageClient, WTF::move(configuration));
@@ -1134,7 +1137,7 @@ static void webkitWebViewBaseSendInhibitMessageToScreenSaver(WebKitWebViewBase* 
     ASSERT(priv->screenSaverProxy);
     priv->screenSaverCookie = 0;
     if (!priv->screenSaverInhibitCancellable)
-        priv->screenSaverInhibitCancellable = g_cancellable_new();
+        priv->screenSaverInhibitCancellable = adoptGRef(g_cancellable_new());
     g_dbus_proxy_call(priv->screenSaverProxy.get(), "Inhibit", g_variant_new("(ss)", g_get_prgname(), _("Website running in fullscreen mode")),
         G_DBUS_CALL_FLAGS_NONE, -1, priv->screenSaverInhibitCancellable.get(), reinterpret_cast<GAsyncReadyCallback>(screenSaverInhibitedCallback), webViewBase);
 }
@@ -1162,7 +1165,7 @@ static void webkitWebViewBaseInhibitScreenSaver(WebKitWebViewBase* webViewBase)
         return;
     }
 
-    priv->screenSaverInhibitCancellable = g_cancellable_new();
+    priv->screenSaverInhibitCancellable = adoptGRef(g_cancellable_new());
     g_dbus_proxy_new_for_bus(G_BUS_TYPE_SESSION, static_cast<GDBusProxyFlags>(G_DBUS_PROXY_FLAGS_DO_NOT_LOAD_PROPERTIES | G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS),
         nullptr, "org.freedesktop.ScreenSaver", "/ScreenSaver", "org.freedesktop.ScreenSaver", priv->screenSaverInhibitCancellable.get(),
         reinterpret_cast<GAsyncReadyCallback>(screenSaverProxyCreatedCallback), webViewBase);

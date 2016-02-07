@@ -1,3 +1,255 @@
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch Windows build to Visual Studio 2015
+        https://bugs.webkit.org/show_bug.cgi?id=147887
+        <rdar://problem/22235098>
+
+        Reviewed by Alex Christensen.
+
+        Update Visual Studio project file settings to use the current Visual
+        Studio and compiler. Continue targeting binaries to run on our minimum
+        supported configuration of Windows 7.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTree.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncher.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiff.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncher.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj:
+        * Scripts/webkitdirs.pm: Modify our Visual Studio search routines to
+        prefer the newer MSBuild included in Visual Studio 2015.
+        (visualStudioInstallDir):
+        (msBuildInstallDir):
+        (visualStudioVersion):
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncher.vcxproj:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherLib.vcxproj:
+        * win/AssembleBuildLogs/AssembleBuildLogs.vcxproj:
+        * win/record-memory/record-memory.vcxproj:
+
+2015-08-11  Alex Christensen  <achristensen@webkit.org>
+
+        Another speculative build fix after r188280.
+
+        * TestWebKitAPI/Tests/WTF/ParkingLot.cpp:
+        std::this_thread is too modern c++ for VS2013 and supported GCC versions, 
+        so let's go back to usleep and I made something close to usleep, but with much lower resolution.
+
+2015-08-11  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed build fix after r188280.
+
+        * TestWebKitAPI/Tests/WTF/ParkingLot.cpp:
+        Include DataLog.h, and usleep is not available on Windows, so I used what I think is the c++11 equivalent.
+
+2015-08-10  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should have a ParkingLot for parking sleeping threads, so that locks can fit in 1.6 bits
+        https://bugs.webkit.org/show_bug.cgi?id=147665
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Lock.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/ParkingLot.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        webkit-patch should not explode when $EDITOR is set incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=147884
+
+        Reviewed by Darin Adler.
+
+        If $EDITOR doesn't exist, log a warning and continue.
+
+        * Scripts/webkitpy/common/system/user.py: 
+        (User.edit):
+        (User.edit_changelog):
+
+2015-08-11  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r188255, because it turned out that delegates do nonot need this information.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PrintFrame.mm: Removed.
+
+2015-08-11  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] The UI delegate can't tell if printing was user-initiated
+        https://bugs.webkit.org/show_bug.cgi?id=147869
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/PrintFrame.mm: Added.
+        (-[PrintFrameController webView:didFinishNavigation:]):
+        (-[PrintFrameController _webView:printFrame:userInitiated:]):
+        (TEST):
+
+2015-08-10  Alex Christensen  <achristensen@webkit.org>
+
+        Another build fix after r188239.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        Link with more libraries.
+        * WinLauncher/CMakeLists.txt:
+        /NODEFAULTLIB:MSVCRT is not just needed for AppleWin.
+
+2015-08-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r188237.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder.py:
+        (BenchmarkBuilder.__enter__):
+
+2015-08-10  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update ReadMe and correct the way to use abstract abstract class.
+        https://bugs.webkit.org/show_bug.cgi?id=147860
+
+        Reviewed by Ryosuke Niwa.
+
+        Update ReadMe according to recent changes. And set ABCMeta to be the __metaclass__ of BrowserDriver and HTTPServerDriver,
+        so that all methods annotated by 'abstractmethod' will check whether they are implememnt by subclasses.
+
+        * Scripts/webkitpy/benchmark_runner/README.md:
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.restore_env):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server_driver.py:
+        (HTTPServerDriver):
+        (HTTPServerDriver.set_device_id):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver.get_return_code):
+        (SimpleHTTPServerDriver):
+        (SimpleHTTPServerDriver.set_device_id):
+
+2015-08-10  Alex Christensen  <achristensen@webkit.org>
+
+        Build TestWebKitAPI with CMake on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=147851
+
+        Reviewed by Chris Dumez.
+
+        * CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        Removed TestJavaScriptCore because JavaScriptCore's API tests are elsewhere and this was just making an empty binary.
+        Surrounded WebKit2-specific features with ENABLE_WEBKIT2 checks.
+        Include directories after the Platform*.cmake is included because HostWindow.h needs to be found in Tools/TestWebKitAPI/win 
+        before we look in Source/WebCore/platform, where another file named HostWindow.h exists.
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        Windows needs all the binaries to be in the same directory to find gtest.dll and the other dlls.
+        I did this without changing the directory structure of the existing EFL and GTK builds.
+        * TestWebKitAPI/PlatformWin.cmake: Added.
+        * TestWebKitAPI/win/main.cpp:
+        (main):
+        (dllLauncherEntryPoint):
+        Added so we can launch TestWebKitAPI executables after finding the AAS directory.
+        * WinLauncher/CMakeLists.txt:
+        AppleWin port needs /NODEFAULTLIB:MSVCRT.
+
+2015-08-10  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Make cleanup more robust and minor code cleaning in run benchmark script.
+        https://bugs.webkit.org/show_bug.cgi?id=147800
+
+        Reviewed by Ryosuke Niwa.
+
+        Use 'finnaly' block to make sure cleanup code is always executed.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (built_benchmark):
+        (built_benchmark.__init__):
+        (built_benchmark.__enter__):
+        (built_benchmark.__exit__):
+        (test_environment):
+        (test_environment.__init__):
+        (test_environment.__enter__):
+        (test_environment.__exit__):
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner.execute):
+        (BenchmarkRunner._dump):
+        (BenchmarkRunner._wrap):
+        (BenchmarkRunner): Deleted.
+        (BenchmarkRunner._cleanup): Deleted.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.close_browsers):
+        (BrowserDriver):
+        (BrowserDriver.restore_env):
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver.__init__): We do not actually need to know external ip address for now.
+
+2015-08-10  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Compile warning (-Wsign-compare) on 32-bits at WebCore/platform/FileSystem.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=146414
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp:
+        (TestWebKitAPI::TEST): Improving testing of WTF::isInBounds.
+
+2015-08-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Test  /webkit2/WebKitWebView/submit-form is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=147727
+
+        Reviewed by Sergio Villar Senin.
+
+        I think it was not this test in particular, but
+        /webkit2/WebKitWebView/custom-charset that is affecting the
+        others. This is because changing the encoding reloads the page,
+        but we don't wait for the page to be reloaded, so when the test
+        finishes and other test starts the web process is still reloading
+        the page.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner): Unskip /webkit2/WebKitWebView/submit-form.
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewCustomCharset): Wait until page is reloaded after
+        changing the charset.
+
+2015-08-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Skip GTK+ test /webkit2/WebKitWebView/install-missing-plugins-permission-request.
+
+        It's timing out in the bots. My guess is that there's no installer
+        installed in the bots and gst_install_plugins_supported() returns
+        false, so we don't even get a permission request because no
+        installer will be launched.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2015-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        [GTK] Another build fix after r188157.
+
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        Name all the things correctly!
+
+2015-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        [EFL, GTK] Build fix after r188176.
+
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt:
+        I moved forwarding headers out of a unix subdirectory because I am using them on Windows now.
+
+2015-08-07  Alex Christensen  <achristensen@webkit.org>
+
+        [GTK] Speculative build fix after r188157.
+
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+        Update parameter list.
+
 2015-08-07  Alex Christensen  <achristensen@webkit.org>
 
         Build more testing binaries with CMake on Windows

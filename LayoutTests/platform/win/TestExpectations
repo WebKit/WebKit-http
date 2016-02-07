@@ -2369,7 +2369,6 @@ webkit.org/b/137157 inspector/model/parse-script-syntax-tree.html [ Skip ]
 webkit.org/b/137157 [ Release ] inspector/model/remote-object-get-properties.html [ Pass Timeout ]
 webkit.org/b/137157 [ Debug ] inspector/model/remote-object-get-properties.html [ Skip ] # Debug Assertion
 webkit.org/b/137157 inspector/page/main-frame-resource.html [ Skip ]
-webkit.org/b/137157 inspector/protocol-promise-result.html [ Skip ]
 http/tests/inspector/css/bad-mime-type.html [ Skip ]
 inspector/test-harness-trivially-works.html [ Skip ]
 inspector/dom/content-node-region-info.html [ Crash Pass Failure Timeout ]
@@ -3149,3 +3148,6 @@ fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
 
 # This test hardcodes the result of a platform-dependent font lookup algorithm.
 fast/text/fallback-language-han.html [ Skip ]
+
+# This test relies on iOS-specific font fallback.
+fast/text/arabic-glyph-cache-fill-combine.html [ ImageOnlyFailure ]

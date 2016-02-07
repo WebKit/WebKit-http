@@ -1,3 +1,512 @@
+2015-08-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Switch Windows build to Visual Studio 2015
+        https://bugs.webkit.org/show_bug.cgi?id=147887
+        <rdar://problem/22235098>
+
+        Reviewed by Alex Christensen.
+
+        Update Visual Studio project file settings to use the current Visual
+        Studio and compiler. Continue targeting binaries to run on our minimum
+        supported configuration of Windows 7.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+
+2015-08-11  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Agent commands do not actually return a promise when expected
+        https://bugs.webkit.org/show_bug.cgi?id=138665
+
+        Reviewed by Timothy Hatcher.
+
+        This patch unifies the handling of different invocation and dispatch modes in the
+        InspectorBackend protocol system. Command responses are dispatched to a provided
+        callback function; if no function was provided, then the command returns a promise.
+
+        Rather than awkwardly converting between promises and callbacks at invocation and
+        response dispatch time, the backend now stores the callback or promise thunks and
+        knows how to invoke each when the response comes. This mirrors how response handling
+        works in ProtocolTestStub.js. InspectorBackend includes more machinery to support Agent
+        objects and various debug flags.
+
+        Performanace impact is expected to be negligible, because there are relatively
+        few commands issued by the inspector frontend and returned promises are short-lived.
+
+        Remove all uses of Command.prototype.promise, since it is no longer necessary.
+
+        * UserInterface/Base/Test.js:
+        (InspectorTest.reloadPage):
+        * UserInterface/Controllers/ReplayManager.js:
+        (WebInspector.ReplayManager.prototype.getSession.get var):
+        (WebInspector.ReplayManager.getSegment.get var):
+        * UserInterface/Models/ReplaySession.js:
+        (WebInspector.ReplaySession.prototype.segmentsChanged):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.requestContentFromBackend):
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.requestContentFromBackend):
+        * UserInterface/Models/SourceMapResource.js:
+        (WebInspector.SourceMapResource.prototype.requestContentFromBackend):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback.set this):
+        (InspectorBackendClass.set this):
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackendClass.prototype._dispatchResponseToCallback):
+        (InspectorBackendClass.prototype._dispatchResponseToPromise):
+        (InspectorBackendClass.prototype._flushPendingScripts):
+        (InspectorBackend.Command.prototype.invoke):
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+        (InspectorBackendClass.prototype._willSendMessageToBackend.set return): Deleted.
+        (InspectorBackendClass._dispatchCallback.get if): Deleted.
+        (InspectorBackendClass.prototype._willSendMessageToBackend): Deleted.
+        (InspectorBackendClass.prototype._invokeCommand): Deleted.
+        (.callable): Deleted.
+        (InspectorBackend.Command.create): Deleted.
+        (InspectorBackend.Command.prototype.promise): Deleted.
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Hovering over an element in the Elements tab should highlight the whole line
+        https://bugs.webkit.org/show_bug.cgi?id=147855
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.dom-tree-outline li.hovered:not(.selected) .selection):
+        Removed the horizontal positioning and border radius.
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add numerical input and slider based Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147712
+
+        Reviewed by Brian Burg.
+
+        Added editors for CSS properties with numerical values for use in the Visual style
+        details panel in the CSS sidebar, in the form of a combined select and input or an
+        input range.  Also added optional visual linkages to sync values between multiple
+        editors of this type.
+
+        * UserInterface/Images/VisualStylePropertyLinked.svg: Added.
+        * UserInterface/Images/VisualStylePropertyUnlinked.svg: Added.
+
+        * UserInterface/Views/VisualStyleNumberInputBox.css: Added.
+        (.visual-style-property-container > .visual-style-property-value-container.focused > .focus-ring):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-keyword-select):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container):
+        (.visual-style-property-container > .visual-style-property-value-container:not(.number-input-editable) > .number-input-container):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container > .number-input-value):
+        (.visual-style-property-container > .visual-style-property-value-container > .number-input-container > span):
+
+        * UserInterface/Views/VisualStyleNumberInputBox.js: Added.
+        (WebInspector.VisualStyleNumberInputBox):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set value):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set units):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get placeholder):
+        (WebInspector.VisualStyleNumberInputBox.prototype.set placeholder):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype.get numberInputEditable):
+        (WebInspector.VisualStyleNumberInputBox.prototype.updateValueFromText):
+        (WebInspector.VisualStyleNumberInputBox.prototype.parseValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown.shiftValue):
+        (WebInspector.VisualStyleNumberInputBox.prototype._valueNumberInputKeyDown):
+        (WebInspector.VisualStyleNumberInputBox.prototype._numberInputChanged):
+        (WebInspector.VisualStyleNumberInputBox.prototype._keywordSelectMouseDown):
+        (WebInspector.VisualStyleNumberInputBox.prototype._createValueOptions):
+        (WebInspector.VisualStyleNumberInputBox.prototype._createUnitOptions):
+        (WebInspector.VisualStyleNumberInputBox.prototype._addAdvancedUnits):
+        (WebInspector.VisualStyleNumberInputBox.prototype._removeAdvancedUnits):
+        (WebInspector.VisualStyleNumberInputBox.prototype._focusContentElement):
+        (WebInspector.VisualStyleNumberInputBox.prototype._blurContentElement):
+        (WebInspector.VisualStyleNumberInputBox.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.css: Added.
+        (.visual-style-property-editor-link):
+        (.visual-style-property-editor-link.disabled):
+        (.visual-style-property-editor-link.link-all):
+        (.visual-style-property-editor-link.link-all.linked):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-icon:hover + .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link.link-all.linked > .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link.linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border.left):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-border.right):
+        (.visual-style-property-editor-link:not(.link-all) > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link:not(.link-all).linked > .visual-style-property-editor-link-border):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon svg .filled):
+        (.visual-style-property-editor-link > .visual-style-property-editor-link-icon > .unlinked-icon svg .stroked):
+        (.visual-style-property-editor-link:not(.link-all) > .visual-style-property-editor-link-icon):
+        (.visual-style-property-editor-link.link-all > .visual-style-property-editor-link-icon):
+
+        * UserInterface/Views/VisualStylePropertyEditorLink.js: Added.
+        (WebInspector.VisualStylePropertyEditorLink):
+        (WebInspector.VisualStylePropertyEditorLink.prototype.get element):
+        (WebInspector.VisualStylePropertyEditorLink.prototype.set disabled):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._linkedPropertyValueChanged):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._updateLinkedEditors):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconMouseover):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconMouseout):
+        (WebInspector.VisualStylePropertyEditorLink.prototype._iconClicked):
+
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.css: Added.
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-title):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-value-container):
+        (.visual-style-property-container.number-input-box.relative-number-slider.disabled > .relative-slider):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .visual-style-property-value-container.no-values.no-units):
+        (.visual-style-property-container.number-input-box.relative-number-slider > .relative-slider):
+
+        * UserInterface/Views/VisualStyleRelativeNumberSlider.js: Added.
+        (WebInspector.VisualStyleRelativeNumberSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype.set scale):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype.updateEditorValues):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._resetSlider):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._sliderChanged):
+        (WebInspector.VisualStyleRelativeNumberSlider.prototype._numberInputChanged):
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add different types of non-numerical Visual editors for CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=147711
+
+        Added editors for keyword based CSS properties for use in the Visual style
+        details panel in the CSS sidebar.  Also added images for keyword values that
+        are simple enough to be conveyed in an image.
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/ClearBoth.svg: Added.
+        * UserInterface/Images/ClearLeft.svg: Added.
+        * UserInterface/Images/ClearRight.svg: Added.
+        * UserInterface/Images/FloatLeft.svg: Added.
+        * UserInterface/Images/FloatRight.svg: Added.
+        * UserInterface/Images/FontStyleItalic.svg: Added.
+        * UserInterface/Images/FontStyleNormal.svg: Added.
+        * UserInterface/Images/FontVariantSmallCaps.svg: Added.
+        * UserInterface/Images/TextAlignCenter.svg: Added.
+        * UserInterface/Images/TextAlignJustify.svg: Added.
+        * UserInterface/Images/TextAlignLeft.svg: Added.
+        * UserInterface/Images/TextAlignRight.svg: Added.
+        * UserInterface/Images/TextDecorationLineThrough.svg: Added.
+        * UserInterface/Images/TextDecorationOverline.svg: Added.
+        * UserInterface/Images/TextDecorationUnderline.svg: Added.
+        * UserInterface/Images/TextTransformCapitalize.svg: Added.
+        * UserInterface/Images/TextTransformLowercase.svg: Added.
+        * UserInterface/Images/TextTransformUppercase.svg: Added.
+        * UserInterface/Images/VisualStyleNone.svg: Added.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches.update):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createColorSwatches):
+        Changed color swatch title.
+
+        * UserInterface/Views/Slider.js:
+        (WebInspector.Slider):
+        (WebInspector.Slider.prototype.set value):
+        (WebInspector.Slider.prototype.set knobX):
+        (WebInspector.Slider.prototype.get maxX):
+        If the given value is below 0, reset it to 0.
+        (WebInspector.Slider.prototype._handleMousedown):
+        (WebInspector.Slider.prototype._handleMousemove):
+        (WebInspector.Slider.prototype.get _maxX): Deleted.
+
+        * UserInterface/Views/VisualStyleColorPicker.css: Added.
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .visual-style-special-property-placeholder):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:hover):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch:active):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > .color-swatch > span):
+        (.visual-style-property-container.input-color-picker > .visual-style-property-value-container > input):
+        (.visual-style-property-container.input-color-picker.multiple > .visual-style-property-value-container > .visual-style-multiple-property-placeholder):
+
+        * UserInterface/Views/VisualStyleColorPicker.js: Added.
+        (WebInspector.VisualStyleColorPicker):
+        (WebInspector.VisualStyleColorPicker.prototype.get value):
+        (WebInspector.VisualStyleColorPicker.prototype.set value):
+        (WebInspector.VisualStyleColorPicker.prototype.get placeholder):
+        (WebInspector.VisualStyleColorPicker.prototype.set placeholder):
+        (WebInspector.VisualStyleColorPicker.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleColorPicker.prototype.get hasCompletions):
+        (WebInspector.VisualStyleColorPicker.prototype.set completions):
+        (WebInspector.VisualStyleColorPicker.prototype._updateColorSwatch):
+        (WebInspector.VisualStyleColorPicker.prototype._colorSwatchClicked):
+        (WebInspector.VisualStyleColorPicker.prototype._colorPickerColorDidChange):
+        (WebInspector.VisualStyleColorPicker.prototype._completionClicked):
+        (WebInspector.VisualStyleColorPicker.prototype._textInputKeyDown):
+        (WebInspector.VisualStyleColorPicker.prototype._textInputKeyUp):
+        (WebInspector.VisualStyleColorPicker.prototype._showCompletionsIfAble):
+        (WebInspector.VisualStyleColorPicker.prototype._hideCompletions):
+        (WebInspector.VisualStyleColorPicker.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.css: Added.
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container):
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > input):
+        (.visual-style-property-container.keyword-checkbox > .visual-style-property-value-container > div):
+
+        * UserInterface/Views/VisualStyleKeywordCheckbox.js: Added.
+        (WebInspector.VisualStyleKeywordCheckbox):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.get value):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.set value):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordCheckbox.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleKeywordIconList.css: Added.
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:first-child):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:last-child):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected)):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected svg .stroked):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon.selected svg .filled):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:matches(.computed, .selected) + .keyword-icon):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon > div):
+        (.visual-style-property-container.keyword-icon-list > .visual-style-property-value-container > .keyword-icon-list-container > .keyword-icon:not(.selected) > div):
+
+        * UserInterface/Views/VisualStyleKeywordIconList.js: Added.
+        (WebInspector.VisualStyleKeywordIconList.dashToCapital):
+        (WebInspector.VisualStyleKeywordIconList.createListItem):
+        (WebInspector.VisualStyleKeywordIconList):
+        (WebInspector.VisualStyleKeywordIconList.prototype.get value):
+        (WebInspector.VisualStyleKeywordIconList.prototype.set value):
+        (WebInspector.VisualStyleKeywordIconList.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordIconList.prototype._handleKeywordChanged):
+
+        * UserInterface/Views/VisualStyleKeywordPicker.js: Added.
+        (WebInspector.VisualStyleKeywordPicker):
+        (WebInspector.VisualStyleKeywordPicker.prototype.get value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set value):
+        (WebInspector.VisualStyleKeywordPicker.prototype.set placeholder):
+        (WebInspector.VisualStyleKeywordPicker.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleKeywordPicker.prototype.updateEditorValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._handleKeywordChanged):
+        (WebInspector.VisualStyleKeywordPicker.prototype._keywordSelectMouseDown):
+        (WebInspector.VisualStyleKeywordPicker.prototype._addValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._addAdvancedValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._removeAdvancedValues):
+        (WebInspector.VisualStyleKeywordPicker.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStylePropertyNameInput.js: Added.
+        (WebInspector.VisualStylePropertyNameInput):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get value):
+        (WebInspector.VisualStylePropertyNameInput.prototype.set value):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get synthesizedValue):
+        (WebInspector.VisualStylePropertyNameInput.prototype.get hasCompletions):
+        (WebInspector.VisualStylePropertyNameInput.prototype.set completions):
+        (WebInspector.VisualStylePropertyNameInput.prototype._completionClicked):
+        (WebInspector.VisualStylePropertyNameInput.prototype._inputKeyDown):
+        (WebInspector.VisualStylePropertyNameInput.prototype._inputKeyUp):
+        (WebInspector.VisualStylePropertyNameInput.prototype._hideCompletions):
+        (WebInspector.VisualStylePropertyNameInput.prototype._toggleTabbingOfSelectableElements):
+
+        * UserInterface/Views/VisualStyleURLInput.js: Added.
+        (WebInspector.VisualStyleURLInput):
+        (WebInspector.VisualStyleURLInput.prototype.set get value):
+        (WebInspector.VisualStyleURLInput.prototype.parseValue):
+
+        * UserInterface/Views/VisualStyleUnitSlider.css: Added.
+        (.visual-style-property-container.unit-slider > .visual-style-property-value-container > .slider):
+        (.visual-style-property-container.unit-slider > .visual-style-property-value-container > .slider > img):
+        (.visual-style-property-container.unit-slider.opacity > .visual-style-property-value-container > .slider):
+
+        * UserInterface/Views/VisualStyleUnitSlider.js: Added.
+        (WebInspector.VisualStyleUnitSlider):
+        (WebInspector.VisualStyleUnitSlider.prototype.set value):
+        (WebInspector.VisualStyleUnitSlider.prototype.get value):
+        (WebInspector.VisualStyleUnitSlider.prototype.get synthesizedValue):
+        (WebInspector.VisualStyleUnitSlider.prototype.sliderValueDidChange):
+
+2015-08-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add VisualStyleSelectorSection
+        https://bugs.webkit.org/show_bug.cgi?id=147572
+
+        Reviewed by Brian Burg.
+
+        Adds a section to the new Visual style sidebar panel that contains the list of
+        styles for the currently selected node.
+
+        * UserInterface/Models/CSSRule.js:
+        (WebInspector.CSSRule.prototype.get mediaText):
+        Returns a string containing the list of media queries.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration):
+        (WebInspector.CSSStyleDeclaration.prototype.set text):
+        (WebInspector.CSSStyleDeclaration.prototype.get modified):
+        (WebInspector.CSSStyleDeclaration.prototype.resetText):
+        (WebInspector.CSSStyleDeclaration.prototype.generateCSSRuleString):
+        Generates a formatted string of the style text.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleContextMenuEvent):
+        (WebInspector.CSSStyleDeclarationSection.prototype._generateCSSRuleString): Deleted.
+
+        * UserInterface/Views/VisualStyleSelectorSection.css: Added.
+        (.details-section.visual-style-selector-section > .header):
+        (.details-section.visual-style-selector-section:not(.collapsed) > .header):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.details-section.visual-style-selector-section > .header > .current-selector):
+        (.visual-style-selector-section.details-section:not(.collapsed) > .header > .current-selector):
+        (.details-section.visual-style-selector-section > .header > .current-selector > .icon):
+        (.details-section.visual-style-selector-section > .header > .current-selector > span):
+        (.details-section.visual-style-selector-section > .header > .controls):
+        (.details-section.visual-style-selector-section.collapsed > .header > .controls):
+        (.details-section.visual-style-selector-section > .header > .controls > .visual-style-selector-section-add-rule):
+        (.details-section.visual-style-selector-section > .content > .selectors):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .visual-style-selector-item:nth-child(odd)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .icon):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > :matches(.disclosure-button, .icon)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider > .titles > .title):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider ~ .visual-style-selector-item:nth-child(even)):
+        (.details-section.visual-style-selector-section > .content > .selectors > .selector-list > .section-divider ~ .visual-style-selector-item:nth-child(odd)):
+
+        * UserInterface/Views/VisualStyleSelectorSection.js: Added.
+        (WebInspector.VisualStyleSelectorSection):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.createSelectorItem):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.uniqueOrderedRules):
+        (WebInspector.VisualStyleSelectorSection.prototype.update.insertAllMatchingPseudoRules):
+        (WebInspector.VisualStyleSelectorSection.prototype.update):
+        (WebInspector.VisualStyleSelectorSection.prototype.currentStyle):
+        (WebInspector.VisualStyleSelectorSection.prototype._selectorChanged):
+        (WebInspector.VisualStyleSelectorSection.prototype._styleTextReset):
+        (WebInspector.VisualStyleSelectorSection.prototype._addNewRule):
+        (WebInspector.VisualStyleSelectorSection.prototype._treeElementCheckboxToggled):
+        (WebInspector.VisualStyleSelectorSection.prototype._handleMouseOver):
+        (WebInspector.VisualStyleSelectorSection.prototype._handleMouseOut):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item):
+        (.item.visual-style-selector-item.selected):
+        (.item.visual-style-selector-item > .disclosure-button):
+        (.item.visual-style-selector-item > input[type="checkbox"]):
+        (.item.visual-style-selector-item > .icon):
+        (.item.visual-style-selector-item.modified > .icon):
+        (.item.visual-style-selector-item.selector-invalid > .icon):
+        (.item.visual-style-selector-item.selector-invalid > .titles > .title):
+        (.item.visual-style-selector-item.selector-invalid > .titles > .title::before):
+        (.item.visual-style-selector-item > .titles):
+        (.item.visual-style-selector-item:not(.dom-element-icon) > .titles > .title):
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title):
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title:focus):
+        (.item.visual-style-selector-item > .titles > .subtitle::before):
+        (.item.visual-style-selector-item > .titles > .subtitle):
+
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.get iconClassName):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.get selectorText):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.onattach):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.ondeselect):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._highlightNodesWithSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._hideDOMNodeHighlight):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleCheckboxChanged):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._updateCheckboxTitle):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleMouseDown):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleKeyDown):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._commitSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._styleTextModified):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._selectorChanged):
+
+2015-08-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TDZ in ProbeSetDataGrid construction
+        https://bugs.webkit.org/show_bug.cgi?id=147834
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProbeSetDataGrid.js:
+        (WebInspector.ProbeSetDataGrid):
+        Do not use "this" before calling super.
+
+2015-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timeline ruler handle tooltip shows wrong value when handles overlap
+        https://bugs.webkit.org/show_bug.cgi?id=147652
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+        Now changes the title depending on whether the selection start/end is clamped.
+
+2015-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't show "No Filter Results" when timeline is empty
+        https://bugs.webkit.org/show_bug.cgi?id=147662
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineView.js:
+        (WebInspector.TimelineView.prototype.reset):
+        Now hides the empty content placeholder on timeline clear.
+
+2015-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Decrease the padding of each rule in the Rules sidebar to allow more content to show
+        https://bugs.webkit.org/show_bug.cgi?id=147360
+
+        Reviewed by Timothy Hatcher.
+
+        Generally tightened the padding around each section in the rules panel, as well as the
+        content inside each section. Also moved the new rule button to be next to the filter bar.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section):
+        (.style-declaration-section.last-in-group):
+        (.style-declaration-section.last-in-group + .style-declaration-section): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .pseudo-classes):
+        (.sidebar > .panel.details.css-style > .content + .options-container):
+        (.sidebar > .panel.details.css-style > .content:not(.supports-new-rule, .has-filter-bar) + .options-container):
+        (.sidebar > .panel.details.css-style > .content + .options-container > .new-rule):
+        (.sidebar > .panel.details.css-style > .content + .options-container > .filter-bar):
+        (.sidebar > .panel.details.css-style > .content:not(.has-filter-bar) + .options-container > .filter-bar):
+        (.sidebar > .panel.details.css-style > .content.has-filter-bar + .filter-bar): Deleted.
+        (.sidebar > .panel.details.css-style > .content:not(.has-filter-bar) + .filter-bar): Deleted.
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._switchPanels):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype._newRuleButtonClicked):
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .label):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        (WebInspector.RulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.addNewRuleButton): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh): Deleted.
+        (WebInspector.RulesStyleDetailsPanel.prototype._newRuleClicked): Deleted.
+
+2015-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't include zero-width space into a copied text from the console
+        https://bugs.webkit.org/show_bug.cgi?id=147767
+
+        Reviewed by Timothy Hatcher.
+
+        Now removes work break characters in generated javascript text when copying
+        to the clipboard.  Also replaced var with let in the modified functions.
+
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WebInspector.ConsoleCommandView.prototype.toClipboardString):
+        (WebInspector.ConsoleCommandView):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype.toClipboardString):
+
 2015-08-07  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Simplify OS-specific CSS class names
