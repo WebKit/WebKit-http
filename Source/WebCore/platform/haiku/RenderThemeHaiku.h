@@ -82,7 +82,7 @@ protected:
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
     void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    bool paintMenuListButtonDecorations(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
 
     void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
     bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
