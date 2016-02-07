@@ -55,6 +55,22 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
     return fontForPlatformData(data);
 }
 
+Vector<String> FontCache::systemFontFamilies()
+{
+    Vector<String> fontFamilies;
+    font_family family;
+    font_style style;
+
+    be_plain_font->GetFamilyAndStyle(&family, &style);
+    fontFamilies.append(family);
+    be_bold_font->GetFamilyAndStyle(&family, &style);
+    fontFamilies.append(family);
+    be_fixed_font->GetFamilyAndStyle(&family, &style);
+    fontFamilies.append(family);
+
+    return fontFamilies;
+}
+
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     font_family family;

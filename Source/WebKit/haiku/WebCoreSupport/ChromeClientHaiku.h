@@ -153,8 +153,8 @@ namespace WebCore {
         bool selectItemWritingDirectionIsNatural() override;
         bool selectItemAlignmentFollowsMenuWritingDirection() override;
         bool hasOpenedPopup() const override;
-        PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
-        PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
+        RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
+        RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
 
         void wheelEventHandlersChanged(bool) override { }
 

@@ -474,12 +474,12 @@ bool ChromeClientHaiku::hasOpenedPopup() const
     return false;
 }
 
-PassRefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient* client) const
+RefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new PopupMenuHaiku(client));
 }
 
-PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient* client) const
+RefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuHaiku(client));
 }

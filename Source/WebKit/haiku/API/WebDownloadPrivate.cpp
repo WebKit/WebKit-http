@@ -179,7 +179,7 @@ void WebDownloadPrivate::cancel()
 
 void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 {
-	m_progressListener = listener;
+    m_progressListener = listener;
 }
 
 // #pragma mark - private
@@ -187,21 +187,20 @@ void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 /*status*/)
 {
     if (m_mimeTypeGuessTries != -1 && m_mimeType.Length() > 0) {
-    	// In last resort, use the MIME type provided
-    	// by the response, which pass our validation
-   		BNodeInfo info(&m_file);
-		info.SetType(m_mimeType);
+        // In last resort, use the MIME type provided
+        // by the response, which pass our validation
+        BNodeInfo info(&m_file);
+        info.SetType(m_mimeType);
     }
 
-	handle->setClient(0);
-	if (m_progressListener.IsValid()) {
+    if (m_progressListener.IsValid()) {
         BMessage message(B_DOWNLOAD_REMOVED);
         message.AddPointer("download", m_webDownload);
         // Block until the listener has released the object on it's side...
         BMessage reply;
         m_progressListener.SendMessage(&message, &reply);
-	}
-	delete m_webDownload;
+    }
+    delete m_webDownload;
 }
 
 void WebDownloadPrivate::createFile()
@@ -209,8 +208,8 @@ void WebDownloadPrivate::createFile()
     // Don't overwrite existing files
     findAvailableFilename();
 
-	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK)
-		m_file.WriteAttrString("META:url", &m_url);
+    if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK)
+        m_file.WriteAttrString("META:url", &m_url);
 
     if (m_progressListener.IsValid()) {
         BMessage message(B_DOWNLOAD_STARTED);

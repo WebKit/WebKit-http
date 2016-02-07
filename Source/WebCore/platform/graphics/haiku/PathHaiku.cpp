@@ -491,34 +491,33 @@ bool Path::isEmpty() const
     return !m_path->Bounds().IsValid();
 }
 
-void Path::apply(void* info, PathApplierFunction function) const
+void Path::apply(const PathApplierFunction& function) const
 {
     class ApplyIterator : public BShapeIterator {
     public:
-        ApplyIterator(void* info, PathApplierFunction function)
-            : m_info(info)
-            , m_function(function)
+        ApplyIterator(const PathApplierFunction& function)
+            : m_function(function)
         {
         }
 
         virtual status_t IterateMoveTo(BPoint* point)
         {
-        	PathElement pathElement;
-        	pathElement.type = PathElementMoveToPoint;
+            PathElement pathElement;
+            pathElement.type = PathElementMoveToPoint;
             pathElement.points = m_pathPoints;
             m_pathPoints[0] = point[0];
-            m_function(m_info, &pathElement);
+            m_function(pathElement);
             return B_OK;
         }
 
         virtual status_t IterateLineTo(int32 lineCount, BPoint* linePts)
         {
-        	PathElement pathElement;
-        	pathElement.type = PathElementAddLineToPoint;
+            PathElement pathElement;
+            pathElement.type = PathElementAddLineToPoint;
             pathElement.points = m_pathPoints;
             while (lineCount--) {
                 m_pathPoints[0] = linePts[0];
-                m_function(m_info, &pathElement);
+                m_function(pathElement);
                 linePts++;
             }
             return B_OK;
@@ -526,43 +525,42 @@ void Path::apply(void* info, PathApplierFunction function) const
 
         virtual status_t IterateBezierTo(int32 bezierCount, BPoint* bezierPts)
         {
-        	PathElement pathElement;
-        	pathElement.type = PathElementAddCurveToPoint;
+            PathElement pathElement;
+            pathElement.type = PathElementAddCurveToPoint;
             pathElement.points = m_pathPoints;
             while (bezierCount--) {
                 m_pathPoints[0] = bezierPts[0];
                 m_pathPoints[1] = bezierPts[1];
                 m_pathPoints[2] = bezierPts[2];
-                m_function(m_info, &pathElement);
+                m_function(pathElement);
                 bezierPts += 3;
             }
             return B_OK;
         }
 
         virtual status_t IterateArcTo(float& rx, float& ry,
-        	float& angle, bool largeArc, bool counterClockWise, BPoint& point)
+            float& angle, bool largeArc, bool counterClockWise, BPoint& point)
         {
-        	// FIXME: This doesn't seem to be supported by WebCore.
-        	// Maybe we are supposed to convert arc into cubic curve
-        	// segments when adding them to a path?
+            // FIXME: This doesn't seem to be supported by WebCore.
+            // Maybe we are supposed to convert arc into cubic curve
+            // segments when adding them to a path?
 
             return B_OK;
         }
 
         virtual status_t IterateClose()
         {
-        	PathElement pathElement;
-        	pathElement.type = PathElementCloseSubpath;
+            PathElement pathElement;
+            pathElement.type = PathElementCloseSubpath;
             pathElement.points = m_pathPoints;
-            m_function(m_info, &pathElement);
+            m_function(pathElement);
             return B_OK;
         }
 
     private:
-        void* m_info;
-        PathApplierFunction m_function;
+        const PathApplierFunction& m_function;
         FloatPoint m_pathPoints[3];
-    } applyIterator(info, function);
+    } applyIterator(function);
 
     applyIterator.Iterate(m_path);
 }

@@ -246,10 +246,7 @@ bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader
         "The secure connection to the website may be compromised, make sure "
         "to not send any sensitive information.";
 
-    // TODO add information about the certificate to the alert
-    // TODO this can be called several times for the same certificate since we
-    // don't store the user choice (we should at least store it for the current
-    // session)
+    // TODO add information about the certificate to the alert (in a "details" area or so)
 
     BAlert* alert = new BAlert("Unsecure SSL certificate", text.utf8().data(),
         "Continue", "Stop", NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
@@ -823,14 +820,10 @@ void FrameLoaderClientHaiku::prepareForDataSourceReplacement()
     // notImplemented(); // Nor does any port except Apple one.
 }
 
-WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
+WTF::Ref<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
 {
     CALLED("request: %s", request.url().string().utf8().data());
-    RefPtr<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
-// NOTE: The Gtk port does not do this, so I commented it out for now:
-//    if (substituteData.isValid())
-//        loader->setDeferMainResourceDataLoad(false);
-    return loader.release();
+    return DocumentLoader::create(request, substituteData);
 }
 
 void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const URL&)
@@ -895,7 +888,7 @@ bool FrameLoaderClientHaiku::canCachePage() const
     return true;
 }
 
-PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
+RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     const String& name, HTMLFrameOwnerElement* ownerElement,
     const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/,
     int /*marginHeight*/)
@@ -929,7 +922,7 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
         return nullptr;
     }
 
-    return coreSubFrame.release();
+    return coreSubFrame;
 }
 
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
@@ -972,12 +965,12 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
     return ObjectContentNone;
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
+RefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
                                                         const Vector<String>&, const String&, bool /*loadManually*/)
 {
     CALLED();
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)

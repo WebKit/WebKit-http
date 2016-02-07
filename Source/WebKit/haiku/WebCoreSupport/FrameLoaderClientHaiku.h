@@ -192,19 +192,19 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void provisionalLoadStarted() override;
     void didFinishLoad() override;
     void prepareForDataSourceReplacement() override;
-    PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&) override;
+    Ref<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&) override;
 
     void setTitle(const StringWithDirection&, const URL&) override;
 
-    PassRefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement*,
-                                                   const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
-    PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
-                                                     const Vector<String>&, const String&, bool) override;
+    RefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement*,
+        const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
+    RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
+        const Vector<String>&, const String&, bool) override;
     void recreatePlugin(Widget*) override { }
     void redirectDataToPlugin(Widget* pluginWidget) override;
 
     PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
-                                                               const Vector<String>& paramNames, const Vector<String>& paramValues) override;
+        const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
     ObjectContentType objectContentType(const URL&, const String& mimeType, bool shouldPreferPlugInsForImages) override;
 
