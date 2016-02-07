@@ -311,8 +311,16 @@ void TestRunner::setGeolocationPermission(bool allow)
 
 int TestRunner::numberOfPendingGeolocationPermissionRequests()
 {
-    notImplemented();
+    // FIXME: Implement for Geolocation layout tests.
+    printf("ERROR: TestRunner::numberOfPendingGeolocationPermissionRequests() not implemented\n");
     return -1;
+}
+
+bool TestRunner::isGeolocationProviderActive()
+{
+    // FIXME: Implement for Geolocation layout tests.
+    printf("ERROR: TestRunner::isGeolocationProviderActive() not implemented\n");
+    return false;
 }
 
 void TestRunner::setIconDatabaseEnabled(bool enabled)

@@ -84,6 +84,8 @@ IF (HAIKU)
     include_directories(
         ${DumpRenderTree_INCLUDE_DIRECTORIES}
     )
+
+LIST(APPEND DumpRenderTree_LIBRARIES WebCore translation)
 ELSE (HAIKU)
     include_directories(
         ${DumpRenderTree_INCLUDE_DIRECTORIES}

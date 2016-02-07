@@ -21,6 +21,7 @@
 #ifndef FontCustomPlatformData_h
 #define FontCustomPlatformData_h
 
+#include "FontDescription.h"
 #include "TextFlags.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -36,7 +37,7 @@ namespace WebCore {
         FontCustomPlatformData() { }
         ~FontCustomPlatformData();
 
-        FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal, FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
+        FontPlatformData fontPlatformData(const FontDescription& description, bool& bold, bool& italic);
 	    static bool supportsFormat(const String&);
     };
 
