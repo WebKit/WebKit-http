@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,47 +23,76 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ByteSpinLock_h
-#define ByteSpinLock_h
+#ifndef WTF_WordLock_h
+#define WTF_WordLock_h
 
-#include <thread>
-#include <wtf/Assertions.h>
 #include <wtf/Atomics.h>
+#include <wtf/Compiler.h>
 #include <wtf/Locker.h>
 #include <wtf/Noncopyable.h>
 
 namespace WTF {
 
-class ByteSpinLock {
-    WTF_MAKE_NONCOPYABLE(ByteSpinLock);
+// A WordLock is a fully adaptive mutex that uses sizeof(void*) storage. It has a fast path that is
+// similar to SpinLock, and a slow path that is similar to Mutex. In most cases, you should use Lock
+// instead. WordLock sits lower in the stack and is used to implement Lock, so Lock is the main
+// client of WordLock.
+
+class WordLock {
+    WTF_MAKE_NONCOPYABLE(WordLock);
 public:
-    ByteSpinLock()
+    WordLock()
     {
-        m_lock.store(false, std::memory_order_relaxed);
+        m_word.store(0, std::memory_order_relaxed);
     }
 
     void lock()
     {
-        while (!m_lock.compareExchangeWeak(false, true, std::memory_order_acquire))
-            std::this_thread::yield();
+        if (LIKELY(m_word.compareExchangeWeak(0, isLockedBit, std::memory_order_acquire))) {
+            // WordLock acquired!
+            return;
+        }
+
+        lockSlow();
     }
-    
+
     void unlock()
     {
-        m_lock.store(false, std::memory_order_release);
+        if (LIKELY(m_word.compareExchangeWeak(isLockedBit, 0, std::memory_order_release))) {
+            // WordLock released, and nobody was waiting!
+            return;
+        }
+
+        unlockSlow();
     }
-    
-    bool isHeld() const { return m_lock.load(std::memory_order_acquire); }
-    
+
+    bool isHeld() const
+    {
+        return m_word.load(std::memory_order_acquire) & isLockedBit;
+    }
+
+    bool isLocked() const
+    {
+        return isHeld();
+    }
+
 private:
-    Atomic<bool> m_lock;
+    static const uintptr_t isLockedBit = 1;
+    static const uintptr_t isQueueLockedBit = 2;
+    static const uintptr_t queueHeadMask = 3;
+
+    WTF_EXPORT_PRIVATE void lockSlow();
+    WTF_EXPORT_PRIVATE void unlockSlow();
+
+    Atomic<uintptr_t> m_word;
 };
 
-typedef Locker<ByteSpinLock> ByteSpinLocker;
+typedef Locker<WordLock> WordLockHolder;
 
 } // namespace WTF
 
-using WTF::ByteSpinLock;
-using WTF::ByteSpinLocker;
+using WTF::WordLock;
+using WTF::WordLockHolder;
 
-#endif // ByteSpinLock_h
+#endif // WTF_WordLock_h
+

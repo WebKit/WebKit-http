@@ -1,3 +1,150 @@
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Dragging a timeline ruler handle when both handles clamped is broken
+        https://bugs.webkit.org/show_bug.cgi?id=147912
+
+        Reviewed by Timothy Hatcher.
+
+        When clamped handles overlap, the handle nearest in time to the ruler's edge should be visible and
+        clickable, and the other should be hidden. This change ensures that clicking and dragging a ruler
+        handle to modify a selection outside the visible area works correctly.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .selection-handle.right):
+        Style adjustment for rendering frames, which offsets the right handle by 5px instead of 4px.
+        (.timeline-overview.frames > .timeline-ruler:not(.both-handles-clamped) > .shaded-area.right):
+        Style adjustment for rendering frames, which offsets the right shaded area by 1px.
+        (.timeline-overview.frames > .timeline-ruler > .selection-handle.right): Deleted.
+        (.timeline-overview.frames > .timeline-ruler > .shaded-area.right): Deleted.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler.both-handles-clamped > .selection-handle):
+        Updated handle style when both are clamped.
+        (.timeline-ruler > .selection-handle.clamped.hidden):
+        Hide the clamped handle that is beneath the other clamped handle.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype._updateSelection):
+
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Disabling attribute styles should not be possible
+        https://bugs.webkit.org/show_bug.cgi?id=147922
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        Increases the specificity of the if statement that adds rule disable state toggling to the icon.
+
+2015-08-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Update to CodeMirror 5.5 or later
+        https://bugs.webkit.org/show_bug.cgi?id=147109
+
+        Reviewed by Timothy Hatcher.
+
+        Updated CodeMirror to version 5.5, as well as the extension files for CodeMirror
+        that are currently used in WebInspector.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * Tools/PrettyPrinting/FormatterDebug.js:
+        Added WebInspector namespace for formatters.
+
+        * Tools/PrettyPrinting/index.html:
+        Added WebInspector namespace for formatters.
+
+        * UserInterface/External/CodeMirror/LICENSE:
+        * UserInterface/External/CodeMirror/clojure.js:
+        * UserInterface/External/CodeMirror/closebrackets.js:
+        * UserInterface/External/CodeMirror/codemirror.css:
+        * UserInterface/External/CodeMirror/codemirror.js:
+        * UserInterface/External/CodeMirror/coffeescript.js:
+        * UserInterface/External/CodeMirror/comment.js:
+        * UserInterface/External/CodeMirror/css.js:
+        * UserInterface/External/CodeMirror/htmlmixed.js:
+        * UserInterface/External/CodeMirror/javascript.js:
+        * UserInterface/External/CodeMirror/livescript.js:
+        * UserInterface/External/CodeMirror/matchbrackets.js:
+        * UserInterface/External/CodeMirror/overlay.js:
+        * UserInterface/External/CodeMirror/sass.js:
+        * UserInterface/External/CodeMirror/searchcursor.js:
+        * UserInterface/External/CodeMirror/sql.js:
+        * UserInterface/External/CodeMirror/xml.js:
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        Now uses the new token in CodeMirror for media query parenthesis.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.css:
+        (.css-style-text-editor > .CodeMirror pre):
+        Removed the additional vertical padding.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseDown):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp):
+        Clicking on the end of a line in a style will now correctly insert a new line.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.details-section > .content > .group > .row .CodeMirror-code pre .go-to-arrow):
+        The go-to arrow now has the proper dimensions.
+
+        * UserInterface/Views/HoverMenu.css:
+        (.hover-menu > img):
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.hover-menu.color > img):
+
+2015-08-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add the ability to filter out tasks in the Rendering Frames timeline
+        https://bugs.webkit.org/show_bug.cgi?id=147389
+
+        Reviewed by Timothy Hatcher.
+
+        Added filtering by task type to the Rendering Frames timeline view. Legend item checkboxes
+        in the timeline sidebar toggle filtering for the corresponding task. The "Other" category
+        cannot be filtered, since all rendering frame records include some "other" time in addition to
+        child records from at least one additional task type.
+
+        A row is filtered (hidden) from the data grid when the corresponding rendering frame has no
+        unfiltered child records.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._windowFocused):
+        (WebInspector._windowBlurred):
+        Added inactive style for docked window.
+
+        * UserInterface/Views/ChartDetailsSectionRow.css:
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > .color-key):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]):
+        (body.window-inactive .details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > label > input[type=checkbox]):
+        (.details-section > .content > .group > .row.chart > .defs-only):
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > .label > .color-swatch): Deleted.
+        (.details-section > .content > .group > .row.chart > .chart-content > .legend > .legend-item > .label): Deleted.
+        Switched to label elements, added checkbox styles, and updated color swatch style for non-checkbox items.
+
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        (WebInspector.ChartDetailsSectionRow):
+        Added svg filter container and style sheet element.
+        (WebInspector.ChartDetailsSectionRow.prototype.set data):
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend.createGammaPrimitive):
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend.createCheckboxFilterElement):
+        Helper function to create an svg:filter to blend legend key color over the native checkbox element.
+        Filter assumes grayscale input, and each checkbox requires a separate filter.
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegend):
+        Creates legend items, svg filters, and checkbox style sheet.
+        (WebInspector.ChartDetailsSectionRow.prototype._legendItemCheckboxValueChanged):
+        Repackage and forward checkbox changed event.
+        (WebInspector.ChartDetailsSectionRow.prototype._createLegendItem): Deleted.
+        Logic moved to WebInspector.ChartDetailsSectionRow.prototype._createLegend.
+
+        * UserInterface/Views/TimelineSidebarPanel.js:
+        Added set of rendering frame task types against which tree elements can be filtered.
+        (WebInspector.TimelineSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        If filter is not empty, check ancestor rendering frame record for unfiltered data.
+        (WebInspector.TimelineSidebarPanel.prototype._frameSelectionLegendItemChecked):
+        Update task filter in response when legend items are checked/unchecked.
+
 2015-08-11  Brent Fulgham  <bfulgham@apple.com>
 
         [Win] Switch Windows build to Visual Studio 2015

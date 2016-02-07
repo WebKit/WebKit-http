@@ -26,16 +26,13 @@
 #include "config.h"
 #include <condition_variable>
 #include <mutex>
+#include <thread>
 #include <wtf/DataLog.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListDump.h>
 #include <wtf/ParkingLot.h>
 #include <wtf/Threading.h>
 #include <wtf/ThreadingPrimitives.h>
-
-#if PLATFORM(WIN)
-#include <windows.h>
-#endif
 
 using namespace WTF;
 
@@ -195,11 +192,7 @@ void runParkingTest(unsigned numLatches, unsigned delay, unsigned numThreads, un
         tests[latchIndex].initialize(numThreads);
 
     for (unsigned unparkIndex = 0; unparkIndex < numSingleUnparks; ++unparkIndex) {
-#if PLATFORM(WIN)
-        Sleep(delay / 1000);
-#else
-        usleep(delay);
-#endif
+        std::this_thread::sleep_for(std::chrono::microseconds(delay));
         for (unsigned latchIndex = numLatches; latchIndex--;)
             tests[latchIndex].unparkOne(unparkIndex);
     }
@@ -223,7 +216,7 @@ TEST(WTF_ParkingLot, UnparkAllOneFast)
 
 TEST(WTF_ParkingLot, UnparkAllHundredFast)
 {
-    repeatParkingTest(1000, 1, 0, 100, 0);
+    repeatParkingTest(100, 1, 0, 100, 0);
 }
 
 TEST(WTF_ParkingLot, UnparkOneOneFast)
@@ -233,12 +226,12 @@ TEST(WTF_ParkingLot, UnparkOneOneFast)
 
 TEST(WTF_ParkingLot, UnparkOneHundredFast)
 {
-    repeatParkingTest(100, 1, 0, 100, 100);
+    repeatParkingTest(20, 1, 0, 100, 100);
 }
 
 TEST(WTF_ParkingLot, UnparkOneFiftyThenFiftyAllFast)
 {
-    repeatParkingTest(200, 1, 0, 100, 50);
+    repeatParkingTest(50, 1, 0, 100, 50);
 }
 
 TEST(WTF_ParkingLot, UnparkAllOne)
@@ -256,9 +249,9 @@ TEST(WTF_ParkingLot, UnparkOneOne)
     repeatParkingTest(10, 1, 10000, 1, 1);
 }
 
-TEST(WTF_ParkingLot, UnparkOneHundred)
+TEST(WTF_ParkingLot, UnparkOneFifty)
 {
-    repeatParkingTest(1, 1, 10000, 100, 100);
+    repeatParkingTest(1, 1, 10000, 50, 50);
 }
 
 TEST(WTF_ParkingLot, UnparkOneFiftyThenFiftyAll)

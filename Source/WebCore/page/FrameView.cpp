@@ -160,6 +160,35 @@ Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
     return Pagination::BottomToTopPaginated;
 }
 
+class SubtreeLayoutStateMaintainer {
+public:
+    SubtreeLayoutStateMaintainer(RenderElement* subtreeLayoutRoot)
+        : m_layoutRoot(subtreeLayoutRoot)
+    {
+        if (m_layoutRoot) {
+            RenderView& view = m_layoutRoot->view();
+            view.pushLayoutState(*m_layoutRoot);
+            m_disableLayoutState = view.shouldDisableLayoutStateForSubtree(m_layoutRoot);
+            if (m_disableLayoutState)
+                view.disableLayoutState();
+        }
+    }
+
+    ~SubtreeLayoutStateMaintainer()
+    {
+        if (m_layoutRoot) {
+            RenderView& view = m_layoutRoot->view();
+            view.popLayoutState(*m_layoutRoot);
+            if (m_disableLayoutState)
+                view.enableLayoutState();
+        }
+    }
+
+private:
+    RenderElement* m_layoutRoot { nullptr };
+    bool m_disableLayoutState { false };
+};
+
 FrameView::FrameView(Frame& frame)
     : m_frame(frame)
     , m_canHaveScrollbars(true)
@@ -980,7 +1009,7 @@ bool FrameView::isScrollSnapInProgress() const
 }
 #endif
 
-bool FrameView::flushCompositingStateForThisFrame(Frame* rootFrameForFlush)
+bool FrameView::flushCompositingStateForThisFrame(const Frame& rootFrameForFlush)
 {
     RenderView* renderView = this->renderView();
     if (!renderView)
@@ -998,8 +1027,7 @@ bool FrameView::flushCompositingStateForThisFrame(Frame* rootFrameForFlush)
         tileCache->doPendingRepaints();
 #endif
 
-    renderView->compositor().flushPendingLayerChanges(rootFrameForFlush == m_frame.ptr());
-
+    renderView->compositor().flushPendingLayerChanges(&rootFrameForFlush == m_frame.ptr());
     return true;
 }
 
@@ -1126,12 +1154,12 @@ bool FrameView::flushCompositingStateIncludingSubframes()
 {
     InspectorInstrumentation::willComposite(frame());
 
-    bool allFramesFlushed = flushCompositingStateForThisFrame(&frame());
+    bool allFramesFlushed = flushCompositingStateForThisFrame(frame());
 
     for (Frame* child = frame().tree().firstRenderedChild(); child; child = child->tree().traverseNextRendered(m_frame.ptr())) {
         if (!child->view())
             continue;
-        bool flushed = child->view()->flushCompositingStateForThisFrame(&frame());
+        bool flushed = child->view()->flushCompositingStateForThisFrame(frame());
         allFramesFlushed &= flushed;
     }
     return allFramesFlushed;
@@ -1367,13 +1395,8 @@ void FrameView::layout(bool allowSubtree)
         }
 
         layer = root->enclosingLayer();
+        SubtreeLayoutStateMaintainer subtreeLayoutStateMaintainer(m_layoutRoot);
 
-        bool disableLayoutState = false;
-        if (subtree) {
-            disableLayoutState = root->view().shouldDisableLayoutStateForSubtree(root);
-            root->view().pushLayoutState(*root);
-        }
-        LayoutStateDisabler layoutStateDisabler(disableLayoutState ? &root->view() : nullptr);
         RenderView::RepaintRegionAccumulator repaintRegionAccumulator(&root->view());
 
         ASSERT(m_layoutPhase == InPreLayout);
@@ -1401,13 +1424,8 @@ void FrameView::layout(bool allowSubtree)
 #endif
 
         ASSERT(m_layoutPhase == InLayout);
-
-        if (subtree)
-            root->view().popLayoutState(*root);
-
         m_layoutRoot = nullptr;
-
-        // Close block here to end the scope of changeSchedulingEnabled and layoutStateDisabler.
+        // Close block here to end the scope of changeSchedulingEnabled and SubtreeLayoutStateMaintainer.
     }
 
     m_layoutPhase = InViewSizeAdjust;
@@ -1625,7 +1643,7 @@ void FrameView::addSlowRepaintObject(RenderElement* o)
     bool hadSlowRepaintObjects = hasSlowRepaintObjects();
 
     if (!m_slowRepaintObjects)
-        m_slowRepaintObjects = std::make_unique<HashSet<RenderElement*>>();
+        m_slowRepaintObjects = std::make_unique<HashSet<const RenderElement*>>();
 
     m_slowRepaintObjects->add(o);
 
@@ -2079,12 +2097,12 @@ void FrameView::maintainScrollPositionAtAnchor(ContainerNode* anchorNode)
         scrollToAnchor();
 }
 
-void FrameView::scrollElementToRect(Element* element, const IntRect& rect)
+void FrameView::scrollElementToRect(const Element& element, const IntRect& rect)
 {
     frame().document()->updateLayoutIgnorePendingStylesheets();
 
     LayoutRect bounds;
-    if (RenderElement* renderer = element->renderer())
+    if (RenderElement* renderer = element.renderer())
         bounds = renderer->anchorRect();
     int centeringOffsetX = (rect.width() - bounds.width()) / 2;
     int centeringOffsetY = (rect.height() - bounds.height()) / 2;
