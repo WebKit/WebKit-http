@@ -35,7 +35,7 @@ Packages for other flavors of Haiku may or may not be available. Use [haikuporte
 #### Configuring your build for the first time ####
 On a gcc2hybrid Haiku:
     $ PKG_CONFIG_LIBDIR=/boot/system/develop/lib/x86/pkgconfig \
-        CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit
+        CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit --cmakeargs="-DCMAKE_AR=/bin/ar-x86"
 
 On other versions:
     $ Tools/Scripts/build-webkit
